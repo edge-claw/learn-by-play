@@ -2,7 +2,7 @@
 
 零依赖交互式教育游戏合集。每个游戏都是单个 HTML 文件，浏览器双击即玩。
 
-**在线体验** → https://shaoguos.github.io/learn-by-play/
+**在线体验** → https://edge-claw.github.io/learn-by-play/
 
 ## 游戏列表
 
