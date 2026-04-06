@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/games-26-blue?style=flat-square" alt="26 games"/>
-  <img src="https://img.shields.io/badge/levels-170+-green?style=flat-square" alt="170+ levels"/>
+  <img src="https://img.shields.io/badge/games-28-blue?style=flat-square" alt="28 games"/>
+  <img src="https://img.shields.io/badge/levels-150+-green?style=flat-square" alt="150+ levels"/>
   <img src="https://img.shields.io/badge/dependencies-0-orange?style=flat-square" alt="zero dependencies"/>
   <img src="https://img.shields.io/github/license/edge-claw/learn-by-play?style=flat-square" alt="MIT license"/>
 </p>
@@ -29,7 +29,7 @@
 | 工程技术 | 半导体制造 · 3D打印 · 电池与储能 · 全息投影 | 7/7/7/7关 |
 | 地球与环境 | 气候系统模拟 · 海洋深潜探索 | 7/7关 |
 
-共 **26 个游戏**，**170+ 个关卡**，覆盖 **7 大领域**。
+共 **28 个游戏**，**150+ 个关卡**，覆盖 **7 大领域**。
 
 ## 特点
 
