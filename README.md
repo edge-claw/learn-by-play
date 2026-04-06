@@ -1,8 +1,21 @@
-# Learn by Play — 玩中学科学
+<p align="center">
+  <img src="banner.svg" alt="Learn by Play — 玩中学科学" width="900"/>
+</p>
 
-零依赖交互式教育游戏合集。每个游戏都是单个 HTML 文件，浏览器双击即玩。
+<p align="center">
+  <a href="https://edge-claw.github.io/learn-by-play/">🎮 在线体验</a> ·
+  <a href="#游戏列表">📋 游戏列表</a> ·
+  <a href="CONTRIBUTING.md">🤝 参与贡献</a>
+</p>
 
-**在线体验** → https://edge-claw.github.io/learn-by-play/
+<p align="center">
+  <img src="https://img.shields.io/badge/games-26-blue?style=flat-square" alt="26 games"/>
+  <img src="https://img.shields.io/badge/levels-170+-green?style=flat-square" alt="170+ levels"/>
+  <img src="https://img.shields.io/badge/dependencies-0-orange?style=flat-square" alt="zero dependencies"/>
+  <img src="https://img.shields.io/github/license/edge-claw/learn-by-play?style=flat-square" alt="MIT license"/>
+</p>
+
+---
 
 ## 游戏列表
 
