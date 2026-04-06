@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>神经网络从零构建 - 交互式教育游戏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#c0c0d0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+canvas{display:block;position:absolute;top:0;left:320px}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888;transition:all .3s}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center;transition:all .3s}
+.act-btn:hover{background:#2a2a6a}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.act-btn.red{border-color:#ef4444;background:#2a0a0a;color:#f87171}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px}.sv{color:#60a5fa;font-weight:bold}
+#infoBar{position:absolute;bottom:0;left:320px;right:0;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid #1a1a3a;display:flex;align-items:center;padding:0 16px;font-size:12px;color:#888;z-index:10}
+.panel h3{color:#60a5fa;font-size:14px;margin:8px 0 4px}
+.panel h4{color:#93c5fd;font-size:12px;margin:6px 0 2px}
+.obj-item{font-size:12px;margin:2px 0;color:#a0a0c0}
+.obj-item.done{color:#4ade80}
+.kern-grid{display:inline-grid;grid-template-columns:repeat(3,36px);gap:2px;margin:4px 0}
+.kern-cell{width:36px;height:28px;background:#111;border:1px solid #333;color:#60a5fa;text-align:center;font-size:12px;border-radius:4px}
+.func-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888;transition:all .3s}
+.func-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.quiz-box{background:#0d0d2a;border:1px solid #6366f1;border-radius:10px;padding:12px;margin:10px 0}
+.quiz-box h4{color:#a5b4fc;margin-bottom:8px;font-size:13px}
+.quiz-opt{display:block;width:100%;padding:8px 12px;margin:4px 0;border-radius:6px;border:1px solid #333;background:#111;color:#a0a0c0;font-size:12px;cursor:pointer;text-align:left;transition:all .3s}
+.quiz-opt:hover{border-color:#6366f1;background:#1a1a3a}
+.quiz-opt.correct{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.quiz-opt.wrong{border-color:#ef4444;background:#2a0a0a;color:#f87171}
+.quiz-opt:disabled{cursor:not-allowed;opacity:.7}
+.quiz-result{padding:8px;margin-top:8px;border-radius:6px;font-size:12px}
+.quiz-result.pass{background:#0a2a1a;border:1px solid #22c55e;color:#4ade80}
+.quiz-result.fail{background:#2a0a0a;border:1px solid #ef4444;color:#f87171}
+</style>
+</head>
+<body>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="infoBar">神经网络从零构建 交互式教育游戏 | 共7关</div>
+<script>
+// ===== 音效系统 (Web Audio API) =====
+const AudioCtx=window.AudioContext||window.webkitAudioContext;
+let audioCtx=null;
+function ensureAudio(){if(!audioCtx)audioCtx=new AudioCtx();}
+function playSound(type){
+ ensureAudio();
+ const now=audioCtx.currentTime;
+ if(type==='click'){
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.frequency.setValueAtTime(800,now);o.frequency.exponentialRampToValueAtTime(1200,now+0.05);
+  g.gain.setValueAtTime(0.15,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.08);
+  o.start(now);o.stop(now+0.08);
+ }else if(type==='success'){
+  [523,659,784].forEach((f,i)=>{
+   const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+   o.connect(g);g.connect(audioCtx.destination);
+   o.frequency.setValueAtTime(f,now+i*0.12);
+   g.gain.setValueAtTime(0.15,now+i*0.12);g.gain.exponentialRampToValueAtTime(0.001,now+i*0.12+0.3);
+   o.start(now+i*0.12);o.stop(now+i*0.12+0.3);
+  });
+ }else if(type==='fail'){
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.type='sawtooth';o.frequency.setValueAtTime(300,now);o.frequency.exponentialRampToValueAtTime(100,now+0.3);
+  g.gain.setValueAtTime(0.15,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.35);
+  o.start(now);o.stop(now+0.35);
+ }else if(type==='boom'){
+  const buf=audioCtx.createBuffer(1,audioCtx.sampleRate*0.3,audioCtx.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(audioCtx.sampleRate*0.08));
+  const s=audioCtx.createBufferSource(),g=audioCtx.createGain();
+  s.buffer=buf;s.connect(g);g.connect(audioCtx.destination);
+  g.gain.setValueAtTime(0.25,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);
+  s.start(now);
+ }
+}
+
+// ===== 粒子系统 =====
+let particles=[];
+function spawnParticles(x,y,count,color,opts={}){
+ const life=opts.life||60,speed=opts.speed||3,size=opts.size||3;
+ for(let i=0;i<count;i++){
+  const angle=Math.random()*Math.PI*2,v=Math.random()*speed+0.5;
+  particles.push({x,y,vx:Math.cos(angle)*v,vy:Math.sin(angle)*v,
+   life,maxLife:life,color,size:Math.random()*size+1,type:opts.type||'normal'});
+ }
+}
+function updateParticles(){
+ for(let i=particles.length-1;i>=0;i--){
+  const p=particles[i];
+  p.x+=p.vx;p.y+=p.vy;p.life--;
+  if(p.life<=0){particles.splice(i,1);continue;}
+ }
+}
+function drawParticles(){
+ particles.forEach(p=>{
+  const alpha=p.life/p.maxLife;
+  ctx.globalAlpha=alpha;
+  ctx.beginPath();ctx.arc(p.x,p.y,p.size*alpha,0,Math.PI*2);
+  ctx.fillStyle=p.color;ctx.fill();
+ });
+ ctx.globalAlpha=1;
+}
+
+// ===== 脉冲发光系统 =====
+let pulseGlows=[];
+function addPulseGlow(x,y,color,maxR){
+ pulseGlows.push({x,y,color,r:5,maxR:maxR||40,alpha:0.8});
+}
+function updatePulseGlows(){
+ for(let i=pulseGlows.length-1;i>=0;i--){
+  const g=pulseGlows[i];
+  g.r+=1.5;g.alpha-=0.02;
+  if(g.alpha<=0||g.r>=g.maxR)pulseGlows.splice(i,1);
+ }
+}
+function drawPulseGlows(){
+ pulseGlows.forEach(g=>{
+  const grad=ctx.createRadialGradient(g.x,g.y,0,g.x,g.y,g.r);
+  grad.addColorStop(0,g.color+Math.floor(g.alpha*255).toString(16).padStart(2,'0'));
+  grad.addColorStop(1,g.color+'00');
+  ctx.beginPath();ctx.arc(g.x,g.y,g.r,0,Math.PI*2);
+  ctx.fillStyle=grad;ctx.fill();
+ });
+}
+
+// ===== 梯度粒子系统（反向传播红色粒子） =====
+let gradParticles=[];
+function spawnGradientParticles(x1,y1,x2,y2,count){
+ for(let i=0;i<count;i++){
+  const t=Math.random();
+  gradParticles.push({x:x2,y:y2,tx:x1,ty:y1,t:0,speed:0.01+Math.random()*0.02,
+   size:2+Math.random()*2,life:1});
+ }
+}
+function updateGradParticles(){
+ for(let i=gradParticles.length-1;i>=0;i--){
+  const p=gradParticles[i];
+  p.t+=p.speed;
+  p.x=p.tx*p.t+(1-p.t)*(p.tx+(p.x-p.tx));
+  // lerp
+  const tt=Math.min(1,p.t/0.8);
+  p.x=(1-tt)*(gradParticles[i].tx+(gradParticles[i].x-gradParticles[i].tx)*(1-p.t))+tt*p.tx;
+  // simpler: just lerp
+  p.life=1-p.t;
+  if(p.t>=1){gradParticles.splice(i,1);}
+ }
+}
+
+// ===== 关卡切换淡入 =====
+let fadeAlpha=0,fadeDir=0;
+
+// ===== 全局状态 =====
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const panel=document.getElementById('panel'),infoBar=document.getElementById('infoBar');
+let W,H,curLevel=0,animId,globalTime=0;
+const completedLevels=new Set();
+let quizState={answered:false,selected:-1,correct:false};
+const levels=[
+{name:'感知器 — 线性分类',concept:'感知器是最简单的神经网络：输出 = w1·x1 + w2·x2 + bias。调整权重和偏置，画出一条直线将红蓝点分开。',
+ objs:['调整权重画出分类线','挑战模式：准确率>90%','理解线性决策边界'],
+ learn:'感知器是1957年Frank Rosenblatt发明的，它只能解决线性可分问题。这个限制直接导致了第一次AI寒冬。',
+ quiz:{q:'感知器能解决什么类型的问题？',opts:['A. 任意分类','B. 线性可分问题','C. 图像识别'],ans:1}},
+{name:'激活函数 — 非线性变换',concept:'激活函数为神经网络引入非线性。没有它，多层网络等价于单层。常见的有Sigmoid、ReLU和Tanh。',
+ objs:['观察Sigmoid函数曲线','观察ReLU函数曲线','观察Tanh函数曲线'],
+ learn:'ReLU因计算简单、梯度不易消失，成为深度学习的默认激活函数。但它有"死亡ReLU"问题——负值区域梯度为零。',
+ quiz:{q:'激活函数的作用是？',opts:['A. 加速计算','B. 引入非线性，让网络能学习复杂模式','C. 减少参数'],ans:1}},
+{name:'反向传播 — 链式法则',concept:'反向传播是训练神经网络的核心算法：前向计算输出，计算损失，然后从输出层逐层回传梯度更新权重。',
+ objs:['完成前向传播','计算输出层梯度','完成反向传播到隐藏层'],
+ learn:'反向传播本质是微积分的链式法则。1986年Hinton等人的论文让它广为人知，开启了神经网络的复兴。',
+ quiz:{q:'反向传播的核心数学工具是？',opts:['A. 矩阵乘法','B. 链式法则（求导）','C. 傅里叶变换'],ans:1}},
+{name:'多层网络 — XOR问题',concept:'XOR问题：对角同色，相邻异色。单层感知器无法解决，因为XOR不是线性可分的。添加隐藏层才能解决。',
+ objs:['尝试单层网络→必然失败','添加隐藏层神经元','成功分类XOR问题'],
+ learn:'1969年Minsky证明感知器无法解决XOR，引发AI寒冬。多层网络（MLP）通过隐藏层组合非线性变换，可以逼近任意函数。',
+ quiz:{q:'为什么深度网络能解决XOR而单层不能？',opts:['A. 参数更多','B. 隐藏层创造了新的特征空间','C. 训练更久'],ans:1}},
+{name:'卷积 — 特征提取',concept:'卷积神经网络用小的卷积核在图像上滑动，提取局部特征。不同的核可以检测边缘、模糊或锐化图像。',
+ objs:['使用边缘检测核','使用模糊核','使用锐化核'],
+ learn:'CNN的灵感来自猫的视觉皮层实验。局部连接+权重共享大幅减少参数量，使深度学习在图像领域取得突破。',
+ quiz:{q:'卷积神经网络的核心操作是？',opts:['A. 全连接','B. 卷积核在图像上滑动提取特征','C. 池化'],ans:1}},
+{name:'过拟合 — 泛化能力',concept:'训练损失持续下降但验证损失上升=过拟合。模型记住了训练数据的噪声，而非学到真正的规律。',
+ objs:['观察过拟合现象','用Dropout缓解过拟合','通过测试集考试'],
+ learn:'Dropout（随机丢弃神经元）相当于训练了指数级多个子网络的集成。L2正则化惩罚大权重，鼓励模型学习简单的模式。',
+ quiz:{q:'防止过拟合的方法不包括？',opts:['A. Dropout','B. 增加训练数据','C. 增加网络层数'],ans:2}},
+{name:'图像识别 — 端到端',concept:'手写数字识别是深度学习的"Hello World"。输入图像经过卷积→池化→全连接，输出10个类别的概率。',
+ objs:['手写一个数字','观察CNN处理过程','获得识别结果'],
+ learn:'1998年LeCun的LeNet-5在手写数字识别上取得突破。如今CNN已发展出ResNet、EfficientNet等架构，在ImageNet上超越人类水平。',
+ quiz:{q:'CNN识别图像的过程是？',opts:['A. 逐像素比对','B. 卷积提取特征→池化降维→全连接分类','C. 模板匹配'],ans:1}}
+];
+
+// ===== 关卡状态 =====
+let lState={};
+function resetLevelState(){
+ switch(curLevel){
+  case 0:{ // 感知器
+   const pts=[];
+   for(let i=0;i<20;i++){
+    const x=Math.random()*2-1,y=Math.random()*2-1;
+    const label=(x+y>0.2)?1:0;
+    pts.push({x,y,label});
+   }
+   lState={w1:0.5,w2:0.5,bias:0,points:pts,objDone:[false,false,false],accuracy:0,
+    challengeMode:false,challengePoints:null,challengeMisclass:0};
+  }break;
+  case 1:{ // 激活函数
+   lState={activeFunc:'sigmoid',inputVal:0,objDone:[false,false,false],seen:new Set()};
+  }break;
+  case 2:{ // 反向传播
+   lState={weights:{w1:0.5,w2:-0.3,w3:0.8,w4:-0.6,w5:0.4,w6:0.7},
+    biases:{b1:0.1,b2:-0.1,b3:0.05},input:[0.8,0.2],target:0.9,
+    fwd:null,grads:null,step:0,objDone:[false,false,false],animPhase:0,animTimer:0,
+    bpParticlesSpawned:false};
+  }break;
+  case 3:{ // XOR - 强制先尝试单层
+   lState={hiddenNeurons:0,singleTried:false,singleTraining:false,singleEpoch:0,singleLoss:[],
+    singleFailed:false,unlockHidden:false,
+    training:false,epoch:0,maxEpoch:500,
+    xorNet:null,objDone:[false,false,false],trainLoss:[]};
+  }break;
+  case 4:{ // 卷积
+   const img=Array.from({length:5},()=>Array.from({length:5},()=>Math.floor(Math.random()*256)));
+   img[1][1]=255;img[1][2]=255;img[1][3]=255;img[2][1]=255;img[3][1]=255;img[3][2]=255;img[3][3]=255;
+   lState={image:img,kernel:[[0,-1,0],[-1,4,-1],[0,-1,0]],output:null,
+    kernelType:'edge',convolving:false,convStep:0,objDone:[false,false,false],usedKernels:new Set(),
+    scanLineY:-1};
+  }break;
+  case 5:{ // 过拟合 + 测试集考试
+   lState={dropout:0,regularization:0,trainLoss:[],valLoss:[],epoch:0,training:false,
+    maxEpoch:200,objDone:[false,false,false],overfit:false,dropoutUsed:false,regUsed:false,
+    examDone:false,examScore:0,examMsg:'',trainAnimIdx:0};
+  }break;
+  case 6:{ // 图像识别
+   lState={drawing:false,canvas28:Array.from({length:28},()=>new Float32Array(28)),
+    recognized:false,result:-1,confidence:0,processing:false,processStep:0,
+    objDone:[false,false,false],hasDrawn:false,convFeatures:null,poolFeatures:null,fcOutput:null,
+    lowConfidence:false,cnnAnimProgress:0};
+  }break;
+ }
+}
+
+// ===== 面板渲染 =====
+let panelDirty=true;
+function markPanelDirty(){panelDirty=true;}
+function renderPanel(){
+ let h='<h3 style="margin-bottom:8px">🧠 神经网络从零构建</h3><div style="margin-bottom:8px">';
+ levels.forEach((l,i)=>{
+  let cls='level-btn';
+  if(i===curLevel)cls+=' active';
+  if(completedLevels.has(i))cls+=' done';
+  h+=`<span class="${cls}" onclick="playSound('click');switchLevel(${i})">${i+1}</span>`;
+ });
+ h+='</div>';
+ const L=levels[curLevel];
+ h+=`<h3>第${curLevel+1}关：${L.name}</h3>`;
+ h+=`<div class="concept-box">${L.concept}</div>`;
+ h+='<h4>目标</h4>';
+ const od=lState.objDone||[];
+ L.objs.forEach((o,i)=>{
+  const done=od[i];
+  h+=`<div class="obj-item${done?' done':''}">${done?'✅':'⬜'} ${o}</div>`;
+ });
+ h+=renderLevelControls();
+ if(od.every(v=>v)){
+  if(!completedLevels.has(curLevel)){
+   completedLevels.add(curLevel);
+   playSound('success');
+   spawnParticles(W/2,H/2,50,'#fbbf24',{speed:4,life:80,size:4});
+   spawnParticles(W/2,H/2,30,'#f59e0b',{speed:3,life:60,size:3});
+  }
+  h+=`<div class="learn-box">💡 ${L.learn}</div>`;
+  h+=renderQuiz();
+  if(quizState.correct){
+   if(curLevel<levels.length-1){
+    h+=`<button class="act-btn green" onclick="playSound('click');switchLevel(${curLevel+1})">进入第${curLevel+2}关 →</button>`;
+   }else{
+    h+='<div class="learn-box" style="border-color:#f59e0b;color:#fbbf24">🎉 恭喜通关！你已从零构建了神经网络的核心概念。从感知器到CNN图像识别，这些知识构成了现代深度学习的基石。</div>';
+   }
+  }
+ }
+ panel.innerHTML=h;
+}
+
+// ===== 小测验 =====
+function renderQuiz(){
+ const L=levels[curLevel];
+ if(!L.quiz)return '';
+ const q=L.quiz;
+ let h='<div class="quiz-box"><h4>📝 通关小测验</h4>';
+ h+=`<div style="font-size:12px;color:#c0c0d0;margin-bottom:8px">${q.q}</div>`;
+ q.opts.forEach((opt,i)=>{
+  let cls='quiz-opt';
+  if(quizState.answered){
+   if(i===q.ans)cls+=' correct';
+   else if(i===quizState.selected&&i!==q.ans)cls+=' wrong';
+  }
+  const dis=quizState.answered?'disabled':'';
+  h+=`<button class="${cls}" ${dis} onclick="answerQuiz(${i})">${opt}</button>`;
+ });
+ if(quizState.answered){
+  if(quizState.correct) h+='<div class="quiz-result pass">✅ 回答正确！</div>';
+  else h+='<div class="quiz-result fail">❌ 答错了，1秒后可重选</div>';
+ }
+ h+='</div>';
+ return h;
+}
+function answerQuiz(i){
+ if(quizState.answered)return;
+ playSound('click');
+ quizState.answered=true;quizState.selected=i;
+ const q=levels[curLevel].quiz;
+ if(i===q.ans){quizState.correct=true;playSound('success');}
+ else{playSound('fail');setTimeout(()=>{quizState={answered:false,selected:-1,correct:false};renderPanel();},1000);}
+ renderPanel();
+}
+function renderLevelControls(){
+ let h='';
+ switch(curLevel){
+  case 0:{ // 感知器
+   h+=`<div class="slider-wrap"><label>w1: <span class="sv">${lState.w1.toFixed(2)}</span></label><input type="range" min="-2" max="2" step="0.05" value="${lState.w1}" oninput="lState.w1=+this.value;checkPerceptron();markPanelDirty()"></div>`;
+   h+=`<div class="slider-wrap"><label>w2: <span class="sv">${lState.w2.toFixed(2)}</span></label><input type="range" min="-2" max="2" step="0.05" value="${lState.w2}" oninput="lState.w2=+this.value;checkPerceptron();markPanelDirty()"></div>`;
+   h+=`<div class="slider-wrap"><label>bias: <span class="sv">${lState.bias.toFixed(2)}</span></label><input type="range" min="-2" max="2" step="0.05" value="${lState.bias}" oninput="lState.bias=+this.value;checkPerceptron();markPanelDirty()"></div>`;
+   h+=`<div class="concept-box" style="font-size:11px">决策边界：${lState.w1.toFixed(2)}·x + ${lState.w2.toFixed(2)}·y + ${lState.bias.toFixed(2)} = 0<br>准确率：<span style="color:${lState.accuracy>=90?'#4ade80':'#f59e0b'}">${lState.accuracy.toFixed(0)}%</span></div>`;
+   if(!lState.challengeMode){
+    h+=`<button class="act-btn" onclick="playSound('click');startChallenge()">🎯 挑战模式</button>`;
+    h+='<div class="hint-box">🖱️ 拖动滑块调整权重和偏置，让直线将红蓝点分开</div>';
+   }else{
+    if(lState.challengeMisclass>0){
+     h+=`<div class="concept-box" style="border-color:#ef4444;color:#f87171;font-size:12px">还有 <strong>${lState.challengeMisclass}</strong> 个点分类错误！继续调整权重</div>`;
+    }else{
+     h+=`<div class="concept-box" style="border-color:#22c55e;color:#4ade80;font-size:12px">🎉 挑战成功！所有点分类正确</div>`;
+    }
+    h+=`<button class="act-btn" onclick="playSound('click');startChallenge()">🔄 换一组数据</button>`;
+   }
+  }break;
+  case 1:{ // 激活函数
+   h+='<div style="margin:8px 0">';
+   ['sigmoid','relu','tanh'].forEach(f=>{
+    h+=`<span class="func-btn${lState.activeFunc===f?' active':''}" onclick="playSound('click');setActivation('${f}')">${f==='relu'?'ReLU':f==='sigmoid'?'Sigmoid':'Tanh'}</span>`;
+   });
+   h+='</div>';
+   h+=`<div class="slider-wrap"><label>输入值 x: <span class="sv">${lState.inputVal.toFixed(2)}</span></label><input type="range" min="-5" max="5" step="0.1" value="${lState.inputVal}" oninput="lState.inputVal=+this.value;markPanelDirty()"></div>`;
+   const out=activationFn(lState.activeFunc,lState.inputVal);
+   h+=`<div class="concept-box" style="font-size:11px">${lState.activeFunc}(${lState.inputVal.toFixed(2)}) = <span class="sv">${out.toFixed(4)}</span></div>`;
+  }break;
+  case 2:{ // 反向传播
+   if(lState.step===0){
+    h+=`<button class="act-btn" onclick="playSound('click');doForward()">▶ 前向传播</button>`;
+    h+='<div class="hint-box">点击前向传播，观察数据如何从输入层流向输出层</div>';
+   }else if(lState.step===1){
+    h+=`<div class="concept-box" style="font-size:11px">输出: ${lState.fwd.output.toFixed(4)}<br>目标: ${lState.target}<br>损失: ${lState.fwd.loss.toFixed(4)}</div>`;
+    h+=`<button class="act-btn" onclick="playSound('click');doBackprop()">◀ 计算梯度（反向传播）</button>`;
+   }else if(lState.step===2){
+    h+=`<div class="concept-box" style="font-size:11px">输出层梯度: ${lState.grads.dOutput.toFixed(4)}<br>隐藏层梯度: [${lState.grads.dHidden.map(v=>v.toFixed(4)).join(', ')}]</div>`;
+    h+=`<button class="act-btn" onclick="playSound('click');resetBP()">🔄 重置</button>`;
+   }
+  }break;
+  case 3:{ // XOR - 强制先单层失败
+   if(!lState.singleTried){
+    h+=`<button class="act-btn" onclick="playSound('click');trySingleLayerXOR()">尝试用单层网络分类XOR</button>`;
+    h+='<div class="hint-box">先试试单层感知器能否解决XOR问题</div>';
+   }else if(!lState.singleFailed){
+    h+=`<div class="concept-box" style="font-size:11px">单层网络训练中... Epoch: ${lState.singleEpoch}/300<br>Loss: ${lState.singleLoss.length?lState.singleLoss[lState.singleLoss.length-1].toFixed(4):'--'}</div>`;
+   }else if(!lState.unlockHidden){
+    h+=`<div class="concept-box" style="border-color:#ef4444;color:#f87171">💥 单层感知器无法解决XOR！<br>训练了300轮，Loss仍然很高。<br>XOR不是线性可分的，一条直线永远无法将对角的点分开。</div>`;
+    h+=`<button class="act-btn green" onclick="playSound('click');unlockHiddenLayer()">💡 解锁隐藏层</button>`;
+   }else{
+    h+=`<div class="concept-box" style="font-size:11px">隐藏层神经元数: <span class="sv">${lState.hiddenNeurons}</span></div>`;
+    if(!lState.training && lState.epoch===0){
+     h+=`<button class="act-btn" onclick="playSound('click');addHiddenNeuron()">➕ 再加一个神经元</button>`;
+     h+=`<button class="act-btn green" onclick="playSound('click');trainXOR()">🚀 开始训练</button>`;
+    }else if(lState.training){
+     h+=`<div class="concept-box" style="font-size:11px">训练中... Epoch: ${lState.epoch}/${lState.maxEpoch}<br>Loss: ${lState.trainLoss.length?lState.trainLoss[lState.trainLoss.length-1].toFixed(4):'--'}</div>`;
+    }else{
+     h+=`<div class="concept-box" style="font-size:11px">训练完成! Epoch: ${lState.epoch}<br>最终Loss: ${lState.trainLoss[lState.trainLoss.length-1].toFixed(4)}</div>`;
+     h+=`<button class="act-btn" onclick="playSound('click');resetXOR()">🔄 重置</button>`;
+    }
+   }
+  }break;
+  case 4:{ // 卷积
+   h+='<h4>卷积核 (3×3)</h4>';
+   h+='<div style="margin:4px 0">';
+   [['edge','边缘检测'],['blur','模糊'],['sharpen','锐化']].forEach(([k,n])=>{
+    h+=`<span class="func-btn${lState.kernelType===k?' active':''}" onclick="playSound('click');setKernel('${k}')">${n}</span>`;
+   });
+   h+='</div>';
+   h+='<div class="kern-grid">';
+   for(let r=0;r<3;r++)for(let c=0;c<3;c++){
+    h+=`<input class="kern-cell" type="number" value="${lState.kernel[r][c]}" onchange="lState.kernel[${r}][${c}]=+this.value;lState.kernelType='custom'">`;
+   }
+   h+='</div>';
+   if(!lState.convolving && !lState.output){
+    h+=`<button class="act-btn" onclick="playSound('click');startConvolve()">▶ 执行卷积</button>`;
+   }else if(lState.convolving){
+    h+=`<div class="concept-box" style="font-size:11px">卷积进行中... 步骤 ${lState.convStep+1}/9</div>`;
+   }else{
+    h+=`<button class="act-btn" onclick="playSound('click');resetConv()">🔄 重置</button>`;
+   }
+  }break;
+  case 5:{ // 过拟合 + 考试
+   h+=`<div class="slider-wrap"><label>Dropout率: <span class="sv">${(lState.dropout*100).toFixed(0)}%</span></label><input type="range" min="0" max="0.8" step="0.05" value="${lState.dropout}" oninput="lState.dropout=+this.value;markPanelDirty()"></div>`;
+   h+=`<div class="slider-wrap"><label>L2正则化: <span class="sv">${lState.regularization.toFixed(3)}</span></label><input type="range" min="0" max="0.1" step="0.001" value="${lState.regularization}" oninput="lState.regularization=+this.value;markPanelDirty()"></div>`;
+   if(!lState.training && lState.epoch===0){
+    h+=`<button class="act-btn" onclick="playSound('click');startOverfitTrain()">🚀 开始训练</button>`;
+   }else if(lState.training){
+    h+=`<div class="concept-box" style="font-size:11px">Epoch: ${lState.epoch}/${lState.maxEpoch}</div>`;
+   }else if(!lState.examDone){
+    h+=`<div class="concept-box" style="font-size:11px">训练完成! Epoch: ${lState.epoch}</div>`;
+    h+=`<button class="act-btn green" onclick="playSound('click');runExam()">📝 测试集考试</button>`;
+    h+=`<button class="act-btn" onclick="playSound('click');resetOverfit()">🔄 重置</button>`;
+   }else{
+    const pass=lState.examScore>=60;
+    h+=`<div class="concept-box" style="border-color:${pass?'#22c55e':'#ef4444'};color:${pass?'#4ade80':'#f87171'};font-size:12px">${lState.examMsg}<br>测试准确率: <strong>${lState.examScore.toFixed(0)}%</strong></div>`;
+    h+=`<button class="act-btn" onclick="playSound('click');resetOverfit()">🔄 重新训练</button>`;
+   }
+  }break;
+  case 6:{ // 图像识别
+   if(!lState.processing && !lState.recognized){
+    h+='<div class="hint-box">🖱️ 在右侧画布上手写一个数字(0-9)</div>';
+    h+=`<button class="act-btn" onclick="playSound('click');clearDrawing()">🗑️ 清除画布</button>`;
+    h+=`<button class="act-btn green" onclick="playSound('click');startRecognize()"${lState.hasDrawn?'':' disabled'}>🔍 识别数字</button>`;
+   }else if(lState.processing){
+    const steps=['卷积提取特征...','池化降维...','全连接分类...'];
+    h+=`<div class="concept-box" style="font-size:11px">${steps[Math.min(lState.processStep,2)]}</div>`;
+   }else{
+    if(lState.lowConfidence){
+     h+=`<div class="concept-box" style="border-color:#ef4444;color:#f87171;font-size:13px;text-align:center">识别失败！<br>置信度只有 <strong>${(lState.confidence*100).toFixed(1)}%</strong><br>请写清楚一点</div>`;
+    }else{
+     h+=`<div class="concept-box" style="border-color:#22c55e;color:#4ade80;font-size:16px;text-align:center">识别结果: <strong>${lState.result}</strong><br>置信度: ${(lState.confidence*100).toFixed(1)}%</div>`;
+    }
+    h+=`<button class="act-btn" onclick="playSound('click');clearDrawing();lState.recognized=false;lState.hasDrawn=false;lState.lowConfidence=false;markPanelDirty()">✏️ 再写一个</button>`;
+   }
+  }break;
+ }
+ return h;
+}
+
+// ===== 辅助函数 =====
+function sigmoid(x){return 1/(1+Math.exp(-x));}
+function relu(x){return Math.max(0,x);}
+function tanhFn(x){return Math.tanh(x);}
+function activationFn(name,x){
+ if(name==='sigmoid')return sigmoid(x);
+ if(name==='relu')return relu(x);
+ if(name==='tanh')return tanhFn(x);
+ return x;
+}
+function activationDeriv(name,x){
+ if(name==='sigmoid'){const s=sigmoid(x);return s*(1-s);}
+ if(name==='relu')return x>0?1:0;
+ if(name==='tanh'){const t=tanhFn(x);return 1-t*t;}
+ return 1;
+}
+// ===== 关卡0：感知器 + 挑战模式 =====
+function checkPerceptron(){
+ const pts=lState.challengeMode?lState.challengePoints:lState.points;
+ const{w1,w2,bias}=lState;
+ let correct=0,misclass=0;
+ pts.forEach(p=>{
+  const val=w1*p.x+w2*p.y+bias;
+  const pred=val>0?1:0;
+  if(pred===p.label)correct++;else misclass++;
+ });
+ lState.accuracy=correct/pts.length*100;
+ lState.challengeMisclass=misclass;
+ if(Math.abs(w1)>0.01||Math.abs(w2)>0.01)lState.objDone[0]=true;
+ if(lState.challengeMode&&lState.accuracy>=90){
+  lState.objDone[1]=true;
+  if(lState.accuracy>=100)lState.objDone[2]=true;
+ }
+ if(lState.accuracy>=100){lState.objDone[1]=true;lState.objDone[2]=true;}
+}
+function startChallenge(){
+ lState.challengeMode=true;
+ // 生成更难的数据分布
+ const pts=[];
+ const angle=Math.random()*Math.PI;
+ const nx=Math.cos(angle),ny=Math.sin(angle);
+ const offset=(Math.random()-0.5)*0.4;
+ for(let i=0;i<30;i++){
+  const x=Math.random()*2-1,y=Math.random()*2-1;
+  const label=(nx*x+ny*y+offset>0)?1:0;
+  // 加噪声
+  const noisy=Math.random()<0.05?(1-label):label;
+  pts.push({x,y,label:noisy});
+ }
+ lState.challengePoints=pts;
+ lState.challengeMisclass=30;
+ checkPerceptron();
+ markPanelDirty();
+}
+
+// ===== 关卡1：激活函数 =====
+function setActivation(f){
+ lState.activeFunc=f;
+ lState.seen.add(f);
+ if(lState.seen.has('sigmoid'))lState.objDone[0]=true;
+ if(lState.seen.has('relu'))lState.objDone[1]=true;
+ if(lState.seen.has('tanh'))lState.objDone[2]=true;
+ markPanelDirty();
+}
+
+// ===== 关卡2：反向传播 =====
+function doForward(){
+ const{weights:w,biases:b,input:inp,target}=lState;
+ const h1Raw=inp[0]*w.w1+inp[1]*w.w2+b.b1;
+ const h2Raw=inp[0]*w.w3+inp[1]*w.w4+b.b2;
+ const h1=sigmoid(h1Raw);const h2=sigmoid(h2Raw);
+ const oRaw=h1*w.w5+h2*w.w6+b.b3;
+ const output=sigmoid(oRaw);
+ const loss=0.5*(target-output)**2;
+ lState.fwd={h1Raw,h2Raw,h1,h2,oRaw,output,loss};
+ lState.step=1;lState.objDone[0]=true;
+ lState.animPhase=1;lState.animTimer=0;
+ playSound('click');
+ markPanelDirty();
+}
+function doBackprop(){
+ const{fwd,weights:w,target}=lState;
+ const dOutput=(fwd.output-target)*fwd.output*(1-fwd.output);
+ const dW5=dOutput*fwd.h1;const dW6=dOutput*fwd.h2;
+ const dH1=dOutput*w.w5*fwd.h1*(1-fwd.h1);
+ const dH2=dOutput*w.w6*fwd.h2*(1-fwd.h2);
+ lState.grads={dOutput,dW5,dW6,dH1,dH2,dHidden:[dH1,dH2]};
+ lState.step=2;lState.objDone[1]=true;lState.objDone[2]=true;
+ lState.animPhase=2;lState.animTimer=0;
+ lState.bpParticlesSpawned=false;
+ playSound('success');
+ markPanelDirty();
+}
+function resetBP(){lState.step=0;lState.fwd=null;lState.grads=null;lState.animPhase=0;lState.bpParticlesSpawned=false;markPanelDirty();}
+// ===== 关卡3：XOR - 强制单层失败 =====
+function trySingleLayerXOR(){
+ lState.singleTried=true;lState.singleTraining=true;lState.singleEpoch=0;lState.singleLoss=[];
+ lState.objDone[0]=true;
+ // 训练单层网络（必然失败）
+ let sw1=Math.random()-0.5,sw2=Math.random()-0.5,sb=Math.random()-0.5;
+ const data=[[0,0,0],[0,1,1],[1,0,1],[1,1,0]];
+ function singleStep(){
+  if(lState.singleEpoch>=300){
+   lState.singleTraining=false;lState.singleFailed=true;
+   playSound('boom');
+   spawnParticles(W/2,H/2,30,'#ef4444',{speed:3,life:50,size:3});
+   markPanelDirty();return;
+  }
+  for(let e=0;e<10;e++){
+   let totalLoss=0;
+   for(const[x1,x2,t]of data){
+    const out=sigmoid(x1*sw1+x2*sw2+sb);
+    const err=out-t;totalLoss+=0.5*err*err;
+    const d=err*out*(1-out);
+    sw1-=0.5*d*x1;sw2-=0.5*d*x2;sb-=0.5*d;
+   }
+   lState.singleEpoch++;
+   if(lState.singleEpoch%10===0)lState.singleLoss.push(totalLoss/4);
+  }
+  markPanelDirty();
+  requestAnimationFrame(singleStep);
+ }
+ singleStep();
+}
+function unlockHiddenLayer(){
+ lState.unlockHidden=true;lState.hiddenNeurons=2;lState.objDone[1]=true;
+ playSound('success');
+ markPanelDirty();
+}
+function addHiddenNeuron(){
+ lState.hiddenNeurons=Math.min(lState.hiddenNeurons+1,6);
+ markPanelDirty();
+}
+function trainXOR(){
+ if(lState.hiddenNeurons<2)return;
+ const nh=lState.hiddenNeurons;
+ const net={wh:[],bh:[],wo:[],bo:0};
+ for(let i=0;i<nh;i++){net.wh.push([(Math.random()-0.5)*2,(Math.random()-0.5)*2]);net.bh.push((Math.random()-0.5));}
+ net.wo=Array.from({length:nh},()=>(Math.random()-0.5)*2);net.bo=(Math.random()-0.5);
+ lState.xorNet=net;lState.training=true;lState.epoch=0;lState.trainLoss=[];
+ markPanelDirty();
+ function trainStep(){
+  if(!lState.training||lState.epoch>=lState.maxEpoch)return;
+  const data=[[0,0,0],[0,1,1],[1,0,1],[1,1,0]];
+  const lr=0.5;let totalLoss=0;
+  for(let e=0;e<10;e++){
+   for(const[x1,x2,t]of data){
+    const hidden=[];const hRaw=[];
+    for(let i=0;i<nh;i++){const r=x1*net.wh[i][0]+x2*net.wh[i][1]+net.bh[i];hRaw.push(r);hidden.push(sigmoid(r));}
+    const oRaw=hidden.reduce((s,h,i)=>s+h*net.wo[i],0)+net.bo;
+    const out=sigmoid(oRaw);
+    const err=out-t;totalLoss+=0.5*err*err;
+    const dO=err*out*(1-out);
+    for(let i=0;i<nh;i++){
+     const dH=dO*net.wo[i]*hidden[i]*(1-hidden[i]);
+     net.wh[i][0]-=lr*dH*x1;net.wh[i][1]-=lr*dH*x2;net.bh[i]-=lr*dH;
+     net.wo[i]-=lr*dO*hidden[i];
+    }
+    net.bo-=lr*dO;
+   }
+   lState.epoch++;
+  }
+  lState.trainLoss.push(totalLoss/40);
+  if(totalLoss/40<0.01){lState.training=false;lState.objDone[2]=true;playSound('success');markPanelDirty();return;}
+  if(lState.epoch>=lState.maxEpoch){lState.training=false;if(totalLoss/40<0.05)lState.objDone[2]=true;markPanelDirty();return;}
+  markPanelDirty();
+  requestAnimationFrame(trainStep);
+ }
+ trainStep();
+}
+function resetXOR(){
+ lState.hiddenNeurons=2;lState.training=false;lState.epoch=0;lState.xorNet=null;lState.trainLoss=[];
+ lState.objDone=[lState.objDone[0],lState.objDone[1],false];markPanelDirty();
+}
+function xorPredict(x1,x2){
+ if(!lState.xorNet)return 0.5;
+ const net=lState.xorNet,nh=lState.hiddenNeurons;
+ const hidden=[];
+ for(let i=0;i<nh;i++)hidden.push(sigmoid(x1*net.wh[i][0]+x2*net.wh[i][1]+net.bh[i]));
+ return sigmoid(hidden.reduce((s,h,i)=>s+h*net.wo[i],0)+net.bo);
+}
+// ===== 关卡4：卷积 =====
+function setKernel(type){
+ lState.kernelType=type;
+ if(type==='edge')lState.kernel=[[0,-1,0],[-1,4,-1],[0,-1,0]];
+ else if(type==='blur')lState.kernel=[[1,1,1],[1,1,1],[1,1,1]].map(r=>r.map(v=>v/9));
+ else if(type==='sharpen')lState.kernel=[[0,-1,0],[-1,5,-1],[0,-1,0]];
+ lState.output=null;lState.convolving=false;lState.convStep=0;lState.scanLineY=-1;
+ markPanelDirty();
+}
+function startConvolve(){
+ lState.convolving=true;lState.convStep=0;lState.scanLineY=0;
+ lState.output=Array.from({length:3},()=>new Array(3).fill(0));
+ lState.usedKernels.add(lState.kernelType==='custom'?'custom':lState.kernelType);
+ if(lState.usedKernels.has('edge'))lState.objDone[0]=true;
+ if(lState.usedKernels.has('blur'))lState.objDone[1]=true;
+ if(lState.usedKernels.has('sharpen'))lState.objDone[2]=true;
+ markPanelDirty();
+ function convStep(){
+  if(lState.convStep>=9){lState.convolving=false;lState.scanLineY=-1;playSound('success');markPanelDirty();return;}
+  const or=Math.floor(lState.convStep/3),oc=lState.convStep%3;
+  lState.scanLineY=or;
+  let sum=0;
+  for(let kr=0;kr<3;kr++)for(let kc=0;kc<3;kc++){
+   sum+=lState.image[or+kr][oc+kc]*lState.kernel[kr][kc];
+  }
+  lState.output[or][oc]=Math.max(0,Math.min(255,sum));
+  lState.convStep++;
+  markPanelDirty();
+  setTimeout(convStep,300);
+ }
+ convStep();
+}
+function resetConv(){lState.output=null;lState.convolving=false;lState.convStep=0;lState.scanLineY=-1;markPanelDirty();}
+
+// ===== 关卡5：过拟合 + 测试集考试 =====
+function startOverfitTrain(){
+ lState.training=true;lState.epoch=0;lState.trainLoss=[];lState.valLoss=[];
+ lState.overfit=false;lState.dropoutUsed=lState.dropout>0.1;lState.regUsed=lState.regularization>0.005;
+ lState.examDone=false;lState.trainAnimIdx=0;
+ markPanelDirty();
+ function step(){
+  if(!lState.training||lState.epoch>=lState.maxEpoch){lState.training=false;markPanelDirty();return;}
+  lState.epoch++;
+  const e=lState.epoch;
+  const baseTrain=1.0*Math.exp(-e*0.03)+0.02;
+  const dropEffect=lState.dropout*0.3;
+  const regEffect=lState.regularization*15;
+  const tl=baseTrain+dropEffect*0.1+regEffect*0.05;
+  const overfitFactor=Math.max(0,1-lState.dropout*2-lState.regularization*20);
+  const vl=baseTrain+0.02+overfitFactor*0.5*(1-Math.exp(-e*0.02))*Math.min(1,e/50);
+  lState.trainLoss.push(Math.max(0.01,tl));
+  lState.valLoss.push(Math.max(0.02,vl));
+  if(e>50&&vl>tl*1.5&&overfitFactor>0.5){
+   if(!lState.overfit){lState.overfit=true;lState.objDone[0]=true;}
+  }
+  if(lState.dropout>0.1&&e>80){lState.dropoutUsed=true;lState.objDone[1]=true;}
+  markPanelDirty();
+  if(lState.epoch<lState.maxEpoch)setTimeout(step,30);
+  else{lState.training=false;markPanelDirty();}
+ }
+ step();
+}
+function runExam(){
+ // 模拟测试集评估
+ const lastTrain=lState.trainLoss[lState.trainLoss.length-1];
+ const lastVal=lState.valLoss[lState.valLoss.length-1];
+ const overfitRatio=lastVal/Math.max(0.01,lastTrain);
+ // 测试准确率基于验证损失
+ let testAcc;
+ if(overfitRatio>3){testAcc=25+Math.random()*20;} // 严重过拟合
+ else if(overfitRatio>2){testAcc=45+Math.random()*15;}
+ else if(overfitRatio>1.5){testAcc=60+Math.random()*15;}
+ else{testAcc=75+Math.random()*20;}
+ testAcc=Math.min(98,testAcc);
+ lState.examScore=testAcc;
+ lState.examDone=true;
+ if(testAcc<60){
+  lState.examMsg='⚠️ 模型过拟合了！在训练集上表现好但泛化能力差。试试加大Dropout或正则化。';
+  playSound('fail');
+ }else{
+  lState.examMsg='✅ 模型泛化能力不错！';
+  lState.objDone[2]=true;
+  playSound('success');
+ }
+ markPanelDirty();
+}
+function resetOverfit(){
+ lState.training=false;lState.epoch=0;lState.trainLoss=[];lState.valLoss=[];
+ lState.overfit=false;lState.examDone=false;lState.trainAnimIdx=0;markPanelDirty();
+}
+// ===== 关卡6：图像识别 =====
+function clearDrawing(){
+ lState.canvas28=Array.from({length:28},()=>new Float32Array(28));
+ lState.hasDrawn=false;lState.recognized=false;lState.processing=false;lState.processStep=0;
+ lState.convFeatures=null;lState.poolFeatures=null;lState.fcOutput=null;lState.lowConfidence=false;
+ lState.cnnAnimProgress=0;
+ markPanelDirty();
+}
+function startRecognize(){
+ if(!lState.hasDrawn)return;
+ lState.processing=true;lState.processStep=0;lState.objDone[0]=true;lState.cnnAnimProgress=0;
+ markPanelDirty();
+ setTimeout(()=>{
+  lState.processStep=0;
+  const feat=Array.from({length:13},()=>Array.from({length:13},()=>Math.random()));
+  for(let r=0;r<13;r++)for(let c=0;c<13;c++){
+   let sum=0;
+   for(let kr=-1;kr<=1;kr++)for(let kc=-1;kc<=1;kc++){
+    const rr=r*2+kr+1,cc=c*2+kc+1;
+    if(rr>=0&&rr<28&&cc>=0&&cc<28)sum+=lState.canvas28[rr][cc]*(kr===0&&kc===0?4:-1);
+   }
+   feat[r][c]=Math.max(0,sum/4);
+  }
+  lState.convFeatures=feat;
+  lState.objDone[1]=true;
+  markPanelDirty();
+  setTimeout(()=>{
+   lState.processStep=1;
+   const pool=Array.from({length:6},()=>Array.from({length:6},()=>0));
+   for(let r=0;r<6;r++)for(let c=0;c<6;c++){
+    let mx=0;
+    for(let kr=0;kr<2;kr++)for(let kc=0;kc<2;kc++){
+     const rr=r*2+kr,cc=c*2+kc;
+     if(rr<13&&cc<13)mx=Math.max(mx,feat[rr][cc]);
+    }
+    pool[r][c]=mx;
+   }
+   lState.poolFeatures=pool;
+   markPanelDirty();
+   setTimeout(()=>{
+    lState.processStep=2;
+    const img=lState.canvas28;
+    let totalInk=0;const regionInk=new Array(9).fill(0);
+    for(let r=0;r<28;r++)for(let c=0;c<28;c++){
+     totalInk+=img[r][c];
+     const rr=Math.min(2,Math.floor(r/9.34)),cc=Math.min(2,Math.floor(c/9.34));
+     regionInk[rr*3+cc]+=img[r][c];
+    }
+    const scores=new Float32Array(10);
+    if(totalInk<5){scores[0]=0.8;}
+    else{
+     const norm=regionInk.map(v=>v/Math.max(1,totalInk));
+     const topHeavy=norm[0]+norm[1]+norm[2];
+     const botHeavy=norm[6]+norm[7]+norm[8];
+     const leftHeavy=norm[0]+norm[3]+norm[6];
+     const rightHeavy=norm[2]+norm[5]+norm[8];
+     const center=norm[4];
+     scores[1]=0.3+center*0.5+leftHeavy*0.2;
+     scores[0]=0.2+(topHeavy>0.5?0.3:0)+(botHeavy>0.5?0.3:0);
+     scores[7]=0.3+topHeavy*0.4;
+     scores[8]=0.3+center*0.4;
+     scores[4]=0.2+topHeavy*0.3+rightHeavy*0.2;
+     scores[2]=0.2+topHeavy*0.3+botHeavy*0.2;
+     scores[3]=0.2+rightHeavy*0.4;
+     scores[5]=0.2+botHeavy*0.3+leftHeavy*0.2;
+     scores[6]=0.2+topHeavy*0.2+botHeavy*0.3;
+     scores[9]=0.2+topHeavy*0.3+center*0.2;
+     for(let i=0;i<10;i++)scores[i]+=Math.random()*0.1;
+    }
+    let maxS=-Infinity;for(let i=0;i<10;i++)if(scores[i]>maxS)maxS=scores[i];
+    let sumExp=0;const probs=new Float32Array(10);
+    for(let i=0;i<10;i++){probs[i]=Math.exp(scores[i]-maxS);sumExp+=probs[i];}
+    for(let i=0;i<10;i++)probs[i]/=sumExp;
+    let best=0;for(let i=1;i<10;i++)if(probs[i]>probs[best])best=i;
+    lState.fcOutput=probs;lState.result=best;lState.confidence=probs[best];
+    lState.processing=false;lState.recognized=true;
+    // 低置信度检测
+    if(lState.confidence<0.35){
+     lState.lowConfidence=true;
+     playSound('fail');
+    }else{
+     lState.lowConfidence=false;
+     playSound('success');
+    }
+    lState.objDone[2]=true;
+    markPanelDirty();
+   },800);
+  },800);
+ },800);
+}
+// ===== Canvas 渲染 =====
+function drawNeuron(x,y,r,color,glow,label){
+ ctx.save();
+ if(glow){
+  // 脉冲发光效果
+  const pulse=0.5+0.5*Math.sin(globalTime*0.05);
+  ctx.shadowColor=color;ctx.shadowBlur=10+pulse*10;
+ }
+ ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+ ctx.fillStyle=color+'33';ctx.fill();
+ ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();
+ ctx.shadowBlur=0;
+ if(label!==undefined){
+  ctx.fillStyle='#e0e0f0';ctx.font='11px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(typeof label==='number'?label.toFixed(2):label,x,y);
+ }
+ ctx.restore();
+}
+function drawConnection(x1,y1,x2,y2,weight,color){
+ ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
+ ctx.strokeStyle=color||'#334';ctx.lineWidth=Math.max(0.5,Math.abs(weight||0.5)*3);
+ ctx.globalAlpha=0.6;ctx.stroke();ctx.globalAlpha=1;
+}
+function drawArrow(x1,y1,x2,y2,color){
+ const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+ if(len<1)return;
+ const ux=dx/len,uy=dy/len;
+ ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
+ ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();
+ ctx.beginPath();
+ ctx.moveTo(x2,y2);ctx.lineTo(x2-ux*10-uy*5,y2-uy*10+ux*5);ctx.lineTo(x2-ux*10+uy*5,y2-uy*10-ux*5);
+ ctx.closePath();ctx.fillStyle=color;ctx.fill();
+}
+// 红色梯度粒子沿连线回传
+function drawGradientFlow(x1,y1,x2,y2){
+ const t=(globalTime%60)/60;
+ for(let i=0;i<5;i++){
+  const tt=((t+i*0.2)%1);
+  const px=x2+(x1-x2)*tt,py=y2+(y1-y2)*tt;
+  const alpha=1-Math.abs(tt-0.5)*2;
+  ctx.beginPath();ctx.arc(px,py,3,0,Math.PI*2);
+  ctx.fillStyle=`rgba(239,68,68,${alpha*0.8})`;ctx.fill();
+  // 发光
+  ctx.beginPath();ctx.arc(px,py,6,0,Math.PI*2);
+  ctx.fillStyle=`rgba(239,68,68,${alpha*0.2})`;ctx.fill();
+ }
+}
+
+function render(){
+ globalTime++;
+ ctx.clearRect(0,0,W,H);
+ ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+ // 网格
+ ctx.strokeStyle='#111122';ctx.lineWidth=0.5;
+ for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+ for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+ // 淡入效果
+ if(fadeAlpha>0){
+  fadeAlpha-=0.03;
+  ctx.fillStyle=`rgba(10,10,26,${Math.max(0,fadeAlpha)})`;ctx.fillRect(0,0,W,H);
+ }
+
+ switch(curLevel){
+  case 0:renderPerceptron();break;
+  case 1:renderActivation();break;
+  case 2:renderBackprop();break;
+  case 3:renderXOR();break;
+  case 4:renderConvolution();break;
+  case 5:renderOverfit();break;
+  case 6:renderDigitRecognition();break;
+ }
+ // 粒子
+ updateParticles();drawParticles();
+ updatePulseGlows();drawPulseGlows();
+
+ if(panelDirty){renderPanel();panelDirty=false;}
+ animId=requestAnimationFrame(render);
+}
+// ===== 关卡0渲染：感知器 =====
+function renderPerceptron(){
+ const cx=W/2,cy=H/2,scale=Math.min(W,H)*0.35;
+ const pts=lState.challengeMode?lState.challengePoints:lState.points;
+ // 坐标轴
+ ctx.strokeStyle='#333';ctx.lineWidth=1;
+ ctx.beginPath();ctx.moveTo(cx-scale,cy);ctx.lineTo(cx+scale,cy);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(cx,cy-scale);ctx.lineTo(cx,cy+scale);ctx.stroke();
+ ctx.fillStyle='#555';ctx.font='11px monospace';
+ ctx.fillText('x1',cx+scale+10,cy+4);ctx.fillText('x2',cx+4,cy-scale-10);
+ // 数据点
+ const{w1,w2,bias}=lState;
+ pts.forEach(p=>{
+  const sx=cx+p.x*scale,sy=cy-p.y*scale;
+  const val=w1*p.x+w2*p.y+bias;
+  const pred=val>0?1:0;
+  const wrong=pred!==p.label;
+  ctx.beginPath();ctx.arc(sx,sy,6,0,Math.PI*2);
+  ctx.fillStyle=p.label?'#3b82f6':'#ef4444';ctx.fill();
+  ctx.strokeStyle=p.label?'#60a5fa':'#f87171';ctx.lineWidth=1;ctx.stroke();
+  // 分类错误的点加X标记
+  if(wrong&&lState.challengeMode){
+   ctx.strokeStyle='#fbbf24';ctx.lineWidth=2;
+   ctx.beginPath();ctx.moveTo(sx-4,sy-4);ctx.lineTo(sx+4,sy+4);ctx.stroke();
+   ctx.beginPath();ctx.moveTo(sx+4,sy-4);ctx.lineTo(sx-4,sy+4);ctx.stroke();
+  }
+ });
+ // 决策边界
+ if(Math.abs(w2)>0.001){
+  const x1=-1,x2=1;
+  const y1=-(w1*x1+bias)/w2,y2=-(w1*x2+bias)/w2;
+  ctx.beginPath();
+  ctx.moveTo(cx+x1*scale,cy-y1*scale);ctx.lineTo(cx+x2*scale,cy-y2*scale);
+  ctx.strokeStyle='#fbbf24';ctx.lineWidth=2;ctx.stroke();
+ }else if(Math.abs(w1)>0.001){
+  const xv=-bias/w1;
+  ctx.beginPath();ctx.moveTo(cx+xv*scale,cy-scale);ctx.lineTo(cx+xv*scale,cy+scale);
+  ctx.strokeStyle='#fbbf24';ctx.lineWidth=2;ctx.stroke();
+ }
+ // 感知器图示
+ const nx=W-180,ny=80;
+ drawNeuron(nx,ny,25,'#60a5fa',true,'Σ');
+ ctx.fillStyle='#888';ctx.font='11px monospace';ctx.textAlign='left';
+ ctx.fillText(`w1=${w1.toFixed(2)}`,nx-120,ny-15);
+ ctx.fillText(`w2=${w2.toFixed(2)}`,nx-120,ny+5);
+ ctx.fillText(`bias=${bias.toFixed(2)}`,nx-120,ny+25);
+ // 挑战模式标题
+ if(lState.challengeMode){
+  ctx.fillStyle='#fbbf24';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  ctx.fillText('🎯 挑战模式',cx,40);
+ }
+}
+
+// ===== 关卡1渲染：激活函数 =====
+function renderActivation(){
+ const cx=W/2,cy=H/2,scaleX=W*0.35,scaleY=H*0.3;
+ ctx.strokeStyle='#333';ctx.lineWidth=1;
+ ctx.beginPath();ctx.moveTo(cx-scaleX,cy);ctx.lineTo(cx+scaleX,cy);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(cx,cy-scaleY*1.2);ctx.lineTo(cx,cy+scaleY*1.2);ctx.stroke();
+ ctx.fillStyle='#555';ctx.font='10px monospace';ctx.textAlign='center';
+ for(let v=-4;v<=4;v++){
+  const sx=cx+v/5*scaleX;
+  ctx.beginPath();ctx.moveTo(sx,cy-3);ctx.lineTo(sx,cy+3);ctx.stroke();
+  ctx.fillText(v,sx,cy+15);
+ }
+ for(let v=-1;v<=1;v+=0.5){
+  if(v===0)continue;
+  const sy=cy-v*scaleY;
+  ctx.beginPath();ctx.moveTo(cx-3,sy);ctx.lineTo(cx+3,sy);ctx.stroke();
+  ctx.textAlign='right';ctx.fillText(v.toFixed(1),cx-8,sy+4);
+ }
+ const colors={sigmoid:'#3b82f6',relu:'#22c55e',tanh:'#a855f7'};
+ ['sigmoid','relu','tanh'].forEach(fn=>{
+  const active=fn===lState.activeFunc;
+  ctx.beginPath();
+  for(let px=0;px<W*0.7;px++){
+   const x=(px/scaleX-0.5)*5*2;
+   const y=activationFn(fn,x);
+   const sx=cx+x/5*scaleX,sy=cy-y*scaleY;
+   if(px===0)ctx.moveTo(sx,sy);else ctx.lineTo(sx,sy);
+  }
+  ctx.strokeStyle=colors[fn];ctx.lineWidth=active?3:1;
+  ctx.globalAlpha=active?1:0.2;ctx.stroke();ctx.globalAlpha=1;
+ });
+ const ix=lState.inputVal,iy=activationFn(lState.activeFunc,ix);
+ const sx=cx+ix/5*scaleX,sy=cy-iy*scaleY;
+ // 脉冲发光点
+ const pulse=0.5+0.5*Math.sin(globalTime*0.08);
+ ctx.beginPath();ctx.arc(sx,sy,8+pulse*3,0,Math.PI*2);
+ ctx.fillStyle=colors[lState.activeFunc];ctx.fill();
+ ctx.fillStyle='#fff';ctx.font='12px monospace';ctx.textAlign='left';
+ ctx.fillText(`(${ix.toFixed(2)}, ${iy.toFixed(4)})`,sx+12,sy-8);
+ const names={sigmoid:'σ(x) = 1/(1+e⁻ˣ)',relu:'ReLU(x) = max(0,x)',tanh:'tanh(x) = (eˣ-e⁻ˣ)/(eˣ+e⁻ˣ)'};
+ ctx.fillStyle=colors[lState.activeFunc];ctx.font='16px monospace';ctx.textAlign='center';
+ ctx.fillText(names[lState.activeFunc],cx,50);
+}
+// ===== 关卡2渲染：反向传播（红色粒子回传） =====
+function renderBackprop(){
+ const cx=W/2,cy=H/2;
+ const layerX=[cx-200,cx,cx+200];
+ const nodeY=[[cy-40,cy+40],[cy-40,cy+40],[cy]];
+ const labels=[['x₁','x₂'],['h₁','h₂'],['out']];
+ const vals=lState.fwd?[[lState.input[0],lState.input[1]],[lState.fwd.h1,lState.fwd.h2],[lState.fwd.output]]:[[lState.input[0],lState.input[1]],[null,null],[null]];
+ const wVals=lState.weights;
+ // 连接线
+ for(let i=0;i<2;i++)for(let j=0;j<2;j++){
+  const wk=['w1','w2','w3','w4'][i*2+j];
+  const isBack=lState.animPhase===2;
+  drawConnection(layerX[0],nodeY[0][i],layerX[1],nodeY[1][j],wVals[wk],isBack?'#333':'#334');
+  if(isBack){
+   drawGradientFlow(layerX[0],nodeY[0][i],layerX[1],nodeY[1][j]);
+  }
+ }
+ for(let i=0;i<2;i++){
+  const wk=['w5','w6'][i];
+  const isBack=lState.animPhase===2;
+  drawConnection(layerX[1],nodeY[1][i],layerX[2],nodeY[2][0],wVals[wk],isBack?'#333':'#334');
+  if(isBack){
+   drawGradientFlow(layerX[1],nodeY[1][i],layerX[2],nodeY[2][0]);
+  }
+ }
+ // 前向传播动画箭头
+ if(lState.animPhase===1){
+  const t=Math.min(1,(globalTime-lState.animTimer)/30);
+  ctx.globalAlpha=t;
+  for(let i=0;i<2;i++)for(let j=0;j<2;j++){
+   drawArrow(layerX[0]+20,nodeY[0][i],layerX[1]-20,nodeY[1][j],'#22c55e');
+  }
+  for(let i=0;i<2;i++){
+   drawArrow(layerX[1]+20,nodeY[1][i],layerX[2]-20,nodeY[2][0],'#22c55e');
+  }
+  ctx.globalAlpha=1;
+ }
+ // 节点（带脉冲发光）
+ for(let l=0;l<3;l++){
+  for(let n=0;n<nodeY[l].length;n++){
+   const v=vals[l][n];
+   const glow=lState.animPhase>0&&v!==null;
+   drawNeuron(layerX[l],nodeY[l][n],22,glow?'#60a5fa':'#334',glow,v!==null?v:labels[l][n]);
+  }
+ }
+ ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';
+ ctx.fillText('输入层',layerX[0],cy+80);ctx.fillText('隐藏层',layerX[1],cy+80);ctx.fillText('输出层',layerX[2],cy+80);
+ if(lState.fwd){
+  ctx.fillStyle='#fbbf24';ctx.font='13px monospace';ctx.textAlign='left';
+  ctx.fillText(`目标: ${lState.target}`,layerX[2]+40,cy-10);
+  ctx.fillText(`损失: ${lState.fwd.loss.toFixed(4)}`,layerX[2]+40,cy+10);
+ }
+ if(lState.grads){
+  ctx.fillStyle='#ef4444';ctx.font='11px monospace';ctx.textAlign='center';
+  ctx.fillText(`δ=${lState.grads.dOutput.toFixed(3)}`,layerX[2],nodeY[2][0]-35);
+  ctx.fillText(`δ=${lState.grads.dHidden[0].toFixed(3)}`,layerX[1],nodeY[1][0]-35);
+  ctx.fillText(`δ=${lState.grads.dHidden[1].toFixed(3)}`,layerX[1],nodeY[1][1]+40);
+ }
+}
+// ===== 关卡3渲染：XOR =====
+function renderXOR(){
+ const cx=W/2,cy=H/2;
+ const data=[[0,0,0],[0,1,1],[1,0,1],[1,1,0]];
+ const scale=120,ox=cx-60,oy=cy-60;
+ // 决策区域
+ if(lState.xorNet&&lState.epoch>0){
+  const res=4;
+  for(let px=0;px<W;px+=res)for(let py=0;py<H;py+=res){
+   const x1=(px-ox+60)/scale-0.5,x2=1.5-(py-oy+60)/scale;
+   if(x1<-0.5||x1>1.5||x2<-0.5||x2>1.5)continue;
+   const v=xorPredict(x1,x2);
+   ctx.fillStyle=v>0.5?`rgba(59,130,246,${(v-0.5)*0.4})`:`rgba(239,68,68,${(0.5-v)*0.4})`;
+   ctx.fillRect(px,py,res,res);
+  }
+ }
+ // 坐标轴
+ ctx.strokeStyle='#444';ctx.lineWidth=1;
+ ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(ox+scale,oy);ctx.lineTo(ox+scale,oy+scale);ctx.lineTo(ox,oy+scale);ctx.closePath();ctx.stroke();
+ // 数据点
+ data.forEach(([x1,x2,label])=>{
+  const sx=ox+x1*scale,sy=oy+(1-x2)*scale;
+  ctx.beginPath();ctx.arc(sx,sy,12,0,Math.PI*2);
+  ctx.fillStyle=label?'#3b82f6':'#ef4444';ctx.fill();
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(label,sx,sy);
+ });
+ // 网络图
+ const nx=cx+180,ny=cy-80;
+ drawNeuron(nx-80,ny,15,'#60a5fa',false,'x₁');
+ drawNeuron(nx-80,ny+60,15,'#60a5fa',false,'x₂');
+ for(let i=0;i<lState.hiddenNeurons;i++){
+  const hy=ny-20+i*40;
+  drawNeuron(nx,hy,15,'#a855f7',lState.epoch>0);
+  drawConnection(nx-80,ny,nx,hy,0.5,'#334');
+  drawConnection(nx-80,ny+60,nx,hy,0.5,'#334');
+  drawConnection(nx,hy,nx+80,ny+30,0.5,'#334');
+ }
+ if(lState.hiddenNeurons===0){
+  drawConnection(nx-80,ny,nx+80,ny+30,0.5,'#334');
+  drawConnection(nx-80,ny+60,nx+80,ny+30,0.5,'#334');
+ }
+ drawNeuron(nx+80,ny+30,15,'#22c55e',lState.epoch>0,'y');
+ // 训练曲线（平滑动画逐点绘制）
+ if(lState.trainLoss.length>1){
+  const gx=cx+120,gy=cy+80,gw=200,gh=100;
+  ctx.strokeStyle='#333';ctx.strokeRect(gx,gy,gw,gh);
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText('训练损失',gx+gw/2,gy-5);
+  ctx.beginPath();
+  const maxL=Math.max(...lState.trainLoss);
+  const drawCount=lState.trainLoss.length;
+  for(let i=0;i<drawCount;i++){
+   const x=gx+i/lState.trainLoss.length*gw,y=gy+gh-lState.trainLoss[i]/maxL*gh;
+   if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.stroke();
+ }
+ // 单层训练曲线
+ if(lState.singleLoss.length>1&&!lState.unlockHidden){
+  const gx=cx+120,gy=cy+80,gw=200,gh=100;
+  ctx.strokeStyle='#333';ctx.strokeRect(gx,gy,gw,gh);
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText('单层网络损失（无法收敛）',gx+gw/2,gy-5);
+  ctx.beginPath();
+  const maxL=Math.max(...lState.singleLoss);
+  lState.singleLoss.forEach((l,i)=>{
+   const x=gx+i/lState.singleLoss.length*gw,y=gy+gh-l/maxL*gh;
+   if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=2;ctx.stroke();
+ }
+ // 单层失败提示
+ if(lState.singleFailed&&!lState.unlockHidden){
+  ctx.fillStyle='#ef4444';ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+  ctx.fillText('✗ 单层感知器无法解决XOR！',cx,cy+180);
+  ctx.fillStyle='#888';ctx.font='12px sans-serif';
+  ctx.fillText('XOR不是线性可分的，一条直线永远无法将对角的点分开',cx,cy+200);
+ }
+}
+// ===== 关卡4渲染：卷积（扫描线高亮） =====
+function renderConvolution(){
+ const cx=W/2-100,cy=H/2-40,cellSize=40;
+ ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.textAlign='center';
+ ctx.fillText('输入图像 (5×5)',cx+cellSize*2.5,cy-15);
+ for(let r=0;r<5;r++)for(let c=0;c<5;c++){
+  const v=lState.image[r][c];
+  const x=cx+c*cellSize,y=cy+r*cellSize;
+  ctx.fillStyle=`rgb(${v},${v},${v})`;ctx.fillRect(x,y,cellSize-2,cellSize-2);
+  ctx.strokeStyle='#333';ctx.strokeRect(x,y,cellSize-2,cellSize-2);
+  ctx.fillStyle=v>128?'#000':'#fff';ctx.font='10px monospace';ctx.textAlign='center';
+  ctx.fillText(v,x+cellSize/2-1,y+cellSize/2+3);
+ }
+ // 卷积核高亮 + 扫描线效果
+ if(lState.convolving&&lState.convStep<9){
+  const kr=Math.floor(lState.convStep/3),kc=lState.convStep%3;
+  // 扫描线高亮
+  const scanAlpha=0.5+0.3*Math.sin(globalTime*0.15);
+  ctx.fillStyle=`rgba(59,130,246,${scanAlpha*0.15})`;
+  ctx.fillRect(cx+kc*cellSize-2,cy+kr*cellSize-2,cellSize*3+2,cellSize*3+2);
+  ctx.strokeStyle=`rgba(59,130,246,${scanAlpha})`;ctx.lineWidth=3;
+  ctx.strokeRect(cx+kc*cellSize-2,cy+kr*cellSize-2,cellSize*3+2,cellSize*3+2);
+  // 扫描线
+  const scanY=cy+kr*cellSize+(globalTime%20)/20*cellSize*3;
+  ctx.beginPath();ctx.moveTo(cx+kc*cellSize-2,scanY);ctx.lineTo(cx+kc*cellSize+cellSize*3,scanY);
+  ctx.strokeStyle=`rgba(59,130,246,0.6)`;ctx.lineWidth=2;ctx.stroke();
+ }
+ // 卷积核
+ const kx=cx+cellSize*5+60,ky=cy+cellSize;
+ ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.textAlign='center';
+ ctx.fillText('卷积核 (3×3)',kx+cellSize*1.5,ky-15);
+ for(let r=0;r<3;r++)for(let c=0;c<3;c++){
+  const v=lState.kernel[r][c];
+  const x=kx+c*cellSize,y=ky+r*cellSize;
+  ctx.fillStyle=v>0?`rgba(59,130,246,${Math.min(1,Math.abs(v)/5)})`:v<0?`rgba(239,68,68,${Math.min(1,Math.abs(v)/5)})`:'#111';
+  ctx.fillRect(x,y,cellSize-2,cellSize-2);
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=1;ctx.strokeRect(x,y,cellSize-2,cellSize-2);
+  ctx.fillStyle='#fff';ctx.font='11px monospace';ctx.textAlign='center';
+  ctx.fillText(Number.isInteger(v)?v:v.toFixed(1),x+cellSize/2-1,y+cellSize/2+3);
+ }
+ drawArrow(kx+cellSize*3+10,ky+cellSize*1.5,kx+cellSize*3+40,ky+cellSize*1.5,'#fbbf24');
+ // 输出特征图
+ const ox=kx+cellSize*3+50,oy=cy+cellSize;
+ ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.textAlign='center';
+ ctx.fillText('特征图 (3×3)',ox+cellSize*1.5,oy-15);
+ for(let r=0;r<3;r++)for(let c=0;c<3;c++){
+  const x=ox+c*cellSize,y=oy+r*cellSize;
+  if(lState.output&&(r*3+c)<lState.convStep){
+   const v=Math.max(0,Math.min(255,lState.output[r][c]));
+   ctx.fillStyle=`rgb(${v},${v},${v})`;ctx.fillRect(x,y,cellSize-2,cellSize-2);
+   ctx.fillStyle=v>128?'#000':'#fff';ctx.font='10px monospace';ctx.textAlign='center';
+   ctx.fillText(Math.round(v),x+cellSize/2-1,y+cellSize/2+3);
+  }else{
+   ctx.fillStyle='#0d0d24';ctx.fillRect(x,y,cellSize-2,cellSize-2);
+  }
+  ctx.strokeStyle='#333';ctx.strokeRect(x,y,cellSize-2,cellSize-2);
+ }
+}
+// ===== 关卡5渲染：过拟合（平滑动画绘制曲线） =====
+function renderOverfit(){
+ const gx=60,gy=60,gw=W-120,gh=H-160;
+ ctx.strokeStyle='#333';ctx.lineWidth=1;
+ ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx,gy+gh);ctx.lineTo(gx+gw,gy+gh);ctx.stroke();
+ ctx.fillStyle='#888';ctx.font='12px sans-serif';
+ ctx.textAlign='center';ctx.fillText('Epoch',gx+gw/2,gy+gh+30);
+ ctx.save();ctx.translate(gx-30,gy+gh/2);ctx.rotate(-Math.PI/2);ctx.fillText('Loss',0,0);ctx.restore();
+ ctx.fillStyle='#3b82f6';ctx.fillRect(gx+gw-180,gy+10,20,3);
+ ctx.fillStyle='#93c5fd';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText('训练损失',gx+gw-155,gy+15);
+ ctx.fillStyle='#ef4444';ctx.fillRect(gx+gw-90,gy+10,20,3);
+ ctx.fillStyle='#f87171';ctx.fillText('验证损失',gx+gw-65,gy+15);
+ if(lState.trainLoss.length<2)return;
+ const maxL=Math.max(...lState.trainLoss,...lState.valLoss)*1.2;
+ const n=lState.trainLoss.length;
+ // 逐点绘制动画
+ if(lState.training)lState.trainAnimIdx=n;
+ const drawN=Math.min(n,lState.trainAnimIdx);
+ // 训练损失
+ ctx.beginPath();
+ for(let i=0;i<drawN;i++){
+  const x=gx+i/n*gw,y=gy+gh-lState.trainLoss[i]/maxL*gh;
+  if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+ }
+ ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.stroke();
+ // 验证损失
+ ctx.beginPath();
+ for(let i=0;i<drawN;i++){
+  const x=gx+i/n*gw,y=gy+gh-lState.valLoss[i]/maxL*gh;
+  if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+ }
+ ctx.strokeStyle='#ef4444';ctx.lineWidth=2;ctx.stroke();
+ // 过拟合标注
+ if(lState.overfit&&drawN>60){
+  const splitIdx=Math.floor(n*0.3);
+  const sx=gx+splitIdx/n*gw;
+  ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(sx,gy);ctx.lineTo(sx,gy+gh);
+  ctx.strokeStyle='#fbbf24';ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#fbbf24';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('⚠ 过拟合开始',sx,gy-5);
+ }
+ // 考试结果
+ if(lState.examDone){
+  const pass=lState.examScore>=60;
+  ctx.fillStyle=pass?'#4ade80':'#ef4444';ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`测试准确率: ${lState.examScore.toFixed(0)}%`,gx+gw/2,gy+gh+60);
+ }
+}
+// ===== 关卡6渲染：图像识别（逐层可视化动画） =====
+function renderDigitRecognition(){
+ const drawSize=280,drawX=40,drawY=(H-drawSize)/2;
+ ctx.strokeStyle='#333';ctx.lineWidth=2;ctx.strokeRect(drawX-1,drawY-1,drawSize+2,drawSize+2);
+ ctx.fillStyle='#000';ctx.fillRect(drawX,drawY,drawSize,drawSize);
+ const cellW=drawSize/28;
+ for(let r=0;r<28;r++)for(let c=0;c<28;c++){
+  const v=lState.canvas28[r][c];
+  if(v>0){
+   ctx.fillStyle=`rgb(${Math.floor(v*255)},${Math.floor(v*255)},${Math.floor(v*255)})`;
+   ctx.fillRect(drawX+c*cellW,drawY+r*cellW,cellW,cellW);
+  }
+ }
+ ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';
+ ctx.fillText('手写区域 (28×28)',drawX+drawSize/2,drawY-10);
+ // CNN处理流程（逐层动画）
+ if(lState.processing||lState.recognized){
+  const px=drawX+drawSize+40,py=drawY;
+  // 卷积特征图（逐行显示动画）
+  if(lState.convFeatures){
+   ctx.fillStyle='#60a5fa';ctx.font='11px sans-serif';ctx.textAlign='center';
+   ctx.fillText('卷积特征图',px+65,py-5);
+   const fs=8;
+   const showRows=lState.recognized?13:Math.min(13,Math.floor(lState.cnnAnimProgress/2));
+   for(let r=0;r<showRows;r++)for(let c=0;c<13;c++){
+    const v=Math.min(1,lState.convFeatures[r][c]);
+    ctx.fillStyle=`rgba(59,130,246,${v})`;
+    ctx.fillRect(px+c*fs,py+r*fs,fs-1,fs-1);
+   }
+   if(lState.processing&&lState.processStep===0){
+    // 扫描线
+    const scanR=showRows<13?showRows:12;
+    ctx.fillStyle='rgba(59,130,246,0.3)';
+    ctx.fillRect(px,py+scanR*fs,13*fs,fs);
+   }
+   drawArrow(px+130+10,py+52,px+130+30,py+52,'#fbbf24');
+  }
+  // 池化特征图
+  if(lState.poolFeatures){
+   const ppx=px+170;
+   ctx.fillStyle='#a855f7';ctx.font='11px sans-serif';ctx.textAlign='center';
+   ctx.fillText('池化',ppx+30,py-5);
+   const fs=12;
+   for(let r=0;r<6;r++)for(let c=0;c<6;c++){
+    const v=Math.min(1,lState.poolFeatures[r][c]);
+    ctx.fillStyle=`rgba(168,85,247,${v})`;
+    ctx.fillRect(ppx+c*fs,py+r*fs,fs-1,fs-1);
+   }
+   drawArrow(ppx+72+10,py+36,ppx+72+30,py+36,'#fbbf24');
+  }
+  // 全连接输出
+  if(lState.fcOutput){
+   const fpx=px+280;
+   ctx.fillStyle='#22c55e';ctx.font='11px sans-serif';ctx.textAlign='center';
+   ctx.fillText('全连接输出',fpx+30,py-5);
+   for(let i=0;i<10;i++){
+    const barW=lState.fcOutput[i]*80;
+    const by=py+i*22;
+    ctx.fillStyle=i===lState.result?'#22c55e':'#334';
+    ctx.fillRect(fpx,by,barW,18);
+    ctx.strokeStyle='#444';ctx.strokeRect(fpx,by,80,18);
+    ctx.fillStyle=i===lState.result?'#fff':'#888';ctx.font='11px monospace';ctx.textAlign='left';
+    ctx.fillText(`${i}: ${(lState.fcOutput[i]*100).toFixed(1)}%`,fpx+85,by+13);
+   }
+   // 低置信度红色警告
+   if(lState.lowConfidence){
+    ctx.fillStyle='#ef4444';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('⚠ 识别失败 - 置信度过低',fpx+40,py+240);
+   }
+  }
+ }
+ // CNN架构图
+ if(!lState.processing&&!lState.recognized){
+  const ax=drawX+drawSize+60,ay=drawY+drawSize-80;
+  ctx.fillStyle='#555';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('CNN处理流程：输入 → 卷积 → 池化 → 全连接 → 输出',ax+180,ay);
+  const stages=[{x:ax,w:40,h:40,c:'#3b82f6',l:'输入'},{x:ax+80,w:35,h:35,c:'#60a5fa',l:'卷积'},
+   {x:ax+150,w:25,h:25,c:'#a855f7',l:'池化'},{x:ax+210,w:20,h:50,c:'#22c55e',l:'全连接'},
+   {x:ax+280,w:15,h:30,c:'#fbbf24',l:'输出'}];
+  stages.forEach((s,i)=>{
+   ctx.fillStyle=s.c+'44';ctx.fillRect(s.x,ay+25,s.w,s.h);
+   ctx.strokeStyle=s.c;ctx.strokeRect(s.x,ay+25,s.w,s.h);
+   ctx.fillStyle=s.c;ctx.font='10px sans-serif';ctx.textAlign='center';
+   ctx.fillText(s.l,s.x+s.w/2,ay+25+s.h+15);
+   if(i<stages.length-1)drawArrow(s.x+s.w+5,ay+25+s.h/2,stages[i+1].x-5,ay+25+stages[i+1].h/2,'#444');
+  });
+ }
+ // CNN动画进度
+ if(lState.processing)lState.cnnAnimProgress+=0.5;
+}
+
+// ===== 鼠标事件 =====
+let mouseDown=false,lastMX=-1,lastMY=-1;
+cv.addEventListener('mousedown',e=>{
+ mouseDown=true;
+ const rect=cv.getBoundingClientRect();
+ lastMX=e.clientX-rect.left;lastMY=e.clientY-rect.top;
+ if(curLevel===6&&!lState.processing&&!lState.recognized){
+  drawOnCanvas(lastMX,lastMY);
+ }
+});
+cv.addEventListener('mousemove',e=>{
+ if(!mouseDown)return;
+ const rect=cv.getBoundingClientRect();
+ const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+ if(curLevel===6&&!lState.processing&&!lState.recognized){
+  drawOnCanvas(mx,my,lastMX,lastMY);
+ }
+ lastMX=mx;lastMY=my;
+});
+cv.addEventListener('mouseup',()=>{mouseDown=false;lastMX=-1;lastMY=-1;});
+cv.addEventListener('mouseleave',()=>{mouseDown=false;lastMX=-1;lastMY=-1;});
+function drawOnCanvas(mx,my,pmx,pmy){
+ const drawSize=280,drawX=40,drawY=(H-drawSize)/2;
+ const cellW=drawSize/28;
+ const steps=pmx>=0?Math.max(1,Math.floor(Math.sqrt((mx-pmx)**2+(my-pmy)**2)/2)):1;
+ for(let s=0;s<=steps;s++){
+  const t=steps>0?s/steps:0;
+  const cx_=pmx>=0?pmx+(mx-pmx)*t:mx;
+  const cy_=pmy>=0?pmy+(my-pmy)*t:my;
+  const col=Math.floor((cx_-drawX)/cellW);
+  const row=Math.floor((cy_-drawY)/cellW);
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+   const r=row+dr,c=col+dc;
+   if(r>=0&&r<28&&c>=0&&c<28){
+    const dist=Math.sqrt(dr*dr+dc*dc);
+    const val=dist===0?1:0.5;
+    lState.canvas28[r][c]=Math.min(1,lState.canvas28[r][c]+val);
+   }
+  }
+ }
+ lState.hasDrawn=true;
+ markPanelDirty();
+}
+
+// ===== 关卡切换（淡入动画） =====
+function switchLevel(n){
+ if(n<0||n>=levels.length)return;
+ fadeAlpha=1; // 触发淡入
+ curLevel=n;resetLevelState();
+ quizState={answered:false,selected:-1,correct:false};
+ markPanelDirty();
+ infoBar.textContent=`神经网络从零构建 | 第${n+1}关：${levels[n].name} | 已完成 ${completedLevels.size}/${levels.length}`;
+}
+
+// ===== 初始化 =====
+function resize(){
+ W=cv.width=window.innerWidth-320;H=cv.height=window.innerHeight;
+ markPanelDirty();
+}
+window.addEventListener('resize',resize);
+resize();
+resetLevelState();
+checkPerceptron();
+render();
+</script>
+</body>
+</html>

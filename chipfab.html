@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>半导体制造 - 交互式教育游戏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#c0c0d0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+canvas{display:block;position:absolute;top:0;left:320px}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:#2a2a6a}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px}.sv{color:#60a5fa;font-weight:bold}
+#infoBar{position:absolute;bottom:0;left:320px;right:0;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid #1a1a3a;display:flex;align-items:center;padding:0 16px;font-size:12px;color:#888;z-index:10}
+.panel h3{color:#60a5fa;font-size:14px;margin:8px 0 4px}
+.panel h4{color:#93c5fd;font-size:12px;margin:6px 0 2px}
+.obj-item{font-size:12px;margin:2px 0;color:#a0a0c0}
+.obj-item.done{color:#4ade80}
+</style>
+</head>
+<body>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="infoBar">半导体制造交互式教育游戏 | 共7关</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const panel=document.getElementById('panel'),infoBar=document.getElementById('infoBar');
+let W,H,curLevel=0,animId;
+const completedLevels=new Set();
+const levels=[
+{name:'硅晶体生长 — 从沙子到硅棒',concept:'切克劳斯基法（CZ法）：将多晶硅在坩埚中熔化，用籽晶接触熔融硅表面缓慢提拉，原子按晶格排列生长为单晶硅棒。',
+ objs:['拉出硅棒','获得完美单晶','达到目标长度(≥80cm)'],
+ learn:'半导体级硅纯度达99.999999999%（11个9），全球由日本信越化学和SUMCO主导供应。一根300mm硅棒价值数千美元。'},
+{name:'光刻 — 把图案印到硅片上',concept:'光刻是芯片制造最关键的步骤：将掩模版上的电路图案通过紫外光投影到涂有光刻胶的硅片上，再通过显影去除曝光区域。',
+ objs:['在掩模版上设计图案','完成曝光','显影获得清晰图案'],
+ learn:'ASML的EUV光刻机售价超过1.5亿美元，重量达180吨，是人类制造的最精密的机器之一。'},
+{name:'刻蚀 — 雕刻硅片',concept:'刻蚀将光刻图案转移到硅片上。湿法刻蚀用化学溶液（各向同性，有底切），干法刻蚀用等离子体（各向异性，侧壁垂直）。',
+ objs:['湿法刻蚀观察底切','干法刻蚀获得垂直侧壁','精确控制刻蚀深度'],
+ learn:'先进3nm工艺中，刻蚀沟槽的深宽比可达50:1，相当于在1米宽的沟里挖50米深——精度惊人。'},
+{name:'离子注入 — 掺杂改性',concept:'用高能离子束将杂质原子（磷或硼）打入硅片，改变局部电学性质。磷掺杂形成N型（多电子），硼掺杂形成P型（多空穴）。',
+ objs:['注入N型掺杂（磷）','注入P型掺杂（硼）','形成PN结'],
+ learn:'PN结是所有半导体器件的基础——二极管、晶体管、LED、太阳能电池都依赖PN结的单向导电性。'},
+{name:'薄膜沉积 — 逐层堆叠',concept:'在硅片上沉积各种薄膜：CVD（化学气相沉积）、PVD（物理气相沉积/溅射）、ALD（原子层沉积，逐原子层精确控制）。',
+ objs:['CVD沉积绝缘膜','PVD沉积金属膜','ALD沉积超薄膜(<5nm)'],
+ learn:'Intel 3nm工艺的栅极氧化层只有几个原子厚（约0.5nm），ALD技术让这种原子级精度成为可能。'},
+{name:'EUV光刻 — 极紫外的极限',concept:'EUV光刻使用13.5nm波长的极紫外光。激光轰击锡滴产生EUV光，经多层反射镜聚焦，通过反射式掩模将图案投影到硅片。',
+ objs:['产生EUV光','调整反射镜聚焦','获得<10nm分辨率'],
+ learn:'EUV光刻机由10万个零件组成，重180吨，需要40个集装箱运输。全球仅ASML一家能制造。'},
+{name:'良率优化 — 从实验室到量产',concept:'芯片制造的终极挑战：在300mm晶圆上制造数百颗芯片，每颗都必须完美。良率=合格芯片数/总芯片数，直接决定利润。',
+ objs:['完成一次生产','良率提升到80%','良率达到90%'],
+ learn:'台积电3nm工艺良率约70-80%。一座先进晶圆厂投资超过200亿美元，良率每提升1%都意味着数亿美元的利润。'}
+];
+let lState={},panelDirty=true;
+function resetLevelState(){
+ switch(curLevel){
+  case 0:lState={pullSpeed:50,rotSpeed:50,pulling:false,rodLen:0,rodMaxLen:100,crystalQuality:0,
+   diameter:0,growPhase:0,objDone:[false,false,false],particles:[]};break;
+  case 1:lState={maskPattern:[],exposing:false,exposed:false,developed:false,exposureAnim:0,
+   resolution:45,drawing:false,objDone:[false,false,false],waferPattern:[]};break;
+  case 2:lState={method:'wet',etchTime:50,etching:false,etchProgress:0,etchDone:false,
+   objDone:[false,false,false],wetDone:false,dryDone:false};break;
+  case 3:lState={dopant:'P',energy:50,dose:50,implanting:false,implantDone:false,annealed:false,
+   nDoped:false,pDoped:false,pnFormed:false,ions:[],profile:[],objDone:[false,false,false]};break;
+  case 4:lState={method:'CVD',depositing:false,depositProgress:0,thickness:0,uniformity:0,
+   cvdDone:false,pvdDone:false,aldDone:false,atoms:[],objDone:[false,false,false]};break;
+  case 5:lState={laserFired:false,euvGenerated:false,mirrorAngle:45,focused:false,
+   power:0,resolution:20,throughput:0,photons:[],objDone:[false,false,false]};break;
+  case 6:lState={lithoAlign:50,etchUniform:50,depoThick:50,cleanLevel:50,
+   produced:false,chips:[],yield:0,profit:0,bestYield:0,objDone:[false,false,false]};break;
+ }
+}
+function switchLevel(n){curLevel=n;resetLevelState();panelDirty=true;}
+function resize(){W=innerWidth-320;H=innerHeight;cv.width=W;cv.height=H;panelDirty=true;}
+window.onresize=resize;resize();resetLevelState();
+// PLACEHOLDER_PANEL
+function renderPanel(){
+ let h='<h3 style="margin-bottom:8px">🔬 半导体制造</h3><div style="margin-bottom:8px">';
+ levels.forEach((l,i)=>{
+  let cls='level-btn';if(i===curLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
+  h+=`<span class="${cls}" onclick="switchLevel(${i})">${i+1}</span>`;
+ });
+ h+='</div>';
+ const L=levels[curLevel];
+ h+=`<h3>第${curLevel+1}关：${L.name}</h3>`;
+ h+=`<div class="concept-box">${L.concept}</div>`;
+ h+='<h4>目标</h4>';
+ const od=lState.objDone||[];
+ L.objs.forEach((o,i)=>{h+=`<div class="obj-item${od[i]?' done':''}">${od[i]?'✅':'⬜'} ${o}</div>`;});
+ h+=renderLevelControls();
+ if(od.every(v=>v)){
+  if(!completedLevels.has(curLevel)){completedLevels.add(curLevel);}
+  h+=`<div class="learn-box">💡 ${L.learn}</div>`;
+  if(curLevel<levels.length-1){
+   h+=`<button class="act-btn green" onclick="switchLevel(${curLevel+1})">进入第${curLevel+2}关 →</button>`;
+  }else{
+   h+='<div class="learn-box" style="border-color:#f59e0b;color:#fbbf24">🎉 恭喜通关！你已掌握半导体制造的核心工艺。从硅晶体生长到良率优化，这些工艺构成了现代芯片制造的完整流程。</div>';
+  }
+ }
+ panel.innerHTML=h;
+}
+// PLACEHOLDER_CONTROLS
+function renderLevelControls(){
+ let h='';
+ switch(curLevel){
+ case 0:
+  h+=`<div class="slider-wrap"><label>提拉速度：<span class="sv">${lState.pullSpeed}</span></label><input type="range" min="1" max="100" value="${lState.pullSpeed}" oninput="lState.pullSpeed=+this.value;panelDirty=true"></div>`;
+  h+=`<div class="slider-wrap"><label>旋转速度：<span class="sv">${lState.rotSpeed}</span></label><input type="range" min="1" max="100" value="${lState.rotSpeed}" oninput="lState.rotSpeed=+this.value;panelDirty=true"></div>`;
+  h+=`<div class="concept-box">晶体质量：<span class="sv">${lState.crystalQuality.toFixed(0)}%</span><br>直径：<span class="sv">${lState.diameter.toFixed(1)}mm</span> | 长度：<span class="sv">${lState.rodLen.toFixed(1)}cm</span></div>`;
+  if(!lState.pulling)h+=`<button class="act-btn" onclick="startPull()">开始提拉</button>`;
+  else h+=`<button class="act-btn" onclick="lState.pulling=false;panelDirty=true" style="border-color:#ef4444;color:#f87171">停止提拉</button>`;
+  h+='<div class="hint-box">💡 提拉速度适中(40-60)可获得完美单晶，太快会产生多晶缺陷</div>';
+  break;
+ case 1:
+  h+=`<div class="concept-box">分辨率：<span class="sv">${lState.resolution}nm</span></div>`;
+  if(!lState.exposed&&!lState.developed){
+   h+='<div class="hint-box">🖱️ 在掩模版区域用鼠标绘制电路图案</div>';
+   if(lState.maskPattern.length>0)h+=`<button class="act-btn" onclick="startExposure()">曝光</button>`;
+  }
+  if(lState.exposed&&!lState.developed)h+=`<button class="act-btn" onclick="developWafer()">显影</button>`;
+  if(lState.developed)h+=`<button class="act-btn" onclick="resetLevelState();panelDirty=true">重新设计</button>`;
+  break;
+ case 2:
+  h+=`<div class="concept-box">方法：<span class="sv">${lState.method==='wet'?'湿法刻蚀':'干法刻蚀'}</span><br>刻蚀进度：<span class="sv">${(lState.etchProgress*100).toFixed(0)}%</span></div>`;
+  if(!lState.etching&&!lState.etchDone){
+   h+=`<button class="act-btn" onclick="lState.method='wet';panelDirty=true" ${lState.method==='wet'?'style="background:#2a2a6a"':''}>湿法刻蚀（化学溶液）</button>`;
+   h+=`<button class="act-btn" onclick="lState.method='dry';panelDirty=true" ${lState.method==='dry'?'style="background:#2a2a6a"':''}>干法刻蚀（等离子体）</button>`;
+   h+=`<div class="slider-wrap"><label>刻蚀时间：<span class="sv">${lState.etchTime}%</span></label><input type="range" min="10" max="100" value="${lState.etchTime}" oninput="lState.etchTime=+this.value;panelDirty=true"></div>`;
+   h+=`<button class="act-btn" onclick="startEtch()">开始刻蚀</button>`;
+  }
+  if(lState.etchDone)h+=`<button class="act-btn" onclick="lState.etchDone=false;lState.etchProgress=0;panelDirty=true">重新刻蚀</button>`;
+  break;
+ case 3:
+  h+=`<div class="concept-box">掺杂类型：<span class="sv">${lState.dopant==='P'?'磷（N型）':'硼（P型）'}</span></div>`;
+  h+=`<button class="act-btn" onclick="lState.dopant='P';panelDirty=true" ${lState.dopant==='P'?'style="background:#2a2a6a"':''}>磷（N型 - 蓝色）</button>`;
+  h+=`<button class="act-btn" onclick="lState.dopant='B';panelDirty=true" ${lState.dopant==='B'?'style="background:#2a2a6a"':''}>硼（P型 - 红色）</button>`;
+  h+=`<div class="slider-wrap"><label>注入能量（深度）：<span class="sv">${lState.energy}keV</span></label><input type="range" min="10" max="100" value="${lState.energy}" oninput="lState.energy=+this.value;panelDirty=true"></div>`;
+  h+=`<div class="slider-wrap"><label>注入剂量（浓度）：<span class="sv">${lState.dose}%</span></label><input type="range" min="10" max="100" value="${lState.dose}" oninput="lState.dose=+this.value;panelDirty=true"></div>`;
+  if(!lState.implanting)h+=`<button class="act-btn" onclick="startImplant()">离子注入</button>`;
+  if(lState.implantDone&&!lState.annealed)h+=`<button class="act-btn green" onclick="doAnneal()">退火修复晶格</button>`;
+  if(lState.nDoped&&lState.pDoped&&!lState.pnFormed)h+=`<button class="act-btn green" onclick="formPN()">形成PN结</button>`;
+  break;
+ case 4:
+  h+=`<div class="concept-box">方法：<span class="sv">${lState.method}</span> | 厚度：<span class="sv">${lState.thickness.toFixed(1)}nm</span> | 均匀性：<span class="sv">${lState.uniformity.toFixed(0)}%</span></div>`;
+  if(!lState.depositing){
+   h+=`<button class="act-btn" onclick="lState.method='CVD';panelDirty=true" ${lState.method==='CVD'?'style="background:#2a2a6a"':''}>CVD 化学气相沉积</button>`;
+   h+=`<button class="act-btn" onclick="lState.method='PVD';panelDirty=true" ${lState.method==='PVD'?'style="background:#2a2a6a"':''}>PVD 溅射沉积</button>`;
+   h+=`<button class="act-btn" onclick="lState.method='ALD';panelDirty=true" ${lState.method==='ALD'?'style="background:#2a2a6a"':''}>ALD 原子层沉积</button>`;
+   h+=`<button class="act-btn" onclick="startDeposit()">开始沉积</button>`;
+  }
+  break;
+ case 5:
+  h+=`<div class="concept-box">功率：<span class="sv">${lState.power.toFixed(0)}W</span> | 分辨率：<span class="sv">${lState.resolution.toFixed(1)}nm</span></div>`;
+  if(!lState.laserFired)h+=`<button class="act-btn" onclick="fireLaser()">发射激光轰击锡滴</button>`;
+  if(lState.euvGenerated&&!lState.focused){
+   h+=`<div class="slider-wrap"><label>反射镜角度：<span class="sv">${lState.mirrorAngle.toFixed(1)}°</span></label><input type="range" min="30" max="60" value="${lState.mirrorAngle}" step="0.5" oninput="lState.mirrorAngle=+this.value;panelDirty=true"></div>`;
+   h+=`<button class="act-btn" onclick="focusMirror()">调整聚焦</button>`;
+  }
+  if(lState.focused)h+=`<button class="act-btn green" onclick="exposeEUV()">EUV曝光</button>`;
+  break;
+ case 6:
+  h+=`<div class="concept-box">良率：<span class="sv">${lState.yield.toFixed(1)}%</span> | 最佳：<span class="sv">${lState.bestYield.toFixed(1)}%</span><br>利润：<span class="sv">$${(lState.profit/1e6).toFixed(1)}M</span></div>`;
+  h+=`<div class="slider-wrap"><label>光刻对准精度：<span class="sv">${lState.lithoAlign}%</span></label><input type="range" min="0" max="100" value="${lState.lithoAlign}" oninput="lState.lithoAlign=+this.value;panelDirty=true"></div>`;
+  h+=`<div class="slider-wrap"><label>刻蚀均匀性：<span class="sv">${lState.etchUniform}%</span></label><input type="range" min="0" max="100" value="${lState.etchUniform}" oninput="lState.etchUniform=+this.value;panelDirty=true"></div>`;
+  h+=`<div class="slider-wrap"><label>沉积厚度控制：<span class="sv">${lState.depoThick}%</span></label><input type="range" min="0" max="100" value="${lState.depoThick}" oninput="lState.depoThick=+this.value;panelDirty=true"></div>`;
+  h+=`<div class="slider-wrap"><label>洁净室等级：<span class="sv">${lState.cleanLevel}%</span></label><input type="range" min="0" max="100" value="${lState.cleanLevel}" oninput="lState.cleanLevel=+this.value;panelDirty=true"></div>`;
+  h+=`<button class="act-btn" onclick="runProduction()">开始生产</button>`;
+  break;
+ }
+ return h;
+}
+// PLACEHOLDER_ACTIONS
+// === Level 0: Crystal Growth ===
+function startPull(){lState.pulling=true;lState.growPhase=0;panelDirty=true;}
+// === Level 1: Lithography ===
+function startExposure(){
+ if(lState.maskPattern.length===0)return;
+ lState.exposing=true;lState.exposureAnim=0;
+ lState.objDone[0]=true;panelDirty=true;
+}
+function developWafer(){
+ lState.developed=true;lState.objDone[2]=true;panelDirty=true;
+}
+// === Level 2: Etching ===
+function startEtch(){lState.etching=true;lState.etchProgress=0;panelDirty=true;}
+// === Level 3: Ion Implantation ===
+function startImplant(){
+ lState.implanting=true;lState.ions=[];lState.profile=[];
+ for(let i=0;i<30;i++){
+  const depth=lState.energy/100;
+  lState.ions.push({x:Math.random(),y:-Math.random()*0.3,vy:0.02+Math.random()*0.01,
+   targetY:depth*0.3+Math.random()*0.15,active:true,color:lState.dopant==='P'?'#60a5fa':'#f87171'});
+ }
+ panelDirty=true;
+}
+function doAnneal(){
+ lState.annealed=true;
+ if(lState.dopant==='P')lState.nDoped=true;
+ if(lState.dopant==='B')lState.pDoped=true;
+ lState.implantDone=false;
+ panelDirty=true;
+}
+function formPN(){
+ lState.pnFormed=true;lState.objDone[2]=true;panelDirty=true;
+}
+// === Level 4: Thin Film Deposition ===
+function startDeposit(){
+ lState.depositing=true;lState.depositProgress=0;lState.thickness=0;lState.atoms=[];
+ if(lState.method==='CVD'){lState.uniformity=85+Math.random()*10;}
+ else if(lState.method==='PVD'){lState.uniformity=70+Math.random()*15;}
+ else{lState.uniformity=95+Math.random()*5;}
+ panelDirty=true;
+}
+// === Level 5: EUV ===
+function fireLaser(){
+ lState.laserFired=true;lState.photons=[];
+ for(let i=0;i<20;i++)lState.photons.push({x:0.1,y:0.35+Math.random()*0.1,vx:0.03+Math.random()*0.01,vy:(Math.random()-0.5)*0.005,life:1});
+ panelDirty=true;
+}
+function focusMirror(){
+ const diff=Math.abs(lState.mirrorAngle-45);
+ if(diff<3){
+  lState.focused=true;lState.resolution=7+diff;lState.power=250-diff*20;
+  lState.objDone[0]=true;lState.objDone[1]=true;
+  if(lState.resolution<10)lState.objDone[2]=true;
+  panelDirty=true;
+ }
+}
+function exposeEUV(){
+ lState.objDone[0]=true;lState.objDone[1]=true;
+ if(lState.resolution<10)lState.objDone[2]=true;
+ panelDirty=true;
+}
+// === Level 6: Yield ===
+function runProduction(){
+ const avg=(lState.lithoAlign+lState.etchUniform+lState.depoThick+lState.cleanLevel)/4;
+ const baseYield=avg*0.95;
+ const noise=(Math.random()-0.5)*10;
+ lState.yield=Math.max(0,Math.min(100,baseYield+noise));
+ lState.profit=lState.yield/100*500*2e6-5e8;
+ if(lState.yield>lState.bestYield)lState.bestYield=lState.yield;
+ lState.chips=[];
+ const rows=12,cols=12;
+ for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+  const cx2=(c-cols/2+0.5),cy2=(r-rows/2+0.5);
+  if(cx2*cx2+cy2*cy2>(cols/2)*(cols/2))continue;
+  lState.chips.push({r,c,good:Math.random()*100<lState.yield});
+ }
+ lState.produced=true;lState.objDone[0]=true;
+ if(lState.bestYield>=80)lState.objDone[1]=true;
+ if(lState.bestYield>=90)lState.objDone[2]=true;
+ panelDirty=true;
+}
+// PLACEHOLDER_MOUSE
+// === Mouse Events ===
+let mouseDown=false,mouseX=0,mouseY=0;
+cv.addEventListener('mousedown',e=>{
+ mouseDown=true;mouseX=e.offsetX;mouseY=e.offsetY;
+ if(curLevel===1&&!lState.exposed&&!lState.developed){
+  lState.drawing=true;
+  lState.maskPattern.push({x:mouseX,y:mouseY,nx:true});
+  lState.objDone[0]=true;panelDirty=true;
+ }
+});
+cv.addEventListener('mousemove',e=>{
+ mouseX=e.offsetX;mouseY=e.offsetY;
+ if(curLevel===1&&lState.drawing&&mouseDown){
+  lState.maskPattern.push({x:mouseX,y:mouseY,nx:false});
+ }
+});
+cv.addEventListener('mouseup',()=>{mouseDown=false;lState.drawing=false;});
+// PLACEHOLDER_DRAW
+// === Drawing Helpers ===
+function drawSiliconTexture(x,y,w,h,color='#b0b8c8'){
+ ctx.fillStyle=color;ctx.fillRect(x,y,w,h);
+ ctx.strokeStyle='rgba(150,160,180,0.15)';ctx.lineWidth=0.5;
+ for(let i=0;i<w;i+=8)for(let j=0;j<h;j+=8){ctx.strokeRect(x+i,y+j,8,8);}
+}
+function drawGlow(x,y,r,color){
+ const g=ctx.createRadialGradient(x,y,0,x,y,r);
+ g.addColorStop(0,color);g.addColorStop(1,'transparent');
+ ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+}
+// === Level 0: Crystal Growth ===
+function drawLevel0(t){
+ const cx=W/2,cy=H/2;
+ // Crucible
+ ctx.fillStyle='#333';ctx.beginPath();
+ ctx.moveTo(cx-120,cy+60);ctx.lineTo(cx-140,cy+180);ctx.lineTo(cx+140,cy+180);ctx.lineTo(cx+120,cy+60);ctx.closePath();ctx.fill();
+ ctx.strokeStyle='#555';ctx.lineWidth=3;ctx.stroke();
+ // Molten silicon
+ const meltH=100;
+ const mg=ctx.createLinearGradient(cx,cy+180-meltH,cx,cy+180);
+ mg.addColorStop(0,'#ff6600');mg.addColorStop(0.5,'#ff4400');mg.addColorStop(1,'#cc2200');
+ ctx.fillStyle=mg;
+ ctx.fillRect(cx-130,cy+180-meltH,260,meltH);
+ // Glow on melt surface
+ drawGlow(cx,cy+80,80,'rgba(255,100,0,0.3)');
+ // Heat particles
+ for(let i=0;i<5;i++){
+  const px=cx-100+Math.random()*200,py=cy+80+Math.random()*20;
+  ctx.fillStyle=`rgba(255,${150+Math.random()*100|0},0,${0.3+Math.random()*0.4})`;
+  ctx.beginPath();ctx.arc(px,py,1+Math.random()*2,0,Math.PI*2);ctx.fill();
+ }
+ // Pull rod mechanism
+ ctx.fillStyle='#666';ctx.fillRect(cx-3,cy-200,6,60);
+ ctx.fillStyle='#888';ctx.fillRect(cx-20,cy-210,40,15);
+ // Growing silicon rod
+ if(lState.pulling||lState.rodLen>0){
+  const rodH=lState.rodLen*2;
+  const rodW=20+lState.diameter/15;
+  const rodTop=cy-140;
+  const quality=lState.crystalQuality;
+  const rg=ctx.createLinearGradient(cx-rodW/2,rodTop,cx+rodW/2,rodTop);
+  if(quality>80){rg.addColorStop(0,'#a0a8b8');rg.addColorStop(0.5,'#c8d0e0');rg.addColorStop(1,'#a0a8b8');}
+  else if(quality>40){rg.addColorStop(0,'#808890');rg.addColorStop(0.5,'#a0a8b0');rg.addColorStop(1,'#808890');}
+  else{rg.addColorStop(0,'#606068');rg.addColorStop(0.5,'#787880');rg.addColorStop(1,'#606068');}
+  ctx.fillStyle=rg;
+  ctx.beginPath();ctx.moveTo(cx-rodW/2,rodTop);ctx.lineTo(cx-rodW/2-5,rodTop+rodH);
+  ctx.lineTo(cx+rodW/2+5,rodTop+rodH);ctx.lineTo(cx+rodW/2,rodTop);ctx.closePath();ctx.fill();
+  // Crystal lattice lines
+  if(quality>60){
+   ctx.strokeStyle='rgba(200,210,230,0.2)';ctx.lineWidth=0.5;
+   for(let i=0;i<rodH;i+=6){ctx.beginPath();ctx.moveTo(cx-rodW/2,rodTop+i);ctx.lineTo(cx+rodW/2,rodTop+i);ctx.stroke();}
+  }
+  // Rotation indicator
+  if(lState.pulling){
+   ctx.strokeStyle='rgba(100,165,250,0.5)';ctx.lineWidth=1;
+   const angle=t*lState.rotSpeed*0.001;
+   ctx.beginPath();ctx.arc(cx,rodTop-10,15,angle,angle+Math.PI*1.5);ctx.stroke();
+  }
+  // Quality label
+  ctx.fillStyle=quality>80?'#4ade80':quality>40?'#fbbf24':'#f87171';
+  ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText(quality>80?'完美单晶':quality>40?'多晶':'缺陷严重',cx,rodTop-25);
+ }
+ // Update pulling
+ if(lState.pulling){
+  const speed=lState.pullSpeed;
+  lState.rodLen+=0.15;
+  lState.diameter=280+lState.rotSpeed*0.2;
+  // Quality depends on pull speed: 40-60 is optimal
+  const optDist=Math.abs(speed-50);
+  lState.crystalQuality=Math.max(0,100-optDist*2.5);
+  if(!lState.objDone[0]&&lState.rodLen>10){lState.objDone[0]=true;panelDirty=true;}
+  if(!lState.objDone[1]&&lState.crystalQuality>85){lState.objDone[1]=true;panelDirty=true;}
+  if(!lState.objDone[2]&&lState.rodLen>=80){lState.objDone[2]=true;panelDirty=true;}
+  if(lState.rodLen>=100){lState.pulling=false;panelDirty=true;}
+ }
+ // Labels
+ ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='center';
+ ctx.fillText('坩埚（熔融硅 1420°C）',cx,cy+200);
+ ctx.fillText('提拉装置',cx,cy-220);
+ // Real-time stats on canvas
+ if(lState.pulling||lState.rodLen>0){
+  ctx.fillStyle='#60a5fa';ctx.font='13px sans-serif';ctx.textAlign='left';
+  ctx.fillText(`晶体质量: ${lState.crystalQuality.toFixed(0)}%`,30,30);
+  ctx.fillText(`直径: ${lState.diameter.toFixed(1)}mm`,30,50);
+  ctx.fillText(`长度: ${lState.rodLen.toFixed(1)}cm`,30,70);
+ }
+}
+// PLACEHOLDER_DRAW1
+// === Level 1: Lithography ===
+function drawLevel1(t){
+ const cx=W/2,baseY=60;
+ const layerH=H/4-30,layerW=W*0.6,lx=cx-layerW/2;
+ // Mask layer
+ ctx.fillStyle='#1a1a2a';ctx.fillRect(lx,baseY,layerW,layerH);
+ ctx.strokeStyle='#444';ctx.lineWidth=2;ctx.strokeRect(lx,baseY,layerW,layerH);
+ ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';
+ ctx.fillText('掩模版（在此绘制图案）',cx,baseY-8);
+ // Draw mask pattern
+ if(lState.maskPattern.length>1){
+  ctx.strokeStyle='#c084fc';ctx.lineWidth=3;ctx.beginPath();
+  let started=false;
+  for(const p of lState.maskPattern){
+   if(p.nx){ctx.moveTo(p.x,p.y);started=true;}
+   else if(started)ctx.lineTo(p.x,p.y);
+  }
+  ctx.stroke();
+ }
+ // UV light source
+ const uvY=baseY+layerH+20;
+ ctx.fillStyle='#2a1a4a';ctx.fillRect(lx,uvY,layerW,40);
+ ctx.strokeStyle='#7c3aed';ctx.lineWidth=1;ctx.strokeRect(lx,uvY,layerW,40);
+ ctx.fillStyle='#a78bfa';ctx.font='12px sans-serif';ctx.textAlign='center';
+ ctx.fillText('紫外光源 (UV 193nm)',cx,uvY+25);
+ // UV beams during exposure
+ if(lState.exposing){
+  lState.exposureAnim+=0.02;
+  const beamAlpha=Math.min(1,lState.exposureAnim);
+  for(let i=0;i<8;i++){
+   const bx=lx+layerW*0.1+layerW*0.8*i/7;
+   ctx.strokeStyle=`rgba(167,139,250,${beamAlpha*0.6})`;ctx.lineWidth=2;
+   ctx.beginPath();ctx.moveTo(bx,uvY+40);ctx.lineTo(bx,uvY+80);ctx.stroke();
+   drawGlow(bx,uvY+60,15,`rgba(167,139,250,${beamAlpha*0.3})`);
+  }
+  if(lState.exposureAnim>1&&!lState.exposed){
+   lState.exposed=true;lState.exposing=false;lState.objDone[1]=true;
+   // Copy mask pattern to wafer
+   lState.waferPattern=lState.maskPattern.map(p=>({...p,y:p.y+layerH+100}));
+   panelDirty=true;
+  }
+ }
+ // Wafer + photoresist
+ const wY=uvY+80;
+ drawSiliconTexture(lx,wY,layerW,layerH,'#b0b8c8');
+ // Photoresist layer
+ const prColor=lState.developed?'transparent':'rgba(200,100,220,0.4)';
+ if(!lState.developed){ctx.fillStyle=prColor;ctx.fillRect(lx,wY,layerW,15);}
+ ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='center';
+ ctx.fillText('硅片 + 光刻胶',cx,wY+layerH+15);
+ // Exposed/developed pattern on wafer
+ if(lState.exposed&&lState.waferPattern.length>1){
+  ctx.strokeStyle=lState.developed?'#60a5fa':'rgba(200,100,220,0.8)';
+  ctx.lineWidth=3;ctx.beginPath();
+  let started=false;
+  for(const p of lState.waferPattern){
+   if(p.nx){ctx.moveTo(p.x,p.y);started=true;}
+   else if(started)ctx.lineTo(p.x,p.y);
+  }
+  ctx.stroke();
+ }
+}
+// PLACEHOLDER_DRAW2
+// === Level 2: Etching ===
+function drawLevel2(t){
+ const cx=W/2,cy=H/2;
+ const wW=W*0.6,wH=200,wx=cx-wW/2,wy=cy-wH/2;
+ // Cross-section label
+ ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';
+ ctx.fillText('硅片截面图',cx,wy-20);
+ // Silicon substrate
+ drawSiliconTexture(wx,wy,wW,wH);
+ // Photoresist pattern (top)
+ const prW=60,gap=80;
+ for(let i=0;i<4;i++){
+  const px=wx+50+i*(prW+gap);
+  ctx.fillStyle='rgba(200,100,220,0.7)';ctx.fillRect(px,wy-15,prW,15);
+ }
+ // Etched trenches
+ if(lState.etching||lState.etchDone){
+  const depth=lState.etchProgress*wH*0.7;
+  const isWet=lState.method==='wet';
+  for(let i=0;i<4;i++){
+   const px=wx+50+i*(prW+gap)+prW;
+   const trenchW=gap;
+   ctx.fillStyle='#0a0a1a';
+   if(isWet){
+    // Wet etch: isotropic with undercut
+    const undercut=depth*0.4;
+    ctx.beginPath();
+    ctx.moveTo(px-undercut,wy);
+    ctx.quadraticCurveTo(px,wy+depth,px+trenchW/2,wy+depth);
+    ctx.quadraticCurveTo(px+trenchW,wy+depth,px+trenchW+undercut,wy);
+    ctx.closePath();ctx.fill();
+    // Undercut indicator
+    if(depth>20){
+     ctx.strokeStyle='#f87171';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+     ctx.beginPath();ctx.moveTo(px,wy);ctx.lineTo(px-undercut,wy);ctx.stroke();
+     ctx.setLineDash([]);
+    }
+   }else{
+    // Dry etch: anisotropic, vertical sidewalls
+    ctx.fillRect(px,wy,trenchW,depth);
+    // Plasma particles
+    if(lState.etching){
+     for(let j=0;j<3;j++){
+      const ppx=px+Math.random()*trenchW,ppy=wy+Math.random()*depth;
+      ctx.fillStyle=`rgba(100,180,255,${0.5+Math.random()*0.5})`;
+      ctx.beginPath();ctx.arc(ppx,ppy,2,0,Math.PI*2);ctx.fill();
+     }
+    }
+   }
+  }
+ }
+ // Update etching
+ if(lState.etching){
+  lState.etchProgress+=0.005;
+  const target=lState.etchTime/100;
+  if(lState.etchProgress>=target){
+   lState.etching=false;lState.etchDone=true;
+   if(lState.method==='wet'&&!lState.objDone[0]){lState.objDone[0]=true;}
+   if(lState.method==='dry'&&!lState.objDone[1]){lState.objDone[1]=true;}
+   if(target>=0.4&&target<=0.7){lState.objDone[2]=true;}
+   panelDirty=true;
+  }
+ }
+ // Method label
+ ctx.fillStyle=lState.method==='wet'?'#fbbf24':'#60a5fa';ctx.font='13px sans-serif';
+ ctx.textAlign='center';
+ ctx.fillText(lState.method==='wet'?'湿法刻蚀 — 各向同性（有底切）':'干法刻蚀 — 各向异性（垂直侧壁）',cx,wy+wH+40);
+}
+// PLACEHOLDER_DRAW3
+// === Level 3: Ion Implantation ===
+function drawLevel3(t){
+ const cx=W/2,cy=H/2;
+ const wW=W*0.6,wH=250,wx=cx-wW/2,wy=cy-wH/2+30;
+ // Silicon cross-section with lattice
+ drawSiliconTexture(wx,wy,wW,wH);
+ // Draw lattice dots
+ ctx.fillStyle='rgba(180,190,210,0.3)';
+ for(let i=0;i<wW;i+=12)for(let j=0;j<wH;j+=12){
+  ctx.beginPath();ctx.arc(wx+i+6,wy+j+6,1.5,0,Math.PI*2);ctx.fill();
+ }
+ // N-type doped region (left half, blue)
+ if(lState.nDoped){
+  ctx.fillStyle='rgba(96,165,250,0.25)';
+  const depth=lState.energy/100*wH*0.6;
+  ctx.fillRect(wx,wy,wW/2,depth);
+  ctx.fillStyle='#60a5fa';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('N型（磷）',wx+wW/4,wy+depth+15);
+ }
+ // P-type doped region (right half, red)
+ if(lState.pDoped){
+  ctx.fillStyle='rgba(248,113,113,0.25)';
+  const depth=lState.energy/100*wH*0.6;
+  ctx.fillRect(wx+wW/2,wy,wW/2,depth);
+  ctx.fillStyle='#f87171';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('P型（硼）',wx+wW*3/4,wy+depth+15);
+ }
+ // PN junction line
+ if(lState.pnFormed){
+  ctx.strokeStyle='#fbbf24';ctx.lineWidth=2;ctx.setLineDash([5,5]);
+  ctx.beginPath();ctx.moveTo(cx,wy);ctx.lineTo(cx,wy+wH*0.6);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#fbbf24';ctx.font='13px sans-serif';ctx.textAlign='center';
+  ctx.fillText('⚡ PN结',cx,wy-10);
+  // Depletion region
+  ctx.fillStyle='rgba(251,191,36,0.1)';ctx.fillRect(cx-20,wy,40,wH*0.6);
+ }
+ // Flying ions
+ let allLanded=true;
+ for(const ion of lState.ions){
+  if(!ion.active)continue;
+  if(ion.y<ion.targetY){ion.y+=ion.vy;allLanded=false;}
+  else{ion.active=false;}
+  const ix=wx+ion.x*wW,iy=wy+ion.y*wH;
+  ctx.fillStyle=ion.color;ctx.beginPath();ctx.arc(ix,iy,3,0,Math.PI*2);ctx.fill();
+  drawGlow(ix,iy,8,ion.color.replace(')',',0.3)').replace('rgb','rgba'));
+ }
+ if(lState.implanting&&allLanded&&lState.ions.length>0){
+  lState.implanting=false;lState.implantDone=true;
+  if(lState.dopant==='P'){lState.objDone[0]=true;}
+  else{lState.objDone[1]=true;}
+  panelDirty=true;
+ }
+ // Concentration profile (right side)
+ if(lState.implantDone||lState.nDoped||lState.pDoped){
+  const px=wx+wW+30,py=wy,pw=100,ph=wH;
+  ctx.strokeStyle='#444';ctx.lineWidth=1;
+  ctx.strokeRect(px,py,pw,ph);
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText('浓度分布',px+pw/2,py-5);
+  // Gaussian profile
+  const peakDepth=lState.energy/100*0.6;
+  ctx.strokeStyle=lState.dopant==='P'?'#60a5fa':'#f87171';ctx.lineWidth=2;
+  ctx.beginPath();
+  for(let i=0;i<=ph;i++){
+   const d=i/ph;
+   const conc=Math.exp(-((d-peakDepth)**2)/(0.02*lState.dose/50));
+   const x=px+conc*pw*0.8;
+   if(i===0)ctx.moveTo(x,py+i);else ctx.lineTo(x,py+i);
+  }
+  ctx.stroke();
+ }
+ // Anneal effect
+ if(lState.annealed){
+  ctx.fillStyle='rgba(251,191,36,0.1)';ctx.fillRect(wx,wy,wW,wH);
+  ctx.fillStyle='#fbbf24';ctx.font='11px sans-serif';ctx.textAlign='right';
+  ctx.fillText('✓ 退火完成 — 晶格修复',wx+wW-5,wy+wH-5);
+ }
+}
+// PLACEHOLDER_DRAW4
+// === Level 4: Thin Film Deposition ===
+function drawLevel4(t){
+ const cx=W/2,cy=H/2;
+ const wW=W*0.5,wH=200,wx=cx-wW/2,wy=cy-20;
+ // Silicon substrate with trenches
+ drawSiliconTexture(wx,wy,wW,wH);
+ // Trenches
+ const trenchW=40,trenchH=80,trenchGap=100;
+ for(let i=0;i<3;i++){
+  const tx=wx+60+i*trenchGap;
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(tx,wy,trenchW,trenchH);
+ }
+ // Deposited film
+ if(lState.depositing||lState.depositProgress>0){
+  const prog=lState.depositProgress;
+  const filmThick=prog*15;
+  const method=lState.method;
+  let filmColor;
+  if(method==='CVD')filmColor='rgba(100,200,100,0.6)'; // green insulator
+  else if(method==='PVD')filmColor='rgba(200,180,100,0.7)'; // gold metal
+  else filmColor='rgba(100,180,255,0.7)'; // blue ALD
+  ctx.fillStyle=filmColor;
+  if(method==='CVD'){
+   // Conformal but with step coverage issues
+   ctx.fillRect(wx,wy-filmThick,wW,filmThick);
+   for(let i=0;i<3;i++){
+    const tx=wx+60+i*trenchGap;
+    ctx.fillRect(tx-filmThick*0.5,wy,filmThick*0.5,trenchH*prog);
+    ctx.fillRect(tx+trenchW,wy,filmThick*0.5,trenchH*prog);
+    if(prog>0.5)ctx.fillRect(tx,wy+trenchH-filmThick,trenchW,filmThick);
+   }
+  }else if(method==='PVD'){
+   // Directional - good on top, poor in trenches
+   ctx.fillRect(wx,wy-filmThick,wW,filmThick);
+   for(let i=0;i<3;i++){
+    const tx=wx+60+i*trenchGap;
+    ctx.fillRect(tx,wy,filmThick*0.3,trenchH*0.3);
+   }
+  }else{
+   // ALD - perfect conformal
+   const ft=Math.min(filmThick,5);
+   ctx.fillRect(wx,wy-ft,wW,ft);
+   for(let i=0;i<3;i++){
+    const tx=wx+60+i*trenchGap;
+    ctx.fillRect(tx-ft,wy,ft,trenchH);
+    ctx.fillRect(tx+trenchW,wy,ft,trenchH);
+    ctx.fillRect(tx,wy+trenchH-ft,trenchW,ft);
+   }
+  }
+  // Falling atoms animation
+  if(lState.depositing){
+   for(let i=0;i<8;i++){
+    const ax=wx+Math.random()*wW;
+    const ay=wy-30-Math.random()*60;
+    ctx.fillStyle=filmColor;ctx.beginPath();ctx.arc(ax,ay,2+Math.random()*2,0,Math.PI*2);ctx.fill();
+   }
+  }
+ }
+ // Update deposition
+ if(lState.depositing){
+  const speed=lState.method==='ALD'?0.003:0.008;
+  lState.depositProgress+=speed;
+  lState.thickness=lState.depositProgress*(lState.method==='ALD'?5:50);
+  if(lState.depositProgress>=1){
+   lState.depositing=false;
+   if(lState.method==='CVD'){lState.cvdDone=true;lState.objDone[0]=true;}
+   if(lState.method==='PVD'){lState.pvdDone=true;lState.objDone[1]=true;}
+   if(lState.method==='ALD'){lState.aldDone=true;lState.objDone[2]=true;}
+   panelDirty=true;
+  }
+ }
+ // Method labels
+ ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';
+ const labels={CVD:'CVD — 化学气相沉积（均匀覆盖）',PVD:'PVD — 物理溅射（方向性强）',ALD:'ALD — 原子层沉积（逐层精确）'};
+ ctx.fillText(labels[lState.method],cx,wy+wH+30);
+ // Thickness display
+ if(lState.thickness>0){
+  ctx.fillStyle='#60a5fa';ctx.font='14px sans-serif';
+  ctx.fillText(`厚度: ${lState.thickness.toFixed(1)}nm  均匀性: ${lState.uniformity.toFixed(0)}%`,cx,wy-50);
+ }
+}
+// PLACEHOLDER_DRAW5
+// === Level 5: EUV Lithography ===
+function drawLevel5(t){
+ const cx=W/2,cy=H/2;
+ // Tin droplet target (left)
+ const tinX=W*0.12,tinY=cy-20;
+ ctx.fillStyle='#888';ctx.beginPath();ctx.arc(tinX,tinY,15,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#aaa';ctx.font='11px sans-serif';ctx.textAlign='center';
+ ctx.fillText('锡滴靶',tinX,tinY+30);
+ // Laser beam
+ if(lState.laserFired){
+  ctx.strokeStyle='#ff4444';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(tinX-80,tinY-40);ctx.lineTo(tinX,tinY);ctx.stroke();
+  drawGlow(tinX,tinY,25,'rgba(255,100,0,0.5)');
+  // EUV light generation
+  if(!lState.euvGenerated){
+   lState.euvGenerated=true;lState.objDone[0]=true;panelDirty=true;
+  }
+ }
+ // EUV photons
+ if(lState.euvGenerated){
+  // Multilayer mirrors (Mo/Si)
+  const m1x=W*0.35,m1y=cy-80;
+  const m2x=W*0.55,m2y=cy-80;
+  // Mirror 1
+  ctx.save();ctx.translate(m1x,m1y);ctx.rotate(-lState.mirrorAngle*Math.PI/180);
+  const mg1=ctx.createLinearGradient(-30,0,30,0);
+  mg1.addColorStop(0,'#4488cc');mg1.addColorStop(0.5,'#88ccff');mg1.addColorStop(1,'#4488cc');
+  ctx.fillStyle=mg1;ctx.fillRect(-30,-4,60,8);
+  // Mo/Si layers
+  for(let i=0;i<6;i++){
+   ctx.fillStyle=i%2===0?'rgba(100,150,200,0.5)':'rgba(200,200,220,0.5)';
+   ctx.fillRect(-30,-4+i*1.3,60,1.3);
+  }
+  ctx.restore();
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText('Mo/Si反射镜',m1x,m1y+25);
+  // Mirror 2
+  ctx.save();ctx.translate(m2x,m2y);ctx.rotate(lState.mirrorAngle*Math.PI/180);
+  ctx.fillStyle=mg1;ctx.fillRect(-30,-4,60,8);
+  for(let i=0;i<6;i++){
+   ctx.fillStyle=i%2===0?'rgba(100,150,200,0.5)':'rgba(200,200,220,0.5)';
+   ctx.fillRect(-30,-4+i*1.3,60,1.3);
+  }
+  ctx.restore();
+  ctx.fillText('Mo/Si反射镜',m2x,m2y+25);
+  // Reflective mask
+  const maskX=W*0.7,maskY=cy-40;
+  ctx.fillStyle='#2a2a4a';ctx.fillRect(maskX-40,maskY-5,80,10);
+  ctx.strokeStyle='#7c3aed';ctx.lineWidth=1;ctx.strokeRect(maskX-40,maskY-5,80,10);
+  // Pattern on mask
+  for(let i=0;i<5;i++){ctx.fillStyle='#c084fc';ctx.fillRect(maskX-30+i*14,maskY-3,8,6);}
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.fillText('反射式掩模',maskX,maskY+20);
+  // Wafer
+  const waferX=W*0.7,waferY=cy+80;
+  drawSiliconTexture(waferX-50,waferY,100,30);
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.fillText('硅片',waferX,waferY+45);
+  // EUV beam path
+  ctx.strokeStyle='rgba(167,100,252,0.6)';ctx.lineWidth=2;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(tinX+15,tinY);ctx.lineTo(m1x,m1y);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(m1x,m1y);ctx.lineTo(m2x,m2y);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(m2x,m2y);ctx.lineTo(maskX,maskY);ctx.stroke();
+  if(lState.focused){
+   ctx.beginPath();ctx.moveTo(maskX,maskY+5);ctx.lineTo(waferX,waferY);ctx.stroke();
+   // Exposed pattern on wafer
+   for(let i=0;i<5;i++){ctx.fillStyle='rgba(192,132,252,0.5)';ctx.fillRect(waferX-30+i*14,waferY+2,8,6);}
+  }
+  ctx.setLineDash([]);
+  // Photon particles
+  for(const p of lState.photons){
+   if(p.life<=0)continue;
+   p.x+=p.vx;p.y+=p.vy;p.life-=0.005;
+   const px=W*p.x,py=H*p.y;
+   ctx.fillStyle=`rgba(167,100,252,${p.life})`;ctx.beginPath();ctx.arc(px,py,3,0,Math.PI*2);ctx.fill();
+  }
+ }
+ // Info
+ ctx.fillStyle='#60a5fa';ctx.font='13px sans-serif';ctx.textAlign='center';
+ ctx.fillText(`EUV波长: 13.5nm | 功率: ${lState.power.toFixed(0)}W | 分辨率: ${lState.resolution.toFixed(1)}nm`,cx,H-50);
+}
+// PLACEHOLDER_DRAW6
+// === Level 6: Yield Optimization ===
+function drawLevel6(t){
+ const cx=W/2,cy=H/2;
+ const waferR=Math.min(W,H)*0.38;
+ // Wafer circle
+ ctx.fillStyle='#1a1a2a';ctx.beginPath();ctx.arc(cx,cy,waferR,0,Math.PI*2);ctx.fill();
+ ctx.strokeStyle='#333';ctx.lineWidth=2;ctx.stroke();
+ // Wafer notch
+ ctx.fillStyle='#0a0a1a';ctx.beginPath();ctx.arc(cx,cy+waferR,8,0,Math.PI,true);ctx.fill();
+ // Chip grid
+ if(lState.chips.length>0){
+  const rows=12,cols=12;
+  const chipW=waferR*2/(cols+1),chipH=waferR*2/(rows+1);
+  for(const chip of lState.chips){
+   const x=cx-waferR+chip.c*chipW+chipW*0.5+chipW*0.3;
+   const y=cy-waferR+chip.r*chipH+chipH*0.5+chipH*0.3;
+   ctx.fillStyle=chip.good?'rgba(74,222,128,0.6)':'rgba(248,113,113,0.6)';
+   ctx.fillRect(x,y,chipW*0.8,chipH*0.8);
+   ctx.strokeStyle=chip.good?'#22c55e':'#ef4444';ctx.lineWidth=0.5;
+   ctx.strokeRect(x,y,chipW*0.8,chipH*0.8);
+   // Tiny circuit pattern
+   if(chip.good){
+    ctx.strokeStyle='rgba(74,222,128,0.3)';ctx.lineWidth=0.3;
+    ctx.strokeRect(x+2,y+2,chipW*0.4,chipH*0.4);
+    ctx.strokeRect(x+chipW*0.4,y+chipH*0.4,chipW*0.3,chipH*0.3);
+   }else{
+    // Defect marker
+    ctx.fillStyle='rgba(255,50,50,0.8)';ctx.beginPath();
+    ctx.arc(x+chipW*0.4,y+chipH*0.4,3,0,Math.PI*2);ctx.fill();
+   }
+  }
+ }else{
+  // Empty wafer grid preview
+  ctx.strokeStyle='rgba(100,100,150,0.2)';ctx.lineWidth=0.5;
+  const gridSize=waferR*2/14;
+  for(let i=0;i<14;i++)for(let j=0;j<14;j++){
+   const x=cx-waferR+i*gridSize+gridSize*0.3;
+   const y=cy-waferR+j*gridSize+gridSize*0.3;
+   const dx=x+gridSize*0.4-cx,dy=y+gridSize*0.4-cy;
+   if(dx*dx+dy*dy<waferR*waferR*0.85){
+    ctx.strokeRect(x,y,gridSize*0.8,gridSize*0.8);
+   }
+  }
+ }
+ // Wafer label
+ ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';
+ ctx.fillText('300mm 晶圆',cx,cy+waferR+25);
+ // Yield display
+ if(lState.produced){
+  const good=lState.chips.filter(c=>c.good).length;
+  const total=lState.chips.length;
+  ctx.fillStyle='#60a5fa';ctx.font='16px sans-serif';
+  ctx.fillText(`良率: ${lState.yield.toFixed(1)}% (${good}/${total})`,cx,cy-waferR-30);
+  ctx.fillStyle=lState.profit>0?'#4ade80':'#f87171';ctx.font='14px sans-serif';
+  ctx.fillText(`利润: $${(lState.profit/1e6).toFixed(1)}M`,cx,cy-waferR-10);
+ }
+}
+// PLACEHOLDER_MAINLOOP
+// === Main Loop ===
+function mainLoop(t){
+ ctx.clearRect(0,0,W,H);
+ // Background grid
+ ctx.strokeStyle='rgba(30,30,60,0.3)';ctx.lineWidth=0.5;
+ for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+ for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+ switch(curLevel){
+  case 0:drawLevel0(t);break;
+  case 1:drawLevel1(t);break;
+  case 2:drawLevel2(t);break;
+  case 3:drawLevel3(t);break;
+  case 4:drawLevel4(t);break;
+  case 5:drawLevel5(t);break;
+  case 6:drawLevel6(t);break;
+ }
+ if(panelDirty){renderPanel();panelDirty=false;}
+ infoBar.textContent=`半导体制造 | 第${curLevel+1}关：${levels[curLevel].name} | 已通关：${completedLevels.size}/${levels.length}`;
+ animId=requestAnimationFrame(mainLoop);
+}
+renderPanel();
+animId=requestAnimationFrame(mainLoop);
+</script>
+</body>
+</html>

@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>蛋白质折叠 - 交互式教育游戏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#c0c0d0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+canvas{display:block;position:absolute;top:0;left:320px}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:#2a2a6a}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px}.sv{color:#60a5fa;font-weight:bold}
+#infoBar{position:absolute;bottom:0;left:320px;right:0;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid #1a1a3a;display:flex;align-items:center;padding:0 16px;font-size:12px;color:#888;z-index:10}
+.panel h3{color:#60a5fa;font-size:14px;margin:8px 0 4px}
+.panel h4{color:#93c5fd;font-size:12px;margin:6px 0 2px}
+.obj-item{font-size:12px;margin:2px 0;color:#a0a0c0}
+.obj-item.done{color:#4ade80}
+.aa-btn{display:inline-block;width:36px;height:36px;border-radius:50%;margin:2px;cursor:pointer;border:2px solid #333;font-size:9px;text-align:center;line-height:36px;font-weight:bold}
+.seq-input{width:100%;padding:8px;margin:4px 0;border-radius:6px;border:1px solid #333;background:#111;color:#c0c0d0;font-family:monospace;font-size:12px}
+</style>
+</head>
+<body>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="infoBar">蛋白质折叠交互式教育游戏 | 共7关</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const panel=document.getElementById('panel'),infoBar=document.getElementById('infoBar');
+let W,H,curLevel=0,animId,time=0;
+const completedLevels=new Set();
+const AA_DATA=[
+{name:'甘氨酸',code:'G',type:'hydrophilic',color:'#60a5fa'},
+{name:'丙氨酸',code:'A',type:'hydrophobic',color:'#f97316'},
+{name:'缬氨酸',code:'V',type:'hydrophobic',color:'#f97316'},
+{name:'亮氨酸',code:'L',type:'hydrophobic',color:'#f97316'},
+{name:'异亮氨酸',code:'I',type:'hydrophobic',color:'#f97316'},
+{name:'脯氨酸',code:'P',type:'hydrophobic',color:'#f97316'},
+{name:'苯丙氨酸',code:'F',type:'hydrophobic',color:'#f97316'},
+{name:'色氨酸',code:'W',type:'hydrophobic',color:'#f97316'},
+{name:'甲硫氨酸',code:'M',type:'hydrophobic',color:'#f97316'},
+{name:'丝氨酸',code:'S',type:'hydrophilic',color:'#60a5fa'},
+{name:'苏氨酸',code:'T',type:'hydrophilic',color:'#60a5fa'},
+{name:'半胱氨酸',code:'C',type:'hydrophilic',color:'#60a5fa'},
+{name:'酪氨酸',code:'Y',type:'hydrophilic',color:'#60a5fa'},
+{name:'天冬酰胺',code:'N',type:'hydrophilic',color:'#60a5fa'},
+{name:'谷氨酰胺',code:'Q',type:'hydrophilic',color:'#60a5fa'},
+{name:'天冬氨酸',code:'D',type:'negative',color:'#ef4444'},
+{name:'谷氨酸',code:'E',type:'negative',color:'#ef4444'},
+{name:'赖氨酸',code:'K',type:'positive',color:'#22c55e'},
+{name:'精氨酸',code:'R',type:'positive',color:'#22c55e'},
+{name:'组氨酸',code:'H',type:'positive',color:'#22c55e'}
+];
+const levels=[
+{name:'氨基酸 — 生命的字母表',concept:'蛋白质由20种氨基酸组成。疏水氨基酸（橙色）倾向藏在蛋白质内部，亲水氨基酸（蓝色）喜欢待在表面与水接触，带电氨基酸（红/绿）形成盐桥稳定结构。',
+ objs:['拖拽5个氨基酸到链上','包含至少1个疏水残基','包含至少1个带电残基'],
+ learn:'人体约有2万种蛋白质，每种由几十到几千个氨基酸按特定顺序排列。氨基酸序列决定了蛋白质的三维结构和功能。'},
+{name:'二级结构 — 氢键的力量',concept:'蛋白质骨架上的N-H和C=O之间形成氢键，驱动局部折叠。规律的氢键模式产生α-螺旋（弹簧状）和β-折叠（锯齿状）两种经典二级结构。',
+ objs:['形成α-螺旋','形成β-折叠','观察完整二级结构'],
+ learn:'α-螺旋每圈3.6个残基，螺距0.54nm。β-折叠由多条链平行排列，氢键在链间形成。头发的角蛋白主要是α-螺旋，蜘蛛丝主要是β-折叠。'},
+{name:'疏水坍缩 — 折叠的驱动力',concept:'疏水效应是蛋白质折叠最主要的驱动力。疏水残基为了逃离水环境而聚集到蛋白质内部，就像油滴在水中自发聚集一样，驱动蛋白质从展开链坍缩成紧凑球状。',
+ objs:['开始疏水坍缩','疏水核心形成','蛋白质折叠完成'],
+ learn:'疏水效应的本质是熵驱动：水分子围绕疏水基团形成有序"笼"结构（熵减少），疏水基团聚集后释放这些水分子，增加系统总熵。'},
+{name:'能量景观 — 折叠漏斗',concept:'蛋白质折叠可以用能量景观来理解：一个漏斗状的能量面，蛋白质从高能量的展开态（漏斗边缘）沿多条路径滚向最低能量的天然态（漏斗底部）。',
+ objs:['从3个不同起点释放小球','所有路径到达最低点','理解折叠漏斗理论'],
+ learn:'Levinthal悖论：一个100残基的蛋白质如果随机搜索所有构象，需要10^80年。但实际折叠只需毫秒到秒级——因为能量景观是漏斗形的，不需要遍历所有构象。'},
+{name:'分子伴侣 — 折叠助手',concept:'有些蛋白质无法自行正确折叠，需要分子伴侣帮助。GroEL/GroES是最著名的分子伴侣：桶状的GroEL捕获错误折叠的蛋白质，盖上GroES帽子，在隔离环境中重新折叠。',
+ objs:['捕获错误折叠蛋白','GroES封盖隔离','释放正确折叠蛋白'],
+ learn:'GroEL/GroES被称为"分子折叠笼"，每个循环消耗7个ATP。细胞中约10-15%的蛋白质需要分子伴侣辅助折叠。热休克蛋白（HSP）也是重要的分子伴侣。'},
+{name:'错误折叠 — 朊病毒传播',concept:'朊病毒（Prion）是一种错误折叠的蛋白质，它能像传染病一样将正常蛋白质"传染"为错误构象。这种链式反应导致蛋白质聚集，引发疯牛病、阿尔茨海默病等神经退行性疾病。',
+ objs:['观察朊病毒接触正常蛋白','触发构象转变','链式传播形成聚集体'],
+ learn:'朊病毒的发现者Stanley Prusiner因此获得1997年诺贝尔奖。阿尔茨海默病中的β-淀粉样蛋白和帕金森病中的α-突触核蛋白也有类似的错误折叠传播机制。'},
+{name:'AlphaFold — AI预测结构',concept:'DeepMind的AlphaFold2在2020年CASP14竞赛中以革命性精度预测蛋白质三维结构，解决了困扰生物学50年的蛋白质折叠问题。它从氨基酸序列直接预测原子级精度的3D结构。',
+ objs:['输入氨基酸序列','AI分析完成','生成3D结构预测'],
+ learn:'AlphaFold已预测了超过2亿种蛋白质的结构，覆盖几乎所有已知蛋白质。2024年诺贝尔化学奖授予了AlphaFold的开发者Demis Hassabis和John Jumper。'}
+];
+let lState={},panelDirty=true,dragAA=null,mouseX=0,mouseY=0;
+function resetLevelState(){
+ switch(curLevel){
+  case 0:lState={chain:[],objDone:[false,false,false],selectedAA:null};break;
+  case 1:lState={phase:0,helixAnim:0,sheetAnim:0,hbonds:[],showHelix:false,showSheet:false,objDone:[false,false,false]};break;
+  case 2:lState={phase:0,collapseT:0,residues:[],waterMols:[],objDone:[false,false,false]};initHydrophobic();break;
+  case 3:lState={balls:[],paths:[],startCount:0,arrived:0,objDone:[false,false,false]};break;
+  case 4:lState={phase:0,captureT:0,foldT:0,releaseT:0,misfolded:true,objDone:[false,false,false]};break;
+  case 5:lState={prions:[{x:0.3,y:0.5,bad:true}],normals:[],convertQueue:[],phase:0,spreadCount:0,objDone:[false,false,false]};initPrions();break;
+  case 6:lState={seq:'',phase:0,scanT:0,predictT:0,buildT:0,rotAngle:0,objDone:[false,false,false]};break;
+ }
+}
+function initHydrophobic(){
+ lState.residues=[];
+ const types=['hydrophobic','hydrophilic','hydrophobic','hydrophilic','negative','hydrophobic','positive','hydrophilic','hydrophobic','hydrophobic','hydrophilic','positive','hydrophobic','hydrophilic','hydrophobic'];
+ for(let i=0;i<types.length;i++){
+  lState.residues.push({x:0.1+i*0.055,y:0.5,type:types[i],tx:0,ty:0,ox:0.1+i*0.055,oy:0.5});
+ }
+ lState.waterMols=[];
+ for(let i=0;i<60;i++)lState.waterMols.push({x:Math.random(),y:Math.random(),vx:(Math.random()-0.5)*0.001,vy:(Math.random()-0.5)*0.001});
+}
+function initPrions(){
+ lState.normals=[];
+ for(let i=0;i<12;i++){
+  lState.normals.push({x:0.3+Math.random()*0.5,y:0.2+Math.random()*0.6,bad:false,converting:false,convertT:0});
+ }
+}
+function switchLevel(n){curLevel=n;resetLevelState();panelDirty=true;}
+function resize(){W=innerWidth-320;H=innerHeight;cv.width=W;cv.height=H;panelDirty=true;}
+window.onresize=resize;resize();resetLevelState();
+function renderPanel(){
+ let h='<h3 style="margin-bottom:8px">🧬 蛋白质折叠</h3><div style="margin-bottom:8px">';
+ levels.forEach((l,i)=>{
+  let cls='level-btn';if(i===curLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
+  h+=`<span class="${cls}" onclick="switchLevel(${i})">${i+1}</span>`;
+ });
+ h+='</div>';
+ const L=levels[curLevel];
+ h+=`<h3>第${curLevel+1}关：${L.name}</h3>`;
+ h+=`<div class="concept-box">${L.concept}</div>`;
+ h+='<h4>目标</h4>';
+ const od=lState.objDone||[];
+ L.objs.forEach((o,i)=>{h+=`<div class="obj-item${od[i]?' done':''}">${od[i]?'✅':'⬜'} ${o}</div>`;});
+ h+=renderLevelControls();
+ if(od.every(v=>v)){
+  if(!completedLevels.has(curLevel)){completedLevels.add(curLevel);panelDirty=true;}
+  h+=`<div class="learn-box">💡 ${L.learn}</div>`;
+  if(curLevel<levels.length-1){
+   h+=`<button class="act-btn green" onclick="switchLevel(${curLevel+1})">进入第${curLevel+2}关 →</button>`;
+  }else{
+   h+='<div class="learn-box" style="border-color:#f59e0b;color:#fbbf24">🎉 恭喜通关！你已掌握蛋白质折叠的核心知识——从氨基酸到AlphaFold，从分子伴侣到朊病毒，这些构成了结构生物学的完整图景。</div>';
+  }
+ }
+ panel.innerHTML=h;
+}
+function renderLevelControls(){
+ let h='';
+ switch(curLevel){
+ case 0:{
+  h+='<h4>氨基酸面板</h4><div style="margin:4px 0">';
+  h+='<div style="font-size:10px;color:#888;margin-bottom:4px">🟠疏水 🔵亲水 🔴负电 🟢正电</div>';
+  AA_DATA.forEach((aa,i)=>{
+   h+=`<span class="aa-btn" style="background:${aa.color}33;color:${aa.color};border-color:${aa.color}" onclick="addAAToChain(${i})" title="${aa.name}(${aa.type})">${aa.code}</span>`;
+  });
+  h+='</div>';
+  h+=`<div class="concept-box">链上氨基酸：<span class="sv">${lState.chain.length}</span>/5</div>`;
+  if(lState.chain.length>0)h+=`<button class="act-btn" onclick="lState.chain=[];lState.objDone=[false,false,false];panelDirty=true">清空链</button>`;
+  h+='<div class="hint-box">💡 点击氨基酸添加到肽链上，注意不同类型的性质差异</div>';
+  break;
+ }
+ case 1:{
+  h+=`<div class="concept-box">当前阶段：<span class="sv">${lState.phase===0?'准备':lState.phase===1?'α-螺旋形成中':lState.phase===2?'β-折叠形成中':'完成'}</span></div>`;
+  if(!lState.showHelix)h+=`<button class="act-btn" onclick="startHelix()">形成α-螺旋（氢键i→i+4）</button>`;
+  if(lState.showHelix&&!lState.showSheet)h+=`<button class="act-btn" onclick="startSheet()">形成β-折叠（链间氢键）</button>`;
+  h+='<div class="hint-box">💡 α-螺旋：同一条链上每隔4个残基形成氢键；β-折叠：相邻链之间形成氢键</div>';
+  break;
+ }
+ case 2:{
+  h+=`<div class="concept-box">坍缩进度：<span class="sv">${(lState.collapseT*100).toFixed(0)}%</span></div>`;
+  if(lState.phase===0)h+=`<button class="act-btn" onclick="startCollapse()">开始疏水坍缩</button>`;
+  h+='<div class="hint-box">💡 橙色=疏水残基，蓝色=亲水残基。观察疏水残基如何逃离水环境聚到内部</div>';
+  break;
+ }
+ case 3:{
+  h+=`<div class="concept-box">已释放小球：<span class="sv">${lState.startCount}</span>/3 | 到达底部：<span class="sv">${lState.arrived}</span></div>`;
+  h+='<div class="hint-box">💡 点击漏斗边缘的不同位置释放小球，观察它们沿不同路径滚向同一最低能量点</div>';
+  break;
+ }
+ case 4:{
+  h+=`<div class="concept-box">阶段：<span class="sv">${['等待捕获','捕获中','封盖折叠中','释放中','完成'][lState.phase]}</span></div>`;
+  if(lState.phase===0)h+=`<button class="act-btn" onclick="startCapture()">GroEL捕获错误折叠蛋白</button>`;
+  if(lState.phase===2)h+=`<button class="act-btn" onclick="startRelease()">释放蛋白质</button>`;
+  h+='<div class="hint-box">💡 GroEL/GroES像一个"折叠笼"，在隔离环境中帮助蛋白质重新折叠</div>';
+  break;
+ }
+ case 5:{
+  h+=`<div class="concept-box">感染数：<span class="sv">${lState.spreadCount}</span>/${lState.normals.length}</div>`;
+  if(lState.phase===0)h+=`<button class="act-btn" onclick="startPrionSpread()">朊病毒接触正常蛋白</button>`;
+  h+='<div class="hint-box">💡 红色=朊病毒（错误折叠），绿色=正常蛋白。观察链式传播的多米诺效应</div>';
+  break;
+ }
+ case 6:{
+  h+='<h4>输入氨基酸序列</h4>';
+  h+=`<input class="seq-input" id="seqInput" placeholder="例如: MVLSPADKTN" value="${lState.seq}" oninput="lState.seq=this.value.toUpperCase()">`;
+  h+=`<div class="concept-box">阶段：<span class="sv">${['等待输入','序列扫描中','结构预测中','3D构建中','完成'][lState.phase]}</span></div>`;
+  if(lState.phase===0)h+=`<button class="act-btn" onclick="startAlphaFold()">开始AlphaFold预测</button>`;
+  h+='<div class="hint-box">💡 输入任意氨基酸单字母序列（至少5个），观察AI如何预测蛋白质结构</div>';
+  break;
+ }
+ }
+ return h;
+}
+// Level 0 actions
+function addAAToChain(idx){
+ if(lState.chain.length>=5)return;
+ lState.chain.push(AA_DATA[idx]);
+ const c=lState.chain;
+ if(c.length>=5&&!lState.objDone[0]){lState.objDone[0]=true;}
+ if(c.some(a=>a.type==='hydrophobic')&&!lState.objDone[1]){lState.objDone[1]=true;}
+ if(c.some(a=>a.type==='positive'||a.type==='negative')&&!lState.objDone[2]){lState.objDone[2]=true;}
+ panelDirty=true;
+}
+// Level 1 actions
+function startHelix(){lState.phase=1;lState.showHelix=true;lState.helixAnim=0;lState.objDone[0]=true;panelDirty=true;}
+function startSheet(){lState.phase=2;lState.showSheet=true;lState.sheetAnim=0;lState.objDone[1]=true;panelDirty=true;}
+// Level 2 actions
+function startCollapse(){lState.phase=1;lState.objDone[0]=true;panelDirty=true;
+ const cx=0.5,cy=0.5;
+ lState.residues.forEach(r=>{
+  if(r.type==='hydrophobic'){
+   const a=Math.random()*Math.PI*2,d=0.05+Math.random()*0.06;
+   r.tx=cx+Math.cos(a)*d;r.ty=cy+Math.sin(a)*d;
+  }else{
+   const a=Math.random()*Math.PI*2,d=0.15+Math.random()*0.05;
+   r.tx=cx+Math.cos(a)*d;r.ty=cy+Math.sin(a)*d;
+  }
+ });
+}
+// Level 3 actions - click on canvas handled in mouse handler
+// Level 4 actions
+function startCapture(){lState.phase=1;lState.captureT=0;lState.objDone[0]=true;panelDirty=true;}
+function startRelease(){lState.phase=3;lState.releaseT=0;panelDirty=true;}
+// Level 5 actions
+function startPrionSpread(){lState.phase=1;lState.objDone[0]=true;panelDirty=true;}
+// Level 6 actions
+function startAlphaFold(){
+ const s=lState.seq.trim();
+ if(s.length<5){alert('请输入至少5个氨基酸（单字母代码）');return;}
+ lState.phase=1;lState.scanT=0;lState.predictT=0;lState.buildT=0;lState.objDone[0]=true;panelDirty=true;
+}
+// Mouse handling
+cv.addEventListener('mousemove',e=>{mouseX=e.offsetX;mouseY=e.offsetY;});
+cv.addEventListener('click',e=>{
+ const mx=e.offsetX/W,my=e.offsetY/H;
+ if(curLevel===3&&lState.startCount<3){
+  // Click on funnel edge to release ball
+  const funnelTop=0.15,funnelW=0.8;
+  if(my<funnelTop+0.15&&my>funnelTop-0.05){
+   lState.balls.push({x:mx,y:funnelTop,vx:0,vy:0,path:[{x:mx,y:funnelTop}],arrived:false,color:['#f97316','#60a5fa','#a855f7'][lState.startCount]});
+   lState.startCount++;
+   lState.objDone[0]=true;
+   panelDirty=true;
+  }
+ }
+});
+// Update logic
+function update(){
+ time+=0.016;
+ switch(curLevel){
+ case 1:
+  if(lState.showHelix&&lState.helixAnim<1)lState.helixAnim=Math.min(1,lState.helixAnim+0.01);
+  if(lState.showSheet&&lState.sheetAnim<1){
+   lState.sheetAnim=Math.min(1,lState.sheetAnim+0.01);
+   if(lState.sheetAnim>=1&&!lState.objDone[2]){lState.objDone[2]=true;panelDirty=true;}
+  }
+  break;
+ case 2:
+  if(lState.phase===1){
+   lState.collapseT=Math.min(1,lState.collapseT+0.005);
+   lState.residues.forEach(r=>{
+    r.x+=(r.tx-r.x)*0.02;r.y+=(r.ty-r.y)*0.02;
+   });
+   if(lState.collapseT>0.5&&!lState.objDone[1]){lState.objDone[1]=true;panelDirty=true;}
+   if(lState.collapseT>=1&&!lState.objDone[2]){lState.objDone[2]=true;lState.phase=2;panelDirty=true;}
+  }
+  lState.waterMols.forEach(w=>{
+   w.x+=w.vx;w.y+=w.vy;
+   w.vx+=(Math.random()-0.5)*0.0005;w.vy+=(Math.random()-0.5)*0.0005;
+   if(w.x<0||w.x>1)w.vx*=-1;if(w.y<0||w.y>1)w.vy*=-1;
+  });
+  break;
+ case 3:
+  lState.balls.forEach(b=>{
+   if(b.arrived)return;
+   const targetX=0.5,targetY=0.82;
+   const dx=targetX-b.x,dy=targetY-b.y;
+   const dist=Math.sqrt(dx*dx+dy*dy);
+   if(dist<0.02){
+    b.arrived=true;b.x=targetX;b.y=targetY;
+    lState.arrived++;
+    if(lState.arrived>=1&&!lState.objDone[1]){lState.objDone[1]=true;panelDirty=true;}
+    if(lState.arrived>=3&&!lState.objDone[2]){lState.objDone[2]=true;panelDirty=true;}
+    return;
+   }
+   // Funnel physics: gravity + slope toward center
+   b.vy+=0.0003;
+   b.vx+=(dx)*0.0002;
+   b.vx+=(Math.random()-0.5)*0.0003;
+   b.vx*=0.98;b.vy*=0.98;
+   b.x+=b.vx;b.y+=b.vy;
+   // Constrain to funnel shape
+   const funnelProgress=(b.y-0.15)/0.67;
+   const halfW=0.4*(1-funnelProgress*0.85);
+   if(b.x<0.5-halfW)b.x=0.5-halfW;
+   if(b.x>0.5+halfW)b.x=0.5+halfW;
+   b.path.push({x:b.x,y:b.y});
+  });
+  break;
+ case 4:
+  if(lState.phase===1){
+   lState.captureT=Math.min(1,lState.captureT+0.008);
+   if(lState.captureT>=1){lState.phase=2;lState.foldT=0;lState.objDone[1]=true;panelDirty=true;}
+  }
+  if(lState.phase===2){lState.foldT=Math.min(1,lState.foldT+0.005);}
+  if(lState.phase===3){
+   lState.releaseT=Math.min(1,lState.releaseT+0.008);
+   if(lState.releaseT>=1){lState.phase=4;lState.misfolded=false;lState.objDone[2]=true;panelDirty=true;}
+  }
+  break;
+ case 5:
+  if(lState.phase>=1){
+   let anyConverting=false;
+   lState.normals.forEach(n=>{
+    if(n.bad||n.converting)return;
+    // Check proximity to any bad prion
+    const badOnes=[...lState.normals.filter(p=>p.bad),{x:lState.prions[0].x,y:lState.prions[0].y}];
+    for(const b of badOnes){
+     const dx=n.x-b.x,dy=n.y-b.y;
+     if(Math.sqrt(dx*dx+dy*dy)<0.08){n.converting=true;n.convertT=0;break;}
+    }
+   });
+   lState.normals.forEach(n=>{
+    if(!n.converting||n.bad)return;
+    anyConverting=true;
+    n.convertT+=0.01;
+    if(n.convertT>=1){
+     n.bad=true;n.converting=false;
+     lState.spreadCount++;
+     if(lState.spreadCount>=1&&!lState.objDone[1]){lState.objDone[1]=true;panelDirty=true;}
+     if(lState.spreadCount>=5&&!lState.objDone[2]){lState.objDone[2]=true;panelDirty=true;}
+    }
+   });
+   // Move prion toward nearest normal
+   if(lState.phase===1){
+    const p=lState.prions[0];
+    const nearest=lState.normals.filter(n=>!n.bad).sort((a,b)=>Math.hypot(a.x-p.x,a.y-p.y)-Math.hypot(b.x-p.x,b.y-p.y))[0];
+    if(nearest){
+     const dx=nearest.x-p.x,dy=nearest.y-p.y,d=Math.sqrt(dx*dx+dy*dy);
+     if(d>0.01){p.x+=dx/d*0.001;p.y+=dy/d*0.001;}
+    }
+   }
+  }
+  break;
+ case 6:
+  if(lState.phase===1){
+   lState.scanT=Math.min(1,lState.scanT+0.008);
+   if(lState.scanT>=1){lState.phase=2;lState.objDone[1]=true;panelDirty=true;}
+  }
+  if(lState.phase===2){
+   lState.predictT=Math.min(1,lState.predictT+0.006);
+   if(lState.predictT>=1){lState.phase=3;lState.buildT=0;}
+  }
+  if(lState.phase===3){
+   lState.buildT=Math.min(1,lState.buildT+0.005);
+   if(lState.buildT>=1){lState.phase=4;lState.objDone[2]=true;panelDirty=true;}
+  }
+  if(lState.phase>=3)lState.rotAngle+=0.01;
+  break;
+ }
+}
+// Drawing helpers
+function drawBall(x,y,r,color,label){
+ ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+ const g=ctx.createRadialGradient(x-r*0.3,y-r*0.3,r*0.1,x,y,r);
+ g.addColorStop(0,color+'cc');g.addColorStop(1,color+'44');
+ ctx.fillStyle=g;ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
+ if(label){ctx.fillStyle='#fff';ctx.font=`bold ${Math.max(10,r*0.8)}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,x,y);}
+}
+function drawDashedLine(x1,y1,x2,y2,color){
+ ctx.beginPath();ctx.setLineDash([4,4]);ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=color;ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([]);
+}
+// Main draw
+function draw(){
+ ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+ switch(curLevel){
+ case 0:drawLevel0();break;
+ case 1:drawLevel1();break;
+ case 2:drawLevel2();break;
+ case 3:drawLevel3();break;
+ case 4:drawLevel4();break;
+ case 5:drawLevel5();break;
+ case 6:drawLevel6();break;
+ }
+}
+function drawLevel0(){
+ // Draw chain backbone
+ const cx=W*0.5,cy=H*0.4,spacing=50;
+ const startX=cx-(lState.chain.length-1)*spacing/2;
+ // Title
+ ctx.fillStyle='#555';ctx.font='14px sans-serif';ctx.textAlign='center';
+ ctx.fillText('肽链构建区',cx,40);
+ // Backbone line
+ if(lState.chain.length>1){
+  ctx.beginPath();ctx.moveTo(startX,cy);
+  for(let i=1;i<lState.chain.length;i++)ctx.lineTo(startX+i*spacing,cy);
+  ctx.strokeStyle='#ffffff44';ctx.lineWidth=3;ctx.stroke();
+ }
+ // Draw amino acids on chain
+ lState.chain.forEach((aa,i)=>{
+  drawBall(startX+i*spacing,cy,22,aa.color,aa.code);
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText(aa.name,startX+i*spacing,cy+38);
+ });
+ // Legend
+ const ly=H-80;
+ ctx.fillStyle='#666';ctx.font='12px sans-serif';ctx.textAlign='left';
+ ctx.fillText('图例：',20,ly);
+ drawBall(80,ly-4,8,'#f97316','');ctx.fillStyle='#f97316';ctx.fillText('疏水',95,ly);
+ drawBall(150,ly-4,8,'#60a5fa','');ctx.fillStyle='#60a5fa';ctx.fillText('亲水',165,ly);
+ drawBall(220,ly-4,8,'#ef4444','');ctx.fillStyle='#ef4444';ctx.fillText('负电',235,ly);
+ drawBall(290,ly-4,8,'#22c55e','');ctx.fillStyle='#22c55e';ctx.fillText('正电',305,ly);
+ // Empty slots
+ for(let i=lState.chain.length;i<5;i++){
+  ctx.beginPath();ctx.arc(startX+i*spacing,cy,22,0,Math.PI*2);
+  ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#333';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('空位',startX+i*spacing,cy+4);
+ }
+}
+function drawLevel1(){
+ const cx=W*0.5,cy=H*0.5;
+ // Draw backbone
+ ctx.fillStyle='#555';ctx.font='14px sans-serif';ctx.textAlign='center';
+ ctx.fillText('蛋白质二级结构',cx,30);
+ // Alpha helix on left
+ const hx=W*0.28,hy=cy;
+ ctx.fillStyle='#60a5fa44';ctx.font='13px sans-serif';ctx.textAlign='center';
+ ctx.fillText('α-螺旋',hx,hy-160);
+ if(lState.showHelix){
+  const t=lState.helixAnim;
+  const nTurns=4,pts=Math.floor(t*60);
+  ctx.beginPath();
+  for(let i=0;i<=pts;i++){
+   const angle=i*0.2;
+   const px=hx+Math.cos(angle)*40;
+   const py=hy-120+i*4;
+   if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+  }
+  ctx.strokeStyle='#ffffff';ctx.lineWidth=2.5;ctx.stroke();
+  // Draw residue balls on helix
+  for(let i=0;i<pts;i+=5){
+   const angle=i*0.2;
+   const px=hx+Math.cos(angle)*40;
+   const py=hy-120+i*4;
+   drawBall(px,py,8,'#60a5fa','');
+  }
+  // Hydrogen bonds (dashed)
+  for(let i=0;i<pts-18;i+=5){
+   const a1=i*0.2,a2=(i+18)*0.2;
+   const x1=hx+Math.cos(a1)*40,y1=hy-120+i*4;
+   const x2=hx+Math.cos(a2)*40,y2=hy-120+(i+18)*4;
+   drawDashedLine(x1,y1,x2,y2,'#fbbf2466');
+  }
+ }
+ // Beta sheet on right
+ const sx=W*0.72,sy=cy;
+ ctx.fillStyle='#22c55e44';ctx.font='13px sans-serif';ctx.textAlign='center';
+ ctx.fillText('β-折叠',sx,sy-160);
+ if(lState.showSheet){
+  const t=lState.sheetAnim;
+  const nStrands=4,strandLen=Math.floor(t*200);
+  for(let s=0;s<nStrands;s++){
+   const baseX=sx-60+s*40;
+   ctx.beginPath();
+   const dir=s%2===0?1:-1;
+   for(let i=0;i<Math.min(strandLen,200);i++){
+    const px=baseX+Math.sin(i*0.15)*8;
+    const py=sy-100+i*dir*1+(s%2===0?i:200-i);
+    if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+   }
+   ctx.strokeStyle='#ffffff';ctx.lineWidth=2;ctx.stroke();
+   // Residue balls
+   for(let i=0;i<Math.min(strandLen,200);i+=30){
+    const px=baseX+Math.sin(i*0.15)*8;
+    const py=sy-100+i*dir*1+(s%2===0?i:200-i);
+    drawBall(px,py,7,'#22c55e','');
+   }
+  }
+  // Inter-strand hydrogen bonds
+  if(t>0.3){
+   for(let s=0;s<nStrands-1;s++){
+    const x1=sx-60+s*40,x2=sx-60+(s+1)*40;
+    for(let i=20;i<Math.min(strandLen,180);i+=40){
+     drawDashedLine(x1+8,sy-80+i,x2-8,sy-80+i,'#fbbf2466');
+    }
+   }
+  }
+ }
+}
+function drawLevel2(){
+ // Water background
+ ctx.fillStyle='#0a1a3a';ctx.fillRect(0,0,W,H);
+ // Water molecules
+ lState.waterMols.forEach(w=>{
+  ctx.beginPath();ctx.arc(w.x*W,w.y*H,3,0,Math.PI*2);ctx.fillStyle='#60a5fa22';ctx.fill();
+ });
+ ctx.fillStyle='#60a5fa33';ctx.font='12px sans-serif';ctx.textAlign='center';
+ ctx.fillText('水环境',W*0.5,25);
+ // Draw residues with connections
+ const res=lState.residues;
+ if(res.length>1){
+  ctx.beginPath();ctx.moveTo(res[0].x*W,res[0].y*H);
+  for(let i=1;i<res.length;i++)ctx.lineTo(res[i].x*W,res[i].y*H);
+  ctx.strokeStyle='#ffffff33';ctx.lineWidth=2;ctx.stroke();
+ }
+ res.forEach(r=>{
+  const col=r.type==='hydrophobic'?'#f97316':r.type==='hydrophilic'?'#60a5fa':r.type==='negative'?'#ef4444':'#22c55e';
+  drawBall(r.x*W,r.y*H,12,col,'');
+ });
+ // Labels
+ if(lState.phase>=1){
+  ctx.fillStyle='#f9731688';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('疏水核心',W*0.5,H*0.5-50);
+  // Draw hydrophobic core circle
+  ctx.beginPath();ctx.arc(W*0.5,H*0.5,W*0.08,0,Math.PI*2);ctx.strokeStyle='#f9731633';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
+ }
+}
+function drawLevel3(){
+ // Energy funnel
+ ctx.fillStyle='#555';ctx.font='14px sans-serif';ctx.textAlign='center';
+ ctx.fillText('能量景观漏斗',W*0.5,25);
+ ctx.fillStyle='#888';ctx.font='11px sans-serif';
+ ctx.fillText('← 点击边缘释放小球 →',W*0.5,50);
+ // Draw funnel with 3D perspective
+ const fTop=H*0.15,fBot=H*0.85,fCx=W*0.5;
+ const topW=W*0.4,botW=W*0.03;
+ // Funnel gradient fill
+ for(let y=fTop;y<fBot;y+=2){
+  const t=(y-fTop)/(fBot-fTop);
+  const hw=topW*(1-t*0.85)+botW*t;
+  const r=Math.floor(20+t*30),g=Math.floor(20+t*10),b=Math.floor(60+t*40);
+  ctx.fillStyle=`rgb(${r},${g},${b})`;
+  ctx.fillRect(fCx-hw,y,hw*2,2);
+ }
+ // Funnel edges
+ ctx.beginPath();ctx.moveTo(fCx-topW,fTop);ctx.lineTo(fCx-botW,fBot);ctx.strokeStyle='#3b82f644';ctx.lineWidth=2;ctx.stroke();
+ ctx.beginPath();ctx.moveTo(fCx+topW,fTop);ctx.lineTo(fCx+botW,fBot);ctx.strokeStyle='#3b82f644';ctx.lineWidth=2;ctx.stroke();
+ // Contour lines
+ for(let i=1;i<8;i++){
+  const t=i/8;
+  const y=fTop+t*(fBot-fTop);
+  const hw=topW*(1-t*0.85);
+  ctx.beginPath();ctx.ellipse(fCx,y,hw,8,0,0,Math.PI*2);ctx.strokeStyle='#3b82f622';ctx.lineWidth=1;ctx.stroke();
+ }
+ // Labels
+ ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='right';
+ ctx.fillText('高能量（展开态）',fCx-topW-10,fTop+10);
+ ctx.textAlign='left';
+ ctx.fillText('低能量（天然态）',fCx+botW+10,fBot-10);
+ // Energy axis
+ ctx.beginPath();ctx.moveTo(30,fTop);ctx.lineTo(30,fBot);ctx.strokeStyle='#666';ctx.lineWidth=1;ctx.stroke();
+ ctx.beginPath();ctx.moveTo(25,fBot-5);ctx.lineTo(30,fBot);ctx.lineTo(35,fBot-5);ctx.strokeStyle='#666';ctx.stroke();
+ ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='center';
+ ctx.save();ctx.translate(15,H*0.5);ctx.rotate(-Math.PI/2);ctx.fillText('自由能',0,0);ctx.restore();
+ // Draw balls and paths
+ lState.balls.forEach(b=>{
+  // Path trail
+  if(b.path.length>1){
+   ctx.beginPath();ctx.moveTo(b.path[0].x*W,b.path[0].y*H);
+   b.path.forEach(p=>ctx.lineTo(p.x*W,p.y*H));
+   ctx.strokeStyle=b.color+'66';ctx.lineWidth=2;ctx.stroke();
+  }
+  drawBall(b.x*W,b.y*H,10,b.color,'');
+ });
+ // Target at bottom
+ drawBall(fCx,fBot,8,'#fbbf24','★');
+}
+function drawLevel4(){
+ const cx=W*0.5,cy=H*0.5;
+ ctx.fillStyle='#555';ctx.font='14px sans-serif';ctx.textAlign='center';
+ ctx.fillText('分子伴侣 GroEL/GroES',cx,30);
+ // GroEL barrel
+ const bw=120,bh=180,bx=cx-bw/2,by=cy-bh/2;
+ ctx.fillStyle='#1a3a2a';ctx.strokeStyle='#22c55e66';ctx.lineWidth=3;
+ ctx.beginPath();ctx.moveTo(bx+12,by);ctx.lineTo(bx+bw-12,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+12);ctx.lineTo(bx+bw,by+bh-12);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-12,by+bh);ctx.lineTo(bx+12,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-12);ctx.lineTo(bx,by+12);ctx.quadraticCurveTo(bx,by,bx+12,by);ctx.closePath();ctx.fill();ctx.stroke();
+ ctx.fillStyle='#22c55e88';ctx.font='12px sans-serif';ctx.textAlign='center';
+ ctx.fillText('GroEL',cx,by+bh+20);
+ // GroES cap
+ if(lState.phase>=2){
+  const capY=by-30+Math.max(0,(1-lState.foldT)*(-40));
+  ctx.fillStyle='#2a4a3a';ctx.strokeStyle='#4ade8066';ctx.lineWidth=2;
+  ctx.beginPath();ctx.ellipse(cx,capY,bw/2+10,20,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#4ade8088';ctx.font='11px sans-serif';ctx.fillText('GroES',cx,capY-5);
+ }
+ // Protein inside
+ if(lState.phase<=2){
+  const protY=cy;
+  if(lState.phase===0){
+   // Misfolded protein outside
+   drawMisfoldedProtein(cx-180,cy,'#ef4444');
+   ctx.fillStyle='#ef444488';ctx.font='11px sans-serif';ctx.textAlign='center';
+   ctx.fillText('错误折叠',cx-180,cy+50);
+  }else if(lState.phase===1){
+   // Moving into barrel
+   const t=lState.captureT;
+   const px=cx-180+t*180,py=cy;
+   drawMisfoldedProtein(px,py,'#ef4444');
+  }else{
+   // Inside barrel, folding
+   const t=lState.foldT;
+   if(t<0.5){drawMisfoldedProtein(cx,cy,'#f97316');}
+   else{drawFoldedProtein(cx,cy,'#4ade80',t);}
+  }
+ }
+ if(lState.phase>=3){
+  const t=lState.releaseT;
+  const px=cx+t*180,py=cy;
+  drawFoldedProtein(px,py,'#4ade80',1);
+  if(lState.phase===4){
+   ctx.fillStyle='#4ade8088';ctx.font='11px sans-serif';ctx.textAlign='center';
+   ctx.fillText('正确折叠！',cx+180,cy+50);
+  }
+ }
+ // ATP indicators
+ for(let i=0;i<7;i++){
+  const a=i*Math.PI*2/7+time;
+  const ax=cx+Math.cos(a)*(bw/2+30),ay=cy+Math.sin(a)*(bh/2+20);
+  ctx.fillStyle='#fbbf2466';ctx.font='9px sans-serif';ctx.textAlign='center';
+  ctx.fillText('ATP',ax,ay);
+ }
+}
+function drawMisfoldedProtein(x,y,color){
+ ctx.beginPath();
+ for(let i=0;i<20;i++){
+  const a=i*0.7+Math.sin(time*2+i)*0.3;
+  const r=20+Math.sin(i*1.5+time)*10;
+  const px=x+Math.cos(a)*r,py=y+Math.sin(a)*r;
+  if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+ }
+ ctx.closePath();ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.stroke();
+ ctx.fillStyle=color+'22';ctx.fill();
+}
+function drawFoldedProtein(x,y,color,t){
+ const r=20*t;
+ ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+ const g=ctx.createRadialGradient(x-r*0.3,y-r*0.3,r*0.1,x,y,r);
+ g.addColorStop(0,color+'aa');g.addColorStop(1,color+'33');
+ ctx.fillStyle=g;ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();
+}
+function drawLevel5(){
+ ctx.fillStyle='#555';ctx.font='14px sans-serif';ctx.textAlign='center';
+ ctx.fillText('朊病毒链式传播',W*0.5,30);
+ // Draw normal proteins
+ lState.normals.forEach(n=>{
+  const x=n.x*W,y=n.y*H;
+  if(n.bad){
+   // Misfolded - red angular shape
+   ctx.beginPath();
+   for(let i=0;i<6;i++){
+    const a=i*Math.PI/3+Math.sin(time+n.x*10)*0.2;
+    const r=18+Math.sin(i*2)*5;
+    const px=x+Math.cos(a)*r,py=y+Math.sin(a)*r;
+    if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+   }
+   ctx.closePath();ctx.fillStyle='#ef444433';ctx.fill();ctx.strokeStyle='#ef4444';ctx.lineWidth=2;ctx.stroke();
+   ctx.fillStyle='#ef4444';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText('PrPSc',x,y+3);
+  }else if(n.converting){
+   // Converting - transitioning color
+   const t=n.convertT;
+   const r=Math.floor(34+t*200),g=Math.floor(197-t*129),b=Math.floor(94-t*26);
+   const col=`rgb(${r},${g},${b})`;
+   ctx.beginPath();ctx.arc(x,y,16,0,Math.PI*2);ctx.fillStyle=col+'44';ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
+   // Shake effect
+   ctx.fillStyle=col;ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText('变构中...',x+Math.sin(time*20)*3,y+3);
+  }else{
+   // Normal - green smooth circle
+   ctx.beginPath();ctx.arc(x,y,16,0,Math.PI*2);
+   ctx.fillStyle='#22c55e33';ctx.fill();ctx.strokeStyle='#22c55e';ctx.lineWidth=2;ctx.stroke();
+   ctx.fillStyle='#22c55e';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText('PrPC',x,y+3);
+  }
+ });
+ // Draw original prion
+ const p=lState.prions[0];
+ const px=p.x*W,py=p.y*H;
+ ctx.beginPath();
+ for(let i=0;i<8;i++){
+  const a=i*Math.PI/4+Math.sin(time*3)*0.3;
+  const r=22+Math.sin(i*2+time)*6;
+  const ppx=px+Math.cos(a)*r,ppy=py+Math.sin(a)*r;
+  if(i===0)ctx.moveTo(ppx,ppy);else ctx.lineTo(ppx,ppy);
+ }
+ ctx.closePath();ctx.fillStyle='#ef444444';ctx.fill();ctx.strokeStyle='#ef4444';ctx.lineWidth=3;ctx.stroke();
+ ctx.fillStyle='#ef4444';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('朊病毒',px,py+4);
+ // Legend
+ ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='left';
+ drawBall(20,H-30,8,'#22c55e','');ctx.fillText('正常蛋白 PrPC',35,H-26);
+ drawBall(160,H-30,8,'#ef4444','');ctx.fillText('朊病毒 PrPSc',175,H-26);
+}
+function drawLevel6(){
+ const cx=W*0.5,cy=H*0.5;
+ ctx.fillStyle='#555';ctx.font='14px sans-serif';ctx.textAlign='center';
+ ctx.fillText('AlphaFold — AI蛋白质结构预测',cx,30);
+ const seq=lState.seq||'';
+ if(lState.phase===0){
+  // Show prompt
+  ctx.fillStyle='#333';ctx.font='16px sans-serif';ctx.textAlign='center';
+  ctx.fillText('在左侧面板输入氨基酸序列',cx,cy);
+  ctx.fillStyle='#555';ctx.font='12px sans-serif';
+  ctx.fillText('例如: MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSH',cx,cy+30);
+  return;
+ }
+ // Phase 1: Sequence scanning
+ if(lState.phase>=1){
+  const scanX=20,scanY=70,charW=14;
+  ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText('输入序列：',scanX,scanY-10);
+  for(let i=0;i<seq.length;i++){
+   const aa=AA_DATA.find(a=>a.code===seq[i]);
+   const col=aa?aa.color:'#666';
+   const scanned=lState.phase>1||i<lState.scanT*seq.length;
+   ctx.fillStyle=scanned?col:'#333';
+   ctx.font='bold 13px monospace';
+   ctx.fillText(seq[i],scanX+i*charW,scanY+10);
+   if(lState.phase===1&&Math.abs(i-lState.scanT*seq.length)<1){
+    ctx.fillStyle='#fbbf24';ctx.fillRect(scanX+i*charW,scanY+14,charW,2);
+   }
+  }
+ }
+ // Phase 2: Neural network animation
+ if(lState.phase>=2){
+  const nnX=W*0.15,nnY=H*0.35,nnW=W*0.7,nnH=H*0.2;
+  ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('Evoformer 注意力模块',cx,nnY-15);
+  // Neural network layers
+  const layers=[5,8,12,8,5];
+  const layerSpacing=nnW/(layers.length-1);
+  layers.forEach((n,li)=>{
+   const lx=nnX+li*layerSpacing;
+   const nodeSpacing=nnH/(n-1||1);
+   for(let ni=0;ni<n;ni++){
+    const ny=nnY+ni*nodeSpacing;
+    const active=lState.phase>2||lState.predictT>(li/layers.length);
+    ctx.beginPath();ctx.arc(lx,ny,4,0,Math.PI*2);
+    ctx.fillStyle=active?'#60a5fa':'#333';ctx.fill();
+    // Connections to next layer
+    if(li<layers.length-1){
+     const nn=layers[li+1],ns2=nnH/(nn-1||1);
+     for(let j=0;j<nn;j++){
+      const nx=nnX+(li+1)*layerSpacing,nny=nnY+j*ns2;
+      ctx.beginPath();ctx.moveTo(lx,ny);ctx.lineTo(nx,nny);
+      ctx.strokeStyle=active?'#60a5fa11':'#ffffff08';ctx.lineWidth=0.5;ctx.stroke();
+     }
+    }
+   }
+  });
+  // Progress bar
+  const pct=lState.phase===2?lState.predictT:1;
+  const pbY=nnY+nnH+25;
+  ctx.fillStyle='#1a1a3a';ctx.fillRect(nnX,pbY,nnW,8);
+  ctx.fillStyle='#3b82f6';ctx.fillRect(nnX,pbY,nnW*pct,8);
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`置信度分析 ${(pct*100).toFixed(0)}%`,cx,pbY+20);
+ }
+ // Phase 3-4: 3D structure (wireframe rotation)
+ if(lState.phase>=3){
+  const structY=H*0.72,structR=Math.min(W,H)*0.18;
+  const buildT=lState.phase===3?lState.buildT:1;
+  ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText(lState.phase===4?'预测结构 vs 实验结构':'构建3D结构...',cx,structY-structR-20);
+  // Generate pseudo-3D wireframe from sequence
+  const nPts=Math.floor(seq.length*buildT);
+  const pts=[];
+  for(let i=0;i<nPts;i++){
+   const t=i/seq.length;
+   const a=t*Math.PI*6+lState.rotAngle;
+   const r2=structR*(0.3+t*0.5)*Math.sin(t*Math.PI);
+   const x3d=Math.cos(a)*r2;
+   const z3d=Math.sin(a)*r2;
+   const y3d=(t-0.5)*structR*1.5;
+   // Simple perspective
+   const scale=1/(1+z3d*0.002);
+   pts.push({x:cx+x3d*scale,y:structY+y3d*scale,z:z3d,scale:scale});
+  }
+  // Draw backbone
+  if(pts.length>1){
+   ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+   for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);
+   ctx.strokeStyle='#ffffffaa';ctx.lineWidth=2;ctx.stroke();
+  }
+  // Draw residue spheres
+  pts.forEach((p,i)=>{
+   const aa=AA_DATA.find(a=>a.code===seq[i]);
+   const col=aa?aa.color:'#888';
+   const r=5*p.scale;
+   drawBall(p.x,p.y,Math.max(3,r),col,'');
+  });
+  // Phase 4: experimental structure overlay
+  if(lState.phase===4){
+   ctx.strokeStyle='#fbbf2444';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
+   ctx.beginPath();
+   for(let i=0;i<pts.length;i++){
+    const t=i/seq.length;
+    const a=t*Math.PI*6+lState.rotAngle+0.05;
+    const r2=structR*(0.3+t*0.5)*Math.sin(t*Math.PI)*1.02;
+    const x3d=Math.cos(a)*r2,z3d=Math.sin(a)*r2;
+    const y3d=(t-0.5)*structR*1.5;
+    const scale=1/(1+z3d*0.002);
+    const px=cx+x3d*scale+Math.sin(i*0.5)*2,py=structY+y3d*scale+Math.cos(i*0.5)*2;
+    if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+   }
+   ctx.stroke();ctx.setLineDash([]);
+   // Legend
+   ctx.fillStyle='#ffffffaa';ctx.font='10px sans-serif';ctx.textAlign='left';
+   ctx.fillRect(cx+structR+20,structY-20,30,2);ctx.fillText('AI预测',cx+structR+55,structY-16);
+   ctx.strokeStyle='#fbbf24';ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(cx+structR+20,structY);ctx.lineTo(cx+structR+50,structY);ctx.stroke();ctx.setLineDash([]);
+   ctx.fillStyle='#fbbf24';ctx.fillText('实验结构',cx+structR+55,structY+4);
+   // RMSD score
+   ctx.fillStyle='#4ade80';ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+   ctx.fillText('RMSD = 0.96 Å（高精度匹配）',cx,structY+structR+30);
+  }
+ }
+}
+// Main loop
+function mainLoop(){
+ update();
+ draw();
+ if(panelDirty){renderPanel();panelDirty=false;}
+ animId=requestAnimationFrame(mainLoop);
+}
+renderPanel();
+mainLoop();
+</script>
+</body>
+</html>

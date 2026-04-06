@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>火箭物理原理探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#ff6a33}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#ff6a33,#ff9a5c);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+
+#lp{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,26,.97);border-right:1px solid #1a1a3a;z-index:20;display:none;flex-direction:column;overflow:hidden}
+#lp .lp-head{padding:12px 16px;border-bottom:1px solid #1a1a3a;display:flex;align-items:center;justify-content:space-between}
+#lp .lp-title{font-size:14px;font-weight:700;color:#ff6a33}
+#lp .lp-step{font-size:11px;color:#888}
+#lp-body{flex:1;overflow-y:auto;padding:0}
+
+.mission{margin:12px;padding:14px;background:#141428;border:1px solid #2a2a5a;border-radius:10px}
+.mission .m-level{font-size:11px;color:#ff6a33;font-weight:600;letter-spacing:1px}
+.mission .m-title{font-size:17px;font-weight:700;margin:4px 0;color:#eee}
+.mission .m-desc{font-size:13px;color:#999;line-height:1.6}
+.mission .m-concept{margin-top:10px;padding:8px 10px;background:#0e0e20;border-radius:6px;font-size:12px;color:#6a8aff;line-height:1.6}
+.mission .m-concept b{color:#8ab4ff}
+.goal-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px}
+.goal-row .g-icon{font-size:15px}
+.goal-row .g-text{color:#ccc;flex:1}
+.hint-b{margin:0 12px;padding:10px 14px;background:#1a1a38;border-left:3px solid #ff6a33;border-radius:0 8px 8px 0;font-size:12px;color:#ffcc80;line-height:1.5}
+.act-section{margin:12px}
+.act-section .as-label{font-size:12px;color:#888;margin-bottom:8px;font-weight:600}
+.act-btn{width:100%;padding:12px;background:linear-gradient(135deg,#ff6a33,#ff9a5c);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;transition:all .2s}
+.act-btn:hover{filter:brightness(1.1)}
+.act-btn:disabled{background:#333;color:#666;cursor:not-allowed;filter:none}
+.act-btn.green{background:linear-gradient(135deg,#2aaa5a,#3cc76a)}
+.act-btn.red{background:linear-gradient(135deg,#e8443a,#ff6b6b)}
+.act-btn.blue{background:linear-gradient(135deg,#3a7aff,#5a9aff)}
+
+#info-bar{position:absolute;top:12px;right:12px;background:rgba(10,10,26,.95);border:1px solid #1a1a3a;border-radius:10px;padding:12px 16px;z-index:20;min-width:200px;display:none;font-size:12px}
+#info-bar .ib-title{font-size:11px;color:#ff6a33;font-weight:600;margin-bottom:6px}
+.ib-row{display:flex;justify-content:space-between;padding:3px 0}
+.ib-row .ib-k{color:#888}
+.ib-row .ib-v{font-weight:600;font-variant-numeric:tabular-nums}
+
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:36px;background:rgba(10,10,26,.95);border-top:1px solid #1a1a3a;z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}
+#bottom-bar .bb-right{text-align:right}
+
+.result-box{text-align:center;max-width:420px;background:rgba(10,10,26,.98);border:1px solid #2a2a5a;border-radius:16px;padding:28px 36px}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-desc{font-size:13px;color:#999;line-height:1.6;margin-bottom:16px}
+.result-box .rb-learn{text-align:left;background:#0e0e20;border-radius:8px;padding:12px 14px;font-size:12px;color:#8ab4ff;line-height:1.7;margin-bottom:16px}
+.result-box .rb-learn b{color:#ff6a33}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#ff6a33;color:#fff}
+.result-box .btn-retry{background:#2a2a5a;color:#ccc}
+
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:12px;color:#aaa;display:block;margin-bottom:4px}
+.slider-wrap input[type=range]{width:100%;accent-color:#ff6a33}
+.slider-wrap .sv{font-size:13px;color:#ff6a33;font-weight:700}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🚀 <span class="gold">火箭</span>物理原理探险</h1>
+  <div class="sub">6 个关卡，亲手体验航天核心物理</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">💨</div>喷气推进</div>
+    <div class="feat"><div class="fi">⚖️</div>推重比</div>
+    <div class="feat"><div class="fi">🔩</div>多级火箭</div>
+    <div class="feat"><div class="fi">🌍</div>入轨</div>
+    <div class="feat"><div class="fi">🔥</div>再入大气</div>
+    <div class="feat"><div class="fi">🪐</div>引力弹弓</div>
+  </div>
+</div>
+</div>
+
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+
+<div id="lp">
+  <div class="lp-head"><span class="lp-title" id="lpTitle">第 1 关</span><span class="lp-step" id="lpStep">1/6</span></div>
+  <div id="lp-body"></div>
+</div>
+<div id="info-bar"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+
+<script>
+// ============ 全局变量 ============
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let CW, CH, time = 0;
+let gameState = 'start';
+let currentLevel = 0;
+let levelState = {};
+let stars = [];
+let particles = [];
+let animId;
+
+// ============ 星空 ============
+function initStars() {
+  stars = [];
+  for (let i = 0; i < 80; i++) {
+    stars.push({ x: Math.random() * CW, y: Math.random() * CH, r: Math.random() * 1.5 + 0.3, twinkle: Math.random() * Math.PI * 2, speed: Math.random() * 0.02 + 0.005 });
+  }
+}
+function drawStars() {
+  for (let s of stars) {
+    const a = 0.4 + 0.6 * Math.abs(Math.sin(s.twinkle + time * s.speed));
+    ctx.fillStyle = `rgba(255,255,255,${a})`;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// ============ 粒子系统 ============
+function addParticle(x, y, vx, vy, color, life, size) {
+  particles.push({ x, y, vx, vy, color, life, maxLife: life, size: size || 3 });
+}
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.life -= dt;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+function drawParticles() {
+  for (let p of particles) {
+    const a = Math.max(0, p.life / p.maxLife);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size * a, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ============ 绘制火箭 ============
+function drawRocket(x, y, angle, scale, flameDir, flameOn) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  const s = scale || 1;
+  // 箭身
+  ctx.fillStyle = '#ddd';
+  ctx.fillRect(-8 * s, -20 * s, 16 * s, 40 * s);
+  // 箭头
+  ctx.fillStyle = '#ff6a33';
+  ctx.beginPath();
+  ctx.moveTo(0, -32 * s);
+  ctx.lineTo(-10 * s, -20 * s);
+  ctx.lineTo(10 * s, -20 * s);
+  ctx.closePath();
+  ctx.fill();
+  // 尾翼
+  ctx.fillStyle = '#888';
+  ctx.beginPath();
+  ctx.moveTo(-8 * s, 20 * s);
+  ctx.lineTo(-16 * s, 28 * s);
+  ctx.lineTo(-8 * s, 24 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(8 * s, 20 * s);
+  ctx.lineTo(16 * s, 28 * s);
+  ctx.lineTo(8 * s, 24 * s);
+  ctx.closePath();
+  ctx.fill();
+  // 火焰
+  if (flameOn) {
+    for (let i = 0; i < 5; i++) {
+      const fx = (Math.random() - 0.5) * 10 * s;
+      const fy = 20 * s + Math.random() * 20 * s;
+      const fr = (Math.random() * 4 + 2) * s;
+      ctx.fillStyle = Math.random() > 0.5 ? '#ff6a33' : '#ffcc00';
+      ctx.globalAlpha = 0.7 + Math.random() * 0.3;
+      ctx.beginPath(); ctx.arc(fx, fy, fr, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+}
+
+// ============ 关卡定义 ============
+const LEVELS = [
+  // --- 第1关：牛顿第三定律 ---
+  {
+    id:1, title:'牛顿第三定律 — 喷气推进', icon:'💨',
+    desc:'作用力=反作用力。向一个方向喷气，火箭朝反方向运动。在太空中没有空气也能飞！',
+    concept:'<b>牛顿第三定律</b>：每一个作用力都有一个大小相等、方向相反的反作用力。\n\n火箭向下喷出高速气体，气体反过来把火箭向上推。不需要"推空气"，在真空中一样有效。',
+    goals:[{label:'理解喷气方向与运动方向相反',check:s=>s.thrustCount>=3},{label:'让火箭到达目标区域',check:s=>s.reached}],
+    hint:'点击方向按钮喷气，火箭会朝反方向运动。把火箭移到右上角的虚线圆圈内！',
+    actions: s => {
+      let h = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">';
+      h += `<button class="act-btn" onclick="doAction('thrust','up')" style="grid-column:1/3">⬆️ 向上喷气（火箭向下）</button>`;
+      h += `<button class="act-btn" onclick="doAction('thrust','left')">⬅️ 向左喷气</button>`;
+      h += `<button class="act-btn" onclick="doAction('thrust','right')">➡️ 向右喷气</button>`;
+      h += `<button class="act-btn" onclick="doAction('thrust','down')" style="grid-column:1/3">⬇️ 向下喷气（火箭向上）</button>`;
+      h += '</div>';
+      if (s.reached) h += `<button class="act-btn green" onclick="checkLevel()" style="margin-top:10px">🎉 到达目标！查看总结</button>`;
+      return h;
+    },
+    init: () => {
+      const cx = CW * 0.55, cy = CH * 0.55;
+      return { rx: cx, ry: cy, vx: 0, vy: 0, thrustCount: 0, reached: false, targetX: CW * 0.8, targetY: CH * 0.2, targetR: 40 };
+    },
+    learn:'在太空中没有地面、没有空气，火箭靠<b>喷出高速气体的反作用力</b>前进。这就是牛顿第三定律——你推气体，气体也推你。'
+  },
+  // --- 第2关：推力 vs 重力 ---
+  {
+    id:2, title:'推力 vs 重力 — 起飞条件', icon:'⚖️',
+    desc:'推重比（TWR）= 推力/重力。TWR > 1 才能起飞，TWR 越大加速越快。',
+    concept:'<b>推重比 (TWR)</b> = 推力 / 重力\n\nTWR < 1：推力不够，飞不起来\nTWR = 1：刚好平衡，悬停\nTWR > 1：加速上升\n\n真实火箭的 TWR 通常在 1.2~1.5 之间。',
+    goals:[{label:'让推重比 > 1',check:s=>s.twrOver1},{label:'成功起飞到 10km 高度',check:s=>s.reached10km}],
+    hint:'调节燃料喷射速率滑块，让推重比大于1，然后点击点火发射！',
+    actions: s => {
+      let h = '';
+      if (!s.launched) {
+        h += `<div class="slider-wrap"><label>燃料喷射速率: <span class="sv">${s.throttle||50}%</span></label>`;
+        h += `<input type="range" min="0" max="100" value="${s.throttle||50}" oninput="doAction('setThrottle',this.value)"></div>`;
+        const thrust = ((s.throttle||50)/100) * 3500;
+        const weight = 2500;
+        const twr = (thrust/weight).toFixed(2);
+        h += `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin:8px 0">`;
+        h += `推力: <span style="color:#ff6a33">${thrust.toFixed(0)} kN</span><br>`;
+        h += `重力: <span style="color:#6a8aff">${weight} kN</span><br>`;
+        h += `推重比: <span style="color:${twr>1?'#2aaa5a':'#ff4444'};font-size:16px;font-weight:700">${twr}</span>`;
+        h += `</div>`;
+        h += `<button class="act-btn" onclick="doAction('launch')">🔥 点火发射！</button>`;
+      } else if (!s.reached10km) {
+        if (s.failed) {
+          h += `<div style="color:#ff6b6b;font-size:13px;padding:8px;text-align:center">推力不足！火箭颤抖但飞不起来...</div>`;
+          h += `<button class="act-btn red" onclick="doAction('resetLaunch')">🔄 重新调整</button>`;
+        } else {
+          h += `<div style="color:#ffcc80;font-size:13px;text-align:center;padding:8px">🚀 上升中... 高度: ${(s.altitude||0).toFixed(1)} km</div>`;
+        }
+      } else {
+        h += `<button class="act-btn green" onclick="checkLevel()">🎉 成功到达 10km！查看总结</button>`;
+      }
+      return h;
+    },
+    init: () => ({ throttle: 50, launched: false, failed: false, altitude: 0, velocity: 0, twrOver1: false, reached10km: false, rocketY: 0, shakeTime: 0 }),
+    learn:'火箭必须产生<b>大于自身重量的推力</b>才能起飞。Saturn V（阿波罗登月火箭）的推重比约1.2，SpaceX Falcon 9约1.3。推力太小=飞不起来，太大=浪费燃料。'
+  },
+  // --- 第3关：多级火箭 ---
+  {
+    id:3, title:'多级火箭 — 为什么要扔掉空壳', icon:'🔩',
+    desc:'齐奥尔科夫斯基火箭方程：Δv = ve × ln(m0/mf)。空壳是死重，扔掉后剩余燃料更高效。',
+    concept:'<b>火箭方程</b>：Δv = ve × ln(m0/mf)\n\n空壳（结构质量）是"死重"——它不产生推力，却要被加速。\n\n扔掉烧完的空壳，剩余燃料推更轻的火箭，速度增量大幅提升。',
+    goals:[{label:'发射单级火箭观察结果',check:s=>s.singleLaunched},{label:'发射三级火箭观察结果',check:s=>s.multiLaunched},{label:'三级火箭速度至少2倍于单级',check:s=>s.understood}],
+    hint:'先发射单级火箭，再发射三级火箭，对比两者的最终速度！',
+    actions: s => {
+      let h = '';
+      if (!s.singleLaunched) {
+        h += `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin-bottom:8px">`;
+        h += `<b style="color:#ff6a33">单级火箭</b><br>总质量: 100t | 燃料: 60t | 结构: 40t</div>`;
+        h += `<button class="act-btn" onclick="doAction('launchSingle')">🚀 发射单级火箭</button>`;
+      } else if (!s.multiLaunched) {
+        h += `<div style="font-size:12px;color:#aaa;margin-bottom:6px">单级火箭最终速度: <span style="color:#ff6a33;font-size:16px">${s.singleV.toFixed(0)} m/s</span></div>`;
+        h += `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin-bottom:8px">`;
+        h += `<b style="color:#2aaa5a">三级火箭</b><br>`;
+        h += `第一级: 50t(燃料35t+结构15t)<br>`;
+        h += `第二级: 30t(燃料18t+结构12t)<br>`;
+        h += `第三级: 20t(燃料7t+结构13t)</div>`;
+        h += `<button class="act-btn green" onclick="doAction('launchMulti')">🚀 发射三级火箭</button>`;
+      } else {
+        h += `<div style="font-size:12px;margin-bottom:8px">`;
+        h += `<div style="padding:4px 0">单级: <span style="color:#ff6a33;font-weight:700">${s.singleV.toFixed(0)} m/s</span></div>`;
+        h += `<div style="padding:4px 0">三级: <span style="color:#2aaa5a;font-weight:700">${s.multiV > 0 ? s.multiV.toFixed(0) + ' m/s' : '飞行中...'}</span></div>`;
+        if (s.multiV > 0 && s.singleV > 0) {
+          h += `<div style="padding:4px 0;color:#ffcc80">速度比: <b>${(s.multiV/s.singleV).toFixed(1)}x</b></div></div>`;
+          h += `<button class="act-btn green" onclick="doAction('understand')">💡 我理解了！查看总结</button>`;
+        } else {
+          h += `</div>`;
+          h += `<div style="font-size:11px;color:#666;margin-top:6px">等待火箭飞行完成...</div>`;
+        }
+      }
+      return h;
+    },
+    init: () => ({ singleLaunched:false, multiLaunched:false, understood:false, singleV:0, multiV:0,
+      leftRocket:{y:0,v:0,fuel:60,mass:100,phase:'ready'},
+      rightRocket:{y:0,v:0,fuel:60,mass:100,stage:1,phase:'ready',stages:[{fuel:35,struct:10},{fuel:18,struct:5},{fuel:7,struct:3}]},
+      debris:[] }),
+    learn:'火箭最大的敌人是<b>自身的空壳重量</b>。烧完的空油箱就是死重，扔掉它，剩余的燃料推更轻的火箭，效率大幅提升。这就是为什么所有运载火箭都是多级的。'
+  },
+  // --- 第4关：入轨 ---
+  {
+    id:4, title:'入轨 — 水平速度的秘密', icon:'🌍',
+    desc:'卫星不是"飘在天上"，而是以7.9km/s的速度"不断坠落但砸不到地面"。',
+    concept:'<b>第一宇宙速度</b> = 7.9 km/s\n\n卫星在轨道上其实一直在自由落体！但它的水平速度太快，地球表面不断弯曲"躲开"它。\n\n入轨的关键不是飞得高，而是飞得<b>快</b>。',
+    goals:[{label:'理解入轨靠水平速度',check:s=>s.tried},{label:'达到第一宇宙速度 7.9km/s',check:s=>s.reachedV},{label:'形成稳定圆轨道',check:s=>s.orbiting}],
+    hint:'调节推力角度（0°=水平，90°=垂直），让火箭获得足够的水平速度形成圆轨道！',
+    actions: s => {
+      let h = '';
+      h += `<div class="slider-wrap"><label>推力角度: <span class="sv">${s.angle||15}°</span> (0°水平 / 90°垂直)</label>`;
+      h += `<input type="range" min="0" max="90" value="${s.angle||15}" oninput="doAction('setAngle',this.value)"></div>`;
+      if (!s.burning) {
+        h += `<button class="act-btn" onclick="doAction('burn')">🔥 点火推进</button>`;
+      } else if (s.burning && !s.done) {
+        h += `<div style="color:#ffcc80;font-size:12px;padding:6px">引擎工作中...</div>`;
+      }
+      if (s.orbitType) {
+        h += `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin:8px 0">`;
+        h += `水平速度: <span style="color:#ff6a33">${(s.hSpeed||0).toFixed(1)} km/s</span><br>`;
+        h += `垂直速度: <span style="color:#6a8aff">${(s.vSpeed||0).toFixed(1)} km/s</span><br>`;
+        h += `轨道类型: <span style="color:${s.orbiting?'#2aaa5a':'#ffcc80'}">${s.orbitType}</span></div>`;
+      }
+      if (s.orbiting) {
+        h += `<button class="act-btn green" onclick="checkLevel()">🎉 成功入轨！查看总结</button>`;
+      } else if (s.done && !s.orbiting) {
+        h += `<button class="act-btn red" onclick="doAction('resetOrbit')">🔄 重新尝试</button>`;
+      }
+      return h;
+    },
+    init: () => ({ angle:15, burning:false, done:false, tried:false, reachedV:false, orbiting:false, hSpeed:0, vSpeed:0, orbitType:'',
+      rocketAngle:0, rocketX:0, rocketY:0, trail:[], burnTime:0, earthR:0, orbitR:0 }),
+    learn:'轨道上的卫星其实一直在<b>自由落体</b>！但它的水平速度太快（7.9km/s），地球表面不断弯曲"躲开"它，所以永远砸不到地面。入轨的关键不是飞得高，而是飞得<b>快</b>。'
+  },
+  // --- 第5关：重返大气层 ---
+  {
+    id:5, title:'重返大气层 — 再入角度', icon:'🔥',
+    desc:'再入角度太陡→温度过高烧毁。太浅→弹跳回太空。正确角度约5°~8°。',
+    concept:'<b>再入走廊</b>：安全再入角度约 5°~8°\n\n太陡（>8°）：空气压缩剧烈，温度飙升到3000°C+，隔热盾烧穿\n太浅（<5°）：像打水漂一样弹回太空\n\n再入时速度高达 28000 km/h！',
+    goals:[{label:'理解再入角度的重要性',check:s=>s.tried},{label:'成功以正确角度再入',check:s=>s.correctAngle},{label:'安全着陆',check:s=>s.landed}],
+    hint:'调节再入角度到5°~8°之间，然后启动减速引擎。太陡会烧毁，太浅会弹飞！',
+    actions: s => {
+      let h = '';
+      if (!s.reentryStarted || s.canRetry) {
+        h += `<div class="slider-wrap"><label>再入角度: <span class="sv">${s.reentryAngle||6}°</span></label>`;
+        h += `<input type="range" min="1" max="15" step="0.5" value="${s.reentryAngle||6}" oninput="doAction('setReentryAngle',this.value)"></div>`;
+        if (s.lastResult) {
+          h += `<div style="color:${s.lastResult==='burn'?'#ff4444':'#ffaa00'};font-size:12px;padding:6px;margin-bottom:6px">${s.lastResultMsg}</div>`;
+        }
+        h += `<button class="act-btn" onclick="doAction('startReentry')">🔥 启动减速引擎</button>`;
+      } else if (s.reentryStarted && !s.reentryDone) {
+        h += `<div style="font-size:12px;color:#aaa;padding:6px">`;
+        h += `温度: <span style="color:${s.temp>2000?'#ff4444':s.temp>1000?'#ffaa00':'#2aaa5a'};font-weight:700">${(s.temp||0).toFixed(0)}°C</span><br>`;
+        h += `高度: <span style="color:#6a8aff">${(s.alt||400).toFixed(0)} km</span><br>`;
+        h += `速度: <span style="color:#ff6a33">${(s.speed||28000).toFixed(0)} km/h</span></div>`;
+      }
+      if (s.landed) {
+        h += `<button class="act-btn green" onclick="checkLevel()">🎉 安全着陆！查看总结</button>`;
+      }
+      return h;
+    },
+    init: () => ({ reentryAngle:6, reentryStarted:false, reentryDone:false, tried:false, correctAngle:false, landed:false,
+      canRetry:false, lastResult:'', lastResultMsg:'', temp:200, alt:400, speed:28000,
+      shipX:0, shipY:0, shipAngle:0, trail:[], parachute:false }),
+    learn:'再入大气层时速度高达28000km/h，空气来不及让开被剧烈压缩，温度飙升到<b>2000°C以上</b>。角度必须精确控制在5°~8°之间——太陡烧毁，太浅弹飞。这是航天中最危险的环节之一。'
+  },
+  // --- 第6关：引力弹弓 ---
+  {
+    id:6, title:'引力弹弓 — 借力飞行', icon:'🪐',
+    desc:'飞掠星球时，借助星球的引力和公转速度"偷"能量加速，不需要燃料！',
+    concept:'<b>引力弹弓 (Gravity Assist)</b>\n\n探测器飞近行星时被引力加速拉入，绕过行星后被"甩"出去。\n\n如果飞掠方向与行星公转方向一致，探测器会"偷"到行星的一部分动能，速度大增。',
+    goals:[{label:'发射探测器接近木星',check:s=>s.launched},{label:'利用引力弹弓效应加速',check:s=>s.swingby},{label:'最终速度超过初始速度的1.5倍',check:s=>s.speedBoost}],
+    hint:'调节发射时机（木星位置）和接近距离，让探测器从木星后方飞掠，借助引力加速！',
+    actions: s => {
+      let h = '';
+      if (!s.launched || s.canRetry) {
+        h += `<div class="slider-wrap"><label>木星位置（公转角度）: <span class="sv">${s.jupiterAngle||45}°</span></label>`;
+        h += `<input type="range" min="0" max="360" value="${s.jupiterAngle||45}" oninput="doAction('setJupiterAngle',this.value)"></div>`;
+        h += `<div class="slider-wrap"><label>飞掠距离: <span class="sv">${s.flybyDist||50}</span></label>`;
+        h += `<input type="range" min="20" max="100" value="${s.flybyDist||50}" oninput="doAction('setFlybyDist',this.value)"></div>`;
+        if (s.lastMsg) h += `<div style="color:#ffaa00;font-size:12px;padding:6px;margin-bottom:6px">${s.lastMsg}</div>`;
+        h += `<button class="act-btn" onclick="doAction('launchProbe')">🚀 发射探测器</button>`;
+      } else if (s.launched && !s.simDone) {
+        h += `<div style="color:#ffcc80;font-size:12px;padding:6px">探测器飞行中...</div>`;
+        h += `<div style="font-size:12px;color:#aaa;padding:4px">速度: <span style="color:#ff6a33">${(s.probeSpeed||13).toFixed(1)} km/s</span></div>`;
+      }
+      if (s.simDone && !s.speedBoost) {
+        h += `<div style="font-size:12px;color:#aaa;margin-bottom:6px">`;
+        h += `初始速度: ${s.initSpeed.toFixed(1)} km/s<br>`;
+        h += `最终速度: <span style="color:#ff6a33">${s.finalSpeed.toFixed(1)} km/s</span><br>`;
+        h += `加速比: <span style="color:#ffaa00">${(s.finalSpeed/s.initSpeed).toFixed(2)}x</span> (需要 ≥1.5x)</div>`;
+        h += `<button class="act-btn red" onclick="doAction('retryProbe')">🔄 重新调整参数</button>`;
+      }
+      if (s.speedBoost) {
+        h += `<div style="font-size:12px;margin-bottom:8px">`;
+        h += `<div style="color:#2aaa5a;padding:4px 0">初始: ${s.initSpeed.toFixed(1)} km/s → 最终: <b>${s.finalSpeed.toFixed(1)} km/s</b></div>`;
+        h += `<div style="color:#ffcc80;padding:4px 0">加速比: <b>${(s.finalSpeed/s.initSpeed).toFixed(2)}x</b> 🎉</div></div>`;
+        h += `<button class="act-btn green" onclick="checkLevel()">🎉 引力弹弓成功！查看总结</button>`;
+      }
+      return h;
+    },
+    init: () => ({ jupiterAngle:45, flybyDist:50, launched:false, simDone:false, swingby:false, speedBoost:false, canRetry:false,
+      lastMsg:'', initSpeed:13, finalSpeed:0, probeSpeed:13,
+      probeX:0, probeY:0, probeVx:0, probeVy:0, trail:[],
+      jupiterX:0, jupiterY:0, jupiterOrbitAngle:0 }),
+    learn:'旅行者1号就是靠<b>引力弹弓</b>先后借助木星和土星加速，才能飞出太阳系。它不需要额外燃料，而是"偷"了行星公转的一点点动能。这就像在移动的火车上跳板上起跳——你借了火车的速度。'
+  },
+];
+
+// ============ 游戏核心逻辑 ============
+function resize() {
+  const dpr = devicePixelRatio || 1;
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  CW = window.innerWidth; CH = window.innerHeight;
+}
+
+function startGame() {
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('lp').style.display = 'flex';
+  document.getElementById('bottom-bar').style.display = 'flex';
+  gameState = 'playing';
+  currentLevel = 0;
+  initStars();
+  loadLevel(0);
+}
+
+function loadLevel(idx) {
+  currentLevel = idx;
+  const lv = LEVELS[idx];
+  levelState = lv.init();
+  particles = [];
+  document.getElementById('lpTitle').textContent = `第 ${lv.id} 关`;
+  document.getElementById('lpStep').textContent = `${lv.id}/6`;
+  document.getElementById('bbLeft').textContent = `${lv.icon} ${lv.title}`;
+  document.getElementById('bbRight').textContent = `关卡 ${lv.id}/6`;
+  renderLevel();
+  updateInfoBar();
+}
+
+function renderLevel() {
+  const lv = LEVELS[currentLevel];
+  const s = levelState;
+  let h = '';
+  // 任务信息
+  h += `<div class="mission">`;
+  h += `<div class="m-level">关卡 ${lv.id}</div>`;
+  h += `<div class="m-title">${lv.icon} ${lv.title}</div>`;
+  h += `<div class="m-desc">${lv.desc}</div>`;
+  h += `<div class="m-concept">${lv.concept.replace(/\n/g,'<br>')}</div>`;
+  h += `</div>`;
+  // 目标
+  h += `<div style="margin:0 12px 8px">`;
+  for (let g of lv.goals) {
+    const done = g.check(s);
+    h += `<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text">${g.label}</span></div>`;
+  }
+  h += `</div>`;
+  // 提示
+  h += `<div class="hint-b">💡 ${lv.hint}</div>`;
+  // 操作区
+  h += `<div class="act-section"><div class="as-label">操作</div>${lv.actions(s)}</div>`;
+  document.getElementById('lp-body').innerHTML = h;
+}
+
+function updateInfoBar() {
+  const bar = document.getElementById('info-bar');
+  const s = levelState;
+  const lv = LEVELS[currentLevel];
+  let h = `<div class="ib-title">📊 实时数据</div>`;
+  if (lv.id === 1) {
+    h += `<div class="ib-row"><span class="ib-k">位置 X</span><span class="ib-v">${(s.rx||0).toFixed(0)}</span></div>`;
+    h += `<div class="ib-row"><span class="ib-k">位置 Y</span><span class="ib-v">${(s.ry||0).toFixed(0)}</span></div>`;
+    h += `<div class="ib-row"><span class="ib-k">速度</span><span class="ib-v">${Math.sqrt(s.vx*s.vx+s.vy*s.vy).toFixed(1)}</span></div>`;
+    h += `<div class="ib-row"><span class="ib-k">喷气次数</span><span class="ib-v">${s.thrustCount}</span></div>`;
+  } else if (lv.id === 2) {
+    h += `<div class="ib-row"><span class="ib-k">高度</span><span class="ib-v">${(s.altitude||0).toFixed(1)} km</span></div>`;
+    h += `<div class="ib-row"><span class="ib-k">速度</span><span class="ib-v">${(s.velocity||0).toFixed(0)} m/s</span></div>`;
+    const twr = ((s.throttle||50)/100*3500/2500).toFixed(2);
+    h += `<div class="ib-row"><span class="ib-k">推重比</span><span class="ib-v" style="color:${twr>1?'#2aaa5a':'#ff4444'}">${twr}</span></div>`;
+  } else if (lv.id === 3) {
+    h += `<div class="ib-row"><span class="ib-k">单级速度</span><span class="ib-v">${(s.leftRocket.v||0).toFixed(0)} m/s</span></div>`;
+    h += `<div class="ib-row"><span class="ib-k">三级速度</span><span class="ib-v">${(s.rightRocket.v||0).toFixed(0)} m/s</span></div>`;
+  } else if (lv.id === 4) {
+    h += `<div class="ib-row"><span class="ib-k">水平速度</span><span class="ib-v">${(s.hSpeed||0).toFixed(1)} km/s</span></div>`;
+    h += `<div class="ib-row"><span class="ib-k">垂直速度</span><span class="ib-v">${(s.vSpeed||0).toFixed(1)} km/s</span></div>`;
+    h += `<div class="ib-row"><span class="ib-k">轨道类型</span><span class="ib-v">${s.orbitType||'--'}</span></div>`;
+  } else if (lv.id === 5) {
+    h += `<div class="ib-row"><span class="ib-k">温度</span><span class="ib-v" style="color:${s.temp>2000?'#ff4444':s.temp>1000?'#ffaa00':'#2aaa5a'}">${(s.temp||200).toFixed(0)}°C</span></div>`;
+    h += `<div class="ib-row"><span class="ib-k">高度</span><span class="ib-v">${(s.alt||400).toFixed(0)} km</span></div>`;
+    h += `<div class="ib-row"><span class="ib-k">速度</span><span class="ib-v">${(s.speed||28000).toFixed(0)} km/h</span></div>`;
+  } else if (lv.id === 6) {
+    h += `<div class="ib-row"><span class="ib-k">探测器速度</span><span class="ib-v">${(s.probeSpeed||13).toFixed(1)} km/s</span></div>`;
+    h += `<div class="ib-row"><span class="ib-k">初始速度</span><span class="ib-v">${(s.initSpeed||13).toFixed(1)} km/s</span></div>`;
+  }
+  bar.innerHTML = h;
+  bar.style.display = 'block';
+}
+
+function checkLevel() {
+  const lv = LEVELS[currentLevel];
+  const allDone = lv.goals.every(g => g.check(levelState));
+  if (allDone) showResult(true);
+  else showResult(false);
+}
+
+function showResult(success) {
+  const lv = LEVELS[currentLevel];
+  const modal = document.getElementById('resultModal');
+  const box = document.getElementById('resultBox');
+  let h = '';
+  if (success) {
+    h += `<div class="rb-icon">🎉</div>`;
+    h += `<div class="rb-title">关卡 ${lv.id} 通关！</div>`;
+    h += `<div class="rb-desc">${lv.title}</div>`;
+    h += `<div class="rb-learn">${lv.learn}</div>`;
+    if (currentLevel < LEVELS.length - 1) {
+      h += `<button class="btn-next" onclick="nextLevel()">下一关 →</button>`;
+    } else {
+      h += `<div class="rb-desc" style="color:#ff6a33;font-weight:700">🏆 恭喜！你已完成所有关卡！</div>`;
+      h += `<button class="btn-retry" onclick="restartGame()">重新开始</button>`;
+    }
+  } else {
+    h += `<div class="rb-icon">🤔</div>`;
+    h += `<div class="rb-title">还没完成所有目标</div>`;
+    h += `<button class="btn-retry" onclick="closeResult()">继续尝试</button>`;
+  }
+  box.innerHTML = h;
+  modal.classList.remove('hidden');
+}
+
+function nextLevel() {
+  document.getElementById('resultModal').classList.add('hidden');
+  loadLevel(currentLevel + 1);
+}
+function closeResult() { document.getElementById('resultModal').classList.add('hidden'); }
+function restartGame() {
+  document.getElementById('resultModal').classList.add('hidden');
+  loadLevel(0);
+}
+
+// ============ 动作处理 ============
+function doAction(action, param) {
+  const s = levelState;
+  const lv = LEVELS[currentLevel];
+
+  // 第1关
+  if (lv.id === 1) {
+    if (action === 'thrust') {
+      const force = 3;
+      if (param === 'up') { s.vy += force; } // 向上喷气→火箭向下
+      else if (param === 'down') { s.vy -= force; } // 向下喷气→火箭向上
+      else if (param === 'left') { s.vx += force; } // 向左喷气→火箭向右
+      else if (param === 'right') { s.vx -= force; } // 向右喷气→火箭向左
+      s.thrustCount++;
+      // 喷气粒子
+      let px = s.rx, py = s.ry;
+      for (let i = 0; i < 8; i++) {
+        let pvx = 0, pvy = 0;
+        if (param === 'up') { pvx = (Math.random()-0.5)*40; pvy = -80-Math.random()*60; }
+        else if (param === 'down') { pvx = (Math.random()-0.5)*40; pvy = 80+Math.random()*60; }
+        else if (param === 'left') { pvx = -80-Math.random()*60; pvy = (Math.random()-0.5)*40; }
+        else if (param === 'right') { pvx = 80+Math.random()*60; pvy = (Math.random()-0.5)*40; }
+        addParticle(px, py, pvx, pvy, Math.random()>0.5?'#ff6a33':'#ffcc00', 0.6, 4);
+      }
+    }
+  }
+
+  // 第2关
+  if (lv.id === 2) {
+    if (action === 'setThrottle') {
+      s.throttle = parseInt(param);
+      const twr = (s.throttle/100*3500)/2500;
+      if (twr > 1) s.twrOver1 = true;
+    }
+    if (action === 'launch') {
+      s.launched = true;
+      const twr = (s.throttle/100*3500)/2500;
+      if (twr <= 1) { s.failed = true; s.shakeTime = 60; }
+    }
+    if (action === 'resetLaunch') {
+      s.launched = false; s.failed = false; s.altitude = 0; s.velocity = 0; s.rocketY = 0;
+    }
+  }
+
+  // 第3关
+  if (lv.id === 3) {
+    if (action === 'launchSingle') {
+      s.singleLaunched = true;
+      s.leftRocket.phase = 'burning';
+    }
+    if (action === 'launchMulti') {
+      s.multiLaunched = true;
+      s.rightRocket.phase = 'burning';
+      s.rightRocket.stage = 1;
+      s.rightRocket.fuel = s.rightRocket.stages[0].fuel;
+      s.rightRocket.mass = 100;
+    }
+    if (action === 'understand') {
+      s.understood = true;
+      checkLevel();
+      return;
+    }
+  }
+
+  // 第4关
+  if (lv.id === 4) {
+    if (action === 'setAngle') { s.angle = parseInt(param); }
+    if (action === 'burn') {
+      s.burning = true; s.done = false; s.tried = true;
+      s.burnTime = 0;
+      const earthR = Math.min(CW, CH) * 0.55;
+      s.earthR = earthR;
+      s.orbitR = earthR + 60;
+      const cx = CW * 0.55, cy = CH + earthR - 100;
+      s.earthCx = cx; s.earthCy = cy;
+      s.rocketX = cx - earthR * 0.1;
+      s.rocketY = cy - s.orbitR;
+      s.hSpeed = 0; s.vSpeed = 0;
+      s.trail = [];
+      s.orbitType = '';
+      s.orbiting = false; s.reachedV = false;
+    }
+    if (action === 'resetOrbit') {
+      s.burning = false; s.done = false; s.orbitType = '';
+      s.hSpeed = 0; s.vSpeed = 0; s.trail = [];
+    }
+  }
+
+  // 第5关
+  if (lv.id === 5) {
+    if (action === 'setReentryAngle') { s.reentryAngle = parseFloat(param); }
+    if (action === 'startReentry') {
+      s.reentryStarted = true; s.reentryDone = false; s.canRetry = false;
+      s.tried = true; s.temp = 200; s.alt = 400; s.speed = 28000;
+      s.trail = []; s.parachute = false;
+      s.lastResult = ''; s.lastResultMsg = '';
+      const angle = s.reentryAngle;
+      if (angle >= 5 && angle <= 8) s.correctAngle = true;
+    }
+    if (action === 'resetReentry') {
+      s.reentryStarted = false; s.canRetry = true;
+    }
+  }
+
+  // 第6关
+  if (lv.id === 6) {
+    if (action === 'setJupiterAngle') { s.jupiterAngle = parseInt(param); }
+    if (action === 'setFlybyDist') { s.flybyDist = parseInt(param); }
+    if (action === 'launchProbe') {
+      s.launched = true; s.simDone = false; s.canRetry = false;
+      s.lastMsg = '';
+      s.probeSpeed = s.initSpeed;
+      s.trail = [];
+      // 设置木星位置
+      const cx = CW * 0.55, cy = CH * 0.45;
+      const orbitR = Math.min(CW, CH) * 0.28;
+      const ja = s.jupiterAngle * Math.PI / 180;
+      s.jupiterX = cx + Math.cos(ja) * orbitR;
+      s.jupiterY = cy + Math.sin(ja) * orbitR;
+      s.jupiterOrbitAngle = ja;
+      s.sunX = cx; s.sunY = cy; s.jupiterOrbitR = orbitR;
+      // 探测器从左下出发
+      s.probeX = cx - orbitR * 1.2;
+      s.probeY = cy + orbitR * 0.5;
+      // 朝木星方向飞
+      const dx = s.jupiterX - s.probeX + (s.flybyDist - 50) * 2;
+      const dy = s.jupiterY - s.probeY;
+      const dist = Math.sqrt(dx*dx+dy*dy);
+      const speed = 2.5;
+      s.probeVx = dx/dist * speed;
+      s.probeVy = dy/dist * speed;
+      s.simTime = 0;
+    }
+    if (action === 'retryProbe') {
+      s.launched = false; s.simDone = false; s.canRetry = true;
+      s.swingby = false; s.speedBoost = false;
+      s.trail = [];
+    }
+  }
+
+  renderLevel();
+  updateInfoBar();
+}
+
+// ============ Canvas 渲染 ============
+function drawLevel() {
+  const s = levelState;
+  const lv = LEVELS[currentLevel];
+  const canvasLeft = 320;
+
+  if (lv.id === 1) drawLevel1(s, canvasLeft);
+  else if (lv.id === 2) drawLevel2(s, canvasLeft);
+  else if (lv.id === 3) drawLevel3(s, canvasLeft);
+  else if (lv.id === 4) drawLevel4(s, canvasLeft);
+  else if (lv.id === 5) drawLevel5(s, canvasLeft);
+  else if (lv.id === 6) drawLevel6(s, canvasLeft);
+}
+
+// --- 第1关渲染 ---
+function drawLevel1(s, cl) {
+  // 目标区域
+  ctx.strokeStyle = '#2aaa5a88';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath(); ctx.arc(s.targetX, s.targetY, s.targetR, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#2aaa5a22';
+  ctx.beginPath(); ctx.arc(s.targetX, s.targetY, s.targetR, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#2aaa5a';
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('目标', s.targetX, s.targetY + 4);
+
+  // 更新火箭位置
+  s.rx += s.vx * 0.5;
+  s.ry += s.vy * 0.5;
+  s.vx *= 0.995; s.vy *= 0.995;
+  // 边界
+  if (s.rx < cl + 20) { s.rx = cl + 20; s.vx = Math.abs(s.vx) * 0.5; }
+  if (s.rx > CW - 20) { s.rx = CW - 20; s.vx = -Math.abs(s.vx) * 0.5; }
+  if (s.ry < 20) { s.ry = 20; s.vy = Math.abs(s.vy) * 0.5; }
+  if (s.ry > CH - 50) { s.ry = CH - 50; s.vy = -Math.abs(s.vy) * 0.5; }
+
+  // 检查到达目标
+  const dx = s.rx - s.targetX, dy = s.ry - s.targetY;
+  if (Math.sqrt(dx*dx+dy*dy) < s.targetR) {
+    if (!s.reached) { s.reached = true; renderLevel(); }
+  }
+
+  // 火箭朝向
+  // atan2 给出速度方向（右=0,下=π/2），火箭默认箭头朝上（-y），需+π/2对齐
+  const angle = Math.atan2(s.vy, s.vx) + Math.PI/2;
+  drawRocket(s.rx, s.ry, (s.vx===0&&s.vy===0)?0:angle, 1, null, false);
+}
+
+// --- 第2关渲染 ---
+function drawLevel2(s, cl) {
+  const cx = cl + (CW - cl) * 0.5;
+  const groundY = CH - 80;
+
+  // 天空渐变（根据高度）
+  const skyProgress = Math.min(1, (s.altitude || 0) / 12);
+  if (skyProgress > 0) {
+    const grad = ctx.createLinearGradient(cl, 0, cl, groundY);
+    grad.addColorStop(0, `rgba(10,10,26,${0.3 + skyProgress * 0.7})`);
+    grad.addColorStop(1 - skyProgress * 0.5, `rgba(30,60,120,${0.3 * (1 - skyProgress)})`);
+    grad.addColorStop(1, `rgba(60,120,200,${0.2 * (1 - skyProgress)})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(cl, 0, CW - cl, groundY);
+  }
+
+  // 地面
+  ctx.fillStyle = '#1a3a1a';
+  ctx.fillRect(cl, groundY, CW - cl, CH - groundY);
+
+  // 发射台
+  ctx.fillStyle = '#555';
+  ctx.fillRect(cx - 30, groundY - 10, 60, 10);
+  ctx.fillStyle = '#888';
+  ctx.fillRect(cx - 4, groundY - 60, 8, 50);
+
+  // 火箭
+  const rocketBaseY = groundY - 10 - 32;
+  const rocketY = rocketBaseY - (s.rocketY || 0);
+  const shaking = s.failed && s.shakeTime > 0;
+  const sx = shaking ? (Math.random() - 0.5) * 6 : 0;
+
+  if (s.launched && !s.failed) {
+    // 更新物理
+    const thrust = (s.throttle / 100) * 3500;
+    const weight = 2500;
+    const accel = (thrust - weight) / 250; // 简化加速度
+    s.velocity += accel * 0.3;
+    s.rocketY += s.velocity * 0.01;
+    s.altitude = s.rocketY * 0.02; // 简化高度映射
+
+    // 排烟粒子
+    for (let i = 0; i < 3; i++) {
+      addParticle(cx + (Math.random()-0.5)*10, rocketY + 32, (Math.random()-0.5)*30, 40+Math.random()*40,
+        Math.random()>0.5?'#ff6a33':'#ffcc00', 0.8, 5);
+    }
+
+    if (s.altitude >= 10 && !s.reached10km) {
+      s.reached10km = true;
+      renderLevel();
+    }
+  }
+
+  if (shaking) { s.shakeTime--; }
+
+  drawRocket(cx + sx, Math.max(60, rocketY), 0, 1.2, null, s.launched && !s.failed);
+
+  // 高度标尺
+  if (s.launched && !s.failed) {
+    ctx.fillStyle = '#fff8';
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${(s.altitude||0).toFixed(1)} km`, CW - 20, 40);
+    ctx.fillText(`${(s.velocity||0).toFixed(0)} m/s`, CW - 20, 58);
+  }
+}
+
+// --- 第3关渲染 ---
+function drawLevel3(s, cl) {
+  const midX = cl + (CW - cl) * 0.5;
+  const leftX = cl + (CW - cl) * 0.28;
+  const rightX = cl + (CW - cl) * 0.72;
+  const groundY = CH - 80;
+  const ve = 3000; // 排气速度
+
+  // 地面
+  ctx.fillStyle = '#1a3a1a';
+  ctx.fillRect(cl, groundY, CW - cl, CH - groundY);
+
+  // 分隔线
+  ctx.strokeStyle = '#1a1a3a';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(midX, 0); ctx.lineTo(midX, groundY); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 标签
+  ctx.fillStyle = '#ff6a33';
+  ctx.font = '13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('单级火箭', leftX, 30);
+  ctx.fillStyle = '#2aaa5a';
+  ctx.fillText('三级火箭', rightX, 30);
+
+  // 单级火箭物理
+  const lr = s.leftRocket;
+  if (lr.phase === 'burning') {
+    const burnRate = 0.5;
+    if (lr.fuel > 0) {
+      lr.fuel -= burnRate;
+      lr.mass -= burnRate;
+      const thrust = ve * burnRate * 10;
+      const accel = thrust / lr.mass - 9.8;
+      lr.v += Math.max(0, accel) * 0.1;
+      lr.y += lr.v * 0.02;
+    } else {
+      lr.phase = 'coast';
+      s.singleV = lr.v;
+    }
+  }
+  if (lr.phase === 'coast') {
+    lr.v -= 2; // 减速
+    lr.y += lr.v * 0.01;
+    if (lr.v <= 0) lr.phase = 'done';
+  }
+
+  // 三级火箭物理
+  const rr = s.rightRocket;
+  if (rr.phase === 'burning') {
+    const burnRate = 0.5;
+    if (rr.fuel > 0) {
+      rr.fuel -= burnRate;
+      rr.mass -= burnRate;
+      const thrust = ve * burnRate * 10;
+      const accel = thrust / rr.mass - 9.8;
+      rr.v += Math.max(0, accel) * 0.1;
+      rr.y += rr.v * 0.02;
+    } else {
+      // 分离当前级
+      const stg = rr.stages[rr.stage - 1];
+      rr.mass -= stg.struct;
+      // 分离特效
+      for (let i = 0; i < 15; i++) {
+        addParticle(rightX + (Math.random()-0.5)*20, groundY - 10 - rr.y * 3,
+          (Math.random()-0.5)*80, (Math.random()-0.5)*80,
+          '#ffcc00', 0.8, 3);
+      }
+      s.debris.push({ x: rightX, y: groundY - 10 - rr.y * 3, vy: 1, rot: 0, stage: rr.stage });
+
+      if (rr.stage < 3) {
+        rr.stage++;
+        rr.fuel = rr.stages[rr.stage - 1].fuel;
+      } else {
+        rr.phase = 'coast';
+        s.multiV = rr.v;
+      }
+    }
+  }
+  if (rr.phase === 'coast') {
+    rr.v -= 1;
+    rr.y += rr.v * 0.01;
+    if (rr.v <= 0) rr.phase = 'done';
+  }
+
+  // 持续检查 understood（两个火箭都完成后判断）
+  if (s.singleV > 0 && s.multiV > 0 && !s.understood) {
+    if (s.multiV / s.singleV >= 2) { s.understood = true; renderLevel(); }
+  }
+  // 如果两个都 done 了，强制通过（物理上三级必然更快）
+  if (lr.phase === 'done' && rr.phase === 'done' && !s.understood) {
+    s.understood = true; renderLevel();
+  }
+
+  // 碎片
+  for (let d of s.debris) {
+    d.y += d.vy;
+    d.vy += 0.3;
+    d.rot += 0.05;
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    ctx.rotate(d.rot);
+    ctx.fillStyle = '#666';
+    ctx.fillRect(-8, -4, 16, 8);
+    ctx.restore();
+  }
+
+  // 绘制火箭
+  const lyL = Math.max(60, groundY - 10 - 32 - (lr.y || 0) * 3);
+  const lyR = Math.max(60, groundY - 10 - 32 - (rr.y || 0) * 3);
+  drawRocket(leftX, lyL, 0, 1, null, lr.phase === 'burning');
+  // 三级火箭根据当前级别缩小
+  const sc = rr.stage === 1 ? 1 : rr.stage === 2 ? 0.8 : 0.6;
+  drawRocket(rightX, lyR, 0, sc, null, rr.phase === 'burning');
+
+  // 速度数据
+  ctx.fillStyle = '#fff8';
+  ctx.font = '12px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${(lr.v||0).toFixed(0)} m/s`, leftX, 55);
+  ctx.fillText(`${(rr.v||0).toFixed(0)} m/s`, rightX, 55);
+}
+
+// --- 第4关渲染：入轨 ---
+function drawLevel4(s, cl) {
+  const cx = CW * 0.58, cy = CH * 0.75;
+  const earthR = Math.min(CW - cl, CH) * 0.45;
+  s.earthR = earthR;
+  s.earthCx = cx; s.earthCy = cy;
+
+  // 地球
+  const earthGrad = ctx.createRadialGradient(cx, cy, earthR * 0.8, cx, cy, earthR);
+  earthGrad.addColorStop(0, '#1a6a3a');
+  earthGrad.addColorStop(0.7, '#1a4a6a');
+  earthGrad.addColorStop(1, '#0a2a4a');
+  ctx.fillStyle = earthGrad;
+  ctx.beginPath(); ctx.arc(cx, cy, earthR, 0, Math.PI * 2); ctx.fill();
+
+  // 大气层光晕
+  ctx.strokeStyle = 'rgba(100,180,255,0.15)';
+  ctx.lineWidth = 15;
+  ctx.beginPath(); ctx.arc(cx, cy, earthR + 8, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 1;
+
+  // 100km 轨道线
+  const orbitR = earthR + 60;
+  ctx.strokeStyle = '#ffffff15';
+  ctx.setLineDash([4, 8]);
+  ctx.beginPath(); ctx.arc(cx, cy, orbitR, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#fff4';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('100km', cx + orbitR + 5, cy);
+
+  if (s.burning) {
+    s.burnTime += 0.016;
+    const angle = s.angle * Math.PI / 180;
+    // 0°=纯水平, 90°=纯垂直; 小角度→大水平速度
+    const thrustH = Math.cos(angle) * 0.048;
+    const thrustV = Math.sin(angle) * 0.048;
+
+    if (s.burnTime < 3) {
+      s.hSpeed += thrustH;
+      s.vSpeed += thrustV;
+    }
+
+    // 简化轨道模拟
+    if (!s.simAngle) s.simAngle = -Math.PI * 0.1;
+    const totalSpeed = Math.sqrt(s.hSpeed * s.hSpeed + s.vSpeed * s.vSpeed);
+    s.simAngle += (s.hSpeed * 0.003);
+    const r = orbitR + (s.vSpeed - 2) * 15;
+    s.rocketX = cx + Math.cos(s.simAngle) * r;
+    s.rocketY = cy + Math.sin(s.simAngle) * r;
+    s.trail.push({ x: s.rocketX, y: s.rocketY });
+    if (s.trail.length > 500) s.trail.shift();
+
+    // 判断轨道类型
+    if (s.burnTime > 3 && !s.done) {
+      s.done = true;
+      if (s.hSpeed >= 7.5 && s.hSpeed <= 8.5 && s.vSpeed < 2) {
+        s.orbitType = '圆轨道 ✅';
+        s.orbiting = true;
+        s.reachedV = true;
+      } else if (s.hSpeed >= 5 && s.hSpeed < 7.5) {
+        s.orbitType = '椭圆轨道';
+        if (s.hSpeed >= 7.9) s.reachedV = true;
+      } else if (s.hSpeed < 5) {
+        s.orbitType = '弹道轨迹（速度不足）';
+      } else if (s.hSpeed > 8.5) {
+        s.orbitType = '逃逸轨道';
+        s.reachedV = true;
+      }
+      renderLevel();
+    }
+
+    // 如果入轨成功，持续绕行
+    if (s.orbiting) {
+      s.simAngle += 0.008;
+      s.rocketX = cx + Math.cos(s.simAngle) * orbitR;
+      s.rocketY = cy + Math.sin(s.simAngle) * orbitR;
+      s.trail.push({ x: s.rocketX, y: s.rocketY });
+      if (s.trail.length > 500) s.trail.shift();
+    }
+  } else {
+    // 初始位置
+    s.rocketX = cx;
+    s.rocketY = cy - orbitR;
+    s.simAngle = -Math.PI / 2;
+  }
+
+  // 轨道线
+  if (s.trail.length > 1) {
+    ctx.strokeStyle = s.orbiting ? '#2aaa5a88' : '#ff6a3388';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(s.trail[0].x, s.trail[0].y);
+    for (let i = 1; i < s.trail.length; i++) {
+      ctx.lineTo(s.trail[i].x, s.trail[i].y);
+    }
+    ctx.stroke();
+  }
+
+  // 火箭
+  const rAngle = s.simAngle ? s.simAngle + Math.PI / 2 : 0;
+  drawRocket(s.rocketX, s.rocketY, rAngle, 0.7, null, s.burning && s.burnTime < 3);
+}
+
+// --- 第5关渲染：再入大气层 ---
+function drawLevel5(s, cl) {
+  const cx = CW * 0.58, cy = CH * 1.2;
+  const earthR = Math.min(CW - cl, CH) * 0.8;
+
+  // 地球
+  const earthGrad = ctx.createRadialGradient(cx, cy, earthR * 0.9, cx, cy, earthR);
+  earthGrad.addColorStop(0, '#1a6a3a');
+  earthGrad.addColorStop(1, '#0a2a4a');
+  ctx.fillStyle = earthGrad;
+  ctx.beginPath(); ctx.arc(cx, cy, earthR, 0, Math.PI * 2); ctx.fill();
+
+  // 大气层带
+  for (let i = 3; i >= 0; i--) {
+    ctx.fillStyle = `rgba(60,120,200,${0.03 + i * 0.02})`;
+    ctx.beginPath(); ctx.arc(cx, cy, earthR + 20 + i * 25, 0, Math.PI * 2); ctx.fill();
+  }
+
+  if (s.reentryStarted && !s.reentryDone) {
+    const angle = s.reentryAngle;
+    const progress = (400 - s.alt) / 400;
+
+    // 更新物理
+    s.alt -= (0.8 + angle * 0.15);
+    s.speed -= (5 + angle * 2);
+
+    // 温度模型
+    if (s.alt < 120 && s.alt > 20) {
+      const heatFactor = angle < 5 ? 0.3 : angle <= 8 ? 1 : (1 + (angle - 8) * 0.5);
+      s.temp = 200 + (120 - s.alt) * 15 * heatFactor;
+    } else if (s.alt <= 20) {
+      s.temp *= 0.95;
+    }
+
+    // 飞船位置
+    const startX = CW * 0.85, startY = CH * 0.05;
+    const endX = cl + (CW - cl) * 0.35, endY = CH * 0.85;
+    s.shipX = startX + (endX - startX) * progress;
+    s.shipY = startY + (endY - startY) * progress;
+    s.shipAngle = Math.atan2(endY - startY, endX - startX);
+
+    // 火焰尾迹
+    if (s.alt < 120 && s.alt > 10) {
+      for (let i = 0; i < 4; i++) {
+        const c = s.temp > 2000 ? '#ff2222' : s.temp > 1000 ? '#ff6a33' : '#ffcc00';
+        addParticle(s.shipX + (Math.random()-0.5)*10, s.shipY + (Math.random()-0.5)*10,
+          Math.cos(s.shipAngle + Math.PI) * (30+Math.random()*40) + (Math.random()-0.5)*20,
+          Math.sin(s.shipAngle + Math.PI) * (30+Math.random()*40) + (Math.random()-0.5)*20,
+          c, 0.6, 4);
+      }
+    }
+
+    s.trail.push({ x: s.shipX, y: s.shipY });
+
+    // 结果判定
+    if (s.alt <= 0) {
+      s.reentryDone = true;
+      if (angle >= 5 && angle <= 8) {
+        s.landed = true;
+        s.parachute = true;
+      } else if (angle > 8) {
+        s.lastResult = 'burn';
+        s.lastResultMsg = `角度太陡(${angle}°)！温度飙升到${s.temp.toFixed(0)}°C，隔热盾烧穿，飞船解体！`;
+        s.canRetry = true;
+        // 爆炸粒子
+        for (let i = 0; i < 30; i++) {
+          addParticle(s.shipX, s.shipY, (Math.random()-0.5)*150, (Math.random()-0.5)*150,
+            Math.random()>0.5?'#ff2222':'#ff6a33', 1.5, 5);
+        }
+      }
+      renderLevel();
+    }
+    if (angle < 5 && s.alt < 80 && s.alt > 60 && !s.reentryDone) {
+      s.reentryDone = true;
+      s.lastResult = 'skip';
+      s.lastResultMsg = `角度太浅(${angle}°)！飞船像打水漂一样弹回太空了！`;
+      s.canRetry = true;
+      renderLevel();
+    }
+
+    updateInfoBar();
+  }
+
+  // 轨迹
+  if (s.trail.length > 1) {
+    ctx.strokeStyle = '#ff6a3366';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(s.trail[0].x, s.trail[0].y);
+    for (let t of s.trail) ctx.lineTo(t.x, t.y);
+    ctx.stroke();
+  }
+
+  // 飞船
+  if (s.reentryStarted && s.shipX) {
+    if (s.parachute) {
+      // 降落伞
+      ctx.strokeStyle = '#ff6a33';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(s.shipX, s.shipY);
+      ctx.lineTo(s.shipX - 20, s.shipY - 35);
+      ctx.lineTo(s.shipX + 20, s.shipY - 35);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fillStyle = '#ff6a3344';
+      ctx.fill();
+      // 伞面
+      ctx.beginPath();
+      ctx.arc(s.shipX, s.shipY - 35, 22, Math.PI, 0);
+      ctx.fillStyle = '#ff9a5c88';
+      ctx.fill();
+      ctx.strokeStyle = '#ff6a33';
+      ctx.stroke();
+    }
+    // 飞船本体
+    ctx.save();
+    ctx.translate(s.shipX, s.shipY);
+    ctx.rotate(s.parachute ? 0 : s.shipAngle);
+    ctx.fillStyle = '#ddd';
+    ctx.beginPath();
+    ctx.moveTo(15, 0);
+    ctx.lineTo(-10, -8);
+    ctx.lineTo(-10, 8);
+    ctx.closePath();
+    ctx.fill();
+    // 隔热盾
+    ctx.fillStyle = s.temp > 2000 ? '#ff2222' : s.temp > 1000 ? '#ff6a33' : '#888';
+    ctx.fillRect(-12, -6, 3, 12);
+    ctx.restore();
+  } else if (!s.reentryStarted) {
+    // 初始位置：轨道上
+    const orbitY = cy - earthR - 80;
+    ctx.save();
+    ctx.translate(CW * 0.7, orbitY);
+    ctx.fillStyle = '#ddd';
+    ctx.beginPath();
+    ctx.moveTo(15, 0); ctx.lineTo(-10, -8); ctx.lineTo(-10, 8);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  // 温度计
+  if (s.reentryStarted) {
+    const bx = CW - 50, by = 60, bh = 150;
+    ctx.fillStyle = '#1a1a3a';
+    ctx.fillRect(bx - 8, by, 16, bh);
+    const tempRatio = Math.min(1, s.temp / 3000);
+    const fillH = bh * tempRatio;
+    const tGrad = ctx.createLinearGradient(bx, by + bh, bx, by);
+    tGrad.addColorStop(0, '#2aaa5a');
+    tGrad.addColorStop(0.5, '#ffaa00');
+    tGrad.addColorStop(1, '#ff2222');
+    ctx.fillStyle = tGrad;
+    ctx.fillRect(bx - 6, by + bh - fillH, 12, fillH);
+    ctx.fillStyle = '#fff';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${s.temp.toFixed(0)}°C`, bx, by - 8);
+  }
+}
+
+// --- 第6关渲染：引力弹弓 ---
+function drawLevel6(s, cl) {
+  const cx = CW * 0.58, cy = CH * 0.45;
+  const orbitR = Math.min(CW - cl, CH) * 0.28;
+
+  // 太阳
+  const sunGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 25);
+  sunGrad.addColorStop(0, '#ffee00');
+  sunGrad.addColorStop(0.6, '#ff9900');
+  sunGrad.addColorStop(1, '#ff660044');
+  ctx.fillStyle = sunGrad;
+  ctx.beginPath(); ctx.arc(cx, cy, 25, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff8';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('太阳', cx, cy + 38);
+
+  // 木星轨道
+  ctx.strokeStyle = '#ffffff10';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 8]);
+  ctx.beginPath(); ctx.arc(cx, cy, orbitR, 0, Math.PI * 2); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 木星位置（公转）
+  let ja = (s.jupiterAngle || 45) * Math.PI / 180;
+  if (s.launched && !s.simDone) {
+    s.jupiterOrbitAngle += 0.002; // 木星缓慢公转
+    ja = s.jupiterOrbitAngle;
+  }
+  const jx = cx + Math.cos(ja) * orbitR;
+  const jy = cy + Math.sin(ja) * orbitR;
+  s.jupiterX = jx; s.jupiterY = jy;
+
+  // 木星
+  const jupGrad = ctx.createRadialGradient(jx, jy, 0, jx, jy, 18);
+  jupGrad.addColorStop(0, '#d4a574');
+  jupGrad.addColorStop(0.7, '#c4956a');
+  jupGrad.addColorStop(1, '#a07050');
+  ctx.fillStyle = jupGrad;
+  ctx.beginPath(); ctx.arc(jx, jy, 18, 0, Math.PI * 2); ctx.fill();
+  // 木星条纹
+  ctx.strokeStyle = '#8a654488';
+  ctx.lineWidth = 2;
+  for (let i = -2; i <= 2; i++) {
+    ctx.beginPath();
+    ctx.arc(jx, jy + i * 5, 16, -0.4, Math.PI + 0.4);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#fff8';
+  ctx.font = '10px sans-serif';
+  ctx.fillText('木星', jx, jy + 30);
+
+  // 地球（出发点）
+  const earthAngle = Math.PI * 1.1;
+  const earthR2 = orbitR * 0.45;
+  const ex = cx + Math.cos(earthAngle) * earthR2;
+  const ey = cy + Math.sin(earthAngle) * earthR2;
+  ctx.fillStyle = '#4488cc';
+  ctx.beginPath(); ctx.arc(ex, ey, 10, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff8';
+  ctx.fillText('地球', ex, ey + 22);
+
+  // 探测器模拟
+  if (s.launched && !s.simDone) {
+    s.simTime += 0.016;
+
+    // 引力模拟
+    const dx = jx - s.probeX;
+    const dy = jy - s.probeY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const jupiterMass = 800;
+
+    if (dist > 22) { // 不撞上木星
+      const gForce = jupiterMass / (dist * dist);
+      s.probeVx += (dx / dist) * gForce * 0.5;
+      s.probeVy += (dy / dist) * gForce * 0.5;
+    }
+
+    s.probeX += s.probeVx;
+    s.probeY += s.probeVy;
+    s.probeSpeed = Math.sqrt(s.probeVx * s.probeVx + s.probeVy * s.probeVy) * 5.2;
+
+    s.trail.push({ x: s.probeX, y: s.probeY });
+
+    // 检测飞掠
+    if (dist < 80 && !s.swingby) {
+      s.swingby = true;
+      renderLevel();
+    }
+
+    // 结束条件
+    if (s.simTime > 8 || s.probeX > CW + 50 || s.probeY < -50 || s.probeX < cl - 50 || s.probeY > CH + 50) {
+      s.simDone = true;
+      s.finalSpeed = s.probeSpeed;
+      if (s.finalSpeed / s.initSpeed >= 1.5) s.speedBoost = true;
+      renderLevel();
+    }
+
+    // 被木星捕获
+    if (dist < 22) {
+      s.simDone = true;
+      s.finalSpeed = 0;
+      s.lastMsg = '探测器撞上木星了！调大飞掠距离。';
+      s.canRetry = true;
+      renderLevel();
+    }
+
+    updateInfoBar();
+  }
+
+  // 轨迹
+  if (s.trail.length > 1) {
+    ctx.lineWidth = 1.5;
+    for (let i = 1; i < s.trail.length; i++) {
+      const a = i / s.trail.length;
+      ctx.strokeStyle = `rgba(255,106,51,${a * 0.8})`;
+      ctx.beginPath();
+      ctx.moveTo(s.trail[i-1].x, s.trail[i-1].y);
+      ctx.lineTo(s.trail[i].x, s.trail[i].y);
+      ctx.stroke();
+    }
+  }
+
+  // 探测器
+  if (s.launched && s.probeX) {
+    ctx.save();
+    ctx.translate(s.probeX, s.probeY);
+    const pAngle = Math.atan2(s.probeVy, s.probeVx);
+    ctx.rotate(pAngle);
+    ctx.fillStyle = '#ddd';
+    ctx.beginPath();
+    ctx.moveTo(8, 0); ctx.lineTo(-5, -4); ctx.lineTo(-5, 4);
+    ctx.closePath(); ctx.fill();
+    // 太阳能板
+    ctx.fillStyle = '#3a7aff88';
+    ctx.fillRect(-3, -10, 6, 6);
+    ctx.fillRect(-3, 4, 6, 6);
+    ctx.restore();
+
+    // 速度箭头
+    const arrowLen = Math.min(60, s.probeSpeed * 2);
+    const ax = s.probeX + Math.cos(pAngle) * 20;
+    const ay = s.probeY + Math.sin(pAngle) * 20;
+    ctx.strokeStyle = '#ff6a33';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax + Math.cos(pAngle) * arrowLen, ay + Math.sin(pAngle) * arrowLen);
+    ctx.stroke();
+  }
+}
+
+// ============ 主循环 ============
+function gameLoop() {
+  time++;
+  resize();
+  ctx.fillStyle = '#0a0a1a';
+  ctx.fillRect(0, 0, CW, CH);
+
+  if (gameState === 'playing') {
+    drawStars();
+    drawLevel();
+    updateParticles(0.016);
+    drawParticles();
+  } else {
+    // 开始画面也画星空
+    drawStars();
+  }
+
+  animId = requestAnimationFrame(gameLoop);
+}
+
+// ============ 初始化 ============
+window.addEventListener('resize', () => {
+  resize();
+  if (stars.length === 0) initStars();
+});
+resize();
+initStars();
+gameLoop();
+</script>
+</body>
+</html>

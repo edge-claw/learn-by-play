@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D打印工程师 — 交互式教育游戏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#c0c0d0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;width:100vw;height:100vh}
+canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(100vh - 36px)}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:#2a2a6a}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.sv{color:#60a5fa;font-weight:bold}
+.title{font-size:15px;color:#60a5fa;margin:8px 0 4px;font-weight:bold}
+.sub{font-size:11px;color:#666;margin-bottom:8px}
+.progress-row{display:flex;gap:4px;margin:6px 0;flex-wrap:wrap}
+.obj{font-size:11px;padding:3px 8px;border-radius:10px;border:1px solid #333;color:#888;background:#111}
+.obj.done{color:#4ade80;border-color:#22c55e;background:#0a2a1a}
+.sel-row{display:flex;gap:4px;margin:4px 0;flex-wrap:wrap}
+.slider-row{margin:8px 0}
+.slider-row label{font-size:11px;color:#888;display:block;margin-bottom:2px}
+.slider-row input[type=range]{width:100%;accent-color:#3b82f6}
+.slider-val{font-size:13px;color:#60a5fa;font-weight:bold}
+.mat-card{display:inline-block;width:135px;padding:8px;margin:3px;border-radius:8px;border:2px solid #333;background:#111;cursor:grab;font-size:11px;text-align:center;vertical-align:top}
+.mat-card:hover{border-color:#60a5fa;background:#1a1a3a}
+.mat-card.selected{border-color:#4ade80;background:#0a2a1a}
+#infobar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid #1a1a3a;display:flex;align-items:center;padding:0 16px 0 332px;font-size:12px;color:#666;z-index:10}
+#infobar .sep{margin:0 12px;color:#333}
+</style>
+</head>
+<body>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="infobar">
+<span id="ib-level">关卡 1/7</span><span class="sep">|</span>
+<span id="ib-title">切片</span><span class="sep">|</span>
+<span id="ib-status">进行中</span>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel');
+let W,H,curLevel=0,frame=0,animId;
+const completedLevels=new Set(),levelObjs=[];
+for(let i=0;i<7;i++)levelObjs.push([false,false,false]);
+
+function resize(){cv.width=W=cv.clientWidth;cv.height=H=cv.clientHeight;}
+window.addEventListener('resize',resize);
+
+/* ===== LEVELS DATA ===== */
+const levels=[
+  {name:'切片',sub:'FDM基础',concept:'FDM（熔融沉积成型）是最常见的3D打印技术。3D模型被水平切成薄层，打印头逐层堆叠熔融材料。层高越小，精度越高，但打印时间越长。',
+   objs:['调整层高观察变化','层数超过50层','完成切片预览'],learn:'FDM打印机喷嘴温度约<span class="sv">200°C</span>，层高通常<span class="sv">0.1~0.3mm</span>。一个10cm高的模型以0.2mm层高需要<span class="sv">500层</span>，打印约2-4小时。'},
+  {name:'路径规划',sub:'G-code生成',concept:'每一层的打印路径由切片软件生成G-code控制。先打外壁轮廓保证表面质量，再用填充图案填充内部。填充率影响强度和材料用量。',
+   objs:['画出外壁轮廓','选择填充图案','调整填充率'],learn:'G-code是数控机床通用语言。<span class="sv">G1 X10 Y20 E0.5</span>表示移动到(10,20)并挤出0.5mm材料。一个模型的G-code通常有<span class="sv">数十万行</span>指令。'},
+  {name:'材料选择',sub:'材料科学',concept:'不同3D打印材料有不同特性。PLA易打印但不耐热，ABS强度高但易翘曲，尼龙耐磨但吸湿，TPU柔韧但打印慢。选对材料是成功的关键。',
+   objs:['查看材料属性','选择正确材料','完成打印任务'],learn:'PLA来自<span class="sv">玉米淀粉</span>，可生物降解。ABS与乐高积木同材质。碳纤维增强尼龙的强度可媲美<span class="sv">铝合金</span>，已用于航空航天零件。'},
+  {name:'SLA光固化',sub:'光聚合原理',concept:'SLA（立体光刻）用紫外激光逐点扫描液态光敏树脂表面，激光照射处树脂发生光聚合反应固化成型。精度可达0.025mm，远超FDM。',
+   objs:['观察激光扫描','完成一层固化','平台下降继续'],learn:'SLA是<span class="sv">1986年</span>发明的最早3D打印技术。DLP（数字光处理）用投影仪一次曝光整层，速度比SLA快<span class="sv">10倍</span>以上。'},
+  {name:'金属打印SLM',sub:'选择性激光熔化',concept:'SLM用高功率激光在金属粉末床上逐点熔化粉末，逐层堆积成致密金属零件。激光功率需精确控制：太低粉末不熔合，太高导致翘曲变形。',
+   objs:['铺粉层','调整激光功率','完成多层烧结'],learn:'SLM可打印<span class="sv">钛合金、不锈钢、铝合金</span>等金属。GE航空用SLM打印的LEAP发动机燃油喷嘴，将<span class="sv">20个零件合为1个</span>，减重25%。'},
+  {name:'支撑结构',sub:'拓扑优化',concept:'3D打印逐层堆叠，悬空超过45°的部分会因重力塌陷，需要添加支撑结构。支撑设计影响打印成功率和后处理工作量。',
+   objs:['识别悬空区域','添加支撑柱','移除支撑完成'],learn:'拓扑优化算法可自动设计<span class="sv">最少材料、最大强度</span>的结构。树状支撑比传统支撑节省<span class="sv">50%</span>材料，且更易移除。'},
+  {name:'生物打印',sub:'组织工程',concept:'生物3D打印用含活细胞的"生物墨水"逐层打印组织支架。打印后放入培养皿，细胞在支架上增殖分化，最终形成功能性组织。',
+   objs:['打印器官支架','放入培养皿','细胞附着生长'],learn:'2024年已成功打印<span class="sv">人工耳朵</span>并移植到患者体上。科学家正在研究打印<span class="sv">肾脏和心脏</span>，有望解决器官移植短缺问题。'}
+];
+
+/* ===== PANEL ===== */
+let panelDirty=true;
+function renderPanel(){
+  if(!panelDirty)return;panelDirty=false;
+  const L=levels[curLevel],lo=levelObjs[curLevel];
+  let h='<div style="font-size:18px;color:#60a5fa;font-weight:bold;margin-bottom:2px">🖨️ 3D打印工程师</div>';
+  h+='<div class="sub">交互式教育游戏 · 7个关卡</div>';
+  h+='<div style="margin:6px 0">';
+  for(let i=0;i<levels.length;i++){
+    let cls='level-btn';if(i===curLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
+    h+=`<span class="${cls}" onclick="goLevel(${i})">${i+1}</span>`;
+  }
+  h+='</div>';
+  h+=`<div class="title">${L.name}</div><div class="sub">${L.sub}</div>`;
+  h+=`<div class="concept-box">${L.concept}</div>`;
+  h+='<div style="font-size:11px;color:#888;margin:6px 0">目标</div><div class="progress-row">';
+  for(let i=0;i<L.objs.length;i++){
+    h+=`<span class="obj${lo[i]?' done':''}">${lo[i]?'✓ ':''}${L.objs[i]}</span>`;
+  }
+  h+='</div>';
+  h+=`<div id="actions"></div>`;
+  if(completedLevels.has(curLevel)){
+    h+=`<div class="learn-box">💡 ${L.learn}</div>`;
+    if(curLevel<levels.length-1) h+=`<button class="act-btn green" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+    else h+=`<div class="learn-box" style="border-color:#22c55e;color:#4ade80;text-align:center;font-size:14px">🎉 恭喜通关！你已掌握3D打印的核心技术！</div>`;
+  }
+  panel.innerHTML=h;
+  if(typeof renderActions==='function')renderActions();
+  updateInfobar();
+}
+function updateInfobar(){
+  document.getElementById('ib-level').textContent=`关卡 ${curLevel+1}/7`;
+  document.getElementById('ib-title').textContent=levels[curLevel].name;
+  document.getElementById('ib-status').textContent=completedLevels.has(curLevel)?'✓ 已完成':'进行中';
+}
+function markObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;panelDirty=true;renderPanel();}}
+function checkComplete(){
+  const lo=levelObjs[curLevel];
+  if(lo[0]&&lo[1]&&lo[2]&&!completedLevels.has(curLevel)){completedLevels.add(curLevel);panelDirty=true;renderPanel();}
+}
+function goLevel(n){curLevel=n;resetLevel();panelDirty=true;renderPanel();}
+
+/* ===== DRAWING HELPERS ===== */
+function drawBg(){
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(30,30,60,0.3)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+}
+function drawText(t,x,y,c,s,a){ctx.fillStyle=c||'#c0c0d0';ctx.font=`${s||14}px 'Segoe UI',system-ui,sans-serif`;ctx.textAlign=a||'center';ctx.textBaseline='middle';ctx.fillText(t,x,y);}
+function drawRoundRect(x,y,w,h,r,fill,stroke){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+  if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke();}
+}
+function drawNozzle(x,y,color){
+  ctx.fillStyle='#b0b0c0';ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-12,y-20);ctx.lineTo(x+12,y-20);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#888';ctx.fillRect(x-16,y-40,32,20);
+  if(color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y+3,3,0,Math.PI*2);ctx.fill();}
+}
+
+/* ===== LEVEL STATE ===== */
+let lState={};
+function resetLevel(){
+  lState={};
+  cv.onmousedown=null;cv.onmousemove=null;cv.onmouseup=null;cv.onclick=null;
+  if(curLevel===0)initL0();else if(curLevel===1)initL1();else if(curLevel===2)initL2();
+  else if(curLevel===3)initL3();else if(curLevel===4)initL4();else if(curLevel===5)initL5();
+  else if(curLevel===6)initL6();
+}
+
+/* ========== LEVEL 0: SLICING ========== */
+function initL0(){lState={layerH:0.2,adjusted:false,previewed:false};}
+function renderActions_L0(){
+  const a=document.getElementById('actions');if(!a)return;
+  const lh=lState.layerH,modelH=20,layers=Math.round(modelH/lh),time=Math.round(layers*0.08);
+  a.innerHTML=`<div class="slider-row"><label>层高: <span class="slider-val">${lh.toFixed(2)}mm</span></label>`+
+    `<input type="range" min="10" max="40" value="${Math.round(lh*100)}" oninput="setLayerH(this.value)"></div>`+
+    `<div class="hint-box">模型高度: 20mm<br>层数: <span class="sv">${layers}层</span><br>预计时间: <span class="sv">${time}分钟</span></div>`+
+    `<button class="act-btn" onclick="previewSlice()">预览切片</button>`;
+}
+function setLayerH(v){lState.layerH=v/100;if(!lState.adjusted){lState.adjusted=true;markObj(0);}
+  const layers=Math.round(20/lState.layerH);if(layers>=50&&!levelObjs[0][1]){markObj(1);}panelDirty=true;renderPanel();}
+function previewSlice(){lState.previewed=true;markObj(2);checkComplete();}
+function drawL0(){
+  const cx=W/2,cy=H/2,mw=200,mh=250,lh=lState.layerH,layers=Math.round(20/lh);
+  // model side view - cube/cylinder combo
+  const top=cy-mh/2,bot=cy+mh/2;
+  ctx.fillStyle='#1a1a3a';ctx.fillRect(cx-mw/2,top,mw,mh);
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.strokeRect(cx-mw/2,top,mw,mh);
+  // cylinder on top
+  ctx.beginPath();ctx.ellipse(cx,top,mw/2,20,0,0,Math.PI*2);ctx.fillStyle='#1a1a4a';ctx.fill();ctx.strokeStyle='#3b82f6';ctx.stroke();
+  // slice lines
+  const step=mh/layers;
+  ctx.strokeStyle='rgba(250,204,21,0.5)';ctx.lineWidth=1;
+  for(let i=1;i<layers&&i<200;i++){
+    const y=top+i*step;
+    ctx.beginPath();ctx.moveTo(cx-mw/2-10,y);ctx.lineTo(cx+mw/2+10,y);ctx.stroke();
+  }
+  // layer highlight
+  const hlIdx=Math.floor((frame/30)%Math.min(layers,60));
+  const hy=top+hlIdx*step;
+  ctx.fillStyle='rgba(250,204,21,0.15)';ctx.fillRect(cx-mw/2,hy,mw,step);
+  // nozzle
+  const nx=cx-mw/2+((frame*2)%mw);
+  drawNozzle(nx,hy-5,'#facc15');
+  // filament line
+  ctx.strokeStyle='#facc15';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx-mw/2,hy+step/2);ctx.lineTo(nx,hy+step/2);ctx.stroke();
+  drawText(`层高: ${lh.toFixed(2)}mm | ${layers}层`,cx,bot+40,'#facc15',16);
+  drawText('FDM 切片示意',cx,top-40,'#60a5fa',18);
+}
+
+/* ========== LEVEL 1: PATH PLANNING ========== */
+function initL1(){
+  lState={phase:'wall',wallPts:[],fillType:'zigzag',fillRate:20,wallDone:false,fillDone:false,rateAdj:false};
+  cv.onclick=function(e){
+    const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+    if(lState.phase==='wall'){
+      lState.wallPts.push({x:mx,y:my});
+      if(lState.wallPts.length>=8){lState.wallDone=true;lState.phase='fill';markObj(0);panelDirty=true;renderPanel();}
+    }
+  };
+}
+function renderActions_L1(){
+  const a=document.getElementById('actions');if(!a)return;
+  let h='';
+  if(lState.phase==='wall'){h+=`<div class="hint-box">点击画布绘制外壁轮廓（需8个点）<br>已画: ${lState.wallPts.length}/8</div>`;}
+  else{
+    h+=`<div class="hint-box">选择填充图案并调整填充率</div>`;
+    h+=`<div class="sel-row">`;
+    ['zigzag','grid','honeycomb'].forEach(t=>{
+      const names={zigzag:'锯齿',grid:'网格',honeycomb:'蜂窝'};
+      h+=`<button class="act-btn" style="width:auto;display:inline-block;padding:6px 12px;${lState.fillType===t?'border-color:#4ade80;color:#4ade80':''}" onclick="setFillType('${t}')">${names[t]}</button>`;
+    });
+    h+=`</div>`;
+    h+=`<div class="slider-row"><label>填充率: <span class="slider-val">${lState.fillRate}%</span></label>`+
+      `<input type="range" min="10" max="100" value="${lState.fillRate}" oninput="setFillRate(this.value)"></div>`;
+    h+=`<button class="act-btn green" onclick="confirmFill()">确认路径</button>`;
+  }
+  a.innerHTML=h;
+}
+function setFillType(t){lState.fillType=t;if(!levelObjs[1][1]){markObj(1);}panelDirty=true;renderPanel();}
+function setFillRate(v){lState.fillRate=parseInt(v);if(!lState.rateAdj){lState.rateAdj=true;markObj(2);}panelDirty=true;renderPanel();}
+function confirmFill(){markObj(0);markObj(1);markObj(2);checkComplete();}
+function drawL1(){
+  const cx=W/2,cy=H/2,sz=280;
+  // print bed top view
+  ctx.strokeStyle='#333';ctx.lineWidth=1;
+  ctx.strokeRect(cx-sz/2,cy-sz/2,sz,sz);
+  drawText('俯视图 — 单层路径规划',cx,cy-sz/2-30,'#60a5fa',18);
+  // shape outline (rounded rect)
+  const ox=cx-100,oy=cy-100,ow=200,oh=200;
+  ctx.strokeStyle='#555';ctx.lineWidth=1;ctx.setLineDash([5,5]);ctx.strokeRect(ox,oy,ow,oh);ctx.setLineDash([]);
+  // wall path
+  if(lState.wallPts.length>0){
+    ctx.strokeStyle='#f97316';ctx.lineWidth=3;ctx.beginPath();
+    ctx.moveTo(lState.wallPts[0].x,lState.wallPts[0].y);
+    for(let i=1;i<lState.wallPts.length;i++)ctx.lineTo(lState.wallPts[i].x,lState.wallPts[i].y);
+    if(lState.wallDone)ctx.closePath();
+    ctx.stroke();
+    lState.wallPts.forEach(p=>{ctx.fillStyle='#f97316';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();});
+  }
+  // fill pattern
+  if(lState.phase==='fill'||lState.fillDone){
+    const density=lState.fillRate/100,gap=Math.max(8,40*(1-density));
+    ctx.strokeStyle='rgba(96,165,250,0.4)';ctx.lineWidth=1;
+    if(lState.fillType==='zigzag'){
+      for(let y=oy+gap;y<oy+oh;y+=gap){ctx.beginPath();ctx.moveTo(ox+5,y);ctx.lineTo(ox+ow-5,y);ctx.stroke();}
+    }else if(lState.fillType==='grid'){
+      for(let y=oy+gap;y<oy+oh;y+=gap){ctx.beginPath();ctx.moveTo(ox+5,y);ctx.lineTo(ox+ow-5,y);ctx.stroke();}
+      for(let x=ox+gap;x<ox+ow;x+=gap){ctx.beginPath();ctx.moveTo(x,oy+5);ctx.lineTo(x,oy+oh-5);ctx.stroke();}
+    }else{
+      // honeycomb
+      const r=gap*0.6;
+      for(let row=0;row<oh/gap;row++){
+        for(let col=0;col<ow/gap;col++){
+          const hx=ox+10+col*gap+(row%2?gap/2:0),hy=oy+10+row*gap*0.866;
+          if(hx>ox&&hx<ox+ow&&hy>oy&&hy<oy+oh){
+            ctx.beginPath();for(let a=0;a<6;a++){const ang=Math.PI/3*a-Math.PI/6;ctx.lineTo(hx+r*Math.cos(ang),hy+r*Math.sin(ang));}ctx.closePath();ctx.stroke();
+          }
+        }
+      }
+    }
+    // animated nozzle
+    const t=(frame*3)%ow;
+    drawNozzle(ox+t,oy-20,'#60a5fa');
+  }
+  drawText(lState.phase==='wall'?'点击画布绘制外壁':'选择填充图案',cx,cy+sz/2+30,'#888',14);
+}
+
+/* ========== LEVEL 2: MATERIAL SELECTION ========== */
+const materials=[
+  {name:'PLA',color:'#4ade80',attrs:[3,2,2,5,5],desc:'聚乳酸，易打印，环保'},
+  {name:'ABS',color:'#f97316',attrs:[4,4,3,3,4],desc:'丙烯腈-丁二烯-苯乙烯，强度高'},
+  {name:'尼龙',color:'#a78bfa',attrs:[5,4,4,2,2],desc:'聚酰胺，耐磨耐疲劳'},
+  {name:'TPU',color:'#38bdf8',attrs:[2,3,5,2,3],desc:'热塑性聚氨酯，柔韧弹性'}
+];
+const matTasks=[
+  {desc:'打印花瓶摆件（易打印优先）',answer:0},
+  {desc:'打印汽车零件（强度+耐温）',answer:1},
+  {desc:'打印手机壳（柔韧防摔）',answer:3},
+];
+function initL2(){lState={viewed:false,taskIdx:0,selected:-1,correct:0,done:false};}
+function renderActions_L2(){
+  const a=document.getElementById('actions');if(!a)return;
+  if(lState.done){a.innerHTML='<div class="hint-box" style="color:#4ade80">所有任务完成！</div>';return;}
+  const task=matTasks[lState.taskIdx];
+  let h=`<div class="hint-box">任务: ${task.desc}</div>`;
+  h+='<div style="display:flex;flex-wrap:wrap;gap:4px">';
+  materials.forEach((m,i)=>{
+    h+=`<div class="mat-card${lState.selected===i?' selected':''}" onclick="selectMat(${i})"><div style="color:${m.color};font-size:14px;font-weight:bold">${m.name}</div><div style="color:#888;font-size:10px">${m.desc}</div></div>`;
+  });
+  h+='</div>';
+  if(lState.selected>=0)h+=`<button class="act-btn green" onclick="confirmMat()">确认选择</button>`;
+  a.innerHTML=h;
+}
+function selectMat(i){lState.selected=i;lState.viewed=true;markObj(0);panelDirty=true;renderPanel();}
+function confirmMat(){
+  const task=matTasks[lState.taskIdx];
+  if(lState.selected===task.answer){
+    lState.correct++;lState.taskIdx++;markObj(1);
+    if(lState.taskIdx>=matTasks.length){lState.done=true;markObj(2);checkComplete();}
+  }else{lState.selected=-1;}
+  panelDirty=true;renderPanel();
+}
+function drawL2(){
+  const cx=W/2,cy=H/2;
+  drawText('材料属性雷达图',cx,60,'#60a5fa',18);
+  const labels=['强度','耐温','柔韧','易打印','成本'];
+  // draw radar for each material
+  materials.forEach((m,mi)=>{
+    const rcx=W*0.25+mi%2*W*0.5,rcy=H*0.3+(mi>=2?H*0.4:0),rr=80;
+    // axes
+    for(let i=0;i<5;i++){
+      const ang=-Math.PI/2+i*Math.PI*2/5;
+      ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rcx,rcy);ctx.lineTo(rcx+rr*Math.cos(ang),rcy+rr*Math.sin(ang));ctx.stroke();
+      drawText(labels[i],rcx+(rr+20)*Math.cos(ang),rcy+(rr+20)*Math.sin(ang),'#888',11);
+    }
+    // rings
+    for(let r=1;r<=5;r++){
+      ctx.strokeStyle='#222';ctx.lineWidth=1;ctx.beginPath();
+      for(let i=0;i<=5;i++){const ang=-Math.PI/2+i*Math.PI*2/5;const d=rr*r/5;ctx.lineTo(rcx+d*Math.cos(ang),rcy+d*Math.sin(ang));}
+      ctx.closePath();ctx.stroke();
+    }
+    // data polygon
+    ctx.fillStyle=m.color+'30';ctx.strokeStyle=m.color;ctx.lineWidth=2;ctx.beginPath();
+    for(let i=0;i<5;i++){const ang=-Math.PI/2+i*Math.PI*2/5;const d=rr*m.attrs[i]/5;ctx.lineTo(rcx+d*Math.cos(ang),rcy+d*Math.sin(ang));}
+    ctx.closePath();ctx.fill();ctx.stroke();
+    drawText(m.name,rcx,rcy-rr-15,m.color,15);
+    if(lState.selected===mi){ctx.strokeStyle=m.color;ctx.lineWidth=3;ctx.strokeRect(rcx-rr-25,rcy-rr-25,2*(rr+25),2*(rr+25));}
+  });
+}
+
+/* ========== LEVEL 3: SLA ========== */
+function initL3(){lState={scanX:0,scanY:0,layer:0,maxLayers:5,cured:[],scanning:true,layerDone:false,platformAnim:0};}
+function renderActions_L3(){
+  const a=document.getElementById('actions');if(!a)return;
+  a.innerHTML=`<div class="hint-box">UV激光正在扫描第 <span class="sv">${lState.layer+1}/${lState.maxLayers}</span> 层<br>固化进度: <span class="sv">${Math.min(100,Math.round(lState.scanX/(W*0.6)*100))}%</span></div>`;
+}
+function drawL3(){
+  const cx=W/2,cy=H/2,tw=W*0.6,th=30,baseY=cy+80;
+  drawText('SLA 光固化打印',cx,50,'#60a5fa',18);
+  // resin vat
+  ctx.fillStyle='#0a1a3a';ctx.fillRect(cx-tw/2-10,baseY-lState.layer*th-10,tw+20,lState.maxLayers*th+40);
+  ctx.strokeStyle='#1e40af';ctx.lineWidth=2;ctx.strokeRect(cx-tw/2-10,baseY-lState.layer*th-10,tw+20,lState.maxLayers*th+40);
+  // liquid resin surface
+  ctx.fillStyle='rgba(59,130,246,0.2)';ctx.fillRect(cx-tw/2,baseY-lState.layer*th,tw,lState.maxLayers*th+20);
+  // cured layers
+  for(let i=0;i<lState.layer;i++){
+    ctx.fillStyle='rgba(200,220,255,0.7)';ctx.fillRect(cx-tw/2+20,baseY-i*th+5,tw-40,th-5);
+  }
+  // current layer scanning
+  const curY=baseY-lState.layer*th;
+  // cured portion
+  if(lState.scanX>0){
+    ctx.fillStyle='rgba(200,220,255,0.6)';ctx.fillRect(cx-tw/2+20,curY+5,Math.min(lState.scanX,tw-40),th-5);
+  }
+  // UV laser beam from top
+  const laserX=cx-tw/2+20+lState.scanX;
+  if(lState.scanning&&laserX<cx+tw/2-20){
+    ctx.strokeStyle='#a78bfa';ctx.lineWidth=2;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(laserX,30);ctx.lineTo(laserX,curY+5);ctx.stroke();ctx.setLineDash([]);
+    // laser point glow
+    ctx.fillStyle='#c4b5fd';ctx.beginPath();ctx.arc(laserX,curY+th/2,8+Math.sin(frame*0.3)*3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(laserX,curY+th/2,3,0,Math.PI*2);ctx.fill();
+  }
+  // platform
+  ctx.fillStyle='#444';ctx.fillRect(cx-tw/2+15,baseY+25,tw-30,8);
+  drawText('树脂槽',cx,baseY+lState.maxLayers*th+40,'#1e40af',13);
+  drawText(`第${lState.layer+1}层 / ${lState.maxLayers}层`,cx,baseY+lState.maxLayers*th+60,'#888',12);
+  // advance scan
+  if(lState.scanning){
+    lState.scanX+=3;
+    if(lState.scanX>=tw-40){
+      lState.scanX=0;
+      if(!levelObjs[3][1])markObj(1);
+      lState.layer++;
+      if(lState.layer>=lState.maxLayers){lState.scanning=false;markObj(2);checkComplete();}
+      else{markObj(0);panelDirty=true;renderPanel();}
+    }
+  }
+}
+
+/* ========== LEVEL 4: SLM METAL ========== */
+function initL4(){lState={power:50,scanX:0,layer:0,maxLayers:4,phase:'powder',powderAnim:0,scanning:false,layers:[]};}
+function renderActions_L4(){
+  const a=document.getElementById('actions');if(!a)return;
+  const pOk=lState.power>=40&&lState.power<=70;
+  let h=`<div class="slider-row"><label>激光功率: <span class="slider-val">${lState.power}W</span> ${lState.power<40?'⚠️ 功率不足':''}${lState.power>70?'⚠️ 功率过高':''}</label>`+
+    `<input type="range" min="10" max="100" value="${lState.power}" oninput="setSLMPower(this.value)"></div>`;
+  h+=`<div class="hint-box">当前: ${lState.phase==='powder'?'铺粉中':'激光烧结中'} | 第${lState.layer+1}/${lState.maxLayers}层<br>`;
+  h+=pOk?'<span style="color:#4ade80">功率合适 ✓</span>':'<span style="color:#f87171">请调整到40-70W范围</span>';
+  h+=`</div>`;
+  if(lState.phase==='powder')h+=`<button class="act-btn" onclick="startSLMScan()"${pOk?'':' disabled'}>开始烧结</button>`;
+  a.innerHTML=h;
+}
+function setSLMPower(v){lState.power=parseInt(v);panelDirty=true;renderPanel();}
+function startSLMScan(){
+  if(lState.power<40||lState.power>70)return;
+  lState.phase='scan';lState.scanX=0;lState.scanning=true;
+  if(!levelObjs[4][0])markObj(0);panelDirty=true;renderPanel();
+}
+function drawL4(){
+  const cx=W/2,cy=H/2,tw=W*0.6,th=25,baseY=cy+60;
+  drawText('SLM 选择性激光熔化',cx,50,'#60a5fa',18);
+  // powder bed
+  ctx.fillStyle='#1a1a1a';ctx.fillRect(cx-tw/2-10,baseY-lState.maxLayers*th-10,tw+20,lState.maxLayers*th+50);
+  ctx.strokeStyle='#555';ctx.lineWidth=2;ctx.strokeRect(cx-tw/2-10,baseY-lState.maxLayers*th-10,tw+20,lState.maxLayers*th+50);
+  // completed layers
+  for(let i=0;i<lState.layer;i++){
+    ctx.fillStyle='#d4d4d8';ctx.fillRect(cx-tw/2+20,baseY-i*th,tw-40,th-2);
+    // metallic sheen
+    const g=ctx.createLinearGradient(cx-tw/2+20,baseY-i*th,cx+tw/2-20,baseY-i*th);
+    g.addColorStop(0,'rgba(255,255,255,0.1)');g.addColorStop(0.5,'rgba(255,255,255,0.3)');g.addColorStop(1,'rgba(255,255,255,0.1)');
+    ctx.fillStyle=g;ctx.fillRect(cx-tw/2+20,baseY-i*th,tw-40,th-2);
+  }
+  // current layer
+  const curY=baseY-lState.layer*th;
+  if(lState.phase==='powder'){
+    // powder layer (gray particles)
+    ctx.fillStyle='#666';
+    for(let x=cx-tw/2+20;x<cx+tw/2-20;x+=4){
+      for(let y=curY;y<curY+th-2;y+=4){
+        if(Math.random()>0.3){ctx.fillRect(x,y,2,2);}
+      }
+    }
+    // powder spreader animation
+    const spX=cx-tw/2+20+(frame*4)%(tw-40);
+    ctx.fillStyle='#888';ctx.fillRect(spX-2,curY-8,4,th+10);
+  }else if(lState.scanning){
+    // powder base
+    ctx.fillStyle='#555';ctx.fillRect(cx-tw/2+20,curY,tw-40,th-2);
+    // sintered portion
+    if(lState.scanX>0){
+      ctx.fillStyle='#d4d4d8';ctx.fillRect(cx-tw/2+20,curY,Math.min(lState.scanX,tw-40),th-2);
+    }
+    // laser
+    const lx=cx-tw/2+20+lState.scanX;
+    if(lx<cx+tw/2-20){
+      ctx.strokeStyle='#ef4444';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(lx,30);ctx.lineTo(lx,curY);ctx.stroke();
+      // glow
+      ctx.fillStyle='rgba(239,68,68,0.6)';ctx.beginPath();ctx.arc(lx,curY+th/2,10+Math.sin(frame*0.5)*4,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(lx,curY+th/2,4,0,Math.PI*2);ctx.fill();
+      // sparks
+      for(let i=0;i<3;i++){
+        const sx=lx+(Math.random()-0.5)*20,sy=curY-Math.random()*30;
+        ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(sx,sy,1.5,0,Math.PI*2);ctx.fill();
+      }
+    }
+    lState.scanX+=4;
+    if(lState.scanX>=tw-40){
+      lState.layer++;lState.scanX=0;lState.phase='powder';lState.scanning=false;
+      markObj(1);
+      if(lState.layer>=lState.maxLayers){markObj(2);checkComplete();}
+      panelDirty=true;renderPanel();
+    }
+  }
+  // power indicator
+  const pOk=lState.power>=40&&lState.power<=70;
+  drawText(`激光功率: ${lState.power}W ${pOk?'✓':'✗'}`,cx,baseY+60,pOk?'#4ade80':'#f87171',14);
+}
+
+/* ========== LEVEL 5: SUPPORT STRUCTURES ========== */
+function initL5(){
+  // T-shaped model with overhangs
+  lState={supports:[],removed:false,identified:false,
+    overhangs:[
+      {x:0.15,y:0.35,w:0.18,h:0.05},// left overhang
+      {x:0.67,y:0.35,w:0.18,h:0.05},// right overhang
+      {x:0.3,y:0.2,w:0.4,h:0.05}// top bridge
+    ],
+    needed:[
+      {x:0.2,y:0.4,placed:false},
+      {x:0.72,y:0.4,placed:false},
+      {x:0.4,y:0.25,placed:false},
+      {x:0.6,y:0.25,placed:false}
+    ]
+  };
+  cv.onclick=function(e){
+    if(lState.removed)return;
+    const r=cv.getBoundingClientRect(),mx=(e.clientX-r.left)/W,my=(e.clientY-r.top)/H;
+    // check if click is near a needed support location
+    for(let i=0;i<lState.needed.length;i++){
+      const n=lState.needed[i];
+      if(!n.placed&&Math.abs(mx-n.x)<0.06&&Math.abs(my-n.y)<0.15){
+        n.placed=true;lState.supports.push({x:n.x,y:n.y});
+        if(!lState.identified){lState.identified=true;markObj(0);}
+        if(lState.needed.every(s=>s.placed)){markObj(1);panelDirty=true;renderPanel();}
+        break;
+      }
+    }
+  };
+}
+function renderActions_L5(){
+  const a=document.getElementById('actions');if(!a)return;
+  const allPlaced=lState.needed.every(s=>s.placed);
+  let h=`<div class="hint-box">红色区域为悬空部分，点击其下方添加支撑柱<br>已添加: ${lState.supports.length}/${lState.needed.length}</div>`;
+  if(allPlaced&&!lState.removed)h+=`<button class="act-btn green" onclick="removeSupports()">移除支撑</button>`;
+  a.innerHTML=h;
+}
+function removeSupports(){lState.removed=true;markObj(2);checkComplete();}
+function drawL5(){
+  const cx=W/2,cy=H/2,mw=W*0.7,mh=H*0.7,ox=W*0.15,oy=H*0.15;
+  drawText('支撑结构设计',cx,30,'#60a5fa',18);
+  // build plate
+  ctx.fillStyle='#222';ctx.fillRect(ox,oy+mh*0.7,mw,8);
+  drawText('打印平台',cx,oy+mh*0.7+25,'#555',12);
+  // T-shape model body (vertical pillar)
+  ctx.fillStyle='#3b82f6';ctx.fillRect(ox+mw*0.35,oy+mh*0.25,mw*0.3,mh*0.45);
+  // overhangs (red)
+  lState.overhangs.forEach(o=>{
+    ctx.fillStyle=lState.removed?'#3b82f6':'rgba(239,68,68,0.5)';
+    ctx.fillRect(ox+o.x*mw,oy+o.y*mh,o.w*mw,o.h*mh);
+    if(!lState.removed){
+      ctx.strokeStyle='#ef4444';ctx.lineWidth=2;ctx.setLineDash([4,4]);
+      ctx.strokeRect(ox+o.x*mw,oy+o.y*mh,o.w*mw,o.h*mh);ctx.setLineDash([]);
+    }
+  });
+  // support pillars
+  if(!lState.removed){
+    lState.supports.forEach(s=>{
+      const sx=ox+s.x*mw,sy=oy+s.y*mh;
+      ctx.fillStyle='rgba(56,189,248,0.6)';ctx.fillRect(sx-3,sy,6,mh*0.7-s.y*mh);
+      ctx.strokeStyle='#38bdf8';ctx.lineWidth=1;
+      for(let y=sy;y<oy+mh*0.7;y+=12){ctx.beginPath();ctx.moveTo(sx-6,y);ctx.lineTo(sx+6,y);ctx.stroke();}
+    });
+    // hint markers for unplaced supports
+    lState.needed.forEach(n=>{
+      if(!n.placed){
+        const nx=ox+n.x*mw,ny=oy+n.y*mh;
+        ctx.strokeStyle='rgba(250,204,21,0.5)';ctx.lineWidth=2;ctx.setLineDash([3,3]);
+        ctx.beginPath();ctx.moveTo(nx,ny);ctx.lineTo(nx,oy+mh*0.7);ctx.stroke();ctx.setLineDash([]);
+        // pulsing circle
+        const pulse=Math.sin(frame*0.1)*5;
+        ctx.strokeStyle='#facc15';ctx.lineWidth=2;ctx.beginPath();ctx.arc(nx,ny+20,10+pulse,0,Math.PI*2);ctx.stroke();
+      }
+    });
+  }
+  if(lState.removed){drawText('✓ 支撑已移除，打印完成！',cx,oy+mh+20,'#4ade80',16);}
+}
+
+/* ========== LEVEL 6: BIOPRINTING ========== */
+function initL6(){
+  lState={phase:'printing',printLayer:0,maxLayers:8,printX:0,scaffoldDone:false,
+    inDish:false,cellGrowth:0,cells:[],growTimer:0};
+}
+function renderActions_L6(){
+  const a=document.getElementById('actions');if(!a)return;
+  let h='';
+  if(lState.phase==='printing'){
+    h+=`<div class="hint-box">生物墨水正在打印器官支架<br>第 <span class="sv">${lState.printLayer+1}/${lState.maxLayers}</span> 层</div>`;
+  }else if(lState.phase==='transfer'){
+    h+=`<button class="act-btn green" onclick="placeDish()">放入培养皿</button>`;
+  }else{
+    h+=`<div class="hint-box">细胞正在支架上增殖...<br>生长进度: <span class="sv">${Math.round(lState.cellGrowth)}%</span></div>`;
+  }
+  a.innerHTML=h;
+}
+function placeDish(){lState.phase='growing';lState.inDish=true;markObj(1);panelDirty=true;renderPanel();}
+function drawL6(){
+  const cx=W/2,cy=H/2;
+  drawText('生物3D打印',cx,40,'#60a5fa',18);
+  if(lState.phase==='printing'){
+    // scaffold printing
+    const sw=200,sh=200,sx=cx-sw/2,sy=cy-sh/2;
+    // tube scaffold (concentric rings per layer)
+    for(let i=0;i<lState.printLayer;i++){
+      const ly=sy+sh-i*(sh/lState.maxLayers);
+      ctx.strokeStyle='#4ade80';ctx.lineWidth=3;
+      ctx.beginPath();ctx.ellipse(cx,ly,sw/2-20,15,0,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.ellipse(cx,ly,sw/4,8,0,0,Math.PI*2);ctx.stroke();
+      // cross links
+      ctx.strokeStyle='rgba(74,222,128,0.4)';ctx.lineWidth=1;
+      for(let a=0;a<6;a++){
+        const ang=a*Math.PI/3;
+        ctx.beginPath();
+        ctx.moveTo(cx+Math.cos(ang)*(sw/4),ly+Math.sin(ang)*8);
+        ctx.lineTo(cx+Math.cos(ang)*(sw/2-20),ly+Math.sin(ang)*15);
+        ctx.stroke();
+      }
+    }
+    // current layer printing
+    const curY=sy+sh-lState.printLayer*(sh/lState.maxLayers);
+    const progress=lState.printX/(Math.PI*2);
+    ctx.strokeStyle='#4ade80';ctx.lineWidth=3;
+    ctx.beginPath();ctx.ellipse(cx,curY,sw/2-20,15,0,0,lState.printX);ctx.stroke();
+    // bio-ink nozzle
+    const nx=cx+Math.cos(lState.printX)*(sw/2-20),ny=curY+Math.sin(lState.printX)*15;
+    drawNozzle(nx,ny-25,'#4ade80');
+    // drip effect
+    ctx.fillStyle='#4ade80';
+    for(let i=0;i<3;i++){
+      const dy=Math.random()*10;
+      ctx.beginPath();ctx.arc(nx+(Math.random()-0.5)*6,ny-dy,2,0,Math.PI*2);ctx.fill();
+    }
+    drawText('生物墨水',cx,sy+sh+40,'#4ade80',13);
+    // advance
+    lState.printX+=0.08;
+    if(lState.printX>=Math.PI*2){
+      lState.printX=0;lState.printLayer++;
+      if(lState.printLayer>=lState.maxLayers){
+        lState.phase='transfer';lState.scaffoldDone=true;markObj(0);panelDirty=true;renderPanel();
+      }
+    }
+  }else{
+    // petri dish
+    const dx=cx,dy=cy,dr=150;
+    // dish
+    ctx.fillStyle='#0a1a1a';ctx.beginPath();ctx.ellipse(dx,dy,dr,dr*0.4,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#2a4a4a';ctx.lineWidth=3;ctx.beginPath();ctx.ellipse(dx,dy,dr,dr*0.4,0,0,Math.PI*2);ctx.stroke();
+    // culture medium
+    ctx.fillStyle='rgba(74,222,128,0.1)';ctx.beginPath();ctx.ellipse(dx,dy,dr-10,dr*0.4-5,0,0,Math.PI*2);ctx.fill();
+    // scaffold in dish
+    for(let i=0;i<lState.maxLayers;i++){
+      const ly=dy-30+i*8;
+      ctx.strokeStyle='rgba(74,222,128,0.6)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.ellipse(dx,ly,60,10,0,0,Math.PI*2);ctx.stroke();
+    }
+    // cells
+    if(lState.phase==='growing'){
+      lState.growTimer++;
+      if(lState.growTimer%8===0&&lState.cells.length<120){
+        const ang=Math.random()*Math.PI*2,rad=Math.random()*55;
+        lState.cells.push({x:dx+Math.cos(ang)*rad,y:dy-30+Math.random()*60+Math.sin(ang)*8,size:1+Math.random()*2,pulse:Math.random()*Math.PI*2});
+      }
+      lState.cellGrowth=Math.min(100,lState.cells.length/120*100);
+      lState.cells.forEach(c=>{
+        const s=c.size+Math.sin(frame*0.05+c.pulse)*0.5;
+        ctx.fillStyle='rgba(239,68,68,0.8)';ctx.beginPath();ctx.arc(c.x,c.y,s,0,Math.PI*2);ctx.fill();
+      });
+      if(lState.cellGrowth>=100&&!levelObjs[6][2]){markObj(2);checkComplete();}
+      if(lState.growTimer%30===0){panelDirty=true;renderPanel();}
+    }
+    drawText(lState.phase==='transfer'?'点击"放入培养皿"':'细胞培养中...',dx,dy+dr*0.4+30,lState.phase==='transfer'?'#facc15':'#f87171',14);
+  }
+}
+
+/* ========== RENDER ACTIONS DISPATCH ========== */
+function renderActions(){
+  if(curLevel===0)renderActions_L0();
+  else if(curLevel===1)renderActions_L1();
+  else if(curLevel===2)renderActions_L2();
+  else if(curLevel===3)renderActions_L3();
+  else if(curLevel===4)renderActions_L4();
+  else if(curLevel===5)renderActions_L5();
+  else if(curLevel===6)renderActions_L6();
+}
+
+/* ========== MAIN LOOP ========== */
+function mainLoop(){
+  frame++;
+  drawBg();
+  if(curLevel===0)drawL0();
+  else if(curLevel===1)drawL1();
+  else if(curLevel===2)drawL2();
+  else if(curLevel===3)drawL3();
+  else if(curLevel===4)drawL4();
+  else if(curLevel===5)drawL5();
+  else if(curLevel===6)drawL6();
+  animId=requestAnimationFrame(mainLoop);
+}
+
+resize();resetLevel();renderPanel();mainLoop();
+</script>
+</body>
+</html>

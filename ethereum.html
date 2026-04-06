@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>以太坊原理探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a14;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:36px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .eth{color:#627eea}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#627eea,#8a9ff5);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:16px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:11px;width:75px}
+.feat .fi{font-size:24px;margin-bottom:4px}
+
+#lp{position:absolute;top:0;left:0;width:330px;height:100%;background:rgba(10,10,24,.97);border-right:1px solid #1a1a3a;z-index:20;display:none;flex-direction:column;overflow:hidden}
+#lp .lp-head{padding:12px 16px;border-bottom:1px solid #1a1a3a;display:flex;align-items:center;justify-content:space-between}
+#lp .lp-title{font-size:14px;font-weight:700;color:#627eea}
+#lp .lp-step{font-size:11px;color:#888}
+#lp-body{flex:1;overflow-y:auto;padding:0}
+
+.mission{margin:10px;padding:12px;background:#141428;border:1px solid #2a2a5a;border-radius:10px}
+.mission .m-lv{font-size:11px;color:#627eea;font-weight:600;letter-spacing:1px}
+.mission .m-t{font-size:16px;font-weight:700;margin:4px 0;color:#eee}
+.mission .m-d{font-size:12px;color:#999;line-height:1.5}
+.mission .m-c{margin-top:8px;padding:8px 10px;background:#0e0e20;border-radius:6px;font-size:11px;color:#6a8aff;line-height:1.6}
+.mission .m-c b{color:#8ab4ff}
+.g-row{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12px}
+.g-row .g-t{color:#ccc;flex:1}
+.hint-b{margin:0 10px;padding:8px 12px;background:#1a1a38;border-left:3px solid #627eea;border-radius:0 8px 8px 0;font-size:11px;color:#a0b4ff;line-height:1.5}
+.act-s{margin:10px}
+.act-s .as-l{font-size:11px;color:#888;margin-bottom:6px;font-weight:600}
+.abtn{width:100%;padding:10px;background:linear-gradient(135deg,#627eea,#8a9ff5);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:6px;transition:all .2s}
+.abtn:hover{filter:brightness(1.1)}
+.abtn:disabled{background:#333;color:#666;cursor:not-allowed;filter:none}
+.abtn.green{background:linear-gradient(135deg,#2aaa5a,#3cc76a)}
+.abtn.red{background:linear-gradient(135deg,#e8443a,#ff6b6b)}
+.abtn.orange{background:linear-gradient(135deg,#f7931a,#ffb347)}
+.abtn.small{font-size:12px;padding:7px 12px;width:auto;display:inline-block;margin:3px}
+
+/* 代码编辑器风格 */
+.code-box{background:#0c0c1e;border:1px solid #2a2a5a;border-radius:8px;padding:10px 12px;font-family:'Menlo','Monaco',monospace;font-size:11px;line-height:1.7;margin:8px 0;overflow-x:auto}
+.code-box .kw{color:#c678dd}
+.code-box .fn{color:#61afef}
+.code-box .str{color:#98c379}
+.code-box .num{color:#d19a66}
+.code-box .cm{color:#5c6370}
+.code-box .var{color:#e5c07b}
+.code-box .op{color:#56b6c2}
+
+/* Gas 仪表 */
+.gas-meter{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px}
+.gas-meter .gm-bar{flex:1;height:8px;background:#1a1a3a;border-radius:4px;overflow:hidden}
+.gas-meter .gm-fill{height:100%;border-radius:4px;transition:width .5s}
+.gas-meter .gm-val{min-width:70px;text-align:right;font-variant-numeric:tabular-nums;color:#f7931a}
+
+/* 右侧 */
+#info-bar{position:absolute;top:12px;right:12px;background:rgba(10,10,24,.95);border:1px solid #1a1a3a;border-radius:10px;padding:12px 16px;z-index:20;min-width:200px;display:none;font-size:12px}
+.ib-t{font-size:11px;color:#627eea;font-weight:600;margin-bottom:6px}
+.ib-r{display:flex;justify-content:space-between;padding:3px 0}
+.ib-r .k{color:#888}
+.ib-r .v{font-weight:600;font-variant-numeric:tabular-nums}
+
+#tx-log{position:absolute;bottom:12px;right:12px;background:rgba(10,10,24,.95);border:1px solid #1a1a3a;border-radius:10px;padding:10px 14px;z-index:20;width:300px;max-height:220px;overflow-y:auto;display:none;font-size:11px}
+.tl-t{font-size:11px;color:#627eea;font-weight:600;margin-bottom:4px}
+.tx-e{padding:3px 0;border-bottom:1px solid #1a1a3a15;color:#aaa}
+
+/* EVM 执行面板 */
+#evm-box{position:absolute;bottom:12px;left:350px;background:rgba(10,10,24,.95);border:1px solid #627eea55;border-radius:10px;padding:14px 18px;z-index:20;display:none;min-width:380px;max-width:440px}
+#evm-box .eb-t{font-size:13px;color:#627eea;font-weight:600;margin-bottom:6px}
+#evm-steps{font-family:monospace;font-size:11px;color:#888;max-height:120px;overflow-y:auto;line-height:1.7}
+#evm-steps .step-run{color:#627eea}
+#evm-steps .step-ok{color:#2aaa5a}
+#evm-steps .step-gas{color:#f7931a}
+
+.result-box{text-align:center;max-width:440px;background:rgba(10,10,24,.98);border:1px solid #2a2a5a;border-radius:16px;padding:28px 36px}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-t{font-size:20px;font-weight:700;margin-bottom:8px}
+.result-box .rb-l{text-align:left;background:#0e0e20;border-radius:8px;padding:12px 14px;font-size:12px;color:#8ab4ff;line-height:1.7;margin-bottom:16px}
+.result-box .rb-l b{color:#627eea}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .bn{background:#627eea;color:#fff}
+.result-box .br{background:#2a2a5a;color:#ccc}
+
+/* 账户状态卡片 */
+.acct-card{background:#0e0e20;border:1px solid #2a2a5a;border-radius:8px;padding:8px 10px;margin:4px 0;font-size:11px}
+.acct-card .ac-name{color:#eee;font-weight:600}
+.acct-card .ac-bal{color:#627eea}
+.acct-card .ac-addr{color:#5c6370;font-family:monospace;font-size:9px}
+
+/* NFT 卡片 */
+.nft-card{background:linear-gradient(135deg,#1a1a38,#0e0e20);border:1px solid #627eea44;border-radius:10px;padding:12px;text-align:center;margin:8px 0}
+.nft-card .nft-art{font-size:48px;margin:8px 0}
+.nft-card .nft-name{color:#eee;font-weight:600;font-size:13px}
+.nft-card .nft-id{color:#627eea;font-size:10px;font-family:monospace}
+
+/* 流动性池 */
+.pool-vis{background:#0e0e20;border:1px solid #2a2a5a;border-radius:8px;padding:10px;margin:8px 0;text-align:center}
+.pool-vis .pv-pair{display:flex;justify-content:center;gap:20px;margin:8px 0}
+.pool-vis .pv-token{text-align:center}
+.pool-vis .pv-token .pv-icon{font-size:28px}
+.pool-vis .pv-token .pv-amt{font-size:14px;font-weight:700;color:#eee}
+.pool-vis .pv-token .pv-name{font-size:10px;color:#888}
+.pool-vis .pv-x{font-size:20px;color:#627eea;align-self:center}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>⟠ <span class="eth">以太坊</span>原理探险</h1>
+  <div class="sub">6 个关卡，从智能合约到 DeFi，亲手体验世界计算机</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">📝</div>智能合约</div>
+    <div class="feat"><div class="fi">⛽</div>Gas费</div>
+    <div class="feat"><div class="fi">🪙</div>ERC-20</div>
+    <div class="feat"><div class="fi">🎨</div>NFT</div>
+    <div class="feat"><div class="fi">🏦</div>DeFi</div>
+    <div class="feat"><div class="fi">🔒</div>PoS质押</div>
+  </div>
+</div>
+</div>
+
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+
+<div id="lp">
+  <div class="lp-head"><span class="lp-title" id="lpTitle">第 1 关</span><span class="lp-step" id="lpStep">1/6</span></div>
+  <div id="lp-body"></div>
+</div>
+<div id="info-bar"></div>
+<div id="tx-log"><div class="tl-t">📜 执行日志</div><div id="tx-list"></div></div>
+<div id="evm-box">
+  <div class="eb-t">⟠ EVM 虚拟机</div>
+  <div id="evm-steps"></div>
+</div>
+
+<script>
+// ============ 工具 ============
+function rHash(s){let h=0x811c9dc5;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)}return'0x'+((h>>>0).toString(16)).padStart(8,'0')+((h^(h>>>16))>>>0).toString(16).padStart(8,'0')}
+function shortAddr(){return '0x'+Array.from({length:8},()=>Math.floor(Math.random()*16).toString(16)).join('')}
+
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+let CW,CH,time=0;
+
+// 网络
+let nodes=[];
+let edges=[];
+let broadcasts=[];
+let evmSteps=[];
+let txLog=[];
+let gameState='start';
+let currentLevel=0;
+let ls={}; // levelState
+
+// 全局状态
+let accounts={
+  you:{name:'你',addr:shortAddr(),bal:10,emoji:'👤'},
+  alice:{name:'Alice',addr:shortAddr(),bal:5,emoji:'👩'},
+  bob:{name:'Bob',addr:shortAddr(),bal:3,emoji:'👨'},
+  charlie:{name:'Charlie',addr:shortAddr(),bal:2,emoji:'🧑'},
+};
+let contracts=[];
+let tokens={};
+let nfts=[];
+let gasPrice=20; // gwei
+
+// ============ 关卡 ============
+const LEVELS=[
+  // === 第1关：智能合约 ===
+  {
+    id:1,title:'智能合约：链上自动售货机',icon:'📝',
+    desc:'写一个"自动售货机"合约：任何人投入 1 ETH，合约自动发出一个 🍫 巧克力。没有中间商，代码即规则。',
+    concept:'<b>智能合约</b> = 部署在区块链上的程序。一旦部署，任何人都可以调用，没人能修改或关停。\n\n跟比特币只能转账不同，以太坊可以运行任意程序——这就是为什么叫"世界计算机"。',
+    goals:[{label:'部署合约',check:s=>s.deployed},{label:'购买巧克力',check:s=>s.bought},{label:'查看合约余额',check:s=>s.checked}],
+    hint:'先部署合约到链上，然后花 1 ETH 买巧克力。注意观察 EVM 如何一步步执行合约代码！',
+    actions:s=>{
+      let h='';
+      if(!s.deployed){
+        h+=`<div class="code-box">
+<span class="cm">// 自动售货机合约</span>
+<span class="kw">contract</span> <span class="fn">VendingMachine</span> {
+  <span class="kw">mapping</span>(<span class="var">address</span> => <span class="var">uint</span>) <span class="var">purchases</span>;
+
+  <span class="kw">function</span> <span class="fn">buy</span>() <span class="kw">payable</span> {
+    <span class="kw">require</span>(msg.<span class="var">value</span> >= <span class="num">1 ether</span>);
+    <span class="var">purchases</span>[msg.sender] += <span class="num">1</span>;
+    <span class="cm">// 发送 🍫 给买家</span>
+  }
+}</div>`;
+        h+=`<button class="abtn" onclick="doAction('deploy')">🚀 部署合约到以太坊</button>`;
+      } else if(!s.bought){
+        h+=`<div class="acct-card"><span class="ac-name">📋 合约已部署</span><br><span class="ac-addr">${s.contractAddr}</span><br><span class="ac-bal">余额: ${s.contractBal} ETH · 库存: ∞</span></div>`;
+        h+=`<div class="acct-card"><span class="ac-name">👤 你的钱包</span><br><span class="ac-bal">余额: ${accounts.you.bal} ETH</span></div>`;
+        h+=`<button class="abtn orange" onclick="doAction('buy')">🍫 花 1 ETH 买巧克力</button>`;
+      } else if(!s.checked){
+        h+=`<div style="font-size:12px;color:#2aaa5a;padding:6px">✅ 购买成功！你获得了 🍫</div>`;
+        h+=`<div class="acct-card"><span class="ac-name">👤 你</span><br><span class="ac-bal">余额: ${accounts.you.bal} ETH · 🍫 ×${s.chocoCount}</span></div>`;
+        h+=`<button class="abtn" onclick="doAction('checkBal')">🔍 查看合约余额</button>`;
+      } else {
+        h+=`<div class="acct-card"><span class="ac-name">📋 合约</span><br><span class="ac-bal">余额: ${s.contractBal} ETH（你付的钱都在这！）</span></div>`;
+        h+=`<div style="font-size:11px;color:#aaa;padding:6px">合约自动收款、自动发货，没有任何人操控。代码即法律。</div>`;
+        h+=`<button class="abtn green" onclick="checkLevel()">💡 我理解了！</button>`;
+      }
+      return h;
+    },
+    init:()=>({deployed:false,bought:false,checked:false,contractAddr:'',contractBal:0,chocoCount:0}),
+    learn:'<b>智能合约</b>就像一台无人值守的自动售货机：规则写死在代码里，放在区块链上人人可见，没有人能作弊或关停。\n\n以太坊上已经运行着数百万个这样的合约：借贷、交易、保险、投票... 全部无需中间人。'
+  },
+  // === 第2关：Gas ===
+  {
+    id:2,title:'Gas 费：每一步都要油钱',icon:'⛽',
+    desc:'以太坊上执行任何操作都要消耗 Gas。简单转账便宜（21,000 Gas），复杂合约操作贵得多。试试不同操作，感受 Gas 消耗的差异。',
+    concept:'<b>Gas</b> = 计算资源的计量单位。每个 EVM 操作码都有固定 Gas 消耗：\n\n• 加法：3 Gas\n• 存储写入：20,000 Gas\n• 转账：21,000 Gas\n\n<b>Gas 费 = Gas 用量 × Gas 单价 (gwei)</b>\n\n这是为了防止有人写死循环，浪费全网的计算资源。',
+    goals:[{label:'执行一笔简单转账',check:s=>s.simpleTransfer},{label:'执行一次合约调用',check:s=>s.contractCall},{label:'对比 Gas 消耗',check:s=>s.compared}],
+    hint:'先做一笔普通转账（便宜），再调用合约（贵）。Gas 费 = Gas × 单价，注意观察差异',
+    actions:s=>{
+      let h='';
+      h+=`<div style="font-size:11px;color:#888;margin-bottom:6px">当前 Gas 单价: <span style="color:#f7931a">${gasPrice} gwei</span></div>`;
+      if(!s.simpleTransfer){
+        h+=`<button class="abtn" onclick="doAction('simpleTx')">💸 普通转账: 你 → Alice 0.1 ETH</button>`;
+      } else if(!s.contractCall){
+        h+=`<div class="gas-meter"><span>转账</span><div class="gm-bar"><div class="gm-fill" style="width:15%;background:#2aaa5a"></div></div><span class="gm-val">21,000 Gas</span></div>`;
+        h+=`<div style="font-size:11px;color:#2aaa5a;padding:4px">✅ 转账完成！Gas 费: ${(21000*gasPrice/1e9).toFixed(6)} ETH</div>`;
+        h+=`<button class="abtn orange" onclick="doAction('contractTx')">📝 调用合约: 铸造 NFT</button>`;
+      } else if(!s.compared){
+        h+=`<div class="gas-meter"><span>转账</span><div class="gm-bar"><div class="gm-fill" style="width:15%;background:#2aaa5a"></div></div><span class="gm-val">21,000 Gas</span></div>`;
+        h+=`<div class="gas-meter"><span>合约</span><div class="gm-bar"><div class="gm-fill" style="width:75%;background:#ff6b6b"></div></div><span class="gm-val">145,000 Gas</span></div>`;
+        h+=`<div style="font-size:11px;color:#ffcc80;padding:4px">合约调用消耗了 7 倍的 Gas！因为需要执行更多计算和存储操作。</div>`;
+        h+=`<button class="abtn green" onclick="doAction('compare')">💡 我理解了 Gas 的意义</button>`;
+      } else {
+        h+=`<button class="abtn green" onclick="checkLevel()">✅ 进入下一关</button>`;
+      }
+      return h;
+    },
+    init:()=>({simpleTransfer:false,contractCall:false,compared:false}),
+    learn:'<b>Gas 机制</b>是以太坊的"计量表"。它解决了两个问题：\n\n1. <b>防滥用</b>：没有 Gas，有人写 while(true) 就能让全网卡死\n2. <b>激励矿工</b>：Gas 费付给验证者，作为他们运行程序的报酬\n\n网络拥堵时 Gas 价格飙升（像高峰期打车涨价），这也催生了 Layer 2 扩容方案。'
+  },
+  // === 第3关：ERC-20 ===
+  {
+    id:3,title:'发币：ERC-20 代币',icon:'🪙',
+    desc:'用一个智能合约发行你自己的代币！ERC-20 是代币标准，定义了转账、查余额等统一接口。链上 99% 的代币都是这么来的。',
+    concept:'<b>ERC-20</b> = 代币标准接口，规定了所有代币必须实现的方法：\n\n• name()：代币名称\n• totalSupply()：总发行量\n• balanceOf(addr)：查询余额\n• transfer(to, amount)：转账\n\n一个合约 = 一种代币。发行代币只需要部署一个合约，成本约 $10-50。',
+    goals:[{label:'创建自己的代币',check:s=>s.created},{label:'给 Alice 转代币',check:s=>s.transferred},{label:'查看持币分布',check:s=>s.viewedDist}],
+    hint:'给你的代币起个名字，设置发行量，然后部署。代币立刻就在链上了！',
+    actions:s=>{
+      let h='';
+      if(!s.created){
+        h+=`<div class="code-box">
+<span class="cm">// ERC-20 代币合约</span>
+<span class="kw">contract</span> <span class="fn">MyToken</span> {
+  <span class="kw">string</span> <span class="var">name</span> = <span class="str">"????"</span>;
+  <span class="kw">uint</span> <span class="var">totalSupply</span> = <span class="num">1,000,000</span>;
+  <span class="kw">mapping</span>(<span class="var">address</span>=><span class="var">uint</span>) <span class="var">balances</span>;
+
+  <span class="kw">function</span> <span class="fn">transfer</span>(to, amt) {
+    balances[msg.sender] -= amt;
+    balances[to] += amt;
+  }
+}</div>`;
+        const names=['🐶 DogeCoin Pro','🌙 MoonToken','🚀 RocketCoin','💎 DiamondDAO','☕ CoffeeCoin'];
+        h+=`<div class="as-l">选择代币名称</div>`;
+        for(let n of names){
+          h+=`<button class="abtn small${ls.tokenName===n?' green':''}" onclick="doAction('pickName','${n}')">${n}</button>`;
+        }
+        if(ls.tokenName){
+          h+=`<button class="abtn" onclick="doAction('createToken')" style="margin-top:8px">🪙 发行 1,000,000 ${ls.tokenName}</button>`;
+        }
+      } else if(!s.transferred){
+        h+=`<div class="acct-card"><span class="ac-name">🪙 ${ls.tokenName}</span><br><span class="ac-bal">你持有: ${ls.yourBal.toLocaleString()} · 总量: 1,000,000</span></div>`;
+        h+=`<button class="abtn" onclick="doAction('transferToken')">📤 给 Alice 转 10,000 ${ls.tokenName}</button>`;
+      } else if(!s.viewedDist){
+        h+=`<div class="acct-card"><span class="ac-name">📊 持币分布</span></div>`;
+        const holders=[{n:'你',v:ls.yourBal},{n:'Alice',v:10000}];
+        for(let ho of holders){
+          const pct=(ho.v/1000000*100).toFixed(1);
+          h+=`<div class="gas-meter"><span style="min-width:40px">${ho.n}</span><div class="gm-bar"><div class="gm-fill" style="width:${pct}%;background:#627eea"></div></div><span class="gm-val">${ho.v.toLocaleString()}</span></div>`;
+        }
+        h+=`<div style="font-size:11px;color:#aaa;padding:6px">就这么简单——你已经"发币"了。链上的万币齐发，大部分就是这样来的。</div>`;
+        h+=`<button class="abtn green" onclick="doAction('viewDist')">💡 原来发币这么容易</button>`;
+      } else {
+        h+=`<button class="abtn green" onclick="checkLevel()">✅ 进入下一关</button>`;
+      }
+      return h;
+    },
+    init:()=>({created:false,transferred:false,viewedDist:false,tokenName:'',yourBal:1000000}),
+    learn:'<b>发币 ≠ 有价值</b>。任何人花几分钟就能发行一种代币，技术门槛极低。\n\n代币的价值完全取决于<b>共识和应用场景</b>——USDT 有美元储备背书，UNI 代表治理权，而大部分"空气币"毫无价值。\n\n看到"新币"先问：它解决了什么问题？谁在用？'
+  },
+  // === 第4关：NFT ===
+  {
+    id:4,title:'NFT：独一无二的数字资产',icon:'🎨',
+    desc:'ERC-721 = NFT 标准。跟 ERC-20（每个代币一样）不同，每个 NFT 都是独一无二的，有自己的编号和数据。铸造一个专属 NFT！',
+    concept:'<b>NFT (Non-Fungible Token)</b> = 非同质化代币\n\n• ERC-20：100 个代币都一样（像纸币）\n• ERC-721：每个 NFT 独一无二（像画作）\n\n每个 NFT 有唯一的 tokenId，指向一份元数据（图片/音乐/视频的链接）。NFT 证明的是<b>链上的所有权</b>。',
+    goals:[{label:'铸造一个 NFT',check:s=>s.minted},{label:'查看 NFT 详情',check:s=>s.viewed},{label:'转让 NFT',check:s=>s.transferred}],
+    hint:'选一个图案铸造 NFT，它会获得唯一编号。然后你可以转让给其他人——所有权变更记录在链上',
+    actions:s=>{
+      let h='';
+      if(!s.minted){
+        h+=`<div class="as-l">选择你的 NFT 图案</div>`;
+        const arts=['🎨','🐱','🌌','🎵','👾','🏔️'];
+        for(let a of arts){
+          h+=`<button class="abtn small${ls.nftArt===a?' green':''}" style="font-size:24px;width:50px;height:50px" onclick="doAction('pickArt','${a}')">${a}</button>`;
+        }
+        if(ls.nftArt){
+          h+=`<button class="abtn" onclick="doAction('mint')" style="margin-top:8px">🔨 铸造 NFT (Gas: ~145,000)</button>`;
+        }
+      } else if(!s.viewed){
+        h+=`<div class="nft-card">
+          <div class="nft-art">${ls.nftArt}</div>
+          <div class="nft-name">${ls.nftName}</div>
+          <div class="nft-id">Token ID: #${ls.nftId} · Owner: ${accounts.you.addr}</div>
+        </div>`;
+        h+=`<button class="abtn" onclick="doAction('viewNft')">🔍 查看链上数据</button>`;
+      } else if(!s.transferred){
+        h+=`<div style="font-size:11px;color:#aaa;padding:6px;line-height:1.6">
+          合约地址: ${ls.nftContract}<br>
+          Token ID: #${ls.nftId}<br>
+          所有者: <span style="color:#627eea">${accounts.you.addr}</span> (你)<br>
+          元数据: ipfs://Qm...${ls.nftArt}<br>
+          铸造时间: Block #${ls.mintBlock}
+        </div>`;
+        h+=`<button class="abtn orange" onclick="doAction('transferNft')">📤 转让给 Bob</button>`;
+      } else {
+        h+=`<div style="font-size:12px;color:#2aaa5a;padding:6px">✅ NFT 已转让给 Bob！所有权变更已记录在区块链上。</div>`;
+        h+=`<div style="font-size:11px;color:#aaa;padding:6px">新所有者: <span style="color:#627eea">${accounts.bob.addr}</span> (Bob)</div>`;
+        h+=`<button class="abtn green" onclick="checkLevel()">💡 我理解了！</button>`;
+      }
+      return h;
+    },
+    init:()=>({minted:false,viewed:false,transferred:false,nftArt:'',nftName:'',nftId:0,nftContract:'',mintBlock:0}),
+    learn:'NFT 本质是<b>链上的所有权登记</b>。图片本身谁都能右键保存，但"谁拥有这个 Token"是写在区块链上的，全网可查，无法伪造。\n\n<b>NFT ≠ 图片</b>。NFT 是一张"数字房产证"，它的价值取决于人们愿意为这个所有权付多少钱。'
+  },
+  // === 第5关：DeFi ===
+  {
+    id:5,title:'DeFi：去中心化交易所',icon:'🏦',
+    desc:'传统交易所有人操控（FTX 暴雷）。DeFi 用智能合约做交易所——流动性池 + 自动做市商（AMM），无需信任任何人。',
+    concept:'<b>自动做市商 (AMM)</b> 核心公式：\n\n<b>x × y = k</b>（恒定乘积）\n\n• x = 池中 ETH 数量\n• y = 池中代币数量\n• k = 常数，永远不变\n\n你买入 ETH → 池中 ETH 减少 → ETH 变贵。完全由数学决定价格，不需要交易对手。',
+    goals:[{label:'创建流动性池',check:s=>s.poolCreated},{label:'执行一笔兑换',check:s=>s.swapped},{label:'观察价格变化',check:s=>s.priceChecked}],
+    hint:'先创建一个 ETH/代币 的流动性池，然后用 ETH 换代币，看看 x×y=k 公式如何自动定价',
+    actions:s=>{
+      let h='';
+      if(!s.poolCreated){
+        h+=`<div class="pool-vis">
+          <div style="font-size:12px;color:#888;margin-bottom:4px">创建流动性池</div>
+          <div class="pv-pair">
+            <div class="pv-token"><div class="pv-icon">⟠</div><div class="pv-amt">10</div><div class="pv-name">ETH</div></div>
+            <div class="pv-x">×</div>
+            <div class="pv-token"><div class="pv-icon">🪙</div><div class="pv-amt">10,000</div><div class="pv-name">TOKEN</div></div>
+          </div>
+          <div style="font-size:11px;color:#627eea">k = 10 × 10,000 = 100,000</div>
+        </div>`;
+        h+=`<button class="abtn" onclick="doAction('createPool')">🏦 创建流动性池</button>`;
+      } else if(!s.swapped){
+        h+=`<div class="pool-vis">
+          <div style="font-size:11px;color:#2aaa5a">✅ 流动性池已创建</div>
+          <div class="pv-pair">
+            <div class="pv-token"><div class="pv-icon">⟠</div><div class="pv-amt">${ls.poolEth.toFixed(2)}</div><div class="pv-name">ETH</div></div>
+            <div class="pv-x">×</div>
+            <div class="pv-token"><div class="pv-icon">🪙</div><div class="pv-amt">${ls.poolToken.toFixed(0)}</div><div class="pv-name">TOKEN</div></div>
+          </div>
+          <div style="font-size:11px;color:#627eea">k = ${(ls.poolEth*ls.poolToken).toFixed(0)} · 价格: 1 ETH = ${(ls.poolToken/ls.poolEth).toFixed(0)} TOKEN</div>
+        </div>`;
+        h+=`<button class="abtn orange" onclick="doAction('swap')">🔄 用 2 ETH 换 TOKEN</button>`;
+      } else if(!s.priceChecked){
+        const oldPrice=1000, newPrice=(ls.poolToken/ls.poolEth).toFixed(0);
+        h+=`<div class="pool-vis">
+          <div style="font-size:11px;color:#ffcc80">兑换后的池子</div>
+          <div class="pv-pair">
+            <div class="pv-token"><div class="pv-icon">⟠</div><div class="pv-amt">${ls.poolEth.toFixed(2)}</div><div class="pv-name">ETH</div></div>
+            <div class="pv-x">×</div>
+            <div class="pv-token"><div class="pv-icon">🪙</div><div class="pv-amt">${ls.poolToken.toFixed(0)}</div><div class="pv-name">TOKEN</div></div>
+          </div>
+          <div style="font-size:11px;color:#627eea">k = ${(ls.poolEth*ls.poolToken).toFixed(0)} (没变！)</div>
+        </div>`;
+        h+=`<div style="font-size:12px;padding:6px;line-height:1.6">
+          <span style="color:#888">兑换前:</span> 1 ETH = <span style="color:#627eea">${oldPrice}</span> TOKEN<br>
+          <span style="color:#888">兑换后:</span> 1 ETH = <span style="color:#ff6b6b">${newPrice}</span> TOKEN<br>
+          <span style="color:#ffcc80">你买入 ETH → 池中 ETH 增多 → ETH 相对变便宜</span><br>
+          <span style="color:#ffcc80">你得到的 TOKEN 变少 → TOKEN 变贵</span>
+        </div>`;
+        h+=`<div style="font-size:11px;color:#aaa;padding:4px">你得到了 ${ls.gotToken.toFixed(0)} TOKEN（不是 2000，因为价格随交易滑动）</div>`;
+        h+=`<button class="abtn green" onclick="doAction('checkPrice')">💡 x×y=k，数学即交易所！</button>`;
+      } else {
+        h+=`<button class="abtn green" onclick="checkLevel()">✅ 进入下一关</button>`;
+      }
+      return h;
+    },
+    init:()=>({poolCreated:false,swapped:false,priceChecked:false,poolEth:10,poolToken:10000,gotToken:0}),
+    learn:'<b>Uniswap 的 x×y=k</b> 只用一行数学公式就取代了整个交易所：\n\n• 不需要买卖双方配对（"挂单撮合"）\n• 不需要信任交易所不跑路（FTX）\n• 任何人可以提供流动性赚手续费\n\n这就是 <b>DeFi 的魅力</b>——把金融中间人替换成公开透明的数学公式。'
+  },
+  // === 第6关：PoS ===
+  {
+    id:6,title:'PoS：质押挖矿',icon:'🔒',
+    desc:'以太坊不再烧电挖矿了！2022 年 The Merge 后，改用 PoS（权益证明）：质押 32 ETH 成为验证者，用"押金"而非算力保护网络。',
+    concept:'<b>PoS (Proof of Stake)</b> vs PoW:\n\n• PoW (比特币)：比谁算力大（烧电）\n• PoS (以太坊)：比谁押的钱多（质押）\n\n验证者质押 32 ETH → 被随机选中出块 → 获得奖励。如果作弊（签名错误的区块），押金会被<b>罚没 (Slashing)</b>。\n\n用经济惩罚代替物理算力，能耗降低 99.95%。',
+    goals:[{label:'质押 32 ETH',check:s=>s.staked},{label:'被选中出块',check:s=>s.proposed},{label:'模拟 Slashing',check:s=>s.slashed}],
+    hint:'质押 ETH 成为验证者，等待被随机选中。然后试试作弊，看看会发生什么！',
+    actions:s=>{
+      let h='';
+      if(!s.staked){
+        h+=`<div class="acct-card"><span class="ac-name">👤 你的钱包</span><br><span class="ac-bal">余额: ${accounts.you.bal} ETH</span></div>`;
+        h+=`<div style="font-size:11px;color:#aaa;padding:6px">质押 32 ETH 成为验证者。质押期间 ETH 被锁定，但可以获得年化 ~4% 的收益。</div>`;
+        h+=`<button class="abtn" onclick="doAction('stake')">🔒 质押 32 ETH 成为验证者</button>`;
+      } else if(!s.proposed){
+        h+=`<div style="padding:8px">`;
+        h+=`<div style="font-size:12px;color:#2aaa5a;margin-bottom:6px">✅ 质押成功！你是验证者了</div>`;
+        h+=`<div class="ib-r"><span class="k">质押量</span><span class="v" style="color:#627eea">32 ETH</span></div>`;
+        h+=`<div class="ib-r"><span class="k">验证者总数</span><span class="v">820,000+</span></div>`;
+        h+=`<div class="ib-r"><span class="k">年化收益</span><span class="v" style="color:#2aaa5a">~4.0%</span></div>`;
+        h+=`</div>`;
+        h+=`<button class="abtn" onclick="doAction('propose')">🎲 等待被随机选中出块</button>`;
+      } else if(!s.slashed){
+        h+=`<div style="font-size:12px;color:#f7931a;padding:8px">🎉 你被选中了！成功提交了一个区块，获得 0.05 ETH 奖励。</div>`;
+        h+=`<div style="font-size:11px;color:#aaa;padding:6px">但如果验证者作弊会怎样？比如同时给两个区块签名（equivocation）...</div>`;
+        h+=`<button class="abtn red" onclick="doAction('slash')">😈 试试作弊：双重签名</button>`;
+      } else {
+        h+=`<div style="font-size:12px;color:#ff4444;padding:8px;line-height:1.7">
+          ⚠️ <b>Slashing 触发！</b><br>
+          你给两个冲突的区块签了名<br>
+          → 网络检测到 equivocation<br>
+          → 罚没 <span style="color:#ff6b6b">16 ETH</span>（50% 质押金）<br>
+          → 你被强制退出验证者集合<br>
+          <br>
+          <span style="color:#ffcc80">这就是 PoS 的安全保证：作弊的代价太大了。</span>
+        </div>`;
+        h+=`<button class="abtn green" onclick="checkLevel()">🎉 我理解了 PoS！</button>`;
+      }
+      return h;
+    },
+    init:()=>({staked:false,proposed:false,slashed:false}),
+    learn:'<b>PoS 用经济博弈取代了物理军备竞赛</b>：\n\n• 不用买矿机、不用烧电 → 能耗降 99.95%\n• 作弊 = 损失质押金 → 经济上不划算\n• 质押门槛 32 ETH → 足够去中心化\n\n🏆 <b>恭喜通关！</b> 你已经理解了以太坊的核心技术栈：智能合约 → Gas → ERC-20 → NFT → DeFi → PoS。这些就是支撑整个 Web3 生态的基础设施。'
+  },
+];
+
+// ============ 网络 ============
+function initNetwork(){
+  nodes=[];edges=[];
+  const cx=CW*0.58,cy=CH*0.42,r=Math.min(CW,CH)*0.25;
+  for(let i=0;i<8;i++){
+    const a=(i/8)*Math.PI*2-Math.PI/2;
+    const jx=(Math.random()-.5)*r*0.25,jy=(Math.random()-.5)*r*0.25;
+    nodes.push({x:cx+Math.cos(a)*r+jx,y:cy+Math.sin(a)*r+jy,name:Object.values(accounts)[i%4].name,isYou:i===0,color:i===0?'#627eea':'#3a5aaa',pulse:0,received:false});
+  }
+  for(let i=0;i<8;i++)for(let j=i+1;j<8;j++)if(Math.random()<0.4||j===i+1||(i===0&&j===7))edges.push({a:i,b:j});
+}
+
+function broadcast(fromIdx,color){
+  const visited=new Set([fromIdx]);
+  nodes[fromIdx].pulse=1;
+  const queue=[{node:fromIdx,delay:0}];
+  while(queue.length){
+    const cur=queue.shift();
+    for(let e of edges){
+      let nb=-1;
+      if(e.a===cur.node&&!visited.has(e.b))nb=e.b;
+      if(e.b===cur.node&&!visited.has(e.a))nb=e.a;
+      if(nb>=0){
+        visited.add(nb);
+        const d=cur.delay+500+Math.random()*400;
+        setTimeout(()=>{nodes[nb].pulse=1;broadcasts.push({from:nodes[cur.node],to:nodes[nb],progress:0,color})},d);
+        queue.push({node:nb,delay:d});
+      }
+    }
+  }
+}
+
+// ============ EVM 动画 ============
+function showEVM(steps,cb){
+  const box=document.getElementById('evm-box');
+  box.style.display='block';
+  const el=document.getElementById('evm-steps');
+  el.innerHTML='';
+  let i=0;
+  const iv=setInterval(()=>{
+    if(i>=steps.length){clearInterval(iv);if(cb)cb();return}
+    const s=steps[i];
+    el.innerHTML+=`<div class="${s.type}">${s.text}</div>`;
+    el.scrollTop=el.scrollHeight;
+    i++;
+  },300);
+}
+
+function addLog(msg){
+  txLog.unshift(msg);if(txLog.length>30)txLog.pop();
+  document.getElementById('tx-list').innerHTML=txLog.map(t=>`<div class="tx-e">${t}</div>`).join('');
+}
+
+// ============ 游戏逻辑 ============
+function startGame(){
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('lp').style.display='flex';
+  document.getElementById('info-bar').style.display='block';
+  document.getElementById('tx-log').style.display='block';
+  gameState='playing';
+  initNetwork();
+  loadLevel(0);
+}
+
+function loadLevel(idx){
+  currentLevel=idx;
+  const lv=LEVELS[idx];
+  ls=lv.init();
+  document.getElementById('evm-box').style.display='none';
+  for(let n of nodes){n.pulse=0;n.received=false}
+  broadcasts=[];
+  document.getElementById('lpTitle').textContent=`${lv.icon} ${lv.title}`;
+  document.getElementById('lpStep').textContent=`${lv.id}/${LEVELS.length}`;
+  renderLevel();
+  updateInfo();
+}
+
+function renderLevel(){
+  const lv=LEVELS[currentLevel];
+  const el=document.getElementById('lp-body');
+  let h=`<div class="mission">
+    <div class="m-lv">第 ${lv.id} 关</div>
+    <div class="m-t">${lv.title}</div>
+    <div class="m-d">${lv.desc}</div>
+    <div class="m-c">${lv.concept.replace(/\n/g,'<br>')}</div>
+    <div style="margin-top:8px">`;
+  for(let g of lv.goals){
+    const p=g.check(ls);
+    h+=`<div class="g-row"><span class="g-icon">${p?'✅':'⬜'}</span><span class="g-t">${g.label}</span></div>`;
+  }
+  h+=`</div></div>`;
+  h+=`<div class="hint-b">${lv.hint}</div>`;
+  h+=`<div class="act-s"><div class="as-l">🎮 操作</div>${lv.actions(ls)}</div>`;
+  el.innerHTML=h;
+}
+
+function updateInfo(){
+  document.getElementById('info-bar').innerHTML=`
+    <div class="ib-t">⟠ 以太坊状态</div>
+    <div class="ib-r"><span class="k">你的余额</span><span class="v" style="color:#627eea">${accounts.you.bal} ETH</span></div>
+    <div class="ib-r"><span class="k">Gas 单价</span><span class="v" style="color:#f7931a">${gasPrice} gwei</span></div>
+    <div class="ib-r"><span class="k">合约数</span><span class="v">${contracts.length}</span></div>
+    <div class="ib-r"><span class="k">NFT 数</span><span class="v">${nfts.length}</span></div>
+    <div class="ib-r"><span class="k">关卡</span><span class="v">${currentLevel+1}/${LEVELS.length}</span></div>
+  `;
+}
+
+// ============ 动作处理 ============
+function doAction(action,param){
+  // 第1关
+  if(action==='deploy'){
+    ls.contractAddr=shortAddr();ls.contractBal=0;ls.deployed=true;
+    contracts.push({name:'VendingMachine',addr:ls.contractAddr});
+    showEVM([
+      {type:'step-run',text:'▶ CREATE 合约字节码...'},
+      {type:'step-gas',text:'⛽ Gas: 150,000'},
+      {type:'step-run',text:'▶ SSTORE 初始化存储...'},
+      {type:'step-ok',text:'✅ 合约部署到 '+ls.contractAddr},
+    ]);
+    addLog(`📋 合约部署: VendingMachine → ${ls.contractAddr}`);
+    broadcast(0,'#627eea');
+    renderLevel();updateInfo();
+  }
+  else if(action==='buy'){
+    accounts.you.bal-=1;ls.contractBal+=1;ls.chocoCount=1;ls.bought=true;
+    showEVM([
+      {type:'step-run',text:'▶ CALL VendingMachine.buy()'},
+      {type:'step-run',text:'▶ CALLVALUE = 1 ETH'},
+      {type:'step-run',text:'▶ REQUIRE msg.value >= 1 ether ✓'},
+      {type:'step-run',text:'▶ SSTORE purchases['+accounts.you.addr+'] = 1'},
+      {type:'step-gas',text:'⛽ Gas: 45,000'},
+      {type:'step-ok',text:'✅ 购买成功！发送 🍫'},
+    ]);
+    addLog(`🍫 购买: 你 → 合约 1 ETH → 获得巧克力`);
+    broadcast(0,'#f7931a');
+    renderLevel();updateInfo();
+  }
+  else if(action==='checkBal'){
+    ls.checked=true;
+    addLog(`🔍 查询: 合约余额 = ${ls.contractBal} ETH`);
+    renderLevel();
+  }
+  // 第2关
+  else if(action==='simpleTx'){
+    ls.simpleTransfer=true;accounts.you.bal-=0.1;accounts.alice.bal+=0.1;
+    showEVM([
+      {type:'step-run',text:'▶ TRANSFER 0.1 ETH'},
+      {type:'step-run',text:'▶ FROM: '+accounts.you.addr},
+      {type:'step-run',text:'▶ TO: '+accounts.alice.addr},
+      {type:'step-gas',text:'⛽ Gas used: 21,000 · 费用: 0.000420 ETH'},
+      {type:'step-ok',text:'✅ 转账完成'},
+    ]);
+    addLog(`💸 转账: 你 → Alice 0.1 ETH (Gas: 21,000)`);
+    broadcast(0,'#2aaa5a');
+    renderLevel();updateInfo();
+  }
+  else if(action==='contractTx'){
+    ls.contractCall=true;
+    showEVM([
+      {type:'step-run',text:'▶ CALL NFTContract.mint()'},
+      {type:'step-run',text:'▶ SSTORE tokenId = 1'},
+      {type:'step-run',text:'▶ SSTORE owner[1] = '+accounts.you.addr},
+      {type:'step-run',text:'▶ SSTORE tokenURI[1] = "ipfs://..."'},
+      {type:'step-run',text:'▶ LOG Transfer(0x0, '+accounts.you.addr+', 1)'},
+      {type:'step-gas',text:'⛽ Gas used: 145,000 · 费用: 0.002900 ETH'},
+      {type:'step-ok',text:'✅ NFT 铸造完成'},
+    ]);
+    addLog(`📝 合约调用: mint() (Gas: 145,000 — 是转账的 7 倍！)`);
+    broadcast(0,'#ff6b6b');
+    renderLevel();updateInfo();
+  }
+  else if(action==='compare'){
+    ls.compared=true;renderLevel();
+  }
+  // 第3关
+  else if(action==='pickName'){
+    ls.tokenName=param;renderLevel();
+  }
+  else if(action==='createToken'){
+    ls.created=true;ls.yourBal=1000000;
+    contracts.push({name:ls.tokenName,addr:shortAddr()});
+    showEVM([
+      {type:'step-run',text:'▶ CREATE ERC20 合约'},
+      {type:'step-run',text:'▶ name = "'+ls.tokenName+'"'},
+      {type:'step-run',text:'▶ totalSupply = 1,000,000'},
+      {type:'step-run',text:'▶ balances[deployer] = 1,000,000'},
+      {type:'step-gas',text:'⛽ Gas: 800,000'},
+      {type:'step-ok',text:'✅ 代币发行成功！'},
+    ]);
+    addLog(`🪙 发行代币: ${ls.tokenName} · 总量 1,000,000`);
+    broadcast(0,'#627eea');
+    renderLevel();updateInfo();
+  }
+  else if(action==='transferToken'){
+    ls.transferred=true;ls.yourBal-=10000;
+    showEVM([
+      {type:'step-run',text:'▶ CALL token.transfer(Alice, 10000)'},
+      {type:'step-run',text:'▶ balances[you] -= 10000'},
+      {type:'step-run',text:'▶ balances[Alice] += 10000'},
+      {type:'step-gas',text:'⛽ Gas: 52,000'},
+      {type:'step-ok',text:'✅ 转账 10,000 '+ls.tokenName+' 给 Alice'},
+    ]);
+    addLog(`📤 代币转账: 你 → Alice 10,000 ${ls.tokenName}`);
+    broadcast(0,'#f7931a');
+    renderLevel();updateInfo();
+  }
+  else if(action==='viewDist'){
+    ls.viewedDist=true;renderLevel();
+  }
+  // 第4关
+  else if(action==='pickArt'){
+    ls.nftArt=param;renderLevel();
+  }
+  else if(action==='mint'){
+    ls.nftId=Math.floor(Math.random()*9000)+1000;
+    ls.nftName=`Artwork #${ls.nftId}`;
+    ls.nftContract=shortAddr();
+    ls.mintBlock=Math.floor(Math.random()*1000000)+19000000;
+    ls.minted=true;
+    nfts.push({id:ls.nftId,art:ls.nftArt,owner:'you'});
+    showEVM([
+      {type:'step-run',text:'▶ CALL ERC721.mint()'},
+      {type:'step-run',text:'▶ tokenId = #'+ls.nftId},
+      {type:'step-run',text:'▶ SSTORE owner['+ls.nftId+'] = '+accounts.you.addr},
+      {type:'step-run',text:'▶ SSTORE tokenURI = "ipfs://Qm...'+ls.nftArt+'"'},
+      {type:'step-gas',text:'⛽ Gas: 145,000'},
+      {type:'step-ok',text:'✅ NFT #'+ls.nftId+' 铸造成功！'},
+    ]);
+    addLog(`🎨 铸造 NFT: ${ls.nftArt} #${ls.nftId}`);
+    broadcast(0,'#cc5de8');
+    renderLevel();updateInfo();
+  }
+  else if(action==='viewNft'){
+    ls.viewed=true;renderLevel();
+  }
+  else if(action==='transferNft'){
+    ls.transferred=true;
+    showEVM([
+      {type:'step-run',text:'▶ CALL ERC721.transferFrom(you, Bob, #'+ls.nftId+')'},
+      {type:'step-run',text:'▶ REQUIRE owner == msg.sender ✓'},
+      {type:'step-run',text:'▶ SSTORE owner['+ls.nftId+'] = '+accounts.bob.addr},
+      {type:'step-gas',text:'⛽ Gas: 65,000'},
+      {type:'step-ok',text:'✅ NFT 所有权已转移给 Bob'},
+    ]);
+    addLog(`📤 NFT 转让: ${ls.nftArt} #${ls.nftId} → Bob`);
+    broadcast(0,'#627eea');
+    renderLevel();updateInfo();
+  }
+  // 第5关
+  else if(action==='createPool'){
+    ls.poolCreated=true;ls.poolEth=10;ls.poolToken=10000;
+    showEVM([
+      {type:'step-run',text:'▶ CREATE UniswapV2Pair'},
+      {type:'step-run',text:'▶ addLiquidity(10 ETH, 10000 TOKEN)'},
+      {type:'step-run',text:'▶ k = 10 × 10000 = 100000'},
+      {type:'step-gas',text:'⛽ Gas: 250,000'},
+      {type:'step-ok',text:'✅ 流动性池创建成功'},
+    ]);
+    addLog(`🏦 创建流动性池: 10 ETH + 10,000 TOKEN`);
+    broadcast(0,'#627eea');
+    renderLevel();updateInfo();
+  }
+  else if(action==='swap'){
+    const k=ls.poolEth*ls.poolToken;
+    const newEth=ls.poolEth+2;
+    const newToken=k/newEth;
+    ls.gotToken=ls.poolToken-newToken;
+    ls.poolEth=newEth;ls.poolToken=newToken;
+    ls.swapped=true;
+    showEVM([
+      {type:'step-run',text:'▶ CALL swap(2 ETH → TOKEN)'},
+      {type:'step-run',text:'▶ 池中 ETH: 10 → '+newEth.toFixed(2)},
+      {type:'step-run',text:'▶ x × y = k → y = '+k+'/'+newEth.toFixed(2)+' = '+newToken.toFixed(0)},
+      {type:'step-run',text:'▶ 你获得: '+(ls.gotToken).toFixed(0)+' TOKEN'},
+      {type:'step-gas',text:'⛽ Gas: 120,000'},
+      {type:'step-ok',text:'✅ 兑换完成'},
+    ]);
+    addLog(`🔄 兑换: 2 ETH → ${ls.gotToken.toFixed(0)} TOKEN`);
+    broadcast(0,'#f7931a');
+    renderLevel();updateInfo();
+  }
+  else if(action==='checkPrice'){
+    ls.priceChecked=true;renderLevel();
+  }
+  // 第6关
+  else if(action==='stake'){
+    ls.staked=true;accounts.you.bal-=32;
+    showEVM([
+      {type:'step-run',text:'▶ CALL DepositContract.deposit()'},
+      {type:'step-run',text:'▶ TRANSFER 32 ETH → Beacon Chain'},
+      {type:'step-run',text:'▶ 注册验证者公钥...'},
+      {type:'step-gas',text:'⛽ Gas: 80,000'},
+      {type:'step-ok',text:'✅ 质押成功！等待激活（~24小时）'},
+    ]);
+    addLog(`🔒 质押: 32 ETH → 成为验证者`);
+    broadcast(0,'#627eea');
+    renderLevel();updateInfo();
+  }
+  else if(action==='propose'){
+    ls.proposed=true;accounts.you.bal+=0.05;
+    showEVM([
+      {type:'step-run',text:'▶ 随机信标选中你出块...'},
+      {type:'step-run',text:'▶ 收集待处理交易...'},
+      {type:'step-run',text:'▶ 构建执行载荷 (Payload)...'},
+      {type:'step-run',text:'▶ 提交区块 + BLS 签名'},
+      {type:'step-ok',text:'✅ 区块被接受！奖励 0.05 ETH'},
+    ]);
+    addLog(`⛏️ 出块成功！奖励 0.05 ETH`);
+    broadcast(0,'#2aaa5a');
+    renderLevel();updateInfo();
+  }
+  else if(action==='slash'){
+    ls.slashed=true;
+    showEVM([
+      {type:'step-run',text:'😈 双重签名: Block A + Block B'},
+      {type:'step-run',text:'▶ 其他验证者检测到 equivocation'},
+      {type:'step-run',text:'▶ 提交 Slashing 证据...'},
+      {type:'step-gas',text:'⚠️ SLASH: 罚没 16 ETH'},
+      {type:'step-run',text:'▶ 强制退出验证者集合'},
+      {type:'step-ok',text:'❌ 你被踢出了！剩余质押: 16 ETH'},
+    ]);
+    addLog(`⚠️ Slashing! 罚没 16 ETH · 被踢出验证者`);
+    broadcast(0,'#ff4444');
+    renderLevel();updateInfo();
+  }
+}
+
+function checkLevel(){
+  const lv=LEVELS[currentLevel];
+  if(!lv.goals.every(g=>g.check(ls)))return;
+  const isLast=currentLevel>=LEVELS.length-1;
+  document.getElementById('resultBox').innerHTML=`
+    <div class="rb-icon">${isLast?'🏆':'🎉'}</div>
+    <div class="rb-t">${isLast?'恭喜通关！你已掌握以太坊核心':'第 '+lv.id+' 关完成！'}</div>
+    <div class="rb-l">${lv.learn}</div>
+    ${isLast
+      ?'<button class="bn" onclick="location.reload()">重新探险</button>'
+      :'<button class="bn" onclick="nextLevel()">下一关 →</button><button class="br" onclick="retryLevel()">重试</button>'}
+  `;
+  document.getElementById('resultModal').classList.remove('hidden');
+}
+
+function nextLevel(){document.getElementById('resultModal').classList.add('hidden');loadLevel(currentLevel+1)}
+function retryLevel(){document.getElementById('resultModal').classList.add('hidden');loadLevel(currentLevel)}
+
+// ============ 渲染 ============
+function resize(){
+  const d=devicePixelRatio||1;
+  canvas.width=window.innerWidth*d;canvas.height=window.innerHeight*d;
+  ctx.setTransform(d,0,0,d,0,0);CW=window.innerWidth;CH=window.innerHeight;
+}
+
+function draw(){
+  ctx.fillStyle='#080810';ctx.fillRect(0,0,CW,CH);
+  if(gameState!=='playing')return;
+  // 边
+  for(let e of edges){const a=nodes[e.a],b=nodes[e.b];ctx.strokeStyle='#1a1a3a';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}
+  // 广播
+  for(let br of broadcasts){
+    const p=br.progress;
+    const x=br.from.x+(br.to.x-br.from.x)*p,y=br.from.y+(br.to.y-br.from.y)*p;
+    ctx.fillStyle=br.color;ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=br.color+'25';ctx.beginPath();ctx.arc(x,y,10,0,Math.PI*2);ctx.fill();
+  }
+  // 节点
+  for(let nd of nodes){
+    if(nd.pulse>0){ctx.strokeStyle=nd.color+Math.floor(nd.pulse*80).toString(16).padStart(2,'0');ctx.lineWidth=2;ctx.beginPath();ctx.arc(nd.x,nd.y,18+(1-nd.pulse)*14,0,Math.PI*2);ctx.stroke()}
+    const g=ctx.createRadialGradient(nd.x,nd.y,0,nd.x,nd.y,14);g.addColorStop(0,nd.color+'bb');g.addColorStop(1,nd.color+'33');ctx.fillStyle=g;ctx.beginPath();ctx.arc(nd.x,nd.y,14,0,Math.PI*2);ctx.fill();
+    if(nd.isYou){ctx.strokeStyle='#627eea';ctx.lineWidth=2;ctx.setLineDash([3,3]);ctx.beginPath();ctx.arc(nd.x,nd.y,20,0,Math.PI*2);ctx.stroke();ctx.setLineDash([])}
+    ctx.fillStyle='#ccc';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(nd.isYou?`${nd.name}(你)`:nd.name,nd.x,nd.y+28);
+  }
+  // 以太坊 logo 水印
+  ctx.fillStyle='#627eea08';ctx.font='bold 100px sans-serif';ctx.textAlign='center';ctx.fillText('⟠',CW*0.58,CH*0.48);
+}
+
+let lastTime=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(!lastTime){lastTime=ts;return}
+  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;time+=dt;
+  for(let br of broadcasts)br.progress+=dt*1.5;
+  broadcasts=broadcasts.filter(b=>b.progress<1);
+  for(let nd of nodes)if(nd.pulse>0)nd.pulse-=dt*0.7;
+  resize();draw();
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

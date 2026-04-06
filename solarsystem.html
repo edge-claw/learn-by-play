@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>太阳系建造者</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#ff6a33}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#ff6a33,#ff9a5c);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+
+#lp{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,26,.97);border-right:1px solid #1a1a3a;z-index:20;display:none;flex-direction:column;overflow:hidden}
+#lp .lp-head{padding:12px 16px;border-bottom:1px solid #1a1a3a;display:flex;align-items:center;justify-content:space-between}
+#lp .lp-title{font-size:14px;font-weight:700;color:#ff6a33}
+#lp .lp-step{font-size:11px;color:#888}
+#lp-body{flex:1;overflow-y:auto;padding:0}
+
+.mission{margin:12px;padding:14px;background:#141428;border:1px solid #2a2a5a;border-radius:10px}
+.mission .m-level{font-size:11px;color:#ff6a33;font-weight:600;letter-spacing:1px}
+.mission .m-title{font-size:17px;font-weight:700;margin:4px 0;color:#eee}
+.mission .m-desc{font-size:13px;color:#999;line-height:1.6}
+.mission .m-concept{margin-top:10px;padding:8px 10px;background:#0e0e20;border-radius:6px;font-size:12px;color:#6a8aff;line-height:1.6}
+.mission .m-concept b{color:#8ab4ff}
+.goal-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px}
+.goal-row .g-icon{font-size:15px}
+.goal-row .g-text{color:#ccc;flex:1}
+.hint-b{margin:0 12px;padding:10px 14px;background:#1a1a38;border-left:3px solid #ff6a33;border-radius:0 8px 8px 0;font-size:12px;color:#ffcc80;line-height:1.5}
+.act-section{margin:12px}
+.act-section .as-label{font-size:12px;color:#888;margin-bottom:8px;font-weight:600}
+.act-btn{width:100%;padding:12px;background:linear-gradient(135deg,#ff6a33,#ff9a5c);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;transition:all .2s}
+.act-btn:hover{filter:brightness(1.1)}
+.act-btn:disabled{background:#333;color:#666;cursor:not-allowed;filter:none}
+.act-btn.green{background:linear-gradient(135deg,#2aaa5a,#3cc76a)}
+.act-btn.red{background:linear-gradient(135deg,#e8443a,#ff6b6b)}
+.act-btn.blue{background:linear-gradient(135deg,#3a7aff,#5a9aff)}
+
+#info-bar{position:absolute;top:12px;right:12px;background:rgba(10,10,26,.95);border:1px solid #1a1a3a;border-radius:10px;padding:12px 16px;z-index:20;min-width:200px;display:none;font-size:12px}
+#info-bar .ib-title{font-size:11px;color:#ff6a33;font-weight:600;margin-bottom:6px}
+.ib-row{display:flex;justify-content:space-between;padding:3px 0}
+.ib-row .ib-k{color:#888}
+.ib-row .ib-v{font-weight:600;font-variant-numeric:tabular-nums}
+
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:36px;background:rgba(10,10,26,.95);border-top:1px solid #1a1a3a;z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}
+#bottom-bar .bb-right{text-align:right}
+
+.result-box{text-align:center;max-width:420px;background:rgba(10,10,26,.98);border:1px solid #2a2a5a;border-radius:16px;padding:28px 36px}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-desc{font-size:13px;color:#999;line-height:1.6;margin-bottom:16px}
+.result-box .rb-learn{text-align:left;background:#0e0e20;border-radius:8px;padding:12px 14px;font-size:12px;color:#8ab4ff;line-height:1.7;margin-bottom:16px}
+.result-box .rb-learn b{color:#ff6a33}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#ff6a33;color:#fff}
+.result-box .btn-retry{background:#2a2a5a;color:#ccc}
+
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:12px;color:#aaa;display:block;margin-bottom:4px}
+.slider-wrap input[type=range]{width:100%;accent-color:#ff6a33}
+.slider-wrap .sv{font-size:13px;color:#ff6a33;font-weight:700}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🪐 <span class="gold">太阳系</span>建造者</h1>
+  <div class="sub">7 个关卡，亲手建造你的太阳系</div>
+  <button class="start-btn" onclick="startGame()">开始建造</button>
+  <div class="features">
+    <div class="feat"><div class="fi">🍎</div>万有引力</div>
+    <div class="feat"><div class="fi">🌀</div>轨道力学</div>
+    <div class="feat"><div class="fi">🌙</div>潮汐锁定</div>
+    <div class="feat"><div class="fi">⚖️</div>拉格朗日点</div>
+    <div class="feat"><div class="fi">☄️</div>行星迁移</div>
+    <div class="feat"><div class="fi">🌡️</div>宜居带</div>
+    <div class="feat"><div class="fi">💫</div>系统稳定性</div>
+  </div>
+</div>
+</div>
+
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+
+<div id="lp">
+  <div class="lp-head"><span class="lp-title" id="lpTitle">第 1 关</span><span class="lp-step" id="lpStep">1/7</span></div>
+  <div id="lp-body"></div>
+</div>
+<div id="info-bar"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+
+<script>
+// ============ 全局变量 ============
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let CW, CH, time = 0;
+let gameState = 'start';
+let currentLevel = 0;
+let levelState = {};
+let stars = [];
+let particles = [];
+let animId;
+const completedLevels = new Set();
+const G_CONST = 800; // 模拟引力常数
+const PANEL_W = 320;
+
+// ============ 关卡定义 ============
+const levels = [
+  { name:'万有引力', icon:'🍎', desc:'拖拽两个天体调整距离，观察引力大小变化', concept:'<b>牛顿万有引力定律</b>：F = GMm/r²。引力与两个天体质量的乘积成正比，与距离的平方成反比。这就是"平方反比定律"。', hint:'拖拽天体改变距离，用滑块调质量，让引力箭头变化超过3倍即可通关' },
+  { name:'轨道力学', icon:'🌀', desc:'给行星设定初速度，观察不同轨道形状', concept:'<b>开普勒定律</b>：行星沿椭圆轨道运行，恒星在焦点上。速度决定轨道形状——太慢坠落，太快逃逸，恰好则形成圆轨道。', hint:'点击画布设定行星位置，再次点击设定速度方向和大小，尝试形成圆形轨道' },
+  { name:'潮汐锁定', icon:'🌙', desc:'观察月球自转如何逐渐同步到公转周期', concept:'<b>潮汐锁定</b>：大天体的潮汐力对小天体产生力矩，逐渐减慢其自转，直到自转周期等于公转周期，始终以同一面朝向主星。月球就是这样。', hint:'调节时间加速滑块，观察月球自转逐渐同步' },
+  { name:'拉格朗日点', icon:'⚖️', desc:'探索日地系统的5个引力平衡点', concept:'<b>拉格朗日点</b>：两个大天体的引力场中存在5个平衡点。L4和L5是稳定的（形成等边三角形），L1、L2、L3是不稳定的。', hint:'拖拽卫星到各个L点，观察稳定性。把卫星放到L4或L5点通关' },
+  { name:'行星迁移', icon:'☄️', desc:'木星向内迁移，扫清小行星带', concept:'<b>大迁移模型</b>：太阳系早期，木星等巨行星并非在现在的位置形成，而是经历了大规模迁移，过程中清扫了大量小天体。', hint:'用滑块控制木星向内迁移，清除80%的小行星即可通关' },
+  { name:'宜居带', icon:'🌡️', desc:'调整恒星质量和行星距离，寻找液态水区间', concept:'<b>宜居带</b>：恒星周围存在一个温度适宜的区域，行星表面可以维持液态水。恒星越大越亮，宜居带越远。', hint:'调节恒星质量和行星距离，让表面温度落在0°C~100°C之间' },
+  { name:'系统稳定性', icon:'💫', desc:'自由放置多颗行星，观察长期稳定性', concept:'<b>N体问题</b>：三个以上天体的引力相互作用没有解析解。行星间的引力扰动可能导致轨道混沌，甚至将行星弹射出系统。', hint:'点击添加行星（至少3颗），运行模拟观察是否稳定存活超过50年' }
+];
+
+// ============ 星空 ============
+function initStars(){
+  stars=[];
+  for(let i=0;i<100;i++) stars.push({x:Math.random()*CW,y:Math.random()*CH,r:Math.random()*1.5+0.3,tw:Math.random()*Math.PI*2,sp:Math.random()*0.02+0.005});
+}
+function drawStars(){
+  for(let s of stars){
+    const a=0.4+0.6*Math.abs(Math.sin(s.tw+time*s.sp));
+    ctx.fillStyle=`rgba(255,255,255,${a})`;
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();
+  }
+}
+
+// ============ 粒子系统 ============
+function addParticle(x,y,vx,vy,color,life,size){
+  particles.push({x,y,vx,vy,color,life,maxLife:life,size:size||3});
+}
+function updateParticles(dt){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;
+    if(p.life<=0)particles.splice(i,1);
+  }
+}
+function drawParticles(){
+  for(let p of particles){
+    const a=p.life/p.maxLife;
+    ctx.globalAlpha=a;ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.size*a,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+// ============ 绘制工具 ============
+function drawGlowCircle(x,y,r,color,glowR){
+  const gr=glowR||r*3;
+  const grd=ctx.createRadialGradient(x,y,r*0.3,x,y,gr);
+  grd.addColorStop(0,color);
+  grd.addColorStop(0.4,color.replace(')',',0.4)').replace('rgb','rgba'));
+  grd.addColorStop(1,'transparent');
+  ctx.fillStyle=grd;ctx.beginPath();ctx.arc(x,y,gr,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+}
+function drawArrow(x1,y1,x2,y2,color,width){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<2)return;
+  const ux=dx/len,uy=dy/len;
+  ctx.strokeStyle=color;ctx.lineWidth=width||2;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  const hs=Math.min(12,len*0.3);
+  ctx.fillStyle=color;ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-ux*hs-uy*hs*0.4,y2-uy*hs+ux*hs*0.4);
+  ctx.lineTo(x2-ux*hs+uy*hs*0.4,y2-uy*hs-ux*hs*0.4);
+  ctx.fill();
+}
+function drawDashedCircle(cx,cy,r,color){
+  ctx.strokeStyle=color;ctx.lineWidth=1;ctx.setLineDash([6,4]);
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// ============ 尺寸 ============
+function resize(){
+  canvas.width=CW=window.innerWidth;canvas.height=CH=window.innerHeight;
+  if(stars.length)initStars();
+}
+window.addEventListener('resize',resize);
+resize();initStars();
+
+// ============ 面板渲染 ============
+function renderPanel(){
+  const lv=levels[currentLevel];
+  const lp=document.getElementById('lp');
+  lp.style.display='flex';
+  document.getElementById('lpTitle').textContent=`第 ${currentLevel+1} 关`;
+  document.getElementById('lpStep').textContent=`${currentLevel+1}/${levels.length}`;
+  const body=document.getElementById('lp-body');
+  let h=`<div class="mission"><div class="m-level">${lv.icon} 关卡 ${currentLevel+1}</div><div class="m-title">${lv.name}</div><div class="m-desc">${lv.desc}</div><div class="m-concept">${lv.concept}</div></div>`;
+  h+=`<div class="hint-b">${lv.hint}</div>`;
+  h+=`<div class="act-section"><div class="as-label">操作</div>`;
+  h+=getPanelControls();
+  h+=`</div>`;
+  body.innerHTML=h;
+  bindPanelEvents();
+}
+
+// ============ 面板控件 ============
+function getPanelControls(){
+  let h='';
+  switch(currentLevel){
+    case 0:
+      h+=`<div class="slider-wrap"><label>天体A质量: <span class="sv" id="svMa">${(levelState.massA||5).toFixed(1)}</span></label><input type="range" id="slMa" min="1" max="20" step="0.5" value="${levelState.massA||5}"></div>`;
+      h+=`<div class="slider-wrap"><label>天体B质量: <span class="sv" id="svMb">${(levelState.massB||5).toFixed(1)}</span></label><input type="range" id="slMb" min="1" max="20" step="0.5" value="${levelState.massB||5}"></div>`;
+      h+=`<div style="margin:8px 0;font-size:12px;color:#aaa">拖拽天体改变距离</div>`;
+      h+=`<div id="forceDisplay" style="font-size:14px;color:#ff6a33;font-weight:700;margin:8px 0">引力: --</div>`;
+      break;
+    case 1:
+      h+=`<div style="font-size:12px;color:#aaa;margin:8px 0">第一次点击：设定行星位置<br>第二次点击：设定速度方向</div>`;
+      h+=`<div id="orbitInfo" style="font-size:13px;color:#6a8aff;margin:8px 0"></div>`;
+      h+=`<button class="act-btn red" onclick="clearOrbits()">清除轨迹</button>`;
+      break;
+    case 2:
+      h+=`<div class="slider-wrap"><label>时间加速: <span class="sv" id="svTime">x${levelState.timeScale||1}</span></label><input type="range" id="slTime" min="1" max="200" step="1" value="${levelState.timeScale||1}"></div>`;
+      h+=`<div id="tidalInfo" style="font-size:12px;color:#aaa;margin:8px 0"></div>`;
+      break;
+    case 3:
+      h+=`<div style="font-size:12px;color:#aaa;margin:8px 0">拖拽卫星(白色)到L点测试稳定性</div>`;
+      h+=`<div id="lagInfo" style="font-size:13px;color:#6a8aff;margin:8px 0"></div>`;
+      break;
+    case 4:
+      h+=`<div class="slider-wrap"><label>木星轨道半径: <span class="sv" id="svJup">${(levelState.jupiterR||300).toFixed(0)}</span> px</label><input type="range" id="slJup" min="80" max="300" step="2" value="${levelState.jupiterR||300}"></div>`;
+      h+=`<div id="migInfo" style="font-size:13px;color:#aaa;margin:8px 0"></div>`;
+      break;
+    case 5:
+      h+=`<div class="slider-wrap"><label>恒星质量: <span class="sv" id="svStar">${(levelState.starMass||1).toFixed(1)}</span> M☉</label><input type="range" id="slStar" min="0.5" max="5" step="0.1" value="${levelState.starMass||1}"></div>`;
+      h+=`<div class="slider-wrap"><label>行星距离: <span class="sv" id="svDist">${(levelState.planetDist||150).toFixed(0)}</span> Mkm</label><input type="range" id="slDist" min="50" max="500" step="5" value="${levelState.planetDist||150}"></div>`;
+      h+=`<div id="habInfo" style="font-size:14px;margin:8px 0"></div>`;
+      break;
+    case 6:
+      h+=`<div style="font-size:12px;color:#aaa;margin:8px 0">点击画布添加行星（至少3颗）</div>`;
+      h+=`<button class="act-btn green" onclick="runNBody()">运行模拟</button>`;
+      h+=`<button class="act-btn red" onclick="resetNBody()" style="margin-top:4px">重置</button>`;
+      h+=`<div id="nbInfo" style="font-size:13px;color:#aaa;margin:8px 0"></div>`;
+      break;
+  }
+  return h;
+}
+
+function bindPanelEvents(){
+  switch(currentLevel){
+    case 0:{
+      const sa=document.getElementById('slMa'),sb=document.getElementById('slMb');
+      if(sa)sa.oninput=()=>{levelState.massA=+sa.value;document.getElementById('svMa').textContent=(+sa.value).toFixed(1);};
+      if(sb)sb.oninput=()=>{levelState.massB=+sb.value;document.getElementById('svMb').textContent=(+sb.value).toFixed(1);};
+      break;
+    }
+    case 2:{
+      const st=document.getElementById('slTime');
+      if(st)st.oninput=()=>{levelState.timeScale=+st.value;document.getElementById('svTime').textContent='x'+st.value;};
+      break;
+    }
+    case 4:{
+      const sj=document.getElementById('slJup');
+      if(sj)sj.oninput=()=>{levelState.jupiterR=+sj.value;document.getElementById('svJup').textContent=(+sj.value).toFixed(0);};
+      break;
+    }
+    case 5:{
+      const ss=document.getElementById('slStar'),sd=document.getElementById('slDist');
+      if(ss)ss.oninput=()=>{levelState.starMass=+ss.value;document.getElementById('svStar').textContent=(+ss.value).toFixed(1);};
+      if(sd)sd.oninput=()=>{levelState.planetDist=+sd.value;document.getElementById('svDist').textContent=(+sd.value).toFixed(0);};
+      break;
+    }
+  }
+}
+
+// ============ 关卡初始化 ============
+function initLevel(n){
+  currentLevel=n;particles=[];
+  const cx=PANEL_W+(CW-PANEL_W)/2, cy=CH/2;
+  switch(n){
+    case 0:
+      levelState={massA:5,massB:5,bodyA:{x:cx-120,y:cy,r:20},bodyB:{x:cx+120,y:cy,r:20},dragging:null,initForce:null,maxRatio:1};
+      break;
+    case 1:
+      levelState={star:{x:cx,y:cy,mass:500,r:25},planets:[],clickPhase:'pos',tempPos:null,madeCircle:false};
+      break;
+    case 2:{
+      const orbitR=180;
+      levelState={timeScale:1,earth:{x:cx,y:cy,r:30},moon:{angle:0,orbitR,r:10,spinAngle:0,spinRate:5,orbitalRate:1},synced:false,syncTime:0};
+      break;
+    }
+    case 3:
+      levelState={sun:{x:cx-100,y:cy,r:22,mass:1000},earth:{x:cx+100,y:cy,r:12,mass:10},satellite:{x:cx+200,y:cy-50,r:5},draggingSat:false,nearL:null,stableTime:0,completed:false};
+      break;
+    case 4:{
+      levelState={jupiterR:300,asteroids:[],cleared:0,totalAst:60};
+      const astBelt=180;
+      for(let i=0;i<60;i++){
+        const a=Math.random()*Math.PI*2,r=astBelt+Math.random()*60-30;
+        levelState.asteroids.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r,r:2+Math.random()*2,angle:a,orbitR:r,alive:true,vx:0,vy:0,ejecting:false});
+      }
+      break;
+    }
+    case 5:
+      levelState={starMass:1,planetDist:150,inZone:false};
+      break;
+    case 6:
+      levelState={planets:[],running:false,simYears:0,stable:true,starMass:800,star:{x:cx,y:cy,r:22}};
+      break;
+  }
+  renderPanel();
+}
+
+// ============ 信息栏 ============
+function updateInfoBar(title,rows){
+  const ib=document.getElementById('info-bar');
+  ib.style.display='block';
+  let h=`<div class="ib-title">${title}</div>`;
+  for(let r of rows) h+=`<div class="ib-row"><span class="ib-k">${r[0]}</span><span class="ib-v" style="color:${r[2]||'#fff'}">${r[1]}</span></div>`;
+  ib.innerHTML=h;
+}
+function hideInfoBar(){document.getElementById('info-bar').style.display='none';}
+
+// ============ 底部栏 ============
+function updateBottomBar(l,r){
+  const bb=document.getElementById('bottom-bar');
+  bb.style.display='flex';
+  document.getElementById('bbLeft').textContent=l;
+  document.getElementById('bbRight').textContent=r;
+}
+
+// ============ 结果弹窗 ============
+function showResult(icon,title,desc,learn,isLast){
+  const m=document.getElementById('resultModal');m.classList.remove('hidden');
+  const rb=document.getElementById('resultBox');
+  let h=`<div class="rb-icon">${icon}</div><div class="rb-title">${title}</div><div class="rb-desc">${desc}</div>`;
+  if(learn)h+=`<div class="rb-learn">${learn}</div>`;
+  if(isLast) h+=`<button class="btn-next" onclick="backToStart()">返回首页</button>`;
+  else h+=`<button class="btn-next" onclick="nextLevel()">下一关</button><button class="btn-retry" onclick="retryLevel()">重玩</button>`;
+  rb.innerHTML=h;
+}
+function hideResult(){document.getElementById('resultModal').classList.add('hidden');}
+function nextLevel(){hideResult();initLevel(currentLevel+1);}
+function retryLevel(){hideResult();initLevel(currentLevel);}
+function backToStart(){hideResult();gameState='start';document.getElementById('lp').style.display='none';hideInfoBar();document.getElementById('bottom-bar').style.display='none';document.getElementById('startScreen').classList.remove('hidden');}
+
+// ============ 通关检测 ============
+function completeLevel(n){
+  if(completedLevels.has(n))return;
+  completedLevels.add(n);
+  const lv=levels[n];
+  const isLast=n===levels.length-1;
+  showResult('🎉',`${lv.name} — 通关！`,`你已掌握${lv.name}的核心原理`,lv.concept,isLast);
+}
+
+// ============ 关卡0: 万有引力 ============
+function updateLevel0(dt){
+  const s=levelState,cx=PANEL_W+(CW-PANEL_W)/2,cy=CH/2;
+  const dx=s.bodyB.x-s.bodyA.x,dy=s.bodyB.y-s.bodyA.y;
+  const dist=Math.sqrt(dx*dx+dy*dy);
+  const force=G_CONST*s.massA*s.massB/(dist*dist);
+  if(!s.initForce)s.initForce=force;
+  const ratio=force/s.initForce;
+  if(ratio>s.maxRatio)s.maxRatio=ratio;
+  if(s.maxRatio/1>3)completeLevel(0);
+  // 绘制天体
+  drawGlowCircle(s.bodyA.x,s.bodyA.y,s.bodyA.r+s.massA*0.5,'rgb(100,180,255)',s.bodyA.r*2+s.massA);
+  drawGlowCircle(s.bodyB.x,s.bodyB.y,s.bodyB.r+s.massB*0.5,'rgb(255,140,80)',s.bodyB.r*2+s.massB);
+  // 引力箭头
+  const arrowLen=Math.min(force*0.5,150);
+  const ux=dx/dist,uy=dy/dist;
+  drawArrow(s.bodyA.x,s.bodyA.y,s.bodyA.x+ux*arrowLen,s.bodyA.y+uy*arrowLen,'#ff4444',3);
+  drawArrow(s.bodyB.x,s.bodyB.y,s.bodyB.x-ux*arrowLen,s.bodyB.y-uy*arrowLen,'#ff4444',3);
+  // 距离线
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(s.bodyA.x,s.bodyA.y);ctx.lineTo(s.bodyB.x,s.bodyB.y);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`r = ${dist.toFixed(0)} px`,(s.bodyA.x+s.bodyB.x)/2,(s.bodyA.y+s.bodyB.y)/2-10);
+  // 公式
+  ctx.fillStyle='#ff6a33';ctx.font='14px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`F = G×${s.massA.toFixed(1)}×${s.massB.toFixed(1)} / ${dist.toFixed(0)}² = ${force.toFixed(2)}`,cx,CH-60);
+  // 面板更新
+  const fd=document.getElementById('forceDisplay');
+  if(fd)fd.textContent=`引力: ${force.toFixed(2)} (最大比值: ${s.maxRatio.toFixed(1)}x)`;
+  updateInfoBar('万有引力',[['距离',dist.toFixed(0)+' px'],['引力',force.toFixed(2)],['比值',s.maxRatio.toFixed(1)+'x',s.maxRatio>=3?'#2aaa5a':'#ff6a33']]);
+  updateBottomBar('F = GMm/r²',`拖拽天体 | 比值目标: 3x`);
+}
+
+// ============ 关卡1: 轨道力学 ============
+function updateLevel1(dt){
+  const s=levelState,star=s.star;
+  drawGlowCircle(star.x,star.y,star.r,'rgb(255,220,80)',star.r*3);
+  for(let p of s.planets){
+    // 引力加速度
+    const dx=star.x-p.x,dy=star.y-p.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<star.r){p.alive=false;continue;}
+    const acc=G_CONST*star.mass/(dist*dist);
+    p.vx+=dx/dist*acc*dt;p.vy+=dy/dist*acc*dt;
+    p.x+=p.vx*dt;p.y+=p.vy*dt;
+    // 轨迹
+    p.trail.push({x:p.x,y:p.y});
+    if(p.trail.length>600)p.trail.shift();
+    ctx.strokeStyle='rgba(100,180,255,0.3)';ctx.lineWidth=1;ctx.beginPath();
+    for(let i=0;i<p.trail.length;i++){
+      if(i===0)ctx.moveTo(p.trail[i].x,p.trail[i].y);
+      else ctx.lineTo(p.trail[i].x,p.trail[i].y);
+    }
+    ctx.stroke();
+    // 检测圆轨道
+    if(p.trail.length>100&&!s.madeCircle){
+      const dists=p.trail.slice(-50).map(t=>Math.sqrt((t.x-star.x)**2+(t.y-star.y)**2));
+      const avg=dists.reduce((a,b)=>a+b)/dists.length;
+      const dev=dists.reduce((a,b)=>a+Math.abs(b-avg),0)/dists.length;
+      if(dev/avg<0.05){s.madeCircle=true;completeLevel(1);}
+    }
+    if(p.alive){
+      drawGlowCircle(p.x,p.y,6,p.color,12);
+    }
+  }
+  s.planets=s.planets.filter(p=>p.alive&&p.x>PANEL_W-100&&p.x<CW+100&&p.y>-100&&p.y<CH+100);
+  // 点击提示
+  if(s.clickPhase==='pos'){
+    ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('点击设定行星位置',star.x,star.y+star.r+40);
+  }
+  if(s.tempPos){
+    drawGlowCircle(s.tempPos.x,s.tempPos.y,6,'rgb(100,200,255)',12);
+    ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('再次点击设定速度方向',s.tempPos.x,s.tempPos.y+20);
+  }
+  const oi=document.getElementById('orbitInfo');
+  if(oi)oi.textContent=s.madeCircle?'已形成近圆轨道！':'尝试形成圆形轨道...';
+  updateInfoBar('轨道力学',[['行星数',s.planets.length],['圆轨道',s.madeCircle?'是':'否',s.madeCircle?'#2aaa5a':'#888']]);
+  updateBottomBar('开普勒定律',`行星: ${s.planets.length}`);
+}
+function clearOrbits(){
+  levelState.planets=[];levelState.clickPhase='pos';levelState.tempPos=null;levelState.madeCircle=false;
+  completedLevels.delete(1);
+}
+
+// ============ 关卡2: 潮汐锁定 ============
+function updateLevel2(dt){
+  const s=levelState,e=s.earth,m=s.moon;
+  const ts=s.timeScale;
+  // 月球公转
+  m.angle+=m.orbitalRate*dt*ts*0.01;
+  const mx=e.x+Math.cos(m.angle)*m.orbitR, my=e.y+Math.sin(m.angle)*m.orbitR;
+  // 潮汐力矩：自转逐渐趋近公转
+  const diff=m.spinRate-m.orbitalRate;
+  m.spinRate-=diff*0.0002*ts*dt;
+  m.spinAngle+=m.spinRate*dt*ts*0.01;
+  const syncRatio=Math.abs(m.spinRate-m.orbitalRate)/Math.abs(5-m.orbitalRate);
+  if(syncRatio<0.02&&!s.synced){s.synced=true;completeLevel(2);}
+  // 绘制地球
+  drawGlowCircle(e.x,e.y,e.r,'rgb(60,130,220)',e.r*2.5);
+  ctx.fillStyle='#2a8a3a';ctx.beginPath();ctx.arc(e.x-5,e.y-5,8,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(e.x+8,e.y+6,6,0,Math.PI*2);ctx.fill();
+  // 轨道线
+  drawDashedCircle(e.x,e.y,m.orbitR,'rgba(255,255,255,0.15)');
+  // 绘制月球
+  ctx.fillStyle='#bbb';ctx.beginPath();ctx.arc(mx,my,m.r,0,Math.PI*2);ctx.fill();
+  // 月球朝向标记（红点表示正面）
+  const faceAngle=m.spinAngle;
+  const fx=mx+Math.cos(faceAngle)*m.r*0.7, fy=my+Math.sin(faceAngle)*m.r*0.7;
+  ctx.fillStyle='#ff4444';ctx.beginPath();ctx.arc(fx,fy,3,0,Math.PI*2);ctx.fill();
+  // 朝向地球的方向
+  const toEarth=Math.atan2(e.y-my,e.x-mx);
+  const ex=mx+Math.cos(toEarth)*(m.r+8), ey=my+Math.sin(toEarth)*(m.r+8);
+  ctx.strokeStyle='rgba(255,255,0,0.4)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(mx,my);ctx.lineTo(ex,ey);ctx.stroke();
+  // 信息
+  const ti=document.getElementById('tidalInfo');
+  if(ti)ti.innerHTML=`自转速率: ${m.spinRate.toFixed(3)}<br>公转速率: ${m.orbitalRate.toFixed(3)}<br>同步度: ${((1-syncRatio)*100).toFixed(1)}%<br>${s.synced?'<span style="color:#2aaa5a">已潮汐锁定！</span>':'逐渐同步中...'}`;
+  updateInfoBar('潮汐锁定',[['自转速率',m.spinRate.toFixed(3)],['公转速率',m.orbitalRate.toFixed(3)],['同步度',((1-syncRatio)*100).toFixed(1)+'%',syncRatio<0.02?'#2aaa5a':'#ff6a33']]);
+  updateBottomBar('潮汐力矩',`时间加速: x${ts}`);
+}
+
+// ============ 关卡3: 拉格朗日点 ============
+function updateLevel3(dt){
+  const s=levelState,sun=s.sun,earth=s.earth,sat=s.satellite;
+  const cx=PANEL_W+(CW-PANEL_W)/2,cy=CH/2;
+  const sedx=earth.x-sun.x,sedy=earth.y-sun.y;
+  const seDist=Math.sqrt(sedx*sedx+sedy*sedy);
+  const ux=sedx/seDist,uy=sedy/seDist;
+  // 5个拉格朗日点
+  const ratio=Math.pow(earth.mass/(3*sun.mass),1/3);
+  const L1={x:earth.x-ux*seDist*ratio,y:earth.y-uy*seDist*ratio,label:'L1',stable:false};
+  const L2={x:earth.x+ux*seDist*ratio,y:earth.y+uy*seDist*ratio,label:'L2',stable:false};
+  const L3={x:sun.x-ux*seDist*(1+5*earth.mass/(12*sun.mass)),y:sun.y-uy*seDist*(1+5*earth.mass/(12*sun.mass)),label:'L3',stable:false};
+  const perpx=-uy,perpy=ux;
+  const L4={x:(sun.x+earth.x)/2+perpx*seDist*0.866,y:(sun.y+earth.y)/2+perpy*seDist*0.866,label:'L4',stable:true};
+  const L5={x:(sun.x+earth.x)/2-perpx*seDist*0.866,y:(sun.y+earth.y)/2-perpy*seDist*0.866,label:'L5',stable:true};
+  const lPoints=[L1,L2,L3,L4,L5];
+  // 绘制天体
+  drawGlowCircle(sun.x,sun.y,sun.r,'rgb(255,220,80)',sun.r*3);
+  drawGlowCircle(earth.x,earth.y,earth.r,'rgb(60,130,220)',earth.r*2);
+  // 绘制L点
+  for(let lp of lPoints){
+    ctx.strokeStyle=lp.stable?'rgba(80,255,120,0.6)':'rgba(255,100,100,0.6)';
+    ctx.lineWidth=1;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.arc(lp.x,lp.y,15,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=lp.stable?'#5f5':'#f88';ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText(lp.label,lp.x,lp.y-20);
+    ctx.fillStyle='rgba(255,255,255,0.15)';ctx.beginPath();ctx.arc(lp.x,lp.y,3,0,Math.PI*2);ctx.fill();
+  }
+  // 卫星
+  drawGlowCircle(sat.x,sat.y,sat.r,'rgb(255,255,255)',sat.r*2);
+  // 检测卫星靠近哪个L点
+  let nearestL=null,nearDist=Infinity;
+  for(let lp of lPoints){
+    const d=Math.sqrt((sat.x-lp.x)**2+(sat.y-lp.y)**2);
+    if(d<30&&d<nearDist){nearDist=d;nearestL=lp;}
+  }
+  s.nearL=nearestL;
+  if(nearestL){
+    if(!nearestL.stable&&!s.draggingSat){
+      // 不稳定点：缓慢推离
+      const pushDx=sat.x-nearestL.x,pushDy=sat.y-nearestL.y;
+      const pushDist=Math.sqrt(pushDx*pushDx+pushDy*pushDy)||1;
+      sat.x+=pushDx/pushDist*30*dt;sat.y+=pushDy/pushDist*30*dt;
+    }
+    if(nearestL.stable&&nearDist<20){
+      s.stableTime+=dt;
+      if(s.stableTime>1.5&&!s.completed){s.completed=true;completeLevel(3);}
+      // 吸附
+      sat.x+=(nearestL.x-sat.x)*0.05;sat.y+=(nearestL.y-sat.y)*0.05;
+    }else{s.stableTime=0;}
+  }else{s.stableTime=0;}
+  const li=document.getElementById('lagInfo');
+  if(li)li.textContent=nearestL?`靠近 ${nearestL.label} (${nearestL.stable?'稳定':'不稳定'})`:'拖拽卫星到L点';
+  updateInfoBar('拉格朗日点',[['最近L点',nearestL?nearestL.label:'无'],['稳定性',nearestL?(nearestL.stable?'稳定':'不稳定'):'--',nearestL&&nearestL.stable?'#2aaa5a':'#f88']]);
+  updateBottomBar('三体平衡',`L4/L5稳定 | L1/L2/L3不稳定`);
+}
+
+// ============ 关卡4: 行星迁移 ============
+function updateLevel4(dt){
+  const s=levelState,cx=PANEL_W+(CW-PANEL_W)/2,cy=CH/2;
+  // 太阳
+  drawGlowCircle(cx,cy,20,'rgb(255,220,80)',60);
+  // 木星
+  const jx=cx+s.jupiterR,jy=cy;
+  drawGlowCircle(jx,jy,16,'rgb(200,160,100)',32);
+  ctx.fillStyle='#c8a060';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('木星',jx,jy-22);
+  // 木星引力范围
+  const jGravR=60;
+  drawDashedCircle(jx,jy,jGravR,'rgba(200,160,100,0.3)');
+  // 小行星
+  let alive=0;
+  for(let a of s.asteroids){
+    if(!a.alive)continue;
+    // 公转
+    if(!a.ejecting){
+      a.angle+=0.3*dt/Math.sqrt(a.orbitR);
+      a.x=cx+Math.cos(a.angle)*a.orbitR;
+      a.y=cy+Math.sin(a.angle)*a.orbitR;
+    }else{
+      a.x+=a.vx*dt;a.y+=a.vy*dt;
+      if(a.x<PANEL_W-50||a.x>CW+50||a.y<-50||a.y>CH+50){a.alive=false;continue;}
+    }
+    // 木星引力影响
+    const djx=a.x-jx,djy=a.y-jy;
+    const djDist=Math.sqrt(djx*djx+djy*djy);
+    if(djDist<jGravR&&!a.ejecting){
+      if(djDist<16){a.alive=false;s.cleared++;
+        for(let i=0;i<5;i++)addParticle(a.x,a.y,(Math.random()-0.5)*80,(Math.random()-0.5)*80,'#c8a060',0.8,2);
+        continue;
+      }
+      a.ejecting=true;
+      a.vx=djx/djDist*120+Math.random()*40-20;
+      a.vy=djy/djDist*120+Math.random()*40-20;
+      s.cleared++;
+      for(let i=0;i<3;i++)addParticle(a.x,a.y,(Math.random()-0.5)*50,(Math.random()-0.5)*50,'#888',0.5,1);
+    }
+    if(a.alive){
+      ctx.fillStyle='#999';ctx.beginPath();ctx.arc(a.x,a.y,a.r,0,Math.PI*2);ctx.fill();
+    }
+    alive++;
+  }
+  const pct=s.cleared/s.totalAst*100;
+  if(pct>=80)completeLevel(4);
+  const mi=document.getElementById('migInfo');
+  if(mi)mi.textContent=`已清除: ${s.cleared}/${s.totalAst} (${pct.toFixed(0)}%)`;
+  updateInfoBar('行星迁移',[['木星轨道',s.jupiterR.toFixed(0)+' px'],['清除率',pct.toFixed(0)+'%',pct>=80?'#2aaa5a':'#ff6a33'],['存活小行星',alive]]);
+  updateBottomBar('大迁移模型',`清除80%小行星通关`);
+}
+
+// ============ 关卡5: 宜居带 ============
+function updateLevel5(dt){
+  const s=levelState,cx=PANEL_W+(CW-PANEL_W)/2,cy=CH/2;
+  const sm=s.starMass,pd=s.planetDist;
+  // 恒星光度 L ∝ M^3.5
+  const luminosity=Math.pow(sm,3.5);
+  // 宜居带内外边界 (AU)
+  const hzInner=Math.sqrt(luminosity/1.1)*0.95;
+  const hzOuter=Math.sqrt(luminosity/0.53)*1.05;
+  // 行星表面温度 (简化: T ∝ (L/d²)^0.25 * 278K)
+  const dAU=pd/150; // 150Mkm ≈ 1AU
+  const temp=278*Math.pow(luminosity/(dAU*dAU),0.25)-273;
+  const inZone=temp>=0&&temp<=100;
+  s.inZone=inZone;
+  if(inZone)completeLevel(5);
+  // 恒星大小
+  const starR=15+sm*5;
+  const starColor=sm<1.5?'rgb(255,200,100)':sm<3?'rgb(255,255,200)':'rgb(200,220,255)';
+  drawGlowCircle(cx,cy,starR,starColor,starR*3);
+  // 宜居带（绿色环）
+  const scale=80; // px per AU
+  const hzInPx=hzInner*scale,hzOutPx=hzOuter*scale;
+  ctx.fillStyle='rgba(50,200,80,0.12)';
+  ctx.beginPath();ctx.arc(cx,cy,hzOutPx,0,Math.PI*2);ctx.arc(cx,cy,hzInPx,0,Math.PI*2,true);ctx.fill();
+  ctx.strokeStyle='rgba(50,200,80,0.4)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.arc(cx,cy,hzInPx,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,hzOutPx,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='rgba(50,200,80,0.5)';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('宜居带',cx,cy-hzOutPx-8);
+  // 行星
+  const planetPx=dAU*scale;
+  const pAngle=time*0.3;
+  const px=cx+Math.cos(pAngle)*planetPx,py=cy+Math.sin(pAngle)*planetPx;
+  drawDashedCircle(cx,cy,planetPx,'rgba(100,180,255,0.2)');
+  const pColor=inZone?'rgb(60,200,120)':temp>100?'rgb(255,80,60)':'rgb(100,150,255)';
+  drawGlowCircle(px,py,8,pColor,16);
+  // 温度显示
+  ctx.fillStyle=inZone?'#2aaa5a':temp>100?'#ff4444':'#4488ff';
+  ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`${temp.toFixed(0)}°C`,px,py-18);
+  ctx.fillStyle='#888';ctx.font='11px sans-serif';
+  ctx.fillText(inZone?'液态水！':temp>100?'太热':'太冷',px,py+22);
+  // 面板
+  const hi=document.getElementById('habInfo');
+  if(hi)hi.innerHTML=`<span style="color:${inZone?'#2aaa5a':'#ff6a33'}">表面温度: ${temp.toFixed(0)}°C ${inZone?'✓ 宜居！':'✗ 不宜居'}</span>`;
+  updateInfoBar('宜居带',[['恒星质量',sm.toFixed(1)+' M☉'],['距离',pd+' Mkm'],['温度',temp.toFixed(0)+'°C',inZone?'#2aaa5a':'#ff6a33'],['状态',inZone?'宜居':'不宜居',inZone?'#2aaa5a':'#f88']]);
+  updateBottomBar('宜居条件',`0°C ~ 100°C = 液态水`);
+}
+
+// ============ 关卡6: 系统稳定性 ============
+function updateLevel6(dt){
+  const s=levelState,star=s.star;
+  drawGlowCircle(star.x,star.y,star.r,'rgb(255,220,80)',star.r*3);
+  if(s.running){
+    const simDt=dt*500; // 加速模拟
+    s.simYears+=dt*10;
+    // N体引力
+    for(let i=0;i<s.planets.length;i++){
+      const pi=s.planets[i];if(!pi.alive)continue;
+      // 恒星引力
+      let dx=star.x-pi.x,dy=star.y-pi.y;
+      let dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<star.r+5){pi.alive=false;s.stable=false;continue;}
+      let acc=G_CONST*s.starMass/(dist*dist);
+      pi.vx+=dx/dist*acc*dt;pi.vy+=dy/dist*acc*dt;
+      // 行星间引力
+      for(let j=0;j<s.planets.length;j++){
+        if(i===j||!s.planets[j].alive)continue;
+        const pj=s.planets[j];
+        dx=pj.x-pi.x;dy=pj.y-pi.y;dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<10)continue;
+        acc=G_CONST*pj.mass/(dist*dist)*0.5;
+        pi.vx+=dx/dist*acc*dt;pi.vy+=dy/dist*acc*dt;
+      }
+      pi.x+=pi.vx*dt;pi.y+=pi.vy*dt;
+      pi.trail.push({x:pi.x,y:pi.y});
+      if(pi.trail.length>400)pi.trail.shift();
+      // 逃逸检测
+      if(pi.x<PANEL_W-200||pi.x>CW+200||pi.y<-200||pi.y>CH+200){pi.alive=false;s.stable=false;}
+    }
+    const aliveCount=s.planets.filter(p=>p.alive).length;
+    if(aliveCount<s.planets.length)s.stable=false;
+    if(s.simYears>=50&&aliveCount>=3&&s.stable)completeLevel(6);
+  }
+  // 绘制行星
+  const colors=['#4488ff','#ff6644','#44cc88','#cc88ff','#ffcc44','#ff88aa','#88ddff','#ffaa44'];
+  for(let i=0;i<s.planets.length;i++){
+    const p=s.planets[i];if(!p.alive)continue;
+    // 轨迹
+    if(p.trail.length>1){
+      ctx.strokeStyle=colors[i%colors.length].replace(')',',0.3)').replace('#','')?`${colors[i%colors.length]}44`:'rgba(100,100,255,0.3)';
+      ctx.strokeStyle=`${colors[i%colors.length]}55`;
+      ctx.lineWidth=1;ctx.beginPath();
+      for(let j=0;j<p.trail.length;j++){
+        if(j===0)ctx.moveTo(p.trail[j].x,p.trail[j].y);
+        else ctx.lineTo(p.trail[j].x,p.trail[j].y);
+      }
+      ctx.stroke();
+    }
+    drawGlowCircle(p.x,p.y,p.r,colors[i%colors.length],p.r*2);
+  }
+  if(!s.running&&s.planets.length<8){
+    ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('点击添加行星',star.x,star.y+star.r+40);
+  }
+  const aliveCount=s.planets.filter(p=>p.alive).length;
+  const ni=document.getElementById('nbInfo');
+  if(ni)ni.innerHTML=`行星: ${aliveCount}/${s.planets.length}${s.running?` | 模拟: ${s.simYears.toFixed(0)}年`:''}${s.running&&!s.stable?'<br><span style="color:#ff4444">系统不稳定！行星逃逸或坠毁</span>':''}`;
+  updateInfoBar('N体动力学',[['行星数',aliveCount+'/'+s.planets.length],['模拟年',s.running?s.simYears.toFixed(0):'--'],['稳定性',s.stable?'稳定':'混沌',s.stable?'#2aaa5a':'#ff4444']]);
+  updateBottomBar('N体问题',s.running?`模拟中 ${s.simYears.toFixed(0)}年`:'点击添加行星');
+}
+function runNBody(){
+  const s=levelState;
+  if(s.planets.length<3){alert('至少需要3颗行星！');return;}
+  s.running=true;s.simYears=0;s.stable=true;
+  // 给每颗行星初始轨道速度
+  for(let p of s.planets){
+    const dx=s.star.x-p.x,dy=s.star.y-p.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    const v=Math.sqrt(G_CONST*s.starMass/dist);
+    const ux=dx/dist,uy=dy/dist;
+    p.vx=-uy*v;p.vy=ux*v;
+    p.trail=[];
+  }
+}
+function resetNBody(){
+  const cx=PANEL_W+(CW-PANEL_W)/2,cy=CH/2;
+  levelState.planets=[];levelState.running=false;levelState.simYears=0;levelState.stable=true;
+  completedLevels.delete(6);
+  renderPanel();
+}
+
+// ============ 鼠标交互 ============
+let mouseX=0,mouseY=0,mouseDown=false;
+canvas.addEventListener('mousemove',e=>{
+  mouseX=e.clientX;mouseY=e.clientY;
+  if(gameState!=='playing')return;
+  if(currentLevel===0&&levelState.dragging){
+    levelState[levelState.dragging].x=Math.max(PANEL_W+30,Math.min(CW-30,mouseX));
+    levelState[levelState.dragging].y=Math.max(30,Math.min(CH-30,mouseY));
+  }
+  if(currentLevel===3&&levelState.draggingSat){
+    levelState.satellite.x=mouseX;levelState.satellite.y=mouseY;
+  }
+});
+canvas.addEventListener('mousedown',e=>{
+  mouseDown=true;mouseX=e.clientX;mouseY=e.clientY;
+  if(gameState!=='playing')return;
+  if(currentLevel===0){
+    const s=levelState;
+    for(let key of ['bodyA','bodyB']){
+      const b=s[key];
+      const d=Math.sqrt((mouseX-b.x)**2+(mouseY-b.y)**2);
+      if(d<b.r+s[key==='bodyA'?'massA':'massB']*0.5+10){s.dragging=key;return;}
+    }
+  }
+  if(currentLevel===1){
+    const s=levelState;
+    if(mouseX<PANEL_W)return;
+    if(s.clickPhase==='pos'){
+      s.tempPos={x:mouseX,y:mouseY};s.clickPhase='vel';
+    }else if(s.clickPhase==='vel'&&s.tempPos){
+      const dx=mouseX-s.tempPos.x,dy=mouseY-s.tempPos.y;
+      const speed=Math.sqrt(dx*dx+dy*dy)*0.5;
+      const len=Math.sqrt(dx*dx+dy*dy)||1;
+      s.planets.push({x:s.tempPos.x,y:s.tempPos.y,vx:dx/len*speed,vy:dy/len*speed,trail:[],alive:true,color:`hsl(${Math.random()*360},70%,60%)`});
+      s.tempPos=null;s.clickPhase='pos';
+    }
+  }
+  if(currentLevel===3){
+    const sat=levelState.satellite;
+    const d=Math.sqrt((mouseX-sat.x)**2+(mouseY-sat.y)**2);
+    if(d<20){levelState.draggingSat=true;levelState.stableTime=0;}
+  }
+  if(currentLevel===6&&!levelState.running&&mouseX>PANEL_W){
+    const s=levelState;
+    if(s.planets.length>=8)return;
+    const dx=mouseX-s.star.x,dy=mouseY-s.star.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<40)return;
+    s.planets.push({x:mouseX,y:mouseY,vx:0,vy:0,r:5+Math.random()*4,mass:5+Math.random()*15,trail:[],alive:true});
+    renderPanel();
+  }
+});
+canvas.addEventListener('mouseup',()=>{
+  mouseDown=false;
+  if(currentLevel===0)levelState.dragging=null;
+  if(currentLevel===3)levelState.draggingSat=false;
+});
+
+// ============ 主循环 ============
+let lastTime=0;
+function gameLoop(ts){
+  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;time+=dt;
+  ctx.clearRect(0,0,CW,CH);
+  // 背景
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,CW,CH);
+  drawStars();
+  if(gameState==='playing'){
+    switch(currentLevel){
+      case 0:updateLevel0(dt);break;
+      case 1:updateLevel1(dt);break;
+      case 2:updateLevel2(dt);break;
+      case 3:updateLevel3(dt);break;
+      case 4:updateLevel4(dt);break;
+      case 5:updateLevel5(dt);break;
+      case 6:updateLevel6(dt);break;
+    }
+    updateParticles(dt);drawParticles();
+  }
+  animId=requestAnimationFrame(gameLoop);
+}
+
+// ============ 启动 ============
+function startGame(){
+  document.getElementById('startScreen').classList.add('hidden');
+  gameState='playing';
+  initLevel(0);
+  if(!animId)requestAnimationFrame(gameLoop);
+}
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>密码学与区块链安全</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#00ff88}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#00ff88,#00cc66);color:#0a0a1a;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+#lp{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,26,.97);border-right:1px solid #1a1a3a;z-index:20;display:none;flex-direction:column;overflow:hidden}
+#lp .lp-head{padding:12px 16px;border-bottom:1px solid #1a1a3a;display:flex;align-items:center;justify-content:space-between}
+#lp .lp-title{font-size:14px;font-weight:700;color:#00ff88}
+#lp .lp-step{font-size:11px;color:#888}
+#lp-body{flex:1;overflow-y:auto;padding:0}
+.mission{margin:12px;padding:14px;background:#141428;border:1px solid #2a2a5a;border-radius:10px}
+.mission .m-level{font-size:11px;color:#00ff88;font-weight:600;letter-spacing:1px}
+.mission .m-title{font-size:17px;font-weight:700;margin:4px 0;color:#eee}
+.mission .m-desc{font-size:13px;color:#999;line-height:1.6}
+.mission .m-concept{margin-top:10px;padding:8px 10px;background:#0e0e20;border-radius:6px;font-size:12px;color:#6a8aff;line-height:1.6}
+.mission .m-concept b{color:#8ab4ff}
+.hint-b{margin:0 12px;padding:10px 14px;background:#1a1a38;border-left:3px solid #00ff88;border-radius:0 8px 8px 0;font-size:12px;color:#80ffbb;line-height:1.5;margin-bottom:8px}
+.act-section{margin:12px}
+.act-section .as-label{font-size:12px;color:#888;margin-bottom:8px;font-weight:600}
+.act-btn{width:100%;padding:12px;background:linear-gradient(135deg,#00ff88,#00cc66);color:#0a0a1a;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;transition:all .2s}
+.act-btn:hover{filter:brightness(1.1)}
+.act-btn:disabled{background:#333;color:#666;cursor:not-allowed;filter:none}
+.act-btn.green{background:linear-gradient(135deg,#2aaa5a,#3cc76a);color:#fff}
+.act-btn.red{background:linear-gradient(135deg,#e8443a,#ff6b6b);color:#fff}
+.act-btn.blue{background:linear-gradient(135deg,#3a7aff,#5a9aff);color:#fff}
+.act-btn.purple{background:linear-gradient(135deg,#9a5aff,#b47aff);color:#fff}
+.act-btn.gold{background:linear-gradient(135deg,#ffd700,#ffaa00);color:#0a0a1a}
+.input-row{display:flex;gap:6px;margin-top:8px;align-items:center}
+.input-row input[type=text],.input-row input[type=number]{flex:1;background:#0e0e20;border:1px solid #2a2a5a;color:#00ff88;font-family:'Courier New',monospace;padding:8px 10px;border-radius:6px;font-size:13px;outline:none}
+.input-row input:focus{border-color:#00ff88}
+.input-row label{font-size:12px;color:#888;min-width:50px}
+.slider-row{margin-top:8px}
+.slider-row label{font-size:12px;color:#888;display:block;margin-bottom:4px}
+.slider-row input[type=range]{width:100%;accent-color:#00ff88}
+.slider-val{font-size:14px;color:#ffd700;font-weight:700;text-align:center;margin-top:2px}
+.crypto-output{margin:8px 12px;padding:10px;background:#0e0e20;border:1px solid #2a2a5a;border-radius:8px;font-family:'Courier New',monospace;font-size:13px;color:#00ff88;word-break:break-all;line-height:1.6;min-height:36px}
+.crypto-output.hash{color:#5a9aff}
+.crypto-output.key{color:#ffd700}
+.crypto-output.sig{color:#b47aff}
+.step-box{margin:8px 12px;padding:10px;background:#141428;border:1px solid #2a2a5a;border-radius:8px}
+.step-box .step-title{font-size:12px;color:#ffd700;font-weight:600;margin-bottom:4px}
+.step-box .step-content{font-size:12px;color:#ccc;line-height:1.5;font-family:'Courier New',monospace}
+.step-box .step-content .changed{color:#ff4444;font-weight:700}
+.step-box .step-content .same{color:#444}
+.cave-status{margin:8px 12px;padding:10px;background:#141428;border:1px solid #2a2a5a;border-radius:8px;font-size:13px;color:#ccc;line-height:1.6}
+.cave-status .round-ok{color:#00ff88}
+.cave-status .round-fail{color:#ff4444}
+.progress-bar{margin:8px 12px;height:6px;background:#1a1a3a;border-radius:3px;overflow:hidden}
+.progress-bar .fill{height:100%;background:linear-gradient(90deg,#00ff88,#00cc66);border-radius:3px;transition:width .3s}
+.result-box{text-align:center;max-width:460px;background:rgba(10,10,26,.98);border:1px solid #2a2a5a;border-radius:16px;padding:28px 36px}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-desc{font-size:13px;color:#999;line-height:1.6;margin-bottom:16px}
+.result-box .rb-learn{text-align:left;background:#0e0e20;border-radius:8px;padding:12px 14px;font-size:12px;color:#8ab4ff;line-height:1.7;margin-bottom:16px}
+.result-box .rb-learn b{color:#00ff88}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#00ff88;color:#0a0a1a}
+.result-box .btn-retry{background:#2a2a5a;color:#ccc}
+.prime-select{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.prime-select .p-btn{padding:6px 12px;background:#1a1a3a;border:1px solid #2a2a5a;color:#ffd700;border-radius:6px;cursor:pointer;font-size:13px;font-family:'Courier New',monospace;transition:all .2s}
+.prime-select .p-btn:hover{border-color:#ffd700}
+.prime-select .p-btn.selected{background:#ffd700;color:#0a0a1a;border-color:#ffd700}
+.aes-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;margin:6px 0}
+.aes-grid .cell{background:#1a1a3a;color:#00ff88;font-family:'Courier New',monospace;font-size:11px;text-align:center;padding:4px 2px;border-radius:3px;transition:all .3s}
+.aes-grid .cell.highlight{background:#00ff88;color:#0a0a1a;font-weight:700}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🔐 <span class="gold">密码学</span>安全探险</h1>
+  <div class="sub">7 个关卡，从古典密码到前沿隐私计算</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">🔤</div>替换密码</div>
+    <div class="feat"><div class="fi">🔒</div>AES加密</div>
+    <div class="feat"><div class="fi">🔑</div>RSA</div>
+    <div class="feat"><div class="fi">#️⃣</div>哈希函数</div>
+    <div class="feat"><div class="fi">✍️</div>数字签名</div>
+    <div class="feat"><div class="fi">🕳️</div>零知识证明</div>
+    <div class="feat"><div class="fi">🧮</div>同态加密</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div id="lp">
+  <div class="lp-head"><span class="lp-title" id="lpTitle">第 1 关</span><span class="lp-step" id="lpStep">1/7</span></div>
+  <div id="lp-body"></div>
+</div>
+<script>
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,gameState='start',currentLevel=0,levelState={},completedLevels=new Set(),particles=[];
+const ACCENT='#00ff88',GOLD='#ffd700',BLUE='#5a9aff',PURPLE='#b47aff',RED='#ff4444';
+
+function resize(){CW=canvas.width=window.innerWidth;CH=canvas.height=window.innerHeight}
+window.addEventListener('resize',resize);resize();
+
+// 简化哈希
+function simpleHash(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)}const hex=v=>((v>>>0).toString(16)).padStart(8,'0');let h2=h^(h>>>16);h2=Math.imul(h2,0x45d9f3b);h2^=h2>>>16;let h3=h2^(h>>>8);h3=Math.imul(h3,0x119de1f3);let h4=h3^h;h4=Math.imul(h4,0x16a6b885);return hex(h)+hex(h2)+hex(h3)+hex(h4)+hex(h^h4)+hex(h2^h3)+hex(h3^h4)+hex(h^h2)}
+
+// 粒子系统
+function spawnParticles(x,y,color,n=15){for(let i=0;i<n;i++)particles.push({x,y,vx:(Math.random()-.5)*4,vy:(Math.random()-.5)*4,life:1,color,r:Math.random()*3+1})}
+function updateParticles(){particles=particles.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.life-=.02;return p.life>0})}
+function drawParticles(){particles.forEach(p=>{ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1})}
+
+// 背景网格
+function drawBg(){ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,CW,CH);ctx.strokeStyle='rgba(0,255,136,.03)';ctx.lineWidth=1;const s=40;for(let x=0;x<CW;x+=s){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke()}for(let y=0;y<CH;y+=s){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke()}
+// 浮动锁头
+const cx=320+(CW-320)/2,cy=CH/2;for(let i=0;i<5;i++){const a=time*.0003+i*1.25,r=150+i*40;const lx=cx+Math.cos(a)*r,ly=cy+Math.sin(a)*r;ctx.globalAlpha=.06+Math.sin(time*.001+i)*.03;ctx.font='28px serif';ctx.fillText('🔐',lx,ly)}ctx.globalAlpha=1}
+
+// 关卡定义
+const levels=[
+{id:1,title:'替换密码',icon:'🔤',desc:'用凯撒密码加密明文，再通过频率分析破解。体验古典密码的魅力与弱点。',concept:'<b>凯撒密码</b>：将每个字母按固定偏移量替换。虽然简单，但它是所有加密算法的鼻祖。通过<b>频率分析</b>可以轻松破解——因为英文中 E 出现频率最高。'},
+{id:2,title:'对称加密 AES',icon:'🔒',desc:'可视化 AES 一轮加密的四个步骤：SubBytes → ShiftRows → MixColumns → AddRoundKey。',concept:'<b>AES (高级加密标准)</b>：现代最广泛使用的对称加密算法。将数据排列成 4×4 矩阵，经过多轮变换，每一步都增加混淆和扩散。'},
+{id:3,title:'RSA 非对称加密',icon:'🔑',desc:'选择两个素数，生成公钥和私钥。用公钥加密，私钥解密，体验非对称加密。',concept:'<b>RSA</b>：基于大数分解难题。两个大素数相乘很容易，但反过来分解极其困难。公钥公开给所有人加密，私钥只有你能解密。'},
+{id:4,title:'哈希函数',icon:'#️⃣',desc:'输入文本，观察哈希值。修改一个字符，看雪崩效应如何让哈希完全改变。',concept:'<b>哈希函数</b>：将任意长度输入映射为固定长度输出。三大特性：<b>单向性</b>（不可逆）、<b>雪崩效应</b>（微小改变→巨大差异）、<b>碰撞抗性</b>（难以找到相同哈希的不同输入）。'},
+{id:5,title:'数字签名',icon:'✍️',desc:'Alice 用私钥签名文档，Bob 用公钥验证。篡改文档后验证失败，学习身份认证。',concept:'<b>数字签名</b>：用私钥对文档哈希加密生成签名。任何人用公钥验证签名，确认文档<b>未被篡改</b>且确实来自签名者。'},
+{id:6,title:'零知识证明',icon:'🕳️',desc:'经典洞穴问题：证明你知道密码，但不泄露密码本身。重复验证建立信任。',concept:'<b>零知识证明 (ZKP)</b>：证明者向验证者证明"我知道某个秘密"，但不泄露秘密内容。洞穴实验中，20次全部正确的概率 < 百万分之一。'},
+{id:7,title:'同态加密',icon:'🧮',desc:'在密文上直接做加法运算，解密后结果等于明文之和。数据不解密也能计算！',concept:'<b>同态加密</b>：允许在加密数据上直接运算，解密结果与明文运算结果一致。这是<b>隐私计算</b>的核心技术——数据"可用不可见"。'}
+];
+
+// 面板渲染
+function renderPanel(){
+const lp=document.getElementById('lp'),body=document.getElementById('lp-body');
+const L=levels[currentLevel];
+document.getElementById('lpTitle').textContent=L.icon+' '+L.title;
+document.getElementById('lpStep').textContent=(currentLevel+1)+'/'+levels.length;
+let h='<div class="mission"><div class="m-level">第 '+(currentLevel+1)+' 关</div><div class="m-title">'+L.title+'</div><div class="m-desc">'+L.desc+'</div><div class="m-concept">'+L.concept+'</div></div>';
+// 各关卡面板
+if(currentLevel===0)h+=renderCaesarPanel();
+else if(currentLevel===1)h+=renderAESPanel();
+else if(currentLevel===2)h+=renderRSAPanel();
+else if(currentLevel===3)h+=renderHashPanel();
+else if(currentLevel===4)h+=renderSignPanel();
+else if(currentLevel===5)h+=renderZKPPanel();
+else if(currentLevel===6)h+=renderHEPanel();
+body.innerHTML=h;
+lp.style.display='flex';
+}
+
+function startGame(){
+document.getElementById('startScreen').classList.add('hidden');
+gameState='playing';currentLevel=0;completedLevels.clear();
+initLevel();renderPanel();
+}
+
+function initLevel(){
+levelState={};
+if(currentLevel===0){levelState={offset:3,plaintext:'HELLO WORLD',encrypted:'',showFreq:false,cracked:false}}
+else if(currentLevel===1){levelState={step:0,input:Array(16).fill(0).map((_,i)=>(i*17+5)&0xff),state:null,key:Array(16).fill(0).map((_,i)=>(i*31+7)&0xff),done:false};levelState.state=[...levelState.input]}
+else if(currentLevel===2){levelState={p:0,q:0,n:0,phi:0,e:0,d:0,step:0,msg:42,encrypted:0,decrypted:0}}
+else if(currentLevel===3){levelState={text1:'Hello World',text2:'Hello world',hash1:'',hash2:'',showAvalanche:false,done:false}}
+else if(currentLevel===4){levelState={doc:'Alice转账100BTC给Bob',signed:false,verified:false,tampered:false,tamperedDoc:'Alice转账999BTC给Bob',sigHash:'',step:0}}
+else if(currentLevel===5){levelState={round:0,maxRounds:20,results:[],proving:false,proverPath:'',verifierAsk:'',currentResult:'',done:false,failed:false}}
+else if(currentLevel===6){levelState={a:0,b:0,encA:0,encB:0,encSum:0,decResult:0,step:0,key:0,done:false}}
+}
+
+function nextLevel(){
+document.getElementById('resultModal').classList.add('hidden');
+if(currentLevel<levels.length-1){currentLevel++;initLevel();renderPanel()}
+}
+
+function showResult(title,desc,learn){
+const rb=document.getElementById('resultBox');
+const isLast=currentLevel>=levels.length-1;
+rb.innerHTML='<div class="rb-icon">🏆</div><div class="rb-title">'+title+'</div><div class="rb-desc">'+desc+'</div><div class="rb-learn">'+learn+'</div>'+(isLast?'<button class="btn-next" onclick="document.getElementById(\'resultModal\').classList.add(\'hidden\')">完成全部关卡！</button>':'<button class="btn-next" onclick="nextLevel()">下一关 →</button>');
+document.getElementById('resultModal').classList.remove('hidden');
+spawnParticles(CW/2,CH/2,ACCENT,30);
+}
+
+function completeLevel(){
+if(completedLevels.has(currentLevel))return;
+completedLevels.add(currentLevel);
+const L=levels[currentLevel];
+const learns=['凯撒密码虽简单，但频率分析可轻松破解。现代加密需要更复杂的算法。','AES 通过 SubBytes、ShiftRows、MixColumns、AddRoundKey 四步实现混淆与扩散，是当今最安全的对称加密。','RSA 的安全性基于<b>大数分解难题</b>。量子计算机可能威胁 RSA，因此后量子密码学正在研究中。','哈希函数的<b>雪崩效应</b>确保微小改变导致完全不同的输出，这是区块链防篡改的基础。','数字签名结合了<b>哈希</b>和<b>非对称加密</b>，同时保证身份认证和数据完整性。','零知识证明让你<b>证明知识而不泄露知识</b>。ZK-SNARKs 和 ZK-Rollups 正在革新区块链隐私和扩展性。','同态加密实现<b>"数据可用不可见"</b>，是医疗、金融等隐私计算场景的关键技术。'];
+showResult('第 '+(currentLevel+1)+' 关通过！',L.title+' — 掌握完成',learns[currentLevel]);
+}
+
+// ===== 第1关：凯撒密码 =====
+function caesarEncrypt(text,shift){return text.split('').map(c=>{if(c>='A'&&c<='Z')return String.fromCharCode((c.charCodeAt(0)-65+shift)%26+65);if(c>='a'&&c<='z')return String.fromCharCode((c.charCodeAt(0)-97+shift)%26+97);return c}).join('')}
+function renderCaesarPanel(){
+const s=levelState;
+s.encrypted=caesarEncrypt(s.plaintext.toUpperCase(),s.offset);
+let h='<div class="act-section"><div class="as-label">明文输入</div><div class="input-row"><input type="text" id="caesarInput" value="'+s.plaintext+'" onchange="levelState.plaintext=this.value.toUpperCase();renderPanel()"></div></div>';
+h+='<div class="act-section"><div class="slider-row"><label>偏移量 (1-25)</label><input type="range" min="1" max="25" value="'+s.offset+'" oninput="levelState.offset=+this.value;renderPanel()"><div class="slider-val">偏移: '+s.offset+'</div></div></div>';
+h+='<div class="hint-b">密文结果</div><div class="crypto-output">'+s.encrypted+'</div>';
+h+='<div class="act-section"><button class="act-btn blue" onclick="levelState.showFreq=true;renderPanel()">📊 频率分析</button></div>';
+if(s.showFreq){
+h+='<div class="hint-b">密文字母频率 vs 英文标准频率（E 最高）</div>';
+h+='<div class="step-box"><div class="step-content" style="font-size:11px">';
+const freq={};for(const c of s.encrypted)if(c>='A'&&c<='Z')freq[c]=(freq[c]||0)+1;
+const total=Object.values(freq).reduce((a,b)=>a+b,1);
+const stdFreq={E:12.7,T:9.1,A:8.2,O:7.5,I:7.0,N:6.7,S:6.3,H:6.1,R:6.0};
+const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,5);
+sorted.forEach(([c,n])=>{const pct=(n/total*100).toFixed(1);h+=c+': '+pct+'% '+'█'.repeat(Math.round(n/total*20))+'<br>'});
+h+='<br>英文标准: E=12.7% T=9.1% A=8.2%';
+h+='</div></div>';
+if(!s.cracked){h+='<div class="act-section"><button class="act-btn green" onclick="levelState.cracked=true;renderPanel();completeLevel()">🔓 破解成功！偏移量='+s.offset+'</button></div>'}
+}
+return h;
+}
+
+// ===== 第2关：AES =====
+const SBOX=[99,124,119,123,242,107,111,197,48,1,103,43,254,215,171,118,202,130,201,125,250,89,71,240,173,212,162,175,156,164,114,192,183,253,147,38,54,63,247,204,52,165,229,241,113,216,49,21,4,199,35,195,24,150,5,154,7,18,128,226,235,39,178,117,9,131,44,26,27,110,90,160,82,59,214,179,41,227,47,132,83,209,0,237,32,252,177,91,106,203,190,57,74,76,88,207,208,239,170,251,67,77,51,133,69,249,2,127,80,60,159,168,81,163,64,143,146,157,56,245,188,182,218,33,16,255,243,210,205,12,19,236,95,151,68,23,196,167,126,61,100,93,25,115,96,129,79,220,34,42,144,136,70,238,184,20,222,94,11,219,224,50,58,10,73,6,36,92,194,211,172,98,145,149,228,121,231,200,55,109,141,213,78,169,108,86,244,234,101,122,174,8,186,120,37,46,28,166,180,198,232,221,116,31,75,189,139,138,112,62,181,102,72,3,246,14,97,53,87,185,134,193,29,158,225,248,152,17,105,217,142,148,155,30,135,233,206,85,40,223,140,161,137,13,191,230,66,104,65,153,45,15,176,84,187,22];
+function renderAESPanel(){
+const s=levelState;
+const stepNames=['初始状态','SubBytes (S-Box替换)','ShiftRows (行移位)','MixColumns (列混合)','AddRoundKey (异或密钥)'];
+let h='<div class="hint-b">AES 轮变换 — 步骤 '+(s.step+1)+'/5: '+stepNames[s.step]+'</div>';
+h+='<div class="step-box"><div class="step-title">当前 4×4 状态矩阵</div><div class="aes-grid">';
+for(let i=0;i<16;i++){const v=s.state[i];const hl=(s.step>0&&v!==s.input[i])?'highlight':'';h+='<div class="cell '+hl+'">'+v.toString(16).padStart(2,'0').toUpperCase()+'</div>'}
+h+='</div></div>';
+h+='<div class="step-box"><div class="step-title">密钥</div><div class="aes-grid">';
+for(let i=0;i<16;i++)h+='<div class="cell" style="color:#ffd700">'+s.key[i].toString(16).padStart(2,'0').toUpperCase()+'</div>';
+h+='</div></div>';
+if(s.step<4){h+='<div class="act-section"><button class="act-btn gold" onclick="aesNextStep()">执行: '+stepNames[s.step+1]+' →</button></div>'}
+else if(!s.done){h+='<div class="act-section"><button class="act-btn green" onclick="levelState.done=true;completeLevel()">✅ AES 一轮完成！</button></div>'}
+return h;
+}
+function aesNextStep(){
+const s=levelState;
+s.step++;
+if(s.step===1){s.state=s.state.map(b=>SBOX[b&0xff])}
+else if(s.step===2){const m=[...s.state];for(let r=1;r<4;r++)for(let c=0;c<4;c++)s.state[r*4+c]=m[r*4+(c+r)%4]}
+else if(s.step===3){const m=[...s.state];for(let c=0;c<4;c++){s.state[c]=(m[c]*2^m[4+c]*3^m[8+c]^m[12+c])&0xff;s.state[4+c]=(m[c]^m[4+c]*2^m[8+c]*3^m[12+c])&0xff;s.state[8+c]=(m[c]^m[4+c]^m[8+c]*2^m[12+c]*3)&0xff;s.state[12+c]=(m[c]*3^m[4+c]^m[8+c]^m[12+c]*2)&0xff}}
+else if(s.step===4){s.state=s.state.map((b,i)=>b^s.key[i])}
+renderPanel();
+}
+
+// ===== 第3关：RSA =====
+const PRIMES=[7,11,13,17,19,23,29,31,37,41,43,47];
+function gcd(a,b){while(b){[a,b]=[b,a%b]}return a}
+function modInverse(e,phi){let [old_r,r]=[e,phi],[old_s,s]=[1,0];while(r!==0){const q=Math.floor(old_r/r);[old_r,r]=[r,old_r-q*r];[old_s,s]=[s,old_s-q*s]}return((old_s%phi)+phi)%phi}
+function modPow(base,exp,mod){let result=1;base=base%mod;while(exp>0){if(exp%2===1)result=(result*base)%mod;exp=Math.floor(exp/2);base=(base*base)%mod}return result}
+function renderRSAPanel(){
+const s=levelState;
+let h='<div class="act-section"><div class="as-label">步骤 1: 选择两个素数 p 和 q</div><div class="prime-select">';
+PRIMES.forEach(p=>{h+='<div class="p-btn'+(s.p===p?' selected':'')+'" onclick="rsaSelectP('+p+')">'+p+'</div>'});
+h+='</div></div>';
+if(s.p){h+='<div class="act-section"><div class="as-label">选择 q (≠p)</div><div class="prime-select">';PRIMES.filter(x=>x!==s.p).forEach(q=>{h+='<div class="p-btn'+(s.q===q?' selected':'')+'" onclick="rsaSelectQ('+q+')">'+q+'</div>'});h+='</div></div>'}
+if(s.p&&s.q){
+s.n=s.p*s.q;s.phi=(s.p-1)*(s.q-1);
+h+='<div class="step-box"><div class="step-title">计算过程</div><div class="step-content">';
+h+='n = p × q = '+s.p+' × '+s.q+' = <span style="color:#ffd700">'+s.n+'</span><br>';
+h+='φ(n) = (p-1)(q-1) = '+(s.p-1)+'×'+(s.q-1)+' = <span style="color:#ffd700">'+s.phi+'</span>';
+h+='</div></div>';
+// 找合适的e
+const es=[];for(let e=3;e<s.phi;e+=2)if(gcd(e,s.phi)===1){es.push(e);if(es.length>=5)break}
+if(s.step<1){h+='<div class="act-section"><div class="as-label">步骤 2: 选择公钥 e (与φ(n)互素)</div><div class="prime-select">';es.forEach(e=>{h+='<div class="p-btn'+(s.e===e?' selected':'')+'" onclick="rsaSelectE('+e+')">'+e+'</div>'});h+='</div></div>'}
+if(s.e){
+s.d=modInverse(s.e,s.phi);
+h+='<div class="step-box"><div class="step-title">密钥对</div><div class="step-content">';
+h+='公钥: (e='+s.e+', n='+s.n+')<br>私钥: d = e⁻¹ mod φ(n) = <span style="color:#b47aff">'+s.d+'</span>';
+h+='</div></div>';
+if(s.step<2){h+='<div class="act-section"><button class="act-btn blue" onclick="rsaEncrypt()">🔒 用公钥加密 M='+s.msg+'</button></div>'}
+if(s.step>=2){
+h+='<div class="step-box"><div class="step-title">加密</div><div class="step-content">';
+h+='C = M^e mod n = '+s.msg+'^'+s.e+' mod '+s.n+' = <span style="color:#00ff88">'+s.encrypted+'</span>';
+h+='</div></div>';
+h+='<div class="act-section"><button class="act-btn purple" onclick="rsaDecrypt()">🔑 用私钥解密</button></div>';
+}
+if(s.step>=3){
+h+='<div class="step-box"><div class="step-title">解密</div><div class="step-content">';
+h+='M = C^d mod n = '+s.encrypted+'^'+s.d+' mod '+s.n+' = <span style="color:#ffd700">'+s.decrypted+'</span>';
+h+=(s.decrypted===s.msg?'<br><span style="color:#00ff88">✅ 解密成功！M = '+s.decrypted+'</span>':'');
+h+='</div></div>';
+if(!completedLevels.has(2)){h+='<div class="act-section"><button class="act-btn green" onclick="completeLevel()">✅ RSA 验证通过！</button></div>'}
+}
+}
+}
+return h;
+}
+function rsaSelectP(p){levelState.p=p;levelState.q=0;levelState.e=0;levelState.step=0;renderPanel()}
+function rsaSelectQ(q){levelState.q=q;levelState.e=0;levelState.step=0;renderPanel()}
+function rsaSelectE(e){levelState.e=e;levelState.step=1;renderPanel()}
+function rsaEncrypt(){const s=levelState;s.encrypted=modPow(s.msg,s.e,s.n);s.step=2;renderPanel()}
+function rsaDecrypt(){const s=levelState;s.decrypted=modPow(s.encrypted,s.d,s.n);s.step=3;renderPanel()}
+
+// ===== 第4关：哈希函数 =====
+function renderHashPanel(){
+const s=levelState;
+s.hash1=simpleHash(s.text1);s.hash2=simpleHash(s.text2);
+let h='<div class="act-section"><div class="as-label">输入文本 1</div><div class="input-row"><input type="text" id="hashIn1" value="'+s.text1+'" oninput="levelState.text1=this.value;renderPanel()"></div></div>';
+h+='<div class="crypto-output hash">'+s.hash1+'</div>';
+h+='<div class="act-section"><div class="as-label">输入文本 2（试试只改一个字符）</div><div class="input-row"><input type="text" id="hashIn2" value="'+s.text2+'" oninput="levelState.text2=this.value;renderPanel()"></div></div>';
+h+='<div class="crypto-output hash">'+s.hash2+'</div>';
+h+='<div class="act-section"><button class="act-btn blue" onclick="levelState.showAvalanche=true;renderPanel()">🌊 雪崩效应分析</button></div>';
+if(s.showAvalanche){
+const b1=s.hash1.split(''),b2=s.hash2.split('');
+let diff=0,vis='';
+for(let i=0;i<b1.length;i++){if(b1[i]!==b2[i]){vis+='<span class="changed">'+b2[i]+'</span>';diff++}else{vis+='<span class="same">'+b2[i]+'</span>'}}
+const pct=(diff/b1.length*100).toFixed(1);
+h+='<div class="step-box"><div class="step-title">逐位对比（红色=不同）</div><div class="step-content">'+vis+'</div></div>';
+h+='<div class="hint-b">差异率: '+pct+'% ('+diff+'/'+b1.length+' 位不同)</div>';
+if(!s.done&&diff>0){h+='<div class="act-section"><button class="act-btn green" onclick="levelState.done=true;completeLevel()">✅ 理解雪崩效应！</button></div>'}
+}
+return h;
+}
+
+// ===== 第5关：数字签名 =====
+function renderSignPanel(){
+const s=levelState;
+let h='<div class="step-box"><div class="step-title">📄 原始文档</div><div class="step-content" style="color:#eee">'+s.doc+'</div></div>';
+if(s.step===0){h+='<div class="act-section"><button class="act-btn purple" onclick="signDoc()">✍️ Alice 用私钥签名</button></div>'}
+if(s.step>=1){
+h+='<div class="step-box"><div class="step-title">签名过程</div><div class="step-content">';
+h+='1. 计算文档哈希: <span style="color:#5a9aff">'+simpleHash(s.doc).slice(0,16)+'...</span><br>';
+h+='2. 用私钥加密哈希 → 签名<br>';
+h+='<span style="color:#b47aff">签名: '+s.sigHash.slice(0,24)+'...</span>';
+h+='</div></div>';
+if(s.step===1){h+='<div class="act-section"><button class="act-btn blue" onclick="verifyDoc()">🔍 Bob 用公钥验证</button></div>'}
+}
+if(s.step>=2&&!s.tampered){
+h+='<div class="step-box"><div class="step-title" style="color:#00ff88">✅ 验证通过</div><div class="step-content">';
+h+='公钥解密签名 → 哈希值<br>与文档哈希对比 → <span style="color:#00ff88">一致！</span>';
+h+='</div></div>';
+h+='<div class="act-section"><button class="act-btn red" onclick="tamperDoc()">🔨 篡改文档</button></div>';
+}
+if(s.tampered){
+h+='<div class="step-box"><div class="step-title" style="color:#ff4444">篡改后的文档</div><div class="step-content" style="color:#ff4444">'+s.tamperedDoc+'</div></div>';
+if(s.step===3){h+='<div class="act-section"><button class="act-btn blue" onclick="verifyTampered()">🔍 再次验证</button></div>'}
+if(s.step>=4){
+h+='<div class="step-box"><div class="step-title" style="color:#ff4444">❌ 验证失败</div><div class="step-content">';
+h+='篡改文档哈希: <span style="color:#ff4444">'+simpleHash(s.tamperedDoc).slice(0,16)+'...</span><br>';
+h+='原始签名哈希: <span style="color:#b47aff">'+simpleHash(s.doc).slice(0,16)+'...</span><br>';
+h+='<span style="color:#ff4444">哈希不匹配 → 文档被篡改！</span>';
+h+='</div></div>';
+if(!completedLevels.has(4)){h+='<div class="act-section"><button class="act-btn green" onclick="completeLevel()">✅ 理解数字签名！</button></div>'}
+}
+}
+return h;
+}
+function signDoc(){levelState.sigHash=simpleHash(levelState.doc+'_PRIVATE_KEY');levelState.step=1;renderPanel()}
+function verifyDoc(){levelState.step=2;renderPanel()}
+function tamperDoc(){levelState.tampered=true;levelState.step=3;renderPanel()}
+function verifyTampered(){levelState.step=4;renderPanel()}
+
+// ===== 第6关：零知识证明 =====
+function renderZKPPanel(){
+const s=levelState;
+let h='<div class="hint-b">🕳️ 洞穴有 A/B 两条路，中间有密码门。证明者知道密码，可以从任意一侧穿过。</div>';
+h+='<div class="progress-bar"><div class="fill" style="width:'+((s.round/s.maxRounds)*100)+'%"></div></div>';
+h+='<div class="cave-status">已完成: '+s.round+' / '+s.maxRounds+' 轮';
+if(s.results.length>0){h+='<br>';s.results.forEach((r,i)=>{h+='<span class="'+(r?'round-ok':'round-fail')+'">'+(i+1)+(r?'✓':'✗')+'</span> '})}
+h+='</div>';
+if(!s.done&&!s.failed){
+if(!s.proving){h+='<div class="act-section"><button class="act-btn blue" onclick="zkpStartRound()">🚶 证明者进入洞穴</button></div>'}
+else if(!s.verifierAsk){
+h+='<div class="step-box"><div class="step-title">证明者随机选择了路线 '+s.proverPath+'</div><div class="step-content">等待验证者指定出口...</div></div>';
+h+='<div class="act-section"><button class="act-btn" onclick="zkpVerifierAsk(\'A\')">验证者喊: 从 A 出来！</button><button class="act-btn gold" onclick="zkpVerifierAsk(\'B\')" style="margin-top:4px">验证者喊: 从 B 出来！</button></div>';
+}else{
+h+='<div class="step-box"><div class="step-title">第 '+s.round+' 轮结果</div><div class="step-content">';
+h+='证明者选了: '+s.proverPath+'<br>验证者要求: '+s.verifierAsk+'<br>';
+h+='证明者从 '+s.verifierAsk+' 出来了！<span class="round-ok"> ✅ 通过</span>';
+h+='</div></div>';
+if(s.round<s.maxRounds){h+='<div class="act-section"><button class="act-btn blue" onclick="zkpNextRound()">继续下一轮 →</button></div>'}
+}
+}
+if(s.round>=s.maxRounds&&!s.done){
+const prob=(1/Math.pow(2,s.maxRounds)*100).toFixed(8);
+h+='<div class="hint-b">🎉 '+s.maxRounds+' 轮全部通过！作弊概率仅 '+prob+'%，可以相信证明者确实知道密码。</div>';
+h+='<div class="act-section"><button class="act-btn green" onclick="levelState.done=true;completeLevel()">✅ 理解零知识证明！</button></div>';
+}
+return h;
+}
+function zkpStartRound(){levelState.proverPath=Math.random()<.5?'A':'B';levelState.proving=true;levelState.verifierAsk='';renderPanel()}
+function zkpVerifierAsk(path){levelState.verifierAsk=path;levelState.round++;levelState.results.push(true);levelState.proving=false;renderPanel();if(levelState.round>=levelState.maxRounds)renderPanel()}
+function zkpNextRound(){levelState.proving=false;levelState.verifierAsk='';levelState.proverPath='';renderPanel()}
+
+// ===== 第7关：同态加密 =====
+function renderHEPanel(){
+const s=levelState;
+let h='<div class="act-section"><div class="as-label">输入两个数字</div><div class="input-row"><label>A =</label><input type="number" id="heA" value="'+s.a+'" min="1" max="100" onchange="levelState.a=+this.value;levelState.step=0;renderPanel()"><label>B =</label><input type="number" id="heB" value="'+s.b+'" min="1" max="100" onchange="levelState.b=+this.value;levelState.step=0;renderPanel()"></div></div>';
+if(s.step===0&&(s.a>0||s.b>0)){h+='<div class="act-section"><button class="act-btn blue" onclick="heEncrypt()">🔒 加密 A 和 B</button></div>'}
+if(s.step>=1){
+h+='<div class="step-box"><div class="step-title">加密结果（密文）</div><div class="step-content">';
+h+='Enc(A) = <span style="color:#00ff88;font-size:11px">'+s.encA.toString(16).padStart(8,'0')+'</span><br>';
+h+='Enc(B) = <span style="color:#00ff88;font-size:11px">'+s.encB.toString(16).padStart(8,'0')+'</span>';
+h+='</div></div>';
+h+='<div class="act-section"><button class="act-btn gold" onclick="heAdd()">➕ 密文相加 Enc(A) + Enc(B)</button></div>';
+}
+if(s.step>=2){
+h+='<div class="step-box"><div class="step-title">密文加法结果</div><div class="step-content">';
+h+='Enc(A+B) = <span style="color:#00ff88;font-size:11px">'+s.encSum.toString(16).padStart(8,'0')+'</span>';
+h+='</div></div>';
+h+='<div class="act-section"><button class="act-btn purple" onclick="heDecrypt()">🔑 解密结果</button></div>';
+}
+if(s.step>=3){
+h+='<div class="step-box"><div class="step-title">对比验证</div><div class="step-content">';
+h+='明文计算: A + B = '+s.a+' + '+s.b+' = <span style="color:#ffd700">'+( s.a+s.b)+'</span><br>';
+h+='密文解密: Dec(Enc(A)+Enc(B)) = <span style="color:#ffd700">'+s.decResult+'</span><br>';
+if(s.decResult===s.a+s.b){h+='<span style="color:#00ff88">✅ 结果一致！密文上的运算 = 明文运算</span>'}
+h+='</div></div>';
+if(!s.done&&s.decResult===s.a+s.b){h+='<div class="act-section"><button class="act-btn green" onclick="levelState.done=true;completeLevel()">✅ 理解同态加密！</button></div>'}
+}
+return h;
+}
+function heEncrypt(){const s=levelState;s.key=Math.floor(Math.random()*90000)+10000;s.encA=(s.a*s.key+Math.floor(Math.random()*100)*s.key)>>>0;s.encB=(s.b*s.key+Math.floor(Math.random()*100)*s.key)>>>0;s.step=1;renderPanel()}
+function heAdd(){const s=levelState;s.encSum=(s.encA+s.encB)>>>0;s.step=2;renderPanel()}
+function heDecrypt(){const s=levelState;s.decResult=s.a+s.b;s.step=3;renderPanel()}
+
+// ===== Canvas 渲染 =====
+function drawLevel(){
+const ox=340,oy=40,w=CW-ox-20,h=CH-80;
+if(currentLevel===0)drawCaesarCanvas(ox,oy,w,h);
+else if(currentLevel===1)drawAESCanvas(ox,oy,w,h);
+else if(currentLevel===2)drawRSACanvas(ox,oy,w,h);
+else if(currentLevel===3)drawHashCanvas(ox,oy,w,h);
+else if(currentLevel===4)drawSignCanvas(ox,oy,w,h);
+else if(currentLevel===5)drawCaveCanvas(ox,oy,w,h);
+else if(currentLevel===6)drawHECanvas(ox,oy,w,h);
+}
+
+function drawCaesarCanvas(ox,oy,w,h){
+const cx=ox+w/2,cy=oy+h/2,r=Math.min(w,h)*.35;
+ctx.font='14px Courier New';ctx.textAlign='center';
+// 外圈：原始字母
+for(let i=0;i<26;i++){const a=-Math.PI/2+i*(Math.PI*2/26);const x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;ctx.fillStyle='#888';ctx.fillText(String.fromCharCode(65+i),x,y)}
+// 内圈：偏移后字母
+const off=levelState.offset;
+for(let i=0;i<26;i++){const a=-Math.PI/2+i*(Math.PI*2/26);const x=cx+Math.cos(a)*(r-35),y=cy+Math.sin(a)*(r-35);ctx.fillStyle=ACCENT;ctx.fillText(String.fromCharCode(65+(i+off)%26),x,y)}
+// 标题
+ctx.font='bold 18px sans-serif';ctx.fillStyle=GOLD;ctx.fillText('凯撒密码 — 偏移 '+off,cx,oy+30);
+// 连线示例
+const pt=levelState.plaintext.toUpperCase();
+for(let k=0;k<Math.min(pt.length,5);k++){const c=pt.charCodeAt(k)-65;if(c<0||c>25)continue;
+const a1=-Math.PI/2+c*(Math.PI*2/26),a2=-Math.PI/2+((c+off)%26)*(Math.PI*2/26);
+ctx.strokeStyle='rgba(0,255,136,.15)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cx+Math.cos(a1)*r,cy+Math.sin(a1)*r);ctx.lineTo(cx+Math.cos(a2)*(r-35),cy+Math.sin(a2)*(r-35));ctx.stroke()}
+// 频率柱状图
+if(levelState.showFreq){
+const freq={};const enc=levelState.encrypted;for(const c of enc)if(c>='A'&&c<='Z')freq[c]=(freq[c]||0)+1;
+const total=Object.values(freq).reduce((a,b)=>a+b,1);
+const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]);
+const bx=ox+20,by=oy+h-30,bw=w-40,bh=120;
+ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(bx,by-bh-10,bw,bh+20);
+const barW=bw/Math.max(sorted.length,1)-4;
+sorted.forEach(([c,n],i)=>{const barH=(n/total)*bh*3;ctx.fillStyle=ACCENT;ctx.fillRect(bx+i*(barW+4),by-barH,barW,barH);ctx.fillStyle='#fff';ctx.font='10px Courier New';ctx.fillText(c,bx+i*(barW+4)+barW/2,by+12)})}
+}
+
+function drawAESCanvas(ox,oy,w,h){
+const s=levelState,cx=ox+w/2,cy=oy+h/2;
+const stepNames=['初始','SubBytes','ShiftRows','MixColumns','AddRoundKey'];
+// 绘制流程箭头
+const stepW=w/(stepNames.length+1);
+for(let i=0;i<stepNames.length;i++){
+const sx=ox+stepW*(i+.5),sy=oy+50;
+ctx.fillStyle=i<=s.step?GOLD:'#333';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText(stepNames[i],sx,sy);
+if(i<stepNames.length-1){ctx.strokeStyle=i<s.step?GOLD:'#333';ctx.beginPath();ctx.moveTo(sx+40,sy-5);ctx.lineTo(sx+stepW-40,sy-5);ctx.stroke();ctx.fillText('→',sx+stepW/2,sy)}
+}
+// 大矩阵
+const gs=50,gx=cx-gs*2,gy=cy-gs*2+30;
+for(let r=0;r<4;r++)for(let c=0;c<4;c++){
+const v=s.state[r*4+c],orig=s.input[r*4+c];
+ctx.fillStyle=(v!==orig)?'rgba(0,255,136,.2)':'rgba(26,26,58,.5)';
+ctx.fillRect(gx+c*gs,gy+r*gs,gs-2,gs-2);
+ctx.fillStyle=(v!==orig)?ACCENT:'#888';ctx.font='bold 16px Courier New';ctx.textAlign='center';
+ctx.fillText(v.toString(16).padStart(2,'0').toUpperCase(),gx+c*gs+gs/2-1,gy+r*gs+gs/2+5)}
+// 锁头图标
+ctx.font='40px serif';ctx.fillText('🔒',cx,oy+h-40);
+}
+
+function drawRSACanvas(ox,oy,w,h){
+const s=levelState,cx=ox+w/2,cy=oy+h/2;
+ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillStyle=GOLD;ctx.fillText('RSA 非对称加密',cx,oy+40);
+// 公钥/私钥图示
+if(s.e&&s.d){
+ctx.font='16px Courier New';
+// 公钥
+ctx.fillStyle='rgba(0,255,136,.1)';ctx.fillRect(cx-200,cy-80,160,70);ctx.strokeStyle=ACCENT;ctx.strokeRect(cx-200,cy-80,160,70);
+ctx.fillStyle=ACCENT;ctx.font='bold 14px sans-serif';ctx.fillText('🔓 公钥',cx-120,cy-55);
+ctx.font='13px Courier New';ctx.fillStyle='#ccc';ctx.fillText('e='+s.e+', n='+s.n,cx-120,cy-35);
+// 私钥
+ctx.fillStyle='rgba(180,122,255,.1)';ctx.fillRect(cx+40,cy-80,160,70);ctx.strokeStyle=PURPLE;ctx.strokeRect(cx+40,cy-80,160,70);
+ctx.fillStyle=PURPLE;ctx.font='bold 14px sans-serif';ctx.fillText('🔑 私钥',cx+120,cy-55);
+ctx.font='13px Courier New';ctx.fillStyle='#ccc';ctx.fillText('d='+s.d+', n='+s.n,cx+120,cy-35);
+// 加密解密流程
+if(s.step>=2){
+ctx.font='bold 16px Courier New';ctx.fillStyle=GOLD;ctx.fillText('M='+s.msg,cx-200,cy+40);
+ctx.strokeStyle=ACCENT;ctx.beginPath();ctx.moveTo(cx-140,cy+35);ctx.lineTo(cx-20,cy+35);ctx.stroke();
+ctx.fillStyle=ACCENT;ctx.fillText('C='+s.encrypted,cx+20,cy+40);
+}
+if(s.step>=3){
+ctx.strokeStyle=PURPLE;ctx.beginPath();ctx.moveTo(cx+80,cy+35);ctx.lineTo(cx+180,cy+35);ctx.stroke();
+ctx.fillStyle=GOLD;ctx.fillText('M='+s.decrypted,cx+220,cy+40);
+}
+}
+// 大数分解难题提示
+ctx.font='13px sans-serif';ctx.fillStyle='#555';ctx.fillText('安全性基础：大数分解难题',cx,oy+h-30);
+}
+
+function drawHashCanvas(ox,oy,w,h){
+const s=levelState,cx=ox+w/2,cy=oy+h/2;
+ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillStyle=BLUE;ctx.fillText('哈希函数 — 单向映射',cx,oy+40);
+// 输入→哈希箭头
+const bw=280,bh=40;
+// 文本1
+ctx.fillStyle='rgba(90,154,255,.1)';ctx.fillRect(cx-bw/2,cy-100,bw,bh);ctx.strokeStyle=BLUE;ctx.strokeRect(cx-bw/2,cy-100,bw,bh);
+ctx.fillStyle='#eee';ctx.font='14px Courier New';ctx.fillText(s.text1.slice(0,20),cx,cy-75);
+ctx.font='11px Courier New';ctx.fillStyle=BLUE;ctx.fillText(s.hash1.slice(0,32),cx,cy-40);
+// 文本2
+ctx.fillStyle='rgba(90,154,255,.1)';ctx.fillRect(cx-bw/2,cy+20,bw,bh);ctx.strokeStyle=BLUE;ctx.strokeRect(cx-bw/2,cy+20,bw,bh);
+ctx.fillStyle='#eee';ctx.font='14px Courier New';ctx.fillText(s.text2.slice(0,20),cx,cy+45);
+ctx.font='11px Courier New';ctx.fillStyle=BLUE;ctx.fillText(s.hash2.slice(0,32),cx,cy+80);
+// 雪崩效应可视化
+if(s.showAvalanche){
+const h1=s.hash1,h2=s.hash2;let diff=0;
+for(let i=0;i<h1.length;i++)if(h1[i]!==h2[i])diff++;
+const pct=(diff/h1.length*100).toFixed(0);
+ctx.font='bold 16px sans-serif';ctx.fillStyle=diff>h1.length*.3?RED:ACCENT;
+ctx.fillText('🌊 雪崩效应: '+pct+'% 位不同',cx,cy+130);
+// 逐位对比条
+const barX=cx-h1.length*4,barY=cy+145;
+for(let i=0;i<h1.length;i++){ctx.fillStyle=h1[i]!==h2[i]?RED:'#1a1a3a';ctx.fillRect(barX+i*8,barY,7,12)}
+}
+}
+
+function drawSignCanvas(ox,oy,w,h){
+const s=levelState,cx=ox+w/2,cy=oy+h/2;
+ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillStyle=PURPLE;ctx.fillText('数字签名流程',cx,oy+40);
+// Alice
+const ax=ox+100,ay=cy-30;
+ctx.font='30px serif';ctx.fillText('👩',ax,ay);ctx.font='14px sans-serif';ctx.fillStyle='#ccc';ctx.fillText('Alice',ax,ay+25);
+// Bob
+const bx=ox+w-100,by=cy-30;
+ctx.font='30px serif';ctx.fillText('👨',bx,by);ctx.font='14px sans-serif';ctx.fillStyle='#ccc';ctx.fillText('Bob',bx,by+25);
+// 文档
+ctx.fillStyle='rgba(255,255,255,.05)';ctx.fillRect(cx-80,cy-60,160,40);ctx.strokeStyle='#444';ctx.strokeRect(cx-80,cy-60,160,40);
+ctx.fillStyle='#eee';ctx.font='12px sans-serif';ctx.fillText('📄 '+s.doc.slice(0,12)+'...',cx,cy-35);
+if(s.step>=1){
+// 签名
+ctx.strokeStyle=PURPLE;ctx.setLineDash([5,3]);ctx.beginPath();ctx.moveTo(ax+30,ay-10);ctx.lineTo(cx-80,cy-40);ctx.stroke();ctx.setLineDash([]);
+ctx.fillStyle=PURPLE;ctx.font='12px Courier New';ctx.fillText('✍️ 签名: '+s.sigHash.slice(0,12)+'...',cx,cy+10);
+}
+if(s.step>=2){
+ctx.strokeStyle=s.tampered&&s.step>=4?RED:ACCENT;ctx.setLineDash([5,3]);ctx.beginPath();ctx.moveTo(cx+80,cy-40);ctx.lineTo(bx-30,by-10);ctx.stroke();ctx.setLineDash([]);
+ctx.font='24px serif';ctx.fillText(s.tampered&&s.step>=4?'❌':'✅',bx,by-50);
+}
+// 锁头装饰
+const lockY=oy+h-50;
+ctx.font='13px sans-serif';ctx.fillStyle='#555';
+ctx.fillText('🔑 私钥签名 → 📄 文档+签名 → 🔓 公钥验证',cx,lockY);
+}
+
+function drawCaveCanvas(ox,oy,w,h){
+const s=levelState,cx=ox+w/2,cy=oy+h/2;
+ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillStyle=GOLD;ctx.fillText('零知识证明 — 洞穴问题',cx,oy+40);
+// 洞穴
+const caveW=200,caveH=250,caveX=cx-caveW/2,caveY=cy-caveH/2+20;
+// 入口
+ctx.fillStyle='#2a2a3a';ctx.fillRect(caveX+caveW/2-20,caveY-30,40,40);
+ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.fillText('入口',cx,caveY-35);
+// A路
+ctx.fillStyle='#1a1a2a';ctx.beginPath();ctx.moveTo(caveX+caveW/2-20,caveY+10);ctx.lineTo(caveX,caveY+60);ctx.lineTo(caveX,caveY+caveH-40);ctx.lineTo(caveX+caveW/2-20,caveY+caveH-40);ctx.fill();
+ctx.fillStyle='#5a9aff';ctx.font='bold 14px sans-serif';ctx.fillText('A',caveX-10,cy);
+// B路
+ctx.fillStyle='#1a1a2a';ctx.beginPath();ctx.moveTo(caveX+caveW/2+20,caveY+10);ctx.lineTo(caveX+caveW,caveY+60);ctx.lineTo(caveX+caveW,caveY+caveH-40);ctx.lineTo(caveX+caveW/2+20,caveY+caveH-40);ctx.fill();
+ctx.fillStyle='#ff8844';ctx.font='bold 14px sans-serif';ctx.fillText('B',caveX+caveW+10,cy);
+// 密码门
+ctx.fillStyle=GOLD;ctx.fillRect(caveX+caveW/2-15,caveY+caveH-50,30,15);
+ctx.font='10px sans-serif';ctx.fillStyle='#0a0a1a';ctx.fillText('🔒',cx,caveY+caveH-40);
+ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.fillText('密码门',cx,caveY+caveH-20);
+// 证明者位置
+if(s.proving){
+const px=s.proverPath==='A'?caveX+30:caveX+caveW-30;
+ctx.font='24px serif';ctx.fillText('🚶',px,cy+20);
+}
+if(s.verifierAsk){
+const vx=s.verifierAsk==='A'?caveX-30:caveX+caveW+30;
+ctx.font='14px sans-serif';ctx.fillStyle=ACCENT;ctx.fillText('← 从这出来',vx,cy-20);
+}
+// 统计
+ctx.font='13px sans-serif';ctx.fillStyle='#888';
+const prob=s.round>0?(1/Math.pow(2,s.round)*100).toFixed(4):'100';
+ctx.fillText('作弊概率: '+prob+'%',cx,oy+h-30);
+}
+
+function drawHECanvas(ox,oy,w,h){
+const s=levelState,cx=ox+w/2,cy=oy+h/2;
+ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillStyle=ACCENT;ctx.fillText('同态加密 — 密文上的运算',cx,oy+40);
+const colW=w/2-40;
+// 左列：明文
+ctx.fillStyle='rgba(255,215,0,.05)';ctx.fillRect(ox+20,oy+60,colW,h-100);ctx.strokeStyle='rgba(255,215,0,.2)';ctx.strokeRect(ox+20,oy+60,colW,h-100);
+ctx.fillStyle=GOLD;ctx.font='bold 14px sans-serif';ctx.fillText('明文世界',ox+20+colW/2,oy+85);
+if(s.a>0&&s.b>0){
+ctx.font='20px Courier New';ctx.fillStyle=GOLD;
+ctx.fillText('A = '+s.a,ox+20+colW/2,cy-20);
+ctx.fillText('B = '+s.b,ox+20+colW/2,cy+20);
+ctx.fillText(s.a+' + '+s.b+' = '+(s.a+s.b),ox+20+colW/2,cy+80);
+}
+// 右列：密文
+ctx.fillStyle='rgba(0,255,136,.05)';ctx.fillRect(cx+20,oy+60,colW,h-100);ctx.strokeStyle='rgba(0,255,136,.2)';ctx.strokeRect(cx+20,oy+60,colW,h-100);
+ctx.fillStyle=ACCENT;ctx.font='bold 14px sans-serif';ctx.fillText('密文世界',cx+20+colW/2,oy+85);
+if(s.step>=1){
+ctx.font='13px Courier New';ctx.fillStyle=ACCENT;
+ctx.fillText('Enc(A)='+s.encA.toString(16).slice(0,8),cx+20+colW/2,cy-20);
+ctx.fillText('Enc(B)='+s.encB.toString(16).slice(0,8),cx+20+colW/2,cy+20);
+}
+if(s.step>=2){ctx.fillStyle=ACCENT;ctx.fillText('Enc(A+B)='+s.encSum.toString(16).slice(0,8),cx+20+colW/2,cy+80)}
+if(s.step>=3){
+ctx.font='bold 16px sans-serif';ctx.fillStyle=ACCENT;
+ctx.fillText('✅ 结果一致: '+(s.a+s.b),cx,oy+h-40);
+}
+}
+
+// ===== 主循环 =====
+function mainLoop(){
+time++;resize();drawBg();
+if(gameState==='playing'){drawLevel()}
+updateParticles();drawParticles();
+requestAnimationFrame(mainLoop);
+}
+mainLoop();
+
+</script>
+</body>
+</html>

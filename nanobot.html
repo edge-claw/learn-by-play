@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>纳米机器人体内任务 — 交互式教育游戏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#c0c0d0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;width:100vw;height:100vh}
+canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(100vh - 36px)}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:#2a2a6a}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.sv{color:#60a5fa;font-weight:bold}
+.title{font-size:15px;color:#60a5fa;margin:8px 0 4px;font-weight:bold}
+.sub{font-size:11px;color:#666;margin-bottom:8px}
+.progress-row{display:flex;gap:4px;margin:6px 0;flex-wrap:wrap}
+.obj{font-size:11px;padding:3px 8px;border-radius:10px;border:1px solid #333;color:#888;background:#111}
+.obj.done{color:#4ade80;border-color:#22c55e;background:#0a2a1a}
+.sel-row{display:flex;gap:4px;margin:4px 0;flex-wrap:wrap}
+.sel-btn{padding:5px 10px;border-radius:8px;font-size:11px;cursor:pointer;border:1px solid #444;background:#111;color:#aaa}
+.sel-btn.active{border-color:#3b82f6;background:#1a1a4a;color:#60a5fa}
+.sel-btn.correct{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:11px;color:#888;display:block;margin-bottom:4px}
+.slider-wrap input[type=range]{width:100%;accent-color:#3b82f6}
+.slider-val{font-size:13px;color:#60a5fa;font-weight:bold}
+#infobar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid #1a1a3a;display:flex;align-items:center;padding:0 16px 0 332px;font-size:12px;color:#666;z-index:10}
+#infobar .sep{margin:0 12px;color:#333}
+</style>
+</head>
+<body>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="infobar">
+<span id="ib-level">关卡 1/7</span><span class="sep">|</span>
+<span id="ib-title">纳米尺度</span><span class="sep">|</span>
+<span id="ib-status">进行中</span>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel');
+let W,H,curLevel=0,frame=0,animId;
+const completedLevels=new Set();
+const levelObjs=Array.from({length:7},()=>[false,false,false]);
+function resize(){cv.width=W=cv.clientWidth;cv.height=H=cv.clientHeight}
+window.addEventListener('resize',resize);resize();
+const OX=0;
+function aw(){return W}
+function ah(){return H}
+function rand(a,b){return a+Math.random()*(b-a)}
+function dist(ax,ay,bx,by){return Math.hypot(ax-bx,ay-by)}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v))}
+let state={},keys={};
+document.addEventListener('keydown',e=>{keys[e.key]=true});
+document.addEventListener('keyup',e=>{keys[e.key]=false});
+let mouseX=0,mouseY=0,mouseDown=false;
+cv.addEventListener('mousemove',e=>{const r=cv.getBoundingClientRect();mouseX=(e.clientX-r.left)*(W/r.width);mouseY=(e.clientY-r.top)*(H/r.height)});
+cv.addEventListener('mousedown',()=>mouseDown=true);
+cv.addEventListener('mouseup',()=>mouseDown=false);
+const levels=[
+{name:'纳米尺度',sub:'缩小到分子世界',concept:'纳米=十亿分之一米。头发~80000nm，红细胞~7000nm，细菌~1000nm，病毒~100nm，蛋白质~10nm，DNA宽2nm，原子~0.1nm。',
+ objs:['放大到看见细胞/细菌','放大到看见病毒','放大到看见DNA'],
+ learn:'纳米机器人工作在<span class="sv">1-100nm</span>尺度。在这个世界里，<span class="sv">布朗运动</span>（分子随机碰撞）比重力重要得多，表面力远大于体积力——完全不同的物理规则。'},
+{name:'分子马达',sub:'生命的引擎',concept:'细胞内有天然纳米机器：ATP合酶（旋转马达，每消耗1个ATP转120°）、驱动蛋白（沿微管行走，步长8nm）、鞭毛马达（螺旋桨式旋转）。',
+ objs:['ATP合酶转满一圈','驱动蛋白走10步','观察鞭毛马达运转'],
+ learn:'ATP合酶直径仅<span class="sv">~10nm</span>，却是已知效率最高的马达，接近<span class="sv">100%</span>。驱动蛋白沿微管"行走"运输货物，步长精确<span class="sv">8nm</span>。人造纳米机器人的灵感很多来自这些天然分子机器。'},
+{name:'血管巡航',sub:'在血流中导航',concept:'纳米机器人在血管中面临：高速血流冲击、红细胞碰撞、白细胞免疫追踪。用方向键/鼠标控制导航。',
+ objs:['在血管中移动机器人','成功躲避3个红细胞','到达目标位置'],
+ learn:'<span class="sv">2020年</span>已有团队用磁控纳米机器人在活体小鼠血管中成功导航。血流速度在主动脉中可达<span class="sv">1m/s</span>，纳米机器人需要磁场/超声/化学驱动来对抗血流。'},
+{name:'靶向给药',sub:'精准打击癌细胞',concept:'纳米载体表面装配特异性抗体，只与癌细胞表面受体结合。正常细胞（绿色）无受体突起，癌细胞（红色）有受体突起。',
+ objs:['选择正确的抗体','纳米载体对接癌细胞','释放药物消灭癌细胞'],
+ learn:'mRNA疫苗用的脂质纳米颗粒（LNP）也是纳米给药技术。FDA已批准多种纳米药物（Doxil、Abraxane）。<span class="sv">靶向给药</span>让化疗从"杀敌一千自损八百"变为精准打击。'},
+{name:'穿越血脑屏障',sub:'大脑的防火墙',concept:'血脑屏障（BBB）阻止98%药物进入大脑。调节参数：尺寸(10-500nm)、表面电荷(正/中/负)、表面修饰(PEG/转铁蛋白/载脂蛋白)。',
+ objs:['尝试一次失败的穿越','找到正确参数组合','成功穿越血脑屏障'],
+ learn:'成功穿越BBB的关键：尺寸<span class="sv">&lt;100nm</span> + <span class="sv">转铁蛋白</span>受体介导胞吞。<span class="sv">2024年</span>已有研究用超声+微泡暂时打开BBB，配合纳米载体递送药物到脑部。'},
+{name:'纳米手术',sub:'清除血管斑块',concept:'鼠标控制纳米刀具切割动脉粥样硬化斑块（黄色）。注意不要切到血管壁（红色）！观察血流量指示器的改善。',
+ objs:['开始切割斑块','清除50%以上斑块','血流量恢复到80%'],
+ learn:'心血管疾病是全球第一大死因。已有团队用磁控纳米机器人在<span class="sv">猪血管</span>中成功清除血栓。未来纳米手术可能让心脏搭桥手术成为历史。'},
+{name:'群体协作',sub:'纳米机器人集群',concept:'单个纳米机器人能力有限，但1000个协作可完成复杂任务。设定行为模式：趋化→包围→攻击，观察自组织涌现。',
+ objs:['释放纳米机器人集群','集群包围肿瘤','释放药物消灭肿瘤'],
+ learn:'<span class="sv">2018年</span>已有团队用DNA纳米机器人集群在小鼠体内精准攻击肿瘤。每个机器人只需遵循简单规则（趋化、避障），就能<span class="sv">涌现</span>出复杂集体行为——如同蚂蚁建造精密蚁巢。'}
+];
+
+/* ===== PANEL ===== */
+let panelDirty=true;
+function markDirty(){panelDirty=true}
+function renderPanel(){
+  if(!panelDirty)return;panelDirty=false;
+  const lv=levels[curLevel];let h='<div style="margin-bottom:8px">';
+  levels.forEach((l,i)=>{let c='level-btn';if(i===curLevel)c+=' active';if(completedLevels.has(i))c+=' done';
+  h+=`<span class="${c}" onclick="loadLevel(${i})">${i+1}</span>`});
+  h+='</div>';
+  h+=`<div class="title">${lv.name}</div><div class="sub">${lv.sub}</div>`;
+  h+=`<div class="concept-box">${lv.concept}</div>`;
+  h+='<div class="progress-row">';
+  lv.objs.forEach((o,i)=>{h+=`<span class="obj${levelObjs[curLevel][i]?' done':''}">${levelObjs[curLevel][i]?'✅':'⬜'} ${o}</span>`});
+  h+='</div>';
+  h+=`<div id="actionArea"></div>`;
+  const allDone=levelObjs[curLevel].every(v=>v);
+  if(allDone){
+    if(!completedLevels.has(curLevel))completedLevels.add(curLevel);
+    h+=`<div class="learn-box">💡 ${lv.learn}</div>`;
+    if(curLevel<levels.length-1)h+=`<button class="act-btn green" onclick="loadLevel(${curLevel+1})">下一关 →</button>`;
+    else h+=`<div class="hint-box" style="color:#4ade80;border-color:#22c55e">🎉 恭喜通关！全部7个关卡已完成！</div>`;
+  }
+  panel.innerHTML=h;
+  setupLevelUI();
+  document.getElementById('ib-level').textContent=`关卡 ${curLevel+1}/7`;
+  document.getElementById('ib-title').textContent=lv.name;
+  document.getElementById('ib-status').textContent=allDone?'已完成':'进行中';
+}
+function completeObj(li,oi){
+  if(levelObjs[li][oi])return;levelObjs[li][oi]=true;markDirty();
+}
+function checkLevelDone(){
+  if(levelObjs[curLevel].every(v=>v)&&!completedLevels.has(curLevel)){completedLevels.add(curLevel);markDirty()}
+}
+
+/* ===== LEVEL LOADER ===== */
+function loadLevel(n){
+  if(animId){cancelAnimationFrame(animId);animId=0}
+  curLevel=n;state={};keys={};mouseDown=false;panelDirty=true;
+  renderPanel();
+  switch(n){
+    case 0:initL1();break;case 1:initL2();break;case 2:initL3();break;
+    case 3:initL4();break;case 4:initL5();break;case 5:initL6();break;case 6:initL7();break;
+  }
+}
+function setupLevelUI(){
+  const area=document.getElementById('actionArea');if(!area)return;
+  switch(curLevel){
+    case 0:setupUI1(area);break;case 1:setupUI2(area);break;case 2:setupUI3(area);break;
+    case 3:setupUI4(area);break;case 4:setupUI5(area);break;case 5:setupUI6(area);break;case 6:setupUI7(area);break;
+  }
+}
+function drawBg(){ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H)}
+
+/* ===== LEVEL 1: NANO SCALE ===== */
+function setupUI1(area){
+  area.innerHTML=`<div class="slider-wrap"><label>缩放倍率: <span class="slider-val" id="zv">${state.zoomLabel||'1x'}</span></label>
+  <input type="range" id="zsl" min="0" max="100" value="${state.zoom||0}"></div>
+  <div class="hint-box">💡 拖动滑块放大，依次看到头发→细胞→细菌→病毒→蛋白质→DNA→原子</div>`;
+  const sl=document.getElementById('zsl');
+  sl.oninput=function(){
+    state.zoom=+this.value;
+    const mag=Math.pow(10,state.zoom/11);
+    state.zoomLabel=mag>=1e6?(mag/1e6).toFixed(1)+'百万x':mag>=1e3?(mag/1e3).toFixed(0)+'千x':mag.toFixed(0)+'x';
+    document.getElementById('zv').textContent=state.zoomLabel;
+    if(state.zoom>=30)completeObj(0,0);
+    if(state.zoom>=60)completeObj(0,1);
+    if(state.zoom>=85){completeObj(0,2);checkLevelDone()}
+  };
+}
+function initL1(){
+  if(!state.zoom)state.zoom=0;
+  const scaleItems=[
+    {name:'头发',size:'80,000nm',minZ:0,maxZ:25,color:'#a0522d'},
+    {name:'红细胞',size:'7,000nm',minZ:15,maxZ:40,color:'#e74c3c'},
+    {name:'细菌',size:'1,000nm',minZ:30,maxZ:55,color:'#2ecc71'},
+    {name:'病毒',size:'100nm',minZ:45,maxZ:70,color:'#9b59b6'},
+    {name:'蛋白质',size:'10nm',minZ:60,maxZ:82,color:'#f39c12'},
+    {name:'DNA',size:'2nm',minZ:75,maxZ:95,color:'#3498db'},
+    {name:'原子',size:'0.1nm',minZ:88,maxZ:100,color:'#ecf0f1'}
+  ];
+  let t=0;
+  function draw(){
+    animId=requestAnimationFrame(draw);t+=0.016;drawBg();
+    const cx=W/2,cy=H/2,z=state.zoom||0;
+    // grid
+    ctx.strokeStyle='rgba(60,60,120,0.1)';ctx.lineWidth=1;
+    for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+    for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+    // scale bar
+    ctx.fillStyle='rgba(100,100,200,0.2)';ctx.fillRect(10,H-40,220,30);
+    ctx.fillStyle='#60a5fa';ctx.font='11px monospace';ctx.textAlign='left';
+    const mag=Math.pow(10,z/11);
+    ctx.fillText('放大: '+(mag>=1e6?(mag/1e6).toFixed(1)+'百万x':mag>=1e3?(mag/1e3).toFixed(0)+',000x':mag.toFixed(0)+'x'),16,H-20);
+    // items
+    scaleItems.forEach(item=>{
+      const mid=(item.minZ+item.maxZ)/2;
+      const halfRange=(item.maxZ-item.minZ)/2;
+      const vis=1-Math.abs(z-mid)/halfRange;
+      if(vis<=0)return;
+      ctx.globalAlpha=clamp(vis,0,1);
+      const r=30+20*vis;const yOff=Math.sin(t*1.2+item.minZ)*10;
+      ctx.fillStyle=item.color;
+      if(item.name==='头发'){
+        ctx.strokeStyle=item.color;ctx.lineWidth=r*0.6;ctx.lineCap='round';ctx.beginPath();
+        for(let i=0;i<8;i++){const xx=cx-100+i*28,yy=cy+yOff+Math.sin(t+i*0.8)*12;i===0?ctx.moveTo(xx,yy):ctx.lineTo(xx,yy)}ctx.stroke();
+      }else if(item.name==='红细胞'){
+        ctx.beginPath();ctx.ellipse(cx,cy+yOff,r*1.5,r*0.8,0,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='rgba(0,0,0,0.3)';ctx.beginPath();ctx.ellipse(cx,cy+yOff,r*0.5,r*0.25,0,0,Math.PI*2);ctx.fill();
+      }else if(item.name==='细菌'){
+        ctx.beginPath();ctx.ellipse(cx,cy+yOff,r*1.3,r*0.7,0.2,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle=item.color;ctx.lineWidth=2;
+        for(let i=0;i<5;i++){const a=-0.8+i*0.4;ctx.beginPath();
+        ctx.moveTo(cx+Math.cos(a)*r*1.3,cy+yOff+Math.sin(a)*r*0.7);
+        ctx.quadraticCurveTo(cx+Math.cos(a)*(r*1.3+25),cy+yOff+Math.sin(a)*(r*0.7+15+Math.sin(t*3+i)*5),cx+Math.cos(a)*(r*1.3+20),cy+yOff+Math.sin(a)*(r*0.7+25));ctx.stroke()}
+      }else if(item.name==='病毒'){
+        ctx.beginPath();ctx.arc(cx,cy+yOff,r,0,Math.PI*2);ctx.fill();
+        for(let i=0;i<12;i++){const a=i*Math.PI/6+t*0.5;
+        ctx.strokeStyle=item.color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*r,cy+yOff+Math.sin(a)*r);
+        ctx.lineTo(cx+Math.cos(a)*(r+14),cy+yOff+Math.sin(a)*(r+14));ctx.stroke();
+        ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cx+Math.cos(a)*(r+16),cy+yOff+Math.sin(a)*(r+16),3,0,Math.PI*2);ctx.fill()}
+      }else if(item.name==='蛋白质'){
+        for(let i=0;i<5;i++){const a=i*Math.PI*2/5+t*0.3;ctx.fillStyle=item.color;ctx.beginPath();
+        ctx.arc(cx+Math.cos(a)*r*0.5,cy+yOff+Math.sin(a)*r*0.5,r*0.35,0,Math.PI*2);ctx.fill()}
+      }else if(item.name==='DNA'){
+        for(let s=0;s<2;s++){ctx.strokeStyle=s?'#e74c3c':'#3498db';ctx.lineWidth=3;ctx.beginPath();
+        for(let i=-60;i<=60;i+=2){const xx=cx+i*1.8,yy=cy+yOff+Math.sin(i*0.08+t*2+s*Math.PI)*r*0.7;
+        i===-60?ctx.moveTo(xx,yy):ctx.lineTo(xx,yy)}ctx.stroke()}
+        for(let i=-60;i<=60;i+=14){const xx=cx+i*1.8;
+        const y1=cy+yOff+Math.sin(i*0.08+t*2)*r*0.7,y2=cy+yOff+Math.sin(i*0.08+t*2+Math.PI)*r*0.7;
+        ctx.strokeStyle=['#4ade80','#f1c40f','#f87171','#60a5fa'][((i+60)/14|0)%4];ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(xx,y1);ctx.lineTo(xx,y2);ctx.stroke()}
+      }else{
+        ctx.fillStyle='#ecf0f1';ctx.beginPath();ctx.arc(cx,cy+yOff,r*0.5,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1.5;
+        for(let i=0;i<3;i++){ctx.beginPath();ctx.ellipse(cx,cy+yOff,r*1.3,r*0.4,i*Math.PI/3+t,0,Math.PI*2);ctx.stroke()}
+      }
+      ctx.fillStyle='#fff';ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+      ctx.fillText(item.name+' ('+item.size+')',cx,cy+yOff+r+22);
+      ctx.globalAlpha=1;
+    });
+    // top scale ruler
+    ctx.fillStyle='rgba(255,255,255,0.04)';ctx.fillRect(10,8,W-20,20);
+    const marks=[{n:'原子',p:0.95},{n:'DNA',p:0.82},{n:'蛋白质',p:0.68},{n:'病毒',p:0.55},{n:'细菌',p:0.4},{n:'细胞',p:0.25},{n:'头发',p:0.08}];
+    marks.forEach(m=>{const xx=10+(W-20)*m.p;ctx.fillStyle=z/100>=1-m.p?'#60a5fa':'#444';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(m.n,xx,22)});
+    renderPanel();
+  }
+  draw();
+}
+
+/* ===== LEVEL 2: MOLECULAR MOTORS ===== */
+function setupUI2(area){
+  let h='<div class="hint-box">💡 点击按钮给分子马达提供ATP能量</div>';
+  h+=`<button class="act-btn" onclick="feedATP()">⚡ 提供ATP</button>`;
+  h+=`<div class="sel-row" style="margin-top:8px">`;
+  ['ATP合酶','驱动蛋白','鞭毛马达'].forEach((n,i)=>{
+    h+=`<span class="sel-btn${state.motorView===i?' active':''}" onclick="switchMotor(${i})">${n}</span>`;
+  });
+  h+=`</div>`;
+  if(state.motorView===0)h+=`<div style="font-size:11px;color:#888;margin-top:4px">ATP合酶旋转: ${(state.atpAngle||0).toFixed(0)}° / 360°</div>`;
+  if(state.motorView===1)h+=`<div style="font-size:11px;color:#888;margin-top:4px">驱动蛋白步数: ${state.kinesinSteps||0} / 10</div>`;
+  area.innerHTML=h;
+}
+function switchMotor(i){state.motorView=i;markDirty()}
+function feedATP(){
+  if(state.motorView===0){state.atpAngle=(state.atpAngle||0)+120;if(state.atpAngle>=360){completeObj(1,0);checkLevelDone()}}
+  if(state.motorView===1){state.kinesinSteps=(state.kinesinSteps||0)+1;if(state.kinesinSteps>=10){completeObj(1,1);checkLevelDone()}}
+  if(state.motorView===2){state.flagellaActive=true;completeObj(1,2);checkLevelDone()}
+  markDirty();
+}
+function initL2(){
+  state.motorView=0;state.atpAngle=0;state.kinesinSteps=0;state.flagellaActive=false;
+  let t=0;
+  function draw(){
+    animId=requestAnimationFrame(draw);t+=0.016;drawBg();
+    const cx=W/2,cy=H/2;
+    // background: cell interior
+    ctx.fillStyle='rgba(20,10,40,0.5)';ctx.beginPath();ctx.arc(cx,cy,Math.min(W,H)*0.42,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(100,60,160,0.3)';ctx.lineWidth=2;ctx.stroke();
+    if(state.motorView===0){
+      // ATP synthase
+      const angle=(state.atpAngle||0)*Math.PI/180+Math.sin(t)*0.02;
+      // base
+      ctx.fillStyle='#444';ctx.fillRect(cx-40,cy+60,80,20);
+      ctx.fillStyle='#666';ctx.fillRect(cx-15,cy-40,30,100);
+      // rotor
+      ctx.save();ctx.translate(cx,cy-10);ctx.rotate(angle);
+      for(let i=0;i<3;i++){ctx.fillStyle=['#e74c3c','#3498db','#2ecc71'][i];ctx.beginPath();
+      ctx.moveTo(0,0);const a=i*Math.PI*2/3;ctx.arc(0,0,50,a-0.4,a+0.4);ctx.fill()}
+      ctx.restore();
+      // label
+      ctx.fillStyle='#60a5fa';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+      ctx.fillText('ATP合酶',cx,cy+100);
+      ctx.fillStyle='#888';ctx.font='12px sans-serif';
+      ctx.fillText('每消耗1个ATP旋转120°',cx,cy+118);
+      ctx.fillText('直径 ~10nm',cx,cy+134);
+      // ATP particles
+      if(t%2<0.5){ctx.fillStyle='rgba(250,200,50,0.6)';ctx.font='10px sans-serif';
+      ctx.fillText('ATP→ADP+P',cx+70,cy-20+Math.sin(t*3)*10)}
+    }else if(state.motorView===1){
+      // kinesin walking on microtubule
+      const steps=state.kinesinSteps||0;
+      // microtubule
+      ctx.strokeStyle='#666';ctx.lineWidth=12;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(cx-200,cy+30);ctx.lineTo(cx+200,cy+30);ctx.stroke();
+      ctx.strokeStyle='#555';ctx.lineWidth=8;ctx.beginPath();ctx.moveTo(cx-200,cy+30);ctx.lineTo(cx+200,cy+30);ctx.stroke();
+      ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('微管',cx,cy+55);
+      // kinesin
+      const kx=cx-160+steps*32;
+      const legPhase=t*4;
+      ctx.strokeStyle='#60a5fa';ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(kx,cy+26);ctx.lineTo(kx,cy-10);ctx.lineTo(kx+8+Math.sin(legPhase)*6,cy+26);ctx.stroke();
+      // cargo
+      ctx.fillStyle='#f39c12';ctx.beginPath();ctx.arc(kx+4,cy-30,18,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.fillText('货物',kx+4,cy-27);
+      // feet
+      ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(kx,cy+26,5,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(kx+8+Math.sin(legPhase)*6,cy+26,5,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#60a5fa';ctx.font='bold 14px sans-serif';ctx.fillText('驱动蛋白',cx,cy+80);
+      ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.fillText('步长 8nm，沿微管行走',cx,cy+98);
+    }else{
+      // flagellar motor
+      const speed=state.flagellaActive?t*8:0;
+      // cell body
+      ctx.fillStyle='rgba(46,204,113,0.3)';ctx.beginPath();ctx.ellipse(cx-60,cy,50,35,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#2ecc71';ctx.lineWidth=2;ctx.stroke();
+      // motor base
+      ctx.fillStyle='#888';ctx.fillRect(cx-14,cy-8,16,16);
+      // rotor
+      ctx.save();ctx.translate(cx,cy);ctx.rotate(speed);
+      ctx.fillStyle='#e74c3c';ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(8,0);ctx.lineTo(0,6);ctx.lineTo(-8,0);ctx.fill();
+      ctx.restore();
+      // flagellum
+      ctx.strokeStyle='#aaa';ctx.lineWidth=2;ctx.beginPath();
+      for(let i=0;i<80;i++){const xx=cx+10+i*2;const yy=cy+Math.sin(i*0.15-speed)*15*(1-i/120);
+      i===0?ctx.moveTo(xx,yy):ctx.lineTo(xx,yy)}ctx.stroke();
+      ctx.fillStyle='#60a5fa';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+      ctx.fillText('鞭毛马达',cx,cy+70);
+      ctx.fillStyle='#888';ctx.font='12px sans-serif';
+      ctx.fillText('螺旋桨式旋转，转速可达1000rpm',cx,cy+88);
+    }
+    renderPanel();
+  }
+  draw();
+}
+
+/* ===== LEVEL 3: BLOOD VESSEL ===== */
+function setupUI3(area){
+  area.innerHTML=`<div class="hint-box">💡 方向键/WASD 或鼠标控制蓝色纳米机器人<br>躲避红细胞，逃离白细胞，到达绿色目标点</div>
+  <div style="font-size:11px;color:#888;margin-top:4px">躲避红细胞: ${state.dodged||0}/3 | 距目标: ${state.distToGoal||'--'}</div>`;
+}
+function initL3(){
+  const bot={x:80,y:0,vx:0,vy:0};
+  const rbcs=[];for(let i=0;i<12;i++)rbcs.push({x:rand(150,W-60),y:rand(40,H-40),vx:rand(-1.5,-0.5),vy:rand(-0.3,0.3),r:rand(18,28)});
+  const wbc={x:W-100,y:H/2,vx:0,vy:0};
+  const goal={x:W-60,y:H/2};
+  bot.y=H/2;state.dodged=0;state.moved=false;state.distToGoal='--';
+  let t=0,dodgeSet=new Set();
+  function draw(){
+    animId=requestAnimationFrame(draw);t+=0.016;drawBg();
+    // blood vessel walls
+    ctx.fillStyle='#3a0a0a';ctx.fillRect(0,0,W,25);ctx.fillRect(0,H-25,W,25);
+    ctx.strokeStyle='#8b0000';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(0,25);ctx.lineTo(W,25);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,H-25);ctx.lineTo(W,H-25);ctx.stroke();
+    // blood flow particles
+    for(let i=0;i<30;i++){const px=(i*67+t*40)%W,py=30+((i*37)%1)*(H-60);
+    ctx.fillStyle='rgba(200,50,50,0.15)';ctx.beginPath();ctx.arc(px,py,2,0,Math.PI*2);ctx.fill()}
+    // bot movement
+    let ax=0,ay=0;
+    if(keys['ArrowLeft']||keys['a'])ax=-0.3;if(keys['ArrowRight']||keys['d'])ax=0.3;
+    if(keys['ArrowUp']||keys['w'])ay=-0.3;if(keys['ArrowDown']||keys['s'])ay=0.3;
+    // mouse attraction
+    if(mouseDown){const dx=mouseX-bot.x,dy=mouseY-bot.y,d=Math.hypot(dx,dy);if(d>5){ax+=dx/d*0.3;ay+=dy/d*0.3}}
+    ax-=0.05;// blood flow pushback
+    bot.vx=(bot.vx+ax)*0.95;bot.vy=(bot.vy+ay)*0.95;
+    bot.x+=bot.vx;bot.y+=bot.vy;
+    bot.x=clamp(bot.x,10,W-10);bot.y=clamp(bot.y,30,H-30);
+    if(Math.abs(bot.vx)>0.1||Math.abs(bot.vy)>0.1){if(!state.moved){state.moved=true;completeObj(2,0)}}
+    // RBCs
+    rbcs.forEach((r,i)=>{
+      r.x+=r.vx;r.y+=r.vy;
+      if(r.x<-40)r.x=W+40;if(r.y<30||r.y>H-30)r.vy*=-1;
+      ctx.fillStyle='#c0392b';ctx.beginPath();ctx.ellipse(r.x,r.y,r.r,r.r*0.55,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(0,0,0,0.25)';ctx.beginPath();ctx.ellipse(r.x,r.y,r.r*0.35,r.r*0.15,0,0,Math.PI*2);ctx.fill();
+      // collision check
+      const d=dist(bot.x,bot.y,r.x,r.y);
+      if(d<r.r+8){
+        const nx=(bot.x-r.x)/d,ny=(bot.y-r.y)/d;
+        bot.x=r.x+nx*(r.r+10);bot.y=r.y+ny*(r.r+10);bot.vx+=nx*2;bot.vy+=ny*2;
+        if(!dodgeSet.has(i)){dodgeSet.add(i);state.dodged=Math.min(dodgeSet.size,3);
+        if(state.dodged>=3){completeObj(2,1)}}
+      }
+    });
+    // WBC (chaser)
+    const wdx=bot.x-wbc.x,wdy=bot.y-wbc.y,wd=Math.hypot(wdx,wdy);
+    if(wd>0){wbc.vx+=(wdx/wd)*0.08;wbc.vy+=(wdy/wd)*0.08}
+    wbc.vx*=0.97;wbc.vy*=0.97;wbc.x+=wbc.vx;wbc.y+=wbc.vy;
+    ctx.fillStyle='rgba(255,255,255,0.8)';ctx.beginPath();ctx.arc(wbc.x,wbc.y,22,0,Math.PI*2);ctx.fill();
+    // pseudopods
+    for(let i=0;i<5;i++){const a=i*Math.PI*2/5+t*0.5;
+    ctx.fillStyle='rgba(255,255,255,0.4)';ctx.beginPath();ctx.arc(wbc.x+Math.cos(a)*26,wbc.y+Math.sin(a)*26,8+Math.sin(t*3+i)*3,0,Math.PI*2);ctx.fill()}
+    ctx.fillStyle='#333';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText('白细胞',wbc.x,wbc.y+4);
+    // goal
+    ctx.fillStyle='rgba(74,222,128,0.3)';ctx.beginPath();ctx.arc(goal.x,goal.y,30+Math.sin(t*3)*5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#4ade80';ctx.beginPath();ctx.arc(goal.x,goal.y,10,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.fillText('目标',goal.x,goal.y-18);
+    // nanobot
+    ctx.save();ctx.translate(bot.x,bot.y);ctx.rotate(Math.atan2(bot.vy,bot.vx));
+    // glow
+    const grd=ctx.createRadialGradient(0,0,0,0,0,20);grd.addColorStop(0,'rgba(96,165,250,0.4)');grd.addColorStop(1,'transparent');
+    ctx.fillStyle=grd;ctx.fillRect(-20,-20,40,40);
+    ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.moveTo(10,0);ctx.lineTo(-6,-6);ctx.lineTo(-6,6);ctx.closePath();ctx.fill();
+    ctx.restore();
+    // check goal
+    const gd=dist(bot.x,bot.y,goal.x,goal.y);state.distToGoal=gd<200?gd.toFixed(0)+'px':'远';
+    if(gd<35){completeObj(2,2);checkLevelDone()}
+    renderPanel();
+  }
+  draw();
+}
+
+/* ===== LEVEL 4: TARGETED DRUG DELIVERY ===== */
+function setupUI4(area){
+  let h='<div class="hint-box">💡 选择正确的抗体装配到纳米载体，然后释放</div>';
+  h+='<div style="font-size:11px;color:#aaa;margin:6px 0">选择抗体:</div><div class="sel-row">';
+  ['HER2抗体','CD20抗体','PD-L1抗体'].forEach((n,i)=>{
+    h+=`<span class="sel-btn${state.selectedAb===i?' active':''}" onclick="selectAb(${i})">${n}</span>`;
+  });
+  h+='</div>';
+  if(state.selectedAb===0)h+=`<div style="font-size:10px;color:#4ade80;margin:4px 0">✓ HER2抗体 — 靶向HER2阳性癌细胞</div>`;
+  if(state.selectedAb===1)h+=`<div style="font-size:10px;color:#f87171;margin:4px 0">✗ CD20抗体 — 靶向B淋巴细胞，不适用</div>`;
+  if(state.selectedAb===2)h+=`<div style="font-size:10px;color:#f87171;margin:4px 0">✗ PD-L1抗体 — 免疫检查点，不适用</div>`;
+  if(state.selectedAb===0&&!state.released)h+=`<button class="act-btn" onclick="releaseNano()">🚀 释放纳米载体</button>`;
+  if(state.docked)h+=`<button class="act-btn green" onclick="releaseDrug()">💊 释放药物</button>`;
+  area.innerHTML=h;
+}
+function selectAb(i){state.selectedAb=i;if(i===0)completeObj(3,0);markDirty()}
+function releaseNano(){state.released=true;state.nanoX=80;state.nanoY=H/2;markDirty()}
+function releaseDrug(){state.drugReleased=true;completeObj(3,2);checkLevelDone();markDirty()}
+function initL4(){
+  state.selectedAb=-1;state.released=false;state.docked=false;state.drugReleased=false;state.drugParticles=[];
+  const normals=[];for(let i=0;i<6;i++)normals.push({x:rand(100,W-100),y:rand(60,H-60),r:25});
+  const cancers=[];for(let i=0;i<4;i++)cancers.push({x:rand(W*0.5,W-80),y:rand(80,H-80),r:28,alive:true});
+  state.nanoX=80;state.nanoY=H/2;
+  let t=0,targetCancer=cancers[0];
+  function draw(){
+    animId=requestAnimationFrame(draw);t+=0.016;drawBg();
+    // tissue background
+    ctx.fillStyle='rgba(20,15,25,0.5)';ctx.fillRect(0,0,W,H);
+    // normal cells
+    normals.forEach(c=>{
+      ctx.fillStyle='rgba(74,222,128,0.5)';ctx.beginPath();ctx.arc(c.x,c.y,c.r,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#22c55e';ctx.lineWidth=1.5;ctx.stroke();
+      ctx.fillStyle='rgba(74,222,128,0.3)';ctx.beginPath();ctx.arc(c.x-5,c.y-5,8,0,Math.PI*2);ctx.fill();
+    });
+    // cancer cells
+    cancers.forEach(c=>{
+      if(!c.alive){ctx.fillStyle='rgba(100,100,100,0.2)';ctx.beginPath();ctx.arc(c.x,c.y,c.r*0.5,0,Math.PI*2);ctx.fill();return}
+      ctx.fillStyle='rgba(239,68,68,0.6)';ctx.beginPath();ctx.arc(c.x,c.y,c.r,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#ef4444';ctx.lineWidth=2;ctx.stroke();
+      // receptor spikes
+      for(let i=0;i<8;i++){const a=i*Math.PI/4+Math.sin(t+i)*0.1;
+      ctx.strokeStyle='#f87171';ctx.lineWidth=2;ctx.beginPath();
+      ctx.moveTo(c.x+Math.cos(a)*c.r,c.y+Math.sin(a)*c.r);
+      ctx.lineTo(c.x+Math.cos(a)*(c.r+10),c.y+Math.sin(a)*(c.r+10));ctx.stroke();
+      ctx.fillStyle='#fca5a5';ctx.beginPath();ctx.arc(c.x+Math.cos(a)*(c.r+12),c.y+Math.sin(a)*(c.r+12),3,0,Math.PI*2);ctx.fill()}
+      ctx.fillStyle='#fff';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText('癌细胞',c.x,c.y+c.r+18);
+    });
+    // nanobot carrier
+    if(state.released&&!state.docked){
+      // move toward nearest alive cancer
+      let nearest=null,nd=Infinity;
+      cancers.forEach(c=>{if(c.alive){const d=dist(state.nanoX,state.nanoY,c.x,c.y);if(d<nd){nd=d;nearest=c}}});
+      if(nearest){
+        const dx=nearest.x-state.nanoX,dy=nearest.y-state.nanoY,d=Math.hypot(dx,dy);
+        if(d>2){state.nanoX+=dx/d*2;state.nanoY+=dy/d*2}
+        if(d<nearest.r+5){state.docked=true;targetCancer=nearest;completeObj(3,1);markDirty()}
+      }
+    }
+    if(state.released||state.docked){
+      const nx=state.docked?targetCancer.x-targetCancer.r-12:state.nanoX;
+      const ny=state.docked?targetCancer.y:state.nanoY;
+      // glow
+      const grd=ctx.createRadialGradient(nx,ny,0,nx,ny,25);grd.addColorStop(0,'rgba(96,165,250,0.4)');grd.addColorStop(1,'transparent');
+      ctx.fillStyle=grd;ctx.fillRect(nx-25,ny-25,50,50);
+      ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(nx,ny,10,0,Math.PI*2);ctx.fill();
+      // antibody arms
+      if(state.selectedAb===0){
+        for(let i=0;i<3;i++){const a=i*Math.PI*2/3+t*0.5;
+        ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;ctx.beginPath();
+        ctx.moveTo(nx+Math.cos(a)*10,ny+Math.sin(a)*10);
+        ctx.lineTo(nx+Math.cos(a)*18,ny+Math.sin(a)*18);ctx.stroke()}
+      }
+      ctx.fillStyle='#fff';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText('纳米载体',nx,ny+20);
+    }
+    // drug particles
+    if(state.drugReleased){
+      if(state.drugParticles.length<40){
+        for(let i=0;i<3;i++)state.drugParticles.push({x:targetCancer.x,y:targetCancer.y,vx:rand(-2,2),vy:rand(-2,2),life:1});
+      }
+      state.drugParticles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.life-=0.008;
+      if(p.life>0){ctx.fillStyle=`rgba(74,222,128,${p.life})`;ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill()}});
+      state.drugParticles=state.drugParticles.filter(p=>p.life>0);
+      targetCancer.alive=false;
+    }
+    // labels
+    ctx.fillStyle='rgba(255,255,255,0.05)';ctx.fillRect(W-160,10,150,50);
+    ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='left';
+    ctx.fillText('🟢 正常细胞（无受体）',W-155,28);
+    ctx.fillText('🔴 癌细胞（有受体突起）',W-155,46);
+    renderPanel();
+  }
+  draw();
+}
+
+/* ===== LEVEL 5: BLOOD-BRAIN BARRIER ===== */
+function setupUI5(area){
+  let h='<div class="hint-box">💡 调节纳米机器人参数，尝试穿越血脑屏障</div>';
+  h+=`<div class="slider-wrap"><label>尺寸: <span class="slider-val">${state.bbbSize||200}nm</span></label>
+  <input type="range" min="10" max="500" value="${state.bbbSize||200}" oninput="state.bbbSize=+this.value;markDirty()"></div>`;
+  h+=`<div style="font-size:11px;color:#aaa;margin:4px 0">表面电荷:</div><div class="sel-row">`;
+  ['正电荷','中性','负电荷'].forEach((n,i)=>{h+=`<span class="sel-btn${state.bbbCharge===i?' active':''}" onclick="state.bbbCharge=${i};markDirty()">${n}</span>`});
+  h+=`</div>`;
+  h+=`<div style="font-size:11px;color:#aaa;margin:4px 0">表面修饰:</div><div class="sel-row">`;
+  ['PEG','转铁蛋白','载脂蛋白'].forEach((n,i)=>{h+=`<span class="sel-btn${state.bbbCoat===i?' active':''}" onclick="state.bbbCoat=${i};markDirty()">${n}</span>`});
+  h+=`</div>`;
+  h+=`<button class="act-btn" onclick="tryBBB()">🧪 尝试穿越</button>`;
+  if(state.bbbResult)h+=`<div class="hint-box" style="color:${state.bbbResult.ok?'#4ade80':'#f87171'}">${state.bbbResult.msg}</div>`;
+  area.innerHTML=h;
+}
+function tryBBB(){
+  if(!state.bbbSize)state.bbbSize=200;
+  const ok=state.bbbSize<100&&state.bbbCoat===1;
+  if(!ok&&!state.bbbFailed){state.bbbFailed=true;completeObj(4,0)}
+  if(ok&&!state.bbbFoundParams){state.bbbFoundParams=true;completeObj(4,1)}
+  state.bbbResult={ok,msg:ok?'✅ 穿越成功！<100nm + 转铁蛋白修饰 = 受体介导胞吞':'❌ 穿越失败！'+
+    (state.bbbSize>=100?'尺寸太大(需<100nm) ':'')+(state.bbbCoat!==1?'需要转铁蛋白修饰':'')};
+  state.bbbAnim=ok?'success':'fail';state.bbbAnimT=0;
+  if(ok){completeObj(4,2);checkLevelDone()}
+  markDirty();
+}
+function initL5(){
+  state.bbbSize=200;state.bbbCharge=1;state.bbbCoat=0;state.bbbFailed=false;state.bbbFoundParams=false;state.bbbAnim=null;state.bbbAnimT=0;
+  let t=0;
+  function draw(){
+    animId=requestAnimationFrame(draw);t+=0.016;drawBg();
+    const wallY=H*0.5;
+    // brain side (top)
+    ctx.fillStyle='rgba(30,20,50,0.4)';ctx.fillRect(0,0,W,wallY-30);
+    ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('🧠 大脑侧',W/2,30);
+    // blood side (bottom)
+    ctx.fillStyle='rgba(60,10,10,0.3)';ctx.fillRect(0,wallY+30,W,H-wallY-30);
+    ctx.fillStyle='#888';ctx.fillText('🩸 血液侧',W/2,H-20);
+    // BBB wall - tight endothelial cells
+    for(let x=0;x<W;x+=50){
+      ctx.fillStyle='#4a3a2a';ctx.fillRect(x,wallY-25,48,50);
+      ctx.strokeStyle='#6a5a4a';ctx.lineWidth=1;ctx.strokeRect(x,wallY-25,48,50);
+      // tight junction markers
+      ctx.fillStyle='#f59e0b';ctx.fillRect(x+46,wallY-20,6,40);
+    }
+    ctx.fillStyle='#aaa';ctx.font='11px sans-serif';ctx.fillText('血脑屏障（紧密连接的内皮细胞）',W/2,wallY+40);
+    // nanobot trying to cross
+    if(state.bbbAnim){
+      state.bbbAnimT+=0.016;
+      const nx=W/2,startY=H*0.75;
+      const progress=clamp(state.bbbAnimT*0.8,0,1);
+      let ny;
+      if(state.bbbAnim==='success'){
+        ny=startY-(startY-H*0.2)*progress;
+        // success glow
+        if(progress>0.5){const grd=ctx.createRadialGradient(nx,ny,0,nx,ny,30);grd.addColorStop(0,'rgba(74,222,128,0.5)');grd.addColorStop(1,'transparent');ctx.fillStyle=grd;ctx.fillRect(nx-30,ny-30,60,60)}
+      }else{
+        ny=startY-(startY-wallY)*Math.min(progress*2,1);
+        if(progress>0.5)ny=wallY+(progress-0.5)*60;// bounce back
+        if(progress>0.5){ctx.fillStyle='rgba(239,68,68,0.3)';ctx.font='bold 16px sans-serif';ctx.fillText('✗ 被阻挡',nx,ny-30)}
+      }
+      // draw nanobot
+      const sz=clamp((state.bbbSize||200)/20,2,15);
+      const grd=ctx.createRadialGradient(nx,ny,0,nx,ny,sz+10);grd.addColorStop(0,'rgba(96,165,250,0.5)');grd.addColorStop(1,'transparent');
+      ctx.fillStyle=grd;ctx.fillRect(nx-sz-10,ny-sz-10,sz*2+20,sz*2+20);
+      ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(nx,ny,sz,0,Math.PI*2);ctx.fill();
+      // coating indicator
+      if(state.bbbCoat===1){ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.beginPath();ctx.arc(nx,ny,sz+4,0,Math.PI*2);ctx.stroke()}
+    }
+    // param display
+    ctx.fillStyle='rgba(255,255,255,0.05)';ctx.fillRect(10,60,180,80);
+    ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='left';
+    ctx.fillText(`尺寸: ${state.bbbSize||200}nm`,16,78);
+    ctx.fillText(`电荷: ${['正','中性','负'][state.bbbCharge||1]}`,16,94);
+    ctx.fillText(`修饰: ${['PEG','转铁蛋白','载脂蛋白'][state.bbbCoat||0]}`,16,110);
+    ctx.fillText(`条件: <100nm + 转铁蛋白`,16,126);
+    renderPanel();
+  }
+  draw();
+}
+
+/* ===== LEVEL 6: NANO SURGERY ===== */
+function setupUI6(area){
+  const pct=state.plaqueRemoved||0;const flow=state.bloodFlow||20;
+  area.innerHTML=`<div class="hint-box">💡 按住鼠标在黄色斑块上拖动切割<br>注意不要切到红色血管壁！</div>
+  <div style="font-size:11px;color:#888;margin:6px 0">斑块清除: <span style="color:${pct>=50?'#4ade80':'#f87171'}">${pct.toFixed(0)}%</span></div>
+  <div style="font-size:11px;color:#888">血流量: <span style="color:${flow>=80?'#4ade80':'#f87171'}">${flow.toFixed(0)}%</span></div>
+  <div style="width:100%;height:12px;background:#1a1a3a;border-radius:6px;margin:4px 0;overflow:hidden">
+  <div style="width:${flow}%;height:100%;background:${flow>=80?'#22c55e':'#ef4444'};border-radius:6px;transition:width 0.3s"></div></div>`;
+}
+function initL6(){
+  state.plaqueRemoved=0;state.bloodFlow=20;state.cutting=false;state.wallHits=0;
+  // plaque grid
+  const plaqueW=Math.floor(W*0.6),plaqueH=80;
+  const plaqueX0=W*0.2,plaqueY0=H*0.55;
+  const grid=[];const cols=Math.floor(plaqueW/8),rows=Math.floor(plaqueH/8);
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)grid.push({x:plaqueX0+c*8,y:plaqueY0+r*8,alive:true});
+  const totalCells=grid.length;
+  let t=0;
+  function draw(){
+    animId=requestAnimationFrame(draw);t+=0.016;drawBg();
+    // blood vessel
+    const wallTop=H*0.3,wallBot=H*0.7;
+    ctx.fillStyle='#3a0a0a';ctx.fillRect(0,0,W,wallTop);ctx.fillRect(0,wallBot,W,H-wallBot);
+    ctx.strokeStyle='#8b0000';ctx.lineWidth=4;
+    ctx.beginPath();ctx.moveTo(0,wallTop);ctx.lineTo(W,wallTop);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,wallBot);ctx.lineTo(W,wallBot);ctx.stroke();
+    // plaque
+    grid.forEach(cell=>{
+      if(!cell.alive)return;
+      ctx.fillStyle=`rgba(200,180,60,${0.6+Math.sin(t+cell.x*0.1)*0.1})`;
+      ctx.fillRect(cell.x,cell.y,7,7);
+    });
+    // plaque border glow
+    ctx.strokeStyle='rgba(200,180,60,0.3)';ctx.lineWidth=2;
+    ctx.strokeRect(plaqueX0-2,plaqueY0-2,plaqueW+4,plaqueH+4);
+    // blood flow arrows
+    const flowSpeed=state.bloodFlow/100;
+    for(let i=0;i<15;i++){
+      const fx=(i*80+t*60*flowSpeed)%W;const fy=wallTop+20+((i*37)%(wallBot-wallTop-40));
+      ctx.fillStyle=`rgba(200,50,50,${0.1+flowSpeed*0.2})`;
+      ctx.beginPath();ctx.moveTo(fx+8,fy);ctx.lineTo(fx-4,fy-3);ctx.lineTo(fx-4,fy+3);ctx.fill();
+    }
+    // cursor / nanobot tool
+    if(mouseY>0){
+      const grd=ctx.createRadialGradient(mouseX,mouseY,0,mouseX,mouseY,15);
+      grd.addColorStop(0,'rgba(96,165,250,0.6)');grd.addColorStop(1,'transparent');
+      ctx.fillStyle=grd;ctx.fillRect(mouseX-15,mouseY-15,30,30);
+      ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(mouseX,mouseY,4,0,Math.PI*2);ctx.fill();
+      // cutting beam
+      if(mouseDown){
+        ctx.strokeStyle='rgba(96,165,250,0.6)';ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(mouseX,mouseY);ctx.lineTo(mouseX+Math.cos(t*10)*8,mouseY+Math.sin(t*10)*8);ctx.stroke();
+        // check wall hit
+        if(mouseY<wallTop+15||mouseY>wallBot-15){
+          state.wallHits++;
+          ctx.fillStyle='rgba(255,0,0,0.3)';ctx.fillRect(0,0,W,H);
+        }
+        // cut plaque
+        grid.forEach(cell=>{
+          if(!cell.alive)return;
+          if(Math.abs(mouseX-cell.x-4)<12&&Math.abs(mouseY-cell.y-4)<12){
+            cell.alive=false;
+            if(!state.cutting){state.cutting=true;completeObj(5,0)}
+          }
+        });
+        const removed=grid.filter(c=>!c.alive).length;
+        state.plaqueRemoved=(removed/totalCells)*100;
+        state.bloodFlow=20+state.plaqueRemoved*0.8;
+        if(state.plaqueRemoved>=50)completeObj(5,1);
+        if(state.bloodFlow>=80){completeObj(5,2);checkLevelDone()}
+        markDirty();
+      }
+    }
+    // flow meter
+    ctx.fillStyle='rgba(0,0,0,0.4)';ctx.fillRect(W-120,wallTop+10,100,20);
+    ctx.fillStyle=state.bloodFlow>=80?'#22c55e':'#ef4444';
+    ctx.fillRect(W-120,wallTop+10,state.bloodFlow,20);
+    ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`血流 ${state.bloodFlow.toFixed(0)}%`,W-70,wallTop+24);
+    renderPanel();
+  }
+  draw();
+}
+
+/* ===== LEVEL 7: SWARM ===== */
+function setupUI7(area){
+  let h='<div class="hint-box">💡 释放纳米机器人集群，设定行为模式攻击肿瘤</div>';
+  if(!state.swarmReleased){
+    h+=`<button class="act-btn" onclick="releaseSwarm()">🐜 释放1000个纳米机器人</button>`;
+  }else{
+    h+=`<div style="font-size:11px;color:#aaa;margin:4px 0">行为模式:</div><div class="sel-row">`;
+    ['趋化','包围','攻击'].forEach((n,i)=>{
+      const enabled=i===0||(i===1&&state.swarmPhase>=1)||(i===2&&state.swarmPhase>=2);
+      h+=`<span class="sel-btn${state.swarmMode===i?' active':''}${!enabled?' disabled':''}" onclick="${enabled?`setSwarmMode(${i})`:'void(0)'}" style="${!enabled?'opacity:0.4;cursor:not-allowed':''}">${n}</span>`;
+    });
+    h+=`</div>`;
+    h+=`<div style="font-size:11px;color:#888;margin:4px 0">机器人数: ${state.bots?state.bots.length:0} | 肿瘤HP: ${Math.max(0,(state.tumorHP||100)).toFixed(0)}%</div>`;
+  }
+  area.innerHTML=h;
+}
+function releaseSwarm(){
+  state.swarmReleased=true;state.swarmMode=0;state.swarmPhase=0;
+  state.bots=[];
+  for(let i=0;i<200;i++){
+    state.bots.push({x:rand(20,100),y:rand(H*0.3,H*0.7),vx:rand(0.5,2),vy:rand(-1,1)});
+  }
+  completeObj(6,0);markDirty();
+}
+function setSwarmMode(m){state.swarmMode=m;markDirty()}
+function initL7(){
+  state.swarmReleased=false;state.swarmMode=0;state.swarmPhase=0;state.tumorHP=100;state.bots=[];state.drugParts7=[];
+  // tumor shape (irregular polygon)
+  const tcx=W*0.65,tcy=H*0.5,tr=80;
+  const tumorPts=[];for(let i=0;i<12;i++){const a=i*Math.PI*2/12;tumorPts.push({x:tcx+Math.cos(a)*(tr+rand(-20,20)),y:tcy+Math.sin(a)*(tr+rand(-20,20))})}
+  let t=0,surroundTimer=0;
+  function pointInTumor(px,py){
+    let inside=false;
+    for(let i=0,j=tumorPts.length-1;i<tumorPts.length;j=i++){
+      const xi=tumorPts[i].x,yi=tumorPts[i].y,xj=tumorPts[j].x,yj=tumorPts[j].y;
+      if((yi>py)!==(yj>py)&&px<(xj-xi)*(py-yi)/(yj-yi)+xi)inside=!inside;
+    }return inside;
+  }
+  function draw(){
+    animId=requestAnimationFrame(draw);t+=0.016;drawBg();
+    // body tissue bg
+    ctx.fillStyle='rgba(20,10,30,0.3)';ctx.fillRect(0,0,W,H);
+    for(let i=0;i<20;i++){ctx.fillStyle='rgba(40,20,60,0.2)';ctx.beginPath();
+    ctx.arc(((i*97)%W),((i*73)%H),30+Math.sin(t+i)*5,0,Math.PI*2);ctx.fill()}
+    // tumor
+    const hp=state.tumorHP||100;
+    if(hp>0){
+      ctx.fillStyle=`rgba(180,30,30,${0.3+hp/200})`;ctx.beginPath();ctx.moveTo(tumorPts[0].x,tumorPts[0].y);
+      tumorPts.forEach(p=>ctx.lineTo(p.x+Math.sin(t*2+p.x*0.1)*3,p.y+Math.cos(t*2+p.y*0.1)*3));
+      ctx.closePath();ctx.fill();
+      ctx.strokeStyle=`rgba(239,68,68,${0.5+hp/200})`;ctx.lineWidth=2;ctx.stroke();
+      // tumor veins
+      for(let i=0;i<6;i++){ctx.strokeStyle='rgba(100,20,20,0.3)';ctx.lineWidth=1;ctx.beginPath();
+      ctx.moveTo(tcx,tcy);ctx.quadraticCurveTo(tcx+rand(-40,40),tcy+rand(-40,40),tumorPts[i*2].x,tumorPts[i*2].y);ctx.stroke()}
+      ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText(`肿瘤 HP:${hp.toFixed(0)}%`,tcx,tcy);
+    }else{
+      ctx.fillStyle='rgba(100,100,100,0.2)';ctx.beginPath();ctx.arc(tcx,tcy,30,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#4ade80';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('✓ 已消灭',tcx,tcy+5);
+    }
+    // bots
+    if(state.bots){
+      const bots=state.bots;
+      bots.forEach(b=>{
+        // behavior
+        if(state.swarmMode===0){// chemotaxis - move toward tumor
+          const dx=tcx-b.x,dy=tcy-b.y,d=Math.hypot(dx,dy);
+          if(d>5){b.vx+=(dx/d)*0.15;b.vy+=(dy/d)*0.15}
+        }else if(state.swarmMode===1){// surround
+          const dx=tcx-b.x,dy=tcy-b.y,d=Math.hypot(dx,dy);
+          const targetD=tr+15;
+          if(d>targetD+5){b.vx+=(dx/d)*0.2;b.vy+=(dy/d)*0.2}
+          else if(d<targetD-5){b.vx-=(dx/d)*0.2;b.vy-=(dy/d)*0.2}
+          // orbit
+          b.vx+=(-dy/d)*0.1;b.vy+=(dx/d)*0.1;
+        }else{// attack - move into tumor
+          const dx=tcx-b.x+rand(-20,20),dy=tcy-b.y+rand(-20,20),d=Math.hypot(dx,dy);
+          if(d>5){b.vx+=(dx/d)*0.25;b.vy+=(dy/d)*0.25}
+        }
+        // separation from neighbors
+        bots.forEach(other=>{if(other===b)return;
+          const sx=b.x-other.x,sy=b.y-other.y,sd=Math.hypot(sx,sy);
+          if(sd<12&&sd>0){b.vx+=sx/sd*0.3;b.vy+=sy/sd*0.3}
+        });
+        b.vx*=0.92;b.vy*=0.92;b.x+=b.vx;b.y+=b.vy;
+        b.x=clamp(b.x,5,W-5);b.y=clamp(b.y,5,H-5);
+        // draw
+        const grd=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,6);
+        grd.addColorStop(0,'rgba(96,165,250,0.7)');grd.addColorStop(1,'transparent');
+        ctx.fillStyle=grd;ctx.fillRect(b.x-6,b.y-6,12,12);
+        ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(b.x,b.y,2,0,Math.PI*2);ctx.fill();
+      });
+      // check surround
+      if(state.swarmMode===1&&state.swarmPhase<2){
+        let nearCount=0;
+        bots.forEach(b=>{const d=dist(b.x,b.y,tcx,tcy);if(d<tr+30&&d>tr-10)nearCount++});
+        if(nearCount>bots.length*0.5){surroundTimer+=0.016;
+        if(surroundTimer>1.5){state.swarmPhase=2;completeObj(6,1);markDirty()}}
+      }
+      // attack damage
+      if(state.swarmMode===2&&hp>0){
+        let inTumor=0;
+        bots.forEach(b=>{if(pointInTumor(b.x,b.y))inTumor++});
+        if(inTumor>10)state.tumorHP=Math.max(0,(state.tumorHP||100)-0.15);
+        // drug particles
+        if(Math.random()<0.1&&inTumor>5){
+          state.drugParts7.push({x:tcx+rand(-40,40),y:tcy+rand(-40,40),life:1});
+        }
+        if(state.tumorHP<=0){completeObj(6,2);checkLevelDone()}
+        markDirty();
+      }
+    }
+    // drug particles
+    if(state.drugParts7){
+      state.drugParts7.forEach(p=>{p.life-=0.01;
+      if(p.life>0){ctx.fillStyle=`rgba(74,222,128,${p.life*0.6})`;ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill()}});
+      state.drugParts7=state.drugParts7.filter(p=>p.life>0);
+    }
+    // add more bots over time
+    if(state.swarmReleased&&state.bots.length<1000&&t%0.05<0.02){
+      state.bots.push({x:rand(10,60),y:rand(H*0.3,H*0.7),vx:rand(1,3),vy:rand(-1,1)});
+    }
+    // auto advance swarm phase
+    if(state.swarmReleased&&state.swarmPhase===0){
+      let nearCount=0;state.bots.forEach(b=>{if(dist(b.x,b.y,tcx,tcy)<tr*2)nearCount++});
+      if(nearCount>state.bots.length*0.6){state.swarmPhase=1;markDirty()}
+    }
+    renderPanel();
+  }
+  draw();
+}
+
+/* ===== START ===== */
+loadLevel(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>核物理原理交互式教育</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#60a5fa}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}
+.g-text{color:#c0c0e0}
+.g-text.done{color:#4ade80;text-decoration:line-through}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:#2a2a6a}
+.act-btn:disabled{opacity:0.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}
+.sv{color:#60a5fa;font-weight:bold}
+.m-title{font-size:16px;font-weight:700;margin:8px 0 4px;color:#eee}
+.m-sub{font-size:12px;color:#888;margin-bottom:8px}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:rgba(10,10,26,.95);border-top:1px solid #1a1a3a;z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}
+#bottom-bar .bb-right{text-align:right}
+.overlay .result-box{text-align:center;max-width:420px;background:rgba(10,10,26,.98);border:1px solid #2a2a5a;border-radius:16px;padding:28px 36px}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-learn{text-align:left;background:#0e0e20;border-radius:8px;padding:12px 14px;font-size:12px;color:#93c5fd;line-height:1.7;margin-bottom:16px}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#3b82f6;color:#fff}
+.result-box .btn-retry{background:#2a2a5a;color:#ccc}
+.quiz-box{background:#0d1a0d;border:1px solid #22c55e;border-radius:8px;padding:10px;margin:8px 0}
+.quiz-q{font-size:12px;color:#4ade80;margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:12px;color:#a0c0a0;padding:6px 8px;margin:3px 0;border-radius:6px;cursor:pointer;border:1px solid #1a3a1a}
+.quiz-opt:hover{background:#1a2a1a;border-color:#22c55e}
+.quiz-opt.correct{background:#0a2a0a;border-color:#22c55e;color:#4ade80}
+.quiz-opt.wrong{background:#2a0a0a;border-color:#ef4444;color:#f87171}
+.chain-choice{display:flex;gap:8px;margin:8px 0}
+.chain-choice button{flex:1;padding:10px 6px;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600;transition:transform .15s}
+.chain-choice button:hover{transform:scale(1.03)}
+.chain-choice .btn-control{border:1px solid #22c55e;background:#0a2a1a;color:#4ade80}
+.chain-choice .btn-uncontrol{border:1px solid #ef4444;background:#2a0a0a;color:#f87171}
+.event-alert{background:#2a0a0a;border:2px solid #ef4444;border-radius:8px;padding:10px;margin:8px 0;animation:alertPulse 0.5s ease-in-out infinite alternate}
+@keyframes alertPulse{from{border-color:#ef4444}to{border-color:#fbbf24}}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>☢️ <span class="gold">核物理</span>原理探险</h1>
+  <div class="sub">7 个关卡，亲手体验核能的奥秘</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">⚛️</div>原子结构</div>
+    <div class="feat"><div class="fi">💥</div>核裂变</div>
+    <div class="feat"><div class="fi">🔗</div>链式反应</div>
+    <div class="feat"><div class="fi">⚖️</div>临界质量</div>
+    <div class="feat"><div class="fi">☀️</div>核聚变</div>
+    <div class="feat"><div class="fi">🏭</div>核电站</div>
+    <div class="feat"><div class="fi">🦾</div>方舟反应堆</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let CW, CH, time = 0, animId;
+let gameState = 'start', currentLevel = 0;
+let levelState = {}, stars = [], particles = [];
+const completedLevels = new Set();
+const quizPassed = new Set();
+let levelFadeAlpha = 1;
+let celebrationParticles = [];
+let screenShake = {x:0,y:0,intensity:0};
+
+// === Audio System ===
+const AudioCtx=window.AudioContext||window.webkitAudioContext;let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new AudioCtx()}
+function playSound(type){initAudio();const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}else if(type==='boom'){const buf=audioCtx.createBuffer(1,audioCtx.sampleRate*0.3,audioCtx.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/d.length*5);const s=audioCtx.createBufferSource();s.buffer=buf;const g2=audioCtx.createGain();g2.gain.value=0.2;s.connect(g2);g2.connect(audioCtx.destination);s.start()}else if(type==='alert'){o.frequency.value=600;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(800,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(600,audioCtx.currentTime+0.2);o.frequency.setValueAtTime(800,audioCtx.currentTime+0.3);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}}
+
+// === Quiz System ===
+const quizData = [
+  {q:'铀-235有多少个质子？',opts:['A. 143','B. 92','C. 235'],ans:1},
+  {q:'核裂变释放的能量约是化学反应的多少倍？',opts:['A. 10倍','B. 1000倍','C. 数百万倍'],ans:2},
+  {q:'链式反应中，每次裂变释放几个中子？',opts:['A. 1个','B. 2-3个','C. 10个'],ans:1},
+  {q:'铀-235的临界质量约为？',opts:['A. 1公斤','B. 52公斤','C. 1000公斤'],ans:1},
+  {q:'核聚变需要多高的温度？',opts:['A. 1000度','B. 100万度','C. 1亿度以上'],ans:2},
+  {q:'核电站和核弹的本质区别是？',opts:['A. 使用不同燃料','B. 反应速率是否受控','C. 大小不同'],ans:1},
+  {q:'方舟反应堆最接近哪种现实技术？',opts:['A. 核裂变堆','B. 托卡马克聚变堆','C. 太阳能电池'],ans:1}
+];
+let quizLocked = false;
+function renderQuiz(levelIdx){
+  const qd = quizData[levelIdx];
+  let h = '<div class="quiz-box"><div class="quiz-q">📝 通关测验：'+qd.q+'</div>';
+  for(let i=0;i<qd.opts.length;i++){
+    h+='<div class="quiz-opt" id="qopt-'+levelIdx+'-'+i+'" onclick="answerQuiz('+levelIdx+','+i+')">'+qd.opts[i]+'</div>';
+  }
+  h+='</div>';
+  return h;
+}
+function answerQuiz(levelIdx,chosen){
+  if(quizLocked)return;
+  const qd=quizData[levelIdx];
+  const el=document.getElementById('qopt-'+levelIdx+'-'+chosen);
+  if(chosen===qd.ans){
+    el.classList.add('correct');
+    playSound('success');
+    quizPassed.add(levelIdx);
+    // 通关庆祝粒子
+    spawnCelebration();
+    setTimeout(()=>renderPanel(),500);
+  } else {
+    el.classList.add('wrong');
+    playSound('fail');
+    quizLocked=true;
+    setTimeout(()=>{el.classList.remove('wrong');quizLocked=false},1000);
+  }
+}
+function spawnCelebration(){
+  const cx=CW/2+160,cy=CH/2;
+  for(let i=0;i<40;i++){
+    const a=Math.random()*Math.PI*2,sp=Math.random()*200+80;
+    const colors=['#fbbf24','#f59e0b','#fcd34d','#fff'];
+    celebrationParticles.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-50,col:colors[Math.floor(Math.random()*colors.length)],life:1.5,ml:1.5,sz:3+Math.random()*3,gy:120});
+  }
+}
+
+const ELEMENTS = {1:'氢',2:'氦',3:'锂',4:'铍',5:'硼',6:'碳',7:'氮',8:'氧',9:'氟',10:'氖',11:'钠',12:'镁',13:'铝',14:'硅',15:'磷',16:'硫',17:'氯',18:'氩',19:'钾',20:'钙',26:'铁',29:'铜',47:'银',79:'金',82:'铅',92:'铀'};
+function getElement(p){return ELEMENTS[p]||(p+'号元素')}
+
+const levels = [
+  {title:'原子结构',sub:'认识原子核',concept:'原子由质子、中子、电子组成。质子带正电（红色），中子不带电（蓝色），电子带负电绕核运动。不同元素 = 不同质子数。',goals:['添加质子和中子构建原子','构建出铀-235（92质子+143中子）'],learn:'铀-235是自然界中最重要的可裂变材料。它的原子核有92个质子和143个中子，非常不稳定——就像一个塞满了弹珠的碗，轻轻一碰就会散架。'},
+  {title:'核裂变',sub:'原子核的分裂',concept:'一个中子撞击铀-235，原子核分裂成两个较小的原子核（如钡-141和氪-92），同时释放2-3个新中子和巨大能量（约200 MeV）。',goals:['发射中子击中铀核','观察裂变产物','理解一次裂变释放多个中子'],learn:'一次裂变释放的能量是化学反应（如燃烧）的数百万倍。更关键的是，裂变释放的2-3个新中子可以继续撞击其他铀核——这就是链式反应的基础。'},
+  {title:'链式反应',sub:'指数级爆发',concept:'每次裂变释放2-3个中子，每个中子又能引发新的裂变。1→3→9→27→81...指数增长。这就是核弹的原理。',goals:['启动链式反应','观察指数增长','所有铀核完成裂变'],learn:'在核弹中，链式反应在微秒级内完成——几十代裂变在不到百万分之一秒内释放所有能量。1公斤铀-235完全裂变释放的能量，相当于20000吨TNT。'},
+  {title:'临界质量',sub:'多少才够',concept:'铀块太小→中子飞出去了，反应停止（亚临界）。铀块够大→中子在飞出前就撞到其他铀核，链式反应持续（超临界）。临界质量约52kg。',goals:['测试亚临界状态','测试超临界状态','找到临界质量（约50-52kg）'],learn:'这就是为什么核弹需要精确的铀量。铀-235的临界质量约52公斤（一个棒球大小的球）。核弹的设计就是在引爆瞬间，用炸药把两块亚临界的铀猛地挤到一起，形成超临界质量。'},
+  {title:'核聚变',sub:'太阳的能量',concept:'轻核（氢的同位素氘和氚）在极高温下融合成氦，释放更多能量。这是太阳的能量来源。需要1亿度以上的温度来克服库仑势垒。',goals:['理解聚变需要极高温','成功实现氘氚聚变','观察聚变产物'],learn:'聚变释放的能量比裂变还多，而且燃料（氢）几乎无穷无尽。太阳核心温度1500万度，靠巨大引力压缩实现聚变。在地球上，我们需要1亿度以上——比太阳核心还热！这就是可控核聚变如此困难的原因。'},
+  {title:'核电站',sub:'控制链式反应',concept:'核电站 = 受控的链式反应。用控制棒吸收多余中子，让反应速率恰好维持稳定（临界状态）。太快→熔毁，太慢→停堆。',goals:['让反应堆稳定运行500-600MW','维持稳定运行30秒','不触发熔毁警报'],learn:'核电站和核弹用的是同一个原理——链式反应。区别在于核电站用控制棒精确调节反应速率，让能量缓慢、稳定地释放。切尔诺贝利事故就是因为控制棒操作失误，反应堆在4秒内功率暴增到额定值的100倍。'},
+  {title:'方舟反应堆',sub:'钢铁侠的心脏',concept:'钢铁侠胸前的方舟反应堆（Arc Reactor）是一个微型聚变装置。现实中，托卡马克用超强磁场约束上亿度的等离子体实现聚变。方舟反应堆 = 微型托卡马克 + 钯元素催化 + 环形磁约束。\n\n你的任务：调节磁场强度和等离子体温度，让聚变反应稳定输出 3GJ 能量，驱动钢铁侠战甲！',goals:['点燃等离子体（温度>1亿度）','磁约束成功（等离子体不逃逸）','稳定输出能量驱动战甲'],learn:'方舟反应堆在现实中最接近的技术是<b>托卡马克</b>（如ITER）和<b>仿星器</b>。核心挑战：用磁场把1亿度的等离子体悬浮在真空中，不能碰到任何容器壁。2025年人类已实现聚变点火（NIF），但持续稳定输出仍是终极难题。钢铁侠的方舟反应堆，本质上是一个拳头大小的完美托卡马克——这是人类核聚变的终极梦想。'}
+];
+
+function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
+function initStars(){stars=[];for(let i=0;i<80;i++)stars.push({x:Math.random()*CW,y:Math.random()*CH,r:Math.random()*1.5+.3,tw:Math.random()*Math.PI*2,sp:Math.random()*.02+.005})}
+function drawStars(){for(let s of stars){const a=.4+.6*Math.abs(Math.sin(s.tw+time*s.sp));ctx.fillStyle=`rgba(255,255,255,${a})`;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill()}}
+function addP(x,y,vx,vy,col,life,sz){particles.push({x,y,vx,vy,col,life,ml:life,sz:sz||3})}
+function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1)}}
+function drawParticles(){for(let p of particles){const a=Math.max(0,p.life/p.ml);ctx.globalAlpha=a;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.sz*a,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+window.addEventListener('resize',resize);
+resize();
+
+function startGame(){
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('panel').style.display='block';
+  document.getElementById('bottom-bar').style.display='flex';
+  gameState='play';currentLevel=0;initLevel(0);renderPanel();
+  playSound('click');
+}
+
+function initLevel(idx){
+  currentLevel=idx;particles=[];celebrationParticles=[];
+  levelFadeAlpha=0; // 淡入效果
+  const L=levels[idx];
+  if(idx===0){
+    levelState={protons:0,neutrons:0,electrons:[],nucleons:[],goalDone:[false,false]};
+  } else if(idx===1){
+    levelState={phase:'ready',uranium:{x:0,y:0,r:40},neutron:null,products:[],freeNeutrons:[],flash:0,goalDone:[false,false,false]};
+  } else if(idx===2){
+    const nuclei=[];const cx=CW/2+160,cy=CH/2;
+    for(let i=0;i<25;i++){const a=Math.random()*Math.PI*2,d=Math.random()*120+20;nuclei.push({x:cx+Math.cos(a)*d,y:cy+Math.sin(a)*d,r:18,alive:true,flash:0})}
+    levelState={nuclei,neutrons:[],generation:0,fissionCount:0,totalEnergy:0,started:false,goalDone:[false,false,false],choiceMade:false,choiceResult:''};
+  } else if(idx===3){
+    levelState={mass:10,testing:false,neutrons:[],nuclei:[],escapeCount:0,fissionCount:0,result:'',testedSub:false,testedSuper:false,foundCritical:false,goalDone:[false,false,false],jumpedToMax:false,mustTestSub:false};
+  } else if(idx===4){
+    levelState={temp:1000,deuterium:null,tritium:null,fusing:false,fusionCount:0,helium:null,flashAlpha:0,goalDone:[false,false,false],triedLow:false};
+  } else if(idx===5){
+    levelState={rodDepth:80,power:50,temp:300,neutronFlux:50,stable:false,stableTime:0,meltdown:false,shutdown:false,elapsed:0,neutrons:[],goalDone:[false,false,true],reactorDone:false,
+      event:null,eventTimer:0,eventCountdown:0,eventFailed:false,nextEventTime:8+Math.random()*5};
+  } else if(idx===6){
+    levelState={magField:0,plasmaTemp:0,plasma:[],energy:0,outputPower:0,confined:true,ignited:false,suitPowered:false,elapsed:0,arcDone:false,goalDone:[false,false,false],ringParticles:[]};
+  }
+  renderPanel();
+}
+
+function renderPanel(){
+  const L=levels[currentLevel],S=levelState,p=document.getElementById('panel');
+  let h='<div style="margin-bottom:8px">';
+  for(let i=0;i<levels.length;i++){
+    let cls='level-btn';if(i===currentLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
+    h+=`<span class="${cls}" onclick="switchLevel(${i})">第${i+1}关</span>`;
+  }
+  h+='</div>';
+  h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
+  h+=`<div class="concept-box">${L.concept}</div>`;
+  h+='<div style="margin:8px 0;font-size:12px;color:#888;font-weight:600">目标清单</div>';
+  for(let i=0;i<L.goals.length;i++){
+    const done=S.goalDone&&S.goalDone[i];
+    h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`;
+  }
+  // actions per level
+  h+=renderLevelActions();
+  const allGoalsDone = S.goalDone&&S.goalDone.every(g=>g);
+  if(allGoalsDone && !quizPassed.has(currentLevel)){
+    h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
+    h+=renderQuiz(currentLevel);
+  } else if(allGoalsDone && quizPassed.has(currentLevel)){
+    h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
+    h+=`<div style="text-align:center;color:#4ade80;font-size:12px;margin:6px 0">✅ 测验已通过</div>`;
+    if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
+    else h+=`<div style="text-align:center;color:#4ade80;font-size:14px;margin:12px 0">🎉 全部通关！</div>`;
+  }
+  p.innerHTML=h;
+  // bottom bar
+  document.getElementById('bbLeft').textContent=`第 ${currentLevel+1} 关：${L.title}`;
+  document.getElementById('bbRight').textContent=`${completedLevels.size}/${levels.length} 已完成`;
+}
+
+function switchLevel(i){playSound('click');initLevel(i);renderPanel()}
+
+function renderLevelActions(){
+  const S=levelState;let h='';
+  if(currentLevel===0){
+    h+=`<div style="margin:8px 0;font-size:12px;color:#60a5fa">质子: <span class="sv">${S.protons}</span> 　中子: <span class="sv">${S.neutrons}</span> 　元素: <span class="sv">${S.protons>0?getElement(S.protons):'-'}</span></div>`;
+    h+=`<button class="act-btn" onclick="doAction('addProton')">+ 质子（红）</button>`;
+    h+=`<button class="act-btn" onclick="doAction('addNeutron')">+ 中子（蓝）</button>`;
+    h+=`<button class="act-btn" onclick="doAction('add10p')">+ 10个质子</button>`;
+    h+=`<button class="act-btn" onclick="doAction('add10n')">+ 10个中子</button>`;
+    h+=`<button class="act-btn green" onclick="doAction('buildU235')">直接构建铀-235</button>`;
+    h+=`<button class="act-btn" style="border-color:#e44;color:#f88" onclick="doAction('resetAtom')">重置</button>`;
+  } else if(currentLevel===1){
+    h+=`<div class="hint-box">💡 点击"发射中子"，观察铀-235的裂变过程</div>`;
+    h+=`<button class="act-btn" onclick="doAction('fireNeutron')" ${S.phase!=='ready'?'disabled':''}>发射中子 →</button>`;
+    if(S.phase==='done')h+=`<button class="act-btn" onclick="doAction('resetFission')">再来一次</button>`;
+    if(S.products.length>0)h+=`<div style="margin:8px 0;font-size:12px;color:#fbbf24">产物: 钡-141 + 氪-92 + ${S.freeNeutrons.length}个中子<br>释放能量: ~200 MeV</div>`;
+  } else if(currentLevel===2){
+    h+=`<div style="margin:8px 0;font-size:12px;color:#60a5fa">代数: <span class="sv">${S.generation}</span> 　裂变: <span class="sv">${S.fissionCount}</span>/${S.nuclei.length} 　能量: <span class="sv">${(S.totalEnergy).toFixed(0)}</span> MeV</div>`;
+    h+=`<button class="act-btn" onclick="doAction('startChain')" ${S.started?'disabled':''}>发射第一个中子</button>`;
+    if(S.fissionCount>=S.nuclei.length&&!S.choiceMade){
+      h+=`<div style="margin:8px 0;font-size:12px;color:#fbbf24;font-weight:600">⚡ 链式反应完成！你要如何利用这股能量？</div>`;
+      h+=`<div class="chain-choice"><button class="btn-control" onclick="doAction('chainControl')">🔧 加入控制棒<br><span style="font-size:10px;font-weight:400">减缓反应→核电站</span></button>`;
+      h+=`<button class="btn-uncontrol" onclick="doAction('chainUncontrol')">💥 不加控制<br><span style="font-size:10px;font-weight:400">反应失控→核弹</span></button></div>`;
+    }
+    if(S.choiceMade){
+      h+=`<div style="margin:8px 0;padding:8px;border-radius:8px;font-size:12px;line-height:1.6;${S.choiceResult==='control'?'background:#0a2a1a;border:1px solid #22c55e;color:#4ade80':'background:#2a0a0a;border:1px solid #ef4444;color:#f87171'}">`;
+      if(S.choiceResult==='control'){
+        h+=`✅ <b>受控链式反应</b><br>控制棒吸收多余中子，反应速率稳定。这就是核电站的原理——安全、持续地释放能量发电。`;
+      } else {
+        h+=`💥 <b>失控链式反应</b><br>没有控制棒，中子指数增长，在微秒内释放所有能量——这就是核弹！1公斤铀-235 = 20000吨TNT。`;
+      }
+      h+=`</div>`;
+      h+=`<button class="act-btn" onclick="doAction('resetChain')">重置</button>`;
+    } else if(S.fissionCount>0&&S.fissionCount<S.nuclei.length){
+      h+=`<button class="act-btn" onclick="doAction('resetChain')">重置</button>`;
+    }
+  } else if(currentLevel===3){
+    h+=`<div class="slider-wrap"><label>铀块质量: <span class="sv">${S.mass} kg</span></label><input type="range" min="1" max="60" value="${S.mass}" oninput="doAction('setMass',this.value)"></div>`;
+    h+=`<div style="font-size:12px;color:#888;margin:4px 0">状态: <span class="sv">${S.result||'待测试'}</span></div>`;
+    if(S.mustTestSub){
+      h+=`<div style="background:#2a1a0a;border:1px solid #f59e0b;border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:#fbbf24">⚠️ 直接超临界会导致不可控爆炸！请先测试亚临界（<15kg）再测试超临界。</div>`;
+    }
+    h+=`<button class="act-btn" onclick="doAction('testCritical')" ${S.testing?'disabled':''}>测试</button>`;
+  } else if(currentLevel===4){
+    h+=`<div class="slider-wrap"><label>温度: <span class="sv">${formatTemp(S.temp)}</span></label><input type="range" min="0" max="200" value="${S.temp/1e6}" oninput="doAction('setTemp',this.value)"></div>`;
+    h+=`<div style="font-size:12px;color:#888;margin:4px 0">聚变次数: <span class="sv">${S.fusionCount}</span></div>`;
+    h+=`<div class="hint-box">💡 调节温度到1亿度以上，观察氘氚聚变</div>`;
+  } else if(currentLevel===5){
+    h+=`<div class="slider-wrap"><label>控制棒插入深度: <span class="sv">${S.rodDepth}%</span></label><input type="range" min="0" max="100" value="${S.rodDepth}" oninput="doAction('setRod',this.value)"></div>`;
+    h+=`<div style="font-size:12px;color:#60a5fa;margin:4px 0">功率: <span class="sv">${S.power.toFixed(0)} MW</span></div>`;
+    h+=`<div style="font-size:12px;color:${S.temp>800?'#f87171':S.temp>500?'#fbbf24':'#4ade80'};margin:2px 0">温度: <span class="sv">${S.temp.toFixed(0)} °C</span></div>`;
+    h+=`<div style="font-size:12px;color:#888;margin:2px 0">中子通量: <span class="sv">${S.neutronFlux.toFixed(0)}</span></div>`;
+    if(S.stable)h+=`<div style="font-size:12px;color:#4ade80;margin:4px 0">✅ 稳定运行: ${S.stableTime.toFixed(1)}s / 30s</div>`;
+    if(S.event&&!S.eventFailed){
+      h+=`<div class="event-alert"><div style="font-size:13px;color:#f87171;font-weight:700">⚠️ ${S.event.name}</div>`;
+      h+=`<div style="font-size:11px;color:#fbbf24;margin:2px 0">${S.event.desc}</div>`;
+      h+=`<div style="font-size:12px;color:#fff">剩余时间: <span class="sv">${Math.max(0,S.eventCountdown).toFixed(1)}s</span></div></div>`;
+    }
+    if(S.eventFailed){
+      h+=`<div style="background:#2a0a0a;border:1px solid #ef4444;border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:#f87171">💥 未能及时处理「${S.event.name}」，反应堆熔毁！</div>`;
+    }
+    if(S.meltdown)h+=`<div style="font-size:14px;color:#f87171;font-weight:700;margin:8px 0">⚠️ 熔毁！反应堆失控！</div><button class="act-btn" onclick="doAction('resetReactor')">重置反应堆</button>`;
+    if(S.shutdown)h+=`<div style="font-size:12px;color:#888;margin:4px 0">反应堆已停堆</div><button class="act-btn" onclick="doAction('resetReactor')">重置反应堆</button>`;
+  } else if(currentLevel===6){
+    h+=`<div class="slider-wrap"><label>磁场强度: <span class="sv">${S.magField.toFixed(1)} T</span></label><input type="range" min="0" max="100" value="${S.magField*10}" oninput="doAction('setMag',this.value)"></div>`;
+    h+=`<div class="slider-wrap"><label>等离子体加热: <span class="sv">${formatTemp(S.plasmaTemp)}</span></label><input type="range" min="0" max="200" value="${S.plasmaTemp/1e6}" oninput="doAction('setPlasma',this.value)"></div>`;
+    const confColor=S.confined?'#4ade80':'#f87171';
+    h+=`<div style="font-size:12px;color:${confColor};margin:4px 0">磁约束: <span class="sv">${S.confined?'稳定':'等离子体逃逸！'}</span></div>`;
+    h+=`<div style="font-size:12px;color:#60a5fa;margin:2px 0">输出功率: <span class="sv">${S.outputPower.toFixed(0)} MW</span></div>`;
+    h+=`<div style="font-size:12px;color:#fbbf24;margin:2px 0">累计能量: <span class="sv">${S.energy.toFixed(1)} GJ</span> / 3.0 GJ</div>`;
+    if(S.suitPowered)h+=`<div style="font-size:14px;color:#4ade80;font-weight:700;margin:8px 0;text-align:center">🦾 战甲已激活！</div>`;
+    if(!S.confined&&!S.arcDone)h+=`<button class="act-btn" onclick="doAction('resetArc')">重置反应堆</button>`;
+    const reqMag=(2+S.plasmaTemp/1e8*2).toFixed(1);
+    h+=`<div style="font-size:11px;color:#888;margin:2px 0">当前所需磁场: <span class="sv">${reqMag} T</span></div>`;
+    h+=`<div class="hint-box">💡 先提高磁场约束等离子体（绿色=稳定），再加热到1亿度以上点燃聚变。两个滑块需要配合调节！</div>`;
+  }
+  return h;
+}
+function formatTemp(t){if(t>=1e8)return(t/1e8).toFixed(1)+'亿°C';if(t>=1e6)return(t/1e6).toFixed(0)+'百万°C';if(t>=1e4)return(t/1e4).toFixed(0)+'万°C';return t.toFixed(0)+'°C'}
+
+function doAction(action,param){
+  const S=levelState;
+  if(currentLevel===0){
+    if(action==='addProton'){S.protons=Math.min(S.protons+1,92);addNucleon('p');checkL0();playSound('click')}
+    else if(action==='addNeutron'){S.neutrons=Math.min(S.neutrons+1,143);addNucleon('n');checkL0();playSound('click')}
+    else if(action==='add10p'){S.protons=Math.min(S.protons+10,92);rebuildNucleons();checkL0();playSound('click')}
+    else if(action==='add10n'){S.neutrons=Math.min(S.neutrons+10,143);rebuildNucleons();checkL0();playSound('click')}
+    else if(action==='buildU235'){S.protons=92;S.neutrons=143;rebuildNucleons();checkL0();playSound('click')}
+    else if(action==='resetAtom'){S.protons=0;S.neutrons=0;S.nucleons=[];S.electrons=[];S.goalDone=[false,false];playSound('click')}
+  } else if(currentLevel===1){
+    if(action==='fireNeutron'&&S.phase==='ready'){
+      const cx=CW/2+160,cy=CH/2;
+      S.neutron={x:cx-300,y:cy,vx:300,vy:0};S.phase='flying';S.goalDone[0]=true;playSound('click');
+    } else if(action==='resetFission'){
+      S.phase='ready';S.neutron=null;S.products=[];S.freeNeutrons=[];S.flash=0;S.goalDone=[false,false,false];
+    }
+  } else if(currentLevel===2){
+    if(action==='startChain'&&!S.started){
+      S.started=true;S.goalDone[0]=true;
+      const first=S.nuclei.find(n=>n.alive);
+      if(first){const cx=CW/2+160,cy=CH/2;S.neutrons.push({x:cx-250,y:cy,vx:200,vy:0,gen:1})}
+    } else if(action==='chainControl'){
+      S.choiceMade=true;S.choiceResult='control';playSound('success');
+      S.goalDone[2]=true;completeLevel(2);
+    } else if(action==='chainUncontrol'){
+      S.choiceMade=true;S.choiceResult='uncontrol';playSound('boom');
+      S.goalDone[2]=true;completeLevel(2);
+      const cx=CW/2+160,cy=CH/2;
+      for(let i=0;i<60;i++){const a=Math.random()*Math.PI*2,sp=Math.random()*300+80;addP(cx,cy,Math.cos(a)*sp,Math.sin(a)*sp,'#f87171',1.5,4)}
+      screenShake.intensity=15;
+    } else if(action==='resetChain'){initLevel(2)}
+  } else if(currentLevel===3){
+    if(action==='setMass'){S.mass=parseInt(param);S.result='';S.testing=false;S.neutrons=[];S.nuclei=[];S.escapeCount=0;S.fissionCount=0;S.mustTestSub=false}
+    else if(action==='testCritical'&&!S.testing){
+      // 如果直接拉到60kg且没测试过亚临界，弹出警告
+      if(S.mass>=60&&!S.testedSub){
+        S.mustTestSub=true;playSound('alert');renderPanel();return;
+      }
+      S.mustTestSub=false;
+      startCriticalTest();
+    }
+  } else if(currentLevel===4){
+    if(action==='setTemp'){S.temp=parseFloat(param)*1e6;if(S.temp<5e7&&!S.triedLow){S.triedLow=true;S.goalDone[0]=true}resetFusionParticles()}
+  } else if(currentLevel===5){
+    if(action==='setRod'){S.rodDepth=parseInt(param)}
+    else if(action==='resetReactor'){initLevel(5)}
+  } else if(currentLevel===6){
+    if(action==='setMag'){S.magField=parseInt(param)/10}
+    else if(action==='setPlasma'){S.plasmaTemp=parseFloat(param)*1e6}
+    else if(action==='resetArc'){initLevel(6)}
+  }
+  renderPanel();
+}
+
+function addNucleon(type){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  const a=Math.random()*Math.PI*2,d=Math.random()*8;
+  S.nucleons.push({type,x:cx+Math.cos(a)*d,y:cy+Math.sin(a)*d,tx:0,ty:0,bounce:1});
+  arrangeNucleons();
+  if(S.protons>0&&S.electrons.length<Math.min(S.protons,6)){
+    const layer=S.electrons.length<2?0:1;
+    S.electrons.push({angle:Math.random()*Math.PI*2,speed:.5+Math.random()*.5,layer,rx:50+layer*30,ry:30+layer*20});
+  }
+}
+function rebuildNucleons(){
+  const S=levelState;S.nucleons=[];S.electrons=[];
+  for(let i=0;i<S.protons;i++)S.nucleons.push({type:'p',x:0,y:0,tx:0,ty:0,bounce:0});
+  for(let i=0;i<S.neutrons;i++)S.nucleons.push({type:'n',x:0,y:0,tx:0,ty:0,bounce:0});
+  arrangeNucleons();
+  const eLayers=[Math.min(S.protons,2),Math.min(Math.max(S.protons-2,0),8),Math.min(Math.max(S.protons-10,0),18)];
+  for(let layer=0;layer<3;layer++){for(let i=0;i<Math.min(eLayers[layer],6);i++){
+    S.electrons.push({angle:Math.random()*Math.PI*2+i*(Math.PI*2/Math.max(eLayers[layer],1)),speed:.3+layer*.2+Math.random()*.2,layer,rx:50+layer*25,ry:35+layer*18});
+  }}
+}
+function arrangeNucleons(){
+  const S=levelState,cx=CW/2+160,cy=CH/2,total=S.nucleons.length;
+  if(total===0)return;
+  const r=Math.max(6,Math.pow(total,0.45)*5);
+  // spiral packing
+  for(let i=0;i<total;i++){
+    const a=i*2.4,d=Math.sqrt(i/total)*r;
+    S.nucleons[i].tx=cx+Math.cos(a)*d;S.nucleons[i].ty=cy+Math.sin(a)*d;
+    if(S.nucleons[i].bounce<=0){S.nucleons[i].x=S.nucleons[i].tx;S.nucleons[i].y=S.nucleons[i].ty}
+  }
+}
+function checkL0(){
+  const S=levelState;
+  if(S.protons>0)S.goalDone[0]=true;
+  if(S.protons===92&&S.neutrons===143){S.goalDone[1]=true;completeLevel(0)}
+  renderPanel();
+}
+
+// Level 1: fission
+function updateFission(dt){
+  const S=levelState;if(currentLevel!==1)return;
+  const cx=CW/2+160,cy=CH/2;
+  if(S.phase==='flying'&&S.neutron){
+    S.neutron.x+=S.neutron.vx*dt;S.neutron.y+=S.neutron.vy*dt;
+    const dx=S.neutron.x-cx,dy=S.neutron.y-cy;
+    if(Math.sqrt(dx*dx+dy*dy)<S.uranium.r){
+      S.phase='splitting';S.splitTime=0;S.neutron=null;S.goalDone[0]=true;
+    }
+    if(S.neutron&&S.neutron.x>CW)S.phase='ready';
+  }
+  if(S.phase==='splitting'){
+    S.splitTime+=dt;
+    if(S.splitTime>.8&&S.products.length===0){
+      S.products=[{x:cx-60,y:cy,vx:-80,vy:-30,r:22,col:'#a78bfa'},{x:cx+60,y:cy,vx:80,vy:30,r:18,col:'#34d399'}];
+      for(let i=0;i<3;i++){const a=Math.random()*Math.PI*2;S.freeNeutrons.push({x:cx,y:cy,vx:Math.cos(a)*200,vy:Math.sin(a)*200})}
+      S.flash=1;S.goalDone[1]=true;S.goalDone[2]=true;
+      for(let i=0;i<30;i++){const a=Math.random()*Math.PI*2,sp=Math.random()*200+50;addP(cx,cy,Math.cos(a)*sp,Math.sin(a)*sp,'#fbbf24',1,3)}
+      S.phase='done';completeLevel(1);renderPanel();playSound('boom');
+    }
+  }
+  if(S.flash>0)S.flash-=dt*2;
+  for(let p of S.products){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.98;p.vy*=.98}
+  for(let n of S.freeNeutrons){n.x+=n.vx*dt;n.y+=n.vy*dt}
+}
+
+// Level 2: chain reaction
+function updateChain(dt){
+  const S=levelState;if(currentLevel!==2||!S.started)return;
+  for(let i=S.neutrons.length-1;i>=0;i--){
+    const n=S.neutrons[i];n.x+=n.vx*dt;n.y+=n.vy*dt;
+    if(n.x<0||n.x>CW||n.y<0||n.y>CH){S.neutrons.splice(i,1);continue}
+    for(let nuc of S.nuclei){
+      if(!nuc.alive)continue;
+      const dx=n.x-nuc.x,dy=n.y-nuc.y;
+      if(Math.sqrt(dx*dx+dy*dy)<nuc.r+4){
+        nuc.alive=false;nuc.flash=1;S.fissionCount++;S.totalEnergy+=200;
+        S.generation=Math.max(S.generation,n.gen);
+        for(let j=0;j<(2+Math.floor(Math.random()*2));j++){
+          const a=Math.random()*Math.PI*2;S.neutrons.push({x:nuc.x,y:nuc.y,vx:Math.cos(a)*180,vy:Math.sin(a)*180,gen:n.gen+1});
+        }
+        for(let k=0;k<15;k++){const a=Math.random()*Math.PI*2,sp=Math.random()*150+30;addP(nuc.x,nuc.y,Math.cos(a)*sp,Math.sin(a)*sp,'#fbbf24',.8,2)}
+        S.neutrons.splice(i,1);if(S.fissionCount%5===0)playSound('boom');break;
+      }
+    }
+  }
+  for(let nuc of S.nuclei)if(nuc.flash>0)nuc.flash-=dt*3;
+  if(S.generation>=2)S.goalDone[1]=true;
+  // 安全网：中子全飞走但还有活铀核，自动补发中子继续反应
+  const aliveNuclei=S.nuclei.filter(n=>n.alive);
+  if(S.neutrons.length===0&&aliveNuclei.length>0&&S.fissionCount>0){
+    const t=aliveNuclei[0];
+    const a=Math.random()*Math.PI*2;
+    S.neutrons.push({x:t.x+Math.cos(a)*30,y:t.y+Math.sin(a)*30,vx:Math.cos(a+Math.PI)*180,vy:Math.sin(a+Math.PI)*180,gen:S.generation+1});
+  }
+  if(aliveNuclei.length===0){S.started=false;renderPanel();}
+  if(S.started)renderPanel();
+}
+
+// Level 3: critical mass
+function startCriticalTest(){
+  const S=levelState;S.testing=true;S.neutrons=[];S.nuclei=[];S.escapeCount=0;S.fissionCount=0;
+  const cx=CW/2+160,cy=CH/2;
+  const radius=20+S.mass*1.5;
+  const numNuclei=Math.floor(S.mass/3);
+  for(let i=0;i<numNuclei;i++){const a=Math.random()*Math.PI*2,d=Math.random()*radius*.8;S.nuclei.push({x:cx+Math.cos(a)*d,y:cy+Math.sin(a)*d,alive:true,flash:0})}
+  const a=Math.random()*Math.PI*2;
+  S.neutrons.push({x:cx+Math.cos(a)*radius*.5,y:cy+Math.sin(a)*radius*.5,vx:Math.cos(a+Math.PI)*150,vy:Math.sin(a+Math.PI)*150});
+  S.boundaryR=radius;
+}
+function updateCritical(dt){
+  const S=levelState;if(currentLevel!==3||!S.testing)return;
+  const cx=CW/2+160,cy=CH/2;
+  for(let i=S.neutrons.length-1;i>=0;i--){
+    const n=S.neutrons[i];n.x+=n.vx*dt;n.y+=n.vy*dt;
+    const dx=n.x-cx,dy=n.y-cy,dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist>S.boundaryR){S.neutrons.splice(i,1);S.escapeCount++;continue}
+    for(let nuc of S.nuclei){
+      if(!nuc.alive)continue;
+      const ndx=n.x-nuc.x,ndy=n.y-nuc.y;
+      if(Math.sqrt(ndx*ndx+ndy*ndy)<10){
+        nuc.alive=false;nuc.flash=1;S.fissionCount++;
+        for(let j=0;j<(2+Math.floor(Math.random()*2));j++){const a=Math.random()*Math.PI*2;S.neutrons.push({x:nuc.x,y:nuc.y,vx:Math.cos(a)*150,vy:Math.sin(a)*150})}
+        for(let k=0;k<8;k++){const a=Math.random()*Math.PI*2,sp=Math.random()*100+20;addP(nuc.x,nuc.y,Math.cos(a)*sp,Math.sin(a)*sp,'#fbbf24',.6,2)}
+        S.neutrons.splice(i,1);break;
+      }
+    }
+  }
+  for(let nuc of S.nuclei)if(nuc.flash>0)nuc.flash-=dt*3;
+  if(S.neutrons.length===0&&S.testing){
+    S.testing=false;
+    const ratio=S.fissionCount/Math.max(S.nuclei.length,1);
+    if(S.mass<15){S.result='亚临界：中子逃逸了';S.testedSub=true;S.goalDone[0]=true}
+    else if(S.mass>=50){S.result='超临界！持续链式反应！';S.testedSuper=true;S.goalDone[1]=true}
+    else{S.result=`部分反应 (${(ratio*100).toFixed(0)}%)，逐渐衰减`}
+    if(S.mass>=50&&S.mass<=54){S.foundCritical=true;S.goalDone[2]=true}
+    if(S.goalDone.every(g=>g))completeLevel(3);
+    renderPanel();
+  }
+}
+
+// Level 4: fusion
+function resetFusionParticles(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  S.deuterium={x:cx-60,y:cy,vx:0,vy:0,r:14};
+  S.tritium={x:cx+60,y:cy,vx:0,vy:0,r:16};
+  S.helium=null;S.fusing=false;
+}
+function updateFusion(dt){
+  const S=levelState;if(currentLevel!==4)return;
+  const cx=CW/2+160,cy=CH/2;
+  if(!S.deuterium)resetFusionParticles();
+  if(S.fusing)return;
+  const speed=Math.min(S.temp/1e7,20);
+  // thermal motion
+  S.deuterium.vx+=(Math.random()-.5)*speed*30*dt;S.deuterium.vy+=(Math.random()-.5)*speed*30*dt;
+  S.tritium.vx+=(Math.random()-.5)*speed*30*dt;S.tritium.vy+=(Math.random()-.5)*speed*30*dt;
+  // spring back to center
+  S.deuterium.vx+=(cx-40-S.deuterium.x)*.5*dt;S.deuterium.vy+=(cy-S.deuterium.y)*.5*dt;
+  S.tritium.vx+=(cx+40-S.tritium.x)*.5*dt;S.tritium.vy+=(cy-S.tritium.y)*.5*dt;
+  S.deuterium.x+=S.deuterium.vx*dt;S.deuterium.y+=S.deuterium.vy*dt;
+  S.tritium.x+=S.tritium.vx*dt;S.tritium.y+=S.tritium.vy*dt;
+  // collision check
+  const dx=S.deuterium.x-S.tritium.x,dy=S.deuterium.y-S.tritium.y,dist=Math.sqrt(dx*dx+dy*dy);
+  if(dist<S.deuterium.r+S.tritium.r){
+    if(S.temp>=5e7&&Math.random()<(S.temp>=1e8?.8:.2)){
+      // fusion!
+      S.fusing=true;S.fusionCount++;S.flashAlpha=1.5;
+      S.helium={x:(S.deuterium.x+S.tritium.x)/2,y:(S.deuterium.y+S.tritium.y)/2,r:18};
+      S.goalDone[1]=true;S.goalDone[2]=true;
+      for(let i=0;i<40;i++){const a=Math.random()*Math.PI*2,sp=Math.random()*250+50;addP(S.helium.x,S.helium.y,Math.cos(a)*sp,Math.sin(a)*sp,'#fff',1.2,3)}
+      if(S.goalDone.every(g=>g))completeLevel(4);
+      setTimeout(()=>{S.fusing=false;S.helium=null;resetFusionParticles();renderPanel()},2000);
+      renderPanel();
+    } else {
+      // repulsion
+      const nx=dx/dist,ny=dy/dist;
+      S.deuterium.vx+=nx*100;S.deuterium.vy+=ny*100;
+      S.tritium.vx-=nx*100;S.tritium.vy-=ny*100;
+      if(S.temp<5e7){S.goalDone[0]=true;renderPanel()}
+    }
+  }
+  if(S.flashAlpha>0)S.flashAlpha-=dt*2;
+}
+
+// Level 5: reactor
+const reactorEvents = [
+  {name:'冷却泵故障',desc:'冷却系统失效！请立即增加控制棒深度补偿！',effect:'cooling',rodTarget:90},
+  {name:'中子通量异常',desc:'中子通量突然升高！请增加控制棒深度！',effect:'flux',rodTarget:85},
+  {name:'蒸汽管道泄漏',desc:'蒸汽压力下降！请微调控制棒维持功率！',effect:'steam',rodTarget:75}
+];
+function updateReactor(dt){
+  const S=levelState;if(currentLevel!==5||S.meltdown||S.shutdown||S.reactorDone)return;
+  S.elapsed+=dt;
+  // 随机扰动事件
+  if(!S.event&&S.elapsed>=S.nextEventTime&&S.stable){
+    const ev=reactorEvents[Math.floor(Math.random()*reactorEvents.length)];
+    S.event={...ev};S.eventCountdown=10;S.eventFailed=false;
+    playSound('alert');renderPanel();
+  }
+  if(S.event&&!S.eventFailed){
+    S.eventCountdown-=dt;
+    // 事件效果：增加温度/通量
+    if(S.event.effect==='cooling')S.temp+=dt*80;
+    else if(S.event.effect==='flux')S.neutronFlux+=dt*15;
+    else if(S.event.effect==='steam')S.power-=dt*30;
+    // 检查是否处理成功（控制棒深度足够）
+    if(S.rodDepth>=S.event.rodTarget){
+      S.event=null;S.nextEventTime=S.elapsed+10+Math.random()*8;renderPanel();
+    }
+    // 超时未处理→熔毁
+    if(S.eventCountdown<=0){
+      S.eventFailed=true;S.meltdown=true;playSound('fail');
+      screenShake.intensity=20;
+      const cx=CW/2+160,cy=CH/2;
+      for(let i=0;i<50;i++){const a=Math.random()*Math.PI*2,sp=Math.random()*200+50;addP(cx,cy,Math.cos(a)*sp,Math.sin(a)*sp,'#f87171',2,4)}
+      renderPanel();return;
+    }
+  }
+  // rod depth affects neutron absorption: 100%=all absorbed, 0%=none absorbed
+  const absorb=S.rodDepth/100;
+  const targetFlux=100*(1-absorb);
+  S.neutronFlux+=(targetFlux-S.neutronFlux)*dt*2;
+  // power follows neutron flux
+  const targetPower=S.neutronFlux*8;
+  S.power+=(targetPower-S.power)*dt*1.5;
+  // temperature follows power, cooling scales with temp (heat exchanger)
+  const cooling=200 + (S.temp - 100) * 1.2;
+  S.temp+=(S.power*1.5-cooling)*dt*.5;
+  S.temp=Math.max(100,S.temp);
+  // spawn visual neutrons
+  const cx=CW/2+160,cy=CH/2;
+  if(Math.random()<S.neutronFlux*dt*.3){
+    const a=Math.random()*Math.PI*2,d=30+Math.random()*40;
+    S.neutrons.push({x:cx+Math.cos(a)*d,y:cy+Math.sin(a)*d,vx:Math.cos(a)*60,vy:Math.sin(a)*60,life:1});
+  }
+  for(let i=S.neutrons.length-1;i>=0;i--){
+    const n=S.neutrons[i];n.x+=n.vx*dt;n.y+=n.vy*dt;n.life-=dt;
+    if(n.life<=0)S.neutrons.splice(i,1);
+  }
+  // check goals
+  if(S.power>=500&&S.power<=600){
+    if(!S.stable){S.stable=true;S.stableTime=0;S.goalDone[0]=true}
+    S.stableTime+=dt;
+    if(S.stableTime>=30){S.goalDone[1]=true;S.reactorDone=true;completeLevel(5);renderPanel()}
+  } else {S.stable=false;S.stableTime=0}
+  // meltdown
+  if(S.temp>1000){S.meltdown=true;S.goalDone[2]=false;playSound('fail');
+    screenShake.intensity=20;
+    for(let i=0;i<50;i++){const a=Math.random()*Math.PI*2,sp=Math.random()*200+50;addP(cx,cy,Math.cos(a)*sp,Math.sin(a)*sp,'#f87171',2,4)}
+  }
+  if(S.power<5&&S.elapsed>3)S.shutdown=true;
+  if(S.elapsed%0.3<dt)renderPanel();
+}
+
+function completeLevel(idx){completedLevels.add(idx);playSound('success');renderPanel()}
+
+// Level 6: Arc Reactor
+function updateArc(dt){
+  const S=levelState;if(currentLevel!==6||S.arcDone)return;
+  S.elapsed+=dt;
+  // 磁约束：磁场>5T才能约束等离子体，温度越高需要的磁场越强
+  const requiredMag=2+S.plasmaTemp/1e8*2;
+  S.confined=S.magField>=requiredMag;
+  // 聚变条件：温度>1亿度 且 磁约束成功
+  S.ignited=S.plasmaTemp>=1e8&&S.confined;
+  if(S.plasmaTemp>=1e8&&S.confined)S.goalDone[0]=true;
+  if(S.magField>=5&&S.confined&&S.plasmaTemp>1e7)S.goalDone[1]=true;
+  // 输出功率
+  if(S.ignited){
+    const efficiency=Math.min(1,(S.plasmaTemp-1e8)/1e8);
+    S.outputPower=200+efficiency*600;
+    S.energy+=S.outputPower*dt/1000;
+  } else {
+    S.outputPower*=0.9;
+    if(S.outputPower<1)S.outputPower=0;
+  }
+  // 等离子体逃逸时重置能量积累
+  if(!S.confined&&S.plasmaTemp>1e7){
+    S.outputPower=0;
+    const cx=CW/2+160,cy=CH/2;
+    for(let i=0;i<8;i++){const a=Math.random()*Math.PI*2,sp=Math.random()*100+50;addP(cx,cy,Math.cos(a)*sp,Math.sin(a)*sp,'#60a5fa',1,3)}
+  }
+  // 驱动战甲
+  if(S.energy>=3&&!S.suitPowered){
+    S.suitPowered=true;S.goalDone[2]=true;S.arcDone=true;completeLevel(6);renderPanel();
+  }
+  // 环形等离子体粒子
+  if(S.confined&&S.plasmaTemp>1e7){
+    const cx=CW/2+160,cy=CH/2,r=60;
+    if(Math.random()<0.3){
+      const a=Math.random()*Math.PI*2;
+      S.ringParticles.push({angle:a,r:r+(Math.random()-0.5)*10,speed:2+Math.random()*2,life:1,
+        color:S.ignited?'#fbbf24':'#60a5fa'});
+    }
+  }
+  for(let i=S.ringParticles.length-1;i>=0;i--){
+    const p=S.ringParticles[i];p.angle+=p.speed*dt;p.life-=dt*0.5;
+    if(p.life<=0)S.ringParticles.splice(i,1);
+  }
+  if(S.elapsed%0.3<dt)renderPanel();
+}
+
+function drawLevel0(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  // electron orbits
+  ctx.strokeStyle='rgba(100,100,200,0.15)';ctx.lineWidth=1;
+  for(let e of S.electrons){
+    ctx.beginPath();ctx.ellipse(cx,cy,e.rx,e.ry,0,0,Math.PI*2);ctx.stroke();
+  }
+  // nucleons
+  for(let n of S.nucleons){
+    const bx=n.bounce>0?Math.sin(n.bounce*10)*3:0;
+    ctx.fillStyle=n.type==='p'?'#ef4444':'#3b82f6';
+    ctx.beginPath();ctx.arc(n.x+bx,n.y,4+Math.min(S.nucleons.length*.02,2),0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=n.type==='p'?'rgba(239,68,68,0.3)':'rgba(59,130,246,0.3)';
+    ctx.beginPath();ctx.arc(n.x+bx,n.y,6+Math.min(S.nucleons.length*.02,2),0,Math.PI*2);ctx.fill();
+    if(n.bounce>0)n.bounce-=.02;
+  }
+  // electrons
+  for(let e of S.electrons){
+    e.angle+=e.speed*.03;
+    const ex=cx+Math.cos(e.angle)*e.rx,ey=cy+Math.sin(e.angle)*e.ry;
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(ex,ey,2.5,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.3)';ctx.beginPath();ctx.arc(ex,ey,5,0,Math.PI*2);ctx.fill();
+  }
+  // label
+  if(S.protons>0){
+    ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='14px sans-serif';ctx.textAlign='center';
+    ctx.fillText(getElement(S.protons)+'-'+(S.protons+S.neutrons),cx,cy+80);
+  }
+}
+
+function drawLevel1(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  // uranium nucleus
+  if(S.phase!=='done'){
+    const wobble=S.phase==='splitting'?Math.sin(S.splitTime*20)*S.splitTime*15:0;
+    ctx.fillStyle='#22c55e';
+    ctx.beginPath();ctx.ellipse(cx,cy,S.uranium.r+wobble,S.uranium.r-wobble*.5,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(34,197,94,0.3)';ctx.beginPath();ctx.arc(cx,cy,S.uranium.r+10,0,Math.PI*2);ctx.fill();
+    // inner nucleons
+    for(let i=0;i<20;i++){
+      const a=i*0.7,d=Math.sqrt(i/20)*S.uranium.r*.7;
+      ctx.fillStyle=i%3===0?'#ef4444':'#3b82f6';
+      ctx.beginPath();ctx.arc(cx+Math.cos(a+time*.5)*d,cy+Math.sin(a+time*.5)*d,3,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle='#fff';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('铀-235',cx,cy+S.uranium.r+20);
+  }
+  // flying neutron
+  if(S.neutron){
+    ctx.fillStyle='#60a5fa';ctx.beginPath();ctx.arc(S.neutron.x,S.neutron.y,5,0,Math.PI*2);ctx.fill();
+    // trail
+    for(let i=1;i<=5;i++){ctx.globalAlpha=.3-i*.05;ctx.beginPath();ctx.arc(S.neutron.x-S.neutron.vx*.003*i*10,S.neutron.y,4-i*.5,0,Math.PI*2);ctx.fill()}
+    ctx.globalAlpha=1;
+  }
+  // products
+  for(let p of S.products){
+    ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+  }
+  if(S.products.length===2){
+    ctx.fillStyle='#a78bfa';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('钡-141',S.products[0].x,S.products[0].y+S.products[0].r+14);
+    ctx.fillStyle='#34d399';ctx.fillText('氪-92',S.products[1].x,S.products[1].y+S.products[1].r+14);
+  }
+  // free neutrons
+  for(let n of S.freeNeutrons){ctx.fillStyle='#60a5fa';ctx.beginPath();ctx.arc(n.x,n.y,4,0,Math.PI*2);ctx.fill()}
+  // flash
+  if(S.flash>0){ctx.globalAlpha=S.flash*.5;ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(cx,cy,100*S.flash,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+}
+
+function drawLevel2(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  for(let nuc of S.nuclei){
+    if(nuc.alive){ctx.fillStyle='#22c55e';ctx.beginPath();ctx.arc(nuc.x,nuc.y,nuc.r,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(34,197,94,0.2)';ctx.beginPath();ctx.arc(nuc.x,nuc.y,nuc.r+6,0,Math.PI*2);ctx.fill()}
+    else if(nuc.flash>0){ctx.globalAlpha=nuc.flash;ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(nuc.x,nuc.y,nuc.r*2*nuc.flash,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+  }
+  for(let n of S.neutrons){ctx.fillStyle='#60a5fa';ctx.beginPath();ctx.arc(n.x,n.y,3,0,Math.PI*2);ctx.fill()}
+}
+
+function drawLevel3(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  // boundary circle
+  const r=20+S.mass*1.5;
+  ctx.strokeStyle='rgba(100,200,100,0.2)';ctx.lineWidth=2;ctx.setLineDash([5,5]);
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(100,200,100,0.05)';ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+  // mass label
+  ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText(S.mass+'kg',cx,cy+r+20);
+  // nuclei
+  for(let nuc of S.nuclei){
+    if(nuc.alive){ctx.fillStyle='#22c55e';ctx.beginPath();ctx.arc(nuc.x,nuc.y,5,0,Math.PI*2);ctx.fill()}
+    else if(nuc.flash>0){ctx.globalAlpha=nuc.flash;ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(nuc.x,nuc.y,10*nuc.flash,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+  }
+  for(let n of S.neutrons){ctx.fillStyle='#60a5fa';ctx.beginPath();ctx.arc(n.x,n.y,3,0,Math.PI*2);ctx.fill()}
+}
+
+function drawLevel4(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  // temperature background
+  const tNorm=Math.min(S.temp/2e8,1);
+  if(tNorm>.1){
+    const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,300);
+    grd.addColorStop(0,`rgba(${Math.floor(255*tNorm)},${Math.floor(100*tNorm)},0,${tNorm*.15})`);
+    grd.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=grd;ctx.fillRect(0,0,CW,CH);
+  }
+  if(S.fusing&&S.helium){
+    // helium
+    ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(S.helium.x,S.helium.y,S.helium.r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(251,191,36,0.3)';ctx.beginPath();ctx.arc(S.helium.x,S.helium.y,S.helium.r+10,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('氦-4',S.helium.x,S.helium.y+S.helium.r+16);
+  } else if(S.deuterium&&S.tritium){
+    // deuterium
+    ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(S.deuterium.x,S.deuterium.y,S.deuterium.r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(239,68,68,0.3)';ctx.beginPath();ctx.arc(S.deuterium.x,S.deuterium.y,S.deuterium.r+6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('氘',S.deuterium.x,S.deuterium.y+S.deuterium.r+14);
+    // tritium
+    ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(S.tritium.x,S.tritium.y,S.tritium.r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(59,130,246,0.3)';ctx.beginPath();ctx.arc(S.tritium.x,S.tritium.y,S.tritium.r+6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.fillText('氚',S.tritium.x,S.tritium.y+S.tritium.r+14);
+  }
+  // flash
+  if(S.flashAlpha>0){ctx.globalAlpha=Math.min(S.flashAlpha,.8);ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cx,cy,150*S.flashAlpha,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+}
+
+function drawLevel5(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  // reactor vessel
+  const vw=180,vh=240;
+  ctx.strokeStyle='#444';ctx.lineWidth=3;ctx.strokeRect(cx-vw/2,cy-vh/2,vw,vh);
+  ctx.fillStyle='rgba(30,30,60,0.5)';ctx.fillRect(cx-vw/2,cy-vh/2,vw,vh);
+  // fuel rods
+  const fuelGlow=Math.min(S.power/800,1);
+  for(let i=0;i<5;i++){
+    const fx=cx-60+i*30,fy=cy-vh/2+30,fh=vh-60;
+    ctx.fillStyle=`rgba(${50+Math.floor(200*fuelGlow)},${50+Math.floor(100*fuelGlow)},20,0.8)`;
+    ctx.fillRect(fx-4,fy,8,fh);
+    if(fuelGlow>.2){ctx.fillStyle=`rgba(255,${Math.floor(200*(1-fuelGlow))},0,${fuelGlow*.3})`;ctx.fillRect(fx-8,fy,16,fh)}
+  }
+  // control rods
+  const rodY=cy-vh/2+(vh*(S.rodDepth/100))*.7;
+  for(let i=0;i<4;i++){
+    const rx=cx-45+i*30;
+    ctx.fillStyle='#666';ctx.fillRect(rx-3,cy-vh/2-10,6,rodY-(cy-vh/2)+10);
+    ctx.fillStyle='#888';ctx.fillRect(rx-5,rodY-4,10,8);
+  }
+  // neutrons
+  for(let n of S.neutrons){
+    const a=Math.max(0,n.life);ctx.globalAlpha=a;ctx.fillStyle='#60a5fa';
+    ctx.beginPath();ctx.arc(n.x,n.y,2,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  // temperature bar
+  const barX=cx+vw/2+20,barH=vh,barW=12;
+  ctx.fillStyle='#1a1a3a';ctx.fillRect(barX,cy-vh/2,barW,barH);
+  const tFill=Math.min((S.temp-100)/900,1);
+  const tCol=tFill>.8?'#ef4444':tFill>.5?'#fbbf24':'#4ade80';
+  ctx.fillStyle=tCol;ctx.fillRect(barX,cy-vh/2+barH*(1-tFill),barW,barH*tFill);
+  ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(S.temp.toFixed(0)+'°C',barX+barW/2,cy-vh/2-6);
+  // meltdown effect
+  if(S.meltdown){
+    ctx.globalAlpha=.3+.2*Math.sin(time*10);ctx.fillStyle='#ef4444';ctx.fillRect(cx-vw/2,cy-vh/2,vw,vh);ctx.globalAlpha=1;
+    ctx.fillStyle='#f87171';ctx.font='bold 24px sans-serif';ctx.textAlign='center';ctx.fillText('⚠️ 熔毁',cx,cy);
+  }
+  // labels
+  ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('燃料棒',cx,cy+vh/2+16);ctx.fillText('控制棒',cx,cy-vh/2-16);
+}
+
+function drawLevel6(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  // 方舟反应堆外壳（圆形）
+  const outerR=100,innerR=65;
+  // 外圈金属壳
+  ctx.strokeStyle='#555';ctx.lineWidth=4;
+  ctx.beginPath();ctx.arc(cx,cy,outerR,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='#333';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(cx,cy,outerR-8,0,Math.PI*2);ctx.stroke();
+  // 磁场线圈（8段弧线）
+  const magAlpha=Math.min(S.magField/10,1);
+  for(let i=0;i<8;i++){
+    const a=i*Math.PI/4;
+    ctx.strokeStyle=`rgba(96,165,250,${magAlpha*0.8})`;ctx.lineWidth=6;
+    ctx.beginPath();ctx.arc(cx,cy,outerR-4,a-0.15,a+0.15);ctx.stroke();
+  }
+  // 内圈真空室
+  ctx.fillStyle='rgba(10,10,30,0.8)';
+  ctx.beginPath();ctx.arc(cx,cy,innerR,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#444';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(cx,cy,innerR,0,Math.PI*2);ctx.stroke();
+  // 等离子体环
+  if(S.plasmaTemp>1e7){
+    const plasmaAlpha=Math.min((S.plasmaTemp-1e7)/1e8,0.9);
+    const plasmaR=50;
+    const glow=S.ignited?'rgba(251,191,36,':'rgba(96,165,250,';
+    // 等离子体光环
+    ctx.globalAlpha=plasmaAlpha*0.3;
+    ctx.fillStyle=S.ignited?'#fbbf24':'#60a5fa';
+    ctx.beginPath();ctx.arc(cx,cy,plasmaR+10,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=plasmaAlpha*0.6;
+    ctx.strokeStyle=S.ignited?'#fbbf24':'#60a5fa';ctx.lineWidth=8;
+    ctx.beginPath();ctx.arc(cx,cy,plasmaR,0,Math.PI*2);ctx.stroke();
+    ctx.globalAlpha=1;
+    // 环形粒子
+    for(let p of S.ringParticles){
+      const px=cx+Math.cos(p.angle)*p.r,py=cy+Math.sin(p.angle)*p.r;
+      ctx.globalAlpha=p.life;ctx.fillStyle=p.color;
+      ctx.beginPath();ctx.arc(px,py,2,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
+  // 等离子体逃逸效果
+  if(!S.confined&&S.plasmaTemp>1e7){
+    ctx.globalAlpha=0.3+0.2*Math.sin(time*8);
+    ctx.strokeStyle='#f87171';ctx.lineWidth=3;ctx.setLineDash([5,5]);
+    ctx.beginPath();ctx.arc(cx,cy,innerR+15,0,Math.PI*2);ctx.stroke();
+    ctx.setLineDash([]);ctx.globalAlpha=1;
+  }
+  // 中心三角形（钯元素核心）
+  const coreGlow=S.ignited?1:0.3;
+  ctx.fillStyle=`rgba(96,165,250,${coreGlow*0.5})`;
+  ctx.beginPath();
+  ctx.moveTo(cx,cy-20);ctx.lineTo(cx-17,cy+10);ctx.lineTo(cx+17,cy+10);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle=`rgba(147,197,253,${coreGlow})`;ctx.lineWidth=2;ctx.stroke();
+  // 聚变闪光
+  if(S.ignited){
+    const pulse=0.3+0.15*Math.sin(time*6);
+    ctx.globalAlpha=pulse;ctx.fillStyle='#fbbf24';
+    ctx.beginPath();ctx.arc(cx,cy,innerR*0.6,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1;
+  }
+  // 能量输出条
+  const barX=cx+outerR+30,barH=180,barW=14;
+  ctx.fillStyle='#1a1a3a';ctx.fillRect(barX,cy-barH/2,barW,barH);
+  const eFill=Math.min(S.energy/3,1);
+  const eGrad=ctx.createLinearGradient(barX,cy+barH/2,barX,cy-barH/2);
+  eGrad.addColorStop(0,'#1e40af');eGrad.addColorStop(1,'#60a5fa');
+  ctx.fillStyle=eGrad;ctx.fillRect(barX,cy-barH/2+barH*(1-eFill),barW,barH*eFill);
+  ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText(S.energy.toFixed(1)+' GJ',barX+barW/2,cy-barH/2-8);
+  // 战甲（右侧）— Iron Man Mark III
+  if(S.suitPowered){
+    const sx=cx+outerR+105,sy=cy-10;
+    if(!S.laserTime)S.laserTime=0;
+    S.laserTime+=0.016;
+    const laserPhase=S.laserTime%6;
+    const eyeGlow=0.7+0.3*Math.sin(time*3);
+    const arcGlow=0.6+0.3*Math.sin(time*5);
+    ctx.save();
+
+    // ===== 头盔 =====
+    const hx=sx,hy=sy-45;
+    // 头盔后部
+    ctx.fillStyle='#6b1515';
+    ctx.beginPath();ctx.ellipse(hx,hy-2,22,26,0,0,Math.PI*2);ctx.fill();
+    // 头盔主体（红色渐变）
+    const helmGrd=ctx.createLinearGradient(hx-20,hy-20,hx+20,hy+20);
+    helmGrd.addColorStop(0,'#c62828');helmGrd.addColorStop(0.5,'#a01a1a');helmGrd.addColorStop(1,'#7b1414');
+    ctx.fillStyle=helmGrd;
+    ctx.beginPath();ctx.ellipse(hx,hy,20,24,0,0,Math.PI*2);ctx.fill();
+    // 头顶高光
+    ctx.fillStyle='rgba(255,100,100,0.25)';
+    ctx.beginPath();ctx.ellipse(hx-4,hy-14,10,6,-.2,0,Math.PI*2);ctx.fill();
+    // 面罩（金色）
+    const faceGrd=ctx.createLinearGradient(hx,hy-5,hx,hy+20);
+    faceGrd.addColorStop(0,'#d4a830');faceGrd.addColorStop(1,'#a07820');
+    ctx.fillStyle=faceGrd;
+    ctx.beginPath();
+    ctx.moveTo(hx-16,hy-2);
+    ctx.quadraticCurveTo(hx-14,hy+8,hx-10,hy+16);
+    ctx.lineTo(hx-4,hy+20);ctx.lineTo(hx+4,hy+20);
+    ctx.lineTo(hx+10,hy+16);
+    ctx.quadraticCurveTo(hx+14,hy+8,hx+16,hy-2);
+    ctx.quadraticCurveTo(hx,hy-8,hx-16,hy-2);
+    ctx.closePath();ctx.fill();
+    // 面罩中线
+    ctx.strokeStyle='#8b6914';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(hx,hy-6);ctx.lineTo(hx,hy+20);ctx.stroke();
+    // 嘴部格栅
+    ctx.fillStyle='#5a4010';
+    for(let i=0;i<4;i++){ctx.fillRect(hx-6,hy+12+i*2,12,1);}
+    // 眼睛
+    ctx.fillStyle=`rgba(180,230,255,${eyeGlow})`;
+    ctx.shadowColor='rgba(120,220,255,0.8)';ctx.shadowBlur=eyeGlow*12;
+    ctx.beginPath();ctx.moveTo(hx-13,hy-1);ctx.lineTo(hx-4,hy-3);ctx.lineTo(hx-3,hy+4);ctx.lineTo(hx-11,hy+4);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(hx+13,hy-1);ctx.lineTo(hx+4,hy-3);ctx.lineTo(hx+3,hy+4);ctx.lineTo(hx+11,hy+4);ctx.closePath();ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.fillStyle=`rgba(255,255,255,${eyeGlow*0.6})`;
+    ctx.beginPath();ctx.arc(hx-8,hy+1,2,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(hx+8,hy+1,2,0,Math.PI*2);ctx.fill();
+    // 头盔分界线
+    ctx.strokeStyle='#7b1414';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(hx-18,hy-4);ctx.quadraticCurveTo(hx,hy-10,hx+18,hy-4);ctx.stroke();
+
+    // ===== 脖子 =====
+    ctx.fillStyle='#333';ctx.fillRect(sx-8,sy-24,16,8);
+
+    // ===== 躯干 =====
+    const bodyGrd=ctx.createLinearGradient(sx-30,sy,sx+30,sy);
+    bodyGrd.addColorStop(0,'#7b1414');bodyGrd.addColorStop(0.3,'#b71c1c');
+    bodyGrd.addColorStop(0.7,'#b71c1c');bodyGrd.addColorStop(1,'#7b1414');
+    ctx.fillStyle=bodyGrd;
+    ctx.beginPath();ctx.moveTo(sx-30,sy-16);ctx.lineTo(sx+30,sy-16);ctx.lineTo(sx+26,sy+50);ctx.lineTo(sx-26,sy+50);ctx.closePath();ctx.fill();
+    // 胸甲V形
+    ctx.fillStyle='#c8a832';
+    ctx.beginPath();ctx.moveTo(sx,sy-14);ctx.lineTo(sx-26,sy+5);ctx.lineTo(sx-22,sy+10);ctx.lineTo(sx,sy-4);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(sx,sy-14);ctx.lineTo(sx+26,sy+5);ctx.lineTo(sx+22,sy+10);ctx.lineTo(sx,sy-4);ctx.closePath();ctx.fill();
+    // 腹部线条
+    ctx.strokeStyle='#8b1a1a';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(sx-18,sy+20);ctx.lineTo(sx+18,sy+20);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(sx-16,sy+32);ctx.lineTo(sx+16,sy+32);ctx.stroke();
+    ctx.strokeStyle='#a08020';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(sx,sy+10);ctx.lineTo(sx,sy+50);ctx.stroke();
+
+    // 胸口方舟反应堆
+    const arcCx=sx,arcCy=sy+4;
+    ctx.shadowColor='rgba(96,200,255,0.9)';ctx.shadowBlur=arcGlow*25;
+    ctx.strokeStyle=`rgba(120,200,255,${arcGlow*0.8})`;ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(arcCx,arcCy,13,0,Math.PI*2);ctx.stroke();
+    ctx.strokeStyle=`rgba(180,230,255,${arcGlow})`;ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(arcCx,arcCy,9,0,Math.PI*2);ctx.stroke();
+    const coreGrd=ctx.createRadialGradient(arcCx,arcCy,0,arcCx,arcCy,10);
+    coreGrd.addColorStop(0,`rgba(220,245,255,${arcGlow})`);
+    coreGrd.addColorStop(0.5,`rgba(96,200,255,${arcGlow*0.6})`);
+    coreGrd.addColorStop(1,'rgba(96,200,255,0)');
+    ctx.fillStyle=coreGrd;ctx.beginPath();ctx.arc(arcCx,arcCy,13,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=`rgba(255,255,255,${arcGlow*0.4})`;
+    ctx.beginPath();ctx.moveTo(arcCx,arcCy-5);ctx.lineTo(arcCx-4,arcCy+4);ctx.lineTo(arcCx+4,arcCy+4);ctx.closePath();ctx.fill();
+    ctx.shadowBlur=0;
+
+    // ===== 肩甲 =====
+    const lsGrd=ctx.createLinearGradient(sx-48,sy-18,sx-28,sy+5);
+    lsGrd.addColorStop(0,'#c62828');lsGrd.addColorStop(1,'#7b1414');
+    ctx.fillStyle=lsGrd;
+    ctx.beginPath();ctx.moveTo(sx-28,sy-18);ctx.quadraticCurveTo(sx-50,sy-20,sx-48,sy);ctx.quadraticCurveTo(sx-46,sy+8,sx-30,sy+5);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#c8a832';ctx.lineWidth=1;ctx.stroke();
+    const rsGrd=ctx.createLinearGradient(sx+28,sy-18,sx+48,sy+5);
+    rsGrd.addColorStop(0,'#c62828');rsGrd.addColorStop(1,'#7b1414');
+    ctx.fillStyle=rsGrd;
+    ctx.beginPath();ctx.moveTo(sx+28,sy-18);ctx.quadraticCurveTo(sx+50,sy-20,sx+48,sy);ctx.quadraticCurveTo(sx+46,sy+8,sx+30,sy+5);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#c8a832';ctx.lineWidth=1;ctx.stroke();
+
+    // ===== 左臂（伸出发射）=====
+    ctx.fillStyle='#b71c1c';
+    ctx.beginPath();ctx.moveTo(sx-46,sy);ctx.lineTo(sx-50,sy+4);ctx.lineTo(sx-72,sy+18);ctx.lineTo(sx-68,sy+12);ctx.closePath();ctx.fill();
+    const palmX=sx-95,palmY=sy+22;
+    const armGrd=ctx.createLinearGradient(sx-68,sy+15,palmX,palmY);
+    armGrd.addColorStop(0,'#b71c1c');armGrd.addColorStop(1,'#8b1a1a');
+    ctx.fillStyle=armGrd;
+    ctx.beginPath();ctx.moveTo(sx-68,sy+12);ctx.lineTo(sx-72,sy+20);ctx.lineTo(palmX+10,palmY+7);ctx.lineTo(palmX+10,palmY-7);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#a08020';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(sx-70,sy+16);ctx.lineTo(palmX+12,palmY);ctx.stroke();
+    // 手掌
+    ctx.fillStyle='#c8a832';
+    ctx.beginPath();ctx.moveTo(palmX+8,palmY-8);ctx.lineTo(palmX-4,palmY-10);ctx.lineTo(palmX-8,palmY);ctx.lineTo(palmX-4,palmY+10);ctx.lineTo(palmX+8,palmY+8);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#b89828';ctx.lineWidth=2;
+    const fingers=[[-10,-8,-16,-12],[-12,-4,-20,-5],[-12,0,-20,0],[-10,5,-18,8],[-6,9,-12,15]];
+    for(const f of fingers){ctx.beginPath();ctx.moveTo(palmX+f[0],palmY+f[1]);ctx.lineTo(palmX+f[2],palmY+f[3]);ctx.stroke();}
+    // 掌心 Repulsor
+    const palmGlow=0.5+0.4*Math.sin(time*6);
+    ctx.shadowColor='rgba(96,200,255,0.8)';ctx.shadowBlur=palmGlow*15;
+    const palmGrd=ctx.createRadialGradient(palmX-2,palmY,0,palmX-2,palmY,8);
+    palmGrd.addColorStop(0,`rgba(220,245,255,${palmGlow})`);
+    palmGrd.addColorStop(0.5,`rgba(96,200,255,${palmGlow*0.6})`);
+    palmGrd.addColorStop(1,'rgba(96,200,255,0)');
+    ctx.fillStyle=palmGrd;ctx.beginPath();ctx.arc(palmX-2,palmY,8,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+
+    // ===== 右臂 =====
+    ctx.fillStyle='#b71c1c';
+    ctx.beginPath();ctx.moveTo(sx+46,sy);ctx.lineTo(sx+50,sy+4);ctx.lineTo(sx+56,sy+40);ctx.lineTo(sx+48,sy+40);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#a08020';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(sx+48,sy+2);ctx.lineTo(sx+52,sy+40);ctx.stroke();
+    ctx.fillStyle='#c8a832';ctx.beginPath();ctx.arc(sx+52,sy+44,6,0,Math.PI*2);ctx.fill();
+
+    // ===== Repulsor Blast =====
+    if(laserPhase>1&&laserPhase<4){
+      const bp=Math.min((laserPhase-1)/0.3,1);
+      const bLen=280*bp,bX=palmX-bLen-20;
+      ctx.shadowColor='rgba(120,220,255,0.9)';ctx.shadowBlur=15;
+      ctx.strokeStyle='rgba(220,245,255,0.95)';ctx.lineWidth=4;
+      ctx.beginPath();ctx.moveTo(palmX-14,palmY);ctx.lineTo(bX,palmY);ctx.stroke();
+      ctx.strokeStyle='rgba(96,200,255,0.5)';ctx.lineWidth=12;
+      ctx.beginPath();ctx.moveTo(palmX-14,palmY);ctx.lineTo(bX,palmY);ctx.stroke();
+      ctx.globalAlpha=0.15;ctx.strokeStyle='rgba(96,200,255,1)';ctx.lineWidth=28;
+      ctx.beginPath();ctx.moveTo(palmX-14,palmY);ctx.lineTo(bX,palmY);ctx.stroke();
+      ctx.globalAlpha=1;ctx.shadowBlur=0;
+      const cGrd=ctx.createRadialGradient(palmX-2,palmY,0,palmX-2,palmY,25);
+      cGrd.addColorStop(0,'rgba(220,245,255,0.9)');cGrd.addColorStop(1,'rgba(96,200,255,0)');
+      ctx.fillStyle=cGrd;ctx.beginPath();ctx.arc(palmX-2,palmY,25,0,Math.PI*2);ctx.fill();
+      if(bp>=1){
+        for(let i=0;i<5;i++){const sa=Math.random()*Math.PI*2,sd=Math.random()*20+5;
+          ctx.fillStyle=`rgba(200,240,255,${0.4+Math.random()*0.6})`;
+          ctx.beginPath();ctx.arc(bX+Math.cos(sa)*sd,palmY+Math.sin(sa)*sd,1+Math.random()*2.5,0,Math.PI*2);ctx.fill();}
+        const hGrd=ctx.createRadialGradient(bX,palmY,0,bX,palmY,30);
+        hGrd.addColorStop(0,'rgba(200,240,255,0.4)');hGrd.addColorStop(1,'rgba(96,200,255,0)');
+        ctx.fillStyle=hGrd;ctx.beginPath();ctx.arc(bX,palmY,30,0,Math.PI*2);ctx.fill();
+      }
+    }
+    if(laserPhase>0.3&&laserPhase<=1){
+      const ch=(laserPhase-0.3)/0.7;
+      ctx.shadowColor='rgba(96,200,255,0.6)';ctx.shadowBlur=ch*20;
+      const chGrd=ctx.createRadialGradient(palmX-2,palmY,0,palmX-2,palmY,8+ch*15);
+      chGrd.addColorStop(0,`rgba(220,245,255,${ch*0.8})`);chGrd.addColorStop(1,'rgba(96,200,255,0)');
+      ctx.fillStyle=chGrd;ctx.beginPath();ctx.arc(palmX-2,palmY,8+ch*15,0,Math.PI*2);ctx.fill();
+      ctx.shadowBlur=0;
+    }
+    ctx.restore();
+  }
+
+  // 标签
+  ctx.fillStyle='rgba(255,255,255,0.4)';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('方舟反应堆',cx,cy+outerR+20);
+  if(S.magField>0)ctx.fillText(`磁场 ${S.magField.toFixed(1)}T`,cx,cy-outerR-10);
+}
+
+let lastTime=0;
+function mainLoop(ts){
+  const dt=Math.min((ts-lastTime)/1000,.05);lastTime=ts;time+=dt;
+  // 淡入效果
+  if(levelFadeAlpha<1)levelFadeAlpha=Math.min(1,levelFadeAlpha+dt*2.5);
+  // 屏幕震动衰减
+  if(screenShake.intensity>0){
+    screenShake.x=(Math.random()-0.5)*screenShake.intensity;
+    screenShake.y=(Math.random()-0.5)*screenShake.intensity;
+    screenShake.intensity*=0.92;
+    if(screenShake.intensity<0.5)screenShake.intensity=0;
+  } else {screenShake.x=0;screenShake.y=0}
+  // 庆祝粒子更新
+  for(let i=celebrationParticles.length-1;i>=0;i--){
+    const p=celebrationParticles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.gy*dt;p.life-=dt;
+    if(p.life<=0)celebrationParticles.splice(i,1);
+  }
+  ctx.clearRect(0,0,CW,CH);
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,CW,CH);
+  drawStars();
+  if(gameState==='play'){
+    ctx.save();
+    ctx.translate(screenShake.x,screenShake.y);
+    ctx.globalAlpha=levelFadeAlpha;
+    updateParticles(dt);
+    if(currentLevel===0)drawLevel0();
+    else if(currentLevel===1){updateFission(dt);drawLevel1()}
+    else if(currentLevel===2){updateChain(dt);drawLevel2()}
+    else if(currentLevel===3){updateCritical(dt);drawLevel3()}
+    else if(currentLevel===4){updateFusion(dt);drawLevel4()}
+    else if(currentLevel===5){updateReactor(dt);drawLevel5()}
+    else if(currentLevel===6){updateArc(dt);drawLevel6()}
+    drawParticles();
+    ctx.globalAlpha=1;
+    ctx.restore();
+    // 庆祝粒子（不受淡入和震动影响）
+    for(let p of celebrationParticles){
+      const a=Math.max(0,p.life/p.ml);
+      ctx.globalAlpha=a;ctx.fillStyle=p.col;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.sz*a,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
+  animId=requestAnimationFrame(mainLoop);
+}
+animId=requestAnimationFrame(mainLoop);
+</script>
+</body>
+</html>

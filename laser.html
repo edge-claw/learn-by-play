@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>激光物理交互式教育</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#60a5fa}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}
+.g-text{color:#c0c0e0}
+.g-text.done{color:#4ade80;text-decoration:line-through}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:#2a2a6a}
+.act-btn:disabled{opacity:0.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}
+.sv{color:#60a5fa;font-weight:bold}
+.m-title{font-size:16px;font-weight:700;margin:8px 0 4px;color:#eee}
+.m-sub{font-size:12px;color:#888;margin-bottom:8px}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:rgba(10,10,26,.95);border-top:1px solid #1a1a3a;z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}
+#bottom-bar .bb-right{text-align:right}
+.overlay .result-box{text-align:center;max-width:420px;background:rgba(10,10,26,.98);border:1px solid #2a2a5a;border-radius:16px;padding:28px 36px}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-learn{text-align:left;background:#0e0e20;border-radius:8px;padding:12px 14px;font-size:12px;color:#93c5fd;line-height:1.7;margin-bottom:16px}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#3b82f6;color:#fff}
+.result-box .btn-retry{background:#2a2a5a;color:#ccc}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🔬 <span class="gold">激光物理</span>原理探险</h1>
+  <div class="sub">7 个关卡，亲手体验激光的奥秘</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">⚛️</div>能级跃迁</div>
+    <div class="feat"><div class="fi">💡</div>受激辐射</div>
+    <div class="feat"><div class="fi">📊</div>粒子数反转</div>
+    <div class="feat"><div class="fi">🪞</div>谐振腔</div>
+    <div class="feat"><div class="fi">🔴</div>激光类型</div>
+    <div class="feat"><div class="fi">⚡</div>锁模</div>
+    <div class="feat"><div class="fi">🏭</div>激光应用</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,animId;
+let gameState='start',currentLevel=0;
+let levelState={},stars=[],particles=[];
+const completedLevels=new Set();
+
+const levels=[
+{title:'能级跃迁',sub:'玻尔原子模型',concept:'原子中电子只能在特定能级轨道上运动。吸收光子→电子跳到高能级（激发）；释放光子→电子跳回低能级（退激发），发出的光子能量等于两能级之差。',goals:['吸收光子使电子跃迁到高能级','释放光子使电子回到低能级','完成3次完整跃迁循环'],learn:'这就是玻尔模型的核心：电子轨道是量子化的，只有特定能量的光子才能被吸收或发射。不同能级差对应不同颜色的光——这是光谱学的基础，也是激光的起点。'},
+{title:'受激辐射',sub:'爱因斯坦的预言',concept:'一个光子飞过处于激发态的原子，会"刺激"原子释放一个完全相同的光子（同频率、同方向、同相位）。两个光子继续触发更多原子→链式放大。这就是LASER中的SE（Stimulated Emission）。',goals:['观察光子触发受激辐射','产生链式放大效应','光子数达到16个以上'],learn:'爱因斯坦在1917年预言了受激辐射。关键在于：受激发射的光子与入射光子完全一致——同频率、同方向、同相位。这种"克隆"能力是激光相干性的根源。'},
+{title:'粒子数反转',sub:'激光的必要条件',concept:'正常情况下低能级粒子多（热平衡）。要实现激光，必须让高能级粒子数超过低能级——即粒子数反转。三能级系统：泵浦光 E1→E3，快速弛豫 E3→E2，当 N2>N1 时实现反转。',goals:['理解热平衡态（N1>N2）','调节泵浦功率实现粒子数反转','维持反转状态3秒以上'],learn:'粒子数反转是激光的必要条件。在热平衡下，低能级粒子总是更多（玻尔兹曼分布）。泵浦的作用就是打破这个平衡——把大量原子从基态"泵"到激发态，为受激辐射创造条件。'},
+{title:'谐振腔',sub:'法布里-珀罗腔',concept:'两面平行镜子构成谐振腔：左镜全反射（R=100%），右镜部分透射（R≈98%）。光在腔内来回反射被放大，满足驻波条件的频率被选择性放大（纵模）。部分光从右镜透出=激光输出。',goals:['观察光在腔内来回反射','调节镜距观察不同纵模','从输出镜获得激光输出'],learn:'谐振腔的作用：①正反馈放大——光每经过增益介质一次就被放大；②模式选择——只有满足 L=nλ/2 的频率才能形成驻波并被放大。法布里-珀罗腔是最基本的激光谐振腔结构。'},
+{title:'激光类型',sub:'三大激光器',concept:'气体激光器（He-Ne）：氦氖混合气体，输出632.8nm红光，用于精密测量。固体激光器（Nd:YAG）：掺钕钇铝石榴石晶体，1064nm倍频后532nm绿光，用于工业加工。半导体激光器（GaAs）：砷化镓PN结，808nm红外光，用于光纤通信。',goals:['查看气体激光器(He-Ne)','查看固体激光器(Nd:YAG)','查看半导体激光器(GaAs)'],learn:'三种激光器各有所长：He-Ne激光器光束质量极好，是精密测量的标准；Nd:YAG功率大，是工业切割焊接的主力；半导体激光器体积小、效率高，是光纤通信和日常应用（激光笔、CD）的核心。'},
+{title:'锁模',sub:'飞秒脉冲',concept:'激光腔内同时存在多个纵模（不同频率）。未锁模时各模式相位随机，输出近似连续。锁模=强制所有模式相位同步，干涉叠加产生超短脉冲（飞秒级，10⁻¹⁵秒），峰值功率极高。',goals:['观察未锁模的连续输出','锁定所有模式的相位','产生飞秒级超短脉冲'],learn:'锁模是产生超短脉冲的核心技术。N个模式锁模后，脉冲宽度≈1/(N×Δν)，峰值功率是平均功率的N倍。飞秒激光（10⁻¹⁵秒）能在材料来不及传热时完成加工——这就是"冷加工"，可以切割任何材料而不产生热损伤。'},
+{title:'激光应用',sub:'改变世界的光',concept:'激光在现代科技中无处不在：精密切割（聚焦能量密度极高）、光纤通信（激光脉冲编码信息，光速传输）、激光冷却（用光子动量减速原子，达到微开尔文超低温）。',goals:['完成精密切割任务','完成光纤通信编码','完成激光冷却实验'],learn:'激光应用展示了光的三个极致：①极高能量密度——聚焦到微米级切割任何材料；②极高信息容量——单根光纤每秒传输数十太比特数据；③极低温度——激光冷却把原子减速到接近绝对零度，是玻色-爱因斯坦凝聚的关键技术。'}
+];
+
+function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
+function initStars(){stars=[];for(let i=0;i<80;i++)stars.push({x:Math.random()*CW,y:Math.random()*CH,r:Math.random()*1.5+.3,tw:Math.random()*Math.PI*2,sp:Math.random()*.02+.005})}
+function drawStars(){for(let s of stars){const a=.4+.6*Math.abs(Math.sin(s.tw+time*s.sp));ctx.fillStyle=`rgba(255,255,255,${a})`;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill()}}
+function addP(x,y,vx,vy,col,life,sz){particles.push({x,y,vx,vy,col,life,ml:life,sz:sz||3})}
+function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1)}}
+function drawParticles(){for(let p of particles){const a=Math.max(0,p.life/p.ml);ctx.globalAlpha=a;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.sz*a,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+window.addEventListener('resize',resize);resize();
+
+function startGame(){document.getElementById('startScreen').classList.add('hidden');document.getElementById('panel').style.display='block';document.getElementById('bottom-bar').style.display='flex';gameState='play';currentLevel=0;initLevel(0);renderPanel()}
+
+function initLevel(idx){
+currentLevel=idx;particles=[];
+const cx=CW/2+160,cy=CH/2;
+if(idx===0){
+  levelState={electronLevel:1,maxLevel:4,cycles:0,animating:false,photons:[],goalDone:[false,false,false]};
+}else if(idx===1){
+  levelState={atoms:[],photons:[],started:false,chainCount:0,goalDone:[false,false,false]};
+  const ax=cx,ay=cy;
+  for(let i=0;i<20;i++){const a=Math.random()*Math.PI*2,d=Math.random()*180+40;levelState.atoms.push({x:ax+Math.cos(a)*d,y:ay+Math.sin(a)*d,excited:true,r:12})}
+}else if(idx===2){
+  levelState={pumpPower:0,n1:100,n2:0,n3:0,inverted:false,invertedTime:0,goalDone:[false,false,false],sawNormal:false};
+}else if(idx===3){
+  levelState={mirrorDist:200,photons:[],outputPhotons:[],modeNum:3,started:false,outputCount:0,goalDone:[false,false,false],adjustedDist:false};
+}else if(idx===4){
+  levelState={laserType:0,viewed:[false,false,false],goalDone:[false,false,false]};
+}else if(idx===5){
+  levelState={modeCount:5,locked:false,modes:[],pulseTime:0,goalDone:[false,false,false],sawCW:false};
+  for(let i=0;i<5;i++)levelState.modes.push({freq:1+i*0.5,phase:Math.random()*Math.PI*2,amp:1});
+}else if(idx===6){
+  levelState={scene:0,goalDone:[false,false,false],
+    cutPath:[],cutting:false,cutDone:false,
+    bits:[1,0,1,1,0,0,1,0],bitIdx:0,commDone:false,sending:false,pulseX:0,
+    atoms:[],cooled:false,temp:300,coolStarted:false};
+  for(let i=0;i<30;i++)levelState.atoms.push({x:cx+Math.random()*200-100,y:cy+Math.random()*200-100,vx:(Math.random()-0.5)*3,vy:(Math.random()-0.5)*3});
+}
+renderPanel();
+}
+
+function switchLevel(idx){if(idx>=0&&idx<levels.length){initLevel(idx);renderPanel()}}
+
+function completeLevel(idx){
+if(!completedLevels.has(idx)){completedLevels.add(idx);renderPanel()}
+}
+
+function renderPanel(){
+const L=levels[currentLevel],S=levelState,p=document.getElementById('panel');
+let h='<div style="margin-bottom:8px">';
+for(let i=0;i<levels.length;i++){
+  let cls='level-btn';if(i===currentLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
+  h+=`<span class="${cls}" onclick="switchLevel(${i})">第${i+1}关</span>`;
+}
+h+='</div>';
+h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
+h+=`<div class="concept-box">${L.concept}</div>`;
+h+='<div style="margin:8px 0;font-size:12px;color:#888;font-weight:600">目标清单</div>';
+for(let i=0;i<L.goals.length;i++){
+  const done=S.goalDone&&S.goalDone[i];
+  h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`;
+}
+h+=renderLevelActions();
+if(S.goalDone&&S.goalDone.every(g=>g)){
+  h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
+  if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
+  else h+=`<div style="text-align:center;color:#4ade80;font-size:14px;margin:12px 0">🎉 全部通关！</div>`;
+}
+p.innerHTML=h;
+document.getElementById('bbLeft').textContent=`第 ${currentLevel+1} 关：${L.title}`;
+document.getElementById('bbRight').textContent=`已完成 ${completedLevels.size}/${levels.length}`;
+}
+
+function renderLevelActions(){
+const S=levelState;let h='';
+if(currentLevel===0){
+  h+=`<div class="hint-box">当前能级：E${S.electronLevel}（共4级）| 完成循环：${S.cycles}/3</div>`;
+  h+=`<button class="act-btn" onclick="absorbPhoton()" ${S.electronLevel>=S.maxLevel||S.animating?'disabled':''}>吸收光子 ↑ 跃迁到 E${Math.min(S.electronLevel+1,S.maxLevel)}</button>`;
+  h+=`<button class="act-btn" onclick="emitPhoton()" ${S.electronLevel<=1||S.animating?'disabled':''}>释放光子 ↓ 跃迁到 E${Math.max(S.electronLevel-1,1)}</button>`;
+}else if(currentLevel===1){
+  h+=`<div class="hint-box">激发态原子：${S.atoms.filter(a=>a.excited).length} | 光子数：${S.photons.length}</div>`;
+  if(!S.started)h+=`<button class="act-btn" onclick="startStimulated()">发射初始光子 →</button>`;
+  else h+=`<button class="act-btn" onclick="resetStimulated()">重置实验</button>`;
+}else if(currentLevel===2){
+  h+=`<div class="hint-box">E1粒子：${Math.round(S.n1)} | E2粒子：${Math.round(S.n2)} | E3粒子：${Math.round(S.n3)}<br>状态：${S.n2>S.n1?'<span style="color:#4ade80">已反转!</span>':'<span style="color:#f87171">未反转</span>'}</div>`;
+  h+=`<div class="slider-wrap"><label>泵浦功率：<span class="sv">${S.pumpPower}%</span></label><input type="range" min="0" max="100" value="${S.pumpPower}" oninput="setPumpPower(this.value)"></div>`;
+}else if(currentLevel===3){
+  h+=`<div class="hint-box">镜距：${S.mirrorDist}px | 纵模数：${S.modeNum} | 输出光子：${S.outputCount}</div>`;
+  h+=`<div class="slider-wrap"><label>镜间距离：<span class="sv">${S.mirrorDist}px</span></label><input type="range" min="100" max="400" value="${S.mirrorDist}" oninput="setMirrorDist(this.value)"></div>`;
+  if(!S.started)h+=`<button class="act-btn" onclick="startCavity()">注入光子</button>`;
+  else h+=`<button class="act-btn" onclick="resetCavity()">重置</button>`;
+}else if(currentLevel===4){
+  const types=['He-Ne 气体激光器 (632.8nm)','Nd:YAG 固体激光器 (532nm)','GaAs 半导体激光器 (808nm)'];
+  for(let i=0;i<3;i++){
+    h+=`<button class="act-btn${S.laserType===i?' green':''}" onclick="selectLaserType(${i})">${types[i]}${S.viewed[i]?' ✓':''}</button>`;
+  }
+}else if(currentLevel===5){
+  h+=`<div class="hint-box">纵模数：${S.modeCount} | 状态：${S.locked?'已锁模 🔒':'未锁模 🔓'}</div>`;
+  h+=`<div class="slider-wrap"><label>纵模数量：<span class="sv">${S.modeCount}</span></label><input type="range" min="3" max="15" value="${S.modeCount}" oninput="setModeCount(this.value)"></div>`;
+  if(!S.locked)h+=`<button class="act-btn" onclick="lockModes()">锁定相位 🔒</button>`;
+  else h+=`<button class="act-btn" onclick="unlockModes()">解锁相位 🔓</button>`;
+}else if(currentLevel===6){
+  const scenes=['精密切割','光纤通信','激光冷却'];
+  for(let i=0;i<3;i++){
+    h+=`<button class="act-btn${S.scene===i?' green':''}" onclick="selectScene(${i})">${scenes[i]}${S.goalDone[i]?' ✓':''}</button>`;
+  }
+  if(S.scene===0&&!S.cutDone)h+=`<div class="hint-box">在画布上拖动鼠标画切割路径</div>`;
+  if(S.scene===1&&!S.commDone){h+=`<div class="hint-box">点击"发送"按钮传输二进制信号：${S.bits.join('')}</div>`;h+=`<button class="act-btn" onclick="startComm()" ${S.sending?'disabled':''}>发送信号</button>`;}
+  if(S.scene===2&&!S.cooled){h+=`<div class="hint-box">温度：${S.temp.toFixed(1)}K — 点击开启激光冷却</div>`;h+=`<button class="act-btn" onclick="startCooling()" ${S.coolStarted?'disabled':''}>开启激光冷却</button>`;}
+}
+return h;
+}
+
+// === Level 0: Energy Level Transitions ===
+function absorbPhoton(){
+const S=levelState;if(S.electronLevel>=S.maxLevel||S.animating)return;
+S.animating=true;S.electronLevel++;
+S.goalDone[0]=true;
+const cx=CW/2+160,cy=CH/2;
+for(let i=0;i<8;i++)addP(cx+Math.random()*40-20,cy+Math.random()*40-20,(Math.random()-0.5)*2,(Math.random()-0.5)*2,'#fbbf24',1,4);
+setTimeout(()=>{S.animating=false;renderPanel()},500);
+renderPanel();
+}
+function emitPhoton(){
+const S=levelState;if(S.electronLevel<=1||S.animating)return;
+S.animating=true;
+const fromLevel=S.electronLevel;S.electronLevel--;
+S.goalDone[1]=true;
+const colors=['#ff6b6b','#fbbf24','#4ade80','#60a5fa'];
+const col=colors[fromLevel-2]||'#fff';
+const cx=CW/2+160,cy=CH/2;
+S.photons.push({x:cx,y:cy,vx:3,vy:0,col,life:120,r:5});
+if(S.electronLevel===1){S.cycles++;if(S.cycles>=3){S.goalDone[2]=true;}}
+setTimeout(()=>{S.animating=false;renderPanel()},500);
+renderPanel();
+}
+
+// === Level 1: Stimulated Emission ===
+function startStimulated(){
+const S=levelState;S.started=true;
+const cx=CW/2+160,cy=CH/2;
+S.photons.push({x:cx-250,y:cy,vx:2,vy:0,col:'#ff6b6b',r:5});
+renderPanel();
+}
+function resetStimulated(){
+const S=levelState;S.started=false;S.photons=[];S.chainCount=0;
+for(let a of S.atoms)a.excited=true;
+S.goalDone=[false,false,false];renderPanel();
+}
+
+// === Level 2: Population Inversion ===
+function setPumpPower(v){
+levelState.pumpPower=parseInt(v);
+if(!levelState.sawNormal&&levelState.pumpPower===0){levelState.sawNormal=true;levelState.goalDone[0]=true;}
+renderPanel();
+}
+
+// === Level 3: Resonant Cavity ===
+function setMirrorDist(v){
+const S=levelState;S.mirrorDist=parseInt(v);S.modeNum=Math.max(1,Math.round(S.mirrorDist/60));
+if(!S.adjustedDist){S.adjustedDist=true;S.goalDone[1]=true;renderPanel();}
+}
+function startCavity(){
+const S=levelState;S.started=true;S.photons=[];S.outputPhotons=[];S.outputCount=0;
+const cx=CW/2+160,cy=CH/2;
+S.photons.push({x:cx-S.mirrorDist/2+20,y:cy,vx:3,vy:0,bounces:0});
+S.goalDone[0]=true;renderPanel();
+}
+function resetCavity(){
+const S=levelState;S.started=false;S.photons=[];S.outputPhotons=[];S.outputCount=0;
+S.goalDone=[false,S.goalDone[1],false];renderPanel();
+}
+
+// === Level 4: Laser Types ===
+function selectLaserType(t){
+const S=levelState;S.laserType=t;S.viewed[t]=true;
+S.goalDone[t]=true;
+if(S.viewed.every(v=>v)){S.goalDone=[true,true,true];}
+renderPanel();
+}
+
+// === Level 5: Mode Locking ===
+function setModeCount(v){
+const S=levelState;S.modeCount=parseInt(v);
+S.modes=[];for(let i=0;i<S.modeCount;i++)S.modes.push({freq:1+i*0.5,phase:S.locked?0:Math.random()*Math.PI*2,amp:1});
+renderPanel();
+}
+function lockModes(){
+const S=levelState;S.locked=true;
+for(let m of S.modes)m.phase=0;
+if(S.sawCW){S.goalDone[1]=true;S.goalDone[2]=true;}
+renderPanel();
+}
+function unlockModes(){
+const S=levelState;S.locked=false;
+for(let m of S.modes)m.phase=Math.random()*Math.PI*2;
+S.sawCW=true;S.goalDone[0]=true;
+renderPanel();
+}
+
+// === Level 6: Applications ===
+function selectScene(s){levelState.scene=s;renderPanel();}
+function startComm(){
+const S=levelState;S.sending=true;S.bitIdx=0;S.pulseX=0;renderPanel();
+}
+function startCooling(){
+const S=levelState;S.coolStarted=true;renderPanel();
+}
+
+// === Mouse handling for cutting ===
+let mouseDown=false,lastMX=0,lastMY=0;
+canvas.addEventListener('mousedown',e=>{
+if(currentLevel===6&&levelState.scene===0&&!levelState.cutDone){
+  mouseDown=true;levelState.cutting=true;levelState.cutPath=[];
+  lastMX=e.clientX;lastMY=e.clientY;
+  levelState.cutPath.push({x:e.clientX,y:e.clientY});
+}});
+canvas.addEventListener('mousemove',e=>{
+if(mouseDown&&currentLevel===6&&levelState.scene===0){
+  levelState.cutPath.push({x:e.clientX,y:e.clientY});
+  lastMX=e.clientX;lastMY=e.clientY;
+}});
+canvas.addEventListener('mouseup',()=>{
+if(mouseDown&&currentLevel===6&&levelState.scene===0){
+  mouseDown=false;levelState.cutting=false;
+  if(levelState.cutPath.length>10){levelState.cutDone=true;levelState.goalDone[0]=true;renderPanel();}
+}});
+
+// === DRAW LEVEL 0: Energy Level Transitions ===
+function drawLevel0(dt){
+const S=levelState,cx=CW/2+160,cy=CH/2;
+const orbR=[0,60,100,140,180];
+// Draw nucleus
+ctx.fillStyle='#f87171';ctx.beginPath();ctx.arc(cx,cy,18,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#fff';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('核',cx,cy);
+// Draw orbits and energy labels
+for(let i=1;i<=4;i++){
+  ctx.strokeStyle=i===S.electronLevel?'rgba(96,165,250,0.6)':'rgba(255,255,255,0.1)';
+  ctx.lineWidth=i===S.electronLevel?2:1;
+  ctx.beginPath();ctx.arc(cx,cy,orbR[i],0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='#666';ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText(`E${i}`,cx+orbR[i]+8,cy);
+}
+// Draw electron
+const eAngle=time*2;const er=orbR[S.electronLevel];
+const ex=cx+Math.cos(eAngle)*er,ey=cy+Math.sin(eAngle)*er;
+ctx.fillStyle='#60a5fa';ctx.shadowColor='#60a5fa';ctx.shadowBlur=15;
+ctx.beginPath();ctx.arc(ex,ey,8,0,Math.PI*2);ctx.fill();
+ctx.shadowBlur=0;
+ctx.fillStyle='#fff';ctx.font='bold 8px sans-serif';ctx.textAlign='center';ctx.fillText('e⁻',ex,ey+1);
+// Draw photons
+for(let i=S.photons.length-1;i>=0;i--){
+  const ph=S.photons[i];ph.x+=ph.vx;ph.life--;
+  if(ph.life<=0){S.photons.splice(i,1);continue;}
+  ctx.fillStyle=ph.col;ctx.shadowColor=ph.col;ctx.shadowBlur=12;
+  ctx.beginPath();ctx.arc(ph.x,ph.y,ph.r,0,Math.PI*2);ctx.fill();
+  // Wave trail
+  ctx.strokeStyle=ph.col;ctx.lineWidth=1.5;ctx.globalAlpha=0.5;
+  ctx.beginPath();
+  for(let t=0;t<30;t++){const tx=ph.x-t*2,ty=ph.y+Math.sin(t*0.5+time*5)*4;if(t===0)ctx.moveTo(tx,ty);else ctx.lineTo(tx,ty);}
+  ctx.stroke();ctx.globalAlpha=1;ctx.shadowBlur=0;
+}
+// Energy diagram on right
+const dx=cx+250,dy=cy-120;
+ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('能级图',dx,dy-10);
+for(let i=1;i<=4;i++){
+  const ly=dy+200-i*45;
+  ctx.strokeStyle=i===S.electronLevel?'#60a5fa':'#444';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(dx-40,ly);ctx.lineTo(dx+40,ly);ctx.stroke();
+  ctx.fillStyle=i===S.electronLevel?'#60a5fa':'#666';ctx.textAlign='right';ctx.font='11px sans-serif';
+  ctx.fillText(`E${i}`,dx-48,ly+4);
+  if(i===S.electronLevel){ctx.fillStyle='#60a5fa';ctx.beginPath();ctx.arc(dx,ly,5,0,Math.PI*2);ctx.fill();}
+}
+}
+
+// === DRAW LEVEL 1: Stimulated Emission ===
+function drawLevel1(dt){
+const S=levelState,cx=CW/2+160,cy=CH/2;
+// Draw atoms
+for(let a of S.atoms){
+  ctx.fillStyle=a.excited?'#fbbf24':'#444';ctx.shadowColor=a.excited?'#fbbf24':'transparent';ctx.shadowBlur=a.excited?10:0;
+  ctx.beginPath();ctx.arc(a.x,a.y,a.r,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+  if(a.excited){ctx.fillStyle='#fff';ctx.font='8px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('*',a.x,a.y);}
+}
+// Update and draw photons
+for(let i=S.photons.length-1;i>=0;i--){
+  const ph=S.photons[i];ph.x+=ph.vx;ph.y+=ph.vy;
+  // Check collision with excited atoms
+  for(let a of S.atoms){
+    if(a.excited&&Math.hypot(ph.x-a.x,ph.y-a.y)<a.r+ph.r){
+      a.excited=false;S.chainCount++;
+      // Spawn clone photon same direction
+      S.photons.push({x:a.x,y:a.y,vx:ph.vx+(Math.random()-0.5)*0.3,vy:ph.vy+(Math.random()-0.5)*0.3,col:ph.col,r:5});
+      if(S.chainCount>=1&&!S.goalDone[0]){S.goalDone[0]=true;renderPanel();}
+      if(S.chainCount>=3&&!S.goalDone[1]){S.goalDone[1]=true;renderPanel();}
+      for(let j=0;j<5;j++)addP(a.x,a.y,(Math.random()-0.5)*3,(Math.random()-0.5)*3,'#fbbf24',0.8,3);
+      break;
+    }
+  }
+  if(ph.x<320||ph.x>CW||ph.y<0||ph.y>CH){S.photons.splice(i,1);continue;}
+  ctx.fillStyle=ph.col;ctx.shadowColor=ph.col;ctx.shadowBlur=10;
+  ctx.beginPath();ctx.arc(ph.x,ph.y,ph.r,0,Math.PI*2);ctx.fill();
+  // Wave trail
+  const len=20;ctx.strokeStyle=ph.col;ctx.lineWidth=1.5;ctx.globalAlpha=0.4;ctx.beginPath();
+  for(let t=0;t<len;t++){const tx=ph.x-ph.vx*t*3/2,ty=ph.y-ph.vy*t*3/2+Math.sin(t*0.6+time*5)*3;if(t===0)ctx.moveTo(tx,ty);else ctx.lineTo(tx,ty);}
+  ctx.stroke();ctx.globalAlpha=1;ctx.shadowBlur=0;
+}
+if(S.photons.length>=16&&!S.goalDone[2]){S.goalDone[2]=true;renderPanel();}
+// Info
+ctx.fillStyle='#888';ctx.font='13px sans-serif';ctx.textAlign='center';
+ctx.fillText(`光子数: ${S.photons.length}`,cx,cy+220);
+}
+
+// === DRAW LEVEL 2: Population Inversion ===
+function drawLevel2(dt){
+const S=levelState,cx=CW/2+160,cy=CH/2;
+// Pump dynamics
+const pump=S.pumpPower/100;
+const decayRate3=8,decayRate2=0.5;
+S.n3+=pump*2*dt*60-S.n3*decayRate3*dt;
+S.n2+=S.n3*decayRate3*dt-S.n2*decayRate2*dt;
+S.n1=100-S.n2-S.n3;
+if(S.n3<0)S.n3=0;if(S.n2<0)S.n2=0;if(S.n1<0)S.n1=0;
+const wasInverted=S.inverted;
+S.inverted=S.n2>S.n1+5;
+if(S.inverted){
+  S.invertedTime+=dt;
+  if(!S.goalDone[1]){S.goalDone[1]=true;renderPanel();}
+  if(S.invertedTime>3&&!S.goalDone[2]){S.goalDone[2]=true;renderPanel();}
+}else{S.invertedTime=0;}
+if(S.pumpPower<10&&S.n1>80&&!S.goalDone[0]){S.goalDone[0]=true;renderPanel();}
+// Draw three-level diagram
+const lx=cx-80,ly=cy-150,lw=200;
+const ey=[ly+280,ly+140,ly+20];
+const labels=['E1 (基态)','E2 (亚稳态)','E3 (泵浦态)'];
+const colors=['#60a5fa','#4ade80','#f87171'];
+for(let i=0;i<3;i++){
+  ctx.strokeStyle=colors[i];ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(lx,ey[i]);ctx.lineTo(lx+lw,ey[i]);ctx.stroke();
+  ctx.fillStyle=colors[i];ctx.font='12px sans-serif';ctx.textAlign='right';ctx.fillText(labels[i],lx-8,ey[i]+4);
+}
+// Pump arrow
+if(S.pumpPower>0){
+  ctx.strokeStyle='#f87171';ctx.lineWidth=2+pump*3;ctx.setLineDash([5,5]);
+  ctx.beginPath();ctx.moveTo(lx+30,ey[0]);ctx.lineTo(lx+30,ey[2]);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#f87171';ctx.beginPath();ctx.moveTo(lx+30,ey[2]-5);ctx.lineTo(lx+25,ey[2]+5);ctx.lineTo(lx+35,ey[2]+5);ctx.fill();
+  ctx.fillStyle='#f87171';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('泵浦',lx+30,ey[0]+15);
+}
+// Fast decay arrow E3->E2
+ctx.strokeStyle='#aaa';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+ctx.beginPath();ctx.moveTo(lx+100,ey[2]);ctx.lineTo(lx+100,ey[1]);ctx.stroke();ctx.setLineDash([]);
+ctx.fillStyle='#aaa';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText('快速弛豫',lx+100,ey[2]+((ey[1]-ey[2])/2));
+// Bar chart
+const bx=cx+160,by=cy-100,bw=40,bh=200;
+const vals=[S.n1,S.n2,S.n3];const maxV=120;
+ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('粒子数分布',bx+60,by-15);
+for(let i=0;i<3;i++){
+  const h=Math.max(2,vals[i]/maxV*bh);
+  ctx.fillStyle=colors[i];ctx.globalAlpha=0.7;
+  ctx.fillRect(bx+i*(bw+15),by+bh-h,bw,h);ctx.globalAlpha=1;
+  ctx.fillStyle='#ccc';ctx.font='10px sans-serif';ctx.fillText(`N${i+1}`,bx+i*(bw+15)+bw/2,by+bh+15);
+  ctx.fillText(Math.round(vals[i]),bx+i*(bw+15)+bw/2,by+bh-h-8);
+}
+// Inversion indicator
+if(S.inverted){
+  ctx.fillStyle='#4ade80';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  ctx.fillText('✓ 粒子数反转！N2 > N1',cx+80,cy+180);
+  ctx.fillStyle='#4ade80';ctx.font='11px sans-serif';
+  ctx.fillText(`维持时间: ${S.invertedTime.toFixed(1)}s / 3.0s`,cx+80,cy+200);
+}
+}
+
+// === DRAW LEVEL 3: Resonant Cavity ===
+function drawLevel3(dt){
+const S=levelState,cx=CW/2+160,cy=CH/2;
+const ml=cx-S.mirrorDist/2,mr=cx+S.mirrorDist/2;
+// Draw mirrors
+ctx.fillStyle='#c0c0c0';ctx.shadowColor='#c0c0c0';ctx.shadowBlur=8;
+ctx.fillRect(ml-4,cy-100,4,200);// left mirror (full reflect)
+ctx.fillStyle='rgba(192,192,192,0.6)';
+ctx.fillRect(mr,cy-100,4,200);// right mirror (partial)
+ctx.shadowBlur=0;
+ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='center';
+ctx.fillText('全反射镜 R=100%',ml,cy+120);ctx.fillText('输出镜 R≈98%',mr,cy+120);
+// Gain medium
+ctx.fillStyle='rgba(255,100,100,0.08)';ctx.fillRect(ml+10,cy-80,mr-ml-20,160);
+ctx.strokeStyle='rgba(255,100,100,0.3)';ctx.strokeRect(ml+10,cy-80,mr-ml-20,160);
+ctx.fillStyle='#f87171';ctx.font='11px sans-serif';ctx.fillText('增益介质',cx,cy-90);
+// Standing wave pattern
+if(S.started){
+  ctx.strokeStyle='rgba(255,80,80,0.4)';ctx.lineWidth=1;
+  for(let m=1;m<=S.modeNum;m++){
+    ctx.beginPath();
+    for(let x=ml;x<=mr;x+=2){
+      const frac=(x-ml)/(mr-ml);
+      const y=cy+Math.sin(frac*Math.PI*m)*30*Math.sin(time*3+m);
+      if(x===ml)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  }
+}
+// Photons bouncing
+if(S.started){
+  for(let i=S.photons.length-1;i>=0;i--){
+    const ph=S.photons[i];ph.x+=ph.vx;
+    // Bounce off mirrors
+    if(ph.x<=ml+4){ph.vx=Math.abs(ph.vx)*1.05;ph.bounces++;if(ph.bounces>=2&&!S.goalDone[0]){S.goalDone[0]=true;renderPanel();}}
+    if(ph.x>=mr){
+      // 2% chance to transmit
+      if(Math.random()<0.15){
+        S.outputPhotons.push({x:mr+5,y:cy+(Math.random()-0.5)*10,vx:4});
+        S.outputCount++;
+        if(S.outputCount>=5&&!S.goalDone[2]){S.goalDone[2]=true;renderPanel();}
+      }
+      ph.vx=-Math.abs(ph.vx)*1.02;ph.bounces++;
+    }
+    // Amplify: add more photons
+    if(ph.bounces>0&&ph.bounces%4===0&&S.photons.length<8){
+      S.photons.push({x:ph.x,y:cy+(Math.random()-0.5)*20,vx:ph.vx,bounces:ph.bounces});
+      ph.bounces++;
+    }
+    ctx.fillStyle='#ff6b6b';ctx.shadowColor='#ff6b6b';ctx.shadowBlur=8;
+    ctx.beginPath();ctx.arc(ph.x,ph.y,4,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+  }
+  // Output photons (laser beam)
+  for(let i=S.outputPhotons.length-1;i>=0;i--){
+    const op=S.outputPhotons[i];op.x+=op.vx;
+    if(op.x>CW){S.outputPhotons.splice(i,1);continue;}
+    ctx.fillStyle='#ff4444';ctx.shadowColor='#ff4444';ctx.shadowBlur=12;
+    ctx.beginPath();ctx.arc(op.x,op.y,3,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+  }
+  // Laser beam line from output mirror
+  if(S.outputCount>0){
+    ctx.strokeStyle='rgba(255,50,50,0.6)';ctx.lineWidth=2;ctx.shadowColor='#ff4444';ctx.shadowBlur=15;
+    ctx.beginPath();ctx.moveTo(mr+4,cy);ctx.lineTo(CW,cy);ctx.stroke();ctx.shadowBlur=0;
+  }
+}
+}
+
+// === DRAW LEVEL 4: Laser Types ===
+function drawLevel4(dt){
+const S=levelState,cx=CW/2+160,cy=CH/2;
+const types=[
+  {name:'He-Ne 气体激光器',wl:'632.8nm',color:'#ff4444',desc:'氦氖混合气体放电管',structure:'gas',spectrum:[632.8]},
+  {name:'Nd:YAG 固体激光器',wl:'532nm (倍频)',color:'#44ff44',desc:'掺钕钇铝石榴石晶体 + KTP倍频',structure:'solid',spectrum:[532,1064]},
+  {name:'GaAs 半导体激光器',wl:'808nm',color:'#ff4488',desc:'砷化镓 PN 结',structure:'semi',spectrum:[808]}
+];
+const T=types[S.laserType];
+// Title
+ctx.fillStyle='#fff';ctx.font='bold 18px sans-serif';ctx.textAlign='center';ctx.fillText(T.name,cx,cy-180);
+ctx.fillStyle=T.color;ctx.font='14px sans-serif';ctx.fillText(`波长: ${T.wl}`,cx,cy-155);
+// Structure diagram
+if(T.structure==='gas'){
+  // Gas tube
+  ctx.strokeStyle='#666';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx-150,cy-40);ctx.lineTo(cx+150,cy-40);ctx.lineTo(cx+150,cy+40);ctx.lineTo(cx-150,cy+40);ctx.closePath();ctx.stroke();
+  ctx.fillStyle='rgba(255,100,100,0.1)';ctx.fillRect(cx-150,cy-40,300,80);
+  ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.fillText('He-Ne 混合气体',cx,cy);
+  // Electrodes
+  ctx.fillStyle='#fbbf24';ctx.fillRect(cx-140,cy-50,10,20);ctx.fillRect(cx+130,cy-50,10,20);
+  ctx.fillStyle='#aaa';ctx.font='9px sans-serif';ctx.fillText('阳极',cx-135,cy-55);ctx.fillText('阴极',cx+135,cy-55);
+  // Mirrors
+  ctx.fillStyle='#c0c0c0';ctx.fillRect(cx-160,cy-50,6,100);ctx.fillStyle='rgba(192,192,192,0.5)';ctx.fillRect(cx+154,cy-50,6,100);
+}else if(T.structure==='solid'){
+  // Crystal rod
+  ctx.fillStyle='rgba(100,255,100,0.15)';
+  ctx.beginPath();ctx.ellipse(cx,cy,120,30,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#4ade80';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(cx,cy,120,30,0,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.fillText('Nd:YAG 晶体棒',cx,cy+5);
+  // Flash lamp
+  ctx.strokeStyle='#fbbf24';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.ellipse(cx,cy,140,50,0,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#fbbf24';ctx.font='10px sans-serif';ctx.fillText('闪光灯泵浦',cx,cy-55);
+  // KTP crystal
+  ctx.fillStyle='rgba(100,200,255,0.2)';ctx.fillRect(cx+130,cy-15,20,30);
+  ctx.strokeStyle='#60a5fa';ctx.strokeRect(cx+130,cy-15,20,30);
+  ctx.fillStyle='#60a5fa';ctx.font='9px sans-serif';ctx.fillText('KTP',cx+140,cy+25);
+  // Mirrors
+  ctx.fillStyle='#c0c0c0';ctx.fillRect(cx-170,cy-40,6,80);ctx.fillStyle='rgba(192,192,192,0.5)';ctx.fillRect(cx+160,cy-40,6,80);
+}else{
+  // PN junction
+  ctx.fillStyle='rgba(255,100,150,0.15)';ctx.fillRect(cx-80,cy-30,80,60);
+  ctx.fillStyle='rgba(100,150,255,0.15)';ctx.fillRect(cx,cy-30,80,60);
+  ctx.strokeStyle='#666';ctx.strokeRect(cx-80,cy-30,160,60);
+  ctx.fillStyle='#ff6b8a';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('P型',cx-40,cy+5);
+  ctx.fillStyle='#6b8aff';ctx.fillText('N型',cx+40,cy+5);
+  ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(cx,cy-30);ctx.lineTo(cx,cy+30);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#aaa';ctx.font='9px sans-serif';ctx.fillText('PN结',cx,cy+45);
+  // Cleaved facets
+  ctx.fillStyle='#c0c0c0';ctx.fillRect(cx-84,cy-35,4,70);ctx.fillStyle='rgba(192,192,192,0.5)';ctx.fillRect(cx+80,cy-35,4,70);
+}
+// Laser beam output
+const beamY=cy;
+ctx.strokeStyle=T.color;ctx.lineWidth=3;ctx.shadowColor=T.color;ctx.shadowBlur=20;
+ctx.beginPath();ctx.moveTo(cx+170,beamY);ctx.lineTo(CW-50,beamY);ctx.stroke();ctx.shadowBlur=0;
+// Spectrum display
+const sx=cx-120,sy=cy+90,sw=240,sh=60;
+ctx.strokeStyle='#333';ctx.strokeRect(sx,sy,sw,sh);
+ctx.fillStyle='#111';ctx.fillRect(sx,sy,sw,sh);
+ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('输出光谱',cx,sy-5);
+// Spectrum axis
+ctx.fillStyle='#555';ctx.font='9px sans-serif';
+ctx.fillText('400nm',sx+10,sy+sh+12);ctx.fillText('700nm',sx+sw/2,sy+sh+12);ctx.fillText('1100nm',sx+sw-10,sy+sh+12);
+for(let wl of T.spectrum){
+  const frac=(wl-400)/700;const px=sx+frac*sw;
+  ctx.strokeStyle=T.color;ctx.lineWidth=2;ctx.shadowColor=T.color;ctx.shadowBlur=8;
+  ctx.beginPath();ctx.moveTo(px,sy+sh);ctx.lineTo(px,sy+5);ctx.stroke();ctx.shadowBlur=0;
+  ctx.fillStyle=T.color;ctx.font='9px sans-serif';ctx.fillText(`${wl}nm`,px,sy+sh-5);
+}
+}
+
+// === DRAW LEVEL 5: Mode Locking ===
+function drawLevel5(dt){
+const S=levelState,cx=CW/2+160,cy=CH/2;
+const plotW=400,plotH=120;
+const px=cx-plotW/2,py=cy-plotH-40;
+// Draw individual modes
+ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';
+ctx.fillText(S.locked?'锁模输出 — 超短脉冲':'未锁模 — 各模式独立',cx,py-20);
+// Individual mode waves (top)
+ctx.fillStyle='#555';ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillText('各纵模:',px-60,py+plotH/2);
+for(let mi=0;mi<S.modes.length;mi++){
+  const m=S.modes[mi];
+  const hue=mi*360/S.modes.length;
+  ctx.strokeStyle=`hsla(${hue},70%,60%,0.5)`;ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let x=0;x<=plotW;x+=2){
+    const t=x/plotW*Math.PI*8;
+    const y=py+plotH/2-Math.sin(t*m.freq+m.phase+time*m.freq*2)*m.amp*(plotH/2-10)/S.modes.length;
+    if(x===0)ctx.moveTo(px+x,y);else ctx.lineTo(px+x,y);
+  }
+  ctx.stroke();
+}
+// Superposition (bottom)
+const py2=cy+40,plotH2=150;
+ctx.fillStyle='#555';ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillText('叠加输出:',px-60,py2+plotH2/2);
+ctx.strokeStyle='#ff4444';ctx.lineWidth=2;ctx.shadowColor='#ff4444';ctx.shadowBlur=S.locked?15:0;
+ctx.beginPath();
+let maxAmp=0;
+for(let x=0;x<=plotW;x+=2){
+  const t=x/plotW*Math.PI*8;
+  let sum=0;
+  for(let m of S.modes)sum+=Math.sin(t*m.freq+m.phase+time*m.freq*2)*m.amp;
+  sum/=S.modes.length;
+  if(Math.abs(sum)>maxAmp)maxAmp=Math.abs(sum);
+  const y=py2+plotH2/2-sum*(plotH2/2-10);
+  if(x===0)ctx.moveTo(px+x,y);else ctx.lineTo(px+x,y);
+}
+ctx.stroke();ctx.shadowBlur=0;
+// Axes
+ctx.strokeStyle='#333';ctx.lineWidth=1;
+ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px,py+plotH);ctx.moveTo(px,py+plotH/2);ctx.lineTo(px+plotW,py+plotH/2);ctx.stroke();
+ctx.beginPath();ctx.moveTo(px,py2);ctx.lineTo(px,py2+plotH2);ctx.moveTo(px,py2+plotH2/2);ctx.lineTo(px+plotW,py2+plotH2/2);ctx.stroke();
+// Labels
+if(S.locked){
+  ctx.fillStyle='#4ade80';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('飞秒脉冲！峰值功率 = 平均功率 × '+S.modes.length,cx,py2+plotH2+30);
+  ctx.fillStyle='#4ade80';ctx.font='11px sans-serif';
+  ctx.fillText(`脉冲宽度 ≈ ${(100/S.modes.length).toFixed(1)} fs`,cx,py2+plotH2+48);
+}else{
+  ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('连续波输出（各模式相位随机）',cx,py2+plotH2+30);
+}
+}
+
+// === DRAW LEVEL 6: Applications ===
+function drawLevel6(dt){
+const S=levelState,cx=CW/2+160,cy=CH/2;
+if(S.scene===0) drawCutting(dt,cx,cy);
+else if(S.scene===1) drawComm(dt,cx,cy);
+else if(S.scene===2) drawCooling(dt,cx,cy);
+}
+
+function drawCutting(dt,cx,cy){
+const S=levelState;
+// Metal plate
+ctx.fillStyle='#555';ctx.fillRect(cx-150,cy-100,300,200);
+ctx.strokeStyle='#777';ctx.lineWidth=2;ctx.strokeRect(cx-150,cy-100,300,200);
+ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('金属板',cx,cy-110);
+// Cut path
+if(S.cutPath.length>1){
+  ctx.strokeStyle='#ff4444';ctx.lineWidth=3;ctx.shadowColor='#ff4444';ctx.shadowBlur=15;
+  ctx.beginPath();ctx.moveTo(S.cutPath[0].x,S.cutPath[0].y);
+  for(let i=1;i<S.cutPath.length;i++)ctx.lineTo(S.cutPath[i].x,S.cutPath[i].y);
+  ctx.stroke();ctx.shadowBlur=0;
+  // Sparks at last point
+  const lp=S.cutPath[S.cutPath.length-1];
+  if(S.cutting){
+    for(let i=0;i<2;i++)addP(lp.x,lp.y,(Math.random()-0.5)*5,(Math.random()-0.5)*5,'#fbbf24',0.5,2);
+  }
+  // Glow along cut
+  ctx.strokeStyle='rgba(255,200,50,0.3)';ctx.lineWidth=8;
+  ctx.beginPath();ctx.moveTo(S.cutPath[0].x,S.cutPath[0].y);
+  for(let i=1;i<S.cutPath.length;i++)ctx.lineTo(S.cutPath[i].x,S.cutPath[i].y);
+  ctx.stroke();
+}
+if(S.cutDone){
+  ctx.fillStyle='#4ade80';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('✓ 切割完成！',cx,cy+130);
+}else{
+  ctx.fillStyle='#aaa';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('在金属板上拖动鼠标画切割路径',cx,cy+130);
+}
+}
+
+function drawComm(dt,cx,cy){
+const S=levelState;
+// Fiber optic cable
+ctx.strokeStyle='#333';ctx.lineWidth=20;
+ctx.beginPath();ctx.moveTo(cx-200,cy);ctx.lineTo(cx+200,cy);ctx.stroke();
+ctx.strokeStyle='rgba(100,150,255,0.2)';ctx.lineWidth=16;
+ctx.beginPath();ctx.moveTo(cx-200,cy);ctx.lineTo(cx+200,cy);ctx.stroke();
+ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('光纤',cx,cy+25);
+// Bit display
+const bx=cx-180,by=cy-80;
+ctx.fillStyle='#aaa';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText('编码信号:',bx,by-10);
+for(let i=0;i<S.bits.length;i++){
+  const active=S.sending&&i<=S.bitIdx;
+  ctx.fillStyle=active?(S.bits[i]?'#ff4444':'#333'):(S.bits[i]?'#664444':'#222');
+  ctx.fillRect(bx+i*45,by,35,30);
+  ctx.fillStyle=active?'#fff':'#888';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText(S.bits[i].toString(),bx+i*45+17,by+20);
+}
+// Pulse traveling in fiber
+if(S.sending){
+  S.pulseX+=dt*200;
+  const totalDist=400;
+  if(S.pulseX>totalDist){
+    S.pulseX=0;S.bitIdx++;
+    if(S.bitIdx>=S.bits.length){S.sending=false;S.commDone=true;S.goalDone[1]=true;renderPanel();}
+  }
+  if(S.bitIdx<S.bits.length&&S.bits[S.bitIdx]===1){
+    const px=cx-200+S.pulseX;
+    ctx.fillStyle='#ff4444';ctx.shadowColor='#ff4444';ctx.shadowBlur=15;
+    ctx.beginPath();ctx.arc(px,cy,5,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0;
+  }
+}
+// Receiver
+ctx.fillStyle='#444';ctx.fillRect(cx+200,cy-20,40,40);
+ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('接收器',cx+220,cy+35);
+if(S.commDone){ctx.fillStyle='#4ade80';ctx.font='bold 14px sans-serif';ctx.fillText('✓ 通信完成！',cx,cy+70);}
+}
+
+function drawCooling(dt,cx,cy){
+const S=levelState;
+// Chamber
+ctx.strokeStyle='#444';ctx.lineWidth=2;ctx.strokeRect(cx-120,cy-120,240,240);
+ctx.fillStyle='rgba(100,100,255,0.05)';ctx.fillRect(cx-120,cy-120,240,240);
+ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('真空腔',cx,cy-130);
+// Laser beams from 4 directions
+if(S.coolStarted){
+  const beamCol='rgba(255,50,50,0.4)';ctx.strokeStyle=beamCol;ctx.lineWidth=4;ctx.shadowColor='#ff4444';ctx.shadowBlur=10;
+  ctx.beginPath();ctx.moveTo(cx-200,cy);ctx.lineTo(cx+200,cy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx,cy-200);ctx.lineTo(cx,cy+200);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-150,cy-150);ctx.lineTo(cx+150,cy+150);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+150,cy-150);ctx.lineTo(cx-150,cy+150);ctx.stroke();
+  ctx.shadowBlur=0;
+  // Cool down atoms
+  S.temp=Math.max(0.001,S.temp-dt*60);
+  const speedFactor=Math.max(0.02,S.temp/300);
+  for(let a of S.atoms){
+    a.vx*=(1-dt*2);a.vy*=(1-dt*2);
+    a.vx+=(Math.random()-0.5)*speedFactor*0.5;
+    a.vy+=(Math.random()-0.5)*speedFactor*0.5;
+  }
+  if(S.temp<0.01&&!S.cooled){S.cooled=true;S.goalDone[2]=true;renderPanel();}
+}
+// Draw atoms
+for(let a of S.atoms){
+  a.x+=a.vx;a.y+=a.vy;
+  // Bounce off walls
+  if(a.x<cx-115||a.x>cx+115)a.vx*=-1;
+  if(a.y<cy-115||a.y>cy+115)a.vy*=-1;
+  const speed=Math.hypot(a.vx,a.vy);
+  const r=Math.min(255,speed*80),b=Math.max(0,255-speed*80);
+  ctx.fillStyle=`rgb(${Math.round(r)},100,${Math.round(b)})`;
+  ctx.beginPath();ctx.arc(a.x,a.y,4,0,Math.PI*2);ctx.fill();
+}
+// Temperature display
+ctx.fillStyle=S.temp>10?'#f87171':'#4ade80';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+ctx.fillText(`温度: ${S.temp>1?S.temp.toFixed(1):S.temp.toFixed(4)} K`,cx,cy+150);
+if(S.cooled){ctx.fillStyle='#4ade80';ctx.font='bold 14px sans-serif';ctx.fillText('✓ 达到微开尔文！',cx,cy+175);}
+}
+
+// === MAIN LOOP ===
+let lastTime=0;
+function gameLoop(ts){
+animId=requestAnimationFrame(gameLoop);
+const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;time+=dt;
+ctx.clearRect(0,0,CW,CH);
+drawStars();
+if(gameState==='play'){
+  updateParticles(dt);
+  if(currentLevel===0)drawLevel0(dt);
+  else if(currentLevel===1)drawLevel1(dt);
+  else if(currentLevel===2)drawLevel2(dt);
+  else if(currentLevel===3)drawLevel3(dt);
+  else if(currentLevel===4)drawLevel4(dt);
+  else if(currentLevel===5)drawLevel5(dt);
+  else if(currentLevel===6)drawLevel6(dt);
+  drawParticles();
+  // Check completion without calling renderPanel every frame
+  checkCompletion();
+}
+}
+
+function checkCompletion(){
+const S=levelState;
+if(!S.goalDone||!S.goalDone.every(g=>g))return;
+const idx=currentLevel;
+if(!completedLevels.has(idx)){completeLevel(idx);}
+}
+
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

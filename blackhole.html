@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>黑洞物理探险交互式教育</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50;opacity:1;transition:opacity 0.5s}
+.overlay.hidden{display:none;opacity:0}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#60a5fa}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}
+.g-text{color:#c0c0e0}
+.g-text.done{color:#4ade80;text-decoration:line-through}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:#2a2a6a}
+.act-btn:disabled{opacity:0.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.act-btn.red{border-color:#ef4444;background:#2a0a0a;color:#f87171}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}
+.sv{color:#60a5fa;font-weight:bold}
+.m-title{font-size:16px;font-weight:700;margin:8px 0 4px;color:#eee}
+.m-sub{font-size:12px;color:#888;margin-bottom:8px}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:rgba(10,10,26,.95);border-top:1px solid #1a1a3a;z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}
+#bottom-bar .bb-right{text-align:right}
+.overlay .result-box{text-align:center;max-width:420px;background:rgba(10,10,26,.98);border:1px solid #2a2a5a;border-radius:16px;padding:28px 36px}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-learn{text-align:left;background:#0e0e20;border-radius:8px;padding:12px 14px;font-size:12px;color:#93c5fd;line-height:1.7;margin-bottom:16px}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#3b82f6;color:#fff}
+.result-box .btn-retry{background:#2a2a5a;color:#ccc}
+/* Quiz styles */
+.quiz-box{border:2px solid #22c55e;border-radius:10px;padding:12px;margin:10px 0;background:#0a1a0a}
+.quiz-box .quiz-title{font-size:13px;font-weight:700;color:#4ade80;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px 10px;margin:4px 0;border-radius:6px;border:1px solid #2a4a2a;background:#0d1f0d;color:#a0d0a0;font-size:12px;cursor:pointer;text-align:left;transition:all 0.2s}
+.quiz-opt:hover{background:#1a3a1a;border-color:#4ade80}
+.quiz-opt.correct{background:#0a3a0a;border-color:#4ade80;color:#4ade80;font-weight:700}
+.quiz-opt.wrong{background:#3a0a0a;border-color:#ef4444;color:#f87171}
+.quiz-result{font-size:12px;margin-top:6px;font-weight:700}
+.quiz-result.pass{color:#4ade80}
+.quiz-result.fail{color:#f87171}
+/* Prediction styles */
+.pred-btn{display:inline-block;padding:6px 14px;margin:3px;border-radius:6px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:12px;cursor:pointer}
+.pred-btn:hover{background:#2a2a6a}
+.pred-btn.selected{background:#3b82f6;color:#fff}
+.pred-result{font-size:12px;margin:6px 0;font-weight:700;padding:6px;border-radius:6px}
+.pred-result.correct{background:#0a2a0a;color:#4ade80;border:1px solid #22c55e}
+.pred-result.wrong{background:#2a0a0a;color:#f87171;border:1px solid #ef4444}
+/* Escape challenge */
+.escape-bar{width:100%;height:16px;background:#1a1a2a;border-radius:8px;overflow:hidden;margin:6px 0;border:1px solid #333}
+.escape-fill{height:100%;border-radius:8px;transition:width 0.3s}
+.escape-status{font-size:11px;margin:4px 0;font-weight:700}
+/* Screen effects */
+@keyframes screenShake{0%,100%{transform:translate(0,0)}25%{transform:translate(-5px,3px)}50%{transform:translate(5px,-3px)}75%{transform:translate(-3px,5px)}}
+@keyframes whiteFlash{0%{opacity:0.9}100%{opacity:0}}
+.screen-shake{animation:screenShake 0.3s ease-in-out}
+.white-flash{position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:100;pointer-events:none;animation:whiteFlash 0.5s ease-out forwards}
+/* Level transition */
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.level-fade{animation:fadeIn 0.6s ease-out}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🕳️ <span class="gold">黑洞</span>物理探险</h1>
+  <div class="sub">7 个关卡，探索宇宙最神秘的天体</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">⭐</div>恒星死亡</div>
+    <div class="feat"><div class="fi">🌑</div>事件视界</div>
+    <div class="feat"><div class="fi">🌀</div>时空弯曲</div>
+    <div class="feat"><div class="fi">💫</div>吸积盘</div>
+    <div class="feat"><div class="fi">🍝</div>潮汐力</div>
+    <div class="feat"><div class="fi">✨</div>霍金辐射</div>
+    <div class="feat"><div class="fi">🚀</div>虫洞穿越</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+// ===== AUDIO ENGINE =====
+const AudioEngine=(()=>{
+  let actx=null;
+  function ctx(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();return actx;}
+  function play(type){
+    try{
+      const c=ctx();
+      const o=c.createOscillator(),g=c.createGain();
+      o.connect(g);g.connect(c.destination);
+      const now=c.currentTime;
+      if(type==='click'){o.frequency.value=800;o.type='sine';g.gain.setValueAtTime(0.15,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.start(now);o.stop(now+0.1);}
+      else if(type==='success'){o.frequency.value=523;o.type='sine';g.gain.setValueAtTime(0.2,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.5);o.start(now);o.stop(now+0.5);
+        const o2=c.createOscillator(),g2=c.createGain();o2.connect(g2);g2.connect(c.destination);o2.frequency.value=659;o2.type='sine';g2.gain.setValueAtTime(0.2,now+0.15);g2.gain.exponentialRampToValueAtTime(0.001,now+0.6);o2.start(now+0.15);o2.stop(now+0.6);
+        const o3=c.createOscillator(),g3=c.createGain();o3.connect(g3);g3.connect(c.destination);o3.frequency.value=784;o3.type='sine';g3.gain.setValueAtTime(0.2,now+0.3);g3.gain.exponentialRampToValueAtTime(0.001,now+0.8);o3.start(now+0.3);o3.stop(now+0.8);}
+      else if(type==='fail'){o.frequency.value=300;o.type='sawtooth';g.gain.setValueAtTime(0.15,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);o.start(now);o.stop(now+0.4);
+        const o2=c.createOscillator(),g2=c.createGain();o2.connect(g2);g2.connect(c.destination);o2.frequency.value=200;o2.type='sawtooth';g2.gain.setValueAtTime(0.15,now+0.15);g2.gain.exponentialRampToValueAtTime(0.001,now+0.5);o2.start(now+0.15);o2.stop(now+0.5);}
+      else if(type==='boom'){const buf=c.createBuffer(1,c.sampleRate*0.5,c.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);
+        const src=c.createBufferSource();src.buffer=buf;const gn=c.createGain();src.connect(gn);gn.connect(c.destination);gn.gain.setValueAtTime(0.3,now);gn.gain.exponentialRampToValueAtTime(0.001,now+0.5);src.start(now);}
+    }catch(e){}
+  }
+  return{play};
+})();
+
+// ===== SCREEN EFFECTS =====
+function screenShake(){document.body.classList.add('screen-shake');setTimeout(()=>document.body.classList.remove('screen-shake'),300);}
+function whiteFlash(){const d=document.createElement('div');d.className='white-flash';document.body.appendChild(d);setTimeout(()=>d.remove(),500);}
+function celebrationParticles(cx,cy){
+  for(let i=0;i<50;i++){
+    const a=Math.random()*Math.PI*2,sp=Math.random()*5+2;
+    const hue=40+Math.random()*20;
+    particles.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1.5,color:`hsl(${hue},90%,60%)`,r:2+Math.random()*2,glow:true});
+  }
+}
+
+// ===== CORE =====
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,animId;
+let gameState='start',currentLevel=0;
+let levelState={},bgStars=[],particles=[];
+const completedLevels=new Set();
+const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
+const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
+let panelDirty=true;
+let levelTransition=0; // fade-in timer
+
+// ===== QUIZ DATA =====
+const quizData=[
+  {q:'多大质量的恒星核心会变成黑洞？',opts:['A. <1.4太阳质量','B. 1.4-3太阳质量','C. >3太阳质量'],ans:2},
+  {q:'事件视界是什么？',opts:['A. 黑洞的固体表面','B. 光无法逃逸的边界','C. 黑洞的中心'],ans:1},
+  {q:'广义相对论认为引力的本质是？',opts:['A. 两个物体间的吸引力','B. 时空弯曲','C. 磁场作用'],ans:1},
+  {q:'吸积盘为什么会发光？',opts:['A. 黑洞发光','B. 物质摩擦加热到数百万度','C. 反射星光'],ans:1},
+  {q:'为什么超大质量黑洞的视界处潮汐力反而小？',opts:['A. 引力弱','B. 视界半径大，引力梯度小','C. 有保护层'],ans:1},
+  {q:'霍金辐射的本质是？',opts:['A. 黑洞发射光子','B. 虚粒子对在视界边缘分离','C. 黑洞反射光'],ans:1},
+  {q:'保持虫洞开放需要什么？',opts:['A. 强引力','B. 负能量的奇异物质','C. 高速旋转'],ans:1}
+];
+let quizState={active:false,answered:false,correct:false,selected:-1};
+
+const levels=[
+  {name:'恒星死亡 — 三种命运',icon:'⭐',goals:['创建白矮星','创建中子星','创建黑洞'],
+   learn:'1930年，年仅19岁的钱德拉塞卡在从印度前往英国的轮船上，计算出了白矮星的质量上限（约1.4倍太阳质量）。超过这个极限，电子简并压无法抵抗引力坍缩，恒星将走向更极端的命运。'},
+  {name:'事件视界 — 光的牢笼',icon:'🌑',goals:['观察光线弯曲','观察光子绕转','观察光子被吞噬'],
+   learn:'史瓦西半径 Rs = 2GM/c²，定义了黑洞的事件视界。任何物质或光一旦越过这个边界，就永远无法逃脱。对于太阳质量的黑洞，史瓦西半径仅约3公里。'},
+  {name:'时空弯曲 — 橡皮膜',icon:'🌀',goals:['放置质量','发射测试粒子','创建极度弯曲'],
+   learn:'爱因斯坦的广义相对论告诉我们：引力不是一种力，而是时空弯曲的表现。质量告诉时空如何弯曲，弯曲的时空告诉物质如何运动。'},
+  {name:'吸积盘 — 黑洞的光环',icon:'💫',goals:['形成吸积盘','观察温度梯度','观察喷流'],
+   learn:'2019年4月10日，事件视界望远镜（EHT）发布了人类首张黑洞照片——M87*中心的超大质量黑洞。这个黑洞质量约为太阳的65亿倍，距离地球5500万光年。'},
+  {name:'潮汐力 — 面条化',icon:'🍝',goals:['安全距离观察','轻微变形','完全面条化','逃生挑战成功'],
+   learn:'有趣的是，超大质量黑洞（如M87*）的视界处潮汐力反而很小，宇航员可以完整穿过视界而不被撕裂。但恒星级黑洞的潮汐力极其恐怖，会把任何物体拉成"意大利面条"。'},
+  {name:'霍金辐射 — 黑洞蒸发',icon:'✨',goals:['观察虚粒子对','观察霍金辐射','观察黑洞蒸发'],
+   learn:'霍金在1974年预言：黑洞并非完全"黑"的。量子效应会在视界附近产生虚粒子对，其中一个粒子逃逸，另一个落入黑洞。这导致黑洞缓慢蒸发。一个太阳质量的黑洞需要约10⁶⁷年才能蒸发完毕。'},
+  {name:'虫洞穿越 — Einstein-Rosen桥',icon:'🚀',goals:['连接虫洞','稳定虫洞','飞船穿越'],
+   learn:'虫洞（Einstein-Rosen桥）是广义相对论允许的时空结构，连接两个遥远的时空区域。但要保持虫洞稳定可通行，需要"奇异物质"——一种具有负能量密度的物质。目前这仍是纯理论概念。'}
+];
+
+function resize(){canvas.width=CW=innerWidth;canvas.height=CH=innerHeight;initBgStars();}
+function initBgStars(){bgStars=[];for(let i=0;i<200;i++)bgStars.push({x:Math.random()*CW,y:Math.random()*CH,r:Math.random()*1.5+0.3,b:Math.random()*0.5+0.5});}
+window.addEventListener('resize',resize);resize();
+
+function startGame(){
+  document.getElementById('startScreen').classList.add('hidden');
+  gameState='play';currentLevel=0;
+  panelEl.style.display='block';bbEl.style.display='flex';
+  initLevel(0);panelDirty=true;renderPanel();loop();
+  AudioEngine.play('click');
+}
+
+function initLevel(n){
+  canvas.onclick=null;
+  currentLevel=n;particles=[];
+  const g=levels[n].goals;
+  levelState={goals:g.map(()=>false)};
+  quizState={active:false,answered:false,correct:false,selected:-1};
+  levelTransition=1;
+  panelDirty=true;
+  if(n===0)initL0();
+  else if(n===1)initL1();
+  else if(n===2)initL2();
+  else if(n===3)initL3();
+  else if(n===4)initL4();
+  else if(n===5)initL5();
+  else if(n===6)initL6();
+  AudioEngine.play('click');
+}
+
+function markGoal(i){
+  if(!levelState.goals[i]){levelState.goals[i]=true;panelDirty=true;AudioEngine.play('success');checkComplete();}
+}
+function checkComplete(){
+  if(levelState.goals.every(g=>g)&&!completedLevels.has(currentLevel)){
+    completedLevels.add(currentLevel);panelDirty=true;
+    celebrationParticles((CW+320)/2,CH/2);
+    setTimeout(()=>showResult(),600);
+  }
+}
+function showResult(){
+  const lv=levels[currentLevel];
+  const isLast=currentLevel===levels.length-1;
+  const rb=document.getElementById('resultBox');
+  // Show quiz first, then allow next
+  quizState={active:true,answered:false,correct:false,selected:-1};
+  const qd=quizData[currentLevel];
+  let qhtml=`<div class="rb-icon">${lv.icon}</div><div class="rb-title">${lv.name} 完成！</div>`;
+  qhtml+=`<div class="rb-learn">${lv.learn}</div>`;
+  qhtml+=`<div class="quiz-box"><div class="quiz-title">📝 通关测验</div><div style="font-size:12px;color:#c0e0c0;margin-bottom:8px">${qd.q}</div>`;
+  qd.opts.forEach((o,i)=>{
+    qhtml+=`<button class="quiz-opt" id="qopt${i}" onclick="answerQuiz(${i})">${o}</button>`;
+  });
+  qhtml+=`<div class="quiz-result" id="quizResult"></div></div>`;
+  qhtml+=`<div id="quizBtns" style="margin-top:12px;display:none">`;
+  if(isLast){
+    qhtml+=`<button class="btn-next" onclick="restartAll()">🎉 全部通关！重新开始</button>`;
+  } else {
+    qhtml+=`<button class="btn-next" onclick="nextLevel()">下一关</button><button class="btn-retry" onclick="retryLevel()">重玩</button>`;
+  }
+  qhtml+=`</div>`;
+  rb.innerHTML=qhtml;
+  document.getElementById('resultModal').classList.remove('hidden');
+}
+function answerQuiz(idx){
+  if(quizState.answered)return;
+  const qd=quizData[currentLevel];
+  quizState.selected=idx;
+  if(idx===qd.ans){
+    quizState.answered=true;quizState.correct=true;
+    document.getElementById('qopt'+idx).classList.add('correct');
+    document.getElementById('quizResult').className='quiz-result pass';
+    document.getElementById('quizResult').textContent='✅ 回答正确！';
+    document.getElementById('quizBtns').style.display='block';
+    AudioEngine.play('success');
+  } else {
+    document.getElementById('qopt'+idx).classList.add('wrong');
+    document.getElementById('quizResult').className='quiz-result fail';
+    document.getElementById('quizResult').textContent='❌ 回答错误，再想想...';
+    AudioEngine.play('fail');
+    setTimeout(()=>{
+      document.getElementById('qopt'+idx).classList.remove('wrong');
+      document.getElementById('quizResult').textContent='';
+    },1000);
+  }
+}
+function nextLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel+1);}
+function retryLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel);}
+function restartAll(){document.getElementById('resultModal').classList.add('hidden');completedLevels.clear();initLevel(0);}
+
+function renderPanel(){
+  if(!panelDirty)return;panelDirty=false;
+  const lv=levels[currentLevel];
+  let h='<div style="margin-bottom:8px">';
+  levels.forEach((l,i)=>{
+    let cls='level-btn';if(i===currentLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
+    h+=`<span class="${cls}" onclick="initLevel(${i})">${i+1}</span>`;
+  });
+  h+='</div>';
+  h+=`<div class="m-title">${lv.icon} ${lv.name}</div>`;
+  h+=`<div class="m-sub">关卡 ${currentLevel+1} / ${levels.length}</div>`;
+  h+='<div class="concept-box"><b>目标</b>';
+  lv.goals.forEach((g,i)=>{
+    const done=levelState.goals[i];
+    h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${g}</span></div>`;
+  });
+  h+='</div>';
+  if(currentLevel===0)h+=panelL0();
+  else if(currentLevel===1)h+=panelL1();
+  else if(currentLevel===2)h+=panelL2();
+  else if(currentLevel===3)h+=panelL3();
+  else if(currentLevel===4)h+=panelL4();
+  else if(currentLevel===5)h+=panelL5();
+  else if(currentLevel===6)h+=panelL6();
+  h+=`<div class="learn-box">💡 ${lv.learn}</div>`;
+  panelEl.innerHTML=h;
+  bbLeft.textContent=`关卡 ${currentLevel+1}: ${lv.name}`;
+  bbRight.textContent=`已完成 ${completedLevels.size}/${levels.length}`;
+}
+
+function drawBg(){
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,CW,CH);
+  // Level transition fade
+  if(levelTransition>0){levelTransition-=0.02;ctx.globalAlpha=1-levelTransition;}
+  bgStars.forEach(s=>{
+    ctx.globalAlpha=(1-Math.max(0,levelTransition))*(s.b*(0.7+0.3*Math.sin(time*2+s.x)));
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+}
+function drawBlackHole(cx,cy,r,withLens){
+  ctx.fillStyle='#000';ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+  const grd=ctx.createRadialGradient(cx,cy,r,cx,cy,r*1.8);
+  grd.addColorStop(0,'rgba(100,150,255,0.3)');grd.addColorStop(0.5,'rgba(60,100,200,0.1)');grd.addColorStop(1,'transparent');
+  ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,r*1.8,0,Math.PI*2);ctx.fill();
+  ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(100,150,255,0.4)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+  if(withLens){
+    // Enhanced gravitational lensing: distort nearby stars
+    bgStars.forEach(s=>{
+      const dx=s.x-cx,dy=s.y-cy,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<r*5&&d>r){
+        const strength=r*r/(d*d)*20;
+        const ang=Math.atan2(dy,dx);
+        const tangent=ang+Math.PI/2;
+        const lx=s.x+Math.cos(tangent)*strength*Math.sin(time*0.5+s.x*0.1);
+        const ly=s.y+Math.sin(tangent)*strength*Math.sin(time*0.5+s.y*0.1);
+        const stretch=1+strength*0.1;
+        ctx.globalAlpha=s.b*0.9;
+        ctx.fillStyle=d<r*2.5?'#aaccff':'#ddeeff';
+        ctx.save();ctx.translate(lx,ly);ctx.rotate(ang);
+        ctx.beginPath();ctx.ellipse(0,0,s.r*stretch*1.5,s.r,0,0,Math.PI*2);ctx.fill();
+        ctx.restore();
+      }
+    });
+    ctx.globalAlpha=1;
+    ctx.strokeStyle='rgba(150,180,255,0.15)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(cx,cy,r*1.5,0,Math.PI*2);ctx.stroke();
+  }
+}
+
+// ===== LEVEL 0: Stellar Death (with prediction) =====
+let l0={mass:5,created:{wd:false,ns:false,bh:false},anim:null,animT:0,animType:'',starParticles:[],
+  prediction:'',predResult:'',predShown:false};
+function initL0(){l0={mass:5,created:{wd:false,ns:false,bh:false},anim:null,animT:0,animType:'',starParticles:[],
+  prediction:'',predResult:'',predShown:false};}
+function panelL0(){
+  let h=`<div class="slider-wrap"><label>恒星质量: <span class="sv">${l0.mass.toFixed(1)} M☉</span></label>`;
+  h+=`<input type="range" min="0.5" max="30" step="0.1" value="${l0.mass}" oninput="l0.mass=+this.value;l0.prediction='';l0.predResult='';l0.predShown=false;panelDirty=true;renderPanel()"></div>`;
+  // Prediction buttons
+  h+=`<div style="font-size:12px;color:#aaa;margin:6px 0">🔮 先预测这颗恒星的命运：</div>`;
+  h+=`<div style="text-align:center">`;
+  ['白矮星','中子星','黑洞'].forEach(p=>{
+    const sel=l0.prediction===p?' selected':'';
+    h+=`<button class="pred-btn${sel}" onclick="l0.prediction='${p}';panelDirty=true;renderPanel()">${p}</button>`;
+  });
+  h+=`</div>`;
+  if(l0.predResult){
+    h+=`<div class="pred-result ${l0.predResult==='correct'?'correct':'wrong'}">${l0.predResult==='correct'?'✅ 预测正确！你很懂恒星演化！':'❌ 预测错误！看看实际结果吧'}</div>`;
+  }
+  h+=`<button class="act-btn" onclick="evolveStarL0()"${l0.prediction?'':' disabled'}>🌟 演化恒星</button>`;
+  let status='';
+  if(l0.created.wd)status+='<div style="color:#aaf;font-size:11px;margin:2px 0">✦ 白矮星已创建</div>';
+  if(l0.created.ns)status+='<div style="color:#faa;font-size:11px;margin:2px 0">✦ 中子星已创建</div>';
+  if(l0.created.bh)status+='<div style="color:#a8f;font-size:11px;margin:2px 0">✦ 黑洞已创建</div>';
+  h+=status;
+  h+=`<div class="hint-box">💡 先预测再验证！&lt;1.4M☉→白矮星，1.4~3M☉→中子星，&gt;3M☉→黑洞</div>`;
+  return h;
+}
+function evolveStarL0(){
+  if(!l0.prediction)return;
+  const m=l0.mass;
+  let actual='';
+  if(m<1.4){l0.animType='wd';l0.created.wd=true;markGoal(0);actual='白矮星';}
+  else if(m<=3){l0.animType='ns';l0.created.ns=true;markGoal(1);actual='中子星';}
+  else{l0.animType='bh';l0.created.bh=true;markGoal(2);actual='黑洞';}
+  l0.predResult=l0.prediction===actual?'correct':'wrong';
+  l0.predShown=true;
+  if(l0.predResult==='correct')AudioEngine.play('success');else AudioEngine.play('fail');
+  l0.animT=0;l0.anim=true;
+  l0.starParticles=[];
+  if(l0.animType!=='wd'){
+    for(let i=0;i<80;i++){
+      const a=Math.random()*Math.PI*2,sp=Math.random()*4+2;
+      l0.starParticles.push({x:0,y:0,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,
+        color:l0.animType==='bh'?`hsl(${260+Math.random()*40},80%,60%)`:`hsl(${20+Math.random()*30},90%,60%)`});
+    }
+    // Supernova screen effects
+    setTimeout(()=>{whiteFlash();screenShake();AudioEngine.play('boom');},200);
+  }
+  panelDirty=true;renderPanel();
+}
+function drawL0(){
+  const cx=(CW+320)/2,cy=CH/2;
+  if(!l0.anim){
+    const sr=30+l0.mass*2;
+    const col=l0.mass<2?'#ffe8a0':l0.mass<8?'#ffcc44':l0.mass<15?'#ff8844':'#ff4444';
+    const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,sr);
+    grd.addColorStop(0,'#fff');grd.addColorStop(0.3,col);grd.addColorStop(1,'transparent');
+    ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,sr,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='14px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`${l0.mass.toFixed(1)} M☉`,cx,cy+sr+20);
+  } else {
+    l0.animT+=0.016;const t=l0.animT;
+    if(l0.animType==='wd'){
+      const sr=Math.max(8,30-t*40);
+      const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,sr);
+      grd.addColorStop(0,'#fff');grd.addColorStop(0.5,'#aaccff');grd.addColorStop(1,'transparent');
+      ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,sr,0,Math.PI*2);ctx.fill();
+      if(t>0.5){ctx.fillStyle='#aaccff';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('白矮星',cx,cy+sr+18);}
+      if(t>2)l0.anim=false;
+    } else {
+      const explPhase=Math.min(t/0.8,1);
+      l0.starParticles.forEach(p=>{
+        p.x+=p.vx*(1+explPhase*2);p.y+=p.vy*(1+explPhase*2);p.life-=0.008;
+        if(p.life>0){ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(cx+p.x,cy+p.y,2,0,Math.PI*2);ctx.fill();}
+      });
+      ctx.globalAlpha=1;
+      if(t>1){
+        if(l0.animType==='ns'){
+          const pr=8+2*Math.sin(time*10);
+          const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,pr);
+          grd.addColorStop(0,'#fff');grd.addColorStop(0.5,'#ff6644');grd.addColorStop(1,'transparent');
+          ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,pr,0,Math.PI*2);ctx.fill();
+          ctx.strokeStyle='rgba(255,100,50,0.5)';ctx.lineWidth=2;
+          ctx.beginPath();ctx.moveTo(cx,cy-pr);ctx.lineTo(cx+Math.sin(time*8)*10,cy-pr-40);ctx.stroke();
+          ctx.beginPath();ctx.moveTo(cx,cy+pr);ctx.lineTo(cx-Math.sin(time*8)*10,cy+pr+40);ctx.stroke();
+          ctx.fillStyle='#ff8866';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('中子星',cx,cy+30);
+        } else {
+          const br=15;drawBlackHole(cx,cy,br,true);
+          ctx.fillStyle='#a080ff';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('黑洞',cx,cy+br+22);
+        }
+      }
+      if(t>3)l0.anim=false;
+    }
+  }
+}
+
+// ===== LEVEL 1: Event Horizon =====
+let l1={photons:[],bhR:50,seen:{bend:false,orbit:false,swallow:false}};
+function initL1(){l1={photons:[],bhR:50,seen:{bend:false,orbit:false,swallow:false}};canvas.onclick=clickL1;}
+function clickL1(e){
+  if(currentLevel!==1||gameState!=='play')return;
+  const x=e.clientX,y=e.clientY;if(x<330)return;
+  const cx=(CW+320)/2,cy=CH/2;
+  const ang=Math.atan2(cy-y,cx-x);
+  l1.photons.push({x,y,vx:Math.cos(ang)*3,vy:Math.sin(ang)*3,trail:[],life:1,dist0:Math.sqrt((x-cx)**2+(y-cy)**2)});
+  AudioEngine.play('click');
+}
+function panelL1(){
+  let h=`<button class="act-btn" onclick="">🔦 点击画布发射光子</button>`;
+  h+=`<div class="hint-box">💡 在不同距离点击发射光子，观察光线在黑洞引力场中的行为</div>`;
+  return h;
+}
+function drawL1(){
+  const cx=(CW+320)/2,cy=CH/2,R=l1.bhR;
+  bgStars.forEach(s=>{
+    const dx=s.x-cx,dy=s.y-cy,d=Math.sqrt(dx*dx+dy*dy);
+    if(d<R*4&&d>R){
+      const shift=R*R/(d*d)*15;const ang=Math.atan2(dy,dx);
+      const sx=s.x+Math.cos(ang+Math.PI/2)*shift*Math.sin(time+s.x);
+      const sy=s.y+Math.sin(ang+Math.PI/2)*shift*Math.sin(time+s.y);
+      ctx.globalAlpha=s.b*0.8;ctx.fillStyle='#aaccff';ctx.beginPath();ctx.arc(sx,sy,s.r*1.3,0,Math.PI*2);ctx.fill();
+    }
+  });
+  ctx.globalAlpha=1;
+  ctx.setLineDash([2,6]);ctx.strokeStyle='rgba(255,200,100,0.2)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.arc(cx,cy,R*1.5,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,200,100,0.15)';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText('光子球',cx,cy-R*1.5-6);
+  drawBlackHole(cx,cy,R,true);
+  l1.photons.forEach(p=>{
+    if(p.life<=0)return;
+    const dx=cx-p.x,dy=cy-p.y,d=Math.sqrt(dx*dx+dy*dy);
+    if(d<R*0.8){p.life=0;if(!l1.seen.swallow){l1.seen.swallow=true;markGoal(2);}return;}
+    const force=800/(d*d);
+    p.vx+=dx/d*force;p.vy+=dy/d*force;
+    const spd=Math.sqrt(p.vx*p.vx+p.vy*p.vy);
+    if(spd>4){p.vx=p.vx/spd*4;p.vy=p.vy/spd*4;}
+    p.x+=p.vx;p.y+=p.vy;
+    p.trail.push({x:p.x,y:p.y});if(p.trail.length>60)p.trail.shift();
+    if(d<R*2&&d>R*1.2&&!l1.seen.orbit){
+      const cp=dx*p.vy-dy*p.vx;if(Math.abs(cp)>50){l1.seen.orbit=true;markGoal(1);}
+    }
+    if(d<R*4&&d>R*2&&!l1.seen.bend){
+      const origAng=Math.atan2(p.trail[0]?.y-p.y,p.trail[0]?.x-p.x)||0;
+      const curAng=Math.atan2(p.vy,p.vx);
+      if(Math.abs(origAng-curAng)>0.3){l1.seen.bend=true;markGoal(0);}
+    }
+    if(p.x<0||p.x>CW||p.y<0||p.y>CH)p.life=0;
+    if(p.trail.length>1){
+      ctx.strokeStyle='rgba(255,220,100,0.6)';ctx.lineWidth=2;ctx.beginPath();
+      p.trail.forEach((t,i)=>{ctx.globalAlpha=i/p.trail.length*0.8;i===0?ctx.moveTo(t.x,t.y):ctx.lineTo(t.x,t.y);});
+      ctx.stroke();ctx.globalAlpha=1;
+    }
+    ctx.fillStyle='#ffee88';ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill();
+  });
+  l1.photons=l1.photons.filter(p=>p.life>0);
+}
+
+// ===== LEVEL 2: Spacetime Curvature =====
+let l2={masses:[],testParticles:[],gridSize:30};
+function initL2(){l2={masses:[],testParticles:[],gridSize:30};canvas.onclick=clickL2;}
+function clickL2(e){
+  if(currentLevel!==2||gameState!=='play')return;
+  if(e.clientX<330)return;
+  l2.masses.push({x:e.clientX,y:e.clientY,m:3});
+  if(!levelState.goals[0])markGoal(0);
+  panelDirty=true;renderPanel();
+}
+function panelL2(){
+  let h=`<button class="act-btn" onclick="fireTestParticle()">🚀 发射测试粒子</button>`;
+  h+=`<button class="act-btn" onclick="addBigMass()">⬆️ 增大所有质量</button>`;
+  h+=`<button class="act-btn" onclick="l2.masses=[];l2.testParticles=[];panelDirty=true;renderPanel()">🗑️ 清除</button>`;
+  h+=`<div class="hint-box">💡 点击画布放置质量，观察时空网格凹陷。发射粒子看弯曲路径。</div>`;
+  return h;
+}
+function fireTestParticle(){
+  if(l2.masses.length===0)return;
+  l2.testParticles.push({x:340,y:CH/2,vx:2,vy:0,trail:[],life:1});
+  if(!levelState.goals[1])markGoal(1);
+}
+function addBigMass(){
+  l2.masses.forEach(m=>m.m=Math.min(m.m+3,30));
+  const totalM=l2.masses.reduce((s,m)=>s+m.m,0);
+  if(totalM>20&&!levelState.goals[2])markGoal(2);
+  panelDirty=true;renderPanel();
+}
+function drawL2(){
+  const gs=l2.gridSize;
+  for(let gx=320;gx<CW;gx+=gs){
+    ctx.beginPath();
+    for(let gy=0;gy<CH;gy+=4){
+      let dip=0;l2.masses.forEach(m=>{const dx=gx-m.x,dy=gy-m.y,d=Math.sqrt(dx*dx+dy*dy)+10;dip+=m.m*40/d;});
+      gy===0?ctx.moveTo(gx,gy+dip):ctx.lineTo(gx,gy+dip);
+    }
+    ctx.strokeStyle='rgba(60,100,200,0.25)';ctx.lineWidth=0.5;ctx.stroke();
+  }
+  for(let gy=0;gy<CH;gy+=gs){
+    ctx.beginPath();
+    for(let gx=320;gx<CW;gx+=4){
+      let dip=0;l2.masses.forEach(m=>{const dx=gx-m.x,dy=gy-m.y,d=Math.sqrt(dx*dx+dy*dy)+10;dip+=m.m*40/d;});
+      gx===320?ctx.moveTo(gx,gy+dip):ctx.lineTo(gx,gy+dip);
+    }
+    ctx.strokeStyle='rgba(60,100,200,0.25)';ctx.lineWidth=0.5;ctx.stroke();
+  }
+  l2.masses.forEach(m=>{
+    const r=5+m.m;const grd=ctx.createRadialGradient(m.x,m.y,0,m.x,m.y,r);
+    grd.addColorStop(0,'#fff');grd.addColorStop(0.5,'#6688ff');grd.addColorStop(1,'transparent');
+    ctx.fillStyle=grd;ctx.beginPath();ctx.arc(m.x,m.y,r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText(m.m.toFixed(0)+'M',m.x,m.y-r-4);
+  });
+  l2.testParticles.forEach(p=>{
+    if(p.life<=0)return;
+    l2.masses.forEach(m=>{const dx=m.x-p.x,dy=m.y-p.y,d=Math.sqrt(dx*dx+dy*dy)+5;const f=m.m*0.5/(d*d)*100;p.vx+=dx/d*f;p.vy+=dy/d*f;});
+    p.x+=p.vx;p.y+=p.vy;
+    p.trail.push({x:p.x,y:p.y});if(p.trail.length>120)p.trail.shift();
+    if(p.x<0||p.x>CW||p.y<0||p.y>CH)p.life=0;
+    if(p.trail.length>1){ctx.strokeStyle='rgba(100,255,150,0.6)';ctx.lineWidth=2;ctx.beginPath();p.trail.forEach((t,i)=>{i===0?ctx.moveTo(t.x,t.y):ctx.lineTo(t.x,t.y);});ctx.stroke();}
+    ctx.fillStyle='#4ade80';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();
+  });
+  l2.testParticles=l2.testParticles.filter(p=>p.life>0);
+}
+
+// ===== LEVEL 3: Accretion Disk =====
+let l3={diskParticles:[],jets:[],injected:0,diskFormed:false,tempSeen:false,jetSeen:false,bhR:40};
+function initL3(){l3={diskParticles:[],jets:[],injected:0,diskFormed:false,tempSeen:false,jetSeen:false,bhR:40};}
+function panelL3(){
+  let h=`<button class="act-btn" onclick="injectMatter()">💫 注入物质</button>`;
+  h+=`<div class="hint-box">💡 多次注入物质，观察吸积盘形成、温度梯度和两极喷流</div>`;
+  return h;
+}
+function injectMatter(){
+  l3.injected++;AudioEngine.play('click');
+  const cx=(CW+320)/2,cy=CH/2;
+  for(let i=0;i<25;i++){
+    const ang=Math.random()*Math.PI*2,dist=l3.bhR*2+Math.random()*120;
+    l3.diskParticles.push({x:cx+Math.cos(ang)*dist,y:cy+Math.sin(ang)*dist,ang,dist,orbSpd:1.5+Math.random()*1.5,life:1,decay:0.0003+Math.random()*0.0003});
+  }
+  if(l3.injected>=3&&!l3.diskFormed){l3.diskFormed=true;markGoal(0);}
+  if(l3.injected>=5&&!l3.jetSeen){
+    l3.jetSeen=true;markGoal(2);
+    for(let i=0;i<30;i++){
+      l3.jets.push({x:cx,y:cy,vy:-(2+Math.random()*3),vx:(Math.random()-0.5)*0.5,life:1,up:true});
+      l3.jets.push({x:cx,y:cy,vy:(2+Math.random()*3),vx:(Math.random()-0.5)*0.5,life:1,up:false});
+    }
+  }
+  panelDirty=true;renderPanel();
+}
+function drawL3(){
+  const cx=(CW+320)/2,cy=CH/2,R=l3.bhR;
+  l3.diskParticles.forEach(p=>{
+    p.ang+=p.orbSpd*0.01/Math.max(1,p.dist/80);p.dist-=0.05;p.life-=p.decay;
+    if(p.dist<R*1.1)p.life=0;
+    p.x=cx+Math.cos(p.ang)*p.dist;p.y=cy+Math.sin(p.ang)*p.dist*0.35;
+    if(p.life<=0)return;
+    const t=1-Math.min((p.dist-R)/150,1);
+    let col;if(t>0.7)col=`rgba(200,220,255,${p.life})`;else if(t>0.4)col=`rgba(255,200,100,${p.life})`;else col=`rgba(255,100,50,${p.life})`;
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,1.5+t,0,Math.PI*2);ctx.fill();
+  });
+  l3.diskParticles=l3.diskParticles.filter(p=>p.life>0);
+  if(l3.diskParticles.length>10&&!l3.tempSeen){l3.tempSeen=true;markGoal(1);}
+  l3.jets.forEach(j=>{
+    j.x+=j.vx;j.y+=j.vy;j.life-=0.008;if(j.life<=0)return;
+    ctx.globalAlpha=j.life*0.8;ctx.fillStyle='rgba(80,150,255,0.8)';
+    ctx.beginPath();ctx.arc(j.x,j.y,2,0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;l3.jets=l3.jets.filter(j=>j.life>0);
+  if(l3.jetSeen&&Math.random()<0.3){
+    l3.jets.push({x:cx+(Math.random()-0.5)*4,y:cy,vy:-(2+Math.random()*3),vx:(Math.random()-0.5)*0.3,life:1,up:true});
+    l3.jets.push({x:cx+(Math.random()-0.5)*4,y:cy,vy:(2+Math.random()*3),vx:(Math.random()-0.5)*0.3,life:1,up:false});
+  }
+  drawBlackHole(cx,cy,R,false);
+}
+
+// ===== LEVEL 4: Tidal Forces (with escape challenge) =====
+let l4={distance:1,bhR:50,escapeMode:false,escapeThrust:50,escapeTime:0,escapeResult:'',escaping:false,astronautY:0};
+function initL4(){l4={distance:1,bhR:50,escapeMode:false,escapeThrust:50,escapeTime:0,escapeResult:'',escaping:false,astronautY:0};}
+function panelL4(){
+  const labels=['安全距离','中等距离','危险距离'];
+  const idx=l4.distance<0.35?2:l4.distance<0.65?1:0;
+  let h=`<div class="slider-wrap"><label>距黑洞距离: <span class="sv">${labels[idx]}</span></label>`;
+  h+=`<input type="range" min="0.05" max="1" step="0.01" value="${l4.distance}" oninput="setL4Dist(+this.value)"${l4.escapeMode?' disabled':''}></div>`;
+  if(!l4.escapeMode&&levelState.goals[0]&&levelState.goals[1]&&levelState.goals[2]&&!levelState.goals[3]){
+    h+=`<div style="border:2px solid #f59e0b;border-radius:8px;padding:10px;margin:8px 0;background:#1a1a0a">`;
+    h+=`<div style="font-size:13px;font-weight:700;color:#f59e0b;margin-bottom:6px">🚀 逃生挑战</div>`;
+    h+=`<div style="font-size:11px;color:#cca;margin-bottom:8px">宇航员被困在危险距离！调整推力，在被面条化前逃离！</div>`;
+    h+=`<div class="slider-wrap"><label>推进器推力: <span class="sv">${l4.escapeThrust}%</span></label>`;
+    h+=`<input type="range" min="0" max="100" step="1" value="${l4.escapeThrust}" oninput="l4.escapeThrust=+this.value;panelDirty=true;renderPanel()"></div>`;
+    h+=`<button class="act-btn red" onclick="startEscape()">🔥 启动推进器！</button></div>`;
+  }
+  if(l4.escapeMode){
+    const pct=Math.min(100,l4.escapeTime/3*100);
+    const col=l4.escapeResult==='dead'?'#ef4444':l4.escapeResult==='escaped'?'#22c55e':'#f59e0b';
+    h+=`<div class="escape-bar"><div class="escape-fill" style="width:${pct}%;background:${col}"></div></div>`;
+    if(l4.escapeResult==='dead')h+=`<div class="escape-status" style="color:#f87171">💀 推力不足！宇航员被面条化了...</div>`;
+    else if(l4.escapeResult==='escaped')h+=`<div class="escape-status" style="color:#4ade80">🎉 逃生成功！宇航员安全了！</div>`;
+    else h+=`<div class="escape-status" style="color:#f59e0b">⏳ 逃生中...</div>`;
+    if(l4.escapeResult){h+=`<button class="act-btn" onclick="resetEscape()">🔄 重试逃生</button>`;}
+  }
+  h+=`<div class="hint-box">💡 拖动滑块改变距离观察潮汐力。完成三个观察后解锁逃生挑战！推力需要≥70%才能逃脱。</div>`;
+  return h;
+}
+function setL4Dist(v){
+  l4.distance=v;
+  if(v>0.65&&!levelState.goals[0])markGoal(0);
+  if(v<0.65&&v>0.35&&!levelState.goals[1])markGoal(1);
+  if(v<0.2&&!levelState.goals[2])markGoal(2);
+  panelDirty=true;renderPanel();
+}
+function startEscape(){
+  l4.escapeMode=true;l4.escaping=true;l4.escapeTime=0;l4.escapeResult='';l4.distance=0.15;
+  panelDirty=true;renderPanel();AudioEngine.play('boom');
+}
+function resetEscape(){
+  l4.escapeMode=false;l4.escaping=false;l4.escapeResult='';l4.distance=0.5;
+  panelDirty=true;renderPanel();
+}
+function drawL4(){
+  const cx=(CW+320)/2,cy=CH/2,R=l4.bhR;
+  drawBlackHole(cx-150,cy,R,true);
+  // Escape animation
+  if(l4.escaping){
+    l4.escapeTime+=0.016;
+    if(l4.escapeThrust>=70){
+      l4.distance=Math.min(1,0.15+l4.escapeTime*0.3);
+      if(l4.distance>=0.95){l4.escaping=false;l4.escapeResult='escaped';markGoal(3);AudioEngine.play('success');panelDirty=true;}
+    } else {
+      l4.distance=Math.max(0.02,0.15-l4.escapeTime*0.05);
+      if(l4.distance<=0.05){l4.escaping=false;l4.escapeResult='dead';AudioEngine.play('fail');screenShake();panelDirty=true;}
+    }
+    if(l4.escaping&&l4.escapeTime%0.5<0.016)panelDirty=true;
+  }
+  const ax=cx-150+R+40+l4.distance*250;
+  const stretch=Math.max(1,(1-l4.distance)*8);
+  const squeeze=Math.max(0.2,l4.distance);
+  ctx.save();ctx.translate(ax,cy);
+  // Death effect
+  if(l4.escapeResult==='dead'){
+    ctx.globalAlpha=0.5+Math.sin(time*10)*0.3;
+    ctx.strokeStyle='#f44';
+  } else {
+    ctx.strokeStyle='#fff';
+  }
+  ctx.lineWidth=2;ctx.fillStyle=ctx.strokeStyle;
+  const headR=8*squeeze;
+  ctx.beginPath();ctx.ellipse(0,-25*stretch,headR,8,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,-17*stretch);ctx.lineTo(0,15*stretch);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-12*squeeze,-5*stretch);ctx.lineTo(12*squeeze,-5*stretch);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,15*stretch);ctx.lineTo(-8*squeeze,30*stretch);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,15*stretch);ctx.lineTo(8*squeeze,30*stretch);ctx.stroke();
+  // Thruster flame during escape
+  if(l4.escaping&&l4.escapeThrust>0){
+    const flameLen=l4.escapeThrust*0.4;
+    ctx.fillStyle=`rgba(255,${100+Math.random()*100},50,0.8)`;
+    ctx.beginPath();ctx.moveTo(-6,0);ctx.lineTo(6,0);ctx.lineTo(0+Math.random()*4-2,-flameLen);ctx.closePath();ctx.fill();
+  }
+  if(l4.distance<0.8&&!l4.escapeMode){
+    const fStr=Math.min(40,(1-l4.distance)*50);
+    ctx.strokeStyle='rgba(255,80,80,0.7)';ctx.lineWidth=2;
+    drawArrow(0,-30*stretch,0,-30*stretch-fStr);
+    drawArrow(0,35*stretch,0,35*stretch+fStr);
+    ctx.fillStyle='rgba(255,100,100,0.8)';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText('F↑',10,-30*stretch-fStr-5);ctx.fillText('F↓',10,35*stretch+fStr+12);
+  }
+  ctx.restore();ctx.globalAlpha=1;
+  ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='11px sans-serif';ctx.textAlign='center';
+  const distLabel=l4.escapeResult==='dead'?'💀 面条化！':l4.distance<0.2?'极近！面条化！':l4.distance<0.5?'危险区域':l4.distance<0.7?'潮汐力可感知':'安全距离';
+  ctx.fillText(distLabel,ax,cy+60*stretch+20);
+}
+function drawArrow(x1,y1,x2,y2){
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  const ang=Math.atan2(y2-y1,x2-x1);
+  ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-8*Math.cos(ang-0.4),y2-8*Math.sin(ang-0.4));ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-8*Math.cos(ang+0.4),y2-8*Math.sin(ang+0.4));ctx.stroke();
+}
+
+// ===== LEVEL 5: Hawking Radiation (with glowing trails) =====
+let l5={bhR:60,pairs:[],escaped:0,evaporating:false,evapT:0,shrinkR:60};
+function initL5(){l5={bhR:60,pairs:[],escaped:0,evaporating:false,evapT:0,shrinkR:60};}
+function panelL5(){
+  let h=`<button class="act-btn" onclick="startEvaporation()"${l5.evaporating?' disabled':''}>⏩ 加速时间观察蒸发</button>`;
+  h+=`<div style="font-size:11px;color:#888;margin:4px 0">黑洞半径: <span class="sv">${l5.shrinkR.toFixed(1)}</span> | 逃逸粒子: <span class="sv">${l5.escaped}</span></div>`;
+  h+=`<div class="hint-box">💡 观察视界边缘的虚粒子对产生。蓝色粒子逃逸=霍金辐射。</div>`;
+  return h;
+}
+function startEvaporation(){l5.evaporating=true;panelDirty=true;renderPanel();AudioEngine.play('click');}
+function drawL5(){
+  const cx=(CW+320)/2,cy=CH/2;
+  let R=l5.shrinkR;
+  if(l5.evaporating&&R>3){
+    l5.shrinkR=Math.max(3,l5.shrinkR-0.12);R=l5.shrinkR;
+    if(R<=3&&!levelState.goals[2]){
+      markGoal(2);AudioEngine.play('boom');whiteFlash();screenShake();
+      for(let i=0;i<40;i++){const a=Math.random()*Math.PI*2,sp=Math.random()*5+2;
+        particles.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,color:'#fff',r:2});}
+    }
+  }
+  if(R>3)drawBlackHole(cx,cy,R,false);
+  else{
+    l5.evapT+=0.016;const flash=Math.max(0,1.5-l5.evapT*0.3);
+    if(flash>0){const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,50*flash);
+      grd.addColorStop(0,'rgba(255,255,255,'+Math.min(1,flash)+')');grd.addColorStop(1,'transparent');
+      ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,50*flash,0,Math.PI*2);ctx.fill();}
+  }
+  if(R>5&&Math.random()<(l5.evaporating?0.15:0.04)){
+    const ang=Math.random()*Math.PI*2;
+    const px=cx+Math.cos(ang)*(R+5),py=cy+Math.sin(ang)*(R+5);
+    const escapes=Math.random()<0.3;
+    l5.pairs.push({x1:px,y1:py,x2:px,y2:py,
+      v1x:Math.cos(ang)*(escapes?1.5:0.5),v1y:Math.sin(ang)*(escapes?1.5:0.5),
+      v2x:-Math.cos(ang)*0.8,v2y:-Math.sin(ang)*0.8,
+      life:1,escapes,counted:false,trail:[]});
+    if(!levelState.goals[0])markGoal(0);
+  }
+  l5.pairs.forEach(p=>{
+    p.x1+=p.v1x;p.y1+=p.v1y;p.x2+=p.v2x;p.y2+=p.v2y;p.life-=0.008;
+    // Glowing trail for escaping particles
+    if(p.escapes){
+      p.trail.push({x:p.x1,y:p.y1,life:1});
+      if(p.trail.length>15)p.trail.shift();
+      p.trail.forEach((t,i)=>{
+        t.life-=0.05;if(t.life>0){
+          ctx.globalAlpha=t.life*0.5;
+          const grd=ctx.createRadialGradient(t.x,t.y,0,t.x,t.y,5);
+          grd.addColorStop(0,'rgba(80,150,255,0.6)');grd.addColorStop(1,'transparent');
+          ctx.fillStyle=grd;ctx.beginPath();ctx.arc(t.x,t.y,5,0,Math.PI*2);ctx.fill();
+        }
+      });
+      ctx.globalAlpha=1;
+    }
+    // Main particles with glow
+    const grd1=ctx.createRadialGradient(p.x1,p.y1,0,p.x1,p.y1,6);
+    grd1.addColorStop(0,'rgba(80,150,255,0.9)');grd1.addColorStop(0.5,'rgba(80,150,255,0.3)');grd1.addColorStop(1,'transparent');
+    ctx.fillStyle=grd1;ctx.beginPath();ctx.arc(p.x1,p.y1,6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(80,150,255,1)';ctx.beginPath();ctx.arc(p.x1,p.y1,2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,80,80,0.8)';ctx.beginPath();ctx.arc(p.x2,p.y2,3,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=0.5;
+    ctx.beginPath();ctx.moveTo(p.x1,p.y1);ctx.lineTo(p.x2,p.y2);ctx.stroke();
+    if(p.escapes&&!p.counted){
+      const d1=Math.sqrt((p.x1-cx)**2+(p.y1-cy)**2);
+      if(d1>R+30){p.counted=true;l5.escaped++;if(!levelState.goals[1])markGoal(1);panelDirty=true;}
+    }
+  });
+  l5.pairs=l5.pairs.filter(p=>p.life>0);
+  // Global particles
+  particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.life-=0.02;
+    if(p.life>0){ctx.globalAlpha=p.life;ctx.fillStyle=p.color;
+      if(p.glow){const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*2);g.addColorStop(0,p.color);g.addColorStop(1,'transparent');ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,p.r*2,0,Math.PI*2);ctx.fill();}
+      else{ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}
+    }
+  });
+  ctx.globalAlpha=1;particles=particles.filter(p=>p.life>0);
+}
+
+// ===== LEVEL 6: Wormhole (precise exotic matter ±10%) =====
+const WORMHOLE_TARGET=65; // target exotic matter percentage
+const WORMHOLE_TOLERANCE=0.10; // ±10%
+let l6={connected:false,stable:false,exoticMatter:0,shipLaunched:false,shipT:0,shipPhase:'none',
+  collapseT:0,collapsing:false,tunnelPulse:0,exploding:false,explodeT:0,tooMuch:false,warpRipples:[]};
+function initL6(){l6={connected:false,stable:false,exoticMatter:0,shipLaunched:false,shipT:0,shipPhase:'none',
+  collapseT:0,collapsing:false,tunnelPulse:0,exploding:false,explodeT:0,tooMuch:false,warpRipples:[]};}
+function panelL6(){
+  let h='';
+  const lo=Math.round(WORMHOLE_TARGET*(1-WORMHOLE_TOLERANCE));
+  const hi=Math.round(WORMHOLE_TARGET*(1+WORMHOLE_TOLERANCE));
+  if(!l6.connected){
+    h+=`<button class="act-btn" onclick="connectWormhole()">🌀 连接虫洞</button>`;
+  } else {
+    h+=`<div class="slider-wrap"><label>奇异物质注入量: <span class="sv">${l6.exoticMatter.toFixed(0)}%</span></label>`;
+    h+=`<input type="range" min="0" max="100" step="1" value="${l6.exoticMatter}" oninput="setExoticMatter(+this.value)"${l6.shipLaunched||l6.exploding?' disabled':''}></div>`;
+    // Status indicator
+    if(l6.exoticMatter>0){
+      if(l6.exoticMatter<lo){
+        h+=`<div style="color:#f87171;font-size:11px;margin:4px 0">⚠️ 奇异物质不足，虫洞不稳定，可能坍缩</div>`;
+      } else if(l6.exoticMatter>hi){
+        h+=`<div style="color:#f87171;font-size:11px;margin:4px 0">⚠️ 奇异物质过多！虫洞可能膨胀爆炸！</div>`;
+      } else {
+        h+=`<div style="color:#4ade80;font-size:11px;margin:4px 0">✅ 奇异物质量恰好！虫洞稳定</div>`;
+      }
+    }
+    if(l6.stable&&!l6.shipLaunched&&!l6.exploding){
+      h+=`<button class="act-btn green" onclick="launchShip()">🚀 发射飞船穿越</button>`;
+    }
+    if(l6.collapsing)h+=`<div style="color:#f88;font-size:11px;margin:4px 0">⚠️ 虫洞坍缩中！增加奇异物质！</div>`;
+    if(l6.exploding)h+=`<div style="color:#f44;font-size:11px;margin:4px 0">💥 虫洞膨胀爆炸！</div>`;
+    if(l6.exploding||l6.collapsing){h+=`<button class="act-btn" onclick="initL6();panelDirty=true;renderPanel()">🔄 重新连接</button>`;}
+  }
+  h+=`<div class="hint-box">💡 奇异物质需精确控制在 ${lo}%-${hi}% 范围内（目标${WORMHOLE_TARGET}%±10%）。太少→坍缩，太多→爆炸！</div>`;
+  return h;
+}
+function connectWormhole(){l6.connected=true;markGoal(0);panelDirty=true;renderPanel();AudioEngine.play('click');}
+function setExoticMatter(v){
+  l6.exoticMatter=v;
+  const lo=WORMHOLE_TARGET*(1-WORMHOLE_TOLERANCE),hi=WORMHOLE_TARGET*(1+WORMHOLE_TOLERANCE);
+  if(v>=lo&&v<=hi){
+    if(!l6.stable){l6.stable=true;l6.collapsing=false;l6.exploding=false;markGoal(1);}
+  } else {
+    l6.stable=false;
+    if(v<lo&&v>0){l6.collapsing=true;l6.collapseT=0;l6.exploding=false;}
+    else if(v>hi){
+      // Too much - explosion!
+      if(!l6.exploding){
+        l6.exploding=true;l6.explodeT=0;l6.collapsing=false;
+        AudioEngine.play('boom');screenShake();whiteFlash();
+      }
+    } else {l6.collapsing=false;}
+  }
+  panelDirty=true;renderPanel();
+}
+function launchShip(){
+  if(!l6.stable)return;
+  l6.shipLaunched=true;l6.shipT=0;l6.shipPhase='approach';
+  panelDirty=true;renderPanel();AudioEngine.play('click');
+}
+function drawL6(){
+  const cx=(CW+320)/2,cy=CH/2;
+  const bh1x=cx-180,bh2x=cx+180,bhy=cy,R=35;
+  drawBlackHole(bh1x,bhy,R,false);drawBlackHole(bh2x,bhy,R,false);
+  ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('A点',bh1x,bhy+R+18);ctx.fillText('B点 (10亿光年外)',bh2x,bhy+R+18);
+  // Explosion effect
+  if(l6.exploding){
+    l6.explodeT+=0.016;
+    const r=l6.explodeT*200;const alpha=Math.max(0,1-l6.explodeT*0.5);
+    if(alpha>0){
+      const grd=ctx.createRadialGradient(cx,bhy,0,cx,bhy,r);
+      grd.addColorStop(0,`rgba(255,200,100,${alpha})`);grd.addColorStop(0.5,`rgba(255,100,50,${alpha*0.5})`);grd.addColorStop(1,'transparent');
+      ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,bhy,r,0,Math.PI*2);ctx.fill();
+    }
+    if(l6.explodeT>3){l6.connected=false;l6.exploding=false;panelDirty=true;}
+    return;
+  }
+  if(l6.connected){
+    l6.tunnelPulse+=0.03;
+    const wobble=l6.collapsing?Math.sin(time*10)*10:0;
+    const tunnelH=l6.stable?50:30+wobble;
+    ctx.save();
+    ctx.strokeStyle=l6.stable?'rgba(100,200,255,0.5)':'rgba(255,100,100,0.4)';ctx.lineWidth=2;
+    ctx.beginPath();
+    for(let t=0;t<=1;t+=0.02){const x=bh1x+R+(bh2x-bh1x-2*R)*t;const yOff=Math.sin(t*Math.PI)*tunnelH+Math.sin(t*Math.PI*3+l6.tunnelPulse)*5;t===0?ctx.moveTo(x,bhy-yOff):ctx.lineTo(x,bhy-yOff);}
+    ctx.stroke();
+    ctx.beginPath();
+    for(let t=0;t<=1;t+=0.02){const x=bh1x+R+(bh2x-bh1x-2*R)*t;const yOff=Math.sin(t*Math.PI)*tunnelH+Math.sin(t*Math.PI*3+l6.tunnelPulse)*5;t===0?ctx.moveTo(x,bhy+yOff):ctx.lineTo(x,bhy+yOff);}
+    ctx.stroke();
+    if(l6.stable){
+      for(let i=0;i<5;i++){const tt=(time*0.5+i*0.2)%1;const x=bh1x+R+(bh2x-bh1x-2*R)*tt;const yOff=Math.sin(tt*Math.PI)*tunnelH*0.5;
+        ctx.fillStyle='rgba(100,200,255,0.6)';ctx.beginPath();ctx.arc(x,bhy+Math.sin(time*3+i)*yOff*0.3,2,0,Math.PI*2);ctx.fill();}
+    }
+    ctx.restore();
+    if(l6.collapsing){l6.collapseT+=0.016;if(l6.collapseT>2){l6.connected=false;l6.collapsing=false;l6.stable=false;AudioEngine.play('fail');panelDirty=true;}}
+    // Warp ripples during ship transit
+    l6.warpRipples.forEach(r=>{r.radius+=2;r.life-=0.02;
+      if(r.life>0){ctx.strokeStyle=`rgba(100,200,255,${r.life*0.3})`;ctx.lineWidth=1;ctx.beginPath();ctx.arc(r.x,r.y,r.radius,0,Math.PI*2);ctx.stroke();}
+    });
+    l6.warpRipples=l6.warpRipples.filter(r=>r.life>0);
+    if(l6.shipLaunched){
+      l6.shipT+=0.008;let sx,sy;
+      if(l6.shipT<0.3){const t=l6.shipT/0.3;sx=bh1x-80+t*(80+R);sy=bhy;}
+      else if(l6.shipT<0.7){
+        const t=(l6.shipT-0.3)/0.4;sx=bh1x+R+(bh2x-bh1x-2*R)*t;sy=bhy+Math.sin(t*Math.PI)*10;
+        // Warp ripple effect during transit
+        if(Math.random()<0.15)l6.warpRipples.push({x:sx,y:sy,radius:5,life:1});
+      }
+      else if(l6.shipT<1){const t=(l6.shipT-0.7)/0.3;sx=bh2x+R*t+t*80;sy=bhy;}
+      else{sx=bh2x+80;sy=bhy;if(!levelState.goals[2]){markGoal(2);celebrationParticles(sx,sy);}}
+      ctx.fillStyle='#4ade80';ctx.beginPath();ctx.moveTo(sx+10,sy);ctx.lineTo(sx-6,sy-5);ctx.lineTo(sx-6,sy+5);ctx.closePath();ctx.fill();
+      if(l6.shipT<1){ctx.fillStyle='rgba(255,150,50,0.5)';
+        for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(sx-8-i*4+(Math.random()-0.5)*3,sy+(Math.random()-0.5)*4,2-i*0.5,0,Math.PI*2);ctx.fill();}}
+      if(l6.shipT>=1){ctx.fillStyle='rgba(100,255,150,0.7)';ctx.font='12px sans-serif';ctx.textAlign='center';
+        ctx.fillText('虫洞距离: ~1秒',cx,bhy-80);ctx.fillText('常规距离: 10亿光年',cx,bhy-65);}
+    }
+  }
+}
+
+// ===== MAIN LOOP =====
+function loop(){
+  animId=requestAnimationFrame(loop);
+  time+=0.016;
+  drawBg();
+  if(gameState==='play'){
+    if(currentLevel===0)drawL0();
+    else if(currentLevel===1)drawL1();
+    else if(currentLevel===2)drawL2();
+    else if(currentLevel===3)drawL3();
+    else if(currentLevel===4)drawL4();
+    else if(currentLevel===5)drawL5();
+    else if(currentLevel===6)drawL6();
+    // Draw global particles (celebration etc) on all levels except L5 which handles its own
+    if(currentLevel!==5){
+      particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.life-=0.02;
+        if(p.life>0){ctx.globalAlpha=p.life;
+          if(p.glow){const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*2);g.addColorStop(0,p.color);g.addColorStop(1,'transparent');ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,p.r*2,0,Math.PI*2);ctx.fill();}
+          else{ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();}
+        }
+      });
+      ctx.globalAlpha=1;particles=particles.filter(p=>p.life>0);
+    }
+    if(panelDirty)renderPanel();
+  }
+}
+</script>
+</body>
+</html>

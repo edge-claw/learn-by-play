@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>比特币原理探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a14;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#f7931a}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#f7931a,#ffb347);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+
+/* 左面板 */
+#lp{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,24,.97);border-right:1px solid #1a1a3a;z-index:20;display:none;flex-direction:column;overflow:hidden}
+#lp .lp-head{padding:12px 16px;border-bottom:1px solid #1a1a3a;display:flex;align-items:center;justify-content:space-between}
+#lp .lp-title{font-size:14px;font-weight:700;color:#f7931a}
+#lp .lp-step{font-size:11px;color:#888}
+#lp-body{flex:1;overflow-y:auto;padding:0}
+
+.mission{margin:12px;padding:14px;background:#141428;border:1px solid #2a2a5a;border-radius:10px}
+.mission .m-level{font-size:11px;color:#f7931a;font-weight:600;letter-spacing:1px}
+.mission .m-title{font-size:17px;font-weight:700;margin:4px 0;color:#eee}
+.mission .m-desc{font-size:13px;color:#999;line-height:1.6}
+.mission .m-concept{margin-top:10px;padding:8px 10px;background:#0e0e20;border-radius:6px;font-size:12px;color:#6a8aff;line-height:1.6}
+.mission .m-concept b{color:#8ab4ff}
+.goal-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px}
+.goal-row .g-icon{font-size:15px}
+.goal-row .g-text{color:#ccc;flex:1}
+.hint-b{margin:0 12px;padding:10px 14px;background:#1a1a38;border-left:3px solid #f7931a;border-radius:0 8px 8px 0;font-size:12px;color:#ffcc80;line-height:1.5}
+.act-section{margin:12px}
+.act-section .as-label{font-size:12px;color:#888;margin-bottom:8px;font-weight:600}
+.act-btn{width:100%;padding:12px;background:linear-gradient(135deg,#f7931a,#ffb347);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;transition:all .2s}
+.act-btn:hover{filter:brightness(1.1)}
+.act-btn:disabled{background:#333;color:#666;cursor:not-allowed;filter:none}
+.act-btn.green{background:linear-gradient(135deg,#2aaa5a,#3cc76a)}
+.act-btn.red{background:linear-gradient(135deg,#e8443a,#ff6b6b)}
+.act-btn.blue{background:linear-gradient(135deg,#3a7aff,#5a9aff)}
+
+/* 右侧信息 */
+#info-bar{position:absolute;top:12px;right:12px;background:rgba(10,10,24,.95);border:1px solid #1a1a3a;border-radius:10px;padding:12px 16px;z-index:20;min-width:200px;display:none;font-size:12px}
+#info-bar .ib-title{font-size:11px;color:#f7931a;font-weight:600;margin-bottom:6px}
+.ib-row{display:flex;justify-content:space-between;padding:3px 0}
+.ib-row .ib-k{color:#888}
+.ib-row .ib-v{font-weight:600;font-variant-numeric:tabular-nums}
+
+/* 交易日志 */
+#tx-log{position:absolute;bottom:12px;right:12px;background:rgba(10,10,24,.95);border:1px solid #1a1a3a;border-radius:10px;padding:10px 14px;z-index:20;width:280px;max-height:200px;overflow-y:auto;display:none;font-size:11px}
+#tx-log .tl-title{font-size:11px;color:#f7931a;font-weight:600;margin-bottom:4px}
+.tx-entry{padding:3px 0;border-bottom:1px solid #1a1a3a15;color:#aaa}
+.tx-entry .tx-hash{color:#6a8aff;font-family:monospace;font-size:10px}
+
+/* 挖矿动画 */
+#mine-box{position:absolute;bottom:12px;left:340px;background:rgba(10,10,24,.95);border:1px solid #f7931a55;border-radius:10px;padding:14px 18px;z-index:20;display:none;min-width:360px}
+#mine-box .mb-title{font-size:13px;color:#f7931a;font-weight:600;margin-bottom:8px}
+#mine-box .mb-target{font-size:12px;color:#888;margin-bottom:4px}
+#mine-tries{font-family:monospace;font-size:11px;color:#666;max-height:100px;overflow-y:auto;line-height:1.6}
+#mine-tries .try-fail{color:#ff4444}
+#mine-tries .try-pass{color:#2aaa5a;font-weight:700}
+#mine-progress{height:4px;background:#1a1a3a;border-radius:2px;margin-top:8px}
+#mine-progress-fill{height:100%;background:#f7931a;border-radius:2px;transition:width .3s}
+
+/* 结果弹窗 */
+.result-box{text-align:center;max-width:420px;background:rgba(10,10,24,.98);border:1px solid #2a2a5a;border-radius:16px;padding:28px 36px}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-desc{font-size:13px;color:#999;line-height:1.6;margin-bottom:16px}
+.result-box .rb-learn{text-align:left;background:#0e0e20;border-radius:8px;padding:12px 14px;font-size:12px;color:#8ab4ff;line-height:1.7;margin-bottom:16px}
+.result-box .rb-learn b{color:#f7931a}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#f7931a;color:#fff}
+.result-box .btn-retry{background:#2a2a5a;color:#ccc}
+
+/* 测验 */
+.quiz-box{background:#0d1a0d;border:1px solid #22c55e;border-radius:8px;padding:10px;margin:8px 12px}
+.quiz-q{font-size:12px;color:#4ade80;margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:12px;color:#a0c0a0;padding:6px 8px;margin:3px 0;border-radius:6px;cursor:pointer;border:1px solid #1a3a1a;transition:all .2s}
+.quiz-opt:hover{background:#1a2a1a;border-color:#22c55e}
+.quiz-opt.correct{background:#0a2a0a;border-color:#22c55e;color:#4ade80;pointer-events:none}
+.quiz-opt.wrong{background:#2a0a0a;border-color:#ef4444;color:#f87171}
+.quiz-opt.disabled{pointer-events:none;opacity:.5}
+
+/* 双花交易标记 */
+.tx-double{color:#ff6b6b !important;border-color:#ff4444 !important;background:#1a0a0a !important}
+.tx-double .g-text{color:#ff6b6b !important}
+
+/* 粒子层 */
+#particle-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:100}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<canvas id="particle-canvas"></canvas>
+
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>₿ <span class="gold">比特币</span>原理探险</h1>
+  <div class="sub">6 个关卡，亲手体验区块链核心技术</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">💰</div>交易</div>
+    <div class="feat"><div class="fi">📦</div>区块</div>
+    <div class="feat"><div class="fi">⛏️</div>挖矿</div>
+    <div class="feat"><div class="fi">🔗</div>区块链</div>
+    <div class="feat"><div class="fi">🌐</div>共识</div>
+    <div class="feat"><div class="fi">🛡️</div>防篡改</div>
+  </div>
+</div>
+</div>
+
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+
+<div id="lp">
+  <div class="lp-head"><span class="lp-title" id="lpTitle">第 1 关</span><span class="lp-step" id="lpStep">1/6</span></div>
+  <div id="lp-body"></div>
+</div>
+<div id="info-bar"></div>
+<div id="tx-log"><div class="tl-title">📜 交易记录</div><div id="tx-list"></div></div>
+<div id="mine-box">
+  <div class="mb-title">⛏️ 挖矿中...</div>
+  <div class="mb-target" id="mineTarget"></div>
+  <div id="mine-tries"></div>
+  <div id="mine-progress"><div id="mine-progress-fill" style="width:0%"></div></div>
+</div>
+
+<script>
+// ============ 音效系统 (Web Audio API) ============
+const AudioCtx=window.AudioContext||window.webkitAudioContext;
+let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new AudioCtx()}
+function playSound(type){
+  try{initAudio()}catch(e){return}
+  const o=audioCtx.createOscillator();const g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  const t=audioCtx.currentTime;
+  if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start(t);g.gain.exponentialRampToValueAtTime(0.001,t+0.1);o.stop(t+0.1)}
+  else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start(t);o.frequency.setValueAtTime(659,t+0.1);o.frequency.setValueAtTime(784,t+0.2);g.gain.exponentialRampToValueAtTime(0.001,t+0.4);o.stop(t+0.4)}
+  else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start(t);o.frequency.setValueAtTime(200,t+0.15);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);o.stop(t+0.3)}
+  else if(type==='boom'){const buf=audioCtx.createBuffer(1,audioCtx.sampleRate*0.3,audioCtx.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/d.length*5);const s=audioCtx.createBufferSource();s.buffer=buf;const g2=audioCtx.createGain();g2.gain.value=0.2;s.connect(g2);g2.connect(audioCtx.destination);s.start()}
+}
+
+// ============ 粒子庆祝系统 ============
+const pCanvas=document.getElementById('particle-canvas');
+const pCtx=pCanvas.getContext('2d');
+let particles=[];
+function spawnParticles(cx,cy,count){
+  for(let i=0;i<count;i++){
+    const angle=Math.random()*Math.PI*2;
+    const speed=2+Math.random()*4;
+    particles.push({x:cx,y:cy,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed-2,life:1,color:`hsl(${40+Math.random()*20},100%,${50+Math.random()*30}%)`,size:2+Math.random()*3});
+  }
+}
+function updateParticles(dt){
+  const dpr=devicePixelRatio||1;
+  pCanvas.width=window.innerWidth*dpr;pCanvas.height=window.innerHeight*dpr;
+  pCtx.setTransform(dpr,0,0,dpr,0,0);
+  pCtx.clearRect(0,0,window.innerWidth,window.innerHeight);
+  for(let p of particles){
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.1;p.life-=dt*1.2;
+    if(p.life>0){pCtx.globalAlpha=p.life;pCtx.fillStyle=p.color;pCtx.beginPath();pCtx.arc(p.x,p.y,p.size,0,Math.PI*2);pCtx.fill()}
+  }
+  pCtx.globalAlpha=1;
+  particles=particles.filter(p=>p.life>0);
+}
+
+// ============ 关卡切换淡入 ============
+let fadeAlpha=1;
+let fadeTarget=1;
+
+// ============ 屏幕震动 ============
+let shakeAmount=0;
+function triggerShake(amount){shakeAmount=amount}
+
+// ============ 测验系统 ============
+const QUIZZES=[
+  {q:'比特币网络中，一笔交易需要发送给谁？',opts:['A. 银行','B. 所有节点','C. 收款人'],ans:1},
+  {q:'区块中除了交易记录，还包含什么？',opts:['A. 矿工照片','B. 时间戳和前一区块哈希','C. 银行账号'],ans:1},
+  {q:'挖矿本质上是在做什么？',opts:['A. 挖地下的币','B. 猜一个让哈希满足条件的数字','C. 破解密码'],ans:1},
+  {q:'为什么篡改区块链很难？',opts:['A. 有密码保护','B. 修改一个区块会导致后续所有区块哈希失效','C. 数据加密了'],ans:1},
+  {q:'当区块链出现分叉时，网络遵循什么规则？',opts:['A. 先到先得','B. 最长链规则','C. 投票决定'],ans:1},
+  {q:'防止双花攻击的关键是什么？',opts:['A. 等待多个确认','B. 加密交易','C. 限制转账金额'],ans:0},
+];
+let quizPassed=false;
+let quizCooldown=false;
+
+function checkQuiz(levelIdx,chosen){
+  if(quizCooldown)return;
+  const quiz=QUIZZES[levelIdx];
+  const opts=document.querySelectorAll(`#quiz-${levelIdx} .quiz-opt`);
+  if(chosen===quiz.ans){
+    opts[chosen].classList.add('correct');
+    quizPassed=true;
+    playSound('success');
+    // 显示下一关按钮
+    const nb=document.getElementById('quiz-next-btn');
+    if(nb)nb.style.display='inline-block';
+  }else{
+    opts[chosen].classList.add('wrong');
+    opts[quiz.ans].classList.add('correct');
+    playSound('fail');
+    quizCooldown=true;
+    setTimeout(()=>{
+      opts[chosen].classList.remove('wrong');
+      opts[quiz.ans].classList.remove('correct');
+      quizCooldown=false;
+    },1500);
+  }
+}
+
+// ============ 工具函数 ============
+function sha256Simple(str) {
+  // 简化哈希：不是真 SHA256，但视觉效果一样
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  const hex = (v) => ((v>>>0).toString(16)).padStart(8,'0');
+  let h2 = h ^ (h >>> 16); h2 = Math.imul(h2, 0x45d9f3b); h2 ^= h2 >>> 16;
+  let h3 = h2 ^ (h >>> 8); h3 = Math.imul(h3, 0x119de1f3);
+  let h4 = h3 ^ h; h4 = Math.imul(h4, 0x16a6b885);
+  return hex(h) + hex(h2) + hex(h3) + hex(h4) + hex(h^h4) + hex(h2^h3) + hex(h3^h4) + hex(h^h2);
+}
+
+function shortHash(s) { return sha256Simple(s).slice(0,16); }
+
+// ============ 游戏数据 ============
+const PEOPLE = ['Alice','Bob','Charlie','David','Eve','Frank','Grace','Helen'];
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let CW, CH, time = 0;
+
+// 网络节点
+let nodes = [];
+let edges = [];
+let broadcasts = []; // {from, progress, color, msg}
+let blockchain = []; // [{hash, prevHash, txs, nonce, miner}]
+let pendingTxs = [];
+let txLog = [];
+
+// 游戏状态
+let gameState = 'start';
+let currentLevel = 0;
+let levelState = {};
+let miningActive = false;
+let mineInterval = null;
+
+// ============ 关卡定义 ============
+const LEVELS = [
+  {
+    id:1, title:'交易是怎么回事', icon:'💰',
+    desc:'Alice 想给 Bob 转 0.5 BTC。点击「发起交易」，看看一笔交易如何在整个网络中传播。',
+    concept:'<b>交易 (Transaction)</b>：一条转账记录，包含发送方、接收方、金额。交易会广播给网络中所有节点，每个节点都会收到一份副本。\n\n这就是<b>「分布式」</b>的含义——没有中央银行，所有人都有同一份账本。',
+    goals:[{label:'发起一笔交易',check:s=>s.txSent>=1},{label:'交易传播到所有节点',check:s=>s.allReceived}],
+    hint:'点击下方「发起交易」按钮，观察交易像涟漪一样扩散到每个节点',
+    actions: s => {
+      let h = '';
+      if (!s.txSent) {
+        h += `<button class="act-btn" onclick="doAction('sendTx')">💰 发起交易：Alice → Bob 0.5 BTC</button>`;
+      } else if (!s.allReceived) {
+        h += `<div style="color:#ffcc80;font-size:13px;text-align:center;padding:8px">⏳ 交易正在网络中传播...</div>`;
+      } else {
+        h += `<button class="act-btn green" onclick="checkLevel()">✅ 所有节点已收到！查看结果</button>`;
+      }
+      return h;
+    },
+    init: () => ({ txSent: 0, allReceived: false }),
+    learn:'每笔交易都会广播到<b>所有节点</b>，每个人手里都有完整的交易记录。不需要银行，因为<b>所有人都是见证者</b>。这就是去中心化的核心。'
+  },
+  {
+    id:2, title:'打包成区块', icon:'📦',
+    desc:'网络中积攒了好几笔交易。矿工需要把它们打包成一个「区块」。注意：其中混入了一笔<b>双花交易</b>（同一笔钱花了两次），你必须识别并排除它！',
+    concept:'<b>区块 (Block)</b>：一页账本纸。多笔交易被打包到一起，加上时间戳和前一个区块的哈希值，形成一个区块。\n\n每个区块大约包含 1000-3000 笔交易，约 10 分钟产生一个。',
+    goals:[{label:'识别并排除双花交易',check:s=>s.doubleRejected},{label:'选择至少 3 笔有效交易',check:s=>s.selectedTxs>=3&&!s.doubleIncluded},{label:'成功打包区块',check:s=>s.blockPacked}],
+    hint:'仔细看交易列表，有一笔标记为🔴可疑的交易——它和另一笔交易使用了同一笔钱。选择有效交易后点击「打包区块」',
+    actions: s => {
+      let h = '<div style="margin-bottom:8px">';
+      const txs = s.availableTxs || [];
+      for (let i = 0; i < txs.length; i++) {
+        const sel = (s.picks||[]).includes(i);
+        const isDbl = txs[i].isDouble;
+        const dblClass = isDbl && sel ? 'tx-double' : '';
+        h += `<div class="goal-row ${dblClass}" style="cursor:pointer;padding:6px 8px;border-radius:6px;background:${sel?(isDbl?'#1a0a0a':'#1e1a10'):'#0e0e20'};border:1px solid ${sel?(isDbl?'#ff4444':'#f7931a'):'#1a1a3a'};margin-bottom:4px" onclick="doAction('toggleTx',${i})">
+          <span class="g-icon">${sel?'☑️':'⬜'}</span>
+          <span class="g-text" style="font-size:12px">${txs[i].from} → ${txs[i].to}：${txs[i].amount} BTC${isDbl?' <span style=color:#ff6b6b>🔴 可疑</span>':''}</span>
+        </div>`;
+      }
+      h += '</div>';
+      h += `<div style="font-size:11px;color:#888;margin-bottom:6px">已选 ${s.selectedTxs||0} 笔交易${s.doubleIncluded?'<span style=color:#ff4444> ⚠️ 包含双花交易！区块无效！</span>':''}</div>`;
+      if (s.doubleIncluded) {
+        h += `<div style="background:#1a0a0a;border:1px solid #ff4444;border-radius:8px;padding:10px;margin-bottom:8px;font-size:12px;color:#ff6b6b">
+          ❌ 区块验证失败！你选中了一笔<b>双花交易</b>（${txs[0].from} 的同一笔 ${txs[0].amount} BTC 被花了两次）。<br>
+          <span style="color:#ffaa00">请取消选择可疑交易后重新打包。</span>
+        </div>`;
+        h += `<button class="act-btn red" disabled>📦 区块无效，请排除双花交易</button>`;
+      } else if (s.blockPacked) {
+        const b = s.packedBlock;
+        h += `<div style="background:#0a1628;border:2px solid #f7931a;border-radius:10px;padding:12px;margin-bottom:10px">
+          <div style="text-align:center;font-weight:bold;color:#f7931a;margin-bottom:8px;font-size:14px">📦 区块 #${b.id}</div>
+          <div style="background:#0d0d24;border-radius:6px;padding:8px;margin-bottom:6px">
+            <div style="font-size:11px;color:#888;margin-bottom:2px">🔗 上一区块的指纹（哈希）</div>
+            <div style="font-size:11px;color:#60a5fa;font-family:monospace;word-break:break-all">${b.prevHash}</div>
+          </div>
+          <div style="background:#0d0d24;border-radius:6px;padding:8px;margin-bottom:6px">
+            <div style="font-size:11px;color:#888;margin-bottom:2px">🕐 时间戳</div>
+            <div style="font-size:12px;color:#e0e0ff">${b.timestamp}</div>
+          </div>
+          <div style="background:#0d0d24;border-radius:6px;padding:8px;margin-bottom:6px">
+            <div style="font-size:11px;color:#888;margin-bottom:4px">📋 交易记录（${b.txs.length} 笔）</div>
+            ${b.txs.map(t=>`<div style="font-size:11px;color:#a5f3a0;margin-bottom:2px">• ${t.from} → ${t.to}：${t.amount} BTC</div>`).join('')}
+          </div>
+          <div style="background:#0d0d24;border-radius:6px;padding:8px">
+            <div style="font-size:11px;color:#888;margin-bottom:2px">🔑 本区块哈希（指纹）</div>
+            <div style="font-size:11px;color:#4ade80;font-family:monospace;word-break:break-all">${b.hash}</div>
+          </div>
+        </div>`;
+        h += `<button class="act-btn green" onclick="checkLevel()">✅ 区块已打包！查看结果</button>`;
+      } else {
+        h += `<button class="act-btn" ${(s.selectedTxs||0)<3?'disabled':''} onclick="doAction('packBlock')">📦 打包成区块</button>`;
+      }
+      return h;
+    },
+    init: () => {
+      const txs = [];
+      for (let i = 0; i < 5; i++) {
+        const from = PEOPLE[Math.floor(Math.random()*4)];
+        let to = PEOPLE[4+Math.floor(Math.random()*4)];
+        txs.push({ from, to, amount: (Math.random()*2+0.1).toFixed(2), isDouble: false });
+      }
+      // 插入一笔双花交易（同一笔钱花了两次）
+      const doubleFrom = txs[0].from;
+      const doubleAmount = txs[0].amount;
+      const doubleTo = PEOPLE[4+Math.floor(Math.random()*4)];
+      const doubleIdx = 2 + Math.floor(Math.random()*3); // 插在位置2-4
+      txs.splice(doubleIdx, 0, { from: doubleFrom, to: doubleTo, amount: doubleAmount, isDouble: true });
+      // 标记第一笔也是双花对
+      txs[0].doubleLabel = `⚠️ 与第${doubleIdx+1}笔重复`;
+      txs[doubleIdx].doubleLabel = `⚠️ 与第1笔重复（双花）`;
+      return { availableTxs: txs, picks: [], selectedTxs: 0, blockPacked: false, doubleIdx, doubleRejected: false, doubleIncluded: false };
+    },
+    learn:'区块就像账本的一页纸：把多笔交易写在一起，盖上时间戳，再写上"上一页的指纹"（哈希）。这样一页接一页，就形成了<b>区块链</b>。'
+  },
+  {
+    id:3, title:'挖矿：疯狂猜数字', icon:'⛏️',
+    desc:'要把区块写入账本，你必须解一道数学谜题——找到一个特殊数字（nonce），让区块的哈希值以「000」开头。',
+    concept:'<b>挖矿 (Mining)</b> = 工作量证明 (PoW)\n\n矿工不断尝试不同的 nonce 值，计算区块哈希。如果哈希值前面有足够多的 0，就算"挖到了"。\n\n这就像<b>疯狂摇骰子</b>，没有捷径，只能一个一个试。难度越高，需要的 0 越多，平均要试更多次。',
+    goals:[{label:'找到有效 nonce',check:s=>s.mined},{label:'区块上链',check:s=>s.onChain}],
+    hint:'点击「开始挖矿」，观察系统如何不断尝试不同的 nonce，直到找到以 000 开头的哈希',
+    actions: s => {
+      let h = '';
+      if (!s.miningStarted) {
+        h += `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin-bottom:8px;font-family:monospace">
+          区块数据: "Block#${blockchain.length+1}+交易..."<br>
+          目标: 哈希必须以 <span style="color:#f7931a">000</span> 开头<br>
+          方法: 不断改变 nonce，直到碰巧找到
+        </div>`;
+        h += `<button class="act-btn" onclick="doAction('startMine')">⛏️ 开始挖矿！</button>`;
+      } else if (!s.mined) {
+        h += `<div style="color:#ffcc80;font-size:13px;text-align:center;padding:8px">⛏️ 正在疯狂计算... 已尝试 ${s.attempts||0} 次</div>`;
+      } else if (!s.onChain) {
+        h += `<div style="color:#2aaa5a;font-size:13px;padding:8px">✅ 找到了！nonce=${s.nonce}，哈希=${s.hash?.slice(0,16)}...</div>`;
+        h += `<button class="act-btn green" onclick="doAction('addToChain')">🔗 将区块加入链中</button>`;
+      } else {
+        h += `<button class="act-btn green" onclick="checkLevel()">🎉 区块已上链！查看结果</button>`;
+      }
+      return h;
+    },
+    init: () => ({ miningStarted:false, mined:false, onChain:false, attempts:0, nonce:0, hash:'' }),
+    learn:'<b>工作量证明</b>是比特币的安全基石。要篡改一个区块，你必须重新"猜数字"，而且还要重新猜后面所有区块的——这需要的算力远超全网的一半。正是这个机制让比特币<b>几乎不可能被篡改</b>。'
+  },
+  {
+    id:4, title:'链的力量', icon:'🔗',
+    desc:'区块链的精髓：每个区块都包含上一个区块的哈希。你来扮演攻击者，尝试篡改 Block #2 的交易——把金额改成 100 BTC 给自己。看看会发生什么！',
+    concept:'<b>区块链 = 链式哈希</b>\n\n每个区块的哈希是根据「自身数据 + 前一个区块的哈希」计算出来的。\n\n改了一个块 → 它的哈希变了 → 下一个块存的"前一块哈希"对不上 → 整条链从这里开始<b>全部断裂</b>。',
+    goals:[{label:'观察正常的链',check:s=>s.viewedChain},{label:'尝试篡改一个区块',check:s=>s.tampered},{label:'看到链断裂',check:s=>s.sawBreak}],
+    hint:'先点「查看区块链」观察正常状态，再点「篡改 Block #2」，看后面的区块会怎样',
+    actions: s => {
+      let h = '';
+      if (!s.viewedChain) {
+        h += `<button class="act-btn blue" onclick="doAction('viewChain')">🔍 查看区块链</button>`;
+      } else if (!s.tampered) {
+        h += `<div style="font-size:12px;color:#aaa;margin-bottom:8px">链上有 ${s.chainLen} 个区块，一切正常 ✅</div>`;
+        // 显示链上各区块的哈希
+        for(let i=0;i<s.chain.length;i++){
+          const blk=s.chain[i];
+          h+=`<div style="background:#0e0e20;border-radius:6px;padding:6px 8px;margin-bottom:4px;font-size:11px">
+            <span style="color:#f7931a;font-weight:600">Block #${blk.id}</span>
+            <span style="color:#666;font-family:monospace;margin-left:6px">${blk.hash.slice(0,16)}...</span>
+          </div>`;
+        }
+        h += `<div style="font-size:11px;color:#ffaa00;margin:8px 0">👆 每个区块的哈希都依赖前一个区块。现在试试篡改！</div>`;
+        h += `<button class="act-btn red" onclick="doAction('tamper')">🔨 篡改 Block #2：改成 Eve→Eve 100 BTC</button>`;
+      } else {
+        h += `<div style="font-size:12px;color:#ff6b6b;margin-bottom:8px;font-weight:600">💥 篡改失败！</div>`;
+        h += `<div style="font-size:11px;color:#ff6b6b;margin-bottom:8px">Block #2 被篡改后，哈希完全改变。后续 ${s.brokenCount} 个区块的"前一区块哈希"对不上，全部断裂变红！</div>`;
+        for(let i=0;i<s.chain.length;i++){
+          const blk=s.chain[i];
+          const bad=blk.tampered||blk.broken;
+          h+=`<div style="background:${bad?'#1a0a0a':'#0e0e20'};border:1px solid ${bad?'#ff4444':'#1a1a3a'};border-radius:6px;padding:6px 8px;margin-bottom:4px;font-size:11px">
+            <span style="color:${bad?'#ff6b6b':'#f7931a'};font-weight:600">Block #${blk.id} ${blk.tampered?'⚠️ 已篡改':blk.broken?'❌ 哈希断裂':''}</span>
+            <span style="color:${bad?'#ff4444':'#666'};font-family:monospace;margin-left:6px">${blk.hash.slice(0,16)}...</span>
+          </div>`;
+        }
+        h += `<button class="act-btn green" onclick="checkLevel()">💡 我理解了！查看总结</button>`;
+      }
+      return h;
+    },
+    init: () => {
+      // 预生成一条4块的链
+      const chain = [];
+      let prevHash = '0000000000000000';
+      for (let i = 0; i < 4; i++) {
+        const data = `Block${i}_${PEOPLE[i]}→${PEOPLE[i+1]}_${(Math.random()*2).toFixed(2)}BTC`;
+        const nonce = Math.floor(Math.random()*99999);
+        const hash = sha256Simple(prevHash + data + nonce);
+        chain.push({ id: i+1, data, nonce, hash, prevHash, tampered: false, broken: false });
+        prevHash = hash;
+      }
+      return { viewedChain: false, tampered: false, sawBreak: false, chain, chainLen: 4, brokenCount: 0 };
+    },
+    learn:'这就是区块链<b>不可篡改</b>的原因：改一个块，后面全部断裂。要修复断裂，必须把后面每个块都重新挖一遍——需要超过全网 50% 的算力。这就是著名的<b>「51% 攻击」</b>门槛。'
+  },
+  {
+    id:5, title:'谁说了算？共识', icon:'🌐',
+    desc:'两个矿工同时挖到了区块！网络出现了分叉。看看比特币如何自动解决分歧——最长链获胜。',
+    concept:'<b>共识机制：最长链规则</b>\n\n当网络出现分叉时，不同节点可能暂时看到不同的链。\n\n比特币的规则很简单：<b>哪条链更长，哪条就是"真理"</b>。矿工们会自动切换到最长的那条链继续挖。短的分叉会被抛弃。',
+    goals:[{label:'看到分叉出现',check:s=>s.forked},{label:'继续挖矿',check:s=>s.resolved},{label:'短链被抛弃',check:s=>s.abandoned}],
+    hint:'点击「模拟分叉」，然后点「继续挖矿」让一条链变长。观察网络如何自动选择最长链',
+    actions: s => {
+      let h = '';
+      if (!s.forked) {
+        h += `<button class="act-btn" onclick="doAction('forkChain')">🔀 模拟分叉</button>`;
+      } else if (!s.resolved) {
+        h += `<div style="font-size:12px;color:#ffaa00;margin-bottom:8px">⚠️ 分叉出现！矿工 A 和矿工 B 各挖到一个区块。网络暂时分裂...</div>`;
+        h += `<button class="act-btn" onclick="doAction('resolveChain')">⛏️ 矿工 A 继续挖出新块</button>`;
+      } else {
+        h += `<div style="font-size:12px;color:#2aaa5a;margin-bottom:8px">✅ 矿工 A 的链更长了！所有节点切换到 A 的链。矿工 B 的区块被抛弃。</div>`;
+        h += `<button class="act-btn green" onclick="checkLevel()">💡 我理解了！</button>`;
+      }
+      return h;
+    },
+    init: () => ({ forked: false, resolved: false, abandoned: false }),
+    learn:'<b>最长链 = 共识</b>。不需要投票、不需要管理员。数学规则自动让所有人达成一致。这就是比特币能在没有任何中心机构的情况下运转 15+ 年的秘密。'
+  },
+  {
+    id:6, title:'双花攻击', icon:'🛡️',
+    desc:'你来扮演攻击者 Eve！尝试用同一笔钱买两样东西（双花攻击）。你需要控制超过 51% 的算力才能成功——来体验一下攻击有多难！',
+    concept:'<b>双花问题 (Double Spending)</b>\n\n数字货币最大的挑战：复制一份文件太容易了，怎么防止同一笔钱花两次？\n\n比特币的解决方案：每笔交易都记录在区块链上，全网验证。攻击者必须掌握 <b>51% 以上算力</b>，重新挖一条更长的链来覆盖原链——这在现实中几乎不可能。',
+    goals:[{label:'Eve 发起双花攻击',check:s=>s.doubleSpent},{label:'尝试控制算力',check:s=>s.triedMining},{label:'体验攻击结果',check:s=>s.rejected}],
+    hint:'Eve 有 1 BTC，她想同时给 Alice 和 Bob 各转 1 BTC。点击发起攻击，看看网络怎么处理',
+    actions: s => {
+      let h = '';
+      if (!s.doubleSpent) {
+        h += `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin-bottom:8px">
+          Eve 余额: <span style="color:#f7931a">1 BTC</span><br>
+          计划 A: Eve → Alice 1 BTC（先发出，已被确认）<br>
+          计划 B: Eve → Bob 1 BTC（企图双花）<br>
+          <span style="color:#ff6b6b">企图同时花掉同一笔钱！</span>
+        </div>`;
+        h += `<button class="act-btn red" onclick="doAction('doubleSpend')">😈 发起双花攻击！</button>`;
+      } else if (!s.triedMining) {
+        h += `<div style="font-size:12px;color:#ffaa00;margin-bottom:8px">Eve→Alice 的交易已被网络确认。要让 Eve→Bob 也生效，Eve 必须重新挖一条更长的链来覆盖原链。</div>`;
+        h += `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin-bottom:8px">
+          当前 Eve 的算力占比: <span style="color:#ff6b6b;font-weight:600">${s.eveHashRate||10}%</span><br>
+          全网算力: <span style="color:#4ade80">100%</span><br>
+          <span style="color:#888">需要 >50% 才能成功</span>
+        </div>`;
+        h += `<button class="act-btn" onclick="doAction('tryMine51')">⛏️ 尝试用 ${s.eveHashRate||10}% 算力重新挖链</button>`;
+        h += `<button class="act-btn blue" style="margin-top:4px" onclick="doAction('boostHash')">💰 购买更多矿机（+10%算力）</button>`;
+      } else if (!s.rejected) {
+        h += `<div style="color:#ffcc80;font-size:12px;padding:6px">Eve 正在疯狂挖矿，试图超越主链...</div>`;
+      } else {
+        if (s.attackSuccess) {
+          h += `<div style="font-size:12px;color:#ff6b6b;margin-bottom:8px">
+            <div style="color:#ffaa00;padding:4px 0">⚠️ 理论上 51% 攻击成功了！但在现实中：</div>
+            <div style="color:#aaa;padding:4px 0;font-size:11px">• 控制 51% 算力需要数十亿美元的矿机<br>• 攻击会导致币价暴跌，攻击者自己也亏损<br>• 网络会立即发现并采取措施</div>
+          </div>`;
+        } else {
+          h += `<div style="font-size:12px;margin-bottom:8px">
+            <div style="color:#ff4444;padding:4px 0">❌ 攻击失败！Eve 只有 ${s.eveHashRate}% 算力，无法超越主链。</div>
+            <div style="color:#2aaa5a;padding:4px 0">✅ Eve → Alice 1 BTC — 已确认（在主链上）</div>
+            <div style="color:#ff4444;padding:4px 0">❌ Eve → Bob 1 BTC — 双花失败！</div>
+          </div>`;
+        }
+        h += `<button class="act-btn green" onclick="checkLevel()">🎉 查看总结</button>`;
+      }
+      return h;
+    },
+    init: () => ({ doubleSpent: false, rejected: false, triedMining: false, eveHashRate: 10, attackSuccess: false }),
+    learn:'<b>区块链解决了数字货币最根本的问题</b>：不需要银行就能防止双花。每笔交易被记入区块链后，全网都知道这笔钱已经花过了。想作弊？除非你掌握全网 51% 以上的算力，重新挖一条更长的链——这在现实中几乎不可能。'
+  },
+];
+
+// ============ 网络可视化 ============
+function initNetwork() {
+  nodes = [];
+  edges = [];
+  const cx = CW * 0.58, cy = CH * 0.45;
+  const r = Math.min(CW, CH) * 0.28;
+  const n = 8;
+  for (let i = 0; i < n; i++) {
+    const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+    const jx = (Math.random() - 0.5) * r * 0.3;
+    const jy = (Math.random() - 0.5) * r * 0.3;
+    nodes.push({
+      x: cx + Math.cos(angle) * r + jx,
+      y: cy + Math.sin(angle) * r + jy,
+      name: PEOPLE[i],
+      isYou: i === 0,
+      received: false,
+      color: i === 0 ? '#f7931a' : '#3a7aff',
+      pulse: 0,
+    });
+  }
+  // 随机连接
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      if (Math.random() < 0.45 || j === i + 1 || (i === 0 && j === n - 1)) {
+        edges.push({ a: i, b: j });
+      }
+    }
+  }
+}
+
+function broadcast(fromIdx, color, msg) {
+  const visited = new Set([fromIdx]);
+  nodes[fromIdx].received = true;
+  nodes[fromIdx].pulse = 1;
+  const queue = [{ node: fromIdx, delay: 0 }];
+  while (queue.length) {
+    const cur = queue.shift();
+    for (let e of edges) {
+      let neighbor = -1;
+      if (e.a === cur.node && !visited.has(e.b)) neighbor = e.b;
+      if (e.b === cur.node && !visited.has(e.a)) neighbor = e.a;
+      if (neighbor >= 0) {
+        visited.add(neighbor);
+        const d = cur.delay + 600 + Math.random() * 400;
+        setTimeout(() => {
+          nodes[neighbor].received = true;
+          nodes[neighbor].pulse = 1;
+          broadcasts.push({ from: nodes[cur.node], to: nodes[neighbor], progress: 0, color, msg });
+        }, d);
+        queue.push({ node: neighbor, delay: d });
+      }
+    }
+  }
+  return visited.size;
+}
+
+// ============ 渲染 ============
+function resize() {
+  const dpr = devicePixelRatio || 1;
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  CW = window.innerWidth; CH = window.innerHeight;
+}
+
+function draw() {
+  ctx.fillStyle = '#080810';
+  ctx.fillRect(0, 0, CW, CH);
+  if (gameState !== 'playing') return;
+
+  // 边
+  for (let e of edges) {
+    const a = nodes[e.a], b = nodes[e.b];
+    ctx.strokeStyle = '#1a1a3a';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+  }
+
+  // 广播动画
+  for (let br of broadcasts) {
+    const p = br.progress;
+    const x = br.from.x + (br.to.x - br.from.x) * p;
+    const y = br.from.y + (br.to.y - br.from.y) * p;
+    ctx.fillStyle = br.color;
+    ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = br.color + '30';
+    ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // 节点
+  for (let nd of nodes) {
+    // 脉冲
+    if (nd.pulse > 0) {
+      ctx.strokeStyle = nd.color + Math.floor(nd.pulse * 100).toString(16).padStart(2, '0');
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(nd.x, nd.y, 20 + (1 - nd.pulse) * 15, 0, Math.PI * 2); ctx.stroke();
+    }
+    // 节点圆
+    const grad = ctx.createRadialGradient(nd.x, nd.y, 0, nd.x, nd.y, 16);
+    grad.addColorStop(0, nd.color + 'cc');
+    grad.addColorStop(1, nd.color + '44');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(nd.x, nd.y, 16, 0, Math.PI * 2); ctx.fill();
+    // 你
+    if (nd.isYou) {
+      ctx.strokeStyle = '#f7931a';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.arc(nd.x, nd.y, 22, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    // 名字
+    ctx.fillStyle = '#ccc';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(nd.isYou ? `${nd.name}(你)` : nd.name, nd.x, nd.y + 30);
+    // 收到标记
+    if (nd.received) {
+      ctx.fillStyle = '#2aaa5a';
+      ctx.font = '10px sans-serif';
+      ctx.fillText('✓', nd.x + 18, nd.y - 14);
+    }
+  }
+
+  // 区块链可视化
+  if (blockchain.length > 0 || levelState.chain) {
+    drawBlockchain();
+  }
+}
+
+function drawBlockchain() {
+  const chain = levelState.chain || blockchain;
+  if (!chain || chain.length === 0) return;
+  const startX = 380, startY = CH - 80;
+  const bw = 100, bh = 50, gap = 30;
+
+  ctx.fillStyle = '#ffffff08';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('区块链', startX, startY - bh - 10);
+
+  for (let i = 0; i < chain.length; i++) {
+    const bx = startX + i * (bw + gap);
+    const by = startY - bh;
+    const blk = chain[i];
+    const broken = blk.broken || blk.tampered;
+
+    // 连接箭头
+    if (i > 0) {
+      ctx.strokeStyle = broken ? '#ff444488' : '#f7931a55';
+      ctx.lineWidth = 2;
+      ctx.setLineDash(broken ? [4, 3] : []);
+      ctx.beginPath();
+      ctx.moveTo(bx - gap + 4, by + bh / 2);
+      ctx.lineTo(bx - 4, by + bh / 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // 箭头
+      ctx.fillStyle = broken ? '#ff4444' : '#f7931a';
+      ctx.beginPath();
+      ctx.moveTo(bx - 4, by + bh / 2 - 5);
+      ctx.lineTo(bx + 4, by + bh / 2);
+      ctx.lineTo(bx - 4, by + bh / 2 + 5);
+      ctx.fill();
+    }
+
+    // 区块
+    ctx.fillStyle = broken ? '#2a0a0a' : '#141428';
+    ctx.strokeStyle = broken ? '#ff4444' : blk.tampered ? '#ff6b6b' : '#f7931a55';
+    ctx.lineWidth = broken ? 2 : 1;
+    roundRect(ctx, bx, by, bw, bh, 6);
+    ctx.fill();
+    roundRect(ctx, bx, by, bw, bh, 6);
+    ctx.stroke();
+
+    ctx.fillStyle = broken ? '#ff6b6b' : '#eee';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Block #${blk.id || i + 1}`, bx + bw / 2, by + 18);
+    ctx.fillStyle = broken ? '#ff444488' : '#88888888';
+    ctx.font = '9px monospace';
+    ctx.fillText((blk.hash || '').slice(0, 10) + '...', bx + bw / 2, by + 34);
+
+    if (broken) {
+      ctx.fillStyle = '#ff4444';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText('✗', bx + bw - 10, by + 14);
+    }
+  }
+
+  // 分叉可视化
+  if (levelState.forkChain) {
+    const forkY = startY - bh - 60;
+    const forkStartX = startX + (levelState.forkPoint || 2) * (bw + gap);
+    ctx.fillStyle = '#ff444420';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('分叉（矿工B）' + (levelState.abandoned ? ' — 已抛弃' : ''), forkStartX, forkY - 8);
+
+    for (let i = 0; i < levelState.forkChain.length; i++) {
+      const bx = forkStartX + i * (bw + gap);
+      const by = forkY;
+      const blk = levelState.forkChain[i];
+      const abandoned = levelState.abandoned;
+
+      ctx.globalAlpha = abandoned ? 0.3 : 1;
+      ctx.fillStyle = '#1a0a0a';
+      ctx.strokeStyle = abandoned ? '#ff444444' : '#ff6b6b';
+      ctx.lineWidth = 1;
+      roundRect(ctx, bx, by, bw, bh, 6);
+      ctx.fill();
+      roundRect(ctx, bx, by, bw, bh, 6);
+      ctx.stroke();
+
+      ctx.fillStyle = abandoned ? '#ff444466' : '#ff6b6b';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(blk.label || `Fork #${i + 1}`, bx + bw / 2, by + 18);
+      ctx.fillStyle = '#88888866';
+      ctx.font = '9px monospace';
+      ctx.fillText(blk.hash?.slice(0, 10) || 'abcdef1234', bx + bw / 2, by + 34);
+
+      if (abandoned) {
+        ctx.fillStyle = '#ff444488';
+        ctx.font = '20px sans-serif';
+        ctx.fillText('✗', bx + bw / 2, by + bh + 16);
+      }
+      ctx.globalAlpha = 1;
+
+      // 连接线
+      if (i === 0) {
+        const fromX = forkStartX - gap / 2;
+        const fromY = startY - bh / 2;
+        ctx.strokeStyle = abandoned ? '#ff444433' : '#ff6b6b55';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(fromX, fromY);
+        ctx.lineTo(fromX, by + bh / 2);
+        ctx.lineTo(bx, by + bh / 2);
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = abandoned ? '#ff444433' : '#ff6b6b55';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(bx - gap + 4, by + bh / 2);
+        ctx.lineTo(bx - 4, by + bh / 2);
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+// ============ 游戏逻辑 ============
+function startGame() {
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('lp').style.display = 'flex';
+  document.getElementById('info-bar').style.display = 'block';
+  document.getElementById('tx-log').style.display = 'block';
+  gameState = 'playing';
+  playSound('success');
+  fadeAlpha = 0; fadeTarget = 1;
+  blockchain = [
+    { id: 1, hash: sha256Simple('genesis'), prevHash: '0'.repeat(16), data: 'Genesis Block' },
+  ];
+  initNetwork();
+  loadLevel(0);
+}
+
+function loadLevel(idx) {
+  currentLevel = idx;
+  const lv = LEVELS[idx];
+  levelState = lv.init();
+  miningActive = false;
+  if (mineInterval) { clearInterval(mineInterval); mineInterval = null; }
+  document.getElementById('mine-box').style.display = 'none';
+
+  // 重置节点
+  for (let nd of nodes) { nd.received = false; nd.pulse = 0; }
+  broadcasts = [];
+
+  document.getElementById('lpTitle').textContent = `${lv.icon} ${lv.title}`;
+  document.getElementById('lpStep').textContent = `${lv.id} / ${LEVELS.length}`;
+  renderLevel();
+  updateInfoBar();
+}
+
+function renderLevel() {
+  const lv = LEVELS[currentLevel];
+  const el = document.getElementById('lp-body');
+  let h = `
+    <div class="mission">
+      <div class="m-level">第 ${lv.id} 关</div>
+      <div class="m-title">${lv.title}</div>
+      <div class="m-desc">${lv.desc}</div>
+      <div class="m-concept">${lv.concept.replace(/\n/g,'<br>')}</div>
+      <div style="margin-top:10px">`;
+  for (let g of lv.goals) {
+    const pass = g.check(levelState);
+    h += `<div class="goal-row"><span class="g-icon">${pass?'✅':'⬜'}</span><span class="g-text">${g.label}</span></div>`;
+  }
+  h += `</div></div>`;
+  h += `<div class="hint-b">${lv.hint}</div>`;
+  h += `<div class="act-section"><div class="as-label">🎮 操作</div>${lv.actions(levelState)}</div>`;
+  el.innerHTML = h;
+}
+
+function updateInfoBar() {
+  const lv = LEVELS[currentLevel];
+  document.getElementById('info-bar').innerHTML = `
+    <div class="ib-title">📡 网络状态</div>
+    <div class="ib-row"><span class="ib-k">节点数</span><span class="ib-v">${nodes.length}</span></div>
+    <div class="ib-row"><span class="ib-k">区块高度</span><span class="ib-v">${blockchain.length}</span></div>
+    <div class="ib-row"><span class="ib-k">待处理交易</span><span class="ib-v">${pendingTxs.length}</span></div>
+    <div class="ib-row"><span class="ib-k">当前关卡</span><span class="ib-v">${lv.id}/${LEVELS.length}</span></div>
+  `;
+}
+
+function addTxLog(msg) {
+  txLog.unshift(msg);
+  if (txLog.length > 20) txLog.pop();
+  const el = document.getElementById('tx-list');
+  el.innerHTML = txLog.map(t => `<div class="tx-entry">${t}</div>`).join('');
+}
+
+// ============ 关卡动作 ============
+function doAction(action, param) {
+  const lv = LEVELS[currentLevel];
+
+  if (action === 'sendTx') {
+    levelState.txSent = 1;
+    playSound('click');
+    addTxLog(`💰 Alice → Bob 0.5 BTC <div class="tx-hash">${shortHash('alicebob'+Date.now())}</div>`);
+    broadcast(0, '#f7931a', 'tx');
+    setTimeout(() => {
+      levelState.allReceived = nodes.every(n => n.received);
+      renderLevel();
+    }, 5000);
+    renderLevel();
+  }
+
+  else if (action === 'toggleTx') {
+    const picks = levelState.picks || [];
+    const idx = picks.indexOf(param);
+    if (idx >= 0) picks.splice(idx, 1); else picks.push(param);
+    levelState.picks = picks;
+    levelState.selectedTxs = picks.length;
+    // 检测是否选中了双花交易
+    const hasDouble = picks.includes(levelState.doubleIdx) && picks.includes(0);
+    levelState.doubleIncluded = hasDouble;
+    // 如果曾经选中又取消了双花交易，标记为已识别
+    if (!picks.includes(levelState.doubleIdx) && levelState.selectedTxs > 0) {
+      levelState.doubleRejected = true;
+    }
+    if (hasDouble) playSound('fail');
+    else playSound('click');
+    renderLevel();
+  }
+
+  else if (action === 'packBlock') {
+    const picks = levelState.picks || [];
+    // 阻止包含双花交易
+    if (levelState.doubleIncluded) {
+      playSound('fail');
+      renderLevel();
+      return;
+    }
+    levelState.doubleRejected = true; // 成功打包意味着排除了双花
+    const txs = picks.map(i => levelState.availableTxs[i]);
+    const prevHash = blockchain[blockchain.length - 1].hash;
+    const timestamp = Date.now();
+    const timeStr = new Date(timestamp).toLocaleString('zh-CN');
+    const data = txs.map(t => `${t.from}→${t.to}:${t.amount}`).join(';');
+    const hash = sha256Simple(prevHash + data + timestamp);
+    const block = { id: blockchain.length + 1, hash, prevHash, data, txs, timestamp: timeStr };
+    blockchain.push(block);
+    levelState.blockPacked = true;
+    levelState.packedBlock = block;
+    playSound('success');
+    for (let t of txs) addTxLog(`📦 打包: ${t.from}→${t.to} ${t.amount} BTC`);
+    addTxLog(`🕐 时间戳: ${timeStr}`);
+    addTxLog(`🔗 前一区块哈希: ${prevHash.slice(0,16)}...`);
+    broadcast(0, '#2aaa5a', 'block');
+    renderLevel();
+    updateInfoBar();
+  }
+
+  else if (action === 'startMine') {
+    levelState.miningStarted = true;
+    levelState.attempts = 0;
+    playSound('click');
+    triggerShake(3);
+    const mineBox = document.getElementById('mine-box');
+    mineBox.style.display = 'block';
+    document.getElementById('mineTarget').textContent = '目标: 哈希以 000 开头';
+    document.getElementById('mine-tries').innerHTML = '';
+    const prevHash = blockchain[blockchain.length - 1].hash;
+    const blockData = `Block${blockchain.length + 1}_tx_data_${Date.now()}`;
+
+    // 预计算一个有效 nonce，保证一定能挖到
+    let validNonce = null;
+    for (let n = 0; n < 999999; n++) {
+      if (sha256Simple(prevHash + blockData + n).startsWith('000')) { validNonce = n; break; }
+    }
+    // 决定在第几次展示时"挖到"（15~30次之间，体验恰好）
+    const showAt = 15 + Math.floor(Math.random() * 16);
+
+    mineInterval = setInterval(() => {
+      if (levelState.mined) { clearInterval(mineInterval); return; }
+      const triesEl = document.getElementById('mine-tries');
+      // 每个 interval 批量展示 3 条，加速滚动感
+      const batchSize = 3;
+      for (let b = 0; b < batchSize; b++) {
+        if (levelState.mined) break;
+        levelState.attempts++;
+        const isLast = levelState.attempts >= showAt;
+        const nonce = isLast ? validNonce : Math.floor(Math.random() * 999999);
+        const hash = sha256Simple(prevHash + blockData + nonce);
+        const found = hash.startsWith('000');
+
+        triesEl.innerHTML += `<div class="${found?'try-pass':'try-fail'}">nonce=${nonce} → ${hash.slice(0,20)}... ${found?'✅ 找到了！':'❌'}</div>`;
+
+        if (found) { levelState.mined = true; levelState.nonce = nonce; levelState.minedHash = hash; break; }
+      }
+      triesEl.scrollTop = triesEl.scrollHeight;
+      document.getElementById('mine-progress-fill').style.width = Math.min(100, levelState.attempts / showAt * 100) + '%';
+
+      if (levelState.mined) {
+        levelState.hash = levelState.minedHash;
+        levelState.blockData = blockData;
+        clearInterval(mineInterval);
+        playSound('boom');
+        triggerShake(6);
+        spawnParticles(CW/2, CH/2, 30);
+        renderLevel();
+      }
+    }, 120);
+    renderLevel();
+  }
+
+  else if (action === 'addToChain') {
+    const prevHash = blockchain[blockchain.length - 1].hash;
+    blockchain.push({ id: blockchain.length + 1, hash: levelState.hash, prevHash, data: levelState.blockData, nonce: levelState.nonce });
+    levelState.onChain = true;
+    playSound('success');
+    addTxLog(`⛏️ 挖到区块 #${blockchain.length}！nonce=${levelState.nonce}`);
+    broadcast(0, '#f7931a', 'newblock');
+    document.getElementById('mine-box').style.display = 'none';
+    renderLevel();
+    updateInfoBar();
+  }
+
+  else if (action === 'viewChain') {
+    levelState.viewedChain = true;
+    playSound('click');
+    renderLevel();
+  }
+
+  else if (action === 'tamper') {
+    levelState.tampered = true;
+    levelState.sawBreak = true;
+    playSound('fail');
+    triggerShake(10);
+    // 篡改 block #2
+    const chain = levelState.chain;
+    chain[1].data = 'TAMPERED_Eve→Eve_100BTC';
+    chain[1].tampered = true;
+    const newHash = sha256Simple(chain[1].prevHash + chain[1].data + chain[1].nonce);
+    chain[1].hash = newHash;
+    // 后续全部断裂
+    let broken = 0;
+    for (let i = 2; i < chain.length; i++) {
+      chain[i].broken = true;
+      broken++;
+    }
+    levelState.brokenCount = broken;
+    renderLevel();
+  }
+
+  else if (action === 'forkChain') {
+    levelState.forked = true;
+    playSound('boom');
+    levelState.forkPoint = blockchain.length - 1;
+    levelState.forkChain = [
+      { label: "B's Block", hash: sha256Simple('fork_b_' + Date.now()) },
+    ];
+    // 主链也加一个新块（矿工A的）
+    const prevHash = blockchain[blockchain.length - 1].hash;
+    blockchain.push({ id: blockchain.length + 1, hash: sha256Simple('fork_a_' + Date.now()), prevHash, data: 'MinerA_block' });
+    addTxLog('⚠️ 分叉出现！矿工 A 和 B 同时挖到区块');
+    renderLevel();
+    updateInfoBar();
+  }
+
+  else if (action === 'resolveChain') {
+    // 矿工A再挖一个
+    const prevHash = blockchain[blockchain.length - 1].hash;
+    blockchain.push({ id: blockchain.length + 1, hash: sha256Simple('resolve_' + Date.now()), prevHash, data: 'MinerA_block2' });
+    levelState.resolved = true;
+    levelState.abandoned = true;
+    playSound('success');
+    addTxLog('✅ 矿工 A 的链更长了！矿工 B 的分叉被抛弃');
+    broadcast(0, '#2aaa5a', 'consensus');
+    renderLevel();
+    updateInfoBar();
+  }
+
+  else if (action === 'doubleSpend') {
+    levelState.doubleSpent = true;
+    addTxLog('😈 Eve 尝试双花: Eve→Alice 1BTC 已确认，现在企图 Eve→Bob 1BTC');
+    broadcast(0, '#ff6b6b', 'doubletx');
+    playSound('click');
+    renderLevel();
+  }
+
+  else if (action === 'boostHash') {
+    levelState.eveHashRate = Math.min(90, (levelState.eveHashRate || 10) + 10);
+    playSound('click');
+    addTxLog(`💰 Eve 购买矿机，算力提升到 ${levelState.eveHashRate}%`);
+    renderLevel();
+  }
+
+  else if (action === 'tryMine51') {
+    levelState.triedMining = true;
+    playSound('boom');
+    triggerShake(8);
+    addTxLog(`⛏️ Eve 用 ${levelState.eveHashRate}% 算力尝试重新挖链...`);
+    renderLevel();
+    setTimeout(() => {
+      if (levelState.eveHashRate > 50) {
+        levelState.attackSuccess = true;
+        addTxLog('⚠️ 51% 攻击理论上成功（但现实中几乎不可能）');
+        playSound('boom');
+      } else {
+        addTxLog(`❌ 攻击失败！${levelState.eveHashRate}% 算力不够，无法超越主链`);
+        playSound('fail');
+      }
+      levelState.rejected = true;
+      renderLevel();
+    }, 2500);
+  }
+}
+
+function checkLevel() {
+  const lv = LEVELS[currentLevel];
+  const allPass = lv.goals.every(g => g.check(levelState));
+  if (!allPass) return;
+  playSound('success');
+  spawnParticles(CW/2, CH/2, 60);
+  const isLast = currentLevel >= LEVELS.length - 1;
+  const qi = currentLevel;
+  const quiz = QUIZZES[qi];
+  quizPassed = false;
+  document.getElementById('resultBox').innerHTML = `
+    <div class="rb-icon">${isLast?'🏆':'🎉'}</div>
+    <div class="rb-title">${isLast?'恭喜通关！你已理解比特币核心原理':'第 '+lv.id+' 关完成！'}</div>
+    <div class="rb-learn">${lv.learn}</div>
+    <div class="quiz-box" id="quiz-${qi}">
+      <div class="quiz-q">📝 小测验：${quiz.q}</div>
+      ${quiz.opts.map((o,i)=>`<div class="quiz-opt" onclick="checkQuiz(${qi},${i})">${o}</div>`).join('')}
+    </div>
+    ${isLast
+      ? `<button id="quiz-next-btn" class="btn-next" style="background:#f7931a;display:none" onclick="location.reload()">重新探险</button>`
+      : `<button id="quiz-next-btn" class="btn-next" style="background:#f7931a;display:none" onclick="nextLevel()">下一关 →</button><button class="btn-retry" onclick="retryLevel()">重试</button>`
+    }
+  `;
+  document.getElementById('resultModal').classList.remove('hidden');
+}
+
+function nextLevel() {
+  document.getElementById('resultModal').classList.add('hidden');
+  fadeAlpha = 0; fadeTarget = 1; // 触发淡入
+  loadLevel(currentLevel + 1);
+}
+function retryLevel() {
+  document.getElementById('resultModal').classList.add('hidden');
+  loadLevel(currentLevel);
+}
+
+// ============ 主循环 ============
+let lastTime = 0;
+function loop(ts) {
+  requestAnimationFrame(loop);
+  if (!lastTime) { lastTime = ts; return; }
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+  time += dt;
+
+  // 更新广播
+  for (let br of broadcasts) br.progress += dt * 1.5;
+  broadcasts = broadcasts.filter(b => b.progress < 1);
+
+  // 节点脉冲衰减
+  for (let nd of nodes) { if (nd.pulse > 0) nd.pulse -= dt * 0.8; }
+
+  // 淡入效果
+  if (fadeAlpha < fadeTarget) { fadeAlpha = Math.min(fadeTarget, fadeAlpha + dt * 2.5); }
+
+  // 震动衰减
+  if (shakeAmount > 0) shakeAmount *= 0.9;
+  if (shakeAmount < 0.1) shakeAmount = 0;
+
+  resize();
+
+  // 应用震动和淡入
+  if (shakeAmount > 0) {
+    const sx = (Math.random()-0.5)*shakeAmount*2;
+    const sy = (Math.random()-0.5)*shakeAmount*2;
+    ctx.save();
+    ctx.translate(sx, sy);
+  }
+  ctx.globalAlpha = fadeAlpha;
+  draw();
+  ctx.globalAlpha = 1;
+  if (shakeAmount > 0) ctx.restore();
+
+  // 粒子
+  updateParticles(dt);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Learn by Play — 玩中学科学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e0e0f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh}
+.hero{text-align:center;padding:48px 20px 32px;background:linear-gradient(180deg,#0d1030 0%,#0a0a1a 100%)}
+.hero h1{font-size:2.4em;font-weight:800;background:linear-gradient(135deg,#60a5fa,#a78bfa,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.hero p{color:#888;font-size:1.05em;max-width:600px;margin:0 auto}
+.hero .stats{margin-top:16px;display:flex;justify-content:center;gap:32px}
+.hero .stat{text-align:center}
+.hero .stat .num{font-size:2em;font-weight:700;color:#60a5fa}
+.hero .stat .label{font-size:0.8em;color:#666}
+.container{max-width:1200px;margin:0 auto;padding:0 20px 60px}
+.category{margin-bottom:36px}
+.cat-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #1a1a3a}
+.cat-icon{font-size:1.6em}
+.cat-title{font-size:1.2em;font-weight:700;color:#c0c0f0}
+.cat-count{font-size:0.75em;color:#555;background:#111;padding:2px 8px;border-radius:10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.card{background:#111;border:1px solid #1a1a3a;border-radius:12px;padding:16px;cursor:pointer;transition:all .2s;text-decoration:none;display:block}
+.card:hover{border-color:#3b82f6;background:#0d1030;transform:translateY(-2px);box-shadow:0 4px 20px rgba(59,130,246,0.15)}
+.card .icon{font-size:2em;margin-bottom:8px}
+.card .title{font-size:0.95em;font-weight:600;color:#e0e0f0;margin-bottom:4px}
+.card .desc{font-size:0.75em;color:#666;line-height:1.4}
+.card .levels{font-size:0.7em;color:#3b82f6;margin-top:8px}
+.footer{text-align:center;padding:30px;color:#333;font-size:0.8em;border-top:1px solid #111}
+.footer a{color:#3b82f6;text-decoration:none}
+.search-bar{max-width:500px;margin:20px auto 0;position:relative}
+.search-bar input{width:100%;padding:10px 16px 10px 40px;border-radius:20px;border:1px solid #1a1a3a;background:#111;color:#e0e0f0;font-size:0.95em;outline:none}
+.search-bar input:focus{border-color:#3b82f6}
+.search-bar .icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#555}
+@media(max-width:600px){.hero h1{font-size:1.6em}.grid{grid-template-columns:1fr 1fr}.card{padding:12px}}
+</style>
+</head>
+<body>
+<!-- PLACEHOLDER_BODY -->
+<script>
+const games = [
+  {cat:'计算机与AI',icon:'💻',items:[
+    {file:'chip.html',icon:'🔧',title:'芯片内部可视化',desc:'RK3588 SoC 内部模块、数据总线、热力图',levels:'交互式'},
+    {file:'game.html',icon:'🤖',title:'边缘AI部署',desc:'模型量化、NPU推理、功耗优化',levels:'5关'},
+    {file:'neuralnet.html',icon:'🧠',title:'神经网络构建',desc:'感知器→反向传播→CNN→手写识别',levels:'7关'},
+    {file:'crypto.html',icon:'🔐',title:'密码学与安全',desc:'凯撒密码→RSA→零知识证明→同态加密',levels:'7关'},
+  ]},
+  {cat:'区块链',icon:'⛓️',items:[
+    {file:'bitcoin.html',icon:'₿',title:'比特币原理',desc:'交易广播、区块打包、挖矿、链式哈希',levels:'6关'},
+    {file:'ethereum.html',icon:'⟠',title:'以太坊原理',desc:'智能合约、Gas、ERC-20、NFT、DeFi',levels:'6关'},
+  ]},
+  {cat:'物理学',icon:'⚛️',items:[
+    {file:'rocket.html',icon:'🚀',title:'火箭物理',desc:'牛顿第三定律、推重比、多级火箭、入轨',levels:'6关'},
+    {file:'nuclear.html',icon:'☢️',title:'核物理',desc:'裂变、链式反应、聚变、核电站、方舟反应堆',levels:'7关'},
+    {file:'quantum.html',icon:'🔮',title:'量子计算',desc:'叠加态、量子门、纠缠、Shor算法',levels:'7关'},
+    {file:'superconductor.html',icon:'🧲',title:'超导体实验室',desc:'迈斯纳效应、库珀对、磁悬浮列车',levels:'7关'},
+    {file:'accelerator.html',icon:'💥',title:'粒子加速器',desc:'回旋加速器、对撞、发现希格斯玻色子',levels:'7关'},
+    {file:'laser.html',icon:'🔴',title:'激光物理',desc:'受激辐射、谐振腔、飞秒脉冲',levels:'7关'},
+    {file:'lightning.html',icon:'⚡',title:'闪电与等离子体',desc:'特斯拉线圈、等离子球、球状闪电',levels:'7关'},
+  ]},
+  {cat:'生物与医学',icon:'🧬',items:[
+    {file:'crispr.html',icon:'✂️',title:'CRISPR基因编辑',desc:'DNA双螺旋、Cas9剪切、基因治疗',levels:'7关'},
+    {file:'immune.html',icon:'🛡️',title:'免疫系统大战',desc:'巨噬细胞、T细胞、抗体、疫苗记忆',levels:'7关'},
+    {file:'protein.html',icon:'🧪',title:'蛋白质折叠',desc:'疏水坍缩、能量漏斗、AlphaFold',levels:'7关'},
+    {file:'nanobot.html',icon:'💊',title:'纳米机器人',desc:'血管巡航、靶向给药、群体协作',levels:'7关'},
+  ]},
+  {cat:'太空探索',icon:'🌌',items:[
+    {file:'blackhole.html',icon:'🕳️',title:'黑洞物理探险',desc:'事件视界、时空弯曲、霍金辐射、虫洞',levels:'7关'},
+    {file:'solarsystem.html',icon:'🪐',title:'太阳系建造者',desc:'轨道力学、拉格朗日点、宜居带',levels:'7关'},
+    {file:'spacestation.html',icon:'🛸',title:'空间站工程',desc:'轨道对接、生命支持、太空行走',levels:'7关'},
+  ]},
+  {cat:'工程技术',icon:'🏗️',items:[
+    {file:'chipfab.html',icon:'🔬',title:'半导体制造',desc:'光刻、刻蚀、EUV、良率优化',levels:'7关'},
+    {file:'printing3d.html',icon:'🖨️',title:'3D打印工程师',desc:'FDM/SLA/SLM、生物打印',levels:'7关'},
+    {file:'battery.html',icon:'🔋',title:'电池与储能',desc:'锂电池、固态电池、BMS、储能电站',levels:'7关'},
+    {file:'hologram.html',icon:'🌀',title:'全息投影',desc:'光干涉、手势识别、JARVIS工作台',levels:'7关'},
+  ]},
+  {cat:'地球与环境',icon:'🌍',items:[
+    {file:'climate.html',icon:'🌡️',title:'气候系统模拟',desc:'温室效应、碳循环、IPCC情景预测',levels:'7关'},
+    {file:'deepsea.html',icon:'🐙',title:'海洋深潜探索',desc:'压力、声呐、热液喷口、深海生物',levels:'7关'},
+  ]},
+];
+
+const heroEl=document.createElement('div');heroEl.className='hero';
+const totalGames=games.reduce((s,c)=>s+c.items.length,0);
+const totalLevels=games.reduce((s,c)=>s+c.items.reduce((ss,g)=>{const m=g.levels.match(/(\d+)/);return ss+(m?parseInt(m[1]):1)},0),0);
+heroEl.innerHTML=`
+  <h1>Learn by Play</h1>
+  <p>玩中学科学 — 零依赖交互式教育游戏合集</p>
+  <div class="stats">
+    <div class="stat"><div class="num">${totalGames}</div><div class="label">个游戏</div></div>
+    <div class="stat"><div class="num">${totalLevels}+</div><div class="label">个关卡</div></div>
+    <div class="stat"><div class="num">${games.length}</div><div class="label">大领域</div></div>
+  </div>
+  <div class="search-bar"><span class="icon">🔍</span><input type="text" id="searchInput" placeholder="搜索游戏..."></div>
+`;
+document.body.insertBefore(heroEl,document.body.firstChild);
+
+const container=document.createElement('div');container.className='container';container.id='gameContainer';
+document.body.appendChild(container);
+
+function renderGames(filter=''){
+  const f=filter.toLowerCase();
+  let html='';
+  for(const cat of games){
+    const filtered=cat.items.filter(g=>!f||g.title.toLowerCase().includes(f)||g.desc.toLowerCase().includes(f)||cat.cat.toLowerCase().includes(f));
+    if(!filtered.length)continue;
+    html+=`<div class="category"><div class="cat-header"><span class="cat-icon">${cat.icon}</span><span class="cat-title">${cat.cat}</span><span class="cat-count">${filtered.length}</span></div><div class="grid">`;
+    for(const g of filtered){
+      html+=`<a class="card" href="${g.file}"><div class="icon">${g.icon}</div><div class="title">${g.title}</div><div class="desc">${g.desc}</div><div class="levels">${g.levels}</div></a>`;
+    }
+    html+=`</div></div>`;
+  }
+  container.innerHTML=html;
+}
+renderGames();
+
+document.getElementById('searchInput').addEventListener('input',e=>renderGames(e.target.value));
+
+const footer=document.createElement('div');footer.className='footer';
+footer.innerHTML='单文件 Canvas 2D · 零依赖 · 浏览器双击即玩';
+document.body.appendChild(footer);
+</script>
+</body>
+</html>

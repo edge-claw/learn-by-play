@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>气候系统模拟器 — 交互式教育游戏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#c0c0d0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;width:100vw;height:100vh}
+canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(100vh - 36px)}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:#2a2a6a}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.sv{color:#60a5fa;font-weight:bold}
+.title{font-size:15px;color:#60a5fa;margin:8px 0 4px;font-weight:bold}
+.sub{font-size:11px;color:#666;margin-bottom:8px}
+.progress-row{display:flex;gap:4px;margin:6px 0;flex-wrap:wrap}
+.obj{font-size:11px;padding:3px 8px;border-radius:10px;border:1px solid #333;color:#888;background:#111}
+.obj.done{color:#4ade80;border-color:#22c55e;background:#0a2a1a}
+.sel-row{display:flex;gap:4px;margin:4px 0;flex-wrap:wrap}
+.sel-btn{padding:5px 10px;border-radius:8px;font-size:11px;cursor:pointer;border:1px solid #444;background:#111;color:#aaa}
+.sel-btn.active{border-color:#3b82f6;background:#1a1a4a;color:#60a5fa}
+.sel-btn.correct{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:11px;color:#888;display:block;margin-bottom:4px}
+.slider-wrap input[type=range]{width:100%;accent-color:#3b82f6}
+.slider-val{font-size:13px;color:#60a5fa;font-weight:bold}
+#infobar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid #1a1a3a;display:flex;align-items:center;padding:0 16px 0 332px;font-size:12px;color:#666;z-index:10}
+#infobar .sep{margin:0 12px;color:#333}
+</style>
+</head>
+<body>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="infobar">
+<span id="ib-level">关卡 1/7</span><span class="sep">|</span>
+<span id="ib-title">能量平衡</span><span class="sep">|</span>
+<span id="ib-status">进行中</span>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel');
+let W,H,curLevel=0,frame=0,animId;
+const completedLevels=new Set();
+const levelObjs=Array.from({length:7},()=>[false,false,false]);
+function resize(){cv.width=W=cv.clientWidth;cv.height=H=cv.clientHeight}
+window.addEventListener('resize',resize);resize();
+function rand(a,b){return a+Math.random()*(b-a)}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v))}
+let state={},keys={};
+let mouseX=0,mouseY=0,mouseDown=false,clicked=false;
+let dragItem=null,dragOffX=0,dragOffY=0;
+
+const levels=[
+{name:'能量平衡',sub:'调节辐射收支使温度稳定',concept:'地球接收太阳短波辐射，同时向太空发射长波辐射。当收入=支出时，温度稳定。调节太阳辐射和反照率使天平平衡。',
+ objs:['调节太阳辐射强度','调节地球反照率','使能量收支平衡'],
+ learn:'地球能量平衡：太阳辐射到达地球约<span class="sv">1361 W/m²</span>（太阳常数），地球平均反照率约<span class="sv">0.30</span>，即30%的太阳辐射被反射回太空。吸收的能量加热地球，地球以红外辐射形式散热。当收入=支出时，温度稳定在约<span class="sv">15°C</span>。'},
+{name:'温室效应',sub:'CO₂如何加热地球',concept:'地面发出的红外辐射被大气中CO₂分子截留并反射回地面，导致温度升高。调节CO₂浓度观察温度变化。',
+ objs:['将CO₂升至400ppm','观察红外辐射被截留','对比有无温室气体温差'],
+ learn:'没有温室效应，地球平均温度将是<span class="sv">-18°C</span>而非15°C。CO₂从工业革命前的<span class="sv">280ppm</span>升至如今超过<span class="sv">420ppm</span>。CO₂分子吸收特定波长（<span class="sv">15μm</span>）的红外辐射，振动后重新发射，部分返回地面——这就是温室效应的分子机制。'},
+{name:'大气环流',sub:'三圈环流驱动全球风系',concept:'赤道受热空气上升→高空向极地流动→极地冷却下沉→地面回流。形成哈德利环流、费雷尔环流和极地环流三个环流圈。',
+ objs:['启动赤道加热','观察哈德利环流形成','完成三圈环流'],
+ learn:'赤道接收最多太阳辐射，空气受热膨胀上升，在高空向两极流动。受<span class="sv">科里奥利力</span>偏转，在纬度30°附近下沉形成<span class="sv">哈德利环流</span>。中纬度的<span class="sv">费雷尔环流</span>和高纬度的<span class="sv">极地环流</span>共同构成三圈环流，驱动全球风带和天气系统。'},
+{name:'海洋传送带',sub:'温盐环流驱动深海循环',concept:'高盐度冷水密度大→下沉到深海→缓慢流向赤道→上升流带回表面。调节盐度和温度观察传送带运转。',
+ objs:['调节盐度使海水下沉','形成完整传送带环流','观察传送带断裂效应'],
+ learn:'全球温盐环流（<span class="sv">大西洋经向翻转环流 AMOC</span>）周期约<span class="sv">1000年</span>。北大西洋高盐冷水下沉是驱动力。若格陵兰冰盖融化注入大量淡水，盐度降低→下沉减弱→传送带可能<span class="sv">断裂</span>→欧洲失去暖流加热，可能骤冷5-10°C。'},
+{name:'冰反馈',sub:'正反馈加速全球变暖',concept:'升温→冰融化→白色冰面减少→反照率降低→吸收更多热量→更多融化。这是一个危险的正反馈循环。',
+ objs:['设置初始温度','观察冰盖开始融化','见证正反馈加速'],
+ learn:'冰雪反照率约<span class="sv">0.8-0.9</span>（反射80-90%阳光），海水仅<span class="sv">0.06</span>。北极海冰自1979年以来减少了<span class="sv">40%</span>。这种<span class="sv">冰-反照率正反馈</span>是气候系统中最强的放大机制之一，使北极变暖速度是全球平均的<span class="sv">2-3倍</span>（北极放大效应）。'},
+{name:'碳循环',sub:'碳在四大储库间流动',concept:'碳在大气、海洋、植被和岩石四个储库间循环。拖拽碳球在储库间移动，观察碳量变化。砍伐森林会释放碳到大气。',
+ objs:['将碳从植被移到大气','将碳从大气移到海洋','使大气碳量低于800GtC'],
+ learn:'地球碳储量：岩石圈<span class="sv">6600万GtC</span>、海洋<span class="sv">38000GtC</span>、土壤<span class="sv">1500GtC</span>、大气<span class="sv">870GtC</span>、植被<span class="sv">450GtC</span>。人类每年排放约<span class="sv">10GtC</span>，海洋和陆地各吸收约25%，剩余50%留在大气中。碳循环的平衡被打破是全球变暖的根本原因。'},
+{name:'情景预测',sub:'不同排放路径下的未来',concept:'选择不同的排放路径(RCP2.6/4.5/8.5)，运行百年模拟，观察温度和海平面变化曲线。',
+ objs:['选择一个排放路径','运行百年模拟','对比不同情景结果'],
+ learn:'IPCC代表性浓度路径：<span class="sv">RCP2.6</span>（强力减排）升温约1.5°C；<span class="sv">RCP4.5</span>（中等减排）升温约2.5°C；<span class="sv">RCP8.5</span>（无控制排放）升温约4.5°C。海平面上升：RCP2.6约<span class="sv">0.4m</span>，RCP8.5可达<span class="sv">1.0m+</span>。每0.5°C升温都意味着更多极端天气、物种灭绝和粮食危机。'}
+];
+
+/* ===== PANEL ===== */
+let panelDirty=true;
+function markDirty(){panelDirty=true}
+function renderPanel(){
+  if(!panelDirty)return;panelDirty=false;
+  const lv=levels[curLevel];let h='<div style="margin-bottom:8px">';
+  levels.forEach((l,i)=>{let c='level-btn';if(i===curLevel)c+=' active';if(completedLevels.has(i))c+=' done';
+  h+=`<span class="${c}" onclick="loadLevel(${i})">${i+1}</span>`});
+  h+='</div>';
+  h+=`<div class="title">${lv.name}</div><div class="sub">${lv.sub}</div>`;
+  h+=`<div class="concept-box">${lv.concept}</div>`;
+  h+='<div class="progress-row">';
+  lv.objs.forEach((o,i)=>{h+=`<span class="obj${levelObjs[curLevel][i]?' done':''}">${levelObjs[curLevel][i]?'✅':'⬜'} ${o}</span>`});
+  h+='</div>';
+  h+=`<div id="actionArea"></div>`;
+  const allDone=levelObjs[curLevel].every(v=>v);
+  if(allDone){
+    if(!completedLevels.has(curLevel)){completedLevels.add(curLevel);panelDirty=true}
+    h+=`<div class="learn-box">💡 ${lv.learn}</div>`;
+    if(curLevel<levels.length-1)h+=`<button class="act-btn green" onclick="loadLevel(${curLevel+1})">下一关 →</button>`;
+    else h+=`<div class="hint-box" style="color:#4ade80;border-color:#22c55e">🎉 恭喜通关！全部7个关卡已完成！</div>`;
+  }
+  panel.innerHTML=h;
+  setupLevelUI();
+  document.getElementById('ib-level').textContent=`关卡 ${curLevel+1}/7`;
+  document.getElementById('ib-title').textContent=lv.name;
+  document.getElementById('ib-status').textContent=allDone?'已完成':'进行中';
+}
+function completeObj(li,oi){if(levelObjs[li][oi])return;levelObjs[li][oi]=true;markDirty()}
+function checkLevelDone(){if(levelObjs[curLevel].every(v=>v)&&!completedLevels.has(curLevel)){completedLevels.add(curLevel);markDirty()}}
+
+/* ===== LEVEL LOADER ===== */
+function loadLevel(n){
+  if(animId){cancelAnimationFrame(animId);animId=0}
+  cv.onmousedown=e=>{mouseDown=true;clicked=true;const r=cv.getBoundingClientRect();mouseX=(e.clientX-r.left)*(W/r.width);mouseY=(e.clientY-r.top)*(H/r.height)};
+  cv.onmousemove=e=>{const r=cv.getBoundingClientRect();mouseX=(e.clientX-r.left)*(W/r.width);mouseY=(e.clientY-r.top)*(H/r.height)};
+  cv.onmouseup=()=>{mouseDown=false};
+  curLevel=n;state={};keys={};mouseDown=false;clicked=false;dragItem=null;panelDirty=true;
+  renderPanel();
+  switch(n){
+    case 0:initL1();break;case 1:initL2();break;case 2:initL3();break;
+    case 3:initL4();break;case 4:initL5();break;case 5:initL6();break;case 6:initL7();break;
+  }
+}
+function setupLevelUI(){
+  const area=document.getElementById('actionArea');if(!area)return;
+  switch(curLevel){
+    case 0:setupUI1(area);break;case 1:setupUI2(area);break;case 2:setupUI3(area);break;
+    case 3:setupUI4(area);break;case 4:setupUI5(area);break;case 5:setupUI6(area);break;case 6:setupUI7(area);break;
+  }
+}
+function drawBg(){ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H)}
+
+/* ===== DRAWING HELPERS ===== */
+function drawEarth(cx,cy,r){
+  const g=ctx.createRadialGradient(cx-r*0.2,cy-r*0.2,r*0.1,cx,cy,r);
+  g.addColorStop(0,'#2a8a5a');g.addColorStop(0.4,'#1a6a8a');g.addColorStop(0.8,'#1a4a7a');g.addColorStop(1,'#0a2a4a');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+  // continents hint
+  ctx.fillStyle='rgba(50,160,80,0.3)';
+  ctx.beginPath();ctx.ellipse(cx-r*0.2,cy-r*0.1,r*0.3,r*0.25,0.3,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(cx+r*0.3,cy+r*0.2,r*0.2,r*0.15,-0.2,0,Math.PI*2);ctx.fill();
+}
+function drawAtmosphere(cx,cy,r,opacity){
+  ctx.strokeStyle=`rgba(100,160,255,${opacity||0.3})`;ctx.lineWidth=r*0.15;
+  ctx.beginPath();ctx.arc(cx,cy,r+r*0.12,0,Math.PI*2);ctx.stroke();
+  ctx.lineWidth=1;
+}
+function drawSun(x,y,r,t){
+  const g=ctx.createRadialGradient(x,y,r*0.2,x,y,r);
+  g.addColorStop(0,'#fff8a0');g.addColorStop(0.5,'#ffcc00');g.addColorStop(1,'rgba(255,180,0,0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+  // rays
+  ctx.strokeStyle='rgba(255,200,50,0.4)';ctx.lineWidth=2;
+  for(let i=0;i<12;i++){const a=i*Math.PI/6+t*0.02;const ri=r*1.1;const ro=r*1.4+Math.sin(t*0.05+i)*5;
+  ctx.beginPath();ctx.moveTo(x+Math.cos(a)*ri,y+Math.sin(a)*ri);ctx.lineTo(x+Math.cos(a)*ro,y+Math.sin(a)*ro);ctx.stroke()}
+}
+function drawArrow(x1,y1,x2,y2,color,width){
+  ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=width||2;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  const a=Math.atan2(y2-y1,x2-x1);const hl=8;
+  ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-Math.cos(a-0.4)*hl,y2-Math.sin(a-0.4)*hl);
+  ctx.lineTo(x2-Math.cos(a+0.4)*hl,y2-Math.sin(a+0.4)*hl);ctx.closePath();ctx.fill();
+}
+function drawWavyArrow(x1,y1,x2,y2,color,t,amp){
+  ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();
+  const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy);
+  const nx=-dy/len,ny=dx/len;
+  const steps=20;
+  for(let i=0;i<=steps;i++){const p=i/steps;const wx=x1+dx*p+nx*Math.sin(p*6+t*0.08)*amp;
+  const wy=y1+dy*p+ny*Math.sin(p*6+t*0.08)*amp;
+  if(i===0)ctx.moveTo(wx,wy);else ctx.lineTo(wx,wy)}
+  ctx.stroke();
+  const a=Math.atan2(dy,dx);
+  ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-Math.cos(a-0.4)*8,y2-Math.sin(a-0.4)*8);
+  ctx.lineTo(x2-Math.cos(a+0.4)*8,y2-Math.sin(a+0.4)*8);ctx.closePath();ctx.fill();
+}
+function drawCO2(x,y,s,t){
+  ctx.fillStyle='rgba(200,100,50,0.8)';
+  ctx.beginPath();ctx.moveTo(x,y-s);ctx.lineTo(x-s*0.87,y+s*0.5);ctx.lineTo(x+s*0.87,y+s*0.5);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#fff';ctx.font=`${Math.max(8,s*0.7)}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('CO₂',x,y+1);
+}
+
+/* ========== LEVEL 1: ENERGY BALANCE ========== */
+function setupUI1(area){
+  area.innerHTML=`
+  <div class="slider-wrap"><label>太阳辐射强度: <span class="slider-val" id="sv1">${state.solar||1361}</span> W/m²</label>
+  <input type="range" min="1000" max="1800" value="${state.solar||1361}" oninput="state.solar=+this.value;document.getElementById('sv1').textContent=this.value;if(!levelObjs[0][0]){completeObj(0,0)}"></div>
+  <div class="slider-wrap"><label>地球反照率: <span class="slider-val" id="sv2">${state.albedo!=null?state.albedo:0.30}</span></label>
+  <input type="range" min="5" max="80" value="${state.albedo!=null?state.albedo*100:30}" oninput="state.albedo=+this.value/100;document.getElementById('sv2').textContent=(+this.value/100).toFixed(2);if(!levelObjs[0][1]){completeObj(0,1)}"></div>
+  <div class="hint-box">提示：当吸收能量≈发射能量时天平平衡，温度稳定</div>`;
+}
+function initL1(){
+  state.solar=1361;state.albedo=0.30;state.temp=15;state.balanced=false;state.balanceTimer=0;
+  function loop(){
+    frame++;drawBg();
+    const cx=W*0.5,cy=H*0.5,er=Math.min(W,H)*0.15;
+    // sun
+    drawSun(W*0.12,H*0.15,40,frame);
+    // solar rays to earth
+    const solarIn=state.solar/4*(1-state.albedo);
+    const irOut=5.67e-8*Math.pow(state.temp+273,4)/4;
+    // earth
+    drawEarth(cx,cy,er);
+    drawAtmosphere(cx,cy,er,0.2);
+    // incoming solar arrows
+    const rayCount=Math.floor(state.solar/200);
+    for(let i=0;i<rayCount;i++){
+      const a=-Math.PI*0.3+i*Math.PI*0.6/(rayCount-1||1);
+      const sx=cx-W*0.35,sy=cy-H*0.3;
+      const ex=cx+Math.cos(a+Math.PI)*er*1.3,ey=cy+Math.sin(a+Math.PI)*er*1.3;
+      const p=((frame*2+i*20)%200)/200;
+      const px=sx+(ex-sx)*p,py=sy+(ey-sy)*p;
+      ctx.fillStyle='rgba(255,220,50,0.7)';ctx.beginPath();ctx.arc(px,py,3,0,Math.PI*2);ctx.fill();
+    }
+    // reflected arrows
+    const refCount=Math.floor(rayCount*state.albedo);
+    for(let i=0;i<refCount;i++){
+      const a=Math.PI*0.2+i*Math.PI*0.3/(refCount||1);
+      const sx=cx+Math.cos(a)*er*1.3,sy=cy+Math.sin(a)*er*1.3;
+      const ex=sx+Math.cos(a)*80,ey=sy+Math.sin(a)*80;
+      const p=((frame*2+i*30)%150)/150;
+      ctx.fillStyle='rgba(200,200,255,0.5)';ctx.beginPath();ctx.arc(sx+(ex-sx)*p,sy+(ey-sy)*p,2,0,Math.PI*2);ctx.fill();
+    }
+    // IR outgoing
+    for(let i=0;i<5;i++){
+      const a=-Math.PI*0.5+i*Math.PI*0.25-Math.PI*0.5;
+      const sx=cx+Math.cos(a)*er,sy=cy+Math.sin(a)*er;
+      const ex=sx+Math.cos(a)*60,ey=sy+Math.sin(a)*60;
+      drawWavyArrow(sx,sy,ex,ey,'rgba(255,80,80,0.5)',frame+i*20,4);
+    }
+    // balance beam
+    const bx=W*0.5,by=H*0.88,bw=200;
+    const diff=solarIn-irOut;
+    const tilt=clamp(diff/50,-0.3,0.3);
+    ctx.save();ctx.translate(bx,by);ctx.rotate(tilt);
+    ctx.strokeStyle='#888';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-bw/2,0);ctx.lineTo(bw/2,0);ctx.stroke();
+    // left pan (income)
+    ctx.fillStyle='rgba(255,200,50,0.6)';ctx.fillRect(-bw/2-15,-20,30,20);
+    ctx.fillStyle='#ffa';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('收入',- bw/2,- 25);
+    ctx.fillText(solarIn.toFixed(0)+'W',-bw/2,-8);
+    // right pan (output)
+    ctx.fillStyle='rgba(255,80,80,0.6)';ctx.fillRect(bw/2-15,-20,30,20);
+    ctx.fillStyle='#faa';ctx.fillText('支出',bw/2,-25);
+    ctx.fillText(irOut.toFixed(0)+'W',bw/2,-8);
+    ctx.restore();
+    // fulcrum
+    ctx.fillStyle='#666';ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx-8,by+15);ctx.lineTo(bx+8,by+15);ctx.closePath();ctx.fill();
+    // temperature
+    state.temp+=(diff>0?0.02:-0.02)*Math.min(Math.abs(diff)/10,1);
+    state.temp=clamp(state.temp,-50,80);
+    ctx.fillStyle='#fff';ctx.font='16px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`地球温度: ${state.temp.toFixed(1)}°C`,cx,cy+er+40);
+    // balance check
+    if(Math.abs(diff)<8){state.balanceTimer++;if(state.balanceTimer>90&&!levelObjs[0][2]){completeObj(0,2)}}
+    else{state.balanceTimer=0}
+    // balance indicator
+    ctx.fillStyle=Math.abs(diff)<8?'#4ade80':'#f87171';ctx.font='12px sans-serif';
+    ctx.fillText(Math.abs(diff)<8?'⚖️ 平衡！':'⚠️ 不平衡',cx,by+30);
+    renderPanel();animId=requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+/* ========== LEVEL 2: GREENHOUSE EFFECT ========== */
+function setupUI2(area){
+  area.innerHTML=`
+  <div class="slider-wrap"><label>CO₂浓度: <span class="slider-val" id="sv3">${state.co2||280}</span> ppm</label>
+  <input type="range" min="280" max="800" value="${state.co2||280}" oninput="state.co2=+this.value;document.getElementById('sv3').textContent=this.value;if(state.co2>=400&&!levelObjs[1][0])completeObj(1,0)"></div>
+  <div class="hint-box">当前温度: <span id="tempDisp2">${(state.tempG||(-18)).toFixed(1)}</span>°C<br>无温室气体温度: -18°C</div>`;
+}
+function initL2(){
+  state.co2=280;state.tempG=-18;state.co2Mols=[];state.irParticles=[];state.obj1Done=false;
+  for(let i=0;i<8;i++)state.co2Mols.push({x:rand(W*0.2,W*0.8),y:rand(H*0.2,H*0.45),vx:rand(-0.3,0.3),vy:rand(-0.2,0.2)});
+  function loop(){
+    frame++;drawBg();
+    const cx=W*0.5,cy=H*0.72,er=Math.min(W,H)*0.13;
+    // sun
+    drawSun(W*0.1,H*0.08,35,frame);
+    // solar rays
+    for(let i=0;i<4;i++){
+      const p=((frame*1.5+i*50)%200)/200;
+      const sx=W*0.15,sy=H*0.12,ex=cx,ey=cy-er;
+      ctx.fillStyle='rgba(255,220,50,0.6)';ctx.beginPath();ctx.arc(sx+(ex-sx)*p,sy+(ey-sy)*p,3,0,Math.PI*2);ctx.fill();
+    }
+    // earth
+    drawEarth(cx,cy,er);
+    // atmosphere band
+    const ghFrac=clamp((state.co2-280)/520,0,1);
+    ctx.fillStyle=`rgba(60,100,180,${0.05+ghFrac*0.15})`;
+    ctx.fillRect(0,H*0.18,W,H*0.5);
+    // CO2 molecules
+    const molCount=Math.floor(3+ghFrac*20);
+    while(state.co2Mols.length<molCount)state.co2Mols.push({x:rand(W*0.15,W*0.85),y:rand(H*0.2,H*0.5),vx:rand(-0.3,0.3),vy:rand(-0.2,0.2)});
+    state.co2Mols.length=molCount;
+    state.co2Mols.forEach(m=>{
+      m.x+=m.vx;m.y+=m.vy;
+      if(m.x<W*0.1||m.x>W*0.9)m.vx*=-1;
+      if(m.y<H*0.18||m.y>H*0.55)m.vy*=-1;
+      drawCO2(m.x,m.y,10,frame);
+    });
+    // IR from ground upward
+    if(frame%15===0){state.irParticles.push({x:cx+rand(-er,er),y:cy-er,vy:-2,absorbed:false,reflected:false,age:0})}
+    state.irParticles=state.irParticles.filter(p=>p.age<300);
+    state.irParticles.forEach(p=>{
+      p.age++;
+      if(!p.absorbed&&!p.reflected){
+        p.y+=p.vy;
+        // check absorption by CO2
+        if(p.y<H*0.5&&Math.random()<ghFrac*0.03){
+          p.absorbed=true;p.reflected=true;p.vy=2;
+          if(!levelObjs[1][1])completeObj(1,1);
+        }
+      }else if(p.reflected){p.y+=p.vy}
+      const col=p.reflected?'rgba(255,100,50,0.8)':'rgba(255,60,60,0.6)';
+      ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill();
+      // wavy trail
+      if(!p.reflected){
+        ctx.strokeStyle='rgba(255,60,60,0.2)';ctx.beginPath();
+        ctx.moveTo(p.x-4*Math.sin(p.y*0.1),p.y+5);ctx.lineTo(p.x+4*Math.sin(p.y*0.1+1),p.y+15);ctx.stroke();
+      }
+    });
+    // temperature calc
+    const targetT=-18+ghFrac*33;
+    state.tempG+=(targetT-state.tempG)*0.01;
+    ctx.fillStyle='#fff';ctx.font='14px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`温度: ${state.tempG.toFixed(1)}°C`,cx,H*0.12);
+    ctx.fillStyle='#888';ctx.font='11px sans-serif';
+    ctx.fillText(`无温室气体: -18°C  |  温室效应增温: ${(state.tempG+18).toFixed(1)}°C`,cx,H*0.15);
+    // check obj2: compare
+    if(state.tempG>0&&!levelObjs[1][2])completeObj(1,2);
+    const td=document.getElementById('tempDisp2');if(td)td.textContent=state.tempG.toFixed(1);
+    renderPanel();animId=requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+/* ========== LEVEL 3: ATMOSPHERIC CIRCULATION ========== */
+function setupUI3(area){
+  area.innerHTML=`
+  <div class="slider-wrap"><label>赤道加热强度: <span class="slider-val" id="sv4">${state.eqHeat||50}</span>%</label>
+  <input type="range" min="0" max="100" value="${state.eqHeat||50}" oninput="state.eqHeat=+this.value;document.getElementById('sv4').textContent=this.value;if(state.eqHeat>=30&&!levelObjs[2][0])completeObj(2,0)"></div>
+  <button class="act-btn" onclick="state.showAll3=true;if(!levelObjs[2][2])completeObj(2,2)">显示三圈环流</button>
+  <div class="hint-box">增大赤道加热→空气上升→形成环流</div>`;
+}
+function initL3(){
+  state.eqHeat=50;state.particles3=[];state.showAll3=false;state.hadleyFormed=false;
+  for(let i=0;i<120;i++){state.particles3.push({x:rand(0,1),y:rand(0,1),zone:Math.floor(rand(0,3)),age:rand(0,200)})}
+  function loop(){
+    frame++;drawBg();
+    const heat=state.eqHeat/100;
+    // draw earth cross-section (side view)
+    const ex=W*0.5,ey=H*0.75,ew=W*0.8,eh=H*0.08;
+    // earth surface gradient
+    const sg=ctx.createLinearGradient(ex-ew/2,ey,ex+ew/2,ey);
+    sg.addColorStop(0,'#4a7ab5');sg.addColorStop(0.15,'#5a9ac5');sg.addColorStop(0.35,'#3a8a5a');
+    sg.addColorStop(0.5,'#6aaa3a');sg.addColorStop(0.65,'#3a8a5a');sg.addColorStop(0.85,'#5a9ac5');sg.addColorStop(1,'#4a7ab5');
+    ctx.fillStyle=sg;ctx.fillRect(ex-ew/2,ey,ew,eh);
+    // labels
+    ctx.fillStyle='#aaa';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText('北极',ex-ew/2+20,ey+eh+14);ctx.fillText('60°N',ex-ew/4,ey+eh+14);
+    ctx.fillText('30°N',ex-ew/8,ey+eh+14);ctx.fillText('赤道',ex,ey+eh+14);
+    ctx.fillText('30°S',ex+ew/8,ey+eh+14);ctx.fillText('60°S',ex+ew/4,ey+eh+14);
+    ctx.fillText('南极',ex+ew/2-20,ey+eh+14);
+    // heat arrows at equator
+    if(heat>0.2){
+      for(let i=0;i<3;i++){
+        const hx=ex+rand(-30,30);
+        drawArrow(hx,ey,hx,ey-40-heat*80,'rgba(255,100,50,0.6)',2);
+      }
+      // Hadley cell (equator to 30°)
+      const cellH=heat*H*0.4;
+      const cellTop=ey-cellH;
+      // rising at equator
+      drawArrow(ex,ey-5,ex,cellTop,'#ff6644',2.5);
+      drawArrow(ex,ey-5,ex,cellTop,'rgba(255,100,68,0.3)',6);
+      // flowing poleward at top
+      drawArrow(ex,cellTop,ex-ew/8,cellTop,'#ff8866',2);
+      drawArrow(ex,cellTop,ex+ew/8,cellTop,'#ff8866',2);
+      // sinking at 30°
+      drawArrow(ex-ew/8,cellTop,ex-ew/8,ey-5,'#6688ff',2);
+      drawArrow(ex+ew/8,cellTop,ex+ew/8,ey-5,'#6688ff',2);
+      // return flow at surface
+      drawArrow(ex-ew/8,ey-5,ex,ey-5,'#88aaff',1.5);
+      drawArrow(ex+ew/8,ey-5,ex,ey-5,'#88aaff',1.5);
+      // label
+      ctx.fillStyle='#ff8866';ctx.font='11px sans-serif';
+      ctx.fillText('哈德利环流',ex,cellTop-10);
+      if(!state.hadleyFormed&&heat>0.3){state.hadleyFormed=true;completeObj(2,1)}
+    }
+    // Ferrel and Polar cells
+    if(state.showAll3&&heat>0.2){
+      const cellH=heat*H*0.4;const cellTop=ey-cellH;
+      // Ferrel (30-60)
+      const f1x=ex-ew/8,f2x=ex-ew/4;
+      drawArrow(f1x,ey-5,f1x,cellTop,'rgba(255,100,68,0.4)',1.5);
+      drawArrow(f1x,cellTop,f2x,cellTop,'rgba(200,150,100,0.5)',1.5);
+      drawArrow(f2x,cellTop,f2x,ey-5,'rgba(100,130,255,0.5)',1.5);
+      drawArrow(f2x,ey-5,f1x,ey-5,'rgba(130,170,255,0.4)',1.5);
+      ctx.fillStyle='#cca';ctx.fillText('费雷尔',((f1x+f2x)/2),cellTop-10);
+      // mirror south
+      const sf1x=ex+ew/8,sf2x=ex+ew/4;
+      drawArrow(sf1x,ey-5,sf1x,cellTop,'rgba(255,100,68,0.4)',1.5);
+      drawArrow(sf1x,cellTop,sf2x,cellTop,'rgba(200,150,100,0.5)',1.5);
+      drawArrow(sf2x,cellTop,sf2x,ey-5,'rgba(100,130,255,0.5)',1.5);
+      drawArrow(sf2x,ey-5,sf1x,ey-5,'rgba(130,170,255,0.4)',1.5);
+      ctx.fillStyle='#cca';ctx.fillText('费雷尔',((sf1x+sf2x)/2),cellTop-10);
+      // Polar (60-90)
+      const p1x=ex-ew/4,p2x=ex-ew/2+20;
+      drawArrow(p1x,ey-5,p1x,cellTop*1.1,'rgba(100,130,255,0.4)',1.5);
+      drawArrow(p1x,cellTop*1.1,p2x,cellTop*1.1,'rgba(100,130,255,0.4)',1.5);
+      drawArrow(p2x,cellTop*1.1,p2x,ey-5,'rgba(80,100,220,0.5)',1.5);
+      drawArrow(p2x,ey-5,p1x,ey-5,'rgba(130,170,255,0.3)',1.5);
+      ctx.fillStyle='#88f';ctx.fillText('极地环流',((p1x+p2x)/2),cellTop*1.1-10);
+      // mirror south
+      const sp1x=ex+ew/4,sp2x=ex+ew/2-20;
+      drawArrow(sp1x,ey-5,sp1x,cellTop*1.1,'rgba(100,130,255,0.4)',1.5);
+      drawArrow(sp1x,cellTop*1.1,sp2x,cellTop*1.1,'rgba(100,130,255,0.4)',1.5);
+      drawArrow(sp2x,cellTop*1.1,sp2x,ey-5,'rgba(80,100,220,0.5)',1.5);
+      drawArrow(sp2x,ey-5,sp1x,ey-5,'rgba(130,170,255,0.3)',1.5);
+      ctx.fillStyle='#88f';ctx.fillText('极地环流',((sp1x+sp2x)/2),cellTop*1.1-10);
+    }
+    // floating particles
+    state.particles3.forEach(p=>{
+      p.age++;
+      const speed=heat*0.005;
+      if(p.zone===0){// hadley
+        p.y-=speed*1.5;if(p.y<0.1){p.y=0.1;p.x+=rand(-0.01,0.01)+0.005}
+        if(p.x>0.6||p.x<0.4){p.y+=speed*2;if(p.y>0.95){p.y=0.95;p.x+=(0.5-p.x)*0.02}}
+      }else{p.x+=rand(-0.003,0.003);p.y+=rand(-0.003,0.003)}
+      p.x=clamp(p.x,0.02,0.98);p.y=clamp(p.y,0.05,0.95);
+      const px=ex-ew/2+p.x*ew,py=ey-H*0.5+p.y*H*0.5;
+      const isRising=p.y<0.3;
+      ctx.fillStyle=isRising?'rgba(255,120,80,0.4)':'rgba(100,150,255,0.3)';
+      ctx.beginPath();ctx.arc(px,py,2,0,Math.PI*2);ctx.fill();
+    });
+    renderPanel();animId=requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+/* ========== LEVEL 4: OCEAN CONVEYOR BELT ========== */
+function setupUI4(area){
+  area.innerHTML=`
+  <div class="slider-wrap"><label>海水盐度: <span class="slider-val" id="sv5">${state.salinity!=null?state.salinity:35}</span> ‰</label>
+  <input type="range" min="20" max="40" value="${state.salinity!=null?state.salinity:35}" oninput="state.salinity=+this.value;document.getElementById('sv5').textContent=this.value;if(state.salinity>=33&&!levelObjs[3][0])completeObj(3,0)"></div>
+  <div class="slider-wrap"><label>海水温度: <span class="slider-val" id="sv6">${state.seaTemp!=null?state.seaTemp:2}</span> °C</label>
+  <input type="range" min="-2" max="25" value="${state.seaTemp!=null?state.seaTemp:2}" oninput="state.seaTemp=+this.value;document.getElementById('sv6').textContent=this.value"></div>
+  <button class="act-btn" onclick="state.meltwater=true;markDirty()" ${state.meltwater?'disabled':''}>注入冰盖融水（降低盐度）</button>
+  <div class="hint-box">高盐+低温→密度大→海水下沉→驱动环流</div>`;
+}
+function initL4(){
+  state.salinity=35;state.seaTemp=2;state.conveyorParts=[];state.meltwater=false;state.beltSpeed=0;state.beltBroken=false;
+  for(let i=0;i<60;i++)state.conveyorParts.push({p:rand(0,1),depth:0});
+  function loop(){
+    frame++;drawBg();
+    const density=(state.salinity-20)/20*(1-(state.seaTemp+2)/27);
+    state.beltSpeed=state.meltwater?Math.max(0,density-0.3):density;
+    if(state.meltwater){state.salinity=Math.max(25,state.salinity-0.02);
+      const sl=document.querySelector('#actionArea input');if(sl)sl.value=state.salinity;
+      const sv=document.getElementById('sv5');if(sv)sv.textContent=state.salinity.toFixed(0);
+    }
+    const broken=state.beltSpeed<0.15;
+    // ocean cross section
+    const ox=W*0.1,oy=H*0.15,ow=W*0.8,oh=H*0.65;
+    // ocean background
+    const og=ctx.createLinearGradient(ox,oy,ox,oy+oh);
+    og.addColorStop(0,'#0a3060');og.addColorStop(0.3,'#082848');og.addColorStop(1,'#041828');
+    ctx.fillStyle=og;ctx.fillRect(ox,oy,ow,oh);
+    // surface label
+    ctx.fillStyle='#6aa';ctx.font='10px sans-serif';ctx.textAlign='left';
+    ctx.fillText('表层',ox+5,oy+15);ctx.fillText('深海',ox+5,oy+oh-10);
+    ctx.textAlign='center';
+    ctx.fillText('北大西洋',ox+ow*0.15,oy-5);ctx.fillText('赤道',ox+ow*0.5,oy-5);ctx.fillText('南大洋',ox+ow*0.85,oy-5);
+    // conveyor belt path: surface right→sink→deep left→rise→surface right
+    const path=[
+      {x:ox+ow*0.85,y:oy+20},{x:ox+ow*0.5,y:oy+20},{x:ox+ow*0.15,y:oy+20},// surface
+      {x:ox+ow*0.1,y:oy+oh*0.3},{x:ox+ow*0.1,y:oy+oh*0.8},// sinking
+      {x:ox+ow*0.3,y:oy+oh*0.85},{x:ox+ow*0.6,y:oy+oh*0.85},{x:ox+ow*0.85,y:oy+oh*0.8},// deep
+      {x:ox+ow*0.88,y:oy+oh*0.4},{x:ox+ow*0.85,y:oy+20}// rising
+    ];
+    // draw belt outline
+    ctx.strokeStyle=broken?'rgba(100,100,100,0.3)':'rgba(100,180,255,0.4)';ctx.lineWidth=broken?1:2;
+    ctx.beginPath();path.forEach((pt,i)=>{i===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y)});ctx.closePath();ctx.stroke();
+    // sinking zone
+    if(!broken){
+      drawArrow(ox+ow*0.15,oy+30,ox+ow*0.1,oy+oh*0.7,'#4488ff',3);
+      ctx.fillStyle='#4488ff';ctx.font='10px sans-serif';ctx.fillText('下沉',ox+ow*0.08,oy+oh*0.5);
+      // rising zone
+      drawArrow(ox+ow*0.88,oy+oh*0.6,ox+ow*0.85,oy+30,'#ff6644',3);
+      ctx.fillStyle='#ff6644';ctx.fillText('上升',ox+ow*0.92,oy+oh*0.4);
+    }
+    // particles along belt
+    state.conveyorParts.forEach(pt=>{
+      pt.p=(pt.p+state.beltSpeed*0.002)%1;
+      const idx=pt.p*(path.length);
+      const i0=Math.floor(idx)%path.length;
+      const i1=(i0+1)%path.length;
+      const t=idx-Math.floor(idx);
+      const px=path[i0].x+(path[i1].x-path[i0].x)*t;
+      const py=path[i0].y+(path[i1].y-path[i0].y)*t;
+      const isSurface=py<oy+oh*0.3;
+      ctx.fillStyle=isSurface?'rgba(255,100,80,0.6)':'rgba(80,130,255,0.6)';
+      ctx.beginPath();ctx.arc(px,py,3,0,Math.PI*2);ctx.fill();
+    });
+    // belt formed check
+    if(state.beltSpeed>0.3&&!levelObjs[3][1])completeObj(3,1);
+    // broken check
+    if(broken&&state.meltwater&&!levelObjs[3][2]){state.beltBroken=true;completeObj(3,2)}
+    // status
+    ctx.fillStyle=broken?'#f87171':'#4ade80';ctx.font='13px sans-serif';ctx.textAlign='center';
+    ctx.fillText(broken?'⚠️ 传送带断裂 — 欧洲骤冷！':'✓ 温盐环流运转中',W*0.5,H*0.92);
+    ctx.fillStyle='#aaa';ctx.font='11px sans-serif';
+    ctx.fillText(`密度指数: ${density.toFixed(2)} | 环流速度: ${(state.beltSpeed*100).toFixed(0)}%`,W*0.5,H*0.96);
+    renderPanel();animId=requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+/* ========== LEVEL 5: ICE FEEDBACK ========== */
+function setupUI5(area){
+  area.innerHTML=`
+  <div class="slider-wrap"><label>初始温度异常: <span class="slider-val" id="sv7">${state.tempAnomaly!=null?state.tempAnomaly.toFixed(1):'+0.0'}</span> °C</label>
+  <input type="range" min="0" max="40" value="${state.tempSlider||0}" oninput="state.tempSlider=+this.value;state.tempAnomaly=this.value/10;document.getElementById('sv7').textContent='+'+state.tempAnomaly.toFixed(1);if(!state.iceStarted){state.iceStarted=true;completeObj(4,0)}"></div>
+  <button class="act-btn" onclick="state.runIce=true">开始模拟反馈循环</button>
+  <div class="hint-box">升温→冰融→反照率↓→吸热↑→更多融化</div>`;
+}
+function initL5(){
+  state.tempAnomaly=0;state.tempSlider=0;state.iceCover=0.9;state.albedoIce=0;state.runIce=false;state.iceStarted=false;
+  state.iceHistory=[];state.tempHistory=[];state.feedbackSpeed=0;
+  function loop(){
+    frame++;drawBg();
+    const cx=W*0.5,cy=H*0.45,er=Math.min(W,H)*0.2;
+    // earth
+    drawEarth(cx,cy,er);
+    // ice caps
+    const iceAngle=state.iceCover*Math.PI*0.45;
+    if(state.iceCover>0.02){
+      ctx.fillStyle='rgba(240,248,255,0.85)';
+      // north cap
+      ctx.beginPath();ctx.moveTo(cx,cy);
+      ctx.arc(cx,cy,er,-Math.PI/2-iceAngle,-Math.PI/2+iceAngle);ctx.closePath();ctx.fill();
+      // south cap
+      ctx.beginPath();ctx.moveTo(cx,cy);
+      ctx.arc(cx,cy,er,Math.PI/2-iceAngle*0.7,Math.PI/2+iceAngle*0.7);ctx.closePath();ctx.fill();
+    }
+    drawAtmosphere(cx,cy,er,0.15);
+    // sun rays
+    drawSun(W*0.08,H*0.08,30,frame);
+    for(let i=0;i<5;i++){
+      const p=((frame+i*40)%180)/180;
+      const sx=W*0.12,sy=H*0.12;
+      const ex=cx-er*0.5+i*er*0.25,ey=cy-er;
+      ctx.fillStyle='rgba(255,220,50,0.5)';ctx.beginPath();ctx.arc(sx+(ex-sx)*p,sy+(ey-sy)*p,2.5,0,Math.PI*2);ctx.fill();
+    }
+    // feedback simulation
+    if(state.runIce){
+      const albedo=0.06+(state.iceCover*0.84);// 0.06 ocean, 0.9 ice
+      state.albedoIce=albedo;
+      const absorbed=1-albedo;
+      const heating=state.tempAnomaly*0.001+absorbed*0.003;
+      state.iceCover=clamp(state.iceCover-heating*0.008,0,0.95);
+      state.tempAnomaly+=heating*0.15;
+      state.feedbackSpeed=heating;
+      if(frame%10===0){
+        state.iceHistory.push(state.iceCover);
+        state.tempHistory.push(state.tempAnomaly);
+        if(state.iceHistory.length>200){state.iceHistory.shift();state.tempHistory.shift()}
+      }
+      if(state.iceCover<0.7&&!levelObjs[4][1])completeObj(4,1);
+      if(state.tempAnomaly>2&&state.iceCover<0.4&&!levelObjs[4][2])completeObj(4,2);
+    }
+    // info display
+    ctx.fillStyle='#fff';ctx.font='13px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`冰盖覆盖: ${(state.iceCover*100).toFixed(1)}%  |  反照率: ${(state.albedoIce||0.82).toFixed(2)}  |  温度异常: +${state.tempAnomaly.toFixed(1)}°C`,cx,H*0.82);
+    // feedback chart
+    if(state.tempHistory.length>2){
+      const chartX=W*0.1,chartY=H*0.87,chartW=W*0.8,chartH=H*0.1;
+      ctx.strokeStyle='#333';ctx.strokeRect(chartX,chartY,chartW,chartH);
+      ctx.fillStyle='#666';ctx.font='9px sans-serif';ctx.textAlign='left';
+      ctx.fillText('冰盖%',chartX,chartY-3);ctx.textAlign='right';ctx.fillText('温度',chartX+chartW,chartY-3);
+      // ice line
+      ctx.strokeStyle='#88ccff';ctx.lineWidth=1.5;ctx.beginPath();
+      state.iceHistory.forEach((v,i)=>{const x=chartX+i/200*chartW;const y=chartY+chartH-(v*chartH);
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});ctx.stroke();
+      // temp line
+      ctx.strokeStyle='#ff6644';ctx.beginPath();
+      state.tempHistory.forEach((v,i)=>{const x=chartX+i/200*chartW;const y=chartY+chartH-clamp(v/8,0,1)*chartH;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});ctx.stroke();ctx.lineWidth=1;
+    }
+    // feedback arrows
+    if(state.runIce&&state.feedbackSpeed>0.001){
+      ctx.fillStyle='rgba(255,100,50,0.6)';ctx.font='11px sans-serif';ctx.textAlign='center';
+      const labels=['升温','冰融化','反照率↓','吸热↑'];
+      const angles=[0,Math.PI/2,Math.PI,Math.PI*1.5];
+      const loopR=50;const loopCx=W*0.85,loopCy=H*0.35;
+      labels.forEach((lb,i)=>{
+        const a=angles[i]-Math.PI/2;
+        const x=loopCx+Math.cos(a)*loopR,y=loopCy+Math.sin(a)*loopR;
+        ctx.fillStyle='#ffa';ctx.fillText(lb,x,y);
+        const na=angles[(i+1)%4]-Math.PI/2;
+        const nx=loopCx+Math.cos(na)*loopR,ny=loopCy+Math.sin(na)*loopR;
+        drawArrow(x+Math.cos(a+0.3)*15,y+Math.sin(a+0.3)*15,nx-Math.cos(na+0.3)*15,ny-Math.sin(na+0.3)*15,'rgba(255,150,80,0.5)',1.5);
+      });
+      ctx.fillStyle='#f87171';ctx.font='10px sans-serif';ctx.fillText('正反馈循环',loopCx,loopCy);
+    }
+    renderPanel();animId=requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+/* ========== LEVEL 6: CARBON CYCLE ========== */
+function setupUI6(area){
+  const pools=state.pools||{atm:870,ocean:38000,veg:450,rock:66000000};
+  area.innerHTML=`
+  <div class="hint-box">拖拽黑色碳球在储库间移动<br>
+  🌫 大气: <b>${pools.atm.toFixed(0)}</b> GtC<br>
+  🌊 海洋: <b>${pools.ocean.toFixed(0)}</b> GtC<br>
+  🌿 植被: <b>${pools.veg.toFixed(0)}</b> GtC<br>
+  🪨 岩石: <b>${(pools.rock/1e6).toFixed(1)}M</b> GtC</div>
+  <button class="act-btn" onclick="state.deforest=true;markDirty()">🪓 砍伐森林</button>
+  <div class="hint-box">目标：使大气碳量低于800 GtC</div>`;
+}
+function initL6(){
+  state.pools={atm:870,ocean:38000,veg:450,rock:66000000};
+  state.carbonBalls=[];state.deforest=false;state.dragBall=null;
+  // create draggable carbon balls
+  const zones=[
+    {name:'atm',cx:0.5,cy:0.15,r:0.12},
+    {name:'ocean',cx:0.25,cy:0.6,r:0.15},
+    {name:'veg',cx:0.75,cy:0.6,r:0.12},
+    {name:'rock',cx:0.5,cy:0.88,r:0.1}
+  ];
+  state.zones6=zones;
+  for(let i=0;i<8;i++){
+    const z=zones[i%4];
+    state.carbonBalls.push({x:z.cx*1+rand(-0.05,0.05),y:z.cy*1+rand(-0.04,0.04),zone:z.name,dragging:false});
+  }
+  cv.onmousedown=e=>{
+    mouseDown=true;clicked=true;
+    const r=cv.getBoundingClientRect();mouseX=(e.clientX-r.left)*(W/r.width);mouseY=(e.clientY-r.top)*(H/r.height);
+    // check carbon ball hit
+    state.carbonBalls.forEach(b=>{
+      const bx=b.x*W,by=b.y*H;
+      if(Math.hypot(mouseX-bx,mouseY-by)<18){state.dragBall=b;b.dragging=true}
+    });
+  };
+  cv.onmousemove=e=>{
+    const r=cv.getBoundingClientRect();mouseX=(e.clientX-r.left)*(W/r.width);mouseY=(e.clientY-r.top)*(H/r.height);
+    if(state.dragBall){state.dragBall.x=mouseX/W;state.dragBall.y=mouseY/H}
+  };
+  cv.onmouseup=()=>{
+    mouseDown=false;
+    if(state.dragBall){
+      const b=state.dragBall;b.dragging=false;
+      // determine which zone it landed in
+      let landed=null;
+      state.zones6.forEach(z=>{if(Math.hypot(b.x-z.cx,b.y-z.cy)<z.r)landed=z.name});
+      if(landed&&landed!==b.zone){
+        const from=b.zone,to=landed;
+        const amount=50;
+        if(state.pools[from]>=amount){
+          state.pools[from]-=amount;state.pools[to]+=amount;
+          b.zone=to;
+          if(from==='veg'&&to==='atm'&&!levelObjs[5][0])completeObj(5,0);
+          if(from==='atm'&&to==='ocean'&&!levelObjs[5][1])completeObj(5,1);
+          if(state.pools.atm<800&&!levelObjs[5][2])completeObj(5,2);
+          markDirty();
+        }
+      }
+      // snap to zone center
+      const z=state.zones6.find(z=>z.name===b.zone);
+      if(z){b.x=z.cx+rand(-0.04,0.04);b.y=z.cy+rand(-0.03,0.03)}
+      state.dragBall=null;
+    }
+  };
+  function loop(){
+    frame++;drawBg();
+    const zones=state.zones6;
+    // deforestation effect
+    if(state.deforest&&state.pools.veg>200){
+      state.pools.veg-=0.5;state.pools.atm+=0.5;
+      if(frame%60===0)markDirty();
+    }
+    // draw zones
+    const zoneColors={atm:'rgba(150,180,220,0.15)',ocean:'rgba(30,80,160,0.2)',veg:'rgba(40,140,60,0.2)',rock:'rgba(120,100,80,0.15)'};
+    const zoneLabels={atm:'🌫 大气',ocean:'🌊 海洋',veg:'🌿 植被',rock:'🪨 岩石'};
+    zones.forEach(z=>{
+      const zx=z.cx*W,zy=z.cy*H,zr=z.r*Math.min(W,H);
+      ctx.fillStyle=zoneColors[z.name];ctx.beginPath();ctx.arc(zx,zy,zr,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.beginPath();ctx.arc(zx,zy,zr,0,Math.PI*2);ctx.stroke();
+      ctx.fillStyle='#aaa';ctx.font='12px sans-serif';ctx.textAlign='center';
+      ctx.fillText(zoneLabels[z.name],zx,zy-zr-8);
+      const val=z.name==='rock'?`${(state.pools[z.name]/1e6).toFixed(1)}M GtC`:`${state.pools[z.name].toFixed(0)} GtC`;
+      ctx.fillStyle='#60a5fa';ctx.font='bold 13px sans-serif';ctx.fillText(val,zx,zy-zr+8);
+    });
+    // flow arrows between zones
+    ctx.globalAlpha=0.3;
+    drawArrow(zones[2].cx*W,zones[2].cy*H-40,zones[0].cx*W+40,zones[0].cy*H+30,'#88ff88',1);// veg→atm
+    drawArrow(zones[0].cx*W-40,zones[0].cy*H+30,zones[1].cx*W,zones[1].cy*H-40,'#88aaff',1);// atm→ocean
+    drawArrow(zones[1].cx*W+40,zones[1].cy*H+30,zones[3].cx*W-30,zones[3].cy*H-20,'#aa8866',1);// ocean→rock
+    ctx.globalAlpha=1;
+    // carbon balls
+    state.carbonBalls.forEach(b=>{
+      const bx=b.x*W,by=b.y*H;
+      ctx.fillStyle=b.dragging?'#555':'#222';ctx.strokeStyle=b.dragging?'#fff':'#666';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(bx,by,12,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#ccc';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('C',bx,by);ctx.textBaseline='alphabetic';
+    });
+    renderPanel();animId=requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+/* ========== LEVEL 7: SCENARIO PREDICTION ========== */
+function setupUI7(area){
+  const sel=state.rcp||'';
+  area.innerHTML=`
+  <div class="sel-row">
+    <span class="sel-btn ${sel==='rcp26'?'active':''}" onclick="state.rcp='rcp26';markDirty();if(!levelObjs[6][0])completeObj(6,0)">RCP 2.6</span>
+    <span class="sel-btn ${sel==='rcp45'?'active':''}" onclick="state.rcp='rcp45';markDirty();if(!levelObjs[6][0])completeObj(6,0)">RCP 4.5</span>
+    <span class="sel-btn ${sel==='rcp85'?'active':''}" onclick="state.rcp='rcp85';markDirty();if(!levelObjs[6][0])completeObj(6,0)">RCP 8.5</span>
+  </div>
+  <button class="act-btn" onclick="startSim7()" ${!state.rcp?'disabled':''}>▶ 运行百年模拟</button>
+  <button class="act-btn" onclick="state.showAll7=true;runAllScenarios();markDirty()" ${state.simDone?'':'disabled'}>对比所有情景</button>
+  <div class="hint-box">选择排放路径后点击运行，观察2000-2100年变化</div>`;
+}
+function startSim7(){
+  if(!state.rcp)return;
+  state.simYear=2000;state.simRunning=true;state.simDone=false;
+  state.tempCurve=[];state.seaCurve=[];
+  if(!levelObjs[6][1])completeObj(6,1);
+}
+function runAllScenarios(){
+  state.allCurves={};
+  ['rcp26','rcp45','rcp85'].forEach(rcp=>{
+    const tc=[],sc=[];
+    for(let y=2000;y<=2100;y++){
+      const t=(y-2000)/100;
+      let dT,dS;
+      if(rcp==='rcp26'){dT=1.5*Math.pow(t,0.7);dS=0.4*Math.pow(t,0.8)}
+      else if(rcp==='rcp45'){dT=2.5*Math.pow(t,0.8);dS=0.6*Math.pow(t,0.85)}
+      else{dT=4.5*Math.pow(t,0.9);dS=1.0*Math.pow(t,0.95)}
+      tc.push({year:y,val:dT});sc.push({year:y,val:dS});
+    }
+    state.allCurves[rcp]={temp:tc,sea:sc};
+  });
+  if(!levelObjs[6][2])completeObj(6,2);
+}
+function initL7(){
+  state.rcp='';state.simYear=2000;state.simRunning=false;state.simDone=false;
+  state.tempCurve=[];state.seaCurve=[];state.showAll7=false;state.allCurves=null;
+  function loop(){
+    frame++;drawBg();
+    // simulation step
+    if(state.simRunning&&state.simYear<=2100){
+      const t=(state.simYear-2000)/100;
+      let dT,dS;
+      if(state.rcp==='rcp26'){dT=1.5*Math.pow(t,0.7);dS=0.4*Math.pow(t,0.8)}
+      else if(state.rcp==='rcp45'){dT=2.5*Math.pow(t,0.8);dS=0.6*Math.pow(t,0.85)}
+      else{dT=4.5*Math.pow(t,0.9);dS=1.0*Math.pow(t,0.95)}
+      state.tempCurve.push({year:state.simYear,val:dT});
+      state.seaCurve.push({year:state.simYear,val:dS});
+      state.simYear++;
+      if(state.simYear>2100){state.simRunning=false;state.simDone=true;markDirty()}
+    }
+    // draw charts
+    const chartL=W*0.08,chartR=W*0.92,chartW=chartR-chartL;
+    // temperature chart
+    const tTop=H*0.05,tBot=H*0.45,tH=tBot-tTop;
+    ctx.strokeStyle='#333';ctx.strokeRect(chartL,tTop,chartW,tH);
+    ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText('全球平均温度变化 (°C)',chartL+chartW/2,tTop-5);
+    // Y axis labels
+    ctx.textAlign='right';ctx.fillStyle='#666';ctx.font='9px sans-serif';
+    for(let v=0;v<=5;v++){const y=tBot-v/5*tH;ctx.fillText(`+${v}`,chartL-4,y+3);
+    ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.beginPath();ctx.moveTo(chartL,y);ctx.lineTo(chartR,y);ctx.stroke()}
+    // X axis
+    ctx.textAlign='center';
+    for(let yr=2000;yr<=2100;yr+=20){const x=chartL+(yr-2000)/100*chartW;ctx.fillText(yr,x,tBot+14)}
+    // draw all scenarios if comparing
+    if(state.showAll7&&state.allCurves){
+      const colors={rcp26:'#4ade80',rcp45:'#facc15',rcp85:'#f87171'};
+      const labels={rcp26:'RCP 2.6 (+1.5°C)',rcp45:'RCP 4.5 (+2.5°C)',rcp85:'RCP 8.5 (+4.5°C)'};
+      Object.keys(state.allCurves).forEach(rcp=>{
+        const data=state.allCurves[rcp].temp;
+        ctx.strokeStyle=colors[rcp];ctx.lineWidth=2;ctx.beginPath();
+        data.forEach((d,i)=>{const x=chartL+(d.year-2000)/100*chartW;const y=tBot-d.val/5*tH;
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});ctx.stroke();
+        // label at end
+        const last=data[data.length-1];
+        ctx.fillStyle=colors[rcp];ctx.font='10px sans-serif';ctx.textAlign='left';
+        ctx.fillText(labels[rcp],chartR+5,tBot-last.val/5*tH+3);
+      });
+    }else if(state.tempCurve.length>1){
+      const col=state.rcp==='rcp26'?'#4ade80':state.rcp==='rcp45'?'#facc15':'#f87171';
+      ctx.strokeStyle=col;ctx.lineWidth=2;ctx.beginPath();
+      state.tempCurve.forEach((d,i)=>{const x=chartL+(d.year-2000)/100*chartW;const y=tBot-d.val/5*tH;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});ctx.stroke();
+    }
+    // sea level chart
+    const sTop=H*0.55,sBot=H*0.92,sH=sBot-sTop;
+    ctx.strokeStyle='#333';ctx.strokeRect(chartL,sTop,chartW,sH);
+    ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText('海平面上升 (m)',chartL+chartW/2,sTop-5);
+    ctx.textAlign='right';ctx.fillStyle='#666';ctx.font='9px sans-serif';
+    for(let v=0;v<=1;v+=0.2){const y=sBot-v/1.2*sH;ctx.fillText(v.toFixed(1)+'m',chartL-4,y+3);
+    ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.beginPath();ctx.moveTo(chartL,y);ctx.lineTo(chartR,y);ctx.stroke()}
+    ctx.textAlign='center';
+    for(let yr=2000;yr<=2100;yr+=20){const x=chartL+(yr-2000)/100*chartW;ctx.fillText(yr,x,sBot+14)}
+    if(state.showAll7&&state.allCurves){
+      const colors={rcp26:'#4ade80',rcp45:'#facc15',rcp85:'#f87171'};
+      Object.keys(state.allCurves).forEach(rcp=>{
+        const data=state.allCurves[rcp].sea;
+        ctx.strokeStyle=colors[rcp];ctx.lineWidth=2;ctx.beginPath();
+        data.forEach((d,i)=>{const x=chartL+(d.year-2000)/100*chartW;const y=sBot-d.val/1.2*sH;
+        i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});ctx.stroke();
+      });
+    }else if(state.seaCurve.length>1){
+      const col=state.rcp==='rcp26'?'#4ade80':state.rcp==='rcp45'?'#facc15':'#f87171';
+      ctx.strokeStyle=col;ctx.lineWidth=2;ctx.beginPath();
+      state.seaCurve.forEach((d,i)=>{const x=chartL+(d.year-2000)/100*chartW;const y=sBot-d.val/1.2*sH;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});ctx.stroke();
+    }
+    ctx.lineWidth=1;
+    // year indicator
+    if(state.simRunning){
+      ctx.fillStyle='#fff';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+      ctx.fillText(`模拟年份: ${state.simYear}`,W*0.5,H*0.52);
+    }
+    renderPanel();animId=requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+/* ===== START ===== */
+loadLevel(0);
+</script>
+</body>
+</html>

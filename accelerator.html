@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>粒子加速器探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#60a5fa}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}
+.g-text{color:#c0c0e0}
+.g-text.done{color:#4ade80;text-decoration:line-through}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:#2a2a6a}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}.sv{color:#60a5fa;font-weight:bold}
+.m-title{font-size:16px;font-weight:700;margin:8px 0 4px;color:#eee}
+.m-sub{font-size:12px;color:#888;margin-bottom:8px}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:rgba(10,10,26,.95);border-top:1px solid #1a1a3a;z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}
+#bottom-bar .bb-right{text-align:right}
+.overlay .result-box{text-align:center;max-width:420px;background:rgba(10,10,26,.98);border:1px solid #2a2a5a;border-radius:16px;padding:28px 36px}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-learn{text-align:left;background:#0e0e20;border-radius:8px;padding:12px 14px;font-size:12px;color:#93c5fd;line-height:1.7;margin-bottom:16px}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#3b82f6;color:#fff}
+.result-box .btn-retry{background:#2a2a5a;color:#ccc}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>⚡ <span class="gold">粒子加速器</span>探险</h1>
+  <div class="sub">7 个关卡，从电场加速到发现上帝粒子</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">⚡</div>电场加速</div>
+    <div class="feat"><div class="fi">🌀</div>回旋加速</div>
+    <div class="feat"><div class="fi">💫</div>同步加速</div>
+    <div class="feat"><div class="fi">💥</div>粒子对撞</div>
+    <div class="feat"><div class="fi">🔍</div>粒子探测</div>
+    <div class="feat"><div class="fi">📊</div>希格斯发现</div>
+    <div class="feat"><div class="fi">🧩</div>标准模型</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,animId;
+let gameState='start',currentLevel=0;
+let levelState={},bgStars=[],trailParticles=[];
+const completedLevels=new Set();
+const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
+const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
+const c=3e8,eCharge=1.6e-19,protonMass=1.67e-27;
+
+const levels=[
+{name:'电场加速',sub:'库仑力',icon:'⚡'},
+{name:'回旋加速器',sub:'磁场偏转',icon:'🌀'},
+{name:'同步加速器',sub:'接近光速',icon:'💫'},
+{name:'粒子对撞',sub:'创造新粒子',icon:'💥'},
+{name:'粒子探测器',sub:'识别碎片',icon:'🔍'},
+{name:'发现希格斯',sub:'5σ发现',icon:'📊'},
+{name:'标准模型',sub:'粒子物理元素周期表',icon:'🧩'}
+];
+
+function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight}
+addEventListener('resize',resize);resize();
+for(let i=0;i<120;i++)bgStars.push({x:Math.random()*2e3,y:Math.random()*1200,r:Math.random()*1.2+.3,a:Math.random()*.5+.3});
+
+function drawBg(){
+ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,CW,CH);
+bgStars.forEach(s=>{ctx.globalAlpha=s.a*(0.7+0.3*Math.sin(time*0.5+s.x));ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.x%CW,s.y%CH,s.r,0,Math.PI*2);ctx.fill()});
+ctx.globalAlpha=1;
+}
+
+function startGame(){
+document.getElementById('startScreen').classList.add('hidden');
+gameState='play';currentLevel=0;
+panelEl.style.display='block';bbEl.style.display='flex';
+initLevel(0);renderPanel();animate();
+}
+
+function initLevel(n){
+currentLevel=n;trailParticles=[];
+const L=levels[n];
+if(n===0)initLevel0();
+else if(n===1)initLevel1();
+else if(n===2)initLevel2();
+else if(n===3)initLevel3();
+else if(n===4)initLevel4();
+else if(n===5)initLevel5();
+else if(n===6)initLevel6();
+renderPanel();
+}
+
+/* ========== LEVEL 0: 电场加速 ========== */
+function initLevel0(){
+levelState={voltage:10,energy:0,speed:0,protonX:0,protonY:0,accelerating:false,done:false,
+goals:[false,false,false],phase:'idle'};
+}
+function updateLevel0(){
+const s=levelState,ox=340,W=CW-ox-40,cy=CH/2;
+const plateL=ox+60,plateR=ox+W-60;
+// draw plates
+ctx.strokeStyle='#f44';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(plateL,cy-120);ctx.lineTo(plateL,cy+120);ctx.stroke();
+ctx.strokeStyle='#4af';ctx.beginPath();ctx.moveTo(plateR,cy-120);ctx.lineTo(plateR,cy+120);ctx.stroke();
+ctx.fillStyle='#f66';ctx.font='16px sans-serif';ctx.fillText('+',plateL-20,cy+5);
+ctx.fillStyle='#6af';ctx.fillText('−',plateR+10,cy+5);
+// E field lines
+ctx.globalAlpha=0.15;ctx.strokeStyle='#88f';ctx.lineWidth=1;
+for(let y=cy-100;y<=cy+100;y+=30){ctx.beginPath();ctx.moveTo(plateL+10,y);ctx.lineTo(plateR-10,y);ctx.stroke();
+ctx.beginPath();ctx.moveTo(plateR-20,y-5);ctx.lineTo(plateR-10,y);ctx.lineTo(plateR-20,y+5);ctx.stroke();}
+ctx.globalAlpha=1;
+// proton
+if(s.phase==='idle'){s.protonX=plateL+40;s.protonY=cy;}
+if(s.phase==='accel'){
+let acc=s.voltage*1000*eCharge/(protonMass*(plateR-plateL-80));
+s.speed+=acc*0.016;let maxV=Math.sqrt(2*s.voltage*1000*eCharge/protonMass);
+if(s.speed>maxV)s.speed=maxV;
+s.protonX+=s.speed*0.016*3e-4;
+s.energy=0.5*protonMass*s.speed*s.speed/eCharge;
+if(s.protonX>=plateR-40){s.phase='done';s.protonX=plateR-40;
+if(s.energy>=1000&&!s.goals[0])s.goals[0]=true;
+if(s.energy>=10000&&!s.goals[1])s.goals[1]=true;
+s.goals[2]=true;
+if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(0)){completedLevels.add(0);showResult(0);}
+else renderPanel();
+}}
+// draw proton
+let glow=ctx.createRadialGradient(s.protonX,s.protonY,0,s.protonX,s.protonY,18);
+glow.addColorStop(0,'rgba(255,100,80,0.9)');glow.addColorStop(1,'rgba(255,50,30,0)');
+ctx.fillStyle=glow;ctx.beginPath();ctx.arc(s.protonX,s.protonY,18,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#f44';ctx.beginPath();ctx.arc(s.protonX,s.protonY,8,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#fff';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText('p⁺',s.protonX,s.protonY+3);ctx.textAlign='start';
+// trail
+if(s.phase==='accel'){trailParticles.push({x:s.protonX-10,y:s.protonY,vx:-2-Math.random()*2,vy:(Math.random()-.5)*2,life:30,color:'#f84'});}
+// info
+ctx.fillStyle='#aaa';ctx.font='13px sans-serif';
+ctx.fillText(`能量: ${s.energy<1000?s.energy.toFixed(1)+' eV':(s.energy/1000).toFixed(2)+' keV'}`,ox+20,50);
+ctx.fillText(`速度: ${(s.speed/1e6).toFixed(1)} km/s`,ox+20,70);
+ctx.fillText(`电压: ${s.voltage} kV`,ox+20,90);
+}
+function accelLevel0(){if(levelState.phase!=='accel'){levelState.phase='accel';levelState.speed=0;levelState.energy=0;levelState.protonX=0;renderPanel();}}
+function resetLevel0(){levelState.phase='idle';levelState.speed=0;levelState.energy=0;trailParticles=[];renderPanel();}
+
+/* ========== LEVEL 1: 回旋加速器 ========== */
+function initLevel1(){
+levelState={bField:0.5,angle:0,radius:20,speed:0,energy:0,laps:0,running:false,escaped:false,
+goals:[false,false,false],phase:'idle',trail:[],halfLap:0,inGap:false,gapBoost:0};
+}
+function updateLevel1(){
+const s=levelState,ox=340,cx=(CW+ox)/2,cy=CH/2,maxR=Math.min(CW-ox,CH)/2-40;
+// draw D-shaped electrodes
+ctx.save();ctx.translate(cx,cy);
+ctx.strokeStyle='#556';ctx.lineWidth=3;ctx.fillStyle='rgba(40,40,80,0.3)';
+// left D
+ctx.beginPath();ctx.arc(0,0,maxR,Math.PI/2,-Math.PI/2,false);ctx.lineTo(-8,-maxR);ctx.lineTo(-8,maxR);ctx.closePath();ctx.fill();ctx.stroke();
+// right D
+ctx.beginPath();ctx.arc(0,0,maxR,-Math.PI/2,Math.PI/2,false);ctx.lineTo(8,maxR);ctx.lineTo(8,-maxR);ctx.closePath();ctx.fill();ctx.stroke();
+// gap
+ctx.fillStyle='rgba(100,200,255,0.15)';ctx.fillRect(-8,-maxR,16,maxR*2);
+ctx.restore();
+// labels
+ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.fillText('D₁',cx-maxR/2-10,cy);ctx.fillText('D₂',cx+maxR/2-5,cy);
+ctx.fillStyle='rgba(100,200,255,0.5)';ctx.font='10px sans-serif';ctx.fillText('电场间隙',cx-20,cy+maxR+20);
+
+if(s.phase==='run'){
+let freq=eCharge*s.bField/(2*Math.PI*protonMass);
+let dt=0.03;
+s.angle+=dt*freq*0.0001/(s.radius/200+0.5);
+let prevSide=Math.cos(s.angle-dt*freq*0.0001/(s.radius/200+0.5))>0;
+let curSide=Math.cos(s.angle)>0;
+if(prevSide!==curSide){
+s.halfLap++;
+let boostE=5000;
+s.energy+=boostE;s.speed=Math.sqrt(2*s.energy*eCharge/protonMass);
+s.radius=protonMass*s.speed/(eCharge*s.bField)*5e5+20;
+if(s.halfLap%2===0)s.laps++;
+s.inGap=true;s.gapBoost=10;
+}
+if(s.gapBoost>0)s.gapBoost--;else s.inGap=false;
+if(s.radius>maxR-10){s.escaped=true;s.phase='done';renderPanel();}
+if(s.laps>=3&&!s.goals[0]){s.goals[0]=true;
+if(!s.escaped&&!s.goals[1]){s.goals[1]=true;}
+renderPanel();}
+if(s.energy>=50000&&!s.goals[2]){s.goals[2]=true;renderPanel();}
+if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(1)){completedLevels.add(1);showResult(1);}
+let px=cx+Math.cos(s.angle)*s.radius,py=cy+Math.sin(s.angle)*s.radius;
+s.trail.push({x:px,y:py,t:60});
+if(s.trail.length>300)s.trail.shift();
+// draw trail
+ctx.lineWidth=2;
+for(let i=1;i<s.trail.length;i++){let a=s.trail[i].t/60;ctx.strokeStyle=`rgba(255,100,80,${a*0.6})`;ctx.beginPath();ctx.moveTo(s.trail[i-1].x,s.trail[i-1].y);ctx.lineTo(s.trail[i].x,s.trail[i].y);ctx.stroke();}
+s.trail.forEach(t=>t.t=Math.max(0,t.t-0.5));
+// draw proton
+let glow=ctx.createRadialGradient(px,py,0,px,py,14);
+glow.addColorStop(0,'rgba(255,100,80,0.9)');glow.addColorStop(1,'rgba(255,50,30,0)');
+ctx.fillStyle=glow;ctx.beginPath();ctx.arc(px,py,14,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#f44';ctx.beginPath();ctx.arc(px,py,6,0,Math.PI*2);ctx.fill();
+// gap flash
+if(s.inGap){ctx.save();ctx.translate(cx,cy);ctx.fillStyle=`rgba(100,200,255,${s.gapBoost/10*0.4})`;ctx.fillRect(-8,-maxR,16,maxR*2);ctx.restore();}
+}
+ctx.fillStyle='#aaa';ctx.font='13px sans-serif';
+ctx.fillText(`能量: ${s.energy<1000?s.energy.toFixed(0)+' eV':(s.energy/1000).toFixed(1)+' keV'}`,ox+20,50);
+ctx.fillText(`圈数: ${s.laps}`,ox+20,70);
+ctx.fillText(`磁场: ${s.bField.toFixed(2)} T`,ox+20,90);
+ctx.fillText(`半径: ${s.radius.toFixed(0)} px`,ox+20,110);
+}
+function startCyclotron(){levelState.phase='run';levelState.trail=[];levelState.angle=0;levelState.radius=20;levelState.speed=0;levelState.energy=0;levelState.laps=0;levelState.halfLap=0;levelState.escaped=false;renderPanel();}
+function resetLevel1(){initLevel1();renderPanel();}
+
+/* ========== LEVEL 2: 同步加速器 ========== */
+function initLevel2(){
+levelState={energy:1,speed:0,laps:0,angle:0,bField:1,rfPhase:0,running:false,
+goals:[false,false,false],phase:'idle',trail:[],magnets:[]};
+for(let i=0;i<8;i++)levelState.magnets.push({a:i*Math.PI/4,on:true});
+}
+function updateLevel2(){
+const s=levelState,ox=340,cx=(CW+ox)/2,cy=CH/2,R=Math.min(CW-ox,CH)/2-60;
+// draw ring
+ctx.strokeStyle='#334';ctx.lineWidth=28;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();
+ctx.strokeStyle='#222';ctx.lineWidth=22;ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();
+// magnets
+s.magnets.forEach((m,i)=>{
+let mx=cx+Math.cos(m.a)*R,my=cy+Math.sin(m.a)*R;
+ctx.fillStyle=m.on?'#3b82f6':'#333';ctx.fillRect(mx-10,my-10,20,20);
+ctx.fillStyle='#fff';ctx.font='8px sans-serif';ctx.textAlign='center';ctx.fillText('B',mx,my+3);
+});
+// RF cavities (2 positions)
+let rfPos=[0,Math.PI];
+rfPos.forEach(a=>{
+let rx=cx+Math.cos(a)*(R+18),ry=cy+Math.sin(a)*(R+18);
+ctx.fillStyle='#f90';ctx.fillRect(rx-6,ry-12,12,24);
+ctx.fillStyle='#fff';ctx.font='8px sans-serif';ctx.fillText('RF',rx,ry+3);
+});
+ctx.textAlign='start';
+if(s.phase==='run'){
+let speedFrac=s.speed/c;
+let gamma=1/Math.sqrt(1-speedFrac*speedFrac+1e-15);
+let angSpeed=0.02+s.energy*0.0001;if(angSpeed>0.15)angSpeed=0.15;
+s.angle+=angSpeed;
+// check RF cavity crossing
+rfPos.forEach(a=>{
+let diff=((s.angle%( Math.PI*2))+Math.PI*2)%(Math.PI*2);
+let target=((a)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+if(Math.abs(diff-target)<angSpeed*1.5){
+s.energy+=0.5*gamma;
+s.speed=c*Math.sqrt(1-1/(1+s.energy/0.938)/(1+s.energy/0.938));
+s.bField=gamma*0.938*s.speed/(eCharge*R*1e6);
+}
+});
+if(Math.floor(s.angle/(Math.PI*2))>s.laps){s.laps=Math.floor(s.angle/(Math.PI*2));}
+let px=cx+Math.cos(s.angle)*R,py=cy+Math.sin(s.angle)*R;
+s.trail.push({x:px,y:py,t:80});if(s.trail.length>500)s.trail.shift();
+// trail
+ctx.lineWidth=2;
+for(let i=1;i<s.trail.length;i++){let a2=s.trail[i].t/80;
+let hue=200+s.energy*5;if(hue>360)hue=360;
+ctx.strokeStyle=`hsla(${hue},80%,60%,${a2*0.5})`;ctx.beginPath();ctx.moveTo(s.trail[i-1].x,s.trail[i-1].y);ctx.lineTo(s.trail[i].x,s.trail[i].y);ctx.stroke();}
+s.trail.forEach(t=>t.t=Math.max(0,t.t-0.3));
+// proton glow
+let glow=ctx.createRadialGradient(px,py,0,px,py,16);
+glow.addColorStop(0,`hsla(${200+s.energy*5},80%,70%,0.9)`);glow.addColorStop(1,'rgba(0,0,0,0)');
+ctx.fillStyle=glow;ctx.beginPath();ctx.arc(px,py,16,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();
+// goals
+if(s.laps>=10&&!s.goals[0]){s.goals[0]=true;renderPanel();}
+let pctC=s.speed/c*100;
+if(pctC>=99&&!s.goals[1]){s.goals[1]=true;renderPanel();}
+if(s.energy>=1000&&!s.goals[2]){s.goals[2]=true;renderPanel();}
+if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(2)){completedLevels.add(2);showResult(2);}
+}
+let pctC=s.speed/c*100;let gamma=1/Math.sqrt(1-(s.speed/c)*(s.speed/c)+1e-15);
+ctx.fillStyle='#aaa';ctx.font='13px sans-serif';
+ctx.fillText(`能量: ${s.energy<1?s.energy.toFixed(2)+' GeV':s.energy.toFixed(1)+' GeV'}`,ox+20,50);
+ctx.fillText(`速度: ${pctC.toFixed(4)}% 光速`,ox+20,70);
+ctx.fillText(`圈数: ${s.laps}`,ox+20,90);
+ctx.fillText(`γ因子: ${gamma.toFixed(1)}`,ox+20,110);
+}
+function startSynchrotron(){levelState.phase='run';levelState.trail=[];levelState.angle=0;levelState.energy=1;levelState.speed=c*0.87;levelState.laps=0;renderPanel();}
+function resetLevel2(){initLevel2();renderPanel();}
+
+/* ========== LEVEL 3: 粒子对撞 ========== */
+function initLevel3(){
+levelState={phase:'ready',collided:false,debris:[],beamL:[],beamR:[],
+goals:[false,false,false],particleTypes:new Set(),collisionCount:0,flashAlpha:0};
+}
+function updateLevel3(){
+const s=levelState,ox=340,cx=(CW+ox)/2,cy=CH/2;
+// draw beam pipe
+ctx.strokeStyle='#334';ctx.lineWidth=20;ctx.beginPath();ctx.moveTo(ox+40,cy);ctx.lineTo(CW-40,cy);ctx.stroke();
+ctx.strokeStyle='#222';ctx.lineWidth=14;ctx.beginPath();ctx.moveTo(ox+40,cy);ctx.lineTo(CW-40,cy);ctx.stroke();
+// collision point
+ctx.beginPath();ctx.arc(cx,cy,25,0,Math.PI*2);ctx.strokeStyle='#f90';ctx.lineWidth=2;ctx.stroke();
+ctx.fillStyle='rgba(255,150,0,0.1)';ctx.fill();
+
+if(s.phase==='beams'){
+// animate beams approaching
+s.beamL.forEach(b=>{b.x+=8;});s.beamR.forEach(b=>{b.x-=8;});
+// draw beams
+s.beamL.forEach(b=>{ctx.fillStyle=`rgba(255,80,80,${b.a})`;ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.fill();});
+s.beamR.forEach(b=>{ctx.fillStyle=`rgba(80,80,255,${b.a})`;ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.fill();});
+if(s.beamL.length>0&&s.beamL[0].x>=cx-5){s.phase='explode';s.flashAlpha=1;createDebris(cx,cy);s.collisionCount++;
+if(!s.goals[0]){s.goals[0]=true;renderPanel();}
+}
+}
+if(s.phase==='explode'){
+s.flashAlpha*=0.92;
+if(s.flashAlpha>0.05){ctx.fillStyle=`rgba(255,255,200,${s.flashAlpha})`;ctx.beginPath();ctx.arc(cx,cy,80*s.flashAlpha+20,0,Math.PI*2);ctx.fill();}
+// update debris
+s.debris.forEach(d=>{
+d.x+=d.vx;d.y+=d.vy;d.life--;
+if(d.charge!==0){d.vy+=d.charge*0.3;} // magnetic field bends charged particles
+d.trail.push({x:d.x,y:d.y});if(d.trail.length>40)d.trail.shift();
+});
+// draw debris trails
+s.debris.forEach(d=>{
+if(d.life<=0)return;
+ctx.lineWidth=2;
+for(let i=1;i<d.trail.length;i++){
+let a=i/d.trail.length*d.life/80;
+ctx.strokeStyle=d.color.replace('1)',a+')');ctx.beginPath();ctx.moveTo(d.trail[i-1].x,d.trail[i-1].y);ctx.lineTo(d.trail[i].x,d.trail[i].y);ctx.stroke();
+}
+ctx.fillStyle=d.color;ctx.beginPath();ctx.arc(d.x,d.y,d.r,0,Math.PI*2);ctx.fill();
+});
+s.debris=s.debris.filter(d=>d.life>0);
+// check goals
+if(s.debris.length===0&&s.flashAlpha<0.05){s.phase='ready';
+if(s.particleTypes.size>=3&&!s.goals[2]){s.goals[2]=true;renderPanel();}
+}
+// goal 1: observe curved tracks
+let hasCurved=s.debris.some(d=>d.charge!==0&&d.trail.length>10);
+if(hasCurved&&!s.goals[1]){s.goals[1]=true;renderPanel();}
+if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(3)){completedLevels.add(3);showResult(3);}
+}
+// info
+ctx.fillStyle='#aaa';ctx.font='13px sans-serif';
+ctx.fillText(`对撞次数: ${s.collisionCount}`,ox+20,50);
+ctx.fillText(`发现粒子种类: ${s.particleTypes.size}`,ox+20,70);
+let typeStr=[...s.particleTypes].join(', ');
+if(typeStr)ctx.fillText(typeStr,ox+20,90);
+}
+function createDebris(cx,cy){
+const s=levelState;
+const types=[
+{name:'电子',color:'rgba(0,200,255,1)',charge:-1,r:3,speed:6},
+{name:'正电子',color:'rgba(255,100,255,1)',charge:1,r:3,speed:6},
+{name:'μ子',color:'rgba(0,255,100,1)',charge:-1,r:4,speed:5},
+{name:'质子',color:'rgba(255,80,80,1)',charge:1,r:5,speed:3},
+{name:'中性π介子',color:'rgba(255,255,100,1)',charge:0,r:4,speed:4},
+{name:'光子',color:'rgba(255,255,255,1)',charge:0,r:2,speed:8},
+{name:'K介子',color:'rgba(255,160,0,1)',charge:1,r:4,speed:4}
+];
+let count=4+Math.floor(Math.random()*5);
+for(let i=0;i<count;i++){
+let t=types[Math.floor(Math.random()*types.length)];
+let ang=Math.random()*Math.PI*2;
+let spd=t.speed*(0.5+Math.random()*0.8);
+s.debris.push({x:cx,y:cy,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,
+color:t.color,charge:t.charge,r:t.r,life:60+Math.random()*40,name:t.name,trail:[]});
+s.particleTypes.add(t.name);
+}
+renderPanel();
+}
+function fireBeams(){
+const s=levelState,ox=340,cx=(CW+ox)/2,cy=CH/2;
+if(s.phase!=='ready')return;
+s.phase='beams';s.beamL=[];s.beamR=[];s.debris=[];
+for(let i=0;i<8;i++){
+s.beamL.push({x:ox+60+i*15,y:cy+(Math.random()-.5)*6,a:0.8-i*0.08});
+s.beamR.push({x:CW-60-i*15,y:cy+(Math.random()-.5)*6,a:0.8-i*0.08});
+}
+renderPanel();
+}
+function resetLevel3(){initLevel3();renderPanel();}
+
+/* ========== LEVEL 4: 粒子探测器 ========== */
+function initLevel4(){
+const detLayers=[
+{name:'径迹室',color:'#335',r:60,desc:'记录带电粒子轨迹'},
+{name:'电磁量能器',color:'#553',r:120,desc:'吸收电子和光子'},
+{name:'强子量能器',color:'#533',r:180,desc:'吸收质子和中子'},
+{name:'μ子探测器',color:'#353',r:240,desc:'只有μ子能到达'}
+];
+levelState={layers:detLayers,particles:[],phase:'idle',selected:null,identified:[],
+goals:[false,false,false],guessMode:false,currentGuess:null,
+particleTemplates:[
+{name:'电子',stopLayer:1,charge:-1,color:'#0cf',curve:1,symbol:'e⁻'},
+{name:'质子',stopLayer:2,charge:1,color:'#f44',curve:-0.5,symbol:'p'},
+{name:'μ子',stopLayer:3,charge:-1,color:'#0f8',curve:0.8,symbol:'μ⁻'},
+{name:'中微子',stopLayer:-1,charge:0,color:'#888',curve:0,symbol:'ν'}
+]};
+spawnDetectorParticles();
+}
+function spawnDetectorParticles(){
+const s=levelState,ox=340,cx=(CW+ox)/2,cy=CH/2;
+s.particles=[];s.identified=[];s.guessMode=false;s.selected=null;
+let templates=[...s.particleTemplates];
+// ensure at least one of each
+templates.forEach(t=>{
+let ang=Math.random()*Math.PI*2;
+let p={...t,angle:ang,progress:0,maxProgress:t.stopLayer===-1?4:t.stopLayer+0.5,
+trail:[],id:s.particles.length,guessed:false};
+s.particles.push(p);
+});
+// add a few more random
+for(let i=0;i<3;i++){
+let t=templates[Math.floor(Math.random()*3)]; // not neutrino for extras
+let ang=Math.random()*Math.PI*2;
+let p={...t,angle:ang,progress:0,maxProgress:t.stopLayer===-1?4:t.stopLayer+0.5,
+trail:[],id:s.particles.length,guessed:false};
+s.particles.push(p);
+}
+}
+function updateLevel4(){
+const s=levelState,ox=340,cx=(CW+ox)/2,cy=CH/2;
+// draw detector layers
+s.layers.forEach((l,i)=>{
+ctx.strokeStyle=l.color;ctx.lineWidth=l.r===60?50:55;ctx.globalAlpha=0.3;
+ctx.beginPath();ctx.arc(cx,cy,l.r,0,Math.PI*2);ctx.stroke();
+ctx.globalAlpha=1;ctx.strokeStyle='#444';ctx.lineWidth=1;
+ctx.beginPath();ctx.arc(cx,cy,l.r+27,0,Math.PI*2);ctx.stroke();
+// label
+ctx.fillStyle='#666';ctx.font='10px sans-serif';ctx.textAlign='center';
+ctx.fillText(l.name,cx,cy-l.r-30);
+});
+ctx.textAlign='start';
+// collision point
+ctx.fillStyle='rgba(255,200,0,0.3)';ctx.beginPath();ctx.arc(cx,cy,8,0,Math.PI*2);ctx.fill();
+
+// animate particles
+s.particles.forEach(p=>{
+if(p.progress<p.maxProgress)p.progress+=0.015;
+let dist=p.progress/4*260;
+let curveOff=p.charge*p.curve*Math.sin(p.progress*2)*15;
+let px=cx+Math.cos(p.angle)*dist+Math.cos(p.angle+Math.PI/2)*curveOff;
+let py=cy+Math.sin(p.angle)*dist+Math.sin(p.angle+Math.PI/2)*curveOff;
+p.trail.push({x:px,y:py});if(p.trail.length>60)p.trail.shift();
+p.cx=px;p.cy=py;
+// draw trail
+if(p.name==='中微子'){
+// dashed for neutrino (invisible)
+ctx.setLineDash([3,5]);ctx.strokeStyle='rgba(100,100,100,0.3)';ctx.lineWidth=1;
+ctx.beginPath();ctx.moveTo(cx,cy);
+let ex=cx+Math.cos(p.angle)*280;let ey=cy+Math.sin(p.angle)*280;
+ctx.lineTo(ex,ey);ctx.stroke();ctx.setLineDash([]);
+}else{
+ctx.lineWidth=2;
+for(let i=1;i<p.trail.length;i++){
+let a=i/p.trail.length*0.7;
+ctx.strokeStyle=p.color.replace(')',`,${a})`).replace('rgb','rgba');
+if(p.color.startsWith('#')){let c2=hexToRgba(p.color,a);ctx.strokeStyle=c2;}
+ctx.beginPath();ctx.moveTo(p.trail[i-1].x,p.trail[i-1].y);ctx.lineTo(p.trail[i].x,p.trail[i].y);ctx.stroke();
+}
+// particle dot
+if(p.progress<p.maxProgress){
+ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);ctx.fill();
+}else{
+// stopped - show burst
+ctx.fillStyle=p.color;ctx.globalAlpha=0.5+0.3*Math.sin(time*3);
+ctx.beginPath();ctx.arc(px,py,6,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+}
+}
+// show guess result
+if(p.guessed){
+ctx.fillStyle=p.guessCorrect?'#4f4':'#f44';ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+ctx.fillText(p.guessCorrect?'✓ '+p.name:'✗ '+p.name,px,py-12);ctx.textAlign='start';
+}
+});
+// click detection for guess mode
+if(s.guessMode&&s.selected===null){
+ctx.fillStyle='rgba(255,255,0,0.15)';ctx.font='13px sans-serif';ctx.textAlign='center';
+ctx.fillText('点击一条粒子轨迹进行识别',cx,cy+280);ctx.textAlign='start';
+}
+// info
+ctx.fillStyle='#aaa';ctx.font='13px sans-serif';
+ctx.fillText(`已识别: ${s.identified.length} / ${s.particles.length}`,ox+20,50);
+}
+function hexToRgba(hex,a){let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgba(${r},${g},${b},${a})`;}
+
+function startDetector(){levelState.guessMode=true;renderPanel();}
+function handleDetectorClick(mx,my){
+const s=levelState;if(!s.guessMode||s.selected!==null)return;
+let closest=null,minD=40;
+s.particles.forEach(p=>{if(p.guessed)return;let d=Math.hypot(mx-p.cx,my-p.cy);if(d<minD){minD=d;closest=p;}});
+if(closest){s.selected=closest;renderPanel();}
+}
+function guessParticle(name){
+const s=levelState;if(!s.selected)return;
+let correct=s.selected.name===name;
+s.selected.guessed=true;s.selected.guessCorrect=correct;
+if(correct)s.identified.push(s.selected.name);
+// check goals
+let identNames=new Set(s.identified);
+if(identNames.has('电子')&&!s.goals[0]){s.goals[0]=true;}
+if(identNames.has('μ子')&&!s.goals[1]){s.goals[1]=true;}
+if(identNames.has('中微子')&&!s.goals[2]){s.goals[2]=true;}
+s.selected=null;
+if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(4)){completedLevels.add(4);showResult(4);}
+renderPanel();
+}
+function resetLevel4(){initLevel4();renderPanel();}
+
+/* ========== LEVEL 5: 发现希格斯 ========== */
+function initLevel5(){
+levelState={bins:new Array(50).fill(0),totalEvents:0,sigma:0,phase:'idle',
+goals:[false,false,false],peakBin:25,animating:false,addCount:0};
+// peakBin=25 corresponds to ~125 GeV (range 100-150 GeV)
+}
+function updateLevel5(){
+const s=levelState,ox=340,cx=(CW+ox)/2,cy=CH/2;
+const gx=ox+60,gy=50,gw=CW-ox-120,gh=CH-150;
+// axes
+ctx.strokeStyle='#444';ctx.lineWidth=1;
+ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx,gy+gh);ctx.lineTo(gx+gw,gy+gh);ctx.stroke();
+// x axis labels
+ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='center';
+for(let i=0;i<=5;i++){
+let x=gx+i*gw/5;let val=100+i*10;
+ctx.fillText(val+' GeV',x,gy+gh+20);
+ctx.strokeStyle='#222';ctx.beginPath();ctx.moveTo(x,gy);ctx.lineTo(x,gy+gh);ctx.stroke();
+}
+ctx.fillText('不变质量 (GeV)',gx+gw/2,gy+gh+40);
+ctx.textAlign='start';
+// y axis label
+ctx.save();ctx.translate(gx-35,gy+gh/2);ctx.rotate(-Math.PI/2);ctx.textAlign='center';ctx.fillText('事件数',0,0);ctx.restore();
+// draw histogram
+let maxBin=Math.max(...s.bins,1);
+let barW=gw/50;
+for(let i=0;i<50;i++){
+let h=s.bins[i]/maxBin*gh*0.9;
+let isNearPeak=Math.abs(i-s.peakBin)<3;
+ctx.fillStyle=isNearPeak&&s.bins[i]>0?'rgba(255,200,0,0.7)':'rgba(60,130,246,0.6)';
+ctx.fillRect(gx+i*barW,gy+gh-h,barW-1,h);
+}
+// background curve (expected without Higgs)
+ctx.strokeStyle='rgba(255,80,80,0.5)';ctx.lineWidth=2;ctx.setLineDash([5,5]);
+ctx.beginPath();
+for(let i=0;i<50;i++){
+let x=gx+i*barW+barW/2;
+let bgExpected=s.totalEvents/50*(1-0.3*Math.abs(i-25)/25);
+let y=gy+gh-bgExpected/maxBin*gh*0.9;
+if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+}
+ctx.stroke();ctx.setLineDash([]);
+// sigma display
+if(s.totalEvents>0){
+ctx.fillStyle='#fff';ctx.font='bold 20px sans-serif';ctx.textAlign='center';
+let sigColor=s.sigma>=5?'#4f4':s.sigma>=3?'#ff0':'#aaa';
+ctx.fillStyle=sigColor;
+ctx.fillText(`σ = ${s.sigma.toFixed(1)}`,gx+gw/2,gy+gh+70);
+if(s.sigma>=5){ctx.fillStyle='#4f4';ctx.font='bold 16px sans-serif';ctx.fillText('🎉 发现！统计显著性达到 5σ！',gx+gw/2,gy+gh+95);}
+else if(s.sigma>=3){ctx.fillStyle='#ff0';ctx.font='13px sans-serif';ctx.fillText('有迹象...但还需要更多数据',gx+gw/2,gy+gh+95);}
+ctx.textAlign='start';
+}
+// legend
+ctx.fillStyle='rgba(60,130,246,0.6)';ctx.fillRect(gx+gw-150,gy+10,12,12);
+ctx.fillStyle='#aaa';ctx.font='11px sans-serif';ctx.fillText('实验数据',gx+gw-133,gy+20);
+ctx.fillStyle='rgba(255,200,0,0.7)';ctx.fillRect(gx+gw-150,gy+28,12,12);
+ctx.fillStyle='#aaa';ctx.fillText('125 GeV 附近',gx+gw-133,gy+38);
+ctx.strokeStyle='rgba(255,80,80,0.5)';ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(gx+gw-150,gy+52);ctx.lineTo(gx+gw-138,gy+52);ctx.stroke();ctx.setLineDash([]);
+ctx.fillStyle='#aaa';ctx.fillText('预期背景',gx+gw-133,gy+56);
+// info
+ctx.fillStyle='#aaa';ctx.font='13px sans-serif';
+ctx.fillText(`总事件数: ${s.totalEvents.toLocaleString()}`,ox+20,50);
+ctx.fillText(`统计显著性: ${s.sigma.toFixed(1)}σ`,ox+20,70);
+}
+function addHiggsData(){
+const s=levelState;
+if(s.goals[2])return;
+let batch=1000;
+s.totalEvents+=batch;s.addCount++;
+for(let i=0;i<batch;i++){
+let bin;
+// background: roughly uniform with slight slope
+if(Math.random()<0.92){bin=Math.floor(Math.random()*50);}
+else{
+// signal: Gaussian around bin 25 (125 GeV)
+bin=Math.round(25+randn()*2);
+if(bin<0)bin=0;if(bin>49)bin=49;
+}
+s.bins[bin]++;
+}
+// calculate sigma
+let peakRegion=0,sideband=0;
+for(let i=23;i<=27;i++)peakRegion+=s.bins[i];
+for(let i=0;i<50;i++){if(i<20||i>30)sideband+=s.bins[i];}
+let bgEstimate=sideband/40*5;
+let excess=peakRegion-bgEstimate;
+let sigma=excess/Math.sqrt(bgEstimate+1);
+s.sigma=Math.max(0,sigma);
+if(s.totalEvents>=2000&&!s.goals[0]){s.goals[0]=true;}
+if(s.sigma>=3&&!s.goals[1]){s.goals[1]=true;}
+if(s.sigma>=5&&!s.goals[2]){s.goals[2]=true;}
+if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(5)){completedLevels.add(5);showResult(5);}
+renderPanel();
+}
+function randn(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function resetLevel5(){initLevel5();renderPanel();}
+
+/* ========== LEVEL 6: 标准模型 ========== */
+const smParticles=[
+// quarks: row 0-2, col 0-2 (3 generations)
+{name:'上夸克',symbol:'u',mass:'2.2 MeV',charge:'+2/3',spin:'1/2',cat:'quark',gen:0,row:0,col:0,color:'#f44'},
+{name:'粲夸克',symbol:'c',mass:'1.27 GeV',charge:'+2/3',spin:'1/2',cat:'quark',gen:1,row:0,col:1,color:'#f44'},
+{name:'顶夸克',symbol:'t',mass:'173 GeV',charge:'+2/3',spin:'1/2',cat:'quark',gen:2,row:0,col:2,color:'#f44'},
+{name:'下夸克',symbol:'d',mass:'4.7 MeV',charge:'-1/3',spin:'1/2',cat:'quark',gen:0,row:1,col:0,color:'#f80'},
+{name:'奇夸克',symbol:'s',mass:'96 MeV',charge:'-1/3',spin:'1/2',cat:'quark',gen:1,row:1,col:1,color:'#f80'},
+{name:'底夸克',symbol:'b',mass:'4.18 GeV',charge:'-1/3',spin:'1/2',cat:'quark',gen:2,row:1,col:2,color:'#f80'},
+// leptons: row 2-3, col 0-2
+{name:'电子',symbol:'e',mass:'0.511 MeV',charge:'-1',spin:'1/2',cat:'lepton',gen:0,row:2,col:0,color:'#0cf'},
+{name:'μ子',symbol:'μ',mass:'106 MeV',charge:'-1',spin:'1/2',cat:'lepton',gen:1,row:2,col:1,color:'#0cf'},
+{name:'τ子',symbol:'τ',mass:'1.78 GeV',charge:'-1',spin:'1/2',cat:'lepton',gen:2,row:2,col:2,color:'#0cf'},
+{name:'电子中微子',symbol:'νe',mass:'<1 eV',charge:'0',spin:'1/2',cat:'lepton',gen:0,row:3,col:0,color:'#08a'},
+{name:'μ中微子',symbol:'νμ',mass:'<0.17 MeV',charge:'0',spin:'1/2',cat:'lepton',gen:1,row:3,col:1,color:'#08a'},
+{name:'τ中微子',symbol:'ντ',mass:'<18.2 MeV',charge:'0',spin:'1/2',cat:'lepton',gen:2,row:3,col:2,color:'#08a'},
+// gauge bosons: col 3
+{name:'胶子',symbol:'g',mass:'0',charge:'0',spin:'1',cat:'boson',gen:0,row:0,col:3,color:'#f0f'},
+{name:'光子',symbol:'γ',mass:'0',charge:'0',spin:'1',cat:'boson',gen:0,row:1,col:3,color:'#ff0'},
+{name:'Z玻色子',symbol:'Z',mass:'91.2 GeV',charge:'0',spin:'1',cat:'boson',gen:0,row:2,col:3,color:'#0f0'},
+{name:'W玻色子',symbol:'W',mass:'80.4 GeV',charge:'±1',spin:'1',cat:'boson',gen:0,row:3,col:3,color:'#0f0'},
+// Higgs: col 4
+{name:'希格斯玻色子',symbol:'H',mass:'125 GeV',charge:'0',spin:'0',cat:'higgs',gen:0,row:0,col:4,color:'#ffd700'}
+];
+
+function initLevel6(){
+levelState={placed:[],cards:[...smParticles].sort(()=>Math.random()-.5),
+dragging:null,dragOx:0,dragOy:0,goals:[false,false,false],
+scrollY:0,gridSlots:smParticles.map(p=>({row:p.row,col:p.col,filled:false,particle:p}))};
+// assign card positions in panel area (will be rendered in panel)
+levelState.cards.forEach((c,i)=>{c.placed=false;c.slotRow=-1;c.slotCol=-1;c.cardIdx=i;});
+}
+function updateLevel6(){
+const s=levelState,ox=340,cx=(CW+ox)/2,cy=CH/2;
+const gx=ox+40,gy=40,cellW=Math.min((CW-ox-100)/5.5,110),cellH=Math.min((CH-120)/4.5,100);
+// draw grid
+// column headers
+const colLabels=['第一代','第二代','第三代','规范玻色子','标量玻色子'];
+ctx.fillStyle='#666';ctx.font='11px sans-serif';ctx.textAlign='center';
+for(let c2=0;c2<5;c2++){ctx.fillText(colLabels[c2],gx+c2*cellW+cellW/2,gy-8);}
+// row labels
+const rowLabels=['上型夸克','下型夸克','带电轻子','中微子'];
+ctx.textAlign='right';
+for(let r=0;r<4;r++){ctx.fillText(rowLabels[r],gx-8,gy+r*cellH+cellH/2+4);}
+ctx.textAlign='start';
+// category backgrounds
+ctx.fillStyle='rgba(255,60,60,0.06)';ctx.fillRect(gx,gy,cellW*3,cellH*2); // quarks
+ctx.fillStyle='rgba(0,200,255,0.06)';ctx.fillRect(gx,gy+cellH*2,cellW*3,cellH*2); // leptons
+ctx.fillStyle='rgba(0,255,0,0.06)';ctx.fillRect(gx+cellW*3,gy,cellW,cellH*4); // gauge bosons
+ctx.fillStyle='rgba(255,215,0,0.06)';ctx.fillRect(gx+cellW*4,gy,cellW,cellH); // higgs
+// grid cells
+for(let r=0;r<4;r++){for(let c2=0;c2<5;c2++){
+if(c2===4&&r>0)continue; // only one Higgs slot
+let x=gx+c2*cellW,y=gy+r*cellH;
+ctx.strokeStyle='#2a2a4a';ctx.lineWidth=1;ctx.strokeRect(x,y,cellW,cellH);
+// check if filled
+let slot=s.gridSlots.find(sl=>sl.row===r&&sl.col===c2);
+let placedCard=s.cards.find(cd=>cd.placed&&cd.slotRow===r&&cd.slotCol===c2);
+if(placedCard){
+let correct=slot&&slot.particle.symbol===placedCard.symbol;
+ctx.fillStyle=correct?'rgba(0,255,0,0.15)':'rgba(255,0,0,0.15)';
+ctx.fillRect(x+2,y+2,cellW-4,cellH-4);
+drawParticleCard(x+cellW/2,y+cellH/2,placedCard,cellW-10,cellH-10,correct);
+}else{
+// empty slot hint
+ctx.fillStyle='rgba(255,255,255,0.03)';ctx.fillRect(x+2,y+2,cellW-4,cellH-4);
+ctx.fillStyle='#333';ctx.font='20px sans-serif';ctx.textAlign='center';
+ctx.fillText('?',x+cellW/2,y+cellH/2+7);ctx.textAlign='start';
+}
+}}
+// draw dragging card
+if(s.dragging){
+let cd=s.dragging;
+drawParticleCard(cd.dx,cd.dy,cd,90,80,null);
+}
+// info
+ctx.fillStyle='#aaa';ctx.font='13px sans-serif';
+ctx.fillText(`已放置: ${s.placed.length} / 17`,ox+20,CH-40);
+}
+function drawParticleCard(cx2,cy2,p,w,h,correct){
+ctx.save();
+ctx.fillStyle=correct===true?'rgba(0,80,0,0.8)':correct===false?'rgba(80,0,0,0.8)':'rgba(30,30,60,0.9)';
+ctx.strokeStyle=p.color;ctx.lineWidth=2;
+let rx=cx2-w/2,ry=cy2-h/2;
+ctx.beginPath();ctx.roundRect(rx,ry,w,h,6);ctx.fill();ctx.stroke();
+ctx.fillStyle=p.color;ctx.font='bold 22px sans-serif';ctx.textAlign='center';
+ctx.fillText(p.symbol,cx2,cy2-8);
+ctx.fillStyle='#ccc';ctx.font='10px sans-serif';
+ctx.fillText(p.name,cx2,cy2+12);
+ctx.fillStyle='#888';ctx.font='9px sans-serif';
+ctx.fillText(p.mass,cx2,cy2+24);
+ctx.fillText(`电荷:${p.charge} 自旋:${p.spin}`,cx2,cy2+35);
+ctx.textAlign='start';ctx.restore();
+}
+
+function handleLevel6MouseDown(mx,my){
+const s=levelState;if(s.dragging)return;
+// check panel cards
+// cards are rendered in panel, but we handle canvas-area drops
+// Actually, let's put unplaced cards at bottom of canvas
+const ox=340,cardW=70,cardH=65,startX=ox+20,startY=CH-130;
+let unplaced=s.cards.filter(c2=>!c2.placed);
+unplaced.forEach((cd,i)=>{
+let col=i%Math.floor((CW-ox-40)/75);let row=Math.floor(i/Math.floor((CW-ox-40)/75));
+let cx2=startX+col*75+cardW/2;let cy2=startY+row*72+cardH/2;
+cd._dispX=cx2;cd._dispY=cy2;
+if(mx>cx2-cardW/2&&mx<cx2+cardW/2&&my>cy2-cardH/2&&my<cy2+cardH/2){
+s.dragging=cd;cd.dx=mx;cd.dy=my;
+}
+});
+}
+function handleLevel6MouseMove(mx,my){
+const s=levelState;if(s.dragging){s.dragging.dx=mx;s.dragging.dy=my;}
+}
+function handleLevel6MouseUp(mx,my){
+const s=levelState;if(!s.dragging)return;
+const ox=340,gx=ox+40,gy=40;
+const cellW=Math.min((CW-ox-100)/5.5,110),cellH=Math.min((CH-120)/4.5,100);
+let cd=s.dragging;s.dragging=null;
+// find which cell
+let col=Math.floor((mx-gx)/cellW);let row=Math.floor((my-gy)/cellH);
+if(col>=0&&col<5&&row>=0&&row<4&&!(col===4&&row>0)){
+// check if slot already has a card
+let existing=s.cards.find(c2=>c2.placed&&c2.slotRow===row&&c2.slotCol===col);
+if(existing){existing.placed=false;existing.slotRow=-1;existing.slotCol=-1;
+s.placed=s.placed.filter(p=>p!==existing);}
+cd.placed=true;cd.slotRow=row;cd.slotCol=col;
+if(!s.placed.includes(cd))s.placed.push(cd);
+checkLevel6Goals();
+}
+renderPanel();
+}
+function drawLevel6Cards(){
+const s=levelState,ox=340,cardW=70,cardH=65,startX=ox+20,startY=CH-130;
+let unplaced=s.cards.filter(c2=>!c2.placed);
+// background for card area
+ctx.fillStyle='rgba(10,10,30,0.8)';ctx.fillRect(ox,startY-15,CW-ox,CH-startY+15);
+ctx.strokeStyle='#2a2a4a';ctx.lineWidth=1;
+ctx.beginPath();ctx.moveTo(ox,startY-15);ctx.lineTo(CW,startY-15);ctx.stroke();
+ctx.fillStyle='#555';ctx.font='11px sans-serif';ctx.fillText('拖拽粒子卡片到上方表格中：',ox+20,startY-2);
+unplaced.forEach((cd,i)=>{
+let cols=Math.floor((CW-ox-40)/75);
+let col=i%cols;let row=Math.floor(i/cols);
+let cx2=startX+col*75+cardW/2;let cy2=startY+row*72+cardH/2+10;
+if(s.dragging===cd)return;
+drawParticleCard(cx2,cy2,cd,cardW,cardH,null);
+cd._dispX=cx2;cd._dispY=cy2;
+});
+}
+function checkLevel6Goals(){
+const s=levelState;
+let correctCount=0;
+s.placed.forEach(cd=>{
+let slot=s.gridSlots.find(sl=>sl.row===cd.slotRow&&sl.col===cd.slotCol);
+if(slot&&slot.particle.symbol===cd.symbol)correctCount++;
+});
+let quarksCorrect=0,leptonsCorrect=0;
+s.placed.forEach(cd=>{
+let slot=s.gridSlots.find(sl=>sl.row===cd.slotRow&&sl.col===cd.slotCol);
+if(!slot||slot.particle.symbol!==cd.symbol)return;
+if(cd.cat==='quark')quarksCorrect++;
+if(cd.cat==='lepton')leptonsCorrect++;
+});
+if(quarksCorrect>=6&&!s.goals[0]){s.goals[0]=true;}
+if(leptonsCorrect>=6&&!s.goals[1]){s.goals[1]=true;}
+if(correctCount>=17&&!s.goals[2]){s.goals[2]=true;}
+if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(6)){completedLevels.add(6);showResult(6);}
+renderPanel();
+}
+function resetLevel6(){initLevel6();renderPanel();}
+
+/* ========== RENDER PANEL ========== */
+function renderPanel(){
+const s=levelState,L=levels[currentLevel];
+let h='<div style="margin-bottom:8px">';
+levels.forEach((l,i)=>{
+let cls='level-btn';if(i===currentLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
+h+=`<span class="${cls}" onclick="initLevel(${i})">${l.icon}${i+1}</span>`;
+});
+h+='</div>';
+h+=`<div class="m-title">${L.icon} ${L.name}</div><div class="m-sub">${L.sub}</div>`;
+
+if(currentLevel===0){
+let g=s.goals||[false,false,false];
+h+=`<div class="concept-box">质子在电场中加速，获得动能 E = qV。<br>电压越高，粒子能量越大。</div>`;
+h+=goalHtml(['加速到 1 keV','加速到 10 keV','理解电压与能量关系'],g);
+h+=`<div class="slider-wrap"><label>电压: <span class="sv">${s.voltage} kV</span></label>`;
+h+=`<input type="range" min="1" max="100" value="${s.voltage}" oninput="levelState.voltage=+this.value;renderPanel()"></div>`;
+h+=`<button class="act-btn" onclick="accelLevel0()">⚡ 加速！</button>`;
+h+=`<button class="act-btn" onclick="resetLevel0()">🔄 重置</button>`;
+h+=`<div class="hint-box">💡 先调低电压试试，再调到最大看看能量变化</div>`;
+}else if(currentLevel===1){
+let g=s.goals||[false,false,false];
+h+=`<div class="concept-box">回旋加速器：粒子在D形电极间来回加速，磁场使其走圆弧。每过间隙加速一次，半径增大。</div>`;
+h+=goalHtml(['完成 3 圈','调磁场使粒子不飞出','达到 50 keV'],g);
+h+=`<div class="slider-wrap"><label>磁场: <span class="sv">${s.bField?.toFixed(2)||'0.50'} T</span></label>`;
+h+=`<input type="range" min="10" max="200" value="${Math.round((s.bField||0.5)*100)}" oninput="levelState.bField=+this.value/100;renderPanel()"></div>`;
+h+=`<button class="act-btn" onclick="startCyclotron()">🌀 启动回旋加速器</button>`;
+h+=`<button class="act-btn" onclick="resetLevel1()">🔄 重置</button>`;
+if(s.escaped)h+=`<div class="hint-box">⚠️ 粒子飞出了！试试增大磁场</div>`;
+}else if(currentLevel===2){
+let g=s.goals||[false,false,false];
+h+=`<div class="concept-box">同步加速器：固定轨道半径，磁场随能量同步增强。射频腔每圈加速粒子。接近光速时，相对论效应显著。</div>`;
+h+=goalHtml(['运行 10 圈','加速到 99% 光速','达到 TeV 级能量'],g);
+h+=`<button class="act-btn" onclick="startSynchrotron()">💫 启动同步加速器</button>`;
+h+=`<button class="act-btn" onclick="resetLevel2()">🔄 重置</button>`;
+h+=`<div class="hint-box">💡 观察粒子接近光速时γ因子的变化</div>`;
+}else if(currentLevel===3){
+let g=s.goals||[false,false,false];
+h+=`<div class="concept-box">两束高能粒子对向飞来，碰撞时动能转化为质量（E=mc²），创造出新粒子。带电粒子在磁场中弯曲。</div>`;
+h+=goalHtml(['完成一次对撞','观察弯曲轨迹','产生 3 种以上粒子'],g);
+h+=`<button class="act-btn" onclick="fireBeams()">💥 对撞！</button>`;
+h+=`<button class="act-btn" onclick="resetLevel3()">🔄 重置</button>`;
+h+=`<div class="hint-box">💡 多次对撞可以产生不同种类的粒子</div>`;
+}else if(currentLevel===4){
+let g=s.goals||[false,false,false];
+h+=`<div class="concept-box">探测器像洋葱一样分层：径迹室→电磁量能器→强子量能器→μ子探测器。不同粒子在不同层停下。</div>`;
+h+=goalHtml(['识别电子（电磁量能器停下）','识别μ子（穿透所有层）','推断中微子（缺失能量）'],g);
+if(!s.guessMode){h+=`<button class="act-btn" onclick="startDetector()">🔍 开始识别粒子</button>`;}
+else if(s.selected){
+h+=`<div class="hint-box">选中了一条轨迹，它是什么粒子？</div>`;
+['电子','质子','μ子','中微子'].forEach(n=>{
+h+=`<button class="act-btn" onclick="guessParticle('${n}')">${n}</button>`;
+});
+}else{h+=`<div class="hint-box">👆 点击画面中的粒子轨迹进行识别</div>`;}
+h+=`<button class="act-btn" onclick="resetLevel4()">🔄 重新生成</button>`;
+}else if(currentLevel===5){
+let g=s.goals||[false,false,false];
+h+=`<div class="concept-box">在质量分布图中寻找异常凸起。收集足够数据，当统计显著性达到5σ（百万分之一的偶然概率），即可宣布发现新粒子。</div>`;
+h+=goalHtml(['收集 2000+ 事件','发现 125 GeV 异常（3σ）','达到 5σ 宣布发现'],g);
+h+=`<button class="act-btn" onclick="addHiggsData()">📊 增加 1000 事件</button>`;
+h+=`<button class="act-btn" onclick="resetLevel5()">🔄 重置</button>`;
+h+=`<div class="hint-box">💡 注意 125 GeV 附近的黄色柱子</div>`;
+}else if(currentLevel===6){
+let g=s.goals||[false,false,false];
+h+=`<div class="concept-box">标准模型包含 17 种基本粒子：6种夸克、6种轻子、4种规范玻色子和1个希格斯玻色子。将卡片拖到正确位置！</div>`;
+h+=goalHtml(['放置所有夸克（6种）','放置所有轻子（6种）','完成整个标准模型（17种）'],g);
+h+=`<button class="act-btn" onclick="resetLevel6()">🔄 重置</button>`;
+h+=`<div class="hint-box">💡 提示：上型夸克(u,c,t)电荷+2/3，下型夸克(d,s,b)电荷-1/3</div>`;
+}
+panelEl.innerHTML=h;
+bbLeft.textContent=`关卡 ${currentLevel+1}/7: ${L.name}`;
+bbRight.textContent=`已完成: ${completedLevels.size}/7`;
+}
+
+function goalHtml(texts,goals){
+let h='';texts.forEach((t,i)=>{
+h+=`<div class="goal-row"><span class="g-icon">${goals[i]?'✅':'⬜'}</span><span class="g-text${goals[i]?' done':''}">${t}</span></div>`;
+});return h;
+}
+
+/* ========== RESULT MODAL ========== */
+const learnTexts=[
+'1932年，Cockcroft和Walton用80万伏的静电加速器首次实现了人工核反应——用加速的质子轰击锂原子核，将其分裂为两个氦核。这是人类第一次用"人造闪电"改变原子核，他们因此获得1951年诺贝尔物理学奖。',
+'Ernest Lawrence 在1930年发明了回旋加速器，巧妙利用磁场让粒子走螺旋线，每圈加速一次。但当粒子接近光速时，相对论质量增加导致频率失调——这就是回旋加速器的能量极限。Lawrence 因此获得1939年诺贝尔物理学奖。',
+'大型强子对撞机（LHC）周长27公里，质子在其中被加速到99.9999991%光速。此时质子的相对论质量是静止质量的7000倍！每秒有4亿次质子束交叉，但只有约20次有意义的碰撞。',
+'爱因斯坦的 E=mc² 告诉我们：能量和质量可以互相转化。在粒子对撞中，巨大的动能转化为质量，创造出比原始粒子重得多的新粒子。这就是为什么我们需要越来越高的能量——为了创造越来越重的粒子。',
+'CMS探测器重达14000吨，拥有超过1亿个传感器通道。它像一个巨大的"洋葱"，每一层负责捕捉不同类型的粒子。中微子几乎不与任何物质相互作用，只能通过"缺失能量"间接推断它的存在。',
+'2012年7月4日，CERN宣布发现希格斯玻色子——这个被称为"上帝粒子"的粒子赋予其他粒子质量。Peter Higgs 在1964年提出这个理论，等了整整48年才看到实验证实。他在2013年获得诺贝尔物理学奖。',
+'标准模型用17种基本粒子和3种基本力（强力、弱力、电磁力）解释了几乎所有已知的物理现象。但它不包含引力，也无法解释暗物质和暗能量——这些占了宇宙总质能的95%。寻找"超越标准模型"的新物理，是当代粒子物理的核心使命。'
+];
+
+function showResult(n){
+let modal=document.getElementById('resultModal');
+let box=document.getElementById('resultBox');
+let isLast=n===levels.length-1;
+box.innerHTML=`<div class="rb-icon">🎉</div><div class="rb-title">${levels[n].icon} ${levels[n].name} — 通关！</div>
+<div class="rb-learn">${learnTexts[n]}</div>
+${isLast?'<button class="btn-next" onclick="closeResult()">🏆 全部通关！</button>':
+'<button class="btn-next" onclick="nextLevel()">下一关 →</button>'} <button class="btn-retry" onclick="retryLevel()">再玩一次</button>`;
+modal.classList.remove('hidden');
+}
+function closeResult(){document.getElementById('resultModal').classList.add('hidden');}
+function nextLevel(){closeResult();initLevel(currentLevel+1);renderPanel();}
+function retryLevel(){closeResult();initLevel(currentLevel);renderPanel();}
+
+/* ========== MOUSE / TOUCH ========== */
+let mouseX=0,mouseY=0,mouseDown=false;
+canvas.addEventListener('mousedown',e=>{mouseDown=true;mouseX=e.clientX;mouseY=e.clientY;
+if(currentLevel===4)handleDetectorClick(e.clientX,e.clientY);
+if(currentLevel===6)handleLevel6MouseDown(e.clientX,e.clientY);
+});
+canvas.addEventListener('mousemove',e=>{mouseX=e.clientX;mouseY=e.clientY;
+if(currentLevel===6)handleLevel6MouseMove(e.clientX,e.clientY);
+});
+canvas.addEventListener('mouseup',e=>{mouseDown=false;
+if(currentLevel===6)handleLevel6MouseUp(e.clientX,e.clientY);
+});
+// touch support
+canvas.addEventListener('touchstart',e=>{e.preventDefault();let t=e.touches[0];mouseDown=true;mouseX=t.clientX;mouseY=t.clientY;
+if(currentLevel===4)handleDetectorClick(t.clientX,t.clientY);
+if(currentLevel===6)handleLevel6MouseDown(t.clientX,t.clientY);
+},{passive:false});
+canvas.addEventListener('touchmove',e=>{e.preventDefault();let t=e.touches[0];mouseX=t.clientX;mouseY=t.clientY;
+if(currentLevel===6)handleLevel6MouseMove(t.clientX,t.clientY);
+},{passive:false});
+canvas.addEventListener('touchend',e=>{mouseDown=false;
+if(currentLevel===6)handleLevel6MouseUp(mouseX,mouseY);
+});
+
+/* ========== ANIMATION LOOP ========== */
+function animate(){
+animId=requestAnimationFrame(animate);
+time+=0.016;drawBg();
+// update trail particles
+trailParticles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.life--;});
+trailParticles=trailParticles.filter(p=>p.life>0);
+trailParticles.forEach(p=>{ctx.globalAlpha=p.life/30;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,2,0,Math.PI*2);ctx.fill();});
+ctx.globalAlpha=1;
+if(currentLevel===0)updateLevel0();
+else if(currentLevel===1)updateLevel1();
+else if(currentLevel===2)updateLevel2();
+else if(currentLevel===3)updateLevel3();
+else if(currentLevel===4)updateLevel4();
+else if(currentLevel===5)updateLevel5();
+else if(currentLevel===6){updateLevel6();drawLevel6Cards();}
+}
+</script>
+</body>
+</html>

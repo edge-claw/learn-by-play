@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>闪电与等离子体</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#60a5fa}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}
+.g-text{color:#c0c0e0}
+.g-text.done{color:#4ade80;text-decoration:line-through}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:#2a2a6a}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}.sv{color:#60a5fa;font-weight:bold}
+.m-title{font-size:16px;font-weight:700;margin:8px 0 4px;color:#eee}
+.m-sub{font-size:12px;color:#888;margin-bottom:8px}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:rgba(10,10,26,.95);border-top:1px solid #1a1a3a;z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}
+#bottom-bar .bb-right{text-align:right}
+.overlay .result-box{text-align:center;max-width:420px;background:rgba(10,10,26,.98);border:1px solid #2a2a5a;border-radius:16px;padding:28px 36px}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-learn{text-align:left;background:#0e0e20;border-radius:8px;padding:12px 14px;font-size:12px;color:#93c5fd;line-height:1.7;margin-bottom:16px}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#3b82f6;color:#fff}
+.result-box .btn-retry{background:#2a2a5a;color:#ccc}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>⚡ <span class="gold">闪电与等离子体</span></h1>
+  <div class="sub">7 个关卡，从静电到球状闪电的奇妙旅程</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">🧲</div>摩擦起电</div>
+    <div class="feat"><div class="fi">⚡</div>击穿放电</div>
+    <div class="feat"><div class="fi">🌩️</div>闪电形成</div>
+    <div class="feat"><div class="fi">💥</div>回击通道</div>
+    <div class="feat"><div class="fi">🔌</div>特斯拉线圈</div>
+    <div class="feat"><div class="fi">🔮</div>等离子球</div>
+    <div class="feat"><div class="fi">🌀</div>球状闪电</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,animId;
+let gameState='start',currentLevel=0;
+let levelState={},bgStars=[],particles=[];
+const completedLevels=new Set();
+const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
+const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
+let mouseX=0,mouseY=0,mouseDown=false,dragObj=null;
+
+const levels=[
+{name:'静电',sub:'摩擦起电',icon:'🧲'},
+{name:'击穿电压',sub:'帕邢定律',icon:'⚡'},
+{name:'闪电形成',sub:'阶梯先导',icon:'🌩️'},
+{name:'回击',sub:'30000°C',icon:'💥'},
+{name:'特斯拉线圈',sub:'LC谐振',icon:'🔌'},
+{name:'等离子球',sub:'辉光放电',icon:'🔮'},
+{name:'球状闪电',sub:'未解之谜',icon:'🌀'}
+];
+
+function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight}
+addEventListener('resize',resize);resize();
+for(let i=0;i<120;i++)bgStars.push({x:Math.random()*2e3,y:Math.random()*1200,r:Math.random()*1.2+.3,a:Math.random()*.5+.3});
+
+canvas.addEventListener('mousemove',e=>{mouseX=e.clientX;mouseY=e.clientY});
+canvas.addEventListener('mousedown',e=>{mouseDown=true;mouseX=e.clientX;mouseY=e.clientY;onMouseDown(e)});
+canvas.addEventListener('mouseup',e=>{mouseDown=false;dragObj=null;onMouseUp(e)});
+
+function drawBg(){
+ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,CW,CH);
+bgStars.forEach(s=>{ctx.globalAlpha=s.a*(0.7+0.3*Math.sin(time*0.5+s.x));ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.x%CW,s.y%CH,s.r,0,Math.PI*2);ctx.fill()});
+ctx.globalAlpha=1;
+}
+
+function startGame(){
+document.getElementById('startScreen').classList.add('hidden');
+gameState='play';currentLevel=0;
+panelEl.style.display='block';bbEl.style.display='flex';
+initLevel(0);renderPanel();animate();
+}
+
+function initLevel(n){
+currentLevel=n;particles=[];
+const L=levels[n];
+if(n===0)initLevel0();
+else if(n===1)initLevel1();
+else if(n===2)initLevel2();
+else if(n===3)initLevel3();
+else if(n===4)initLevel4();
+else if(n===5)initLevel5();
+else if(n===6)initLevel6();
+renderPanel();
+}
+
+function completeLevel(n){
+if(!completedLevels.has(n)){completedLevels.add(n);showResult(n);}
+}
+
+/* ========== LEVEL 0: 静电 — 摩擦起电 ========== */
+function initLevel0(){
+levelState={goals:[false,false,false],rubCount:0,charge:0,silkX:0,silkY:0,draggingSilk:false,
+chargeParticles:[],fieldLines:[],rubbing:false,lastRubX:0,phase:'idle'};
+}
+function updateLevel0(){
+const s=levelState,ox=340,W=CW-ox,cy=CH/2,cx=ox+W/2;
+// glass rod
+const rodX=cx-60,rodY=cy-20,rodW=180,rodH=24;
+ctx.fillStyle=s.charge>0?`rgba(255,${180-s.charge*2},${150-s.charge*2},0.9)`:'rgba(180,210,230,0.8)';
+ctx.strokeStyle='#8ab';ctx.lineWidth=2;
+roundRect(rodX,rodY,rodW,rodH,8);
+ctx.fillStyle='#fff';ctx.font='12px sans-serif';ctx.textAlign='center';
+ctx.fillText('玻璃棒'+(s.charge>0?' +'+Math.round(s.charge):''),rodX+rodW/2,rodY+rodH/2+4);
+// silk
+let silkDrawX=s.draggingSilk?mouseX-40:cx-40,silkDrawY=s.draggingSilk?mouseY-15:cy+60;
+ctx.fillStyle=s.charge>0?`rgba(${180-s.charge*2},${150-s.charge*2},255,0.85)`:'rgba(200,160,220,0.7)';
+ctx.strokeStyle='#a8c';ctx.lineWidth=2;
+roundRect(silkDrawX,silkDrawY,80,30,6);
+ctx.fillStyle='#fff';ctx.font='12px sans-serif';
+ctx.fillText('丝绸'+(s.charge>0?' -'+Math.round(s.charge):''),silkDrawX+40,silkDrawY+19);
+// check rubbing
+if(s.draggingSilk){
+let onRod=mouseX>rodX&&mouseX<rodX+rodW&&mouseY>rodY-20&&mouseY<rodY+rodH+20;
+if(onRod){
+let dx=Math.abs(mouseX-s.lastRubX);
+if(dx>15){s.rubCount++;s.charge=Math.min(60,s.rubCount*3);s.lastRubX=mouseX;
+if(!s.goals[0]&&s.rubCount>=3){s.goals[0]=true;renderPanel();}
+// spawn charge transfer particles
+for(let i=0;i<3;i++){
+particles.push({x:mouseX+Math.random()*20-10,y:rodY+rodH/2,vx:(Math.random()-.5)*2,vy:Math.random()*2+1,
+life:0.8,maxLife:0.8,color:'#f66',size:3});
+particles.push({x:mouseX+Math.random()*20-10,y:rodY+rodH/2,vx:(Math.random()-.5)*2,vy:Math.random()*2+1,
+life:0.8,maxLife:0.8,color:'#66f',size:3});
+}
+if(!s.goals[1]&&s.rubCount>=5){s.goals[1]=true;renderPanel();}
+}
+}
+}
+// field lines when charged
+if(s.charge>10){
+ctx.globalAlpha=0.3*Math.min(1,s.charge/30);
+let nLines=Math.min(8,Math.floor(s.charge/5));
+for(let i=0;i<nLines;i++){
+let angle=(i/nLines)*Math.PI*2;
+let fx=rodX+rodW/2+Math.cos(angle)*60,fy=rodY+rodH/2+Math.sin(angle)*60;
+let tx=silkDrawX+40+Math.cos(angle+Math.PI)*40,ty=silkDrawY+15+Math.sin(angle+Math.PI)*40;
+drawArrowLine(rodX+rodW/2+Math.cos(angle)*30,rodY+rodH/2+Math.sin(angle)*30,fx,fy,'#4488ff');
+}
+ctx.globalAlpha=1;
+if(!s.goals[2]&&s.charge>=20){s.goals[2]=true;renderPanel();}
+}
+if(s.goals[0]&&s.goals[1]&&s.goals[2])completeLevel(0);
+// instructions
+ctx.fillStyle='#666';ctx.font='13px sans-serif';ctx.textAlign='center';
+ctx.fillText(s.charge<5?'拖拽丝绸到玻璃棒上来回摩擦':'电荷: '+Math.round(s.charge)+' (继续摩擦增强)',cx,CH-60);
+ctx.textAlign='left';
+}
+canvas.addEventListener('mousedown',function(e){
+if(currentLevel===0){
+const s=levelState,ox=340,W=CW-ox,cx=ox+W/2,cy=CH/2;
+let silkX=cx-40,silkY=cy+60;
+if(e.clientX>silkX&&e.clientX<silkX+80&&e.clientY>silkY&&e.clientY<silkY+30){
+s.draggingSilk=true;s.lastRubX=e.clientX;
+}
+}
+});
+canvas.addEventListener('mouseup',function(e){
+if(currentLevel===0)levelState.draggingSilk=false;
+});
+
+function roundRect(x,y,w,h,r){
+ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
+ctx.closePath();ctx.fill();ctx.stroke();
+}
+function drawArrowLine(x1,y1,x2,y2,color){
+ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+let a=Math.atan2(y2-y1,x2-x1);
+ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-8*Math.cos(a-0.4),y2-8*Math.sin(a-0.4));
+ctx.moveTo(x2,y2);ctx.lineTo(x2-8*Math.cos(a+0.4),y2-8*Math.sin(a+0.4));ctx.stroke();
+}
+
+/* ========== PANEL ========== */
+function renderPanel(){
+const L=levels[currentLevel],s=levelState;
+let h='<div style="margin-bottom:8px">';
+levels.forEach((l,i)=>{
+let cls='level-btn';if(i===currentLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
+h+=`<span class="${cls}" onclick="initLevel(${i})">${l.icon}${i+1}</span>`;
+});
+h+='</div>';
+h+=`<div class="m-title">${L.icon} ${L.name}</div><div class="m-sub">${L.sub}</div>`;
+/* PANEL_CONTENT */
+if(currentLevel===0){
+h+=`<div class="concept-box">用鼠标拖拽丝绸在玻璃棒上来回摩擦，观察电荷转移。摩擦次数越多，电荷越强。</div>`;
+h+=goalHTML(['摩擦产生电荷','电荷转移可视化','观察电场线'],s.goals||[]);
+h+=`<div class="hint-box">💡 丝绸摩擦玻璃棒时，电子从玻璃转移到丝绸，玻璃带正电，丝绸带负电。</div>`;
+}else if(currentLevel===1){
+h+=`<div class="concept-box">增大电场强度，当超过空气击穿电压时，空气分子被电离产生火花放电。</div>`;
+h+=sliderHTML('fieldStrength','电场强度',s.fieldStrength||0,0,100,'kV/cm');
+h+=goalHTML(['电离空气分子','产生火花放电','理解帕邢定律'],s.goals||[]);
+h+=`<div class="hint-box">💡 帕邢定律：击穿电压取决于气压×间距的乘积，存在最小击穿电压。</div>`;
+}else if(currentLevel===2){
+h+=`<div class="concept-box">观察云中冰晶碰撞分离电荷的过程，阶梯先导从云底逐步向下延伸。</div>`;
+h+=`<button class="act-btn" onclick="triggerLeader()">触发阶梯先导</button>`;
+h+=goalHTML(['冰晶碰撞分离电荷','阶梯先导向下延伸','先导产生分叉'],s.goals||[]);
+h+=`<div class="hint-box">💡 云中上升气流使冰晶碰撞，大冰晶带负电沉底，小冰晶带正电升顶。</div>`;
+}else if(currentLevel===3){
+h+=`<div class="concept-box">当地面上行流与下行先导连接，主放电通道瞬间点亮，温度达30000°C。</div>`;
+h+=`<button class="act-btn" onclick="triggerReturnStroke()" ${s.phase==='waiting'?'':'disabled'}>发射上行流</button>`;
+h+=goalHTML(['先导接近地面','上行流连接先导','回击闪光30000°C'],s.goals||[]);
+h+=`<div class="hint-box">💡 回击从地面向上传播，速度达光速的1/3，是闪电中最亮的部分。</div>`;
+}else if(currentLevel===4){
+h+=`<div class="concept-box">调节频率滑块使初级和次级线圈达到共振，产生最大电弧。</div>`;
+h+=sliderHTML('frequency','调谐频率',s.frequency||50,1,100,'kHz');
+h+=`<div style="font-size:11px;color:#888;margin:4px 0">目标谐振频率: <span class="sv">${s.targetFreq||'??'} kHz</span></div>`;
+h+=goalHTML(['调节频率接近谐振','产生电弧放电','达到最大电弧'],s.goals||[]);
+h+=`<div class="hint-box">💡 LC谐振频率 f=1/(2π√LC)，当初级和次级频率匹配时能量传递最大。</div>`;
+}else if(currentLevel===5){
+h+=`<div class="concept-box">在等离子球上移动鼠标，观察等离子丝跟随手指的效果。</div>`;
+h+=goalHTML(['触摸等离子球','等离子丝跟随手指','持续触摸3秒'],s.goals||[]);
+h+=`<div class="hint-box">💡 等离子球内充低压惰性气体，高频高压电极使气体电离产生辉光放电。</div>`;
+}else if(currentLevel===6){
+h+=`<div class="concept-box">调节能量和磁场参数，尝试稳定球状等离子体。大多数组合会消散，找到正确参数维持5秒。</div>`;
+h+=sliderHTML('energy','能量输入',s.energy||50,0,100,'MJ');
+h+=sliderHTML('magField','磁场约束',s.magField||50,0,100,'T');
+h+=`<button class="act-btn" onclick="spawnBallLightning()">生成球状闪电</button>`;
+h+=goalHTML(['生成球状等离子体','找到稳定参数','维持5秒不消散'],s.goals||[]);
+h+=`<div class="hint-box">💡 球状闪电至今仍是未解之谜，可能与等离子体涡旋或微波辐射有关。</div>`;
+}
+panelEl.innerHTML=h;
+bbLeft.textContent=`关卡 ${currentLevel+1}/7: ${L.name}`;
+bbRight.textContent=`已完成: ${completedLevels.size}/7`;
+}
+
+function goalHTML(names,goals){
+let h='';names.forEach((n,i)=>{
+h+=`<div class="goal-row"><span class="g-icon">${goals[i]?'✅':'⬜'}</span><span class="g-text${goals[i]?' done':''}">${n}</span></div>`;
+});return h;
+}
+function sliderHTML(key,label,val,min,max,unit){
+return `<div class="slider-wrap"><label>${label}: <span class="sv">${Math.round(val)} ${unit}</span></label><input type="range" min="${min}" max="${max}" value="${val}" oninput="onSlider('${key}',this.value)"></div>`;
+}
+function onSlider(key,val){
+levelState[key]=parseFloat(val);renderPanel();
+}
+
+/* ========== RESULT ========== */
+const learnTexts=[
+'摩擦起电是最古老的静电现象。不同材料对电子的束缚力不同，摩擦时电子从束缚力弱的材料转移到束缚力强的材料，使两者分别带正、负电荷。',
+'帕邢定律揭示了气体击穿电压与"气压×间距"的关系。在标准大气压下，空气的击穿场强约为30kV/cm。这就是为什么高压线之间需要保持足够距离。',
+'阶梯先导是闪电的"探路者"。它以约50米为一步，每步暂停约50微秒，以之字形路径从云底向地面推进，形成闪电特有的分叉形态。',
+'回击是闪电中能量释放最集中的阶段。当上行流与下行先导连接，电流高达200kA，通道温度瞬间达到30000°C（太阳表面的5倍），产生耀眼白光和雷声。',
+'特斯拉线圈利用LC谐振原理，将低压电能转换为高压高频电能。当初级和次级线圈的谐振频率匹配时，能量传递效率最高，可产生壮观的人造闪电。',
+'等离子球内的低压惰性气体在高频高压电场下发生辉光放电。手指触摸球壁时改变了局部电场分布，等离子丝会被吸引到触摸点，因为人体是良导体。',
+'球状闪电是自然界最神秘的现象之一。它通常呈球形，直径10-40厘米，持续数秒到数十秒。目前没有被广泛接受的理论能完全解释其形成机制。'
+];
+
+function showResult(n){
+const rb=document.getElementById('resultBox');
+let isLast=n===levels.length-1;
+rb.innerHTML=`<div class="rb-icon">${levels[n].icon}</div><div class="rb-title">${levels[n].name} — 通关！</div><div class="rb-learn">${learnTexts[n]}</div>`+
+(isLast?`<button class="btn-next" onclick="closeResult()">🎉 全部通关！</button>`
+:`<button class="btn-next" onclick="nextLevel()">下一关 →</button>`)+
+`<button class="btn-retry" onclick="retryLevel()">重玩</button>`;
+document.getElementById('resultModal').classList.remove('hidden');
+}
+function closeResult(){document.getElementById('resultModal').classList.add('hidden');}
+function nextLevel(){closeResult();initLevel(currentLevel+1);renderPanel();}
+function retryLevel(){closeResult();initLevel(currentLevel);renderPanel();}
+
+/* ========== LEVEL 1: 击穿电压 ========== */
+function initLevel1(){
+levelState={goals:[false,false,false],fieldStrength:0,ionized:false,sparked:false,
+sparkTimer:0,ionParticles:[],sparkBolts:[]};
+}
+function updateLevel1(){
+const s=levelState,ox=340,W=CW-ox,cy=CH/2,cx=ox+W/2;
+const gapL=cx-100,gapR=cx+100,plateH=200;
+// electrodes
+ctx.fillStyle='#556';
+ctx.fillRect(gapL-15,cy-plateH/2,15,plateH);
+ctx.fillRect(gapR,cy-plateH/2,15,plateH);
+ctx.fillStyle='#f55';ctx.font='14px sans-serif';ctx.textAlign='center';
+ctx.fillText('+',gapL-8,cy-plateH/2-10);
+ctx.fillStyle='#55f';ctx.fillText('−',gapR+8,cy-plateH/2-10);
+// E field visualization
+let intensity=s.fieldStrength/100;
+ctx.globalAlpha=intensity*0.2;
+for(let y=cy-80;y<=cy+80;y+=20){
+ctx.strokeStyle='#4488ff';ctx.lineWidth=1;
+ctx.beginPath();ctx.moveTo(gapL+5,y);ctx.lineTo(gapR-5,y);ctx.stroke();
+drawArrowLine(gapR-30,y,gapR-5,y,'#4488ff');
+}
+ctx.globalAlpha=1;
+// air molecules
+let breakdownV=30; // kV/cm threshold
+if(s.fieldStrength>10&&!s.goals[0]){
+// show molecules getting agitated
+for(let i=0;i<5;i++){
+let mx=gapL+20+Math.random()*(gapR-gapL-40);
+let my=cy-60+Math.random()*120;
+let shake=intensity*3;
+ctx.fillStyle=`rgba(100,200,255,${intensity*0.5})`;
+ctx.beginPath();ctx.arc(mx+(Math.random()-.5)*shake,my+(Math.random()-.5)*shake,3,0,Math.PI*2);ctx.fill();
+}
+}
+if(s.fieldStrength>=breakdownV&&!s.ionized){
+s.ionized=true;s.goals[0]=true;renderPanel();
+// ionization particles
+for(let i=0;i<30;i++){
+particles.push({x:cx+(Math.random()-.5)*100,y:cy+(Math.random()-.5)*80,
+vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8,life:1.5,maxLife:1.5,
+color:Math.random()>.5?'#88ddff':'#ff8866',size:2+Math.random()*2});
+}
+}
+if(s.fieldStrength>=50&&!s.sparked){
+s.sparked=true;s.goals[1]=true;s.sparkTimer=time;renderPanel();
+}
+if(s.sparked){
+let elapsed=time-s.sparkTimer;
+if(elapsed<2){
+// spark discharge
+for(let i=0;i<3;i++){
+drawLightningBolt(gapL,cy+(Math.random()-.5)*60,gapR,cy+(Math.random()-.5)*60,
+40,0.2,2+Math.random(),'#ddeeff','#88bbff');
+}
+// bright flash
+ctx.globalAlpha=Math.max(0,0.3-elapsed*0.15);
+ctx.fillStyle='#fff';ctx.fillRect(gapL,cy-plateH/2,gapR-gapL,plateH);
+ctx.globalAlpha=1;
+}
+}
+if(s.fieldStrength>=80&&!s.goals[2]){s.goals[2]=true;renderPanel();}
+if(s.goals[0]&&s.goals[1]&&s.goals[2])completeLevel(1);
+ctx.fillStyle='#666';ctx.font='13px sans-serif';ctx.textAlign='center';
+ctx.fillText(`电场强度: ${Math.round(s.fieldStrength)} kV/cm | 击穿阈值: ${breakdownV} kV/cm`,cx,CH-60);
+ctx.textAlign='left';
+}
+
+/* ========== LEVEL 2: 闪电形成 — 阶梯先导 ========== */
+function initLevel2(){
+levelState={goals:[false,false,false],phase:'charging',chargeTime:0,
+leaderSegments:[],leaderTimer:0,leaderActive:false,
+iceParticles:[],cloudChargeTop:0,cloudChargeBot:0};
+// ice crystal particles
+for(let i=0;i<40;i++){
+levelState.iceParticles.push({x:Math.random()*300-150,y:Math.random()*120-60,
+vx:(Math.random()-.5)*2,vy:(Math.random()-.5)*1.5,charge:0,size:2+Math.random()*3});
+}
+}
+function triggerLeader(){
+const s=levelState;
+if(s.phase==='charged'){s.phase='leader';s.leaderActive=true;s.leaderTimer=time;
+s.leaderSegments=[{x:0,y:0}];
+}
+}
+function updateLevel2(){
+const s=levelState,ox=340,W=CW-ox,cy=CH/2,cx=ox+W/2;
+const cloudTop=80,cloudBot=200,groundY=CH-80;
+// draw cloud
+ctx.fillStyle='rgba(50,50,70,0.8)';
+ctx.beginPath();ctx.ellipse(cx,cloudTop+60,W*0.35,70,0,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='rgba(40,40,60,0.9)';
+ctx.beginPath();ctx.ellipse(cx,cloudBot-20,W*0.3,50,0,0,Math.PI*2);ctx.fill();
+// charge labels
+if(s.cloudChargeTop>0){
+ctx.fillStyle='#f66';ctx.font='16px sans-serif';ctx.textAlign='center';
+for(let i=0;i<Math.min(5,Math.floor(s.cloudChargeTop/10));i++)
+ctx.fillText('+',cx-60+i*30,cloudTop+50);
+ctx.fillStyle='#66f';
+for(let i=0;i<Math.min(5,Math.floor(s.cloudChargeBot/10));i++)
+ctx.fillText('−',cx-60+i*30,cloudBot-10);
+}
+// ground
+ctx.fillStyle='#2a3a2a';ctx.fillRect(ox,groundY,W,CH-groundY);
+// ice crystal animation
+if(s.phase==='charging'){
+s.chargeTime+=0.016;
+s.iceParticles.forEach(p=>{
+p.x+=p.vx;p.y+=p.vy;
+if(Math.abs(p.x)>140){p.vx*=-1;}
+if(Math.abs(p.y)>50){p.vy*=-1;}
+// collisions
+s.iceParticles.forEach(q=>{
+if(p===q)return;
+let dx=p.x-q.x,dy=p.y-q.y,d=Math.sqrt(dx*dx+dy*dy);
+if(d<p.size+q.size+2){
+p.vx*=-0.8;p.vy*=-0.8;
+// charge separation on collision
+if(p.size>3){p.charge-=0.5;q.charge+=0.5;}
+else{p.charge+=0.5;q.charge-=0.5;}
+particles.push({x:cx+p.x,y:cloudTop+60+p.y,vx:(Math.random()-.5)*3,vy:(Math.random()-.5)*3,
+life:0.3,maxLife:0.3,color:'#aaddff',size:1.5});
+}
+});
+// draw
+let px=cx+p.x,py=cloudTop+60+p.y;
+ctx.fillStyle=p.charge>1?'rgba(255,100,100,0.8)':p.charge<-1?'rgba(100,100,255,0.8)':'rgba(200,220,255,0.7)';
+ctx.beginPath();ctx.arc(px,py,p.size,0,Math.PI*2);ctx.fill();
+});
+s.cloudChargeTop=Math.min(50,s.chargeTime*8);
+s.cloudChargeBot=s.cloudChargeTop;
+if(s.chargeTime>3&&!s.goals[0]){s.goals[0]=true;s.phase='charged';renderPanel();}
+}
+// stepped leader
+if(s.phase==='leader'){
+let elapsed=time-s.leaderTimer;
+let totalDist=groundY-cloudBot;
+let steps=Math.min(20,Math.floor(elapsed*5));
+if(s.leaderSegments.length<steps+1){
+let last=s.leaderSegments[s.leaderSegments.length-1];
+let stepLen=totalDist/20;
+let nx=last.x+(Math.random()-.5)*60;
+let ny=last.y+stepLen;
+s.leaderSegments.push({x:nx,y:ny});
+if(!s.goals[1]&&s.leaderSegments.length>5){s.goals[1]=true;renderPanel();}
+// branch
+if(Math.random()<0.25&&s.leaderSegments.length>3){
+let bx=nx+(Math.random()-.5)*80,by=ny+stepLen*0.5;
+s.leaderSegments.push({x:bx,y:by,branch:true,fromIdx:s.leaderSegments.length-2});
+if(!s.goals[2]){s.goals[2]=true;renderPanel();}
+}
+}
+// draw leader
+ctx.strokeStyle='#aaccff';ctx.lineWidth=2;ctx.shadowColor='#4488ff';ctx.shadowBlur=10;
+let baseX=cx,baseY=cloudBot;
+for(let i=1;i<s.leaderSegments.length;i++){
+let seg=s.leaderSegments[i];
+if(seg.branch){
+let from=s.leaderSegments[seg.fromIdx];
+ctx.globalAlpha=0.5;ctx.beginPath();ctx.moveTo(baseX+from.x,baseY+from.y);
+ctx.lineTo(baseX+seg.x,baseY+seg.y);ctx.stroke();ctx.globalAlpha=1;
+}else{
+let prev=s.leaderSegments[i-1];
+if(!prev.branch){ctx.beginPath();ctx.moveTo(baseX+prev.x,baseY+prev.y);
+ctx.lineTo(baseX+seg.x,baseY+seg.y);ctx.stroke();}
+}
+}
+ctx.shadowBlur=0;
+// glow at tip
+if(s.leaderSegments.length>1){
+let tip=s.leaderSegments[s.leaderSegments.length-1];
+if(!tip.branch){
+let g=ctx.createRadialGradient(baseX+tip.x,baseY+tip.y,0,baseX+tip.x,baseY+tip.y,15);
+g.addColorStop(0,'rgba(150,200,255,0.8)');g.addColorStop(1,'rgba(100,150,255,0)');
+ctx.fillStyle=g;ctx.beginPath();ctx.arc(baseX+tip.x,baseY+tip.y,15,0,Math.PI*2);ctx.fill();
+}
+}
+if(s.leaderSegments.length>=20&&s.goals[0]&&s.goals[1]&&s.goals[2])completeLevel(2);
+}
+ctx.textAlign='left';
+}
+
+/* ========== LEVEL 3: 回击 ========== */
+function initLevel3(){
+levelState={goals:[false,false,false],phase:'descending',leaderY:0,leaderPath:[],
+upstreamerY:0,connected:false,flashTimer:0,shakeOffset:0,returnProgress:0};
+// pre-generate leader path
+let y=0,x=0;
+for(let i=0;i<25;i++){
+x+=(Math.random()-.5)*50;y+=20;
+levelState.leaderPath.push({x,y});
+}
+}
+function triggerReturnStroke(){
+const s=levelState;
+if(s.phase==='waiting'){s.phase='upstreamer';s.upstreamerY=0;}
+}
+function updateLevel3(){
+const s=levelState,ox=340,W=CW-ox,cy=CH/2,cx=ox+W/2;
+const cloudBot=120,groundY=CH-100;
+const totalH=groundY-cloudBot;
+// cloud
+ctx.fillStyle='rgba(50,50,70,0.85)';
+ctx.beginPath();ctx.ellipse(cx,80,W*0.35,60,0,0,Math.PI*2);ctx.fill();
+// ground
+ctx.fillStyle='#2a3a2a';ctx.fillRect(ox,groundY,W,CH-groundY);
+// tall object (lightning rod)
+ctx.fillStyle='#667';ctx.fillRect(cx-3,groundY-80,6,80);
+ctx.fillStyle='#889';ctx.beginPath();ctx.moveTo(cx,groundY-90);ctx.lineTo(cx-6,groundY-80);ctx.lineTo(cx+6,groundY-80);ctx.closePath();ctx.fill();
+
+if(s.phase==='descending'){
+s.leaderY+=1.2;
+let steps=Math.min(s.leaderPath.length,Math.floor(s.leaderY/20));
+// draw descending leader
+ctx.strokeStyle='#99bbee';ctx.lineWidth=2;ctx.shadowColor='#4488ff';ctx.shadowBlur=8;
+let bx=cx,by=cloudBot;
+for(let i=0;i<steps;i++){
+let seg=s.leaderPath[i];
+ctx.beginPath();ctx.moveTo(bx,by);
+bx=cx+seg.x;by=cloudBot+seg.y;
+ctx.lineTo(bx,by);ctx.stroke();
+}
+ctx.shadowBlur=0;
+if(!s.goals[0]&&steps>15){s.goals[0]=true;renderPanel();}
+if(steps>=s.leaderPath.length){s.phase='waiting';renderPanel();}
+}
+if(s.phase==='waiting'||s.phase==='upstreamer'||s.phase==='flash'){
+// draw full leader
+ctx.strokeStyle='#99bbee';ctx.lineWidth=2;ctx.shadowColor='#4488ff';ctx.shadowBlur=6;
+let bx=cx,by=cloudBot;
+s.leaderPath.forEach(seg=>{
+ctx.beginPath();ctx.moveTo(bx,by);bx=cx+seg.x;by=cloudBot+seg.y;ctx.lineTo(bx,by);ctx.stroke();
+});
+ctx.shadowBlur=0;
+}
+if(s.phase==='upstreamer'){
+s.upstreamerY+=3;
+// draw upstreamer from rod tip
+ctx.strokeStyle='#aaddff';ctx.lineWidth=2.5;ctx.shadowColor='#66aaff';ctx.shadowBlur=10;
+let ux=cx,uy=groundY-90;
+for(let i=0;i<Math.floor(s.upstreamerY/15);i++){
+let nx=ux+(Math.random()-.5)*15,ny=uy-15;
+ctx.beginPath();ctx.moveTo(ux,uy);ctx.lineTo(nx,ny);ctx.stroke();
+ux=nx;uy=ny;
+}
+ctx.shadowBlur=0;
+if(!s.goals[1]&&s.upstreamerY>100){s.goals[1]=true;renderPanel();}
+// check connection
+let lastLeader=s.leaderPath[s.leaderPath.length-1];
+let leaderTipY=cloudBot+lastLeader.y;
+if(uy<=leaderTipY+30){
+s.phase='flash';s.flashTimer=time;s.connected=true;
+if(!s.goals[2]){s.goals[2]=true;renderPanel();}
+}
+}
+if(s.phase==='flash'){
+let elapsed=time-s.flashTimer;
+s.returnProgress=Math.min(1,elapsed*2);
+// screen shake
+s.shakeOffset=(Math.random()-.5)*Math.max(0,10-elapsed*8);
+ctx.save();ctx.translate(s.shakeOffset,s.shakeOffset*0.5);
+// main channel - bright white
+let alpha=Math.max(0.1,1-elapsed*0.3);
+ctx.globalAlpha=alpha;
+for(let pass=0;pass<3;pass++){
+let w=pass===0?8:pass===1?4:1.5;
+let c=pass===0?'rgba(100,150,255,0.3)':pass===1?'rgba(200,220,255,0.7)':'#fff';
+ctx.strokeStyle=c;ctx.lineWidth=w;ctx.shadowColor='#aaccff';ctx.shadowBlur=pass===0?30:15;
+let bx=cx,by=cloudBot;
+ctx.beginPath();ctx.moveTo(bx,by);
+s.leaderPath.forEach(seg=>{bx=cx+seg.x;by=cloudBot+seg.y;ctx.lineTo(bx,by);});
+ctx.lineTo(cx,groundY-90);ctx.stroke();
+}
+ctx.shadowBlur=0;
+// flash overlay
+if(elapsed<0.3){
+ctx.globalAlpha=0.5*(1-elapsed/0.3);
+ctx.fillStyle='#fff';ctx.fillRect(0,0,CW,CH);
+}
+ctx.globalAlpha=1;
+ctx.restore();
+// temperature label
+if(elapsed<3){
+ctx.fillStyle='#ffaa44';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+ctx.fillText('30,000°C',cx+80,cy);
+ctx.textAlign='left';
+}
+if(elapsed>1.5)completeLevel(3);
+}
+ctx.textAlign='left';
+}
+
+/* ========== LEVEL 4: 特斯拉线圈 ========== */
+function initLevel4(){
+levelState={goals:[false,false,false],frequency:50,targetFreq:Math.floor(Math.random()*40+30),
+arcIntensity:0,maxArcReached:0,resonating:false};
+}
+function updateLevel4(){
+const s=levelState,ox=340,W=CW-ox,cy=CH/2,cx=ox+W/2;
+// Tesla coil body
+const baseX=cx,baseY=CH-120;
+// primary coil (bottom, wide)
+ctx.strokeStyle='#b8860b';ctx.lineWidth=4;
+for(let i=0;i<5;i++){
+let y=baseY-i*8,r=50-i*2;
+ctx.beginPath();ctx.ellipse(baseX,y,r,8,0,0,Math.PI*2);ctx.stroke();
+}
+// secondary coil (tall, narrow)
+ctx.strokeStyle='#cd853f';ctx.lineWidth=2;
+for(let i=0;i<20;i++){
+let y=baseY-40-i*12,r=20;
+ctx.beginPath();ctx.ellipse(baseX,y,r,4,0,0,Math.PI*2);ctx.stroke();
+}
+// top load (toroid)
+let topY=baseY-40-20*12;
+ctx.fillStyle='#999';ctx.strokeStyle='#bbb';ctx.lineWidth=2;
+ctx.beginPath();ctx.ellipse(baseX,topY,45,12,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+// frequency match calculation
+let diff=Math.abs(s.frequency-s.targetFreq);
+s.arcIntensity=Math.max(0,1-diff/20);
+if(s.arcIntensity>0.5&&!s.goals[0]){s.goals[0]=true;renderPanel();}
+// arcs from top
+if(s.arcIntensity>0.1){
+let numArcs=Math.floor(s.arcIntensity*6)+1;
+let arcLen=50+s.arcIntensity*200;
+for(let i=0;i<numArcs;i++){
+let angle=-Math.PI/2+(Math.random()-.5)*Math.PI*0.8;
+let ex=baseX+Math.cos(angle)*arcLen,ey=topY+Math.sin(angle)*arcLen;
+let w=1+s.arcIntensity*3;
+let alpha=0.3+s.arcIntensity*0.7;
+ctx.globalAlpha=alpha;
+drawLightningBolt(baseX,topY,ex,ey,arcLen*0.3,0.15,w,'#ccddff','#6688ff');
+ctx.globalAlpha=1;
+}
+// glow
+let g=ctx.createRadialGradient(baseX,topY,0,baseX,topY,60+s.arcIntensity*100);
+g.addColorStop(0,`rgba(100,150,255,${s.arcIntensity*0.3})`);g.addColorStop(1,'rgba(50,80,200,0)');
+ctx.fillStyle=g;ctx.beginPath();ctx.arc(baseX,topY,60+s.arcIntensity*100,0,Math.PI*2);ctx.fill();
+if(!s.goals[1]&&s.arcIntensity>0.3){s.goals[1]=true;renderPanel();}
+}
+if(s.arcIntensity>s.maxArcReached)s.maxArcReached=s.arcIntensity;
+if(s.arcIntensity>0.9&&!s.goals[2]){s.goals[2]=true;renderPanel();}
+if(s.goals[0]&&s.goals[1]&&s.goals[2])completeLevel(4);
+// resonance indicator
+ctx.fillStyle=s.arcIntensity>0.8?'#4ade80':s.arcIntensity>0.3?'#fbbf24':'#666';
+ctx.font='13px sans-serif';ctx.textAlign='center';
+ctx.fillText(s.arcIntensity>0.8?'★ 完美共振！':'频率差: '+Math.round(diff)+' kHz',cx,CH-50);
+ctx.textAlign='left';
+}
+
+/* ========== LEVEL 5: 等离子球 ========== */
+function initLevel5(){
+levelState={goals:[false,false,false],touching:false,touchTime:0,filaments:[],
+ballCX:0,ballCY:0,ballR:0};
+}
+function updateLevel5(){
+const s=levelState,ox=340,W=CW-ox,cy=CH/2,cx=ox+W/2;
+const ballR=Math.min(W,CH-100)*0.3;
+s.ballCX=cx;s.ballCY=cy;s.ballR=ballR;
+// glass sphere
+ctx.strokeStyle='rgba(100,120,160,0.4)';ctx.lineWidth=3;
+ctx.beginPath();ctx.arc(cx,cy,ballR,0,Math.PI*2);ctx.stroke();
+// inner glow
+let ig=ctx.createRadialGradient(cx,cy,0,cx,cy,ballR);
+ig.addColorStop(0,'rgba(80,40,120,0.15)');ig.addColorStop(0.7,'rgba(40,20,80,0.05)');ig.addColorStop(1,'rgba(20,10,40,0)');
+ctx.fillStyle=ig;ctx.beginPath();ctx.arc(cx,cy,ballR,0,Math.PI*2);ctx.fill();
+// center electrode
+let eg=ctx.createRadialGradient(cx,cy,0,cx,cy,15);
+eg.addColorStop(0,'rgba(200,180,255,0.9)');eg.addColorStop(1,'rgba(120,80,200,0)');
+ctx.fillStyle=eg;ctx.beginPath();ctx.arc(cx,cy,15,0,Math.PI*2);ctx.fill();
+// check if mouse is on ball
+let dx=mouseX-cx,dy=mouseY-cy,dist=Math.sqrt(dx*dx+dy*dy);
+let onBall=dist<ballR&&dist>20&&mouseX>ox;
+if(onBall){
+if(!s.touching){s.touching=true;if(!s.goals[0]){s.goals[0]=true;renderPanel();}}
+s.touchTime+=0.016;
+// plasma filaments toward mouse
+let numFil=5+Math.floor(Math.sin(time*3)*2);
+for(let i=0;i<numFil;i++){
+let angle=Math.atan2(mouseY-cy,mouseX-cx)+(Math.random()-.5)*0.8;
+let targetDist=dist*0.95;
+let tx=cx+Math.cos(angle)*targetDist,ty=cy+Math.sin(angle)*targetDist;
+// draw plasma filament
+ctx.globalAlpha=0.6+Math.random()*0.4;
+drawPlasmaFilament(cx,cy,tx,ty,targetDist*0.25);
+ctx.globalAlpha=1;
+}
+if(!s.goals[1]){s.goals[1]=true;renderPanel();}
+if(s.touchTime>3&&!s.goals[2]){s.goals[2]=true;renderPanel();}
+}else{
+s.touching=false;
+// ambient filaments
+for(let i=0;i<6;i++){
+let angle=time*0.5+i*Math.PI/3+Math.sin(time+i)*0.3;
+let len=ballR*0.7+Math.sin(time*2+i)*ballR*0.15;
+let tx=cx+Math.cos(angle)*len,ty=cy+Math.sin(angle)*len;
+ctx.globalAlpha=0.25;
+drawPlasmaFilament(cx,cy,tx,ty,len*0.2);
+ctx.globalAlpha=1;
+}
+}
+// touch point glow
+if(onBall){
+let tg=ctx.createRadialGradient(mouseX,mouseY,0,mouseX,mouseY,30);
+tg.addColorStop(0,'rgba(180,120,255,0.5)');tg.addColorStop(1,'rgba(120,60,200,0)');
+ctx.fillStyle=tg;ctx.beginPath();ctx.arc(mouseX,mouseY,30,0,Math.PI*2);ctx.fill();
+}
+if(s.goals[0]&&s.goals[1]&&s.goals[2])completeLevel(5);
+ctx.fillStyle='#666';ctx.font='13px sans-serif';ctx.textAlign='center';
+ctx.fillText(onBall?'等离子丝跟随你的手指！':'将鼠标移到等离子球上',cx,CH-50);
+ctx.textAlign='left';
+}
+function drawPlasmaFilament(x1,y1,x2,y2,displace){
+if(displace<4){
+ctx.strokeStyle='rgba(180,120,255,0.8)';ctx.lineWidth=1.5;
+ctx.shadowColor='#8844ff';ctx.shadowBlur=8;
+ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+ctx.shadowBlur=0;return;
+}
+let mx=(x1+x2)/2+(Math.random()-.5)*displace;
+let my=(y1+y2)/2+(Math.random()-.5)*displace;
+drawPlasmaFilament(x1,y1,mx,my,displace/2);
+drawPlasmaFilament(mx,my,x2,y2,displace/2);
+}
+
+/* ========== LEVEL 6: 球状闪电 ========== */
+function initLevel6(){
+levelState={goals:[false,false,false],energy:50,magField:50,
+ballActive:false,ballLife:0,ballMaxLife:5,ballX:0,ballY:0,ballRadius:0,
+stable:false,bestTime:0,spawnTime:0,dissipating:false,
+stableEnergy:65,stableMag:70,tolerance:12};
+}
+function spawnBallLightning(){
+const s=levelState,ox=340,W=CW-ox,cy=CH/2,cx=ox+W/2;
+s.ballActive=true;s.ballLife=0;s.dissipating=false;
+s.ballX=cx;s.ballY=cy;s.ballRadius=30+s.energy*0.3;
+s.spawnTime=time;
+// check stability
+let eDiff=Math.abs(s.energy-s.stableEnergy);
+let mDiff=Math.abs(s.magField-s.stableMag);
+s.stable=(eDiff<s.tolerance&&mDiff<s.tolerance);
+if(!s.goals[0]){s.goals[0]=true;renderPanel();}
+}
+function updateLevel6(){
+const s=levelState,ox=340,W=CW-ox,cy=CH/2,cx=ox+W/2;
+if(!s.ballActive){
+ctx.fillStyle='#555';ctx.font='14px sans-serif';ctx.textAlign='center';
+ctx.fillText('调节参数后点击"生成球状闪电"',cx,cy);
+ctx.textAlign='left';
+// hint zone
+ctx.globalAlpha=0.05;
+ctx.fillStyle='#88ff88';
+ctx.beginPath();ctx.arc(cx,cy,50,0,Math.PI*2);ctx.fill();
+ctx.globalAlpha=1;
+return;
+}
+s.ballLife+=0.016;
+let lifeRatio=s.ballLife/s.ballMaxLife;
+if(!s.stable){
+// unstable - dissipate quickly
+let unstableLife=1+Math.random()*0.5;
+if(s.ballLife>unstableLife&&!s.dissipating){
+s.dissipating=true;
+for(let i=0;i<20;i++){
+particles.push({x:s.ballX+(Math.random()-.5)*40,y:s.ballY+(Math.random()-.5)*40,
+vx:(Math.random()-.5)*6,vy:(Math.random()-.5)*6,life:1,maxLife:1,
+color:'rgba(180,120,255,0.6)',size:2+Math.random()*3});
+}
+}
+if(s.dissipating){
+s.ballRadius*=0.95;
+if(s.ballRadius<5){s.ballActive=false;renderPanel();return;}
+}
+}else{
+// stable!
+if(!s.goals[1]&&s.ballLife>1){s.goals[1]=true;renderPanel();}
+if(s.ballLife>5&&!s.goals[2]){s.goals[2]=true;renderPanel();}
+// gentle floating
+s.ballX+=Math.sin(time*0.8)*0.5;s.ballY+=Math.cos(time*0.6)*0.3;
+s.ballRadius=30+s.energy*0.3+Math.sin(time*3)*3;
+}
+// draw ball lightning
+let alpha=s.dissipating?s.ballRadius/50:Math.min(1,s.ballLife*3);
+ctx.globalAlpha=alpha;
+// outer glow
+let og=ctx.createRadialGradient(s.ballX,s.ballY,0,s.ballX,s.ballY,s.ballRadius*2);
+og.addColorStop(0,'rgba(180,140,255,0.3)');og.addColorStop(0.5,'rgba(120,80,200,0.1)');og.addColorStop(1,'rgba(80,40,160,0)');
+ctx.fillStyle=og;ctx.beginPath();ctx.arc(s.ballX,s.ballY,s.ballRadius*2,0,Math.PI*2);ctx.fill();
+// core
+let cg=ctx.createRadialGradient(s.ballX,s.ballY,0,s.ballX,s.ballY,s.ballRadius);
+cg.addColorStop(0,'rgba(255,240,255,0.9)');cg.addColorStop(0.3,'rgba(200,160,255,0.7)');
+cg.addColorStop(0.7,'rgba(140,80,220,0.4)');cg.addColorStop(1,'rgba(80,40,160,0)');
+ctx.fillStyle=cg;ctx.beginPath();ctx.arc(s.ballX,s.ballY,s.ballRadius,0,Math.PI*2);ctx.fill();
+// internal plasma swirls
+for(let i=0;i<5;i++){
+let a=time*1.5+i*Math.PI*2/5;
+let r=s.ballRadius*0.6;
+let sx=s.ballX+Math.cos(a)*r*0.3,sy=s.ballY+Math.sin(a)*r*0.3;
+let ex=s.ballX+Math.cos(a)*r,ey=s.ballY+Math.sin(a)*r;
+ctx.strokeStyle='rgba(200,160,255,0.5)';ctx.lineWidth=1;
+ctx.shadowColor='#aa66ff';ctx.shadowBlur=5;
+ctx.beginPath();ctx.moveTo(sx,sy);
+ctx.quadraticCurveTo(s.ballX+Math.cos(a+0.5)*r*0.7,s.ballY+Math.sin(a+0.5)*r*0.7,ex,ey);
+ctx.stroke();ctx.shadowBlur=0;
+}
+ctx.globalAlpha=1;
+// status text
+ctx.fillStyle=s.stable?'#4ade80':'#f87171';ctx.font='13px sans-serif';ctx.textAlign='center';
+if(s.stable)ctx.fillText(`稳定！已维持 ${s.ballLife.toFixed(1)}s / 5.0s`,cx,CH-50);
+else if(s.dissipating)ctx.fillText('参数不稳定，等离子体正在消散...',cx,CH-50);
+else ctx.fillText(`维持中... ${s.ballLife.toFixed(1)}s`,cx,CH-50);
+ctx.textAlign='left';
+if(s.goals[0]&&s.goals[1]&&s.goals[2])completeLevel(6);
+}
+function animate(){
+animId=requestAnimationFrame(animate);
+time+=0.016;drawBg();
+if(gameState==='play'){
+if(currentLevel===0)updateLevel0();
+else if(currentLevel===1)updateLevel1();
+else if(currentLevel===2)updateLevel2();
+else if(currentLevel===3)updateLevel3();
+else if(currentLevel===4)updateLevel4();
+else if(currentLevel===5)updateLevel5();
+else if(currentLevel===6)updateLevel6();
+updateParticles();
+}
+}
+
+function updateParticles(){
+for(let i=particles.length-1;i>=0;i--){
+let p=particles[i];
+p.x+=p.vx;p.y+=p.vy;p.life-=0.016;
+if(p.gravity)p.vy+=0.5;
+if(p.life<=0){particles.splice(i,1);continue;}
+ctx.globalAlpha=Math.min(1,p.life/p.maxLife);
+ctx.fillStyle=p.color;
+ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();
+}
+ctx.globalAlpha=1;
+}
+
+function onMouseDown(e){}
+function onMouseUp(e){}
+
+function drawLightningBolt(x1,y1,x2,y2,displace,branchProb,width,color,glow){
+if(displace<3){
+ctx.strokeStyle=color;ctx.lineWidth=width;ctx.shadowColor=glow;ctx.shadowBlur=15;
+ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+ctx.shadowBlur=0;return;
+}
+let mx=(x1+x2)/2,my=(y1+y2)/2;
+mx+=(Math.random()-.5)*displace;my+=(Math.random()-.5)*displace;
+drawLightningBolt(x1,y1,mx,my,displace/2,branchProb,width,color,glow);
+drawLightningBolt(mx,my,x2,y2,displace/2,branchProb,width,color,glow);
+if(Math.random()<branchProb){
+let bx=mx+(Math.random()-.5)*displace*1.5,by=my+Math.random()*displace;
+drawLightningBolt(mx,my,bx,by,displace/3,branchProb*0.5,width*0.6,color,glow);
+}
+}
+
+</script>
+</body>
+</html>

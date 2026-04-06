@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>免疫系统大战 — 交互式教育游戏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#c0c0d0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;width:100vw;height:100vh}
+canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(100vh - 36px)}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:#2a2a6a}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.sv{color:#60a5fa;font-weight:bold}
+.title{font-size:15px;color:#60a5fa;margin:8px 0 4px;font-weight:bold}
+.sub{font-size:11px;color:#666;margin-bottom:8px}
+.progress-row{display:flex;gap:4px;margin:6px 0;flex-wrap:wrap}
+.obj{font-size:11px;padding:3px 8px;border-radius:10px;border:1px solid #333;color:#888;background:#111}
+.obj.done{color:#4ade80;border-color:#22c55e;background:#0a2a1a}
+.sel-row{display:flex;gap:4px;margin:4px 0;flex-wrap:wrap}
+.sel-btn{padding:5px 10px;border-radius:8px;font-size:11px;cursor:pointer;border:1px solid #444;background:#111;color:#aaa}
+.sel-btn.active{border-color:#3b82f6;background:#1a1a4a;color:#60a5fa}
+.sel-btn.correct{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:11px;color:#888;display:block;margin-bottom:4px}
+.slider-wrap input[type=range]{width:100%;accent-color:#3b82f6}
+.slider-val{font-size:13px;color:#60a5fa;font-weight:bold}
+#infobar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid #1a1a3a;display:flex;align-items:center;padding:0 16px 0 332px;font-size:12px;color:#666;z-index:10}
+#infobar .sep{margin:0 12px;color:#333}
+</style>
+</head>
+<body>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="infobar">
+<span id="ib-level">关卡 1/7</span><span class="sep">|</span>
+<span id="ib-title">皮肤屏障</span><span class="sep">|</span>
+<span id="ib-status">进行中</span>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel');
+let W,H,curLevel=0,frame=0,animId;
+const completedLevels=new Set();
+const levelObjs=Array.from({length:7},()=>[false,false,false]);
+function resize(){cv.width=W=cv.clientWidth;cv.height=H=cv.clientHeight}
+window.addEventListener('resize',resize);resize();
+function rand(a,b){return a+Math.random()*(b-a)}
+function dist(ax,ay,bx,by){return Math.hypot(ax-bx,ay-by)}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v))}
+let state={},keys={};
+document.addEventListener('keydown',e=>{keys[e.key]=true});
+document.addEventListener('keyup',e=>{keys[e.key]=false});
+let mouseX=0,mouseY=0,mouseDown=false,clicked=false;
+const levels=[
+{name:'皮肤屏障',sub:'修补伤口阻止细菌入侵',concept:'皮肤是人体第一道防线——物理屏障。完整的皮肤能阻挡99%的病原体。伤口破坏了屏障，细菌会趁虚而入。',
+ objs:['发现伤口位置','修补2处伤口','阻止所有细菌入侵'],
+ learn:'皮肤表面积约<span class="sv">1.7m²</span>，是人体最大的器官。角质层、汗液（含溶菌酶）、皮脂（酸性pH）共同构成<span class="sv">物理+化学屏障</span>。伤口愈合涉及血小板凝集→炎症→增殖→重塑四个阶段。'},
+{name:'巨噬细胞',sub:'吞噬入侵的细菌',concept:'巨噬细胞是先天免疫的"巡逻兵"，能识别并吞噬细菌。点击细菌，指挥巨噬细胞前往吞噬。',
+ objs:['吞噬第1个细菌','吞噬5个细菌','清除所有细菌'],
+ learn:'巨噬细胞（Macrophage）源自希腊语"大吃货"。它通过<span class="sv">模式识别受体（PRR）</span>识别细菌表面的脂多糖等PAMP分子，一个巨噬细胞可吞噬<span class="sv">100+</span>个细菌。'},
+{name:'炎症反应',sub:'释放信号招募援军',concept:'感染区的巨噬细胞释放细胞因子（红色波纹），招募中性粒细胞赶来支援。点击感染区释放信号。',
+ objs:['释放第一波细胞因子','招募3个中性粒细胞','消灭感染区所有细菌'],
+ learn:'炎症的四大特征：<span class="sv">红、肿、热、痛</span>。细胞因子（IL-1、TNF-α等）使血管扩张、通透性增加，中性粒细胞沿浓度梯度<span class="sv">趋化</span>到感染部位——这就是为什么伤口会红肿发热。'},
+{name:'抗原呈递',sub:'启动适应性免疫',concept:'树突细胞捕获抗原后，将抗原片段装载到MHC分子上，呈递给T细胞。拖拽正确的抗原片段到MHC凹槽中配对。',
+ objs:['识别树突细胞','完成抗原-MHC配对','激活T细胞'],
+ learn:'树突细胞是先天免疫与适应性免疫的<span class="sv">桥梁</span>。MHC-I呈递内源性抗原（病毒感染），MHC-II呈递外源性抗原（细菌）。2011年诺贝尔奖授予了发现树突细胞的<span class="sv">Ralph Steinman</span>。'},
+{name:'T细胞杀伤',sub:'精准消灭感染细胞',concept:'杀伤性T细胞（CTL）识别被病毒感染的细胞（红色标记），释放穿孔素和颗粒酶将其消灭。点击感染细胞派遣T细胞攻击。',
+ objs:['识别感染细胞','消灭3个感染细胞','清除所有感染细胞'],
+ learn:'CTL通过<span class="sv">穿孔素</span>在靶细胞膜上打孔，注入<span class="sv">颗粒酶</span>诱导凋亡。这是"定点清除"——只杀被感染的细胞，不伤及无辜。HIV之所以致命，正是因为它攻击辅助性T细胞（CD4+），瘫痪整个免疫指挥系统。'},
+{name:'B细胞与抗体',sub:'Y形武器锁定病毒',concept:'B细胞产生Y形抗体，抗体的可变区与病毒表面抗原精确配合（锁钥模型）。拖拽抗体到匹配的病毒上。',
+ objs:['产生第一批抗体','完成3次抗体-抗原配对','中和所有病毒'],
+ learn:'每个B细胞只产生一种特异性抗体。抗体的<span class="sv">可变区（Fab）</span>识别抗原，<span class="sv">恒定区（Fc）</span>招募效应功能。人体可产生超过<span class="sv">10亿种</span>不同抗体——通过V(D)J基因重组实现。'},
+{name:'疫苗与记忆',sub:'免疫记忆的力量',concept:'注射减毒疫苗→产生记忆细胞。再次感染时，记忆细胞快速响应，对比首次vs二次免疫的速度差异。',
+ objs:['注射疫苗','观察首次免疫响应','见证二次免疫快速响应'],
+ learn:'首次免疫需<span class="sv">7-14天</span>产生足够抗体，二次免疫仅需<span class="sv">1-3天</span>且抗体量高10-100倍。这就是<span class="sv">免疫记忆</span>——疫苗的核心原理。记忆B细胞可存活<span class="sv">数十年</span>，这就是为什么天花疫苗能终身保护。'}
+];
+
+/* ===== PANEL ===== */
+let panelDirty=true;
+function markDirty(){panelDirty=true}
+function renderPanel(){
+  if(!panelDirty)return;panelDirty=false;
+  const lv=levels[curLevel];let h='<div style="margin-bottom:8px">';
+  levels.forEach((l,i)=>{let c='level-btn';if(i===curLevel)c+=' active';if(completedLevels.has(i))c+=' done';
+  h+=`<span class="${c}" onclick="loadLevel(${i})">${i+1}</span>`});
+  h+='</div>';
+  h+=`<div class="title">${lv.name}</div><div class="sub">${lv.sub}</div>`;
+  h+=`<div class="concept-box">${lv.concept}</div>`;
+  h+='<div class="progress-row">';
+  lv.objs.forEach((o,i)=>{h+=`<span class="obj${levelObjs[curLevel][i]?' done':''}">${levelObjs[curLevel][i]?'✅':'⬜'} ${o}</span>`});
+  h+='</div>';
+  h+=`<div id="actionArea"></div>`;
+  const allDone=levelObjs[curLevel].every(v=>v);
+  if(allDone){
+    if(!completedLevels.has(curLevel)){completedLevels.add(curLevel);panelDirty=true}
+    h+=`<div class="learn-box">💡 ${lv.learn}</div>`;
+    if(curLevel<levels.length-1)h+=`<button class="act-btn green" onclick="loadLevel(${curLevel+1})">下一关 →</button>`;
+    else h+=`<div class="hint-box" style="color:#4ade80;border-color:#22c55e">🎉 恭喜通关！全部7个关卡已完成！</div>`;
+  }
+  panel.innerHTML=h;
+  setupLevelUI();
+  document.getElementById('ib-level').textContent=`关卡 ${curLevel+1}/7`;
+  document.getElementById('ib-title').textContent=lv.name;
+  document.getElementById('ib-status').textContent=allDone?'已完成':'进行中';
+}
+function completeObj(li,oi){
+  if(levelObjs[li][oi])return;levelObjs[li][oi]=true;markDirty();
+}
+function checkLevelDone(){
+  if(levelObjs[curLevel].every(v=>v)&&!completedLevels.has(curLevel)){completedLevels.add(curLevel);markDirty()}
+}
+
+/* ===== LEVEL LOADER ===== */
+function loadLevel(n){
+  if(animId){cancelAnimationFrame(animId);animId=0}
+  cv.onmousedown=e=>{mouseDown=true;clicked=true};
+  cv.onmousemove=e=>{const r=cv.getBoundingClientRect();mouseX=(e.clientX-r.left)*(W/r.width);mouseY=(e.clientY-r.top)*(H/r.height)};
+  cv.onmouseup=()=>{mouseDown=false};
+  curLevel=n;state={};keys={};mouseDown=false;clicked=false;panelDirty=true;
+  renderPanel();
+  switch(n){
+    case 0:initL1();break;case 1:initL2();break;case 2:initL3();break;
+    case 3:initL4();break;case 4:initL5();break;case 5:initL6();break;case 6:initL7();break;
+  }
+}
+function setupLevelUI(){
+  const area=document.getElementById('actionArea');if(!area)return;
+  switch(curLevel){
+    case 0:setupUI1(area);break;case 1:setupUI2(area);break;case 2:setupUI3(area);break;
+    case 3:setupUI4(area);break;case 4:setupUI5(area);break;case 5:setupUI6(area);break;case 6:setupUI7(area);break;
+  }
+}
+function drawBg(){ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H)}
+
+/* ===== DRAWING HELPERS ===== */
+function drawBacterium(x,y,r,t){
+  ctx.fillStyle='#2ecc71';ctx.beginPath();ctx.ellipse(x,y,r*1.4,r*0.7,0.15,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#27ae60';ctx.lineWidth=1.5;
+  for(let i=0;i<4;i++){const a=-0.6+i*0.4;ctx.beginPath();
+  ctx.moveTo(x+Math.cos(a)*r*1.4,y+Math.sin(a)*r*0.7);
+  const cx2=x+Math.cos(a)*(r*1.4+15+Math.sin(t*3+i)*5);
+  const cy2=y+Math.sin(a)*(r*0.7+12+Math.cos(t*2+i)*4);
+  ctx.quadraticCurveTo(cx2,cy2,cx2+5,cy2+8);ctx.stroke()}
+}
+function drawVirus(x,y,r,t){
+  ctx.fillStyle='#e74c3c';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+  for(let i=0;i<10;i++){const a=i*Math.PI/5+t*0.3;
+  ctx.strokeStyle='#c0392b';ctx.lineWidth=2;ctx.beginPath();
+  ctx.moveTo(x+Math.cos(a)*r,y+Math.sin(a)*r);
+  ctx.lineTo(x+Math.cos(a)*(r+8),y+Math.sin(a)*(r+8));ctx.stroke();
+  ctx.fillStyle='#ff6b6b';ctx.beginPath();ctx.arc(x+Math.cos(a)*(r+10),y+Math.sin(a)*(r+10),2.5,0,Math.PI*2);ctx.fill()}
+}
+function drawMacrophage(x,y,r,t){
+  ctx.fillStyle='#3b82f6';ctx.beginPath();
+  for(let i=0;i<12;i++){const a=i*Math.PI/6;const rr=r+Math.sin(t*2+i)*3;
+  i===0?ctx.moveTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr):ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr)}
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle='#1d4ed8';ctx.beginPath();ctx.arc(x,y,r*0.35,0,Math.PI*2);ctx.fill();
+}
+function drawTCell(x,y,r,t){
+  ctx.fillStyle='#8b5cf6';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#6d28d9';ctx.beginPath();ctx.arc(x-r*0.15,y-r*0.1,r*0.35,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#a78bfa';ctx.font=`${r*0.7}px bold sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('T',x,y+1);
+}
+function drawBCell(x,y,r,t){
+  ctx.fillStyle='#f97316';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#c2410c';ctx.beginPath();ctx.arc(x+r*0.1,y-r*0.1,r*0.3,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fed7aa';ctx.font=`${r*0.7}px bold sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('B',x,y+1);
+}
+function drawAntibody(x,y,size,angle,color){
+  ctx.save();ctx.translate(x,y);ctx.rotate(angle||0);
+  const s=size;ctx.strokeStyle=color||'#fbbf24';ctx.lineWidth=3;ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(0,s*0.6);ctx.lineTo(0,0);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-s*0.4,-s*0.5);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(s*0.4,-s*0.5);ctx.stroke();
+  ctx.fillStyle=color||'#fbbf24';
+  ctx.beginPath();ctx.arc(-s*0.4,-s*0.5,3,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(s*0.4,-s*0.5,3,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+function drawNeutrophil(x,y,r,t){
+  ctx.fillStyle='#06b6d4';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#0e7490';
+  for(let i=0;i<3;i++){const a=i*Math.PI*2/3+t*0.5;
+  ctx.beginPath();ctx.arc(x+Math.cos(a)*r*0.25,y+Math.sin(a)*r*0.25,r*0.25,0,Math.PI*2);ctx.fill()}
+}
+function drawDendriticCell(x,y,r,t){
+  ctx.fillStyle='#a855f7';ctx.beginPath();ctx.arc(x,y,r*0.7,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#7c3aed';ctx.lineWidth=2;
+  for(let i=0;i<8;i++){const a=i*Math.PI/4+Math.sin(t)*0.1;
+  ctx.beginPath();ctx.moveTo(x+Math.cos(a)*r*0.7,y+Math.sin(a)*r*0.7);
+  const ex=x+Math.cos(a)*(r*1.3+Math.sin(t+i)*3);const ey=y+Math.sin(a)*(r*1.3+Math.cos(t+i)*3);
+  ctx.lineTo(ex,ey);ctx.stroke();
+  ctx.fillStyle='#c084fc';ctx.beginPath();ctx.arc(ex,ey,3,0,Math.PI*2);ctx.fill()}
+}
+/* ===== LEVEL 1: 皮肤屏障 ===== */
+function setupUI1(area){
+  area.innerHTML=`<div class="hint-box">💡 点击伤口处涂抹修复。修补所有伤口，阻止细菌入侵！</div>`;
+}
+function initL1(){
+  const wounds=[];const bacteria=[];const particles=[];
+  const skinY=H*0.55;
+  for(let i=0;i<4;i++){wounds.push({x:W*0.15+i*W*0.22,y:skinY,w:40+rand(10,30),hp:100,healed:false})}
+  let healedCount=0;let spawnTimer=0;let blocked=0;let t=0;
+  function spawnBact(){
+    const openWounds=wounds.filter(w=>!w.healed);
+    if(openWounds.length===0)return;
+    const w=openWounds[Math.floor(Math.random()*openWounds.length)];
+    bacteria.push({x:w.x+rand(-15,15),y:w.y-80-rand(0,40),vy:0.3+rand(0,0.3),target:w,alive:true,r:6})}
+  function draw(){
+    animId=requestAnimationFrame(draw);t+=0.016;drawBg();
+    spawnTimer+=0.016;if(spawnTimer>1.5){spawnTimer=0;spawnBact()}
+    // skin layers
+    ctx.fillStyle='#d4a574';ctx.fillRect(0,skinY,W,H-skinY);
+    ctx.fillStyle='#c4956a';ctx.fillRect(0,skinY,W,8);
+    ctx.fillStyle='#b8845a';ctx.fillRect(0,skinY+8,W,4);
+    // wounds
+    wounds.forEach(w=>{
+      if(w.healed){ctx.fillStyle='#e8c4a0';ctx.fillRect(w.x-w.w/2,w.y-5,w.w,15);return}
+      ctx.fillStyle='#8b0000';ctx.fillRect(w.x-w.w/2,w.y-8,w.w,20);
+      ctx.fillStyle='#cc3333';ctx.fillRect(w.x-w.w/2+3,w.y-5,w.w-6,14);
+      // healing progress
+      const pct=(100-w.hp)/100;
+      ctx.fillStyle='#e8c4a0';ctx.fillRect(w.x-w.w/2,w.y-8,w.w*pct,20);
+    });
+    // click to heal
+    if(mouseDown){
+      wounds.forEach(w=>{
+        if(w.healed)return;
+        if(Math.abs(mouseX-w.x)<w.w/2+15&&Math.abs(mouseY-w.y)<25){
+          w.hp-=0.8;
+          if(!levelObjs[0][0]){completeObj(0,0)}
+          for(let i=0;i<2;i++)particles.push({x:mouseX+rand(-5,5),y:mouseY+rand(-5,5),vx:rand(-1,1),vy:rand(-2,0),life:30,color:'#e8c4a0'});
+          if(w.hp<=0){w.healed=true;healedCount++;
+            if(healedCount>=2)completeObj(0,1);
+            if(healedCount>=wounds.length){completeObj(0,2);checkLevelDone()}}
+        }
+      });
+    }
+    // bacteria
+    bacteria.forEach(b=>{
+      if(!b.alive)return;
+      b.y+=b.vy;
+      if(b.target.healed&&b.y>=skinY-10){b.alive=false;blocked++;return}
+      if(b.y>=skinY+10&&!b.target.healed){b.alive=false;return}
+      drawBacterium(b.x,b.y,b.r,t);
+    });
+    // particles
+    for(let i=particles.length-1;i>=0;i--){
+      const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life--;
+      ctx.globalAlpha=p.life/30;ctx.fillStyle=p.color;
+      ctx.beginPath();ctx.arc(p.x,p.y,2,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+      if(p.life<=0)particles.splice(i,1);
+    }
+    // cursor indicator
+    ctx.strokeStyle='rgba(232,196,160,0.5)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(mouseX,mouseY,12,0,Math.PI*2);ctx.stroke();
+    // info
+    ctx.fillStyle='#60a5fa';ctx.font='12px sans-serif';ctx.textAlign='left';
+    ctx.fillText(`修复: ${healedCount}/${wounds.length}  阻挡: ${blocked}`,10,20);
+    renderPanel();
+  }
+  draw();
+}
+
+/* ===== LEVEL 2: 巨噬细胞 ===== */
+function setupUI2(area){
+  area.innerHTML=`<div class="hint-box">💡 点击细菌，巨噬细胞会前往吞噬它！清除所有细菌。</div>`;
+}
+function initL2(){
+  const macro={x:W/2,y:H/2,r:28,tx:W/2,ty:H/2,eating:false,eatTimer:0};
+  const bacts=[];let eaten=0;let t=0;
+  for(let i=0;i<12;i++){bacts.push({x:rand(50,W-50),y:rand(50,H-50),vx:rand(-0.5,0.5),vy:rand(-0.5,0.5),r:8,alive:true})}
+  function draw(){
+    animId=requestAnimationFrame(draw);t+=0.016;drawBg();
+    // tissue background
+    ctx.fillStyle='rgba(30,20,40,0.3)';
+    for(let x=0;x<W;x+=60)for(let y=0;y<H;y+=60){
+      ctx.beginPath();ctx.arc(x+Math.sin(t+x)*3,y+Math.cos(t+y)*3,20,0,Math.PI*2);ctx.fill()}
+    // bacteria move
+    bacts.forEach(b=>{
+      if(!b.alive)return;
+      b.x+=b.vx+Math.sin(t*2+b.x*0.01)*0.3;b.y+=b.vy+Math.cos(t*2+b.y*0.01)*0.3;
+      b.x=clamp(b.x,20,W-20);b.y=clamp(b.y,20,H-20);
+      drawBacterium(b.x,b.y,b.r,t);
+    });
+    // click to target
+    if(clicked){
+      clicked=false;
+      bacts.forEach(b=>{
+        if(!b.alive)return;
+        if(dist(mouseX,mouseY,b.x,b.y)<25){macro.tx=b.x;macro.ty=b.y}
+      });
+    }
+    // macro move toward target
+    const dx=macro.tx-macro.x,dy=macro.ty-macro.y,d=Math.hypot(dx,dy);
+    if(d>3){macro.x+=dx/d*2.5;macro.y+=dy/d*2.5}
+    // eat check
+    bacts.forEach(b=>{
+      if(!b.alive)return;
+      if(dist(macro.x,macro.y,b.x,b.y)<macro.r+b.r){
+        b.alive=false;eaten++;macro.eatTimer=20;
+        if(eaten===1)completeObj(1,0);
+        if(eaten>=5)completeObj(1,1);
+        if(bacts.every(bb=>!bb.alive)){completeObj(1,2);checkLevelDone()}
+      }
+    });
+    if(macro.eatTimer>0)macro.eatTimer--;
+    // draw macro
+    const mr=macro.r+(macro.eatTimer>0?4*Math.sin(macro.eatTimer):0);
+    drawMacrophage(macro.x,macro.y,mr,t);
+    // info
+    ctx.fillStyle='#60a5fa';ctx.font='12px sans-serif';ctx.textAlign='left';
+    ctx.fillText(`吞噬: ${eaten}/${bacts.length}`,10,20);
+    renderPanel();
+  }
+  draw();
+}
+/* ===== LEVEL 3: 炎症反应 ===== */
+function setupUI3(area){
+  area.innerHTML=`<div class="hint-box">💡 点击感染区（红色区域）释放细胞因子信号，招募中性粒细胞消灭细菌！</div>`;
+}
+function initL3(){
+  const infectionZone={x:W*0.5,y:H*0.5,r:80};
+  const ripples=[];const neutrophils=[];const bacts=[];
+  let recruited=0;let signalSent=false;let t=0;
+  for(let i=0;i<10;i++){
+    const a=rand(0,Math.PI*2),d=rand(10,60);
+    bacts.push({x:infectionZone.x+Math.cos(a)*d,y:infectionZone.y+Math.sin(a)*d,r:6,alive:true,vx:rand(-0.3,0.3),vy:rand(-0.3,0.3)})
+  }
+  function draw(){
+    animId=requestAnimationFrame(draw);t+=0.016;drawBg();
+    // tissue
+    ctx.fillStyle='rgba(40,20,20,0.15)';ctx.fillRect(0,0,W,H);
+    // infection zone glow
+    const grad=ctx.createRadialGradient(infectionZone.x,infectionZone.y,10,infectionZone.x,infectionZone.y,infectionZone.r);
+    grad.addColorStop(0,'rgba(200,50,50,0.25)');grad.addColorStop(1,'rgba(200,50,50,0)');
+    ctx.fillStyle=grad;ctx.beginPath();ctx.arc(infectionZone.x,infectionZone.y,infectionZone.r,0,Math.PI*2);ctx.fill();
+    // click to send signal
+    if(clicked){
+      clicked=false;
+      if(dist(mouseX,mouseY,infectionZone.x,infectionZone.y)<infectionZone.r+30){
+        ripples.push({x:mouseX,y:mouseY,r:0,maxR:150,alpha:1});
+        if(!signalSent){signalSent=true;completeObj(2,0)}
+        // spawn neutrophil from edge
+        if(recruited<8){
+          const edge=Math.random()<0.5?0:1;
+          const nx=edge===0?-20:W+20;const ny=rand(50,H-50);
+          neutrophils.push({x:nx,y:ny,r:12,tx:infectionZone.x+rand(-40,40),ty:infectionZone.y+rand(-40,40),arrived:false});
+          recruited++;
+          if(recruited>=3)completeObj(2,1);
+        }
+      }
+    }
+    // ripples
+    ripples.forEach((rp,i)=>{
+      rp.r+=1.5;rp.alpha=1-rp.r/rp.maxR;
+      if(rp.alpha<=0){ripples.splice(i,1);return}
+      ctx.strokeStyle=`rgba(255,80,80,${rp.alpha*0.6})`;ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(rp.x,rp.y,rp.r,0,Math.PI*2);ctx.stroke();
+    });
+    // bacteria
+    bacts.forEach(b=>{
+      if(!b.alive)return;
+      b.x+=b.vx+Math.sin(t+b.x)*0.2;b.y+=b.vy+Math.cos(t+b.y)*0.2;
+      b.x=clamp(b.x,infectionZone.x-70,infectionZone.x+70);
+      b.y=clamp(b.y,infectionZone.y-70,infectionZone.y+70);
+      drawBacterium(b.x,b.y,b.r,t);
+    });
+    // neutrophils
+    neutrophils.forEach(n=>{
+      // 到达初始目标后，自动追踪最近的活细菌
+      if(n.arrived){
+        let closest=null,minD=Infinity;
+        bacts.forEach(b=>{if(b.alive){const dd=dist(n.x,n.y,b.x,b.y);if(dd<minD){minD=dd;closest=b}}});
+        if(closest){n.tx=closest.x;n.ty=closest.y;
+          const dx=n.tx-n.x,dy=n.ty-n.y,d=Math.hypot(dx,dy);
+          if(d>3){n.x+=dx/d*2.5;n.y+=dy/d*2.5}
+        }
+        bacts.forEach(b=>{
+          if(!b.alive)return;
+          if(dist(n.x,n.y,b.x,b.y)<n.r+b.r+5){b.alive=false}
+        });
+      } else {
+        const dx=n.tx-n.x,dy=n.ty-n.y,d=Math.hypot(dx,dy);
+        if(d>5){n.x+=dx/d*2;n.y+=dy/d*2}else{n.arrived=true}
+      }
+      drawNeutrophil(n.x,n.y,n.r,t);
+    });
+    if(bacts.every(b=>!b.alive)&&recruited>=3){completeObj(2,2);checkLevelDone()}
+    ctx.fillStyle='#60a5fa';ctx.font='12px sans-serif';ctx.textAlign='left';
+    ctx.fillText(`中性粒细胞: ${recruited}  细菌: ${bacts.filter(b=>b.alive).length}`,10,20);
+    renderPanel();
+  }
+  draw();
+}
+
+/* ===== LEVEL 4: 抗原呈递 ===== */
+function setupUI4(area){
+  area.innerHTML=`<div class="hint-box">💡 拖拽右侧的抗原片段（彩色方块）到树突细胞的MHC凹槽（灰色槽位）中配对，激活T细胞！</div>`;
+}
+function initL4(){
+  const dc={x:W*0.3,y:H*0.45,r:40};
+  const tcell={x:W*0.7,y:H*0.45,r:25,activated:false,glowAlpha:0};
+  const colors=['#e74c3c','#3498db','#f1c40f'];
+  const slots=colors.map((c,i)=>({x:dc.x-25+i*25,y:dc.y-8,w:20,h:16,color:c,filled:false}));
+  const fragments=colors.map((c,i)=>({x:W*0.65+rand(-30,30),y:H*0.2+i*60,w:20,h:16,color:c,ox:0,oy:0,dragging:false,placed:false}));
+  let dragged=null;let identified=false;let paired=0;let t=0;
+  cv.onmousedown=e=>{
+    const r=cv.getBoundingClientRect();const mx=(e.clientX-r.left)*(W/r.width);const my=(e.clientY-r.top)*(H/r.height);
+    fragments.forEach(f=>{
+      if(f.placed)return;
+      if(mx>f.x-f.w/2&&mx<f.x+f.w/2&&my>f.y-f.h/2&&my<f.y+f.h/2){
+        f.dragging=true;f.ox=mx-f.x;f.oy=my-f.y;dragged=f;
+      }
+    });
+  };
+  cv.onmousemove=e=>{
+    const r=cv.getBoundingClientRect();mouseX=(e.clientX-r.left)*(W/r.width);mouseY=(e.clientY-r.top)*(H/r.height);
+    if(dragged){dragged.x=mouseX-dragged.ox;dragged.y=mouseY-dragged.oy}
+  };
+  cv.onmouseup=()=>{
+    if(dragged){
+      dragged.dragging=false;
+      slots.forEach(s=>{
+        if(s.filled)return;
+        if(s.color===dragged.color&&Math.abs(dragged.x-s.x)<20&&Math.abs(dragged.y-s.y)<20){
+          dragged.x=s.x;dragged.y=s.y;dragged.placed=true;s.filled=true;paired++;
+          if(paired>=3){completeObj(3,1);
+            tcell.activated=true;
+            setTimeout(()=>{completeObj(3,2);checkLevelDone()},800);
+          }
+        }
+      });
+      dragged=null;
+    }
+    mouseDown=false;
+  };
+  function draw(){
+    animId=requestAnimationFrame(draw);t+=0.016;drawBg();
+    if(!identified){completeObj(3,0);identified=true}
+    // connection line
+    ctx.strokeStyle='rgba(100,100,200,0.15)';ctx.lineWidth=2;ctx.setLineDash([5,5]);
+    ctx.beginPath();ctx.moveTo(dc.x+dc.r,dc.y);ctx.lineTo(tcell.x-tcell.r,tcell.y);ctx.stroke();
+    ctx.setLineDash([]);
+    // dendritic cell
+    drawDendriticCell(dc.x,dc.y,dc.r,t);
+    // MHC slots
+    slots.forEach(s=>{
+      ctx.strokeStyle=s.filled?s.color:'#555';ctx.lineWidth=2;
+      ctx.strokeRect(s.x-s.w/2,s.y-s.h/2,s.w,s.h);
+      if(!s.filled){ctx.fillStyle='rgba(80,80,80,0.3)';ctx.fillRect(s.x-s.w/2,s.y-s.h/2,s.w,s.h)}
+    });
+    ctx.fillStyle='#aaa';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText('MHC',dc.x,dc.y+dc.r+15);
+    // fragments
+    fragments.forEach(f=>{
+      ctx.fillStyle=f.color;ctx.globalAlpha=f.dragging?0.7:1;
+      ctx.fillRect(f.x-f.w/2,f.y-f.h/2,f.w,f.h);
+      ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.strokeRect(f.x-f.w/2,f.y-f.h/2,f.w,f.h);
+      ctx.globalAlpha=1;
+    });
+    if(!fragments.some(f=>f.placed)){
+      ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='center';
+      ctx.fillText('← 拖拽抗原片段',W*0.65,H*0.15);
+    }
+    // T cell
+    if(tcell.activated){tcell.glowAlpha=Math.min(tcell.glowAlpha+0.02,1);
+      ctx.shadowColor='#8b5cf6';ctx.shadowBlur=20*tcell.glowAlpha}
+    drawTCell(tcell.x,tcell.y,tcell.r,t);
+    ctx.shadowBlur=0;
+    if(tcell.activated){
+      ctx.fillStyle='#4ade80';ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+      ctx.fillText('T细胞已激活！',tcell.x,tcell.y+tcell.r+20);
+    }
+    ctx.fillStyle='#60a5fa';ctx.font='12px sans-serif';ctx.textAlign='left';
+    ctx.fillText(`配对: ${paired}/3`,10,20);
+    renderPanel();
+  }
+  draw();
+}
+/* ===== LEVEL 5: T细胞杀伤 ===== */
+function setupUI5(area){
+  area.innerHTML=`<div class="hint-box">💡 点击红色标记的感染细胞，派遣T细胞前往消灭！正常细胞（绿色）不要点。</div>`;
+}
+function initL5(){
+  const cells=[];let killed=0;let t=0;
+  const tcells=[];
+  for(let i=0;i<16;i++){
+    const infected=i<7;
+    cells.push({x:rand(60,W-60),y:rand(60,H-60),r:22,infected,alive:true,
+      pulse:rand(0,Math.PI*2),targeted:false});
+  }
+  function draw(){
+    animId=requestAnimationFrame(draw);t+=0.016;drawBg();
+    // tissue grid
+    ctx.strokeStyle='rgba(40,60,40,0.1)';ctx.lineWidth=1;
+    for(let x=0;x<W;x+=50)for(let y=0;y<H;y+=50){
+      ctx.beginPath();ctx.arc(x,y,18,0,Math.PI*2);ctx.stroke()}
+    // cells
+    cells.forEach(c=>{
+      if(!c.alive)return;
+      c.pulse+=0.03;
+      const pr=c.r+Math.sin(c.pulse)*2;
+      if(c.infected){
+        ctx.fillStyle='rgba(200,50,50,0.15)';ctx.beginPath();ctx.arc(c.x,c.y,pr+8,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='#4a7a4a';ctx.beginPath();ctx.arc(c.x,c.y,pr,0,Math.PI*2);ctx.fill();
+        // red markers
+        for(let i=0;i<4;i++){const a=i*Math.PI/2+t*0.5;
+          ctx.fillStyle='#e74c3c';ctx.beginPath();ctx.arc(c.x+Math.cos(a)*pr*0.7,c.y+Math.sin(a)*pr*0.7,3,0,Math.PI*2);ctx.fill()}
+      }else{
+        ctx.fillStyle='#3a8a3a';ctx.beginPath();ctx.arc(c.x,c.y,pr,0,Math.PI*2);ctx.fill();
+      }
+      ctx.fillStyle='#2a5a2a';ctx.beginPath();ctx.arc(c.x,c.y,pr*0.35,0,Math.PI*2);ctx.fill();
+    });
+    // click to target
+    if(clicked){
+      clicked=false;
+      cells.forEach(c=>{
+        if(!c.alive||c.targeted)return;
+        if(c.infected&&dist(mouseX,mouseY,c.x,c.y)<c.r+10){
+          c.targeted=true;
+          if(!levelObjs[4][0])completeObj(4,0);
+          tcells.push({x:rand(0,W),y:-20,tx:c.x,ty:c.y,r:14,target:c,attacking:false,attackTimer:0});
+        }
+      });
+    }
+    // T cells
+    tcells.forEach(tc=>{
+      const dx=tc.tx-tc.x,dy=tc.ty-tc.y,d=Math.hypot(dx,dy);
+      if(d>5&&!tc.attacking){tc.x+=dx/d*3;tc.y+=dy/d*3}
+      else if(!tc.attacking){tc.attacking=true;tc.attackTimer=60}
+      if(tc.attacking){
+        tc.attackTimer--;
+        // perforation effect
+        ctx.strokeStyle=`rgba(139,92,246,${tc.attackTimer/60})`;ctx.lineWidth=2;
+        ctx.beginPath();ctx.arc(tc.target.x,tc.target.y,tc.target.r+5+(60-tc.attackTimer)*0.3,0,Math.PI*2);ctx.stroke();
+        if(tc.attackTimer<=0&&tc.target.alive){
+          tc.target.alive=false;killed++;
+          if(killed>=3)completeObj(4,1);
+          if(cells.filter(c=>c.infected&&c.alive).length===0){completeObj(4,2);checkLevelDone()}
+        }
+      }
+      drawTCell(tc.x,tc.y,tc.r,t);
+    });
+    ctx.fillStyle='#60a5fa';ctx.font='12px sans-serif';ctx.textAlign='left';
+    ctx.fillText(`消灭: ${killed}/${cells.filter(c=>c.infected).length}`,10,20);
+    renderPanel();
+  }
+  draw();
+}
+
+/* ===== LEVEL 6: B细胞与抗体 ===== */
+function setupUI6(area){
+  area.innerHTML=`<div class="hint-box">💡 拖拽Y形抗体到颜色匹配的病毒上。抗体可变区与抗原精确配合——锁钥模型！</div>`;
+}
+function initL6(){
+  const abColors=['#fbbf24','#60a5fa','#f472b6'];
+  const viruses=[];const antibodies=[];
+  let matched=0;let produced=false;let t=0;let dragged=null;
+  for(let i=0;i<6;i++){
+    const ci=i%3;
+    viruses.push({x:rand(80,W-80),y:rand(80,H-80),r:16,color:abColors[ci],matched:false,wobble:rand(0,6)});
+  }
+  const bcell={x:60,y:H/2,r:30};
+  function spawnAntibody(){
+    const ci=antibodies.length%3;
+    antibodies.push({x:bcell.x+bcell.r+20,y:bcell.y+rand(-40,40),color:abColors[ci],
+      size:22,dragging:false,placed:false,ox:0,oy:0,targetVirus:null});
+  }
+  for(let i=0;i<6;i++)spawnAntibody();
+  cv.onmousedown=e=>{
+    const r=cv.getBoundingClientRect();const mx=(e.clientX-r.left)*(W/r.width);const my=(e.clientY-r.top)*(H/r.height);
+    antibodies.forEach(ab=>{
+      if(ab.placed)return;
+      if(dist(mx,my,ab.x,ab.y)<20){ab.dragging=true;ab.ox=mx-ab.x;ab.oy=my-ab.y;dragged=ab}
+    });
+  };
+  cv.onmousemove=e=>{
+    const r=cv.getBoundingClientRect();mouseX=(e.clientX-r.left)*(W/r.width);mouseY=(e.clientY-r.top)*(H/r.height);
+    if(dragged){dragged.x=mouseX-dragged.ox;dragged.y=mouseY-dragged.oy}
+  };
+  cv.onmouseup=()=>{
+    if(dragged){
+      dragged.dragging=false;
+      let found=false;
+      viruses.forEach(v=>{
+        if(v.matched||found)return;
+        if(v.color===dragged.color&&dist(dragged.x,dragged.y,v.x,v.y)<v.r+15){
+          dragged.placed=true;dragged.x=v.x;dragged.y=v.y-v.r-10;dragged.targetVirus=v;
+          v.matched=true;matched++;found=true;
+          if(!produced){produced=true;completeObj(5,0)}
+          if(matched>=3)completeObj(5,1);
+          if(matched>=6){completeObj(5,2);checkLevelDone()}
+        }
+      });
+      dragged=null;
+    }
+    mouseDown=false;
+  };
+  function draw(){
+    animId=requestAnimationFrame(draw);t+=0.016;drawBg();
+    // B cell
+    drawBCell(bcell.x,bcell.y,bcell.r,t);
+    ctx.fillStyle='#aaa';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText('B细胞',bcell.x,bcell.y+bcell.r+14);
+    // viruses
+    viruses.forEach(v=>{
+      v.wobble+=0.02;
+      const wx=v.x+Math.sin(v.wobble)*3;const wy=v.y+Math.cos(v.wobble*0.7)*3;
+      if(v.matched){ctx.globalAlpha=0.4}
+      drawVirus(wx,wy,v.r,t);
+      // color ring
+      ctx.strokeStyle=v.color;ctx.lineWidth=2;ctx.beginPath();ctx.arc(wx,wy,v.r+4,0,Math.PI*2);ctx.stroke();
+      ctx.globalAlpha=1;
+      if(v.matched){
+        ctx.fillStyle='#4ade80';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+        ctx.fillText('✓',wx,wy+v.r+16);
+      }
+    });
+    // antibodies
+    antibodies.forEach(ab=>{
+      if(ab.placed){
+        // lock animation
+        drawAntibody(ab.x,ab.y,ab.size,0,ab.color);
+      }else{
+        ctx.globalAlpha=ab.dragging?0.7:1;
+        drawAntibody(ab.x,ab.y,ab.size,0,ab.color);
+        ctx.globalAlpha=1;
+      }
+    });
+    ctx.fillStyle='#60a5fa';ctx.font='12px sans-serif';ctx.textAlign='left';
+    ctx.fillText(`配对: ${matched}/6`,10,20);
+    renderPanel();
+  }
+  draw();
+}
+/* ===== LEVEL 7: 疫苗与记忆 ===== */
+function setupUI7(area){
+  const phase=state.phase||0;
+  let html='';
+  if(phase===0)html=`<button class="act-btn" onclick="startVaccine()">💉 注射减毒疫苗</button>
+    <div class="hint-box">💡 点击注射疫苗，观察首次免疫响应过程。</div>`;
+  else if(phase===1)html=`<div class="hint-box">⏳ 首次免疫响应中...树突细胞正在呈递抗原，B细胞开始产生抗体。</div>`;
+  else if(phase===2)html=`<button class="act-btn" onclick="secondInfection()">🦠 模拟二次感染</button>
+    <div class="hint-box">💡 记忆细胞已形成！点击模拟二次感染，对比响应速度。</div>`;
+  else if(phase===3)html=`<div class="hint-box">⚡ 二次免疫响应中...记忆细胞快速激活！</div>`;
+  else html=`<div class="hint-box" style="color:#4ade80;border-color:#22c55e">✅ 二次免疫仅用首次的1/5时间！这就是疫苗的力量。</div>`;
+  area.innerHTML=html;
+}
+window.startVaccine=function(){
+  if(state.phase!==0)return;
+  state.phase=1;state.vaccineTime=0;state.antibodyCount=0;state.memoryCells=0;
+  completeObj(6,0);markDirty();
+};
+window.secondInfection=function(){
+  if(state.phase!==2)return;
+  state.phase=3;state.secondTime=0;state.secondAb=0;
+  markDirty();
+};
+function initL7(){
+  state.phase=0;state.vaccineTime=0;state.antibodyCount=0;state.memoryCells=0;
+  state.secondTime=0;state.secondAb=0;state.firstDuration=0;state.secondDuration=0;
+  const particles=[];let t=0;
+  // chart data
+  const firstCurve=[];const secondCurve=[];
+  function draw(){
+    animId=requestAnimationFrame(draw);t+=0.016;drawBg();
+    const chartX=40,chartY=H*0.1,chartW=W-80,chartH=H*0.4;
+    const timelineY=H*0.65;
+    // chart background
+    ctx.fillStyle='rgba(20,20,40,0.5)';ctx.fillRect(chartX,chartY,chartW,chartH);
+    ctx.strokeStyle='#333';ctx.lineWidth=1;
+    ctx.strokeRect(chartX,chartY,chartW,chartH);
+    // axes
+    ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText('时间 (天)',chartX+chartW/2,chartY+chartH+25);
+    ctx.save();ctx.translate(chartX-25,chartY+chartH/2);ctx.rotate(-Math.PI/2);
+    ctx.fillText('抗体浓度',0,0);ctx.restore();
+    // grid lines
+    for(let i=0;i<=5;i++){
+      const yy=chartY+chartH-i*chartH/5;
+      ctx.strokeStyle='rgba(60,60,100,0.3)';ctx.beginPath();ctx.moveTo(chartX,yy);ctx.lineTo(chartX+chartW,yy);ctx.stroke();
+    }
+    // phase 1: first immune response (slow)
+    if(state.phase>=1){
+      state.vaccineTime+=0.016;
+      if(state.phase===1){
+        const progress=Math.min(state.vaccineTime/8,1);// 8 seconds = 14 days
+        state.antibodyCount=Math.pow(progress,3)*100;// slow sigmoid-like
+        firstCurve.push({t:progress,v:state.antibodyCount/100});
+        if(firstCurve.length>300)firstCurve.shift();
+        // spawn particles slowly
+        if(Math.random()<0.02*progress){
+          particles.push({x:chartX+rand(20,60),y:timelineY,vx:rand(0.5,1.5),vy:rand(-0.5,0.5),
+            life:120,type:'ab',color:'#fbbf24'});
+        }
+        if(progress>=0.5&&state.memoryCells===0){state.memoryCells=1;completeObj(6,1)}
+        if(progress>=1){
+          state.phase=2;state.firstDuration=8;markDirty();
+        }
+      }
+      // draw first curve
+      if(firstCurve.length>1){
+        ctx.strokeStyle='#f97316';ctx.lineWidth=2;ctx.beginPath();
+        firstCurve.forEach((p,i)=>{
+          const px=chartX+p.t*chartW*0.45;const py=chartY+chartH-p.v*chartH*0.8;
+          i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+        });
+        ctx.stroke();
+        ctx.fillStyle='#f97316';ctx.font='10px sans-serif';ctx.textAlign='left';
+        ctx.fillText('首次免疫 (7-14天)',chartX+10,chartY+15);
+      }
+    }
+    // phase 3: second immune response (fast!)
+    if(state.phase>=3){
+      state.secondTime+=0.016;
+      if(state.phase===3){
+        const progress=Math.min(state.secondTime/1.6,1);// 1.6 seconds = 1-3 days
+        state.secondAb=Math.pow(progress,1.5)*100;// much faster
+        secondCurve.push({t:progress,v:state.secondAb/100});
+        if(secondCurve.length>300)secondCurve.shift();
+        // spawn particles fast
+        if(Math.random()<0.15*progress){
+          particles.push({x:chartX+chartW*0.5+rand(20,60),y:timelineY,vx:rand(0.5,2),vy:rand(-1,1),
+            life:80,type:'ab',color:'#4ade80'});
+        }
+        if(progress>=1){
+          state.phase=4;state.secondDuration=1.6;
+          completeObj(6,2);checkLevelDone();markDirty();
+        }
+      }
+      // draw second curve
+      if(secondCurve.length>1){
+        ctx.strokeStyle='#4ade80';ctx.lineWidth=2.5;ctx.beginPath();
+        secondCurve.forEach((p,i)=>{
+          const px=chartX+chartW*0.5+p.t*chartW*0.45;const py=chartY+chartH-p.v*chartH*0.95;
+          i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+        });
+        ctx.stroke();
+        ctx.fillStyle='#4ade80';ctx.font='10px sans-serif';ctx.textAlign='left';
+        ctx.fillText('二次免疫 (1-3天)',chartX+chartW*0.5+10,chartY+15);
+      }
+    }
+    // particles (antibodies floating)
+    for(let i=particles.length-1;i>=0;i--){
+      const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life--;
+      ctx.globalAlpha=clamp(p.life/60,0,1);
+      drawAntibody(p.x,p.y,12,rand(-0.3,0.3),p.color);
+      ctx.globalAlpha=1;
+      if(p.life<=0)particles.splice(i,1);
+    }
+    // timeline visualization
+    ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';
+    ctx.fillText('免疫响应时间线',W/2,timelineY-20);
+    // first response bar
+    if(state.phase>=1){
+      const barW=chartW*0.4;const barH=25;const bx=chartX;const by=timelineY;
+      const fill1=state.phase===1?Math.min(state.vaccineTime/8,1):1;
+      ctx.fillStyle='#222';ctx.fillRect(bx,by,barW,barH);
+      ctx.fillStyle='rgba(249,115,22,0.4)';ctx.fillRect(bx,by,barW*fill1,barH);
+      ctx.strokeStyle='#f97316';ctx.lineWidth=1;ctx.strokeRect(bx,by,barW,barH);
+      ctx.fillStyle='#f97316';ctx.font='11px sans-serif';ctx.textAlign='center';
+      ctx.fillText(`首次: ${(fill1*14).toFixed(0)}天`,bx+barW/2,by+16);
+    }
+    // second response bar
+    if(state.phase>=3){
+      const barW=chartW*0.4;const barH=25;const bx=chartX+chartW*0.5;const by=timelineY;
+      const fill2=state.phase===3?Math.min(state.secondTime/1.6,1):1;
+      ctx.fillStyle='#222';ctx.fillRect(bx,by,barW,barH);
+      ctx.fillStyle='rgba(74,222,128,0.4)';ctx.fillRect(bx,by,barW*fill2,barH);
+      ctx.strokeStyle='#4ade80';ctx.lineWidth=1;ctx.strokeRect(bx,by,barW,barH);
+      ctx.fillStyle='#4ade80';ctx.font='11px sans-serif';ctx.textAlign='center';
+      ctx.fillText(`二次: ${(fill2*3).toFixed(1)}天`,bx+barW/2,by+16);
+    }
+    // memory cells indicator
+    if(state.phase>=2){
+      ctx.fillStyle='#fbbf24';ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+      ctx.fillText('⭐ 记忆细胞已形成',W/2,timelineY+55);
+      // draw memory B cells
+      for(let i=0;i<3;i++){
+        const mx=W/2-40+i*40;const my=timelineY+80;
+        drawBCell(mx,my,14,t);
+        ctx.fillStyle='#fbbf24';ctx.font='8px sans-serif';ctx.textAlign='center';
+        ctx.fillText('记忆',mx,my+22);
+      }
+    }
+    // speed comparison
+    if(state.phase>=4){
+      ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+      ctx.fillText('⚡ 二次免疫速度是首次的 5倍！抗体量高 10倍！',W/2,H-40);
+    }
+    // vaccine syringe icon at start
+    if(state.phase===0){
+      ctx.fillStyle='#888';ctx.font='40px sans-serif';ctx.textAlign='center';
+      ctx.fillText('💉',W/2,H/2);
+      ctx.fillStyle='#aaa';ctx.font='14px sans-serif';
+      ctx.fillText('点击左侧面板注射疫苗',W/2,H/2+40);
+    }
+    renderPanel();
+  }
+  draw();
+}
+
+/* ===== INIT ===== */
+loadLevel(0);
+</script>
+</body>
+</html>

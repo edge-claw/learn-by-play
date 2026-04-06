@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>全息投影原理交互式教育</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#60a5fa}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}
+.g-text{color:#c0c0e0}
+.g-text.done{color:#4ade80;text-decoration:line-through}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:#2a2a6a}
+.act-btn:disabled{opacity:0.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}
+.sv{color:#60a5fa;font-weight:bold}
+.m-title{font-size:16px;font-weight:700;margin:8px 0 4px;color:#eee}
+.m-sub{font-size:12px;color:#888;margin-bottom:8px}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:rgba(10,10,26,.95);border-top:1px solid #1a1a3a;z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}
+#bottom-bar .bb-right{text-align:right}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🔮 <span class="gold">全息投影</span>原理探险</h1>
+  <div class="sub">7 个关卡，探索钢铁侠 JARVIS 全息界面背后的科学</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">🌊</div>光的干涉</div>
+    <div class="feat"><div class="fi">📐</div>3D投影</div>
+    <div class="feat"><div class="fi">🤚</div>手势识别</div>
+    <div class="feat"><div class="fi">🥽</div>AR增强</div>
+    <div class="feat"><div class="fi">💡</div>体积显示</div>
+    <div class="feat"><div class="fi">🦾</div>JARVIS</div>
+    <div class="feat"><div class="fi">🎨</div>自由创作</div>
+  </div>
+</div>
+</div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,animId,gameState='start',currentLevel=0,levelState={},stars=[],particles=[];
+const completedLevels=new Set();
+let mouse={x:0,y:0,down:false,rdown:false,dx:0,dy:0,wheel:0};
+let panelDirty=false;
+
+/* 3D helpers */
+function project(x,y,z,cx,cy,fov){const s=fov/(z+fov);return{x:cx+x*s,y:cy-y*s,s}}
+function rotateY(x,y,z,a){const c=Math.cos(a),s=Math.sin(a);return{x:x*c+z*s,y,z:-x*s+z*c}}
+function rotateX(x,y,z,a){const c=Math.cos(a),s=Math.sin(a);return{x,y:y*c-z*s,z:y*s+z*c}}
+function rotateZ(x,y,z,a){const c=Math.cos(a),s=Math.sin(a);return{x:x*c-y*s,y:x*s+y*c,z}}
+
+/* Models */
+function makeCube(sz){
+  const h=sz/2,v=[[-h,-h,-h],[h,-h,-h],[h,h,-h],[-h,h,-h],[-h,-h,h],[h,-h,h],[h,h,h],[-h,h,h]];
+  const e=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+  return{v,e};
+}
+function makeSphere(r,slices,stacks){
+  const v=[],e=[];
+  for(let i=0;i<=stacks;i++)for(let j=0;j<slices;j++){
+    const phi=Math.PI*i/stacks,theta=2*Math.PI*j/slices;
+    v.push([r*Math.sin(phi)*Math.cos(theta),r*Math.cos(phi),r*Math.sin(phi)*Math.sin(theta)]);
+  }
+  for(let i=0;i<stacks;i++)for(let j=0;j<slices;j++){
+    const a=i*slices+j,b=i*slices+(j+1)%slices,c=(i+1)*slices+j;
+    e.push([a,b]);if(i<stacks)e.push([a,c]);
+  }
+  return{v,e};
+}
+function makeHelmet(){
+  const v=[],e=[];
+  // head outline
+  const N=20;
+  for(let i=0;i<=N;i++){const a=Math.PI*i/N-Math.PI/2;v.push([Math.cos(a)*50,Math.sin(a)*60+10,0])}
+  for(let i=0;i<N;i++)e.push([i,i+1]);
+  // jaw line
+  const jb=v.length;
+  v.push([-40,-40,0]);v.push([-25,-55,0]);v.push([0,-60,0]);v.push([25,-55,0]);v.push([40,-40,0]);
+  for(let i=jb;i<jb+4;i++)e.push([i,i+1]);
+  // face plate
+  const fb=v.length;
+  v.push([-35,-10,10]);v.push([35,-10,10]);v.push([35,-45,10]);v.push([-35,-45,10]);
+  e.push([fb,fb+1]);e.push([fb+1,fb+2]);e.push([fb+2,fb+3]);e.push([fb+3,fb]);
+  // eyes
+  const eb=v.length;
+  v.push([-25,-15,15]);v.push([-8,-18,15]);v.push([-8,-25,15]);v.push([-25,-22,15]);
+  e.push([eb,eb+1]);e.push([eb+1,eb+2]);e.push([eb+2,eb+3]);e.push([eb+3,eb]);
+  const eb2=v.length;
+  v.push([8,-18,15]);v.push([25,-15,15]);v.push([25,-22,15]);v.push([8,-25,15]);
+  e.push([eb2,eb2+1]);e.push([eb2+1,eb2+2]);e.push([eb2+2,eb2+3]);e.push([eb2+3,eb2]);
+  // depth lines
+  const db=v.length;
+  for(let i=0;i<=N;i++){const a=Math.PI*i/N-Math.PI/2;v.push([Math.cos(a)*45,Math.sin(a)*55+10,-20])}
+  for(let i=db;i<db+N;i++)e.push([i,i+1]);
+  for(let i=0;i<N;i+=4)e.push([i,db+i]);
+  return{v,e};
+}
+function makeDNA(){
+  const v=[],e=[];const N=60,R=30,H=200;
+  for(let i=0;i<=N;i++){
+    const t=i/N,a=t*4*Math.PI,y=t*H-H/2;
+    v.push([Math.cos(a)*R,y,Math.sin(a)*R]);
+    v.push([Math.cos(a+Math.PI)*R,y,Math.sin(a+Math.PI)*R]);
+  }
+  for(let i=0;i<N;i++){e.push([i*2,i*2+2]);e.push([i*2+1,i*2+3]);if(i%4===0)e.push([i*2,i*2+1])}
+  return{v,e};
+}
+function makeArmor(){
+  const v=[],e=[];
+  // head
+  const hd=makeSphere(20,8,6);hd.v.forEach(p=>{p[1]+=90});
+  const hoff=v.length;hd.v.forEach(p=>v.push(p));hd.e.forEach(ed=>e.push([ed[0]+hoff,ed[1]+hoff]));
+  // torso
+  const tb=v.length;
+  v.push([-30,70,0]);v.push([30,70,0]);v.push([35,20,0]);v.push([-35,20,0]);
+  v.push([-25,20,0]);v.push([25,20,0]);v.push([20,-30,0]);v.push([-20,-30,0]);
+  e.push([tb,tb+1]);e.push([tb+1,tb+2]);e.push([tb+2,tb+3]);e.push([tb+3,tb]);
+  e.push([tb+4,tb+5]);e.push([tb+5,tb+6]);e.push([tb+6,tb+7]);e.push([tb+7,tb+4]);
+  // arc reactor circle
+  const ab=v.length;
+  for(let i=0;i<12;i++){const a=2*Math.PI*i/12;v.push([Math.cos(a)*12,45+Math.sin(a)*12,5])}
+  for(let i=0;i<12;i++)e.push([ab+i,ab+(i+1)%12]);
+  // arms
+  const la=v.length;
+  v.push([-35,65,0]);v.push([-50,40,0]);v.push([-55,10,0]);v.push([-50,-10,0]);
+  for(let i=la;i<la+3;i++)e.push([i,i+1]);
+  const ra=v.length;
+  v.push([35,65,0]);v.push([50,40,0]);v.push([55,10,0]);v.push([50,-10,0]);
+  for(let i=ra;i<ra+3;i++)e.push([i,i+1]);
+  // legs
+  const ll=v.length;
+  v.push([-15,-30,0]);v.push([-18,-60,0]);v.push([-15,-90,0]);
+  for(let i=ll;i<ll+2;i++)e.push([i,i+1]);
+  const rl=v.length;
+  v.push([15,-30,0]);v.push([18,-60,0]);v.push([15,-90,0]);
+  for(let i=rl;i<rl+2;i++)e.push([i,i+1]);
+  // depth
+  const db=v.length;
+  v.push([-28,70,-15]);v.push([28,70,-15]);v.push([30,20,-15]);v.push([-30,20,-15]);
+  e.push([db,db+1]);e.push([db+1,db+2]);e.push([db+2,db+3]);e.push([db+3,db]);
+  e.push([tb,db]);e.push([tb+1,db+1]);e.push([tb+2,db+2]);e.push([tb+3,db+3]);
+  return{v,e};
+}
+function makeCylinder(r,h,seg){
+  const v=[],e=[],hs=h/2;
+  for(let i=0;i<seg;i++){const a=2*Math.PI*i/seg;v.push([Math.cos(a)*r,hs,Math.sin(a)*r]);v.push([Math.cos(a)*r,-hs,Math.sin(a)*r])}
+  for(let i=0;i<seg;i++){const n=(i+1)%seg;e.push([i*2,n*2]);e.push([i*2+1,n*2+1]);e.push([i*2,i*2+1])}
+  return{v,e};
+}
+function makeCone(r,h,seg){
+  const v=[],e=[];v.push([0,h/2,0]);
+  for(let i=0;i<seg;i++){const a=2*Math.PI*i/seg;v.push([Math.cos(a)*r,-h/2,Math.sin(a)*r])}
+  for(let i=1;i<=seg;i++){e.push([0,i]);e.push([i,i%seg+1])}
+  return{v,e};
+}
+function makeTorus(R,r,seg1,seg2){
+  const v=[],e=[];
+  for(let i=0;i<seg1;i++)for(let j=0;j<seg2;j++){
+    const a=2*Math.PI*i/seg1,b=2*Math.PI*j/seg2;
+    v.push([(R+r*Math.cos(b))*Math.cos(a),(R+r*Math.cos(b))*Math.sin(a),r*Math.sin(b)]);
+  }
+  for(let i=0;i<seg1;i++)for(let j=0;j<seg2;j++){
+    const ni=(i+1)%seg1,nj=(j+1)%seg2;
+    e.push([i*seg2+j,i*seg2+nj]);e.push([i*seg2+j,ni*seg2+j]);
+  }
+  return{v,e};
+}
+
+const levels=[
+{title:'光的干涉',sub:'全息术的基础',concept:'两束相干光（参考光+物体反射光）相遇时产生干涉条纹。这些条纹记录了物体的3D信息（振幅+相位）。普通照片只记录亮度，全息图还记录了光的相位→深度信息。',goals:['移动光源观察干涉变化','调节波长观察条纹间距变化','理解干涉条纹记录了3D信息'],learn:'全息术的核心就是用激光的干涉条纹记录物体的3D信息。普通照片只记录"哪里亮哪里暗"，全息图还记录了"光走了多远"——这就是深度信息。1971年Dennis Gabor因发明全息术获得诺贝尔物理学奖。'},
+{title:'3D线框投影',sub:'透视原理',concept:'把3D坐标投影到2D屏幕上。近大远小（透视投影）。旋转3D物体时，不同面的可见性变化产生立体感。',goals:['旋转立方体观察透视效果','切换到钢铁侠头盔模型','理解3D→2D投影原理'],learn:'电影中JARVIS的全息投影本质上就是3D线框渲染。每个3D点(x,y,z)通过透视公式投影到2D屏幕：screenX = x*fov/(z+fov)。这和你的眼睛看世界的原理完全一样——近大远小。游戏引擎、CAD软件、AR眼镜都用同样的数学。'},
+{title:'手势识别',sub:'用手控制全息图',concept:'深度摄像头（如Kinect、Leap Motion）追踪手部21个关节点。通过手指的张合、移动、旋转来识别手势（抓取、缩放、旋转、滑动）。',goals:['用"抓取"手势移动物体','用"缩放"手势放大/缩小','用"旋转"手势旋转物体'],learn:'现实中的手势识别用深度摄像头追踪手部21个关节点的3D坐标，每秒120帧。AI模型（如MediaPipe Hands）可以仅用普通摄像头实现同样效果。钢铁侠的手势操作在现实中已经基本实现——Apple Vision Pro就是用手势控制的。'},
+{title:'AR增强现实',sub:'虚实叠加',concept:'AR = 在真实世界上叠加虚拟物体。需要：①追踪真实世界的位置和方向（SLAM）②把虚拟物体渲染到正确位置 ③处理遮挡关系。',goals:['在桌面上放置一个全息物体','在墙上放置一个全息面板','放置3个以上物体构建AR场景'],learn:'AR的核心挑战是让虚拟物体看起来"真的在那里"。这需要：①精确追踪你的位置和视角（SLAM算法）②实时渲染虚拟物体并匹配真实光照 ③处理虚实遮挡。Apple Vision Pro、HoloLens、Meta Quest都是AR设备。钢铁侠的全息工作台本质上就是一个完美的AR系统。'},
+{title:'体积显示',sub:'空气中成像',concept:'真正在空气中显示3D图像的技术。方法：①激光等离子体（聚焦激光电离空气发光）②旋转屏幕（POV显示）③雾幕投影 ④光场显示。',goals:['观看激光等离子体显示','观看旋转屏幕显示','理解至少2种体积显示原理'],learn:'2024年已有公司（如Aerial Burton）用激光等离子体在空气中画出简单3D图形——聚焦的飞秒激光把空气电离成等离子体，发出可见光。但目前只能画简单线条，分辨率和亮度远不如电影。钢铁侠级别的全息投影可能还需要20-30年。'},
+{title:'JARVIS工作台',sub:'全部整合',concept:'把前面学到的所有技术整合：3D投影 + 手势交互 + AR叠加 = JARVIS全息工作台。中央是可旋转的钢铁侠战甲，四周是浮动数据面板。',goals:['旋转战甲模型','点击展开至少2个面板','体验完整的JARVIS界面'],learn:'JARVIS全息工作台 = 全息投影 + 手势识别 + AR + AI助手。虽然电影中的效果还无法完全实现，但各个组成技术都在快速发展：Apple Vision Pro实现了手势交互，Meta的全息显示器在研发中，AI助手已经很强大。也许在不远的将来，每个人都能拥有自己的JARVIS。'},
+{title:'自由创作',sub:'你的全息工作室',concept:'自由模式，在全息空间中创建和操作各种3D对象。选择形状，点击空间放置，拖拽移动，滚轮缩放。',goals:['放置至少3种不同形状','移动一个物体到新位置','创建你的全息场景'],learn:'恭喜你完成了全息投影原理的全部学习！从光的干涉到3D投影，从手势识别到AR增强现实，从体积显示到完整的JARVIS工作台——你已经理解了钢铁侠全息界面背后的所有核心技术。未来的人机交互将从2D屏幕走向3D空间，而你已经掌握了其中的原理。'}
+];
+
+/* ===== CORE ===== */
+function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
+function initStars(){stars=[];for(let i=0;i<60;i++)stars.push({x:Math.random()*CW,y:Math.random()*CH,r:Math.random()*1.2+.2,tw:Math.random()*Math.PI*2,sp:Math.random()*.015+.005})}
+function drawStars(){for(let s of stars){const a=.3+.5*Math.abs(Math.sin(s.tw+time*s.sp));ctx.fillStyle=`rgba(96,165,250,${a*.3})`;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill()}}
+function drawGrid(){ctx.strokeStyle='rgba(96,165,250,0.04)';ctx.lineWidth=1;const sp=60;for(let x=0;x<CW;x+=sp){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke()}for(let y=0;y<CH;y+=sp){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke()}}
+function drawScanlines(){const off=(time*30)%CH;ctx.fillStyle='rgba(96,165,250,0.015)';for(let y=0;y<CH;y+=3)ctx.fillRect(0,y,CW,1);ctx.fillStyle='rgba(96,165,250,0.06)';ctx.fillRect(0,off,CW,2)}
+function addP(x,y,vx,vy,col,life,sz){particles.push({x,y,vx,vy,col,life,ml:life,sz:sz||2})}
+function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1)}}
+function drawParticles(){for(let p of particles){const a=Math.max(0,p.life/p.ml);ctx.globalAlpha=a;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.sz*a,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+function drawHoloCursor(x,y){ctx.save();ctx.strokeStyle='rgba(96,165,250,0.6)';ctx.lineWidth=1;ctx.shadowColor='#60a5fa';ctx.shadowBlur=8;ctx.beginPath();ctx.moveTo(x-12,y);ctx.lineTo(x+12,y);ctx.stroke();ctx.beginPath();ctx.moveTo(x,y-12);ctx.lineTo(x,y+12);ctx.stroke();ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.stroke();ctx.restore()}
+
+function drawWireframe(model,cx,cy,fov,rx,ry,scale,alpha){
+  ctx.save();ctx.strokeStyle=`rgba(96,165,250,${alpha||0.7})`;ctx.lineWidth=1.2;ctx.shadowColor='#60a5fa';ctx.shadowBlur=6;
+  const pts=model.v.map(v=>{let p={x:v[0]*scale,y:v[1]*scale,z:v[2]*scale};p=rotateX(p.x,p.y,p.z,rx);p=rotateY(p.x,p.y,p.z,ry);return project(p.x,p.y,p.z,cx,cy,fov)});
+  for(const[a,b]of model.e){const pa=pts[a],pb=pts[b];if(pa&&pb){ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke()}}
+  ctx.shadowBlur=0;ctx.fillStyle=`rgba(96,165,250,${(alpha||0.7)*0.5})`;
+  for(const p of pts){if(p){ctx.beginPath();ctx.arc(p.x,p.y,1.5*p.s,0,Math.PI*2);ctx.fill()}}
+  ctx.restore();
+}
+
+window.addEventListener('resize',resize);resize();
+
+/* Mouse */
+const canvasArea=()=>({left:320,top:0,right:CW,bottom:CH-32});
+canvas.addEventListener('mousedown',e=>{
+  if(e.button===0)mouse.down=true;
+  if(e.button===2)mouse.rdown=true;
+  mouse.sx=e.clientX;mouse.sy=e.clientY;
+  handleMouseDown(e);
+});
+canvas.addEventListener('mousemove',e=>{
+  mouse.dx=e.clientX-mouse.x;mouse.dy=e.clientY-mouse.y;
+  mouse.x=e.clientX;mouse.y=e.clientY;
+  handleMouseMove(e);
+});
+canvas.addEventListener('mouseup',e=>{
+  if(e.button===0){handleMouseUp(e);mouse.down=false}
+  if(e.button===2)mouse.rdown=false;
+});
+canvas.addEventListener('wheel',e=>{e.preventDefault();mouse.wheel=e.deltaY;handleWheel(e)},{passive:false});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+/* ===== GAME LOGIC ===== */
+function startGame(){
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('panel').style.display='block';
+  document.getElementById('bottom-bar').style.display='flex';
+  gameState='play';currentLevel=0;initLevel(0);renderPanel();
+}
+
+function initLevel(idx){
+  currentLevel=idx;particles=[];
+  if(idx===0){
+    const cx=CW/2+160,cy=CH/2;
+    levelState={sources:[{x:cx-120,y:cy,dragging:false},{x:cx+120,y:cy,dragging:false}],wavelength:40,dragIdx:-1,movedSource:false,changedWave:false,goalDone:[false,false,false]};
+  }else if(idx===1){
+    levelState={rx:0.3,ry:0,modelIdx:0,dragging:false,rotated:false,switchedHelmet:false,goalDone:[false,false,false]};
+  }else if(idx===2){
+    const cx=CW/2+160,cy=CH/2;
+    levelState={cube:{x:cx,y:cy,z:0,rx:0.3,ry:0,sz:60},hand:{x:cx,y:cy-80},gesture:'无',grabbing:false,grabOff:{x:0,y:0},didGrab:false,didZoom:false,didRotate:false,goalDone:[false,false,false]};
+  }else if(idx===3){
+    levelState={objects:[],selectedTool:'cube',placedOnTable:false,placedOnWall:false,goalDone:[false,false,false]};
+  }else if(idx===4){
+    levelState={techIdx:0,animTime:0,seenTech:new Set(),goalDone:[false,false,false]};
+  }else if(idx===5){
+    const cx=CW/2+160,cy=CH/2;
+    levelState={rx:0.3,ry:0,dragging:false,panels:[
+      {x:cx-200,y:cy-120,w:140,h:90,title:'功率输出',val:3200,unit:'kW',expanded:false,data:[]},
+      {x:cx+140,y:cy-100,w:140,h:90,title:'系统温度',val:36.5,unit:'°C',expanded:false,data:[]},
+      {x:cx-180,y:cy+80,w:140,h:90,title:'护甲完整度',val:98,unit:'%',expanded:false,data:[]},
+      {x:cx+160,y:cy+100,w:140,h:90,title:'武器系统',val:100,unit:'%',expanded:false,data:[]}
+    ],rotated:false,expandedCount:0,goalDone:[false,false,false],wavePhase:0};
+  }else if(idx===6){
+    levelState={objects:[],selectedShape:'cube',shapes:new Set(),movedObj:false,goalDone:[false,false,false],dragIdx:-1,dragOff:{x:0,y:0}};
+  }
+  renderPanel();
+}
+
+function switchLevel(i){initLevel(i);renderPanel()}
+
+function markDirty(){panelDirty=true}
+
+function checkGoals(){
+  const S=levelState;
+  if(currentLevel===0){
+    if(S.movedSource&&!S.goalDone[0]){S.goalDone[0]=true;markDirty()}
+    if(S.changedWave&&!S.goalDone[1]){S.goalDone[1]=true;markDirty()}
+    if(S.goalDone[0]&&S.goalDone[1]&&!S.goalDone[2]){S.goalDone[2]=true;markDirty()}
+  }else if(currentLevel===1){
+    if(S.rotated&&!S.goalDone[0]){S.goalDone[0]=true;markDirty()}
+    if(S.switchedHelmet&&!S.goalDone[1]){S.goalDone[1]=true;markDirty()}
+    if(S.goalDone[0]&&S.goalDone[1]&&!S.goalDone[2]){S.goalDone[2]=true;markDirty()}
+  }else if(currentLevel===2){
+    if(S.didGrab&&!S.goalDone[0]){S.goalDone[0]=true;markDirty()}
+    if(S.didZoom&&!S.goalDone[1]){S.goalDone[1]=true;markDirty()}
+    if(S.didRotate&&!S.goalDone[2]){S.goalDone[2]=true;markDirty()}
+  }else if(currentLevel===3){
+    const objs=S.objects;
+    if(!S.goalDone[0]&&objs.some(o=>o.zone==='table')){S.goalDone[0]=true;markDirty()}
+    if(!S.goalDone[1]&&objs.some(o=>o.zone==='wall')){S.goalDone[1]=true;markDirty()}
+    if(!S.goalDone[2]&&objs.length>=3){S.goalDone[2]=true;markDirty()}
+  }else if(currentLevel===4){
+    if(S.seenTech.has(0)&&!S.goalDone[0]){S.goalDone[0]=true;markDirty()}
+    if(S.seenTech.has(1)&&!S.goalDone[1]){S.goalDone[1]=true;markDirty()}
+    if(S.seenTech.size>=2&&!S.goalDone[2]){S.goalDone[2]=true;markDirty()}
+  }else if(currentLevel===5){
+    if(S.rotated&&!S.goalDone[0]){S.goalDone[0]=true;markDirty()}
+    if(S.expandedCount>=2&&!S.goalDone[1]){S.goalDone[1]=true;markDirty()}
+    if(S.goalDone[0]&&S.goalDone[1]&&!S.goalDone[2]){S.goalDone[2]=true;markDirty()}
+  }else if(currentLevel===6){
+    if(S.shapes.size>=3&&!S.goalDone[0]){S.goalDone[0]=true;markDirty()}
+    if(S.movedObj&&!S.goalDone[1]){S.goalDone[1]=true;markDirty()}
+    if(S.goalDone[0]&&S.goalDone[1]&&!S.goalDone[2]){S.goalDone[2]=true;markDirty()}
+  }
+  if(S.goalDone&&S.goalDone.every(g=>g)&&!completedLevels.has(currentLevel)){completedLevels.add(currentLevel);markDirty()}
+}
+
+/* ===== MOUSE HANDLERS ===== */
+function handleMouseDown(e){
+  const S=levelState,mx=e.clientX,my=e.clientY;
+  if(currentLevel===0){
+    for(let i=0;i<S.sources.length;i++){
+      const s=S.sources[i];if(Math.hypot(mx-s.x,my-s.y)<20){S.dragIdx=i;s.dragging=true;break}
+    }
+  }else if(currentLevel===1){
+    if(e.button===0&&mx>320){S.dragging=true;S.lastMx=mx;S.lastMy=my}
+  }else if(currentLevel===2){
+    if(e.button===0&&mx>320){
+      const c=S.cube,dx=mx-c.x,dy=my-c.y;
+      if(Math.hypot(dx,dy)<c.sz){S.grabbing=true;S.grabOff={x:dx,y:dy};S.gesture='抓取';S.didGrab=true}
+    }
+  }else if(currentLevel===3){
+    if(e.button===0&&mx>320){
+      const cx=CW/2+160,cy=CH/2;
+      const tableY=cy+60,wallX=cx+200;
+      let zone='table';
+      if(my<cy-20)zone='wall';
+      const obj={type:S.selectedTool,x:mx,y:my,zone,sz:0,targetSz:40,born:time,rx:Math.random(),ry:Math.random()};
+      S.objects.push(obj);
+    }
+  }else if(currentLevel===5){
+    if(e.button===0&&mx>320){
+      for(const p of S.panels){
+        if(mx>p.x-p.w/2&&mx<p.x+p.w/2&&my>p.y-p.h/2&&my<p.y+p.h/2){
+          p.expanded=!p.expanded;
+          if(p.expanded){p.h=160;S.expandedCount++;} else p.h=90;
+          markDirty();break;
+        }
+      }
+      S.dragging=true;S.lastMx=mx;S.lastMy=my;
+    }
+  }else if(currentLevel===6){
+    if(e.button===0&&mx>320){
+      // check if clicking existing object
+      for(let i=S.objects.length-1;i>=0;i--){
+        const o=S.objects[i];if(Math.hypot(mx-o.x,my-o.y)<o.sz){
+          S.dragIdx=i;S.dragOff={x:mx-o.x,y:my-o.y};return;
+        }
+      }
+      // place new
+      S.objects.push({type:S.selectedShape,x:mx,y:my,sz:40,rx:Math.random()*3,ry:Math.random()*3,born:time});
+      S.shapes.add(S.selectedShape);
+    }
+  }
+}
+function handleMouseMove(e){
+  const S=levelState,mx=e.clientX,my=e.clientY;
+  if(currentLevel===0&&S.dragIdx>=0){
+    S.sources[S.dragIdx].x=mx;S.sources[S.dragIdx].y=my;S.movedSource=true;
+  }else if(currentLevel===1&&S.dragging){
+    S.ry+=(mx-S.lastMx)*0.01;S.rx+=(my-S.lastMy)*0.01;S.lastMx=mx;S.lastMy=my;S.rotated=true;
+  }else if(currentLevel===2){
+    S.hand.x=mx;S.hand.y=my;
+    if(S.grabbing){S.cube.x=mx-S.grabOff.x;S.cube.y=my-S.grabOff.y;S.gesture='抓取'}
+    else if(mouse.rdown){S.cube.ry+=(mx-mouse.sx)*0.005;S.cube.rx+=(my-mouse.sy)*0.005;mouse.sx=mx;mouse.sy=my;S.gesture='旋转';S.didRotate=true}
+    else S.gesture='追踪';
+  }else if(currentLevel===5&&S.dragging){
+    let hitPanel=false;
+    for(const p of S.panels){if(mx>p.x-p.w/2&&mx<p.x+p.w/2&&my>p.y-p.h/2&&my<p.y+p.h/2){hitPanel=true;break}}
+    if(!hitPanel){S.ry+=(mx-S.lastMx)*0.01;S.rx+=(my-S.lastMy)*0.01;S.rotated=true}
+    S.lastMx=mx;S.lastMy=my;
+  }else if(currentLevel===6&&S.dragIdx>=0){
+    const o=S.objects[S.dragIdx];o.x=mx-S.dragOff.x;o.y=my-S.dragOff.y;S.movedObj=true;
+  }
+}
+function handleMouseUp(e){
+  const S=levelState;
+  if(currentLevel===0){if(S.dragIdx>=0){S.sources[S.dragIdx].dragging=false;S.dragIdx=-1}}
+  else if(currentLevel===1)S.dragging=false;
+  else if(currentLevel===2){S.grabbing=false;S.gesture='追踪'}
+  else if(currentLevel===5)S.dragging=false;
+  else if(currentLevel===6)S.dragIdx=-1;
+}
+function handleWheel(e){
+  const S=levelState;
+  if(currentLevel===2){
+    S.cube.sz=Math.max(20,Math.min(150,S.cube.sz-e.deltaY*0.1));S.gesture='缩放';S.didZoom=true;
+  }else if(currentLevel===6){
+    // zoom hovered object
+    for(let i=S.objects.length-1;i>=0;i--){
+      const o=S.objects[i];if(Math.hypot(mouse.x-o.x,mouse.y-o.y)<o.sz*1.5){
+        o.sz=Math.max(15,Math.min(120,o.sz-e.deltaY*0.1));break;
+      }
+    }
+  }
+}
+
+function doAction(act,param){
+  const S=levelState;
+  if(currentLevel===0){
+    if(act==='setWave'){S.wavelength=+param;S.changedWave=true;markDirty()}
+  }else if(currentLevel===1){
+    if(act==='switchModel'){S.modelIdx=+param;if(+param===2)S.switchedHelmet=true;markDirty()}
+  }else if(currentLevel===3){
+    if(act==='selectTool')S.selectedTool=param;
+  }else if(currentLevel===4){
+    if(act==='switchTech'){S.techIdx=+param;S.animTime=0;S.seenTech.add(+param);markDirty()}
+  }else if(currentLevel===6){
+    if(act==='selectShape'){S.selectedShape=param;markDirty()}
+    else if(act==='clearAll'){S.objects=[];S.shapes.clear();markDirty()}
+  }
+  renderPanel();
+}
+
+/* ===== RENDER PANEL ===== */
+function renderPanel(){
+  const L=levels[currentLevel],S=levelState,p=document.getElementById('panel');
+  let h='<div style="margin-bottom:8px">';
+  for(let i=0;i<levels.length;i++){
+    let cls='level-btn';if(i===currentLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
+    h+=`<span class="${cls}" onclick="switchLevel(${i})">第${i+1}关</span>`;
+  }
+  h+='</div>';
+  h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
+  h+=`<div class="concept-box">${L.concept}</div>`;
+  h+='<div style="margin:8px 0;font-size:12px;color:#888;font-weight:600">目标清单</div>';
+  for(let i=0;i<L.goals.length;i++){
+    const done=S.goalDone&&S.goalDone[i];
+    h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`;
+  }
+  h+=renderLevelActions();
+  if(S.goalDone&&S.goalDone.every(g=>g)){
+    h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
+    if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
+    else h+=`<div style="text-align:center;color:#4ade80;font-size:14px;margin:12px 0">🎉 全部通关！</div>`;
+  }
+  p.innerHTML=h;
+  document.getElementById('bbLeft').textContent=`第 ${currentLevel+1} 关：${L.title}`;
+  document.getElementById('bbRight').textContent=`${completedLevels.size}/${levels.length} 已完成`;
+}
+
+function renderLevelActions(){
+  const S=levelState;let h='';
+  if(currentLevel===0){
+    h+=`<div class="hint-box">💡 拖动两个光源观察干涉条纹变化，调节波长滑块改变条纹间距</div>`;
+    h+=`<div class="slider-wrap"><label>波长: <span class="sv">${S.wavelength}px</span></label><input type="range" min="15" max="80" value="${S.wavelength}" oninput="doAction('setWave',this.value)"></div>`;
+  }else if(currentLevel===1){
+    const models=['立方体','球体','钢铁侠头盔','DNA双螺旋'];
+    h+=`<div class="hint-box">💡 鼠标拖拽旋转3D模型，点击按钮切换不同模型</div>`;
+    for(let i=0;i<models.length;i++){
+      const active=S.modelIdx===i?' style="background:#2a2a6a"':'';
+      h+=`<button class="act-btn"${active} onclick="doAction('switchModel',${i})">${models[i]}</button>`;
+    }
+  }else if(currentLevel===2){
+    h+=`<div class="hint-box">💡 左键拖拽=抓取移动 | 滚轮=缩放 | 右键拖拽=旋转</div>`;
+    h+=`<div style="margin:8px 0;font-size:12px;color:#60a5fa">当前手势: <span class="sv">${S.gesture}</span></div>`;
+  }else if(currentLevel===3){
+    const tools=['cube:立方体','sphere:球体','text:文字面板','armor:战甲模型'];
+    h+=`<div class="hint-box">💡 选择物体类型，点击房间中的位置放置。上方=墙面，下方=桌面</div>`;
+    for(const t of tools){
+      const[k,n]=t.split(':');
+      const active=S.selectedTool===k?' style="background:#2a2a6a"':'';
+      h+=`<button class="act-btn"${active} onclick="doAction('selectTool','${k}')">${n}</button>`;
+    }
+    h+=`<div style="font-size:12px;color:#888;margin:4px 0">已放置: <span class="sv">${S.objects.length}</span> 个物体</div>`;
+  }else if(currentLevel===4){
+    const techs=['激光等离子体','旋转屏幕(POV)','雾幕投影','光场显示'];
+    h+=`<div class="hint-box">💡 选择不同技术查看其工作原理动画</div>`;
+    for(let i=0;i<techs.length;i++){
+      const seen=S.seenTech.has(i)?'✅ ':'';
+      const active=S.techIdx===i?' style="background:#2a2a6a"':'';
+      h+=`<button class="act-btn"${active} onclick="doAction('switchTech',${i})">${seen}${techs[i]}</button>`;
+    }
+  }else if(currentLevel===5){
+    h+=`<div class="hint-box">💡 拖拽旋转战甲模型，点击四周的数据面板展开详情</div>`;
+  }else if(currentLevel===6){
+    const shapes=['cube:立方体','sphere:球体','cylinder:圆柱','cone:圆锥','torus:环面'];
+    h+=`<div class="hint-box">💡 选择形状后点击空间放置，拖拽移动，滚轮缩放</div>`;
+    for(const s of shapes){
+      const[k,n]=s.split(':');
+      const active=S.selectedShape===k?' style="background:#2a2a6a"':'';
+      h+=`<button class="act-btn"${active} onclick="doAction('selectShape','${k}')">${n}</button>`;
+    }
+    h+=`<button class="act-btn" style="border-color:#e44;color:#f88" onclick="doAction('clearAll')">清空全部</button>`;
+    h+=`<div style="font-size:12px;color:#888;margin:4px 0">已放置: <span class="sv">${S.objects.length}</span> 个 | 种类: <span class="sv">${S.shapes.size}</span></div>`;
+  }
+  return h;
+}
+
+/* ===== LEVEL RENDERERS ===== */
+function renderLevel0(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  // interference pattern
+  const res=4;
+  for(let x=320;x<CW;x+=res)for(let y=0;y<CH-32;y+=res){
+    const d1=Math.hypot(x-S.sources[0].x,y-S.sources[0].y);
+    const d2=Math.hypot(x-S.sources[1].x,y-S.sources[1].y);
+    const w1=Math.sin(d1/S.wavelength*Math.PI*2-time*3);
+    const w2=Math.sin(d2/S.wavelength*Math.PI*2-time*3);
+    const amp=(w1+w2)/2;
+    const bright=Math.max(0,amp);
+    ctx.fillStyle=`rgba(96,165,250,${bright*0.35})`;
+    ctx.fillRect(x,y,res,res);
+  }
+  // wave rings
+  for(let si=0;si<2;si++){
+    const s=S.sources[si];
+    ctx.strokeStyle='rgba(96,165,250,0.15)';ctx.lineWidth=1;
+    for(let r=0;r<400;r+=S.wavelength){
+      const rr=r+(time*60)%S.wavelength;
+      if(rr>0){ctx.beginPath();ctx.arc(s.x,s.y,rr,0,Math.PI*2);ctx.stroke()}
+    }
+  }
+  // sources
+  for(let i=0;i<2;i++){
+    const s=S.sources[i];
+    ctx.save();ctx.shadowColor='#60a5fa';ctx.shadowBlur=15;
+    ctx.fillStyle='rgba(96,165,250,0.9)';ctx.beginPath();ctx.arc(s.x,s.y,8,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    ctx.fillStyle='#fff';ctx.font='11px monospace';ctx.textAlign='center';
+    ctx.fillText(i===0?'参考光':'物体光',s.x,s.y-16);
+  }
+}
+
+function renderLevel1(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  const models=[makeCube(80),makeSphere(50,16,12),makeHelmet(),makeDNA()];
+  const m=models[S.modelIdx];
+  const autoRy=S.ry+time*0.3;
+  drawWireframe(m,cx,cy,400,S.rx,autoRy,1,0.7);
+  // label
+  const names=['立方体','球体','钢铁侠头盔','DNA双螺旋'];
+  ctx.fillStyle='rgba(96,165,250,0.6)';ctx.font='13px monospace';ctx.textAlign='center';
+  ctx.fillText(names[S.modelIdx],cx,cy+140);
+  ctx.fillText('拖拽旋转',cx,cy+158);
+}
+
+function renderLevel2(){
+  const S=levelState,c=S.cube;
+  // cube
+  const cube=makeCube(c.sz);
+  drawWireframe(cube,c.x,c.y,300,c.rx+time*0.2,c.ry+time*0.3,1,0.6);
+  // hand skeleton
+  drawHand(S.hand.x,S.hand.y,S.grabbing);
+  // gesture label
+  ctx.save();ctx.shadowColor='#60a5fa';ctx.shadowBlur=10;
+  ctx.fillStyle='rgba(96,165,250,0.8)';ctx.font='bold 14px monospace';ctx.textAlign='center';
+  ctx.fillText(`手势: ${S.gesture}`,S.hand.x,S.hand.y-70);
+  // scan line on hand
+  if(S.gesture!=='追踪'){
+    const sy=S.hand.y-40+(time*80)%80;
+    ctx.strokeStyle='rgba(96,165,250,0.4)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(S.hand.x-40,sy);ctx.lineTo(S.hand.x+40,sy);ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawHand(hx,hy,grabbing){
+  ctx.save();ctx.strokeStyle='rgba(96,165,250,0.7)';ctx.lineWidth=2;ctx.shadowColor='#60a5fa';ctx.shadowBlur=5;
+  // palm
+  const palm=[{x:hx-15,y:hy},{x:hx+15,y:hy},{x:hx+18,y:hy+25},{x:hx-18,y:hy+25}];
+  ctx.beginPath();palm.forEach((p,i)=>{i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)});ctx.closePath();ctx.stroke();
+  // fingers
+  const fingers=[
+    [{x:hx-18,y:hy},{x:hx-25,y:hy-20},{x:hx-28,y:hy-(grabbing?10:40)}],
+    [{x:hx-8,y:hy},{x:hx-10,y:hy-25},{x:hx-10,y:hy-(grabbing?15:50)}],
+    [{x:hx,y:hy},{x:hx,y:hy-28},{x:hx,y:hy-(grabbing?15:55)}],
+    [{x:hx+8,y:hy},{x:hx+10,y:hy-25},{x:hx+10,y:hy-(grabbing?15:48)}],
+    [{x:hx+18,y:hy+5},{x:hx+28,y:hy},{x:hx+(grabbing?25:35),y:hy-5}]
+  ];
+  for(const f of fingers){
+    ctx.beginPath();f.forEach((p,i)=>{i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y)});ctx.stroke();
+    for(const p of f){ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.stroke()}
+  }
+  ctx.restore();
+}
+
+function renderLevel3(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  // room
+  ctx.save();ctx.strokeStyle='rgba(150,150,180,0.3)';ctx.lineWidth=1;
+  // floor
+  ctx.beginPath();ctx.moveTo(340,cy+100);ctx.lineTo(CW-20,cy+100);ctx.stroke();
+  // back wall
+  ctx.beginPath();ctx.moveTo(340,cy-150);ctx.lineTo(CW-20,cy-150);ctx.lineTo(CW-20,cy+100);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(340,cy-150);ctx.lineTo(340,cy+100);ctx.stroke();
+  // table
+  ctx.strokeStyle='rgba(150,150,180,0.5)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx-150,cy+60);ctx.lineTo(cx+150,cy+60);ctx.lineTo(cx+130,cy+100);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-150,cy+60);ctx.lineTo(cx-130,cy+100);ctx.stroke();
+  ctx.fillStyle='rgba(150,150,180,0.1)';ctx.fillRect(cx-150,cy+60,300,5);
+  // labels
+  ctx.fillStyle='rgba(150,150,180,0.3)';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('墙面',cx,cy-160);ctx.fillText('桌面',cx,cy+55);
+  ctx.restore();
+  // placed objects
+  for(const obj of S.objects){
+    const age=time-obj.born;const scale=Math.min(1,age*3);
+    const sz=obj.targetSz*scale;
+    ctx.save();ctx.globalAlpha=0.7;
+    const jx=obj.x+(Math.random()-0.5)*0.5,jy=obj.y+(Math.random()-0.5)*0.5;
+    if(obj.type==='cube'){drawWireframe(makeCube(sz),jx,jy,300,obj.rx+time*0.5,obj.ry+time*0.3,1,0.5)}
+    else if(obj.type==='sphere'){drawWireframe(makeSphere(sz/2,10,8),jx,jy,300,time*0.3,time*0.2,1,0.5)}
+    else if(obj.type==='text'){
+      ctx.strokeStyle='rgba(96,165,250,0.5)';ctx.lineWidth=1;ctx.shadowColor='#60a5fa';ctx.shadowBlur=5;
+      ctx.strokeRect(jx-sz,jy-sz*0.6,sz*2,sz*1.2);
+      ctx.fillStyle='rgba(96,165,250,0.6)';ctx.font=`${sz*0.3}px monospace`;ctx.textAlign='center';
+      ctx.fillText('JARVIS v3.2',jx,jy-sz*0.15);ctx.fillText('STATUS: ONLINE',jx,jy+sz*0.15);
+    }else if(obj.type==='armor'){drawWireframe(makeArmor(),jx,jy,300,0,time*0.4,sz/60,0.5)}
+    // holographic scan line
+    const scanY=jy-sz+(time*40+obj.born*100)%(sz*2);
+    ctx.strokeStyle='rgba(96,165,250,0.3)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(jx-sz,scanY);ctx.lineTo(jx+sz,scanY);ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function renderLevel4(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  S.animTime+=0.016;
+  const techs=['激光等离子体','旋转屏幕(POV)','雾幕投影','光场显示'];
+  ctx.fillStyle='rgba(96,165,250,0.5)';ctx.font='14px monospace';ctx.textAlign='center';
+  ctx.fillText(techs[S.techIdx],cx,50);
+
+  if(S.techIdx===0){
+    // laser plasma - a bright dot traces 3D shape
+    const t=S.animTime*2;
+    const cube=makeCube(80);
+    // draw fading trail
+    ctx.save();ctx.shadowColor='#60a5fa';ctx.shadowBlur=15;
+    const trailLen=40;
+    const totalPts=cube.e.length*10;
+    for(let i=0;i<trailLen;i++){
+      const idx=(Math.floor(t*20)-i+totalPts*100)%totalPts;
+      const eIdx=Math.floor(idx/10),eFrac=(idx%10)/10;
+      if(eIdx<cube.e.length){
+        const[a,b]=cube.e[eIdx];
+        const va=cube.v[a],vb=cube.v[b];
+        let px=va[0]+(vb[0]-va[0])*eFrac,py=va[1]+(vb[1]-va[1])*eFrac,pz=va[2]+(vb[2]-va[2])*eFrac;
+        const r=rotateY(px,py,pz,t*0.5);const p=project(r.x,r.y,r.z,cx,cy,300);
+        const alpha=(1-i/trailLen)*0.8;
+        ctx.fillStyle=`rgba(96,165,250,${alpha})`;ctx.beginPath();ctx.arc(p.x,p.y,3-i*0.05,0,Math.PI*2);ctx.fill();
+        if(i===0){ctx.fillStyle='rgba(200,220,255,0.9)';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill()}
+      }
+    }
+    ctx.restore();
+    ctx.fillStyle='rgba(96,165,250,0.3)';ctx.font='11px monospace';ctx.textAlign='center';
+    ctx.fillText('飞秒激光聚焦 → 空气电离 → 等离子体发光',cx,cy+120);
+  }else if(S.techIdx===1){
+    // rotating screen POV
+    const angle=S.animTime*8;
+    ctx.save();ctx.translate(cx,cy);
+    // LED bar
+    ctx.strokeStyle='rgba(96,165,250,0.3)';ctx.lineWidth=2;
+    for(let a=0;a<Math.PI*2;a+=Math.PI/8){
+      ctx.save();ctx.rotate(a);ctx.beginPath();ctx.moveTo(0,-80);ctx.lineTo(0,80);ctx.stroke();ctx.restore();
+    }
+    // current bar position
+    ctx.save();ctx.rotate(angle);
+    ctx.strokeStyle='rgba(96,165,250,0.8)';ctx.lineWidth=3;ctx.shadowColor='#60a5fa';ctx.shadowBlur=10;
+    ctx.beginPath();ctx.moveTo(0,-80);ctx.lineTo(0,80);ctx.stroke();
+    // LEDs on bar
+    for(let y=-70;y<=70;y+=10){
+      const r=Math.abs(y);const bright=r<50?0.8:0.3;
+      ctx.fillStyle=`rgba(96,165,250,${bright})`;ctx.beginPath();ctx.arc(0,y,3,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+    // persistence of vision circle
+    ctx.strokeStyle='rgba(96,165,250,0.15)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(0,0,80,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.arc(0,0,50,0,Math.PI*2);ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle='rgba(96,165,250,0.3)';ctx.font='11px monospace';ctx.textAlign='center';
+    ctx.fillText('LED条高速旋转 → 视觉暂留 → 3D图像',cx,cy+120);
+  }else if(S.techIdx===2){
+    // fog screen
+    ctx.save();
+    // fog curtain
+    ctx.fillStyle='rgba(150,160,180,0.08)';ctx.fillRect(cx-100,cy-100,200,200);
+    // projector
+    ctx.fillStyle='rgba(96,165,250,0.6)';ctx.font='11px monospace';ctx.textAlign='center';
+    ctx.fillText('投影仪',cx,cy-130);
+    // projection cone
+    ctx.strokeStyle='rgba(96,165,250,0.2)';ctx.beginPath();ctx.moveTo(cx,cy-120);ctx.lineTo(cx-80,cy);ctx.lineTo(cx+80,cy);ctx.closePath();ctx.stroke();
+    // image on fog
+    const img=makeCube(40);
+    drawWireframe(img,cx,cy,200,S.animTime*0.5,S.animTime*0.3,1,0.4);
+    // fog particles
+    for(let i=0;i<30;i++){
+      const fx=cx-100+Math.random()*200,fy=cy-100+Math.random()*200;
+      ctx.fillStyle=`rgba(150,160,180,${Math.random()*0.1})`;ctx.beginPath();ctx.arc(fx,fy,2,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+    ctx.fillStyle='rgba(96,165,250,0.3)';ctx.font='11px monospace';ctx.textAlign='center';
+    ctx.fillText('投影仪 → 薄雾幕 → 半透明悬浮图像',cx,cy+120);
+  }else if(S.techIdx===3){
+    // light field
+    ctx.save();
+    const N=12;
+    for(let i=0;i<N;i++){
+      const angle=Math.PI*2*i/N;
+      const sx=cx+Math.cos(angle)*120,sy=cy+Math.sin(angle)*120;
+      ctx.strokeStyle=`rgba(96,165,250,${0.15+0.1*Math.sin(S.animTime*2+i)})`;ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(cx,cy);ctx.stroke();
+      ctx.fillStyle='rgba(96,165,250,0.5)';ctx.beginPath();ctx.arc(sx,sy,4,0,Math.PI*2);ctx.fill();
+    }
+    // convergence point glow
+    ctx.shadowColor='#60a5fa';ctx.shadowBlur=20;
+    ctx.fillStyle='rgba(96,165,250,0.6)';ctx.beginPath();ctx.arc(cx,cy,8+Math.sin(S.animTime*3)*3,0,Math.PI*2);ctx.fill();
+    ctx.shadowBlur=0;
+    // 3D image at convergence
+    const sp=makeSphere(25,8,6);
+    drawWireframe(sp,cx,cy,200,S.animTime*0.4,S.animTime*0.6,1,0.5);
+    ctx.restore();
+    ctx.fillStyle='rgba(96,165,250,0.3)';ctx.font='11px monospace';ctx.textAlign='center';
+    ctx.fillText('多角度光线汇聚 → 光场重建 → 真3D像',cx,cy+120);
+  }
+}
+
+function renderLevel5(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  S.wavePhase+=0.05;
+  // armor model
+  const armor=makeArmor();
+  drawWireframe(armor,cx,cy,400,S.rx,S.ry+time*0.2,1.5,0.6);
+  // HUD ring
+  ctx.save();ctx.strokeStyle='rgba(96,165,250,0.2)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.arc(cx,cy,180,0,Math.PI*2);ctx.stroke();
+  // tick marks
+  for(let i=0;i<36;i++){
+    const a=Math.PI*2*i/36,r1=175,r2=i%3===0?165:170;
+    ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1);ctx.lineTo(cx+Math.cos(a)*r2,cy+Math.sin(a)*r2);ctx.stroke();
+  }
+  // data arc
+  ctx.strokeStyle='rgba(96,165,250,0.4)';ctx.lineWidth=3;
+  ctx.beginPath();ctx.arc(cx,cy,185,-Math.PI/2,-Math.PI/2+Math.PI*1.4);ctx.stroke();
+  ctx.restore();
+  // floating panels
+  for(const p of S.panels){
+    const jx=p.x+(Math.random()-0.5)*0.3,jy=p.y+(Math.random()-0.5)*0.3;
+    ctx.save();ctx.strokeStyle='rgba(96,165,250,0.4)';ctx.lineWidth=1;ctx.shadowColor='#60a5fa';ctx.shadowBlur=5;
+    ctx.strokeRect(jx-p.w/2,jy-p.h/2,p.w,p.h);
+    ctx.fillStyle='rgba(10,15,40,0.7)';ctx.fillRect(jx-p.w/2,jy-p.h/2,p.w,p.h);
+    ctx.fillStyle='rgba(96,165,250,0.6)';ctx.font='11px monospace';ctx.textAlign='center';
+    ctx.fillText(p.title,jx,jy-p.h/2+18);
+    // value with jitter
+    const jitter=(Math.random()-0.5)*2;
+    ctx.fillStyle='rgba(96,165,250,0.9)';ctx.font='bold 18px monospace';
+    ctx.fillText((p.val+jitter).toFixed(p.unit==='°C'?1:0)+' '+p.unit,jx,jy-p.h/2+42);
+    if(p.expanded){
+      // mini chart
+      ctx.strokeStyle='rgba(96,165,250,0.3)';ctx.lineWidth=1;ctx.beginPath();
+      for(let i=0;i<60;i++){
+        const v=Math.sin(S.wavePhase+i*0.2)*15+p.h/2-30;
+        const px=jx-p.w/2+10+i*(p.w-20)/60,py=jy-p.h/2+50+v;
+        i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+      }
+      ctx.stroke();
+      ctx.fillStyle='rgba(96,165,250,0.4)';ctx.font='10px monospace';ctx.textAlign='left';
+      ctx.fillText('实时监控数据流',jx-p.w/2+10,jy+p.h/2-10);
+    }
+    ctx.restore();
+  }
+  // particles
+  if(Math.random()<0.3){
+    const a=Math.random()*Math.PI*2,r=Math.random()*200+50;
+    addP(cx+Math.cos(a)*r,cy+Math.sin(a)*r,(Math.random()-0.5)*10,(Math.random()-0.5)*10,'rgba(96,165,250,0.5)',2,1.5);
+  }
+  // voice waveform at bottom
+  ctx.save();ctx.strokeStyle='rgba(96,165,250,0.3)';ctx.lineWidth=1.5;ctx.beginPath();
+  const wy=CH-60;
+  for(let x=cx-100;x<cx+100;x+=2){
+    const v=Math.sin((x-cx)*0.05+S.wavePhase*3)*8*Math.sin((x-cx)*0.02);
+    x===cx-100?ctx.moveTo(x,wy+v):ctx.lineTo(x,wy+v);
+  }
+  ctx.stroke();ctx.restore();
+  ctx.fillStyle='rgba(96,165,250,0.3)';ctx.font='10px monospace';ctx.textAlign='center';
+  ctx.fillText('J.A.R.V.I.S. ONLINE',cx,CH-42);
+}
+
+function renderLevel6(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  // background grid enhanced
+  ctx.strokeStyle='rgba(96,165,250,0.06)';ctx.lineWidth=1;
+  for(let x=320;x<CW;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH-32);ctx.stroke()}
+  for(let y=0;y<CH-32;y+=40){ctx.beginPath();ctx.moveTo(320,y);ctx.lineTo(CW,y);ctx.stroke()}
+  // objects
+  for(const obj of S.objects){
+    const age=time-obj.born;const scale=Math.min(1,age*3);
+    let m;
+    if(obj.type==='cube')m=makeCube(obj.sz*scale);
+    else if(obj.type==='sphere')m=makeSphere(obj.sz/2*scale,10,8);
+    else if(obj.type==='cylinder')m=makeCylinder(obj.sz/2*scale,obj.sz*scale,12);
+    else if(obj.type==='cone')m=makeCone(obj.sz/2*scale,obj.sz*scale,12);
+    else if(obj.type==='torus')m=makeTorus(obj.sz/2*scale,obj.sz/6*scale,12,8);
+    if(m)drawWireframe(m,obj.x,obj.y,300,obj.rx+time*0.3,obj.ry+time*0.2,1,0.6);
+    // scan line
+    const sy=obj.y-obj.sz+(time*30+obj.born*50)%(obj.sz*2);
+    ctx.strokeStyle='rgba(96,165,250,0.2)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(obj.x-obj.sz,sy);ctx.lineTo(obj.x+obj.sz,sy);ctx.stroke();
+  }
+  // cursor
+  if(mouse.x>320)drawHoloCursor(mouse.x,mouse.y);
+}
+
+/* ===== MAIN LOOP ===== */
+let lastTime=0;
+function animate(ts){
+  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;time+=dt;
+  ctx.clearRect(0,0,CW,CH);
+  if(gameState==='play'){
+    drawGrid();drawStars();
+    if(currentLevel===0)renderLevel0();
+    else if(currentLevel===1)renderLevel1();
+    else if(currentLevel===2)renderLevel2();
+    else if(currentLevel===3)renderLevel3();
+    else if(currentLevel===4)renderLevel4();
+    else if(currentLevel===5)renderLevel5();
+    else if(currentLevel===6)renderLevel6();
+    drawScanlines();updateParticles(dt);drawParticles();
+    checkGoals();
+    if(panelDirty){panelDirty=false;renderPanel()}
+  }else{
+    drawGrid();drawStars();drawScanlines();
+  }
+  animId=requestAnimationFrame(animate);
+}
+animId=requestAnimationFrame(animate);
+</script>
+</body>
+</html>

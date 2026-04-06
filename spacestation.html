@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>空间站生存工程</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#60a5fa}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}
+.g-text{color:#c0c0e0}
+.g-text.done{color:#4ade80;text-decoration:line-through}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:#2a2a6a}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}.sv{color:#60a5fa;font-weight:bold}
+.m-title{font-size:16px;font-weight:700;margin:8px 0 4px;color:#eee}
+.m-sub{font-size:12px;color:#888;margin-bottom:8px}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:rgba(10,10,26,.95);border-top:1px solid #1a1a3a;z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}
+#bottom-bar .bb-right{text-align:right}
+.overlay .result-box{text-align:center;max-width:420px;background:rgba(10,10,26,.98);border:1px solid #2a2a5a;border-radius:16px;padding:28px 36px}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-learn{text-align:left;background:#0e0e20;border-radius:8px;padding:12px 14px;font-size:12px;color:#93c5fd;line-height:1.7;margin-bottom:16px}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#3b82f6;color:#fff}
+.result-box .btn-retry{background:#2a2a5a;color:#ccc}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🛰️ <span class="gold">空间站</span>生存工程</h1>
+  <div class="sub">7 个关卡，从轨道组装到再补给</div>
+  <button class="start-btn" onclick="startGame()">开始任务</button>
+  <div class="features">
+    <div class="feat"><div class="fi">🔧</div>轨道组装</div>
+    <div class="feat"><div class="fi">🫁</div>生命支持</div>
+    <div class="feat"><div class="fi">🔄</div>姿态控制</div>
+    <div class="feat"><div class="fi">🔬</div>微重力实验</div>
+    <div class="feat"><div class="fi">☢️</div>辐射防护</div>
+    <div class="feat"><div class="fi">🧑‍🚀</div>太空行走</div>
+    <div class="feat"><div class="fi">🚀</div>再补给</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,animId;
+let gameState='start',currentLevel=0;
+let levelState={},bgStars=[];
+const completedLevels=new Set();
+const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
+const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
+
+const levels=[
+{name:'轨道组装',sub:'交会对接',icon:'🔧'},
+{name:'生命支持',sub:'ECLSS闭环',icon:'🫁'},
+{name:'姿态控制',sub:'角动量守恒',icon:'🔄'},
+{name:'微重力实验',sub:'太空科学',icon:'🔬'},
+{name:'辐射防护',sub:'太阳粒子事件',icon:'☢️'},
+{name:'太空行走',sub:'舱外活动',icon:'🧑‍🚀'},
+{name:'再补给',sub:'霍曼转移',icon:'🚀'}
+];
+
+function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight}
+addEventListener('resize',resize);resize();
+for(let i=0;i<120;i++)bgStars.push({x:Math.random()*2e3,y:Math.random()*1200,r:Math.random()*1.2+.3,a:Math.random()*.5+.3});
+
+function drawBg(){
+ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,CW,CH);
+bgStars.forEach(s=>{ctx.globalAlpha=s.a*(0.7+0.3*Math.sin(time*0.5+s.x));ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.x%CW,s.y%CH,s.r,0,Math.PI*2);ctx.fill()});
+ctx.globalAlpha=1;
+// earth arc at bottom
+let earthCx=CW*0.7,earthCy=CH+400,earthR=500;
+let eg=ctx.createRadialGradient(earthCx,earthCy-100,earthR*0.7,earthCx,earthCy,earthR);
+eg.addColorStop(0,'rgba(30,80,180,0.3)');eg.addColorStop(0.7,'rgba(20,60,140,0.15)');eg.addColorStop(1,'rgba(10,30,80,0)');
+ctx.fillStyle=eg;ctx.beginPath();ctx.arc(earthCx,earthCy,earthR,0,Math.PI*2);ctx.fill();
+ctx.strokeStyle='rgba(60,140,255,0.25)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(earthCx,earthCy,earthR,Math.PI+0.3,Math.PI*2-0.3);ctx.stroke();
+}
+
+function startGame(){
+document.getElementById('startScreen').classList.add('hidden');
+gameState='play';currentLevel=0;
+panelEl.style.display='block';bbEl.style.display='flex';
+initLevel(0);renderPanel();animate();
+}
+
+function initLevel(n){
+currentLevel=n;
+if(n===0)initLevel0();else if(n===1)initLevel1();else if(n===2)initLevel2();
+else if(n===3)initLevel3();else if(n===4)initLevel4();else if(n===5)initLevel5();
+else if(n===6)initLevel6();
+renderPanel();
+}
+
+/* ========== LEVEL 0: 轨道组装 ========== */
+function initLevel0(){
+const ox=340,W=CW-ox-40,cy=CH/2;
+const dockPorts=[
+  {name:'推进舱',x:ox+W*0.2,y:cy,w:80,h:50,color:'#aaa',docked:false,desc:'提供轨道机动能力'},
+  {name:'居住舱',x:ox+W*0.4,y:cy,w:90,h:55,color:'#ccc',docked:false,desc:'宇航员生活空间'},
+  {name:'实验舱',x:ox+W*0.6,y:cy,w:85,h:50,color:'#bbb',docked:false,desc:'科学实验平台'},
+  {name:'太阳翼',x:ox+W*0.8,y:cy,w:100,h:20,color:'#4488ff',docked:false,desc:'供电系统'}
+];
+const startPositions=[
+  {x:ox+80,y:CH-100},{x:ox+220,y:CH-100},{x:ox+360,y:CH-100},{x:ox+520,y:CH-100}
+];
+dockPorts.forEach((p,i)=>{p.sx=startPositions[i].x;p.sy=startPositions[i].y;p.cx=p.sx;p.cy=p.sy;});
+levelState={modules:dockPorts,dragging:-1,dockAnim:null,dockAnimT:0,goals:[false,false,false],docked:0,
+  crosshair:{active:false,x:0,y:0,tx:0,ty:0,t:0}};
+}
+function updateLevel0(){
+const s=levelState,ox=340,W=CW-ox-40,cy=CH/2;
+// draw dock targets
+const targets=[{x:ox+W*0.25,y:cy-30,w:82,h:52,label:'推进舱'},{x:ox+W*0.42,y:cy-30,w:92,h:57,label:'居住舱'},
+  {x:ox+W*0.59,y:cy-30,w:87,h:52,label:'实验舱'},{x:ox+W*0.76,y:cy-10,w:102,h:22,label:'太阳翼'}];
+targets.forEach((t,i)=>{
+  ctx.strokeStyle=s.modules[i].docked?'#4ade80':'rgba(96,165,250,0.4)';ctx.lineWidth=2;ctx.setLineDash([5,5]);
+  ctx.strokeRect(t.x-t.w/2,t.y-t.h/2,t.w,t.h);ctx.setLineDash([]);
+  if(!s.modules[i].docked){ctx.fillStyle='rgba(96,165,250,0.3)';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText(t.label,t.x,t.y+4);}
+});
+// crosshair animation
+if(s.crosshair.active){
+  let cr=s.crosshair;cr.t+=0.03;
+  let px=cr.x+(cr.tx-cr.x)*Math.min(cr.t,1),py=cr.y+(cr.ty-cr.y)*Math.min(cr.t,1);
+  let sz=20*(1-Math.min(cr.t,1)*0.6);
+  ctx.strokeStyle=`rgba(74,222,128,${0.8-cr.t*0.3})`;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(px-sz,py);ctx.lineTo(px+sz,py);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(px,py-sz);ctx.lineTo(px,py+sz);ctx.stroke();
+  ctx.beginPath();ctx.arc(px,py,sz*0.7,0,Math.PI*2);ctx.stroke();
+  if(cr.t>=1.5)s.crosshair.active=false;
+}
+// draw modules
+s.modules.forEach((m,i)=>{
+  let x=m.docked?targets[i].x:m.cx,y=m.docked?targets[i].y:m.cy;
+  ctx.fillStyle=m.color;
+  if(i===3){// solar wing
+    ctx.fillStyle='#2266cc';ctx.fillRect(x-m.w/2,y-m.h/2,m.w,m.h);
+    ctx.strokeStyle='#4488ff';ctx.lineWidth=1;
+    for(let j=0;j<8;j++){let lx=x-m.w/2+j*m.w/8;ctx.beginPath();ctx.moveTo(lx,y-m.h/2);ctx.lineTo(lx,y+m.h/2);ctx.stroke();}
+  }else{
+    ctx.fillStyle=m.color;
+    let r=8;ctx.beginPath();ctx.roundRect(x-m.w/2,y-m.h/2,m.w,m.h,r);ctx.fill();
+    ctx.strokeStyle='#666';ctx.lineWidth=1;ctx.stroke();
+    // port circles
+    ctx.fillStyle='#555';ctx.beginPath();ctx.arc(x-m.w/2,y,5,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(x+m.w/2,y,5,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText(m.name,x,y+(i===3?18:m.h/2+14));
+});
+ctx.textAlign='left';
+}
+function handleLevel0Down(mx,my){
+const s=levelState;
+const targets=[{x:340+(CW-380)*0.25,y:CH/2-30},{x:340+(CW-380)*0.42,y:CH/2-30},
+  {x:340+(CW-380)*0.59,y:CH/2-30},{x:340+(CW-380)*0.76,y:CH/2-10}];
+s.modules.forEach((m,i)=>{
+  if(m.docked)return;
+  let dx=mx-m.cx,dy=my-m.cy;
+  if(Math.abs(dx)<m.w/2+10&&Math.abs(dy)<m.h/2+10)s.dragging=i;
+});
+}
+function handleLevel0Move(mx,my){
+const s=levelState;
+if(s.dragging>=0){s.modules[s.dragging].cx=mx;s.modules[s.dragging].cy=my;}
+}
+function handleLevel0Up(mx,my){
+const s=levelState;
+if(s.dragging<0)return;
+const i=s.dragging;s.dragging=-1;
+const ox=340,W=CW-ox-40,cy=CH/2;
+const targets=[{x:ox+W*0.25,y:cy-30},{x:ox+W*0.42,y:cy-30},{x:ox+W*0.59,y:cy-30},{x:ox+W*0.76,y:cy-10}];
+let t=targets[i],dx=mx-t.x,dy=my-t.y;
+if(Math.abs(dx)<60&&Math.abs(dy)<50){
+  s.modules[i].docked=true;s.docked++;
+  s.crosshair={active:true,x:mx,y:my,tx:t.x,ty:t.y,t:0};
+  if(s.docked>=1&&!s.goals[0]){s.goals[0]=true;}
+  if(s.docked>=3&&!s.goals[1]){s.goals[1]=true;}
+  if(s.docked>=4&&!s.goals[2]){s.goals[2]=true;
+    if(!completedLevels.has(0)){completedLevels.add(0);showResult(0);}}
+  renderPanel();
+}else{s.modules[i].cx=s.modules[i].sx;s.modules[i].cy=s.modules[i].sy;}
+}
+
+/* ========== LEVEL 1: 生命支持 ========== */
+function initLevel1(){
+levelState={o2Gen:50,co2Remove:50,waterRecycle:50,
+  o2:21,co2:0.04,water:95,timer:0,stable:0,running:false,
+  goals:[false,false,false],failed:false};
+}
+function updateLevel1(){
+const s=levelState,ox=360,W=CW-ox-40,cy=CH/2;
+if(s.running&&!s.failed){
+  s.timer+=0.016;
+  let o2Rate=(s.o2Gen-50)*0.01,co2Rate=(50-s.co2Remove)*0.005+0.02,waterRate=(s.waterRecycle-50)*0.008;
+  s.o2+=o2Rate*0.016*3;s.co2+=co2Rate*0.016*2;s.water+=waterRate*0.016*2;
+  s.o2=Math.max(0,Math.min(100,s.o2));s.co2=Math.max(0,Math.min(10,s.co2));s.water=Math.max(0,Math.min(100,s.water));
+  let safe=s.o2>=19&&s.o2<=23&&s.co2<=0.5&&s.water>=60;
+  if(safe)s.stable+=0.016;else s.stable=Math.max(0,s.stable-0.01);
+  if(s.o2<10||s.o2>35||s.co2>5||s.water<20){s.failed=true;renderPanel();}
+  if(s.stable>=10&&!s.goals[0]){s.goals[0]=true;renderPanel();}
+  if(s.stable>=20&&!s.goals[1]){s.goals[1]=true;renderPanel();}
+  if(s.stable>=30&&!s.goals[2]){s.goals[2]=true;
+    if(!completedLevels.has(1)){completedLevels.add(1);showResult(1);}}
+}
+// draw gauges
+const gauges=[
+  {label:'O₂ 浓度',val:s.o2,min:19,max:23,unit:'%',color:'#4ade80',fullMax:40},
+  {label:'CO₂ 浓度',val:s.co2,min:0,max:0.5,unit:'%',color:'#f59e0b',fullMax:5},
+  {label:'水储量',val:s.water,min:60,max:100,unit:'%',color:'#60a5fa',fullMax:100}
+];
+gauges.forEach((g,i)=>{
+  let gx=ox+60,gy=cy-150+i*120,gw=W-120,gh=30;
+  ctx.fillStyle='#111';ctx.fillRect(gx,gy,gw,gh);
+  let ratio=g.val/g.fullMax;
+  let inRange=g.val>=g.min&&g.val<=g.max;
+  ctx.fillStyle=inRange?g.color:'#ef4444';
+  ctx.fillRect(gx,gy,gw*Math.min(ratio,1),gh);
+  // safe zone markers
+  ctx.strokeStyle='rgba(255,255,255,0.5)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  let x1=gx+gw*(g.min/g.fullMax),x2=gx+gw*(g.max/g.fullMax);
+  ctx.beginPath();ctx.moveTo(x1,gy);ctx.lineTo(x1,gy+gh);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x2,gy);ctx.lineTo(x2,gy+gh);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#fff';ctx.font='13px sans-serif';ctx.textAlign='left';
+  ctx.fillText(`${g.label}: ${g.val.toFixed(2)}${g.unit}`,gx,gy-8);
+  ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='10px sans-serif';
+  ctx.fillText(`安全: ${g.min}-${g.max}${g.unit}`,gx+gw-120,gy-8);
+});
+// stable timer bar
+if(s.running){
+  let bx=ox+60,by=cy+230,bw=W-120,bh=16;
+  ctx.fillStyle='#111';ctx.fillRect(bx,by,bw,bh);
+  ctx.fillStyle='#4ade80';ctx.fillRect(bx,by,bw*Math.min(s.stable/30,1),bh);
+  ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`稳定时间: ${s.stable.toFixed(1)}s / 30s`,bx+bw/2,by+12);
+}
+ctx.textAlign='left';
+}
+
+/* ========== LEVEL 2: 姿态控制 ========== */
+function initLevel2(){
+levelState={pitch:Math.random()*60-30,yaw:Math.random()*60-30,roll:Math.random()*60-30,
+  vp:0,vy:0,vr:0,timer:0,aligned:false,alignTime:0,
+  goals:[false,false,false],sunAngle:time};
+}
+function updateLevel2(){
+const s=levelState,ox=360,W=CW-ox-40,cy=CH/2;
+s.timer+=0.016;
+// disturbance
+if(Math.random()<0.003){s.vp+=(Math.random()-0.5)*2;s.vy+=(Math.random()-0.5)*2;s.vr+=(Math.random()-0.5)*2;}
+s.pitch+=s.vp*0.016*10;s.yaw+=s.vy*0.016*10;s.roll+=s.vr*0.016*10;
+s.vp*=0.995;s.vy*=0.995;s.vr*=0.995;
+let aligned=Math.abs(s.pitch)<5&&Math.abs(s.yaw)<5&&Math.abs(s.roll)<5;
+if(aligned)s.alignTime+=0.016;else s.alignTime=Math.max(0,s.alignTime-0.02);
+if(s.alignTime>=3&&!s.goals[0]){s.goals[0]=true;renderPanel();}
+if(s.alignTime>=6&&!s.goals[1]){s.goals[1]=true;renderPanel();}
+if(s.alignTime>=10&&!s.goals[2]){s.goals[2]=true;
+  if(!completedLevels.has(2)){completedLevels.add(2);showResult(2);}}
+// draw station 3D-ish
+let cx=ox+W/2,ccy=cy-20;
+let pr=s.pitch*Math.PI/180,yr=s.yaw*Math.PI/180,rr=s.roll*Math.PI/180;
+ctx.save();ctx.translate(cx,ccy);ctx.rotate(rr*0.3);
+// body
+let bodyW=120*Math.cos(yr*0.5),bodyH=40*Math.cos(pr*0.5);
+ctx.fillStyle='#ddd';ctx.fillRect(-bodyW/2,-bodyH/2,bodyW,bodyH);
+ctx.strokeStyle='#999';ctx.lineWidth=1;ctx.strokeRect(-bodyW/2,-bodyH/2,bodyW,bodyH);
+// solar wings
+let wingSkew=Math.cos(yr*0.3);
+ctx.fillStyle='#2266cc';
+ctx.fillRect(-bodyW/2-60*wingSkew,-5,60*wingSkew,10);
+ctx.fillRect(bodyW/2,-5,60*wingSkew,10);
+ctx.strokeStyle='#4488ff';ctx.lineWidth=0.5;
+for(let j=0;j<5;j++){let lx=-bodyW/2-60*wingSkew+j*12*wingSkew;ctx.beginPath();ctx.moveTo(lx,-5);ctx.lineTo(lx,5);ctx.stroke();}
+for(let j=0;j<5;j++){let lx=bodyW/2+j*12*wingSkew;ctx.beginPath();ctx.moveTo(lx,-5);ctx.lineTo(lx,5);ctx.stroke();}
+ctx.restore();
+// sun indicator
+let sunX=cx+200,sunY=ccy-150;
+ctx.fillStyle='#ffdd44';ctx.beginPath();ctx.arc(sunX,sunY,20,0,Math.PI*2);ctx.fill();
+let sg=ctx.createRadialGradient(sunX,sunY,15,sunX,sunY,40);
+sg.addColorStop(0,'rgba(255,220,60,0.3)');sg.addColorStop(1,'rgba(255,220,60,0)');
+ctx.fillStyle=sg;ctx.beginPath();ctx.arc(sunX,sunY,40,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#ffa';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('☀ 太阳',sunX,sunY+35);
+// angle displays
+let infoY=cy+120;
+ctx.font='13px monospace';ctx.textAlign='left';
+[['俯仰',s.pitch,'#f66'],['偏航',s.yaw,'#6af'],['滚转',s.roll,'#6f6']].forEach(([n,v,c],i)=>{
+  ctx.fillStyle=c;ctx.fillText(`${n}: ${v.toFixed(1)}°`,ox+80+i*180,infoY);
+});
+// align bar
+let abx=ox+60,aby=cy+160,abw=W-120,abh=14;
+ctx.fillStyle='#111';ctx.fillRect(abx,aby,abw,abh);
+ctx.fillStyle=aligned?'#4ade80':'#f59e0b';ctx.fillRect(abx,aby,abw*Math.min(s.alignTime/10,1),abh);
+ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.textAlign='center';
+ctx.fillText(`对准时间: ${s.alignTime.toFixed(1)}s / 10s`,abx+abw/2,aby+11);
+ctx.textAlign='left';
+}
+function cmgAdjust(axis,dir){
+const s=levelState;
+if(axis==='pitch')s.vp+=dir*3;
+else if(axis==='yaw')s.vy+=dir*3;
+else s.vr+=dir*3;
+}
+
+/* ========== LEVEL 3: 微重力实验 ========== */
+function initLevel3(){
+levelState={experiment:-1,phase:'choose',timer:0,goals:[false,false,false],
+  waterBall:{y:0,vy:0},candleR:0,crystalSize:0,showGround:true};
+}
+function updateLevel3(){
+const s=levelState,ox=360,W=CW-ox-40,cy=CH/2;
+if(s.experiment<0){
+  // show 3 experiment cards
+  ctx.fillStyle='#fff';ctx.font='16px sans-serif';ctx.textAlign='center';
+  ctx.fillText('选择一个微重力实验',ox+W/2,cy-140);
+  const cards=[{icon:'💧',name:'水球实验',y:cy-80},{icon:'🕯️',name:'蜡烛实验',y:cy+10},{icon:'💎',name:'晶体生长',y:cy+100}];
+  cards.forEach((c,i)=>{
+    ctx.fillStyle='rgba(30,30,60,0.8)';ctx.strokeStyle='#3b82f6';ctx.lineWidth=1;
+    ctx.beginPath();ctx.roundRect(ox+W/2-100,c.y-25,200,50,8);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font='15px sans-serif';ctx.fillText(`${c.icon} ${c.name}`,ox+W/2,c.y+6);
+  });
+  ctx.textAlign='left';return;
+}
+let halfW=W/2-20,leftX=ox+20,rightX=ox+W/2+10;
+// labels
+ctx.fillStyle='#f59e0b';ctx.font='13px sans-serif';ctx.textAlign='center';
+ctx.fillText('🌍 地面 (1g)',leftX+halfW/2,cy-160);
+ctx.fillStyle='#60a5fa';ctx.fillText('🛰️ 太空 (微重力)',rightX+halfW/2,cy-160);
+ctx.textAlign='left';
+// divider
+ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(ox+W/2,cy-150);ctx.lineTo(ox+W/2,cy+150);ctx.stroke();
+
+if(s.experiment===0){// water ball
+  s.timer+=0.016;
+  // ground: water drops
+  let gx=leftX+halfW/2,gy=cy;
+  ctx.fillStyle='rgba(60,130,255,0.6)';
+  // falling drop
+  let dropY=cy-80+(s.timer*80)%160;
+  ctx.beginPath();ctx.arc(gx,dropY,6,0,Math.PI*2);ctx.fill();
+  // puddle
+  ctx.fillStyle='rgba(60,130,255,0.3)';ctx.beginPath();ctx.ellipse(gx,cy+80,40,8,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#aaa';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('水滴下落形成水洼',gx,cy+110);
+  // space: floating sphere
+  let sx=rightX+halfW/2,sy=cy;
+  let wobble=Math.sin(time*2)*3;
+  let bg=ctx.createRadialGradient(sx-5,sy-5,2,sx,sy,25+wobble);
+  bg.addColorStop(0,'rgba(100,180,255,0.9)');bg.addColorStop(0.7,'rgba(40,100,220,0.6)');bg.addColorStop(1,'rgba(20,60,180,0.2)');
+  ctx.fillStyle=bg;ctx.beginPath();ctx.arc(sx,sy+Math.sin(time)*5,25+wobble,0,Math.PI*2);ctx.fill();
+  // highlight
+  ctx.fillStyle='rgba(255,255,255,0.4)';ctx.beginPath();ctx.arc(sx-8,sy-8+Math.sin(time)*5,6,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#aaa';ctx.font='10px sans-serif';ctx.fillText('水球悬浮，表面张力成球形',sx,cy+110);
+  ctx.textAlign='left';
+  if(s.timer>3&&!s.goals[0]){s.goals[0]=true;renderPanel();}
+}else if(s.experiment===1){// candle
+  s.timer+=0.016;
+  let gx=leftX+halfW/2,gy=cy+40;
+  // ground candle - cone flame
+  ctx.fillStyle='#ddd';ctx.fillRect(gx-4,gy,8,40);
+  ctx.fillStyle='#ffa500';ctx.beginPath();ctx.moveTo(gx-12,gy);ctx.quadraticCurveTo(gx,gy-50,gx+12,gy);ctx.fill();
+  ctx.fillStyle='#ff6600';ctx.beginPath();ctx.moveTo(gx-6,gy);ctx.quadraticCurveTo(gx,gy-30,gx+6,gy);ctx.fill();
+  ctx.fillStyle='#aaa';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('锥形火焰（热空气上升对流）',gx,gy+60);
+  // space candle - sphere flame
+  let sx=rightX+halfW/2,sy=cy+40;
+  ctx.fillStyle='#ddd';ctx.fillRect(sx-4,sy,8,40);
+  let fr=15+Math.sin(time*3)*2;
+  let fg=ctx.createRadialGradient(sx,sy,0,sx,sy,fr);
+  fg.addColorStop(0,'rgba(100,150,255,0.9)');fg.addColorStop(0.5,'rgba(255,200,50,0.6)');fg.addColorStop(1,'rgba(255,100,0,0)');
+  ctx.fillStyle=fg;ctx.beginPath();ctx.arc(sx,sy,fr,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#aaa';ctx.font='10px sans-serif';ctx.fillText('球形火焰（无对流，扩散燃烧）',sx,sy+60);
+  ctx.textAlign='left';
+  if(s.timer>3&&!s.goals[1]){s.goals[1]=true;renderPanel();}
+}else if(s.experiment===2){// crystal
+  s.timer+=0.016;s.crystalSize=Math.min(s.timer*2,30);
+  let gx=leftX+halfW/2,gy=cy;
+  // ground crystal - irregular
+  ctx.strokeStyle='#a855f7';ctx.lineWidth=2;
+  for(let j=0;j<6;j++){let a=j*Math.PI/3+0.2*Math.sin(j*1.5),r=12+Math.random()*8;
+    ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx+Math.cos(a)*r,gy+Math.sin(a)*r);ctx.stroke();}
+  ctx.fillStyle='rgba(168,85,247,0.3)';ctx.beginPath();ctx.arc(gx,gy,15,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#aaa';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('不规则晶体（对流干扰）',gx,gy+50);
+  // space crystal - perfect hexagon
+  let sx=rightX+halfW/2,sy=cy,cr=s.crystalSize;
+  ctx.fillStyle='rgba(168,85,247,0.4)';ctx.strokeStyle='#c084fc';ctx.lineWidth=2;
+  ctx.beginPath();for(let j=0;j<6;j++){let a=j*Math.PI/3-Math.PI/6;
+    if(j===0)ctx.moveTo(sx+Math.cos(a)*cr,sy+Math.sin(a)*cr);
+    else ctx.lineTo(sx+Math.cos(a)*cr,sy+Math.sin(a)*cr);}
+  ctx.closePath();ctx.fill();ctx.stroke();
+  // inner structure
+  ctx.strokeStyle='rgba(192,132,252,0.5)';ctx.lineWidth=1;
+  for(let j=0;j<6;j++){let a=j*Math.PI/3-Math.PI/6;ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx+Math.cos(a)*cr,sy+Math.sin(a)*cr);ctx.stroke();}
+  ctx.fillStyle='#aaa';ctx.font='10px sans-serif';ctx.fillText('完美晶体（无对流，均匀生长）',sx,sy+50);
+  ctx.textAlign='left';
+  if(s.timer>3&&!s.goals[2]){s.goals[2]=true;renderPanel();}
+}
+if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(3)){completedLevels.add(3);showResult(3);}
+}
+function chooseExperiment(n){levelState.experiment=n;levelState.timer=0;renderPanel();}
+function handleLevel3Click(mx,my){
+const s=levelState,ox=360,W=CW-ox-40,cy=CH/2;
+if(s.experiment>=0)return;
+const cards=[{y:cy-80},{y:cy+10},{y:cy+100}];
+cards.forEach((c,i)=>{if(Math.abs(mx-(ox+W/2))<100&&Math.abs(my-c.y)<25)chooseExperiment(i);});
+}
+
+/* ========== LEVEL 4: 辐射防护 ========== */
+function initLevel4(){
+levelState={material:'aluminum',thickness:5,particles:[],dose:0,maxDose:100,
+  penetration:0,timer:0,eventActive:false,goals:[false,false,false],shieldEff:0};
+}
+function startRadEvent(){
+const s=levelState;s.eventActive=true;s.timer=0;s.dose=0;s.particles=[];
+renderPanel();
+}
+function updateLevel4(){
+const s=levelState,ox=360,W=CW-ox-40,cy=CH/2;
+let shieldX=ox+W*0.55,shieldW=s.thickness*4+10;
+// material effectiveness
+let eff={aluminum:0.4,polyethylene:0.7,water:0.55}[s.material];
+s.shieldEff=eff*Math.min(s.thickness/20,1);
+if(s.eventActive){
+  s.timer+=0.016;
+  // spawn particles
+  if(Math.random()<0.3){
+    s.particles.push({x:ox+40,y:cy-150+Math.random()*300,vx:3+Math.random()*2,
+      alive:true,blocked:false});
+  }
+  // update particles
+  s.particles.forEach(p=>{
+    if(!p.alive)return;
+    p.x+=p.vx;
+    if(!p.blocked&&p.x>=shieldX-shieldW/2&&p.x<=shieldX+shieldW/2){
+      if(Math.random()<s.shieldEff){p.alive=false;p.blocked=true;}
+    }
+    if(p.x>shieldX+shieldW/2+80&&p.alive){s.dose+=0.15;p.alive=false;}
+    if(p.x>CW)p.alive=false;
+  });
+  s.particles=s.particles.filter(p=>p.alive||p.x<CW);
+  s.penetration=1-s.shieldEff;
+  if(s.timer>5&&s.dose<30&&!s.goals[0]){s.goals[0]=true;renderPanel();}
+  if(s.shieldEff>0.5&&!s.goals[1]){s.goals[1]=true;renderPanel();}
+  if(s.timer>15&&s.dose<20&&!s.goals[2]){s.goals[2]=true;
+    if(!completedLevels.has(4)){completedLevels.add(4);showResult(4);}}
+}
+// draw sun (particle source)
+ctx.fillStyle='#ffdd44';ctx.beginPath();ctx.arc(ox+30,cy,25,0,Math.PI*2);ctx.fill();
+// draw shield
+let sc={aluminum:'#888',polyethylene:'#66aa66',water:'#4488cc'}[s.material];
+ctx.fillStyle=sc;ctx.globalAlpha=0.7;
+ctx.fillRect(shieldX-shieldW/2,cy-160,shieldW,320);
+ctx.globalAlpha=1;ctx.strokeStyle=sc;ctx.lineWidth=2;ctx.strokeRect(shieldX-shieldW/2,cy-160,shieldW,320);
+ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.textAlign='center';
+ctx.fillText(s.material==='aluminum'?'铝':s.material==='polyethylene'?'聚乙烯':'水',shieldX,cy+180);
+// draw astronaut
+let astX=shieldX+100,astY=cy;
+ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(astX,astY-20,12,0,Math.PI*2);ctx.fill();
+ctx.fillRect(astX-10,astY-8,20,30);ctx.fillRect(astX-14,astY-5,5,20);ctx.fillRect(astX+9,astY-5,5,20);
+ctx.fillRect(astX-8,astY+22,7,15);ctx.fillRect(astX+1,astY+22,7,15);
+// dose meter
+let dmx=astX+30,dmy=astY-40,dmh=80;
+ctx.fillStyle='#111';ctx.fillRect(dmx,dmy,12,dmh);
+let doseRatio=Math.min(s.dose/s.maxDose,1);
+ctx.fillStyle=doseRatio>0.7?'#ef4444':doseRatio>0.4?'#f59e0b':'#4ade80';
+ctx.fillRect(dmx,dmy+dmh*(1-doseRatio),12,dmh*doseRatio);
+ctx.fillStyle='#aaa';ctx.font='9px sans-serif';ctx.fillText('剂量',dmx+6,dmy+dmh+12);
+// draw particles
+s.particles.forEach(p=>{
+  if(!p.alive&&p.blocked){
+    ctx.fillStyle='rgba(255,200,0,0.3)';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();
+  }else if(p.alive){
+    ctx.fillStyle='#ffcc00';ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,200,0,0.2)';ctx.beginPath();ctx.arc(p.x,p.y,6,0,Math.PI*2);ctx.fill();
+  }
+});
+// penetration display
+ctx.fillStyle='#fff';ctx.font='12px sans-serif';ctx.textAlign='left';
+ctx.fillText(`穿透率: ${(s.penetration*100).toFixed(0)}%`,ox+60,cy+200);
+ctx.fillText(`累计剂量: ${s.dose.toFixed(1)} mSv`,ox+250,cy+200);
+ctx.textAlign='left';
+}
+
+/* ========== LEVEL 5: 太空行走 ========== */
+function initLevel5(){
+const ox=360,W=CW-ox-40,cy=CH/2;
+let damages=[];
+for(let i=0;i<3;i++){damages.push({x:ox+W*0.3+i*W*0.2,y:cy-80+Math.random()*60-30,fixed:false});}
+levelState={astX:ox+W*0.8,astY:cy+60,airlock:{x:ox+W*0.85,y:cy+60},
+  o2:100,fuel:100,damages:damages,repaired:0,returning:false,
+  goals:[false,false,false],done:false,failed:false};
+}
+function updateLevel5(){
+const s=levelState,ox=360,W=CW-ox-40,cy=CH/2;
+if(s.done||s.failed){}
+else{
+  s.o2-=0.03;
+  // move toward mouse
+  let dx=mouseX-s.astX,dy=mouseY-s.astY,dist=Math.sqrt(dx*dx+dy*dy);
+  if(dist>5&&mouseDown){
+    let spd=2;s.astX+=dx/dist*spd;s.astY+=dy/dist*spd;
+    s.fuel-=0.05;
+  }
+  if(s.o2<=0||s.fuel<=0){s.failed=true;renderPanel();}
+  // check repair
+  s.damages.forEach(d=>{
+    if(!d.fixed&&Math.abs(s.astX-d.x)<25&&Math.abs(s.astY-d.y)<25&&mouseDown){
+      d.fixProgress=(d.fixProgress||0)+0.02;
+      if(d.fixProgress>=1){d.fixed=true;s.repaired++;}
+    }
+  });
+  if(s.repaired>=1&&!s.goals[0]){s.goals[0]=true;renderPanel();}
+  if(s.repaired>=3&&!s.goals[1]){s.goals[1]=true;renderPanel();}
+  // check return to airlock
+  if(s.repaired>=3&&Math.abs(s.astX-s.airlock.x)<30&&Math.abs(s.astY-s.airlock.y)<30){
+    s.goals[2]=true;s.done=true;
+    if(!completedLevels.has(5)){completedLevels.add(5);showResult(5);}
+  }
+}
+// draw station body
+ctx.fillStyle='#ccc';ctx.fillRect(ox+W*0.15,cy-50,W*0.6,40);
+ctx.strokeStyle='#999';ctx.lineWidth=1;ctx.strokeRect(ox+W*0.15,cy-50,W*0.6,40);
+// solar wings with damage marks
+ctx.fillStyle='#2266cc';
+ctx.fillRect(ox+W*0.15-80,cy-45,80,30);ctx.fillRect(ox+W*0.75,cy-45,80,30);
+// damage points
+s.damages.forEach(d=>{
+  if(d.fixed){
+    ctx.fillStyle='#4ade80';ctx.beginPath();ctx.arc(d.x,d.y,8,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('✓',d.x,d.y+4);
+  }else{
+    ctx.strokeStyle='#ef4444';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(d.x-8,d.y-8);ctx.lineTo(d.x+8,d.y+8);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(d.x+8,d.y-8);ctx.lineTo(d.x-8,d.y+8);ctx.stroke();
+    if(d.fixProgress>0){
+      ctx.strokeStyle='#4ade80';ctx.lineWidth=3;ctx.beginPath();
+      ctx.arc(d.x,d.y,12,0,Math.PI*2*d.fixProgress);ctx.stroke();
+    }
+  }
+});
+// airlock
+ctx.fillStyle='rgba(96,165,250,0.3)';ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;
+ctx.beginPath();ctx.arc(s.airlock.x,s.airlock.y,20,0,Math.PI*2);ctx.fill();ctx.stroke();
+ctx.fillStyle='#60a5fa';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText('气闸',s.airlock.x,s.airlock.y+30);
+// astronaut
+ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.astX,s.astY-10,8,0,Math.PI*2);ctx.fill();
+ctx.fillRect(s.astX-6,s.astY-2,12,16);ctx.fillRect(s.astX-10,s.astY,4,12);ctx.fillRect(s.astX+6,s.astY,4,12);
+ctx.fillRect(s.astX-5,s.astY+14,4,10);ctx.fillRect(s.astX+1,s.astY+14,4,10);
+// tether line
+ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+ctx.beginPath();ctx.moveTo(s.astX,s.astY);ctx.lineTo(s.airlock.x,s.airlock.y);ctx.stroke();
+ctx.setLineDash([]);
+// O2 and fuel bars
+let barY=cy+140;
+ctx.fillStyle='#111';ctx.fillRect(ox+60,barY,200,12);ctx.fillRect(ox+60,barY+20,200,12);
+ctx.fillStyle='#4ade80';ctx.fillRect(ox+60,barY,200*s.o2/100,12);
+ctx.fillStyle='#60a5fa';ctx.fillRect(ox+60,barY+20,200*s.fuel/100,12);
+ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.textAlign='left';
+ctx.fillText(`O₂: ${s.o2.toFixed(0)}%`,ox+270,barY+10);
+ctx.fillText(`推进剂: ${s.fuel.toFixed(0)}%`,ox+270,barY+30);
+ctx.textAlign='left';
+}
+
+/* ========== LEVEL 6: 再补给 ========== */
+function initLevel6(){
+const ox=360,W=CW-ox-40,cy=CH/2;
+let earthCx=ox+W/2,earthCy=cy;
+levelState={earthCx:earthCx,earthCy:earthCy,
+  stationOrbitR:180,stationAngle:0,
+  shipLaunched:false,shipAngle:0,shipOrbitR:100,shipPhase:'ground',
+  transferA:0,transferE:0,transferAngle:0,
+  launchWindow:0,windowAngle:0,optimalWindow:false,
+  dockDist:999,docked:false,unloading:false,unloadT:0,
+  goals:[false,false,false],timer:0};
+}
+function launchShip(){
+const s=levelState;
+if(s.shipLaunched)return;
+s.shipLaunched=true;s.shipPhase='transfer';
+s.shipAngle=s.launchWindow;
+// Hohmann transfer orbit parameters
+let r1=100,r2=s.stationOrbitR;
+s.transferA=(r1+r2)/2;
+s.transferE=(r2-r1)/(r2+r1);
+s.transferAngle=s.launchWindow;
+// check if window is good (station should be ~180° ahead)
+let stAngle=s.stationAngle%(Math.PI*2);
+let diff=stAngle-s.launchWindow;
+while(diff<0)diff+=Math.PI*2;
+s.optimalWindow=Math.abs(diff-Math.PI)<0.5;
+if(!s.goals[0]){s.goals[0]=true;renderPanel();}
+}
+function updateLevel6(){
+const s=levelState,ox=360,W=CW-ox-40,cy=CH/2;
+let ecx=s.earthCx,ecy=s.earthCy;
+s.timer+=0.016;
+// station orbits
+s.stationAngle+=0.008;
+let stX=ecx+Math.cos(s.stationAngle)*s.stationOrbitR;
+let stY=ecy+Math.sin(s.stationAngle)*s.stationOrbitR;
+// draw earth
+let eg=ctx.createRadialGradient(ecx,ecy,20,ecx,ecy,50);
+eg.addColorStop(0,'#2266aa');eg.addColorStop(1,'#113366');
+ctx.fillStyle=eg;ctx.beginPath();ctx.arc(ecx,ecy,45,0,Math.PI*2);ctx.fill();
+ctx.strokeStyle='rgba(60,140,255,0.3)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(ecx,ecy,46,0,Math.PI*2);ctx.stroke();
+ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('地球',ecx,ecy+60);
+// draw orbits
+ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=1;
+ctx.beginPath();ctx.arc(ecx,ecy,100,0,Math.PI*2);ctx.stroke();
+ctx.beginPath();ctx.arc(ecx,ecy,s.stationOrbitR,0,Math.PI*2);ctx.stroke();
+// draw station
+ctx.fillStyle='#ddd';ctx.fillRect(stX-15,stY-5,30,10);
+ctx.fillStyle='#2266cc';ctx.fillRect(stX-25,stY-3,10,6);ctx.fillRect(stX+15,stY-3,10,6);
+// launch window indicator
+if(!s.shipLaunched){
+  s.launchWindow+=0.005;
+  let lwX=ecx+Math.cos(s.launchWindow)*100;
+  let lwY=ecy+Math.sin(s.launchWindow)*100;
+  ctx.fillStyle='#f59e0b';ctx.beginPath();
+  ctx.moveTo(lwX+8,lwY);ctx.lineTo(lwX-4,lwY-5);ctx.lineTo(lwX-4,lwY+5);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#f59e0b';ctx.font='10px sans-serif';ctx.fillText('🚀 发射窗口',lwX,lwY+18);
+  // show angle diff
+  let diff=s.stationAngle-s.launchWindow;while(diff<0)diff+=Math.PI*2;
+  ctx.fillStyle='#aaa';ctx.fillText(`角度差: ${(diff*180/Math.PI).toFixed(0)}°`,ecx,ecy+80);
+}
+// ship
+if(s.shipPhase==='transfer'){
+  s.transferAngle+=0.012;
+  let trueAnomaly=s.transferAngle-s.launchWindow;
+  let r=s.transferA*(1-s.transferE*s.transferE)/(1+s.transferE*Math.cos(trueAnomaly));
+  r=Math.max(50,Math.min(r,s.stationOrbitR+20));
+  let shipX=ecx+Math.cos(s.transferAngle)*r;
+  let shipY=ecy+Math.sin(s.transferAngle)*r;
+  // draw transfer orbit (ellipse hint)
+  ctx.strokeStyle='rgba(245,158,11,0.2)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();
+  for(let a=0;a<Math.PI*2;a+=0.05){
+    let tr=s.transferA*(1-s.transferE*s.transferE)/(1+s.transferE*Math.cos(a));
+    tr=Math.max(50,Math.min(tr,s.stationOrbitR+20));
+    let tx=ecx+Math.cos(a+s.launchWindow)*tr,ty=ecy+Math.sin(a+s.launchWindow)*tr;
+    if(a===0)ctx.moveTo(tx,ty);else ctx.lineTo(tx,ty);
+  }ctx.stroke();ctx.setLineDash([]);
+  // draw ship triangle
+  ctx.fillStyle='#f59e0b';ctx.beginPath();
+  let sa=s.transferAngle;
+  ctx.moveTo(shipX+Math.cos(sa)*8,shipY+Math.sin(sa)*8);
+  ctx.lineTo(shipX+Math.cos(sa+2.5)*5,shipY+Math.sin(sa+2.5)*5);
+  ctx.lineTo(shipX+Math.cos(sa-2.5)*5,shipY+Math.sin(sa-2.5)*5);
+  ctx.closePath();ctx.fill();
+  // check dock
+  let ddx=shipX-stX,ddy=shipY-stY;
+  s.dockDist=Math.sqrt(ddx*ddx+ddy*ddy);
+  if(s.dockDist<20&&!s.docked){
+    s.docked=true;s.shipPhase='docked';
+    if(s.optimalWindow&&!s.goals[1]){s.goals[1]=true;}
+    s.unloading=true;s.unloadT=0;
+    renderPanel();
+  }
+  if(trueAnomaly>Math.PI*2&&!s.docked){
+    // missed - allow retry
+    s.shipLaunched=false;s.shipPhase='ground';renderPanel();
+  }
+}
+if(s.shipPhase==='docked'){
+  // draw ship attached to station
+  ctx.fillStyle='#f59e0b';ctx.fillRect(stX-5,stY+8,10,8);
+  if(s.unloading){
+    s.unloadT+=0.016;
+    let prog=Math.min(s.unloadT/3,1);
+    ctx.fillStyle='#111';ctx.fillRect(stX-40,stY+25,80,8);
+    ctx.fillStyle='#4ade80';ctx.fillRect(stX-40,stY+25,80*prog,8);
+    ctx.fillStyle='#fff';ctx.font='9px sans-serif';ctx.fillText(`卸载补给: ${(prog*100).toFixed(0)}%`,stX,stY+45);
+    if(prog>=1&&!s.goals[2]){s.goals[2]=true;
+      if(!completedLevels.has(6)){completedLevels.add(6);showResult(6);}}
+  }
+}
+ctx.textAlign='left';
+}
+
+/* ========== GOAL HELPER ========== */
+function goalHTML(names,goals){
+let h='';names.forEach((n,i)=>{
+h+=`<div class="goal-row"><span class="g-icon">${goals[i]?'✅':'⬜'}</span><span class="g-text${goals[i]?' done':''}">${n}</span></div>`;
+});return h;
+}
+
+/* ========== RENDER PANEL ========== */
+function renderPanel(){
+const L=levels[currentLevel],s=levelState;
+let h='<div style="margin-bottom:8px">';
+levels.forEach((l,i)=>{
+let cls='level-btn';if(i===currentLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
+h+=`<span class="${cls}" onclick="initLevel(${i})">${l.icon}${i+1}</span>`;
+});
+h+='</div>';
+h+=`<div class="m-title">${L.icon} ${L.name}</div><div class="m-sub">${L.sub}</div>`;
+if(currentLevel===0){
+h+=`<div class="concept-box">将模块拖拽到对接口，完成空间站组装。交会对接需要精确的轨道匹配。</div>`;
+h+=goalHTML(['对接第1个模块','对接3个模块','完成全部4个模块对接'],s.goals||[]);
+h+=`<div class="hint-box">💡 拖拽下方模块到虚线框位置完成对接</div>`;
+}else if(currentLevel===1){
+h+=`<div class="concept-box">调节O₂发生器、CO₂清除器和水回收系统，维持安全环境30秒。</div>`;
+h+=`<div class="slider-wrap"><label>O₂发生器: <span class="sv">${s.o2Gen}%</span></label><input type="range" min="0" max="100" value="${s.o2Gen}" oninput="levelState.o2Gen=+this.value;renderPanel()"></div>`;
+h+=`<div class="slider-wrap"><label>CO₂清除器: <span class="sv">${s.co2Remove}%</span></label><input type="range" min="0" max="100" value="${s.co2Remove}" oninput="levelState.co2Remove=+this.value;renderPanel()"></div>`;
+h+=`<div class="slider-wrap"><label>水回收: <span class="sv">${s.waterRecycle}%</span></label><input type="range" min="0" max="100" value="${s.waterRecycle}" oninput="levelState.waterRecycle=+this.value;renderPanel()"></div>`;
+if(!s.running)h+=`<button class="act-btn" onclick="levelState.running=true;renderPanel()">▶️ 启动生命支持系统</button>`;
+if(s.failed)h+=`<div class="hint-box" style="border-color:#ef4444;color:#f87171">⚠️ 系统失败！参数超出安全范围</div><button class="act-btn" onclick="initLevel(1)">🔄 重试</button>`;
+h+=goalHTML(['维持安全环境10秒','维持安全环境20秒','维持安全环境30秒'],s.goals||[]);
+}else if(currentLevel===2){
+h+=`<div class="concept-box">使用CMG（控制力矩陀螺）调整空间站姿态，保持三轴对准10秒。</div>`;
+h+=`<button class="act-btn" onclick="cmgAdjust('pitch',-1)">俯仰 −</button><button class="act-btn" onclick="cmgAdjust('pitch',1)">俯仰 +</button>`;
+h+=`<button class="act-btn" onclick="cmgAdjust('yaw',-1)">偏航 −</button><button class="act-btn" onclick="cmgAdjust('yaw',1)">偏航 +</button>`;
+h+=`<button class="act-btn" onclick="cmgAdjust('roll',-1)">滚转 −</button><button class="act-btn" onclick="cmgAdjust('roll',1)">滚转 +</button>`;
+h+=goalHTML(['对准保持3秒','对准保持6秒','对准保持10秒'],s.goals||[]);
+h+=`<div class="hint-box">💡 三轴角度都在±5°以内算对准。注意随机扰动！</div>`;
+}else if(currentLevel===3){
+h+=`<div class="concept-box">选择微重力实验，观察太空中独特的物理现象。</div>`;
+if(s.experiment<0){h+=`<div class="hint-box">点击画面中的实验卡片选择实验</div>`;}
+else{h+=`<div style="font-size:12px;color:#60a5fa;margin:4px 0">当前实验: ${['流体行为','火焰形态','晶体生长'][s.experiment]}</div>`;}
+h+=goalHTML(['观察流体行为','观察火焰形态','观察晶体生长'],s.goals||[]);
+}else if(currentLevel===4){
+h+=`<div class="concept-box">选择防护材料和厚度，抵御太阳粒子事件的辐射。</div>`;
+h+=`<div class="slider-wrap"><label>防护厚度: <span class="sv">${s.thickness} cm</span></label><input type="range" min="1" max="30" value="${s.thickness}" oninput="levelState.thickness=+this.value;renderPanel()"></div>`;
+h+=`<button class="act-btn${s.material==='aluminum'?' green':''}" onclick="levelState.material='aluminum';renderPanel()">铝</button>`;
+h+=`<button class="act-btn${s.material==='polyethylene'?' green':''}" onclick="levelState.material='polyethylene';renderPanel()">聚乙烯</button>`;
+h+=`<button class="act-btn${s.material==='water'?' green':''}" onclick="levelState.material='water';renderPanel()">水</button>`;
+if(!s.eventActive)h+=`<button class="act-btn" onclick="startRadEvent()">☢️ 触发太阳粒子事件</button>`;
+h+=goalHTML(['存活5秒且剂量<30','防护效率>50%','存活15秒且剂量<20'],s.goals||[]);
+}else if(currentLevel===5){
+h+=`<div class="concept-box">控制宇航员进行舱外活动，修复空间站外部设备。注意氧气和燃料！</div>`;
+if(s.failed)h+=`<div class="hint-box" style="border-color:#ef4444;color:#f87171">⚠️ 氧气或燃料耗尽！</div><button class="act-btn" onclick="initLevel(5)">🔄 重试</button>`;
+h+=goalHTML(['修复1个设备','修复3个设备','完成全部修复并返回气闸'],s.goals||[]);
+h+=`<div class="hint-box">💡 移动鼠标靠近红色损坏点并按住修复，修完后回到气闸舱</div>`;
+}else if(currentLevel===6){
+h+=`<div class="concept-box">计算霍曼转移轨道，发射补给飞船对接空间站。</div>`;
+if(!s.shipLaunched)h+=`<button class="act-btn" onclick="launchShip()">🚀 发射补给飞船</button>`;
+h+=goalHTML(['发射补给飞船','在最佳窗口发射','成功对接并卸载补给'],s.goals||[]);
+h+=`<div class="hint-box">💡 霍曼转移是最省燃料的轨道转移方式</div>`;
+}
+panelEl.innerHTML=h;
+bbLeft.textContent=`关卡 ${currentLevel+1}/7: ${L.name}`;
+bbRight.textContent=`已完成: ${completedLevels.size}/7`;
+}
+
+/* ========== RESULT ========== */
+const learnTexts=[
+'交会对接是空间站建设的基础技术。两个航天器必须在轨道上精确匹配速度和位置，误差不能超过几厘米。国际空间站由16个加压舱段组成，历时13年完成组装。',
+'ECLSS（环境控制与生命支持系统）是空间站的"肺"。它通过电解水产生O₂，用分子筛吸附CO₂，水回收率达93%。一个小参数偏差就可能危及宇航员生命。',
+'空间站使用CMG（控制力矩陀螺）进行姿态控制，利用角动量守恒原理。改变陀螺转速产生力矩，无需消耗推进剂。ISS有4个CMG，每个重300kg。',
+'微重力环境下，流体形成完美球形（表面张力主导），火焰呈球形（无对流），晶体生长更均匀（无沉降）。这些独特条件使太空成为理想的科学实验室。',
+'太阳粒子事件（SPE）释放大量高能质子，对宇航员构成辐射威胁。聚乙烯因富含氢原子，是最有效的辐射防护材料之一，效果优于铝。',
+'舱外活动（EVA）是最危险的太空任务之一。宇航员穿着EMU航天服，自带氧气和推进系统。每次EVA需要数小时准备，包括预呼吸纯氧排氮防止减压病。',
+'霍曼转移轨道是两个圆轨道之间最省燃料的转移方式。补给飞船从低轨道出发，经过半个椭圆轨道到达空间站轨道，全程约需2天。'
+];
+
+function showResult(n){
+const rb=document.getElementById('resultBox');
+let isLast=n===levels.length-1;
+rb.innerHTML=`<div class="rb-icon">${levels[n].icon}</div><div class="rb-title">${levels[n].name} — 通关！</div><div class="rb-learn">${learnTexts[n]}</div>`+
+(isLast?`<button class="btn-next" onclick="closeResult()">🎉 全部通关！</button>`
+:`<button class="btn-next" onclick="nextLevel()">下一关 →</button>`)+
+`<button class="btn-retry" onclick="retryLevel()">重玩</button>`;
+document.getElementById('resultModal').classList.remove('hidden');
+}
+function closeResult(){document.getElementById('resultModal').classList.add('hidden');}
+function nextLevel(){closeResult();initLevel(currentLevel+1);renderPanel();}
+function retryLevel(){closeResult();initLevel(currentLevel);renderPanel();}
+
+/* ========== MOUSE / TOUCH ========== */
+let mouseX=0,mouseY=0,mouseDown=false;
+canvas.addEventListener('mousedown',e=>{mouseDown=true;mouseX=e.clientX;mouseY=e.clientY;
+if(currentLevel===0)handleLevel0Down(e.clientX,e.clientY);
+if(currentLevel===3)handleLevel3Click(e.clientX,e.clientY);
+if(currentLevel===5)handleLevel5Click(e.clientX,e.clientY);
+});
+canvas.addEventListener('mousemove',e=>{mouseX=e.clientX;mouseY=e.clientY;
+if(currentLevel===0)handleLevel0Move(e.clientX,e.clientY);
+});
+canvas.addEventListener('mouseup',e=>{mouseDown=false;
+if(currentLevel===0)handleLevel0Up(e.clientX,e.clientY);
+});
+canvas.addEventListener('touchstart',e=>{e.preventDefault();let t=e.touches[0];mouseDown=true;mouseX=t.clientX;mouseY=t.clientY;
+if(currentLevel===0)handleLevel0Down(t.clientX,t.clientY);
+if(currentLevel===3)handleLevel3Click(t.clientX,t.clientY);
+if(currentLevel===5)handleLevel5Click(t.clientX,t.clientY);
+},{passive:false});
+canvas.addEventListener('touchmove',e=>{e.preventDefault();let t=e.touches[0];mouseX=t.clientX;mouseY=t.clientY;
+if(currentLevel===0)handleLevel0Move(t.clientX,t.clientY);
+},{passive:false});
+canvas.addEventListener('touchend',e=>{mouseDown=false;
+if(currentLevel===0)handleLevel0Up(mouseX,mouseY);
+},{passive:false});
+
+function handleLevel5Click(mx,my){
+/* repair is handled by proximity + mouseDown in updateLevel5 */
+}
+
+/* ========== ANIMATION LOOP ========== */
+function animate(){
+animId=requestAnimationFrame(animate);
+time+=0.016;drawBg();
+if(gameState==='play'){
+if(currentLevel===0)updateLevel0();
+else if(currentLevel===1)updateLevel1();
+else if(currentLevel===2)updateLevel2();
+else if(currentLevel===3)updateLevel3();
+else if(currentLevel===4)updateLevel4();
+else if(currentLevel===5)updateLevel5();
+else if(currentLevel===6)updateLevel6();
+}
+}
+</script>
+</body>
+</html>

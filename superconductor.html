@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>超导体实验室</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#60a5fa}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}
+.g-text{color:#c0c0e0}
+.g-text.done{color:#4ade80;text-decoration:line-through}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:#2a2a6a}
+.act-btn:disabled{opacity:0.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}
+.sv{color:#60a5fa;font-weight:bold}
+.m-title{font-size:16px;font-weight:700;margin:8px 0 4px;color:#eee}
+.m-sub{font-size:12px;color:#888;margin-bottom:8px}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:rgba(10,10,26,.95);border-top:1px solid #1a1a3a;z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}
+#bottom-bar .bb-right{text-align:right}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🧊 <span class="gold">超导体</span>实验室</h1>
+  <div class="sub">7 个关卡，探索零电阻的量子世界</div>
+  <button class="start-btn" onclick="startGame()">开始实验</button>
+  <div class="features">
+    <div class="feat"><div class="fi">📉</div>超导转变</div>
+    <div class="feat"><div class="fi">🧲</div>迈斯纳效应</div>
+    <div class="feat"><div class="fi">⚛️</div>库珀对</div>
+    <div class="feat"><div class="fi">🔄</div>磁通量子</div>
+    <div class="feat"><div class="fi">🚇</div>约瑟夫森结</div>
+    <div class="feat"><div class="fi">🧪</div>高温超导</div>
+    <div class="feat"><div class="fi">🚄</div>磁悬浮</div>
+  </div>
+</div>
+</div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,animId,lastTime=0;
+let gameState='start',currentLevel=0;
+let levelState={},stars=[],particles=[];
+const completedLevels=new Set();
+
+const levels=[
+  {title:'电阻与温度',sub:'超导转变',concept:'普通导体的电阻随温度降低而减小，但超导体在临界温度Tc以下电阻突然降为零——这就是超导转变。1911年昂内斯发现汞在4.2K时电阻消失。',goals:['将温度降到临界温度Tc以下','观察电阻突然降为零'],learn:'超导转变是一种量子相变。在Tc以上，电子被晶格振动（声子）散射产生电阻；在Tc以下，电子配对形成库珀对，以零电阻的超流态运动。这个发现让昂内斯获得了1913年诺贝尔物理学奖。'},
+  {title:'迈斯纳效应',sub:'完全抗磁性',concept:'超导体不仅零电阻，还能完全排斥磁场——这就是迈斯纳效应。降温到Tc以下时，超导体内部磁场被完全排出，磁力线绕开超导体，磁铁因此悬浮。',goals:['降温到Tc以下进入超导态','观察磁力线被排斥','磁铁悬浮起来'],learn:'迈斯纳效应证明超导不仅仅是"零电阻"。完美导体只是不产生新的电阻，但超导体会主动排出已有的磁场。这是因为超导体表面产生感应电流，其磁场恰好抵消外部磁场。这个效应是磁悬浮列车的物理基础。'},
+  {title:'库珀对',sub:'BCS理论',concept:'超导的微观机制：一个电子经过晶格时，正离子被吸引产生局部正电荷密集区，吸引第二个电子——两个电子通过声子交换配对，形成库珀对。库珀对是玻色子，可以无阻碍地流动。',goals:['观察晶格变形','两个电子成功配对','库珀对无阻碍运动'],learn:'BCS理论（巴丁-库珀-施里弗，1957年）解释了超导的微观机制。关键洞察：虽然电子之间有库仑排斥，但通过晶格振动（声子）的间接作用，两个动量相反的电子可以形成束缚态。库珀对的能隙阻止了散射，实现零电阻。三位科学家因此获得1972年诺贝尔奖。'},
+  {title:'磁通量子化',sub:'量子化的磁通',concept:'超导环中的磁通量不能连续变化，只能是磁通量子Φ₀=h/2e的整数倍。这是因为库珀对波函数的单值性要求——绕环一圈相位必须变化2π的整数倍。',goals:['增加外磁场观察磁通','发现磁通只能阶梯跳变','理解磁通量子Φ₀=h/2e'],learn:'磁通量子化是超导体量子本质的直接证据。Φ₀=h/2e≈2.07×10⁻¹⁵ Wb，分母中的2e（而非e）证实了载流子是库珀对（电荷2e）。这个精确的量子化被用于定义电压标准（约瑟夫森电压标准），精度达10⁻¹⁰。'},
+  {title:'约瑟夫森结',sub:'量子隧穿',concept:'两块超导体之间夹一层极薄的绝缘层（~1nm），库珀对可以隧穿过去。无电压时有直流超电流（直流约瑟夫森效应）；加电压时电流以频率f=2eV/h振荡（交流约瑟夫森效应）。',goals:['观察库珀对隧穿绝缘层','调节电压观察电流振荡','理解交流约瑟夫森效应'],learn:'约瑟夫森效应（1962年预言，1963年实验证实）是宏观量子现象的典范。它的应用极其广泛：SQUID（超导量子干涉仪）可探测10⁻¹⁵特斯拉的微弱磁场，用于脑磁图和地质勘探；约瑟夫森结也是超导量子计算机的基本单元（超导量子比特）。'},
+  {title:'高温超导',sub:'材料探索',concept:'传统超导体Tc极低（汞4.2K，铌9.3K）。1986年发现铜氧化物高温超导体，YBCO的Tc达93K（液氮温度77K以上）。寻找室温超导是物理学的圣杯。',goals:['比较不同材料的Tc','用YBCO实现液氮温区超导','探索压力对Tc的影响'],learn:'高温超导的发现（贝德诺兹和缪勒，1986年，次年即获诺贝尔奖）震惊了物理学界。YBCO（钇钡铜氧）在93K超导，首次突破液氮温度（77K），大幅降低了超导应用成本。但高温超导的机制至今未完全理解——它不遵循BCS理论，可能涉及自旋涨落。2023年的"室温超导"LK-99最终被证伪，真正的室温超导仍是梦想。'},
+  {title:'磁悬浮列车',sub:'工程应用',concept:'超导磁悬浮利用迈斯纳效应或电动悬浮，让列车无接触运行。关键参数：线圈间距影响磁场均匀性，载重决定所需悬浮力，速度影响稳定性。日本L0系列时速603km/h。',goals:['调节参数使列车稳定悬浮','达到目标速度300km/h','保持悬浮高度稳定'],learn:'超导磁悬浮列车是超导技术最壮观的应用。日本的SCMaglev使用超导线圈产生强磁场，列车悬浮在轨道上方10cm，时速可达603km/h。上海磁浮列车（常导型）时速430km/h。超导磁悬浮的优势：无摩擦、无噪音、高速稳定。挑战：超导线圈需要低温冷却，成本高昂。'}
+];
+
+function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
+function initStars(){stars=[];for(let i=0;i<80;i++)stars.push({x:Math.random()*CW,y:Math.random()*CH,r:Math.random()*1.5+.3,tw:Math.random()*Math.PI*2,sp:Math.random()*.02+.005})}
+function drawStars(){for(let s of stars){const a=.4+.6*Math.abs(Math.sin(s.tw+time*s.sp));ctx.fillStyle=`rgba(255,255,255,${a})`;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill()}}
+function addP(x,y,vx,vy,col,life,sz){particles.push({x,y,vx,vy,col,life,ml:life,sz:sz||3})}
+function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1)}}
+function drawParticles(){for(let p of particles){const a=Math.max(0,p.life/p.ml);ctx.globalAlpha=a;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.sz*a,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+window.addEventListener('resize',resize);
+resize();
+
+function startGame(){
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('panel').style.display='block';
+  document.getElementById('bottom-bar').style.display='flex';
+  gameState='play';currentLevel=0;initLevel(0);renderPanel();
+}
+
+function initLevel(idx){
+  currentLevel=idx;particles=[];
+  const cx=CW/2+160,cy=CH/2;
+  if(idx===0){
+    levelState={temp:300,Tc:92,resistance:100,curvePoints:[],goalDone:[false,false]};
+  } else if(idx===1){
+    levelState={temp:300,Tc:92,magnetY:cy-120,magnetTargetY:cy-120,fieldLines:[],superconducting:false,goalDone:[false,false,false]};
+    // init field lines
+    const S=levelState;
+    for(let i=0;i<12;i++){S.fieldLines.push({baseX:cx+(i-5.5)*30,pts:[]})}
+  } else if(idx===2){
+    levelState={phase:'moving',e1:{x:cx-200,y:cy,vx:60,vy:0},e2:{x:cx+200,y:cy,vx:-20,vy:0},lattice:[],deform:[],paired:false,pairGlow:0,pairTime:0,goalDone:[false,false,false]};
+    const S=levelState;
+    for(let r=0;r<8;r++)for(let c=0;c<12;c++){S.lattice.push({bx:cx-180+c*35,by:cy-100+r*30,dx:0,dy:0});S.deform.push(0)}
+  } else if(idx===3){
+    levelState={field:0,flux:0,fluxQuanta:0,curvePoints:[],goalDone:[false,false,false]};
+  } else if(idx===4){
+    levelState={voltage:0,tunnelParticles:[],current:0,currentHistory:[],elapsed:0,goalDone:[false,false,false],tunneled:false};
+  } else if(idx===5){
+    levelState={material:null,Tc:0,temp:300,pressure:1,superConducting:false,goalDone:[false,false,false],
+      materials:[{name:'汞(Hg)',Tc:4.2,color:'#a0a0a0'},{name:'铌(Nb)',Tc:9.3,color:'#6090c0'},{name:'YBCO',Tc:93,color:'#2a8a4a'},{name:'铁基(FeAs)',Tc:55,color:'#c06040'}]};
+  } else if(idx===6){
+    levelState={coilSpacing:50,load:50,speed:0,targetSpeed:300,hoverHeight:0,stability:100,trainX:cx,trainRunning:false,elapsed:0,goalDone:[false,false,false],trackOffset:0};
+  }
+  renderPanel();
+}
+
+function completeLevel(idx){
+  if(!completedLevels.has(idx)){completedLevels.add(idx);renderPanel()}
+}
+
+function renderPanel(){
+  const L=levels[currentLevel],S=levelState,p=document.getElementById('panel');
+  let h='<div style="margin-bottom:8px">';
+  for(let i=0;i<levels.length;i++){
+    let cls='level-btn';if(i===currentLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
+    h+=`<span class="${cls}" onclick="switchLevel(${i})">第${i+1}关</span>`;
+  }
+  h+='</div>';
+  h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
+  h+=`<div class="concept-box">${L.concept}</div>`;
+  h+='<div style="margin:8px 0;font-size:12px;color:#888;font-weight:600">目标清单</div>';
+  for(let i=0;i<L.goals.length;i++){
+    const done=S.goalDone&&S.goalDone[i];
+    h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`;
+  }
+  h+=renderLevelActions();
+  if(S.goalDone&&S.goalDone.every(g=>g)){
+    h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
+    if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
+    else h+=`<div style="text-align:center;color:#4ade80;font-size:14px;margin:12px 0">🎉 全部通关！超导体实验室完成！</div>`;
+  }
+  p.innerHTML=h;
+  document.getElementById('bbLeft').textContent=`第 ${currentLevel+1} 关：${L.title}`;
+  document.getElementById('bbRight').textContent=`${completedLevels.size}/${levels.length} 已完成`;
+}
+
+function switchLevel(i){initLevel(i);renderPanel()}
+
+function renderLevelActions(){
+  const S=levelState;let h='';
+  if(currentLevel===0){
+    h+=`<div class="slider-wrap"><label>温度: <span class="sv">${S.temp.toFixed(0)} K</span></label><input type="range" min="0" max="300" value="${S.temp}" oninput="doAction('setTemp',this.value)"></div>`;
+    h+=`<div style="font-size:12px;color:#60a5fa;margin:4px 0">电阻: <span class="sv">${S.resistance.toFixed(2)} Ω</span></div>`;
+    h+=`<div style="font-size:12px;color:#888;margin:2px 0">临界温度 Tc = ${S.Tc} K（YBCO）</div>`;
+    h+=`<div class="hint-box">💡 缓慢降低温度，观察电阻-温度曲线的变化</div>`;
+  } else if(currentLevel===1){
+    h+=`<div class="slider-wrap"><label>温度: <span class="sv">${S.temp.toFixed(0)} K</span></label><input type="range" min="0" max="300" value="${S.temp}" oninput="doAction('setTemp1',this.value)"></div>`;
+    h+=`<div style="font-size:12px;color:${S.superconducting?'#4ade80':'#888'};margin:4px 0">状态: <span class="sv">${S.superconducting?'超导态 — 磁场被排斥':'正常态'}</span></div>`;
+    h+=`<div class="hint-box">💡 降温到Tc以下，观察磁力线和磁铁的变化</div>`;
+  } else if(currentLevel===2){
+    h+=`<div style="font-size:12px;color:#60a5fa;margin:4px 0">状态: <span class="sv">${S.paired?'库珀对已形成！':'电子运动中...'}</span></div>`;
+    if(S.paired)h+=`<div style="font-size:12px;color:#4ade80;margin:2px 0">配对能隙: ~1 meV</div>`;
+    h+=`<button class="act-btn" onclick="doAction('resetCooper')" ${S.phase==='moving'&&!S.paired?'disabled':''}>重新观察</button>`;
+    h+=`<div class="hint-box">💡 观察第一个电子经过晶格时如何吸引第二个电子</div>`;
+  } else if(currentLevel===3){
+    h+=`<div class="slider-wrap"><label>外磁场: <span class="sv">${S.field.toFixed(1)} mT</span></label><input type="range" min="0" max="100" value="${S.field*10}" oninput="doAction('setField',this.value)"></div>`;
+    h+=`<div style="font-size:12px;color:#60a5fa;margin:4px 0">磁通量: <span class="sv">${S.fluxQuanta} Φ₀</span></div>`;
+    h+=`<div style="font-size:12px;color:#888;margin:2px 0">Φ₀ = h/2e ≈ 2.07×10⁻¹⁵ Wb</div>`;
+    h+=`<div class="hint-box">💡 缓慢增加外磁场，观察磁通的阶梯状变化</div>`;
+  } else if(currentLevel===4){
+    h+=`<div class="slider-wrap"><label>电压: <span class="sv">${S.voltage.toFixed(2)} mV</span></label><input type="range" min="0" max="100" value="${S.voltage*100}" oninput="doAction('setVoltage',this.value)"></div>`;
+    h+=`<div style="font-size:12px;color:#60a5fa;margin:4px 0">超电流: <span class="sv">${S.current.toFixed(2)} mA</span></div>`;
+    if(S.voltage>0)h+=`<div style="font-size:12px;color:#fbbf24;margin:2px 0">振荡频率: <span class="sv">${(S.voltage*0.4836).toFixed(2)} GHz</span></div>`;
+    h+=`<div class="hint-box">💡 先观察零电压时的直流超电流，再加电压看交流振荡</div>`;
+  } else if(currentLevel===5){
+    h+='<div style="margin:8px 0;font-size:12px;color:#888;font-weight:600">选择材料</div>';
+    for(let i=0;i<S.materials.length;i++){
+      const m=S.materials[i],sel=S.material===i;
+      h+=`<button class="act-btn" style="${sel?'border-color:#fbbf24;color:#fbbf24;background:#2a2a1a':''}" onclick="doAction('selectMat',${i})">${m.name} (Tc=${m.Tc}K)</button>`;
+    }
+    if(S.material!==null){
+      h+=`<div class="slider-wrap"><label>温度: <span class="sv">${S.temp.toFixed(0)} K</span></label><input type="range" min="0" max="300" value="${S.temp}" oninput="doAction('setTemp5',this.value)"></div>`;
+      h+=`<div class="slider-wrap"><label>压力: <span class="sv">${S.pressure.toFixed(0)} GPa</span></label><input type="range" min="1" max="200" value="${S.pressure}" oninput="doAction('setPressure',this.value)"></div>`;
+      h+=`<div style="font-size:12px;color:${S.superConducting?'#4ade80':'#888'};margin:4px 0">状态: <span class="sv">${S.superConducting?'超导态！':'正常态'}</span></div>`;
+    }
+    h+=`<div class="hint-box">💡 选择不同材料比较Tc，用YBCO实现液氮温区超导</div>`;
+  } else if(currentLevel===6){
+    h+=`<div class="slider-wrap"><label>线圈间距: <span class="sv">${S.coilSpacing.toFixed(0)} cm</span></label><input type="range" min="20" max="100" value="${S.coilSpacing}" oninput="doAction('setCoil',this.value)"></div>`;
+    h+=`<div class="slider-wrap"><label>载重: <span class="sv">${S.load.toFixed(0)} 吨</span></label><input type="range" min="10" max="100" value="${S.load}" oninput="doAction('setLoad',this.value)"></div>`;
+    h+=`<button class="act-btn" onclick="doAction('startTrain')" ${S.trainRunning?'disabled':''}>启动列车</button>`;
+    if(S.trainRunning){
+      h+=`<div style="font-size:12px;color:#60a5fa;margin:4px 0">速度: <span class="sv">${S.speed.toFixed(0)} km/h</span></div>`;
+      h+=`<div style="font-size:12px;color:${S.hoverHeight>5?'#4ade80':'#f87171'};margin:2px 0">悬浮高度: <span class="sv">${S.hoverHeight.toFixed(1)} cm</span></div>`;
+      h+=`<div style="font-size:12px;color:${S.stability>60?'#4ade80':S.stability>30?'#fbbf24':'#f87171'};margin:2px 0">稳定性: <span class="sv">${S.stability.toFixed(0)}%</span></div>`;
+    }
+    h+=`<button class="act-btn" onclick="doAction('resetTrain')">重置</button>`;
+    h+=`<div class="hint-box">💡 调节线圈间距和载重，启动列车达到300km/h并保持稳定</div>`;
+  }
+  return h;
+}
+
+function doAction(action,param){
+  const S=levelState;
+  if(currentLevel===0){
+    if(action==='setTemp'){
+      S.temp=+param;
+      // resistance model: linear above Tc, zero below
+      if(S.temp>S.Tc){
+        S.resistance=0.1+0.33*(S.temp-S.Tc);
+      } else {
+        S.resistance=0;
+      }
+      // build curve
+      S.curvePoints=[];
+      for(let t=0;t<=300;t+=2){
+        let r=t>S.Tc?0.1+0.33*(t-S.Tc):0;
+        S.curvePoints.push({t,r});
+      }
+      if(S.temp<=S.Tc){
+        S.goalDone[0]=true;
+        if(S.resistance===0){S.goalDone[1]=true;completeLevel(0)}
+      }
+      renderPanel();
+    }
+  } else if(currentLevel===1){
+    if(action==='setTemp1'){
+      S.temp=+param;
+      const wasSC=S.superconducting;
+      S.superconducting=S.temp<S.Tc;
+      if(S.superconducting){
+        S.goalDone[0]=true;
+        S.goalDone[1]=true;
+        S.magnetTargetY=CH/2-200;
+      } else {
+        S.magnetTargetY=CH/2-120;
+      }
+      if(S.superconducting&&S.magnetY<CH/2-150){S.goalDone[2]=true;completeLevel(1)}
+      renderPanel();
+    }
+  } else if(currentLevel===2){
+    if(action==='resetCooper'){
+      const cx=CW/2+160,cy=CH/2;
+      S.phase='moving';S.paired=false;S.pairGlow=0;S.pairTime=0;
+      S.e1={x:cx-200,y:cy,vx:60,vy:0};
+      S.e2={x:cx+200,y:cy,vx:-20,vy:0};
+      S.goalDone=[false,false,false];
+      for(let i=0;i<S.deform.length;i++)S.deform[i]=0;
+      renderPanel();
+    }
+  } else if(currentLevel===3){
+    if(action==='setField'){
+      S.field=+param/10;
+      // flux quantization: flux = round(field * area / Phi0) * Phi0
+      const rawFlux=S.field*0.5; // arbitrary scaling
+      S.fluxQuanta=Math.round(rawFlux);
+      S.flux=S.fluxQuanta;
+      // build curve
+      S.curvePoints=[];
+      for(let f=0;f<=10;f+=0.05){
+        S.curvePoints.push({field:f,quanta:Math.round(f*0.5)});
+      }
+      if(S.fluxQuanta>0)S.goalDone[0]=true;
+      if(S.fluxQuanta>=2)S.goalDone[1]=true;
+      if(S.fluxQuanta>=3){S.goalDone[2]=true;completeLevel(3)}
+      renderPanel();
+    }
+  } else if(currentLevel===4){
+    if(action==='setVoltage'){
+      S.voltage=+param/100;
+      if(S.voltage===0){
+        S.current=1.0; // DC supercurrent
+        if(!S.goalDone[0]){S.goalDone[0]=true;renderPanel()}
+      }
+      if(S.voltage>0&&!S.goalDone[1]){S.goalDone[1]=true;renderPanel()}
+    }
+  } else if(currentLevel===5){
+    if(action==='selectMat'){
+      S.material=+param;
+      S.Tc=S.materials[S.material].Tc;
+      S.goalDone[0]=true;
+      checkSuperconduct5();
+      renderPanel();
+    } else if(action==='setTemp5'){
+      S.temp=+param;
+      checkSuperconduct5();
+      renderPanel();
+    } else if(action==='setPressure'){
+      S.pressure=+param;
+      checkSuperconduct5();
+      renderPanel();
+    }
+  } else if(currentLevel===6){
+    if(action==='setCoil'){S.coilSpacing=+param;updateTrain();renderPanel()}
+    else if(action==='setLoad'){S.load=+param;updateTrain();renderPanel()}
+    else if(action==='startTrain'){S.trainRunning=true;S.speed=0;S.elapsed=0;renderPanel()}
+    else if(action==='resetTrain'){
+      S.trainRunning=false;S.speed=0;S.hoverHeight=0;S.stability=100;S.elapsed=0;
+      S.goalDone=[false,false,false];S.trackOffset=0;
+      renderPanel();
+    }
+  }
+}
+
+function checkSuperconduct5(){
+  const S=levelState;
+  if(S.material===null)return;
+  let effectiveTc=S.Tc;
+  // pressure increases Tc slightly for some materials
+  if(S.pressure>1)effectiveTc+=Math.log(S.pressure)*2;
+  S.superConducting=S.temp<effectiveTc;
+  if(S.material===2&&S.superConducting){S.goalDone[1]=true} // YBCO above 77K
+  if(S.pressure>10&&S.superConducting){S.goalDone[2]=true}
+  if(S.goalDone.every(g=>g))completeLevel(5);
+}
+
+function updateTrain(){
+  const S=levelState;
+  // hover height depends on coil spacing and load
+  const fieldStrength=100/S.coilSpacing; // closer coils = stronger field
+  const liftForce=fieldStrength*50;
+  S.hoverHeight=Math.max(0,liftForce/S.load*10);
+  // stability depends on coil spacing uniformity and speed
+  const speedPenalty=Math.max(0,(S.speed-200)*0.1);
+  const spacingBonus=S.coilSpacing<60?20:S.coilSpacing<80?10:0;
+  S.stability=Math.max(0,Math.min(100,80+spacingBonus-speedPenalty-S.load*0.2));
+}
+
+// ===== UPDATE FUNCTIONS =====
+function updateLevel1(dt){
+  const S=levelState;if(currentLevel!==1)return;
+  // smooth magnet movement
+  S.magnetY+=(S.magnetTargetY-S.magnetY)*dt*3;
+  if(S.superconducting&&S.magnetY<CH/2-150&&!S.goalDone[2]){
+    S.goalDone[2]=true;completeLevel(1);
+  }
+}
+
+function updateLevel2(dt){
+  const S=levelState;if(currentLevel!==2||S.paired)return;
+  const cx=CW/2+160,cy=CH/2;
+  // move electron 1
+  S.e1.x+=S.e1.vx*dt;S.e1.y+=S.e1.vy*dt;
+  // lattice deformation near e1
+  for(let i=0;i<S.lattice.length;i++){
+    const L=S.lattice[i];
+    const dx=S.e1.x-L.bx,dy=S.e1.y-L.by;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<80){
+      const strength=Math.max(0,(80-dist)/80)*5;
+      L.dx=dx/dist*strength;L.dy=dy/dist*strength;
+      S.deform[i]=strength;
+    } else {
+      L.dx*=0.95;L.dy*=0.95;S.deform[i]*=0.95;
+    }
+  }
+  // check if e1 passed through lattice center
+  if(S.e1.x>cx&&S.phase==='moving'){
+    S.phase='attracting';S.goalDone[0]=true;renderPanel();
+  }
+  // attract e2 toward deformed region
+  if(S.phase==='attracting'){
+    const targetX=S.e1.x-40;
+    S.e2.vx+=(targetX-S.e2.x)*0.5*dt;
+    S.e2.x+=S.e2.vx*dt;
+    // check pairing
+    const pairDist=Math.abs(S.e1.x-S.e2.x);
+    if(pairDist<50){
+      S.paired=true;S.pairGlow=1;S.goalDone[1]=true;
+      S.goalDone[2]=true;completeLevel(2);
+    }
+  }
+  // wrap
+  if(S.e1.x>cx+300)S.e1.x=cx-300;
+}
+
+function updateLevel4(dt){
+  const S=levelState;if(currentLevel!==4)return;
+  S.elapsed+=dt;
+  const cx=CW/2+160,cy=CH/2;
+  if(S.voltage===0){
+    S.current=1.0;
+    // DC josephson: steady tunneling
+    if(Math.random()<0.1){
+      S.tunnelParticles.push({x:cx-2,y:cy+(Math.random()-0.5)*40,vx:40,phase:0,life:1.5});
+    }
+  } else {
+    // AC josephson: oscillating current
+    const freq=S.voltage*0.4836; // GHz (scaled for visual)
+    S.current=Math.sin(S.elapsed*freq*6)*1.0;
+    S.currentHistory.push({t:S.elapsed,i:S.current});
+    if(S.currentHistory.length>200)S.currentHistory.shift();
+    if(Math.random()<0.15){
+      S.tunnelParticles.push({x:cx-2,y:cy+(Math.random()-0.5)*40,vx:30+Math.random()*20,phase:Math.random()*Math.PI*2,life:1.2});
+    }
+    if(S.elapsed>2&&!S.goalDone[2]){S.goalDone[2]=true;completeLevel(4)}
+  }
+  // update tunnel particles
+  for(let i=S.tunnelParticles.length-1;i>=0;i--){
+    const p=S.tunnelParticles[i];
+    p.x+=p.vx*dt;p.life-=dt;
+    if(p.life<=0||p.x>cx+100)S.tunnelParticles.splice(i,1);
+    else if(p.x>cx+5&&!S.tunneled){S.tunneled=true;S.goalDone[0]=true;renderPanel()}
+  }
+}
+
+function updateLevel6(dt){
+  const S=levelState;if(currentLevel!==6||!S.trainRunning)return;
+  S.elapsed+=dt;
+  // accelerate
+  if(S.speed<400)S.speed+=dt*30;
+  S.trackOffset+=S.speed*dt*0.5;
+  updateTrain();
+  // check goals
+  if(S.hoverHeight>5&&!S.goalDone[0]){S.goalDone[0]=true;renderPanel()}
+  if(S.speed>=300&&!S.goalDone[1]){S.goalDone[1]=true;renderPanel()}
+  if(S.goalDone[0]&&S.goalDone[1]&&S.stability>60&&S.elapsed>3&&!S.goalDone[2]){
+    S.goalDone[2]=true;completeLevel(6);
+  }
+  if(S.elapsed%0.3<dt)renderPanel();
+}
+
+// ===== DRAW FUNCTIONS =====
+function drawLevel0(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  // draw R-T curve
+  const gx=cx-180,gy=cy-150,gw=360,gh=300;
+  // axes
+  ctx.strokeStyle='#333';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx,gy+gh);ctx.lineTo(gx+gw,gy+gh);ctx.stroke();
+  ctx.fillStyle='#666';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('温度 (K)',gx+gw/2,gy+gh+20);
+  ctx.save();ctx.translate(gx-20,gy+gh/2);ctx.rotate(-Math.PI/2);ctx.fillText('电阻 (Ω)',0,0);ctx.restore();
+  // tick marks
+  for(let t=0;t<=300;t+=50){
+    const x=gx+t/300*gw;
+    ctx.fillStyle='#444';ctx.fillText(t,x,gy+gh+12);
+    ctx.strokeStyle='#1a1a3a';ctx.beginPath();ctx.moveTo(x,gy);ctx.lineTo(x,gy+gh);ctx.stroke();
+  }
+  // curve
+  if(S.curvePoints.length>0){
+    ctx.strokeStyle='#60a5fa';ctx.lineWidth=2.5;ctx.beginPath();
+    let first=true;
+    for(const p of S.curvePoints){
+      const x=gx+p.t/300*gw;
+      const maxR=0.1+0.33*(300-S.Tc);
+      const y=gy+gh-p.r/maxR*gh*0.9;
+      if(first){ctx.moveTo(x,y);first=false}else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    // Tc marker
+    const tcX=gx+S.Tc/300*gw;
+    ctx.strokeStyle='#f87171';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(tcX,gy);ctx.lineTo(tcX,gy+gh);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#f87171';ctx.font='12px sans-serif';ctx.fillText('Tc='+S.Tc+'K',tcX,gy-8);
+    // current temp marker
+    const curX=gx+S.temp/300*gw;
+    const curR=S.temp>S.Tc?0.1+0.33*(S.temp-S.Tc):0;
+    const maxR2=0.1+0.33*(300-S.Tc);
+    const curY=gy+gh-curR/maxR2*gh*0.9;
+    ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(curX,curY,6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(251,191,36,0.3)';ctx.beginPath();ctx.arc(curX,curY,12,0,Math.PI*2);ctx.fill();
+  }
+  // superconducting glow
+  if(S.temp<=S.Tc){
+    ctx.fillStyle='rgba(96,165,250,0.05)';ctx.fillRect(gx,gy,S.Tc/300*gw,gh);
+    ctx.fillStyle='#4ade80';ctx.font='14px sans-serif';ctx.fillText('⚡ 零电阻！',cx,gy+gh+40);
+  }
+}
+
+function drawLevel1(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  // superconductor block
+  const bw=160,bh=60,bx=cx-bw/2,by=cy+20;
+  if(S.superconducting){
+    ctx.fillStyle='rgba(59,130,246,0.15)';ctx.fillRect(bx-10,by-10,bw+20,bh+20);
+    ctx.shadowColor='#3b82f6';ctx.shadowBlur=20;
+  }
+  ctx.fillStyle=S.superconducting?'#2563eb':'#4a5568';
+  ctx.fillRect(bx,by,bw,bh);
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#fff';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText(S.superconducting?'超导体':'导体',cx,by+bh/2+4);
+  // magnet
+  const my=S.magnetY,mw=80,mh=30;
+  ctx.fillStyle='#dc2626';ctx.fillRect(cx-mw/2,my-mh/2,mw/2,mh);
+  ctx.fillStyle='#2563eb';ctx.fillRect(cx,my-mh/2,mw/2,mh);
+  ctx.fillStyle='#fff';ctx.font='11px sans-serif';
+  ctx.fillText('N',cx-mw/4,my+4);ctx.fillText('S',cx+mw/4,my+4);
+  // field lines
+  for(let i=0;i<S.fieldLines.length;i++){
+    const fl=S.fieldLines[i];
+    const baseX=fl.baseX;
+    ctx.strokeStyle='rgba(74,222,128,0.6)';ctx.lineWidth=1.5;
+    ctx.beginPath();
+    if(S.superconducting){
+      // lines bend around superconductor
+      const startY=my+mh/2;
+      const endY=by+bh+40;
+      ctx.moveTo(baseX,startY);
+      // curve away from superconductor
+      const dx=(baseX-cx);
+      const bendX=baseX+dx*1.5;
+      ctx.bezierCurveTo(baseX,startY+30,bendX,by-20,bendX+dx*0.5,by+bh/2);
+      ctx.bezierCurveTo(bendX+dx*0.3,by+bh+10,baseX,endY-20,baseX,endY);
+    } else {
+      // straight lines through
+      ctx.moveTo(baseX,my+mh/2);
+      ctx.lineTo(baseX,by+bh+40);
+    }
+    ctx.stroke();
+    // arrowheads
+    const arrowY=S.superconducting?by+bh+30:by+bh+30;
+    ctx.fillStyle='rgba(74,222,128,0.6)';
+    ctx.beginPath();ctx.moveTo(baseX-3,arrowY-6);ctx.lineTo(baseX+3,arrowY-6);ctx.lineTo(baseX,arrowY);ctx.fill();
+  }
+  // labels
+  ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('磁铁',cx,S.magnetY-mh/2-8);
+  if(S.superconducting){
+    ctx.fillStyle='rgba(59,130,246,0.5)';ctx.font='11px sans-serif';
+    ctx.fillText('磁力线被排斥',cx,by-30);
+  }
+}
+
+function drawLevel2(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  // lattice grid
+  for(let i=0;i<S.lattice.length;i++){
+    const L=S.lattice[i];
+    const px=L.bx+L.dx,py=L.by+L.dy;
+    const d=S.deform[i];
+    ctx.fillStyle=d>1?`rgba(200,200,100,${Math.min(1,d/5)})`:'rgba(150,150,150,0.5)';
+    ctx.beginPath();ctx.arc(px,py,d>1?4+d*0.5:3,0,Math.PI*2);ctx.fill();
+  }
+  // lattice connections
+  ctx.strokeStyle='rgba(100,100,100,0.2)';ctx.lineWidth=1;
+  for(let i=0;i<S.lattice.length;i++){
+    const L=S.lattice[i];
+    const px=L.bx+L.dx,py=L.by+L.dy;
+    // horizontal
+    if((i+1)%12!==0&&i+1<S.lattice.length){
+      const N=S.lattice[i+1];
+      ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(N.bx+N.dx,N.by+N.dy);ctx.stroke();
+    }
+    // vertical
+    if(i+12<S.lattice.length){
+      const N=S.lattice[i+12];
+      ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(N.bx+N.dx,N.by+N.dy);ctx.stroke();
+    }
+  }
+  // electron 1
+  const glow1=S.paired?0.8:0.4;
+  ctx.fillStyle=`rgba(59,130,246,${glow1})`;ctx.beginPath();ctx.arc(S.e1.x,S.e1.y,12,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(S.e1.x,S.e1.y,7,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('e⁻',S.e1.x,S.e1.y+3);
+  // electron 2
+  ctx.fillStyle=`rgba(96,165,250,${glow1})`;ctx.beginPath();ctx.arc(S.e2.x,S.e2.y,12,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#60a5fa';ctx.beginPath();ctx.arc(S.e2.x,S.e2.y,7,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.fillText('e⁻',S.e2.x,S.e2.y+3);
+  // pair connection
+  if(S.paired){
+    S.pairTime+=0.02;
+    const glow=0.5+0.3*Math.sin(S.pairTime*3);
+    ctx.strokeStyle=`rgba(251,191,36,${glow})`;ctx.lineWidth=2;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(S.e1.x,S.e1.y);ctx.lineTo(S.e2.x,S.e2.y);ctx.stroke();
+    ctx.setLineDash([]);
+    // glow around pair
+    const pmx=(S.e1.x+S.e2.x)/2,pmy=(S.e1.y+S.e2.y)/2;
+    ctx.fillStyle=`rgba(251,191,36,${glow*0.2})`;
+    ctx.beginPath();ctx.arc(pmx,pmy,30,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fbbf24';ctx.font='12px sans-serif';ctx.fillText('库珀对',pmx,pmy-25);
+    // move pair together
+    S.e1.x+=20*0.016;S.e2.x+=20*0.016;
+    if(S.e1.x>cx+250){S.e1.x=cx-250;S.e2.x=S.e1.x+35}
+  }
+  // labels
+  if(!S.paired&&S.phase==='attracting'){
+    ctx.fillStyle='rgba(251,191,36,0.6)';ctx.font='11px sans-serif';
+    ctx.fillText('晶格变形 → 吸引第二个电子',cx,cy+130);
+  }
+}
+
+function drawLevel3(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  // superconducting ring
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=8;
+  ctx.beginPath();ctx.arc(cx,cy-60,60,0,Math.PI*2);ctx.stroke();
+  ctx.fillStyle='rgba(59,130,246,0.1)';ctx.beginPath();ctx.arc(cx,cy-60,56,0,Math.PI*2);ctx.fill();
+  // flux dots inside ring
+  for(let i=0;i<S.fluxQuanta;i++){
+    const a=i/Math.max(1,S.fluxQuanta)*Math.PI*2-Math.PI/2;
+    const r=20+i*3;
+    ctx.fillStyle='rgba(74,222,128,0.6)';
+    ctx.beginPath();ctx.arc(cx+Math.cos(a)*r*0.5,cy-60+Math.sin(a)*r*0.5,4,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle='#4ade80';ctx.font='14px sans-serif';ctx.textAlign='center';
+  ctx.fillText(S.fluxQuanta+'Φ₀',cx,cy-55);
+  ctx.fillStyle='#888';ctx.font='11px sans-serif';
+  ctx.fillText('超导环',cx,cy+15);
+  // staircase curve
+  const gx=cx-180,gy=cy+40,gw=360,gh=180;
+  ctx.strokeStyle='#333';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx,gy+gh);ctx.lineTo(gx+gw,gy+gh);ctx.stroke();
+  ctx.fillStyle='#666';ctx.font='11px sans-serif';
+  ctx.fillText('外磁场 (mT)',gx+gw/2,gy+gh+16);
+  ctx.save();ctx.translate(gx-16,gy+gh/2);ctx.rotate(-Math.PI/2);ctx.fillText('磁通 (Φ₀)',0,0);ctx.restore();
+  // staircase
+  if(S.curvePoints.length>0){
+    ctx.strokeStyle='#4ade80';ctx.lineWidth=2;ctx.beginPath();
+    let first=true;
+    for(const p of S.curvePoints){
+      const x=gx+p.field/10*gw;
+      const y=gy+gh-p.quanta/6*gh;
+      if(first){ctx.moveTo(x,y);first=false}else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    // current point
+    const curX=gx+S.field/10*gw;
+    const curY=gy+gh-S.fluxQuanta/6*gh;
+    ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(curX,curY,5,0,Math.PI*2);ctx.fill();
+  }
+  // diagonal reference line
+  ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(gx,gy+gh);ctx.lineTo(gx+gw,gy);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#555';ctx.font='10px sans-serif';ctx.fillText('(经典连续)',gx+gw-40,gy+15);
+}
+
+function drawLevel4(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  // two superconductor blocks
+  const bw=80,bh=120,gap=40;
+  // left SC
+  ctx.fillStyle='#2563eb';ctx.fillRect(cx-bw-gap/2,cy-bh/2,bw,bh);
+  ctx.fillStyle='rgba(59,130,246,0.2)';ctx.fillRect(cx-bw-gap/2-5,cy-bh/2-5,bw+10,bh+10);
+  // right SC
+  ctx.fillStyle='#2563eb';ctx.fillRect(cx+gap/2,cy-bh/2,bw,bh);
+  ctx.fillStyle='rgba(59,130,246,0.2)';ctx.fillRect(cx+gap/2-5,cy-bh/2-5,bw+10,bh+10);
+  // insulating barrier
+  ctx.fillStyle='rgba(200,200,200,0.3)';ctx.fillRect(cx-gap/2,cy-bh/2,gap,bh);
+  ctx.strokeStyle='rgba(200,200,200,0.5)';ctx.lineWidth=1;
+  ctx.strokeRect(cx-gap/2,cy-bh/2,gap,bh);
+  // labels
+  ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('超导体',cx-bw/2-gap/2,cy+bh/2+16);
+  ctx.fillText('绝缘层',cx,cy+bh/2+16);
+  ctx.fillText('超导体',cx+bw/2+gap/2,cy+bh/2+16);
+  // tunnel particles (Cooper pairs)
+  for(const p of S.tunnelParticles){
+    const alpha=Math.max(0,p.life/1.2);
+    // two connected dots for Cooper pair
+    ctx.fillStyle=`rgba(59,130,246,${alpha})`;
+    ctx.beginPath();ctx.arc(p.x-5,p.y-3,4,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(p.x+5,p.y+3,4,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=`rgba(251,191,36,${alpha*0.6})`;ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(p.x-5,p.y-3);ctx.lineTo(p.x+5,p.y+3);ctx.stroke();
+    // glow when passing through barrier
+    if(p.x>cx-gap/2&&p.x<cx+gap/2){
+      ctx.fillStyle=`rgba(251,191,36,${alpha*0.3})`;
+      ctx.beginPath();ctx.arc(p.x,p.y,10,0,Math.PI*2);ctx.fill();
+    }
+  }
+  // current waveform (bottom)
+  if(S.voltage>0&&S.currentHistory.length>2){
+    const gx=cx-160,gy=cy+bh/2+40,gw=320,gh=80;
+    ctx.strokeStyle='#333';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(gx,gy+gh/2);ctx.lineTo(gx+gw,gy+gh/2);ctx.stroke();
+    ctx.fillStyle='#666';ctx.font='10px sans-serif';ctx.fillText('电流振荡 (交流约瑟夫森效应)',gx+gw/2,gy-4);
+    ctx.strokeStyle='#60a5fa';ctx.lineWidth=1.5;ctx.beginPath();
+    const startT=S.currentHistory[0].t;
+    const endT=S.currentHistory[S.currentHistory.length-1].t;
+    const tRange=Math.max(0.1,endT-startT);
+    for(let i=0;i<S.currentHistory.length;i++){
+      const p=S.currentHistory[i];
+      const x=gx+(p.t-startT)/tRange*gw;
+      const y=gy+gh/2-p.i/1.2*gh/2;
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  } else if(S.voltage===0){
+    ctx.fillStyle='#4ade80';ctx.font='12px sans-serif';
+    ctx.fillText('直流超电流: 1.00 mA',cx,cy+bh/2+60);
+  }
+}
+
+function drawLevel5(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  if(S.material===null){
+    ctx.fillStyle='#555';ctx.font='16px sans-serif';ctx.textAlign='center';
+    ctx.fillText('← 请在左侧选择超导材料',cx,cy);
+    return;
+  }
+  const mat=S.materials[S.material];
+  // material sample
+  const bw=120,bh=80;
+  ctx.fillStyle=S.superConducting?mat.color:'#4a5568';
+  if(S.superConducting){ctx.shadowColor=mat.color;ctx.shadowBlur=25}
+  ctx.fillRect(cx-bw/2,cy-bh/2-30,bw,bh);
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#fff';ctx.font='14px sans-serif';ctx.textAlign='center';
+  ctx.fillText(mat.name,cx,cy-30+4);
+  ctx.fillStyle='#aaa';ctx.font='11px sans-serif';
+  ctx.fillText('Tc = '+mat.Tc+' K',cx,cy-30+bh/2+16);
+  // temperature bar
+  const barX=cx-150,barY=cy+80,barW=300,barH=20;
+  ctx.fillStyle='#1a1a3a';ctx.fillRect(barX,barY,barW,barH);
+  // gradient: blue(cold) to red(hot)
+  const grad=ctx.createLinearGradient(barX,0,barX+barW,0);
+  grad.addColorStop(0,'#3b82f6');grad.addColorStop(0.3,'#60a5fa');grad.addColorStop(0.7,'#fbbf24');grad.addColorStop(1,'#ef4444');
+  ctx.fillStyle=grad;ctx.fillRect(barX,barY,barW,barH);
+  // Tc marker
+  let effectiveTc=mat.Tc;
+  if(S.pressure>1)effectiveTc+=Math.log(S.pressure)*2;
+  const tcPos=barX+effectiveTc/300*barW;
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(tcPos,barY-5);ctx.lineTo(tcPos,barY+barH+5);ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.fillText('Tc',tcPos,barY-8);
+  // current temp marker
+  const tempPos=barX+S.temp/300*barW;
+  ctx.fillStyle='#fff';ctx.beginPath();
+  ctx.moveTo(tempPos,barY-2);ctx.lineTo(tempPos-5,barY-10);ctx.lineTo(tempPos+5,barY-10);ctx.fill();
+  ctx.fillText(S.temp+'K',tempPos,barY-14);
+  // 77K liquid nitrogen line
+  const n2Pos=barX+77/300*barW;
+  ctx.strokeStyle='rgba(96,165,250,0.5)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(n2Pos,barY-5);ctx.lineTo(n2Pos,barY+barH+5);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#60a5fa';ctx.font='9px sans-serif';ctx.fillText('液氮77K',n2Pos,barY+barH+14);
+  // state label
+  if(S.superConducting){
+    ctx.fillStyle='#4ade80';ctx.font='16px sans-serif';ctx.fillText('⚡ 超导态',cx,cy+130);
+  }
+  // material comparison chart
+  const chartY=cy+150,chartH=60;
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.fillText('材料Tc对比',cx,chartY-5);
+  for(let i=0;i<S.materials.length;i++){
+    const m=S.materials[i];
+    const w=m.Tc/100*200;
+    const y=chartY+i*16;
+    ctx.fillStyle=i===S.material?m.color:'#333';
+    ctx.fillRect(cx-100,y,w,12);
+    ctx.fillStyle='#aaa';ctx.font='9px sans-serif';ctx.textAlign='left';
+    ctx.fillText(m.name+' '+m.Tc+'K',cx+110,y+10);
+    ctx.textAlign='center';
+  }
+}
+
+function drawLevel6(){
+  const S=levelState,cx=CW/2+160,cy=CH/2;
+  // track
+  const trackY=cy+60,trackLen=CW-340;
+  const trackStartX=340;
+  // rail
+  ctx.strokeStyle='#4a5568';ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(trackStartX,trackY);ctx.lineTo(trackStartX+trackLen,trackY);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(trackStartX,trackY+30);ctx.lineTo(trackStartX+trackLen,trackY+30);ctx.stroke();
+  // coils on track
+  const coilCount=Math.floor(trackLen/S.coilSpacing);
+  for(let i=0;i<coilCount;i++){
+    const x=trackStartX+(i*S.coilSpacing-S.trackOffset%S.coilSpacing);
+    if(x<trackStartX||x>trackStartX+trackLen)continue;
+    ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(x,trackY+15,8,0,Math.PI*2);ctx.stroke();
+    // magnetic field glow
+    ctx.fillStyle='rgba(59,130,246,0.1)';
+    ctx.beginPath();ctx.arc(x,trackY+15,15,0,Math.PI*2);ctx.fill();
+  }
+  // train
+  const trainW=120,trainH=35;
+  const hover=S.hoverHeight||0;
+  const trainY=trackY-trainH-hover*2;
+  const trainX=cx;
+  // train body - streamlined
+  ctx.fillStyle='#c0c0d0';
+  ctx.beginPath();
+  ctx.moveTo(trainX-trainW/2,trainY+trainH);
+  ctx.lineTo(trainX-trainW/2,trainY+10);
+  ctx.quadraticCurveTo(trainX-trainW/2,trainY,trainX-trainW/2+15,trainY);
+  ctx.lineTo(trainX+trainW/2-20,trainY);
+  ctx.quadraticCurveTo(trainX+trainW/2+10,trainY+trainH/2,trainX+trainW/2+15,trainY+trainH);
+  ctx.closePath();ctx.fill();
+  // windows
+  ctx.fillStyle='rgba(96,165,250,0.4)';
+  for(let i=0;i<4;i++){
+    ctx.fillRect(trainX-40+i*22,trainY+5,16,12);
+  }
+  // superconducting coils under train
+  if(hover>2){
+    ctx.fillStyle='rgba(59,130,246,0.3)';
+    ctx.fillRect(trainX-trainW/2+10,trainY+trainH,trainW-20,hover*2);
+    // levitation field lines
+    ctx.strokeStyle='rgba(74,222,128,0.3)';ctx.lineWidth=1;
+    for(let i=0;i<5;i++){
+      const x=trainX-40+i*20;
+      const wave=Math.sin(time*3+i)*2;
+      ctx.beginPath();
+      ctx.moveTo(x,trainY+trainH+hover*2);
+      ctx.quadraticCurveTo(x+10,trainY+trainH+hover+wave,x,trackY);
+      ctx.stroke();
+    }
+  }
+  // speed indicator
+  if(S.trainRunning){
+    ctx.fillStyle='#60a5fa';ctx.font='14px sans-serif';ctx.textAlign='center';
+    ctx.fillText(S.speed.toFixed(0)+' km/h',trainX,trainY-15);
+    // motion blur lines
+    if(S.speed>50){
+      const alpha=Math.min(0.5,S.speed/600);
+      ctx.strokeStyle=`rgba(200,200,220,${alpha})`;ctx.lineWidth=1;
+      for(let i=0;i<6;i++){
+        const y=trainY+5+i*6;
+        const len=S.speed*0.3;
+        ctx.beginPath();ctx.moveTo(trainX-trainW/2-len-Math.random()*20,y);ctx.lineTo(trainX-trainW/2-5,y);ctx.stroke();
+      }
+    }
+    // stability warning
+    if(S.stability<40){
+      const shake=Math.sin(time*20)*3;
+      ctx.fillStyle='#f87171';ctx.font='12px sans-serif';
+      ctx.fillText('⚠ 不稳定！',trainX+shake,trainY-30);
+    }
+  }
+  // ground
+  ctx.fillStyle='#1a1a2a';ctx.fillRect(trackStartX,trackY+35,trackLen,20);
+  // labels
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText('超导磁悬浮轨道',cx,trackY+65);
+}
+
+// ===== MAIN LOOP =====
+function mainLoop(ts){
+  const dt=Math.min(0.05,(ts-lastTime)/1000);lastTime=ts;time+=dt;
+  ctx.clearRect(0,0,CW,CH);
+  drawStars();
+  if(gameState==='play'){
+    updateParticles(dt);
+    drawParticles();
+    if(currentLevel===0)drawLevel0();
+    else if(currentLevel===1){updateLevel1(dt);drawLevel1()}
+    else if(currentLevel===2){updateLevel2(dt);drawLevel2()}
+    else if(currentLevel===3)drawLevel3();
+    else if(currentLevel===4){updateLevel4(dt);drawLevel4()}
+    else if(currentLevel===5)drawLevel5();
+    else if(currentLevel===6){updateLevel6(dt);drawLevel6()}
+  }
+  animId=requestAnimationFrame(mainLoop);
+}
+lastTime=performance.now();
+animId=requestAnimationFrame(mainLoop);
+</script>
+</body>
+</html>

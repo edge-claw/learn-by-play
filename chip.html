@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>芯片内部 - RK3588 架构可视化</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a14; color: #fff; font-family: -apple-system, 'SF Pro', sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+#toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(12,12,28,0.95); border-bottom: 1px solid #1a1a3a; z-index: 10; flex-wrap: wrap; }
+#toolbar button { background: #1a1a3a; color: #aaa; border: 1px solid #2a2a5a; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+#toolbar button:hover { background: #2a2a5a; color: #fff; }
+#toolbar button.active { background: #c8943e; color: #fff; border-color: #e0a848; }
+.sep { width: 1px; height: 24px; background: #2a2a5a; margin: 0 4px; }
+#toolbar .title { font-size: 15px; font-weight: 600; color: #c8943e; letter-spacing: 1px; margin-right: 8px; }
+#canvas { flex: 1; display: block; cursor: default; }
+#panel { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: rgba(12,12,28,0.95); border-top: 1px solid #1a1a3a; font-size: 13px; min-height: 44px; }
+#panel .info { color: #888; }
+#panel .highlight { color: #c8943e; }
+#tooltip { position: absolute; display: none; background: rgba(10,10,30,0.95); border: 1px solid #c8943e; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #ccc; pointer-events: none; z-index: 100; max-width: 320px; line-height: 1.6; }
+#tooltip .tt-title { color: #c8943e; font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+#tooltip .tt-spec { color: #6a8aff; }
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <span class="title">◈ RK3588 SoC 内部</span>
+  <div class="sep"></div>
+  <button id="btnTask1" onclick="sendTask('inference')">🧠 发起推理任务</button>
+  <button id="btnTask2" onclick="sendTask('video')">🎬 视频解码任务</button>
+  <button id="btnTask3" onclick="sendTask('render')">🎨 GPU 渲染任务</button>
+  <button id="btnTask4" onclick="sendTask('flood')">🌊 压力测试</button>
+  <div class="sep"></div>
+  <button id="btnPause" onclick="togglePause()">⏸ 暂停</button>
+  <button id="btnSpeed" onclick="cycleSpeed()">1x</button>
+  <div class="sep"></div>
+  <button id="btnHeat" onclick="toggleHeat()" class="">🌡 热力图</button>
+</div>
+<canvas id="canvas"></canvas>
+<div id="panel">
+  <span class="info">点击模块查看详情 · 点击按钮发起任务 · 观察数据流在总线上流动</span>
+  <span class="highlight" id="taskInfo"></span>
+  <span class="info" style="margin-left:auto" id="stats"></span>
+</div>
+<div id="tooltip"></div>
+<script>
+// ===== 全局状态 =====
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let W, H, scale;
+let paused = false;
+let timeScale = 1;
+let showHeat = false;
+let selectedModule = null;
+let hoveredModule = null;
+let cam = { x: 0, y: 0, zoom: 1 };
+let time = 0;
+let particles = [];
+let taskCount = 0;
+
+// ===== 芯片模块定义 =====
+// 坐标基于 1000x700 的虚拟空间
+const modules = [
+  // CPU 集群
+  { id: 'a76_0', name: 'Cortex-A76', sub: 'CPU 大核 #0', x: 80, y: 80, w: 100, h: 80, color: '#3a7aff', heat: 0.3, load: 0.2,
+    info: 'ARM Cortex-A76 大核\n主频: 2.4 GHz\n缓存: 512KB L2\n工艺: 8nm\n用途: 高性能计算任务' },
+  { id: 'a76_1', name: 'Cortex-A76', sub: 'CPU 大核 #1', x: 200, y: 80, w: 100, h: 80, color: '#3a7aff', heat: 0.25, load: 0.15,
+    info: 'ARM Cortex-A76 大核\n主频: 2.4 GHz\n缓存: 512KB L2\n工艺: 8nm\n用途: 高性能计算任务' },
+  { id: 'a76_2', name: 'Cortex-A76', sub: 'CPU 大核 #2', x: 320, y: 80, w: 100, h: 80, color: '#3a7aff', heat: 0.2, load: 0.1,
+    info: 'ARM Cortex-A76 大核\n主频: 2.4 GHz\n缓存: 512KB L2\n工艺: 8nm\n用途: 高性能计算任务' },
+  { id: 'a76_3', name: 'Cortex-A76', sub: 'CPU 大核 #3', x: 440, y: 80, w: 100, h: 80, color: '#3a7aff', heat: 0.2, load: 0.1,
+    info: 'ARM Cortex-A76 大核\n主频: 2.4 GHz\n缓存: 512KB L2\n工艺: 8nm\n用途: 高性能计算任务' },
+  // 小核
+  { id: 'a55_0', name: 'A55 ×4', sub: 'CPU 小核集群', x: 600, y: 80, w: 140, h: 80, color: '#2a5aaa', heat: 0.15, load: 0.3,
+    info: 'ARM Cortex-A55 小核 ×4\n主频: 1.8 GHz\n缓存: 128KB L2 each\n工艺: 8nm\n用途: 低功耗后台任务' },
+  // NPU
+  { id: 'npu_0', name: 'NPU Core 0', sub: '6 TOPS', x: 80, y: 220, w: 130, h: 110, color: '#e8443a', heat: 0.1, load: 0,
+    info: 'Rockchip RKNN NPU 核心 0\n算力: 2 TOPS (INT8)\n支持: Conv/Pool/FC/Softmax\n数据流: 脉动阵列架构\n用途: AI 推理加速' },
+  { id: 'npu_1', name: 'NPU Core 1', sub: '6 TOPS', x: 230, y: 220, w: 130, h: 110, color: '#e8443a', heat: 0.1, load: 0,
+    info: 'Rockchip RKNN NPU 核心 1\n算力: 2 TOPS (INT8)\n支持: Conv/Pool/FC/Softmax\n数据流: 脉动阵列架构\n用途: AI 推理加速' },
+  { id: 'npu_2', name: 'NPU Core 2', sub: '6 TOPS', x: 380, y: 220, w: 130, h: 110, color: '#e8443a', heat: 0.1, load: 0,
+    info: 'Rockchip RKNN NPU 核心 2\n算力: 2 TOPS (INT8)\n支持: Conv/Pool/FC/Softmax\n数据流: 脉动阵列架构\n用途: AI 推理加速' },
+  // GPU
+  { id: 'gpu', name: 'Mali-G610 MP4', sub: 'GPU', x: 570, y: 220, w: 170, h: 110, color: '#2aaa5a', heat: 0.15, load: 0.1,
+    info: 'ARM Mali-G610 MP4\n核心: 4 着色器核心\nAPI: OpenGL ES 3.2 / Vulkan 1.2\n频率: 1 GHz\n用途: 图形渲染 / GPGPU' },
+  // VPU
+  { id: 'vpu_dec', name: 'VPU 解码', sub: '8K H.265', x: 80, y: 390, w: 150, h: 90, color: '#aa7a2a', heat: 0.1, load: 0,
+    info: '视频解码引擎\n支持: 8K@30fps H.265/VP9\n      4K@120fps H.264\n硬件加速: AFBC 压缩\n用途: 视频播放/监控流' },
+  { id: 'vpu_enc', name: 'VPU 编码', sub: '8K H.265', x: 250, y: 390, w: 150, h: 90, color: '#aa8a3a', heat: 0.1, load: 0,
+    info: '视频编码引擎\n支持: 8K@30fps H.265\n      4K@60fps H.264\nROI 编码: 支持\n用途: 视频录制/推流' },
+  // ISP
+  { id: 'isp', name: 'ISP', sub: '48MP Camera', x: 420, y: 390, w: 130, h: 90, color: '#8a5acc', heat: 0.05, load: 0,
+    info: '图像信号处理器\n传感器: 最大 48MP\n多摄: 4 路 MIPI CSI\nHDR: 支持\n用途: 摄像头图像处理' },
+  // DDR
+  { id: 'ddr', name: 'LPDDR5', sub: '内存控制器', x: 600, y: 390, w: 150, h: 90, color: '#5a9a9a', heat: 0.2, load: 0.3,
+    info: 'LPDDR4X/5 内存控制器\n通道: 4×16bit = 64bit\n带宽: 51.2 GB/s\n频率: 2133 MHz (LPDDR4X)\n容量: 最大 32GB' },
+  // PCIe / 外设
+  { id: 'pcie', name: 'PCIe 3.0', sub: '×4 Lanes', x: 80, y: 540, w: 120, h: 70, color: '#5a7a5a', heat: 0.05, load: 0,
+    info: 'PCIe 3.0 控制器\nLanes: ×4 (可拆分)\n带宽: ~4 GB/s\n用途: NVMe SSD / 外接设备' },
+  { id: 'usb', name: 'USB 3.1', sub: '×2 Ports', x: 220, y: 540, w: 120, h: 70, color: '#5a6a7a', heat: 0.05, load: 0,
+    info: 'USB 3.1 Gen1 控制器\n端口: 2× Type-C\n速率: 5 Gbps\n支持: DP Alt Mode' },
+  { id: 'hdmi', name: 'HDMI 2.1', sub: '×2 输出', x: 360, y: 540, w: 120, h: 70, color: '#7a5a5a', heat: 0.05, load: 0,
+    info: 'HDMI 2.1 输出\n端口: 2× HDMI\n分辨率: 8K@30 / 4K@120\n支持: HDR10 / CEC' },
+  { id: 'eth', name: 'GbE MAC', sub: '千兆网口', x: 500, y: 540, w: 120, h: 70, color: '#4a6a8a', heat: 0.05, load: 0.1,
+    info: '千兆以太网 MAC\n速率: 10/100/1000 Mbps\n接口: RGMII\n支持: IEEE 1588 PTP' },
+  { id: 'nand', name: 'eMMC/UFS', sub: '存储控制器', x: 640, y: 540, w: 120, h: 70, color: '#6a6a5a', heat: 0.05, load: 0.1,
+    info: '存储控制器\neMMC 5.1: ~300 MB/s\nUFS 2.x (可选)\n用途: 系统存储' },
+];
+
+// ===== 总线连接 =====
+const buses = [
+  // 主总线（水平）
+  { from: { x: 80, y: 185 }, to: { x: 760, y: 185 }, width: 6, color: '#c8943e', name: 'AXI 主总线' },
+  // NPU 到主总线
+  { from: { x: 145, y: 220 }, to: { x: 145, y: 185 }, width: 3, color: '#e8443a80' },
+  { from: { x: 295, y: 220 }, to: { x: 295, y: 185 }, width: 3, color: '#e8443a80' },
+  { from: { x: 445, y: 220 }, to: { x: 445, y: 185 }, width: 3, color: '#e8443a80' },
+  // GPU 到主总线
+  { from: { x: 655, y: 220 }, to: { x: 655, y: 185 }, width: 3, color: '#2aaa5a80' },
+  // 内存总线（水平）
+  { from: { x: 80, y: 370 }, to: { x: 760, y: 370 }, width: 5, color: '#5a9a9a', name: 'NoC 互联总线' },
+  // 主总线到内存总线
+  { from: { x: 100, y: 185 }, to: { x: 100, y: 370 }, width: 3, color: '#c8943e50' },
+  { from: { x: 700, y: 185 }, to: { x: 700, y: 370 }, width: 3, color: '#c8943e50' },
+  // DDR 到内存总线
+  { from: { x: 675, y: 390 }, to: { x: 675, y: 370 }, width: 4, color: '#5a9a9a' },
+  // 外设总线
+  { from: { x: 80, y: 520 }, to: { x: 760, y: 520 }, width: 3, color: '#444', name: '外设总线' },
+  // 内存总线到外设总线
+  { from: { x: 400, y: 370 }, to: { x: 400, y: 520 }, width: 2, color: '#44444480' },
+];
+
+// ===== 数据粒子 =====
+class DataParticle {
+  constructor(path, color, speed, label) {
+    this.path = path; // [{x,y}, ...]
+    this.color = color;
+    this.speed = speed;
+    this.label = label || '';
+    this.progress = 0; // 0~1
+    this.alive = true;
+    this.size = 4 + Math.random() * 3;
+    this.trail = [];
+  }
+  update(dt) {
+    this.progress += this.speed * dt;
+    if (this.progress >= 1) this.alive = false;
+    const pos = this.getPos();
+    this.trail.push({ x: pos.x, y: pos.y, a: 1 });
+    if (this.trail.length > 15) this.trail.shift();
+    for (let t of this.trail) t.a *= 0.88;
+  }
+  getPos() {
+    const totalLen = this.pathLength();
+    const targetDist = this.progress * totalLen;
+    let traveled = 0;
+    for (let i = 1; i < this.path.length; i++) {
+      const dx = this.path[i].x - this.path[i-1].x;
+      const dy = this.path[i].y - this.path[i-1].y;
+      const segLen = Math.sqrt(dx*dx + dy*dy);
+      if (traveled + segLen >= targetDist) {
+        const t = (targetDist - traveled) / segLen;
+        return { x: this.path[i-1].x + dx * t, y: this.path[i-1].y + dy * t };
+      }
+      traveled += segLen;
+    }
+    return this.path[this.path.length - 1];
+  }
+  pathLength() {
+    let len = 0;
+    for (let i = 1; i < this.path.length; i++) {
+      const dx = this.path[i].x - this.path[i-1].x;
+      const dy = this.path[i].y - this.path[i-1].y;
+      len += Math.sqrt(dx*dx + dy*dy);
+    }
+    return len;
+  }
+}
+
+// ===== 任务路径定义 =====
+function getTaskPaths(type) {
+  const paths = [];
+  const jitter = () => (Math.random() - 0.5) * 10;
+  if (type === 'inference') {
+    // DDR → 主总线 → NPU0/1/2 → 主总线 → DDR
+    for (let i = 0; i < 3; i++) {
+      const npuX = [145, 295, 445][i];
+      // 数据送入 NPU
+      paths.push({
+        path: [
+          { x: 675, y: 390 }, { x: 675, y: 370 }, { x: 700, y: 370 },
+          { x: 700, y: 185 }, { x: npuX, y: 185 }, { x: npuX, y: 220 }
+        ],
+        color: '#ff6b6b', speed: 0.3 + Math.random() * 0.15, label: 'tensor'
+      });
+      // 结果返回
+      paths.push({
+        path: [
+          { x: npuX, y: 330 }, { x: npuX, y: 370 }, { x: 675, y: 370 }, { x: 675, y: 390 }
+        ],
+        color: '#ffd93d', speed: 0.25 + Math.random() * 0.1, label: 'result', delay: 800
+      });
+    }
+  } else if (type === 'video') {
+    // DDR → VPU 解码 → VPU 编码 → DDR
+    paths.push({
+      path: [
+        { x: 675, y: 390 }, { x: 675, y: 370 }, { x: 155, y: 370 }, { x: 155, y: 390 }
+      ],
+      color: '#ff922b', speed: 0.35, label: 'h265_stream'
+    });
+    paths.push({
+      path: [
+        { x: 155, y: 480 }, { x: 155, y: 500 }, { x: 325, y: 500 }, { x: 325, y: 480 }
+      ],
+      color: '#20c997', speed: 0.3, label: 'raw_frame', delay: 600
+    });
+    paths.push({
+      path: [
+        { x: 325, y: 390 }, { x: 325, y: 370 }, { x: 675, y: 370 }, { x: 675, y: 390 }
+      ],
+      color: '#ffd93d', speed: 0.28, label: 'encoded', delay: 1200
+    });
+  } else if (type === 'render') {
+    // DDR → GPU → DDR → HDMI
+    paths.push({
+      path: [
+        { x: 675, y: 390 }, { x: 675, y: 370 }, { x: 700, y: 370 },
+        { x: 700, y: 185 }, { x: 655, y: 185 }, { x: 655, y: 220 }
+      ],
+      color: '#6bcb77', speed: 0.35, label: 'vertex_data'
+    });
+    paths.push({
+      path: [
+        { x: 655, y: 330 }, { x: 655, y: 370 }, { x: 675, y: 370 }, { x: 675, y: 390 }
+      ],
+      color: '#4d96ff', speed: 0.3, label: 'framebuf', delay: 700
+    });
+    paths.push({
+      path: [
+        { x: 675, y: 390 }, { x: 675, y: 370 }, { x: 400, y: 370 },
+        { x: 400, y: 520 }, { x: 420, y: 520 }, { x: 420, y: 540 }
+      ],
+      color: '#cc5de8', speed: 0.25, label: 'display', delay: 1400
+    });
+  } else if (type === 'flood') {
+    // 全部模块同时忙
+    const colors = ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff922b','#cc5de8','#20c997'];
+    for (let i = 0; i < 20; i++) {
+      const fromX = 675, fromY = 390;
+      const targets = [145, 295, 445, 655, 155, 325, 485];
+      const targetX = targets[Math.floor(Math.random() * targets.length)];
+      const busY = Math.random() > 0.5 ? 185 : 370;
+      const endY = busY === 185 ? 220 : 390;
+      paths.push({
+        path: [
+          { x: fromX, y: fromY }, { x: fromX, y: 370 },
+          { x: busY === 185 ? 700 : targetX, y: 370 },
+          ...(busY === 185 ? [{ x: 700, y: 185 }, { x: targetX, y: 185 }] : []),
+          { x: targetX, y: endY }
+        ],
+        color: colors[Math.floor(Math.random() * colors.length)],
+        speed: 0.15 + Math.random() * 0.3,
+        label: '',
+        delay: Math.random() * 2000
+      });
+    }
+  }
+  return paths;
+}
+
+// ===== 发起任务 =====
+function sendTask(type) {
+  const taskPaths = getTaskPaths(type);
+  const names = { inference: '🧠 AI 推理', video: '🎬 视频解码', render: '🎨 GPU 渲染', flood: '🌊 压力测试' };
+  taskCount++;
+  document.getElementById('taskInfo').textContent = `${names[type]} #${taskCount} 已发起`;
+
+  // 增加模块负载
+  if (type === 'inference') {
+    modules.find(m => m.id === 'npu_0').load = Math.min(1, modules.find(m => m.id === 'npu_0').load + 0.6);
+    modules.find(m => m.id === 'npu_1').load = Math.min(1, modules.find(m => m.id === 'npu_1').load + 0.6);
+    modules.find(m => m.id === 'npu_2').load = Math.min(1, modules.find(m => m.id === 'npu_2').load + 0.6);
+    modules.find(m => m.id === 'ddr').load = Math.min(1, modules.find(m => m.id === 'ddr').load + 0.3);
+  } else if (type === 'video') {
+    modules.find(m => m.id === 'vpu_dec').load = Math.min(1, modules.find(m => m.id === 'vpu_dec').load + 0.7);
+    modules.find(m => m.id === 'vpu_enc').load = Math.min(1, modules.find(m => m.id === 'vpu_enc').load + 0.5);
+    modules.find(m => m.id === 'ddr').load = Math.min(1, modules.find(m => m.id === 'ddr').load + 0.4);
+  } else if (type === 'render') {
+    modules.find(m => m.id === 'gpu').load = Math.min(1, modules.find(m => m.id === 'gpu').load + 0.8);
+    modules.find(m => m.id === 'ddr').load = Math.min(1, modules.find(m => m.id === 'ddr').load + 0.3);
+  } else if (type === 'flood') {
+    for (let m of modules) m.load = Math.min(1, m.load + 0.3 + Math.random() * 0.4);
+  }
+
+  for (let tp of taskPaths) {
+    const delay = tp.delay || 0;
+    setTimeout(() => {
+      particles.push(new DataParticle(tp.path, tp.color, tp.speed, tp.label));
+    }, delay / timeScale);
+  }
+}
+
+// ===== 渲染 =====
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  W = rect.width;
+  H = rect.height;
+  scale = Math.min(W / 860, H / 680);
+}
+
+function drawChipBackground() {
+  // 硅基底
+  ctx.fillStyle = '#0c0c1a';
+  ctx.fillRect(0, 0, W, H);
+  // 芯片边框
+  const cx = (W - 820 * scale) / 2, cy = (H - 650 * scale) / 2;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+
+  // 芯片封装外框
+  ctx.strokeStyle = '#2a2a4a';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 4]);
+  ctx.strokeRect(20, 30, 800, 600);
+  ctx.setLineDash([]);
+
+  // 引脚（四边）
+  ctx.fillStyle = '#c8943e40';
+  for (let i = 0; i < 20; i++) {
+    ctx.fillRect(40 + i * 38, 18, 16, 12); // 上
+    ctx.fillRect(40 + i * 38, 630, 16, 12); // 下
+  }
+  for (let i = 0; i < 14; i++) {
+    ctx.fillRect(8, 50 + i * 42, 12, 20); // 左
+    ctx.fillRect(820, 50 + i * 42, 12, 20); // 右
+  }
+
+  // 总线
+  for (let bus of buses) {
+    ctx.strokeStyle = bus.color;
+    ctx.lineWidth = bus.width;
+    ctx.beginPath();
+    ctx.moveTo(bus.from.x, bus.from.y);
+    ctx.lineTo(bus.to.x, bus.to.y);
+    ctx.stroke();
+    // 总线名称
+    if (bus.name) {
+      ctx.fillStyle = bus.color + '80';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      const mx = (bus.from.x + bus.to.x) / 2;
+      const my = (bus.from.y + bus.to.y) / 2;
+      if (bus.from.y === bus.to.y) {
+        ctx.fillText(bus.name, mx, my - 8);
+      } else {
+        ctx.save();
+        ctx.translate(mx - 10, my);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText(bus.name, 0, 0);
+        ctx.restore();
+      }
+    }
+    // 总线脉冲动画
+    if (bus.from.y === bus.to.y && bus.width >= 4) {
+      const pulseX = bus.from.x + ((time * 80) % (bus.to.x - bus.from.x));
+      ctx.fillStyle = bus.color + '60';
+      ctx.beginPath();
+      ctx.arc(pulseX, bus.from.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // 模块
+  for (let m of modules) {
+    const isHovered = m === hoveredModule;
+    const isSelected = m === selectedModule;
+
+    // 热力图模式
+    if (showHeat) {
+      const heatVal = m.load;
+      const r = Math.floor(heatVal * 255);
+      const b = Math.floor((1 - heatVal) * 100);
+      ctx.fillStyle = `rgba(${r}, ${Math.floor(heatVal * 80)}, ${b}, 0.6)`;
+      ctx.fillRect(m.x - 4, m.y - 4, m.w + 8, m.h + 8);
+    }
+
+    // 模块背景
+    const grad = ctx.createLinearGradient(m.x, m.y, m.x, m.y + m.h);
+    const alpha = isHovered ? 'cc' : '88';
+    grad.addColorStop(0, m.color + alpha);
+    grad.addColorStop(1, m.color + '44');
+    ctx.fillStyle = grad;
+    // 圆角矩形
+    roundRect(ctx, m.x, m.y, m.w, m.h, 6);
+    ctx.fill();
+
+    // 边框
+    ctx.strokeStyle = isSelected ? '#fff' : (isHovered ? m.color : m.color + '80');
+    ctx.lineWidth = isSelected ? 2 : 1;
+    if (isSelected) {
+      ctx.setLineDash([4, 3]);
+    }
+    roundRect(ctx, m.x, m.y, m.w, m.h, 6);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 负载指示条
+    if (m.load > 0) {
+      const barH = 3;
+      const barY = m.y + m.h - barH - 4;
+      const barW = (m.w - 10);
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(m.x + 5, barY, barW, barH);
+      const loadColor = m.load > 0.8 ? '#ff4444' : m.load > 0.5 ? '#ffaa00' : '#44ff44';
+      ctx.fillStyle = loadColor;
+      ctx.fillRect(m.x + 5, barY, barW * m.load, barH);
+    }
+
+    // 模块名称
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${Math.min(13, m.w / 8)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(m.name, m.x + m.w / 2, m.y + m.h / 2 - 2);
+    // 子标题
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = `${Math.min(10, m.w / 10)}px sans-serif`;
+    ctx.fillText(m.sub, m.x + m.w / 2, m.y + m.h / 2 + 12);
+
+    // 活跃时发光
+    if (m.load > 0.3) {
+      ctx.shadowColor = m.color;
+      ctx.shadowBlur = 10 * m.load;
+      roundRect(ctx, m.x, m.y, m.w, m.h, 6);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // 数据粒子
+  for (let p of particles) {
+    const pos = p.getPos();
+    // 尾迹
+    for (let t of p.trail) {
+      ctx.fillStyle = p.color + Math.floor(t.a * 80).toString(16).padStart(2, '0');
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, p.size * 0.5 * t.a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // 主体
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+    // 光晕
+    ctx.fillStyle = p.color + '30';
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, p.size * 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 芯片型号标注
+  ctx.fillStyle = '#c8943e30';
+  ctx.font = 'bold 28px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('RK3588', 790, 625);
+  ctx.font = '12px sans-serif';
+  ctx.fillText('Rockchip · 8nm · 22.1B transistors', 790, 642);
+
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// ===== 鼠标交互 =====
+function screenToChip(sx, sy) {
+  const cx = (W - 820 * scale) / 2;
+  const cy = (H - 650 * scale) / 2;
+  return { x: (sx - cx) / scale, y: (sy - cy) / scale };
+}
+
+function moduleAt(cx, cy) {
+  for (let m of modules) {
+    if (cx >= m.x && cx <= m.x + m.w && cy >= m.y && cy <= m.y + m.h) return m;
+  }
+  return null;
+}
+
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const c = screenToChip(sx, sy);
+  const m = moduleAt(c.x, c.y);
+  hoveredModule = m;
+  canvas.style.cursor = m ? 'pointer' : 'default';
+
+  const tooltip = document.getElementById('tooltip');
+  if (m) {
+    tooltip.style.display = 'block';
+    tooltip.innerHTML = `<div class="tt-title">${m.name}</div>${m.info.replace(/\n/g, '<br>')}
+      <br><span class="tt-spec">负载: ${(m.load * 100).toFixed(0)}%</span>`;
+    let tx = e.clientX + 16, ty = e.clientY + 16;
+    if (tx + 320 > window.innerWidth) tx = e.clientX - 330;
+    if (ty + 200 > window.innerHeight) ty = e.clientY - 200;
+    tooltip.style.left = tx + 'px';
+    tooltip.style.top = ty + 'px';
+  } else {
+    tooltip.style.display = 'none';
+  }
+});
+
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const c = screenToChip(e.clientX - rect.left, e.clientY - rect.top);
+  const m = moduleAt(c.x, c.y);
+  selectedModule = m;
+  if (m) {
+    document.getElementById('taskInfo').textContent = `选中: ${m.name} (${m.sub})`;
+  }
+});
+
+canvas.addEventListener('mouseleave', () => {
+  hoveredModule = null;
+  document.getElementById('tooltip').style.display = 'none';
+});
+
+// ===== UI 控制 =====
+function togglePause() {
+  paused = !paused;
+  document.getElementById('btnPause').textContent = paused ? '▶ 播放' : '⏸ 暂停';
+  document.getElementById('btnPause').classList.toggle('active', paused);
+}
+
+function cycleSpeed() {
+  const speeds = [1, 2, 4, 0.5];
+  const idx = speeds.indexOf(timeScale);
+  timeScale = speeds[(idx + 1) % speeds.length];
+  document.getElementById('btnSpeed').textContent = timeScale + 'x';
+}
+
+function toggleHeat() {
+  showHeat = !showHeat;
+  document.getElementById('btnHeat').classList.toggle('active', showHeat);
+}
+
+// ===== 主循环 =====
+let lastTime = 0;
+function loop(ts) {
+  requestAnimationFrame(loop);
+  if (!lastTime) { lastTime = ts; return; }
+  const rawDt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+
+  if (!paused) {
+    const dt = rawDt * timeScale;
+    time += dt;
+
+    // 更新粒子
+    for (let p of particles) p.update(dt);
+    particles = particles.filter(p => p.alive);
+
+    // 负载自然衰减
+    for (let m of modules) {
+      m.load = Math.max(m.id === 'ddr' ? 0.15 : 0.05, m.load - dt * 0.08);
+      m.heat = m.load * 0.8;
+    }
+
+    // 统计
+    document.getElementById('stats').textContent =
+      `粒子: ${particles.length} · 任务: ${taskCount}`;
+  }
+
+  resize();
+  drawChipBackground();
+}
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

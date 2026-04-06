@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>深海深潜探索器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#00bfff}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#006994,#00bfff);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+
+#lp{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,26,.97);border-right:1px solid #1a1a3a;z-index:20;display:none;flex-direction:column;overflow:hidden}
+#lp .lp-head{padding:12px 16px;border-bottom:1px solid #1a1a3a;display:flex;align-items:center;justify-content:space-between}
+#lp .lp-title{font-size:14px;font-weight:700;color:#00bfff}
+#lp .lp-step{font-size:11px;color:#888}
+#lp-body{flex:1;overflow-y:auto;padding:0}
+
+.mission{margin:12px;padding:14px;background:#141428;border:1px solid #2a2a5a;border-radius:10px}
+.mission .m-level{font-size:11px;color:#00bfff;font-weight:600;letter-spacing:1px}
+.mission .m-title{font-size:17px;font-weight:700;margin:4px 0;color:#eee}
+.mission .m-desc{font-size:13px;color:#999;line-height:1.6}
+.mission .m-concept{margin-top:10px;padding:8px 10px;background:#0e0e20;border-radius:6px;font-size:12px;color:#6a8aff;line-height:1.6}
+.mission .m-concept b{color:#8ab4ff}
+.goal-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px}
+.goal-row .g-icon{font-size:15px}
+.goal-row .g-text{color:#ccc;flex:1}
+.hint-b{margin:0 12px;padding:10px 14px;background:#1a1a38;border-left:3px solid #00bfff;border-radius:0 8px 8px 0;font-size:12px;color:#ffcc80;line-height:1.5}
+.act-section{margin:12px}
+.act-section .as-label{font-size:12px;color:#888;margin-bottom:8px;font-weight:600}
+.act-btn{width:100%;padding:12px;background:linear-gradient(135deg,#006994,#00bfff);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;transition:all .2s}
+.act-btn:hover{filter:brightness(1.1)}
+.act-btn:disabled{background:#333;color:#666;cursor:not-allowed;filter:none}
+.act-btn.green{background:linear-gradient(135deg,#2aaa5a,#3cc76a)}
+.act-btn.red{background:linear-gradient(135deg,#e8443a,#ff6b6b)}
+.act-btn.blue{background:linear-gradient(135deg,#3a7aff,#5a9aff)}
+
+#info-bar{position:absolute;top:12px;right:12px;background:rgba(10,10,26,.95);border:1px solid #1a1a3a;border-radius:10px;padding:12px 16px;z-index:20;min-width:200px;display:none;font-size:12px}
+#info-bar .ib-title{font-size:11px;color:#00bfff;font-weight:600;margin-bottom:6px}
+.ib-row{display:flex;justify-content:space-between;padding:3px 0}
+.ib-row .ib-k{color:#888}
+.ib-row .ib-v{font-weight:600;font-variant-numeric:tabular-nums}
+
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:36px;background:rgba(10,10,26,.95);border-top:1px solid #1a1a3a;z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}
+#bottom-bar .bb-right{text-align:right}
+
+.result-box{text-align:center;max-width:420px;background:rgba(10,10,26,.98);border:1px solid #2a2a5a;border-radius:16px;padding:28px 36px}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-desc{font-size:13px;color:#999;line-height:1.6;margin-bottom:16px}
+.result-box .rb-learn{text-align:left;background:#0e0e20;border-radius:8px;padding:12px 14px;font-size:12px;color:#8ab4ff;line-height:1.7;margin-bottom:16px}
+.result-box .rb-learn b{color:#00bfff}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#00bfff;color:#fff}
+.result-box .btn-retry{background:#2a2a5a;color:#ccc}
+
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:12px;color:#aaa;display:block;margin-bottom:4px}
+.slider-wrap input[type=range]{width:100%;accent-color:#00bfff}
+.slider-wrap .sv{font-size:13px;color:#00bfff;font-weight:700}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🌊 <span class="gold">深海</span>深潜探索器</h1>
+  <div class="sub">7 个关卡，探索万米深渊的奥秘</div>
+  <button class="start-btn" onclick="startGame()">开始下潜</button>
+  <div class="features">
+    <div class="feat"><div class="fi">💧</div>水压</div>
+    <div class="feat"><div class="fi">⚖️</div>浮力</div>
+    <div class="feat"><div class="fi">📡</div>声呐</div>
+    <div class="feat"><div class="fi">🐙</div>生态</div>
+    <div class="feat"><div class="fi">🌋</div>热液</div>
+    <div class="feat"><div class="fi">🛡️</div>耐压</div>
+    <div class="feat"><div class="fi">🦾</div>采样</div>
+  </div>
+</div>
+</div>
+
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+
+<div id="lp">
+  <div class="lp-head"><span class="lp-title" id="lpTitle">第 1 关</span><span class="lp-step" id="lpStep">1/7</span></div>
+  <div id="lp-body"></div>
+</div>
+<div id="info-bar"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let CW, CH, time = 0;
+let gameState = 'start';
+let currentLevel = 0;
+let levelState = {};
+let bubbles = [];
+let particles = [];
+let animId;
+let completedLevels = new Set();
+let panelRendered = false;
+
+function resize() {
+  CW = canvas.width = window.innerWidth * devicePixelRatio;
+  CH = canvas.height = window.innerHeight * devicePixelRatio;
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  CW = window.innerWidth; CH = window.innerHeight;
+  initBubbles();
+}
+window.addEventListener('resize', resize);
+resize();
+
+function initBubbles() {
+  bubbles = [];
+  for (let i = 0; i < 40; i++) {
+    bubbles.push({ x: Math.random() * CW, y: Math.random() * CH, r: Math.random() * 3 + 1, speed: Math.random() * 0.5 + 0.2, wobble: Math.random() * Math.PI * 2 });
+  }
+}
+
+function drawBubbles() {
+  for (let b of bubbles) {
+    b.y -= b.speed;
+    b.x += Math.sin(b.wobble + time * 0.02) * 0.3;
+    if (b.y < -10) { b.y = CH + 10; b.x = Math.random() * CW; }
+    ctx.strokeStyle = 'rgba(100,200,255,0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.stroke();
+  }
+}
+
+function addParticle(x, y, vx, vy, color, life, size) {
+  particles.push({ x, y, vx, vy, color, life, maxLife: life, size: size || 3 });
+}
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.life -= dt;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+function drawParticles() {
+  for (let p of particles) {
+    const a = Math.max(0, p.life / p.maxLife);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = p.color;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size * a, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ============ 海水背景 ============
+function getOceanColor(depth) {
+  const t = Math.min(depth / 11000, 1);
+  const r = Math.floor(10 * (1 - t));
+  const g = Math.floor(10 + 80 * (1 - t));
+  const b = Math.floor(26 + 180 * (1 - t));
+  return `rgb(${r},${g},${b})`;
+}
+function drawOceanBg(depth) {
+  const t = Math.min(depth / 11000, 1);
+  const grd = ctx.createLinearGradient(0, 0, 0, CH);
+  grd.addColorStop(0, getOceanColor(depth));
+  grd.addColorStop(1, getOceanColor(depth + 2000));
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, CW, CH);
+}
+
+// ============ 潜水器 ============
+function drawSubmersible(x, y, scale, opts) {
+  const s = scale || 1;
+  const o = opts || {};
+  ctx.save();
+  ctx.translate(x, y);
+  if (o.deform) {
+    const d = o.deform;
+    ctx.scale(1 - d * 0.05, 1 + d * 0.05);
+  }
+  // 主体椭圆
+  ctx.fillStyle = '#e8e8f0';
+  ctx.beginPath(); ctx.ellipse(0, 0, 30 * s, 18 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#aab';
+  ctx.lineWidth = 2 * s;
+  ctx.stroke();
+  // 观察窗
+  ctx.fillStyle = '#1a3a6a';
+  ctx.beginPath(); ctx.arc(12 * s, -3 * s, 8 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#4af';
+  ctx.lineWidth = 1.5 * s;
+  ctx.stroke();
+  // 灯光
+  ctx.fillStyle = 'rgba(255,255,100,0.6)';
+  ctx.beginPath(); ctx.arc(28 * s, 0, 3 * s, 0, Math.PI * 2); ctx.fill();
+  // 机械臂（如果需要）
+  if (o.arm) {
+    const a1 = o.armAngle1 || 0, a2 = o.armAngle2 || 0;
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 3 * s;
+    ctx.beginPath();
+    ctx.moveTo(-10 * s, 14 * s);
+    const ax1 = -10 * s + Math.cos(a1) * 20 * s;
+    const ay1 = 14 * s + Math.sin(a1) * 20 * s;
+    ctx.lineTo(ax1, ay1);
+    const ax2 = ax1 + Math.cos(a2) * 16 * s;
+    const ay2 = ay1 + Math.sin(a2) * 16 * s;
+    ctx.lineTo(ax2, ay2);
+    ctx.stroke();
+    // 爪子
+    ctx.strokeStyle = '#aaa';
+    ctx.lineWidth = 2 * s;
+    ctx.beginPath();
+    ctx.moveTo(ax2, ay2);
+    ctx.lineTo(ax2 - 4 * s, ay2 + 6 * s);
+    ctx.moveTo(ax2, ay2);
+    ctx.lineTo(ax2 + 4 * s, ay2 + 6 * s);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ============ 关卡定义 ============
+const LEVELS = [
+  // 第1关：水压
+  {
+    id:1, title:'深海水压 — 帕斯卡定律', icon:'💧',
+    desc:'每下潜10米，压力增加约1个大气压。马里亚纳海沟底部压力超过1100个大气压！',
+    concept:'<b>帕斯卡定律</b>：密闭液体中任一点的压力变化会等值传递到各处。\n\n海水压力公式：P = ρgh\n其中 ρ=1025kg/m³（海水密度），g=9.8m/s²，h=深度',
+    goals:[{label:'将深度调到5000m以上',check:s=>s.depth>=5000},{label:'观察潜器在11000m的变形',check:s=>s.maxDepth>=11000}],
+    hint:'拖动滑块控制下潜深度，观察压力表和潜器外壳的变化！',
+    actions: s => {
+      let h = `<div class="slider-wrap"><label>下潜深度: <span class="sv">${s.depth} m</span></label>`;
+      h += `<input type="range" min="0" max="11000" step="100" value="${s.depth}" oninput="doAction('setDepth',this.value)"></div>`;
+      h += `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin:8px 0">`;
+      const pressure = (1 + s.depth / 10).toFixed(0);
+      h += `压力: <span style="color:#00bfff;font-size:16px;font-weight:700">${pressure} atm</span><br>`;
+      h += `相当于: <span style="color:#ffcc80">${(pressure * 101.325).toFixed(0)} kPa</span><br>`;
+      const zone = s.depth < 200 ? '透光层' : s.depth < 1000 ? '弱光层' : s.depth < 4000 ? '无光层' : s.depth < 6000 ? '深渊层' : '超深渊层';
+      h += `海洋分区: <span style="color:#4af">${zone}</span>`;
+      h += `</div>`;
+      if (s.depth >= 5000 && s.maxDepth >= 11000) h += `<button class="act-btn green" onclick="checkLevel()">🎉 完成探索！查看总结</button>`;
+      return h;
+    },
+    init: () => ({ depth: 0, maxDepth: 0 }),
+    learn:'在11000米的马里亚纳海沟底部，水压约为<b>1100个大气压</b>，相当于每平方厘米承受1.1吨的重量。中国"奋斗者号"载人潜水器2020年成功到达10909米深处。'
+  },
+  // 第2关：浮力控制
+  {
+    id:2, title:'浮力控制 — 阿基米德原理', icon:'⚖️',
+    desc:'潜水器通过注水/排水改变自身重量来控制上浮和下沉，就像潜水艇一样。',
+    concept:'<b>阿基米德原理</b>：浸在液体中的物体受到向上的浮力，大小等于排开液体的重力。\n\n浮力 = ρ_水 × V_排 × g\n注水→重力增大→下沉\n排水→重力减小→上浮',
+    goals:[{label:'理解注水下沉/排水上浮',check:s=>s.operated},{label:'到达目标深度(±50m)',check:s=>s.reached}],
+    hint:'用按钮控制压载水舱的注水和排水，让潜器到达目标深度（红色虚线）！',
+    actions: s => {
+      let h = `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin:8px 0">`;
+      h += `当前深度: <span style="color:#00bfff;font-size:16px;font-weight:700">${s.subDepth.toFixed(0)} m</span><br>`;
+      h += `目标深度: <span style="color:#ff6b6b;font-weight:700">${s.targetDepth} m</span><br>`;
+      h += `压载水量: <span style="color:#4af">${(s.ballast * 100).toFixed(0)}%</span><br>`;
+      const buoyancy = 25000;
+      const weight = 24000 + s.ballast * 3000;
+      h += `浮力: <span style="color:#2aaa5a">${buoyancy} N</span> | 重力: <span style="color:#ff6a33">${weight.toFixed(0)} N</span>`;
+      h += `</div>`;
+      h += `<div class="slider-wrap"><label>注水量调节: <span class="sv">${(s.ballast * 100).toFixed(0)}%</span></label>`;
+      h += `<input type="range" min="0" max="100" value="${(s.ballast * 100).toFixed(0)}" oninput="doAction('setBallast',this.value)"></div>`;
+      h += `<button class="act-btn" onclick="doAction('inject')">💧 注水（下沉）</button>`;
+      h += `<button class="act-btn blue" onclick="doAction('drain')">🫧 排水（上浮）</button>`;
+      if (s.reached) h += `<button class="act-btn green" onclick="checkLevel()">🎉 到达目标！查看总结</button>`;
+      return h;
+    },
+    init: () => ({ subDepth: 0, velocity: 0, ballast: 0.3, targetDepth: 800, operated: false, reached: false }),
+    learn:'真实潜水器有<b>压载水舱</b>系统。注入海水增加重量就下沉，用高压气体排出海水就上浮。"蛟龙号"的压载系统可以精确控制在任意深度悬停。'
+  },
+  // 第3关：声呐探测
+  {
+    id:3, title:'声呐探测 — 声波传播', icon:'📡',
+    desc:'声波在海水中传播速度约1500m/s，通过测量回波时间可以计算海底深度。',
+    concept:'<b>声呐原理</b>：发射声波脉冲→碰到海底反射→接收回波\n\n深度 = (声速 × 回波时间) / 2\n海水中声速 ≈ 1500 m/s\n\n多次测量可绘制海底地形图。',
+    goals:[{label:'发射3次以上声波',check:s=>s.pingCount>=3},{label:'绘制出海底地形轮廓',check:s=>s.profilePoints>=5}],
+    hint:'点击"发射声波"，观察声波扩散和回波。多次发射可以绘制海底地形！',
+    actions: s => {
+      let h = `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin:8px 0">`;
+      h += `已发射: <span style="color:#00bfff;font-weight:700">${s.pingCount} 次</span><br>`;
+      h += `地形采样点: <span style="color:#4af">${s.profilePoints} / 5</span><br>`;
+      if (s.lastEcho > 0) {
+        h += `上次回波时间: <span style="color:#ffcc80">${s.lastEcho.toFixed(2)} s</span><br>`;
+        h += `计算深度: <span style="color:#2aaa5a">${(s.lastEcho * 1500 / 2).toFixed(0)} m</span>`;
+      }
+      h += `</div>`;
+      h += `<button class="act-btn" onclick="doAction('ping')" ${s.pinging?'disabled':''}>📡 发射声波</button>`;
+      if (s.pingCount >= 3 && s.profilePoints >= 5) h += `<button class="act-btn green" onclick="checkLevel()">🎉 地形绘制完成！查看总结</button>`;
+      return h;
+    },
+    init: () => {
+      const terrain = [];
+      for (let i = 0; i <= 10; i++) {
+        terrain.push(3000 + Math.sin(i * 0.8) * 800 + Math.random() * 400);
+      }
+      return { pingCount: 0, pinging: false, pingTime: 0, pingX: 0, waves: [], lastEcho: 0, terrain, profilePoints: 0, profileData: [] };
+    },
+    learn:'现代多波束声呐可以同时发射数百条声波束，一次扫描就能绘制宽阔的海底地形。<b>海底地形测绘</b>是深海探索的第一步，目前人类只测绘了约20%的海底。'
+  },
+  // 第4关：深海生态
+  {
+    id:4, title:'深海生态 — 极端生物', icon:'🐙',
+    desc:'随着深度增加，光线消失、压力剧增，但生命依然顽强存在。',
+    concept:'<b>深海生物适应</b>：\n• 透光层(0-200m)：光合作用，水母等\n• 弱光层(200-1000m)：生物发光，灯笼鱼\n• 无光层(1000-4000m)：管虫、巨型章鱼\n• 深渊层(6000m+)：盲虾、端足类\n\n深海生物通过<b>生物发光</b>、<b>耐压蛋白</b>等适应极端环境。',
+    goals:[{label:'下潜发现3种以上生物',check:s=>s.discovered>=3},{label:'到达11000m发现端足类',check:s=>s.foundAmphipod}],
+    hint:'缓慢下潜，在不同深度会遇到不同的深海生物。点击生物查看介绍！',
+    actions: s => {
+      let h = `<div class="slider-wrap"><label>下潜深度: <span class="sv">${s.depth} m</span></label>`;
+      h += `<input type="range" min="0" max="11000" step="50" value="${s.depth}" oninput="doAction('setDiveDepth',this.value)"></div>`;
+      h += `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin:8px 0">`;
+      h += `已发现生物: <span style="color:#00bfff;font-weight:700">${s.discovered} / 5</span><br>`;
+      for (const c of s.creatures) {
+        if (c.found) h += `<div style="color:#4af;padding:2px 0">✓ ${c.name} (${c.depthRange})</div>`;
+      }
+      h += `</div>`;
+      if (s.showCard) {
+        const c = s.creatures.find(c => c.id === s.showCard);
+        if (c) {
+          h += `<div style="background:#141428;border:1px solid #2a2a5a;border-radius:8px;padding:10px;margin:8px 0">`;
+          h += `<div style="font-size:14px;font-weight:700;color:#4af;margin-bottom:4px">${c.icon} ${c.name}</div>`;
+          h += `<div style="font-size:12px;color:#999;line-height:1.6">${c.info}</div></div>`;
+        }
+      }
+      if (s.discovered >= 3 && s.foundAmphipod) h += `<button class="act-btn green" onclick="checkLevel()">🎉 生态探索完成！查看总结</button>`;
+      return h;
+    },
+    init: () => ({
+      depth: 0, discovered: 0, foundAmphipod: false, showCard: null,
+      creatures: [
+        { id:'jelly', name:'水母', icon:'🪼', depthRange:'0-200m', minD:50, maxD:200, found:false, info:'水母是最古老的多细胞动物之一，身体95%是水。透明的伞状身体在水中优雅漂浮，触手含有刺细胞用于捕食。' },
+        { id:'lantern', name:'灯笼鱼', icon:'🐟', depthRange:'200-1000m', minD:200, maxD:1000, found:false, info:'灯笼鱼体侧有一排发光器官，能产生蓝绿色荧光。它们是深海中数量最多的鱼类，每天进行数百米的垂直迁移。' },
+        { id:'tubeworm', name:'管虫', icon:'🪱', depthRange:'1000-3000m', minD:1000, maxD:3500, found:false, info:'巨型管虫可长达2米，没有嘴和消化系统！它们依靠体内的共生细菌将硫化氢转化为能量，是化能自养的典范。' },
+        { id:'shrimp', name:'盲虾', icon:'🦐', depthRange:'3000-6000m', minD:3000, maxD:6500, found:false, info:'深海盲虾没有眼睛，但背部有特殊的感光器官，能感知热液喷口的微弱红外辐射。它们以热液喷口周围的细菌为食。' },
+        { id:'amphipod', name:'端足类', icon:'🦀', depthRange:'6000-11000m', minD:6000, maxD:11000, found:false, info:'端足类是马里亚纳海沟最深处发现的生物之一。它们体内含有特殊的耐压蛋白质TMAO，能在1100个大气压下正常生存。' }
+      ]
+    }),
+    learn:'深海并非生命禁区。从发光的灯笼鱼到万米深渊的端足类，生命以各种方式适应极端环境。<b>深海生物多样性</b>远超我们的想象，科学家估计90%的深海物种尚未被发现。'
+  },
+  // 第5关：热液喷口
+  {
+    id:5, title:'热液喷口 — 化能自养', icon:'🌋',
+    desc:'海底热液喷口喷出350°C的含矿物质热水，形成"黑烟囱"，周围有独特的生态系统。',
+    concept:'<b>化能自养</b>：不依赖阳光，而是利用化学能（如H₂S氧化）合成有机物。\n\n热液喷口是地球上最极端的生态系统之一，可能是生命起源的地方。\n\n喷出物含有：H₂S（硫化氢）、Fe（铁）、Mn（锰）、Cu（铜）等。',
+    goals:[{label:'发现黑烟囱并观察温度',check:s=>s.foundChimney},{label:'采集并分析化学成分',check:s=>s.analyzed}],
+    hint:'下潜到海底寻找热液喷口（黑烟囱），点击采样分析化学成分！',
+    actions: s => {
+      let h = `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin:8px 0">`;
+      h += `深度: <span style="color:#00bfff;font-weight:700">2500 m</span><br>`;
+      if (s.foundChimney) {
+        h += `温度: <span style="color:#ff6a33;font-size:16px;font-weight:700">${s.temperature.toFixed(0)}°C</span><br>`;
+        h += `状态: <span style="color:#2aaa5a">已发现黑烟囱！</span>`;
+      } else {
+        h += `状态: <span style="color:#ffcc80">搜索中...</span>`;
+      }
+      h += `</div>`;
+      if (!s.foundChimney) {
+        h += `<button class="act-btn" onclick="doAction('searchChimney')">🔍 搜索热液喷口</button>`;
+      } else if (!s.sampled) {
+        h += `<button class="act-btn" onclick="doAction('sample')">🧪 采集样本</button>`;
+      } else if (!s.analyzed) {
+        h += `<div style="background:#141428;border:1px solid #2a2a5a;border-radius:8px;padding:10px;margin:8px 0">`;
+        h += `<div style="font-size:13px;font-weight:700;color:#4af;margin-bottom:6px">化学分析结果</div>`;
+        h += `<div style="font-size:12px;color:#ccc;line-height:1.8">`;
+        h += `H₂S（硫化氢）: <span style="color:#ff6a33">32.5%</span><br>`;
+        h += `Fe（铁）: <span style="color:#ff6a33">18.2%</span><br>`;
+        h += `Mn（锰）: <span style="color:#ff6a33">12.8%</span><br>`;
+        h += `Cu（铜）: <span style="color:#ff6a33">5.1%</span><br>`;
+        h += `其他矿物: <span style="color:#ff6a33">31.4%</span>`;
+        h += `</div></div>`;
+        h += `<button class="act-btn blue" onclick="doAction('analyze')">📊 确认分析</button>`;
+      }
+      if (s.analyzed) h += `<button class="act-btn green" onclick="checkLevel()">🎉 分析完成！查看总结</button>`;
+      return h;
+    },
+    init: () => ({ foundChimney: false, temperature: 2, sampled: false, analyzed: false, chimneyParticles: [], searchProgress: 0 }),
+    learn:'热液喷口处的<b>化能自养细菌</b>是整个生态系统的基础，它们将H₂S氧化获取能量，就像植物利用阳光一样。这个发现改变了我们对"生命必须依赖阳光"的认知，也为寻找外星生命提供了新思路。'
+  },
+  // 第6关：耐压设计
+  {
+    id:6, title:'耐压设计 — 结构力学', icon:'🛡️',
+    desc:'深海潜器必须承受巨大水压。球形壳体是最佳耐压形状，材料和厚度决定极限深度。',
+    concept:'<b>耐压壳体设计</b>：\n• 球形壳体受力最均匀\n• 材料强度决定极限深度\n• 观察窗是最薄弱环节\n\n钛合金：强度高、密度低，但昂贵\n高强钢：成本低，但重\n陶瓷：超高强度，但脆性大',
+    goals:[{label:'选择材料并通过3000m测试',check:s=>s.pass3000},{label:'通过10000m极限测试',check:s=>s.pass10000}],
+    hint:'选择壳体材料和厚度，再选观察窗材料，然后进行压力测试！',
+    actions: s => {
+      let h = '';
+      const materials = [{name:'钛合金',strength:900,density:4.5,color:'#4af'},{name:'高强钢',strength:700,density:7.8,color:'#ff6a33'},{name:'陶瓷',strength:1200,density:3.9,color:'#2aaa5a'}];
+      const windows = [{name:'蓝宝石',strength:800,color:'#88f'},{name:'有机玻璃',strength:200,color:'#ffa'}];
+      h += `<div style="font-size:12px;color:#888;margin-bottom:4px">壳体材料:</div>`;
+      h += `<div style="display:flex;gap:4px;margin-bottom:8px">`;
+      materials.forEach((m, i) => {
+        const sel = s.shellMat === i;
+        h += `<button style="flex:1;padding:8px 4px;border:1px solid ${sel?m.color:'#333'};background:${sel?'#1a1a3a':'#0e0e20'};color:${sel?m.color:'#666'};border-radius:6px;font-size:11px;cursor:pointer" onclick="doAction('setShell',${i})">${m.name}</button>`;
+      });
+      h += `</div>`;
+      h += `<div class="slider-wrap"><label>壳体厚度: <span class="sv">${s.thickness} mm</span></label>`;
+      h += `<input type="range" min="20" max="120" step="5" value="${s.thickness}" oninput="doAction('setThickness',this.value)"></div>`;
+      h += `<div style="font-size:12px;color:#888;margin:8px 0 4px">观察窗材料:</div>`;
+      h += `<div style="display:flex;gap:4px;margin-bottom:8px">`;
+      windows.forEach((w, i) => {
+        const sel = s.winMat === i;
+        h += `<button style="flex:1;padding:8px 4px;border:1px solid ${sel?w.color:'#333'};background:${sel?'#1a1a3a':'#0e0e20'};color:${sel?w.color:'#666'};border-radius:6px;font-size:11px;cursor:pointer" onclick="doAction('setWindow',${i})">${w.name}</button>`;
+      });
+      h += `</div>`;
+      h += `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin:8px 0">`;
+      const mat = materials[s.shellMat];
+      const win = windows[s.winMat];
+      const maxD = Math.floor(mat.strength * s.thickness / 10 * (1 + (s.winMat === 0 ? 0.3 : -0.2)));
+      h += `壳体: <span style="color:${mat.color}">${mat.name}</span> ${s.thickness}mm<br>`;
+      h += `观察窗: <span style="color:${win.color}">${win.name}</span><br>`;
+      h += `理论极限深度: <span style="color:#ffcc80;font-weight:700">${maxD} m</span>`;
+      h += `</div>`;
+      if (!s.testing) {
+        h += `<button class="act-btn" onclick="doAction('test',3000)">🔬 3000m 压力测试</button>`;
+        h += `<button class="act-btn red" onclick="doAction('test',10000)">⚠️ 10000m 极限测试</button>`;
+      } else {
+        h += `<div style="color:#ffcc80;font-size:13px;text-align:center;padding:8px">测试中... ${s.testDepth}m / ${s.testTarget}m</div>`;
+      }
+      if (s.testResult) {
+        const ok = s.testResult === 'pass';
+        h += `<div style="color:${ok?'#2aaa5a':'#ff6b6b'};font-size:13px;padding:8px;text-align:center">${ok?'✅ 测试通过！结构完好':'❌ 结构破裂！需要更强的材料或更厚的壳体'}</div>`;
+      }
+      if (s.pass3000 && s.pass10000) h += `<button class="act-btn green" onclick="checkLevel()">🎉 设计验证完成！查看总结</button>`;
+      return h;
+    },
+    init: () => ({ shellMat: 0, winMat: 0, thickness: 60, testing: false, testDepth: 0, testTarget: 0, testResult: null, pass3000: false, pass10000: false }),
+    learn:'"奋斗者号"采用<b>钛合金球形耐压壳</b>，壁厚约120mm，观察窗使用特制蓝宝石玻璃。球形是最佳耐压形状，因为各方向受力均匀。设计时还要考虑反复加压的疲劳寿命。'
+  },
+  // 第7关：深渊采样
+  {
+    id:7, title:'深渊采样 — 深海科考', icon:'🦾',
+    desc:'操控机械臂在海底采集矿物和生物样本，这是深海科考最关键的操作。',
+    concept:'<b>深海采样</b>：\n• 锰结核：海底多金属矿物，含锰、铁、镍、钴\n• 管虫样本：研究极端环境生物适应机制\n• 机械臂：液压驱动，7个自由度\n\n采样需要极其精细的操作，避免破坏脆弱的深海生态。',
+    goals:[{label:'采集锰结核样本',check:s=>s.collectedMineral},{label:'采集管虫样本',check:s=>s.collectedBio}],
+    hint:'移动鼠标控制机械臂角度，靠近目标后点击抓取，再移到采样箱上方点击释放！',
+    actions: s => {
+      let h = `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin:8px 0">`;
+      h += `深度: <span style="color:#00bfff;font-weight:700">10900 m</span><br>`;
+      h += `采样箱: `;
+      h += s.collectedMineral ? '<span style="color:#2aaa5a">✓ 锰结核</span> ' : '<span style="color:#666">○ 锰结核</span> ';
+      h += s.collectedBio ? '<span style="color:#2aaa5a">✓ 管虫</span>' : '<span style="color:#666">○ 管虫</span>';
+      h += `<br>手爪状态: <span style="color:${s.holding?'#ff6a33':'#4af'}">${s.holding ? '持有 '+s.holdingName : '空闲'}</span>`;
+      h += `</div>`;
+      h += `<div style="font-size:11px;color:#888;line-height:1.6;margin:8px 0">`;
+      h += `🖱️ 移动鼠标 → 控制机械臂<br>`;
+      h += `🖱️ 点击目标 → 抓取样本<br>`;
+      h += `🖱️ 点击采样箱 → 放入样本</div>`;
+      if (s.collectedMineral && s.collectedBio) h += `<button class="act-btn green" onclick="checkLevel()">🎉 采样完成！查看总结</button>`;
+      return h;
+    },
+    init: () => ({
+      armAngle1: Math.PI * 0.4, armAngle2: Math.PI * 0.3,
+      holding: false, holdingName: '', holdingId: null,
+      collectedMineral: false, collectedBio: false,
+      targets: [
+        { id:'mineral', name:'锰结核', x: 0.55, y: 0.82, collected: false },
+        { id:'mineral2', name:'锰结核', x: 0.65, y: 0.85, collected: false },
+        { id:'bio', name:'管虫', x: 0.75, y: 0.78, collected: false }
+      ],
+      boxX: 0.4, boxY: 0.7
+    }),
+    learn:'深海采样是了解地球最后未知领域的关键。<b>锰结核</b>含有丰富的锰、镍、钴等战略金属，被称为"海底矿藏"。但深海采矿可能破坏脆弱的生态系统，如何平衡开发与保护是重大挑战。'
+  }
+];
+
+// PLACEHOLDER_ENGINE
+
+// ============ 面板渲染 ============
+function renderPanel() {
+  const lv = LEVELS[currentLevel];
+  const s = levelState;
+  document.getElementById('lpTitle').textContent = `第 ${currentLevel + 1} 关`;
+  document.getElementById('lpStep').textContent = `${currentLevel + 1}/${LEVELS.length}`;
+  let h = `<div class="mission"><div class="m-level">${lv.icon} 关卡 ${currentLevel + 1}</div>`;
+  h += `<div class="m-title">${lv.title}</div>`;
+  h += `<div class="m-desc">${lv.desc}</div>`;
+  h += `<div class="m-concept">${lv.concept.replace(/\n/g, '<br>')}</div></div>`;
+  h += `<div style="margin:0 12px">`;
+  for (const g of lv.goals) {
+    const done = g.check(s);
+    h += `<div class="goal-row"><span class="g-icon">${done ? '✅' : '⬜'}</span><span class="g-text">${g.label}</span></div>`;
+  }
+  h += `</div>`;
+  h += `<div class="hint-b">${lv.hint}</div>`;
+  h += `<div class="act-section"><div class="as-label">操作</div>${lv.actions(s)}</div>`;
+  document.getElementById('lp-body').innerHTML = h;
+}
+
+// ============ 游戏控制 ============
+function startGame() {
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('lp').style.display = 'flex';
+  gameState = 'playing';
+  currentLevel = 0;
+  completedLevels.clear();
+  initLevel();
+}
+
+function initLevel() {
+  const lv = LEVELS[currentLevel];
+  levelState = lv.init();
+  panelRendered = false;
+  particles = [];
+  renderPanel();
+}
+
+function doAction(action, value) {
+  const s = levelState;
+  const lv = LEVELS[currentLevel];
+
+  switch(currentLevel) {
+    case 0: // 水压
+      if (action === 'setDepth') {
+        s.depth = parseInt(value);
+        if (s.depth > s.maxDepth) s.maxDepth = s.depth;
+      }
+      break;
+    case 1: // 浮力
+      if (action === 'setBallast') {
+        s.ballast = parseInt(value) / 100;
+        s.operated = true;
+      }
+      if (action === 'inject') { s.ballast = Math.min(1, s.ballast + 0.1); s.operated = true; }
+      if (action === 'drain') { s.ballast = Math.max(0, s.ballast - 0.1); s.operated = true; }
+      break;
+    case 2: // 声呐
+      if (action === 'ping' && !s.pinging) {
+        s.pinging = true;
+        s.pingTime = 0;
+        s.pingX = 320 + (CW - 320) * (0.3 + Math.random() * 0.4);
+        s.waves.push({ x: s.pingX, y: CH * 0.15, r: 0, returning: false, echoR: 0 });
+        s.pingCount++;
+      }
+      break;
+    case 3: // 深海生态
+      if (action === 'setDiveDepth') {
+        s.depth = parseInt(value);
+        s.showCard = null;
+        for (const c of s.creatures) {
+          if (!c.found && s.depth >= c.minD && s.depth <= c.maxD) {
+            c.found = true;
+            s.discovered++;
+            s.showCard = c.id;
+            if (c.id === 'amphipod') s.foundAmphipod = true;
+          }
+        }
+      }
+      break;
+    case 4: // 热液喷口
+      if (action === 'searchChimney') {
+        s.searchProgress++;
+        if (s.searchProgress >= 1) {
+          s.foundChimney = true;
+          s.temperature = 350;
+        }
+      }
+      if (action === 'sample') s.sampled = true;
+      if (action === 'analyze') s.analyzed = true;
+      break;
+    case 5: // 耐压设计
+      if (action === 'setShell') { s.shellMat = parseInt(value); s.testResult = null; }
+      if (action === 'setWindow') { s.winMat = parseInt(value); s.testResult = null; }
+      if (action === 'setThickness') { s.thickness = parseInt(value); s.testResult = null; }
+      if (action === 'test' && !s.testing) {
+        s.testing = true;
+        s.testTarget = parseInt(value);
+        s.testDepth = 0;
+        s.testResult = null;
+      }
+      break;
+  }
+  renderPanel();
+}
+
+function checkLevel() {
+  const lv = LEVELS[currentLevel];
+  const allDone = lv.goals.every(g => g.check(levelState));
+  if (!allDone) return;
+  if (!completedLevels.has(currentLevel)) {
+    completedLevels.add(currentLevel);
+  }
+  showResult(true);
+}
+
+function showResult(success) {
+  const lv = LEVELS[currentLevel];
+  const isLast = currentLevel === LEVELS.length - 1;
+  let h = `<div class="rb-icon">${success ? '🎉' : '❌'}</div>`;
+  h += `<div class="rb-title">${success ? '关卡完成！' : '再试一次'}</div>`;
+  h += `<div class="rb-desc">${lv.title}</div>`;
+  if (success) h += `<div class="rb-learn">${lv.learn}</div>`;
+  if (success && !isLast) {
+    h += `<button class="btn-next" onclick="nextLevel()">下一关 →</button>`;
+  } else if (success && isLast) {
+    h += `<div style="color:#ffcc80;font-size:14px;margin-bottom:12px">🏆 恭喜！你已完成全部 ${LEVELS.length} 个关卡的深海探索！</div>`;
+    h += `<button class="btn-retry" onclick="restartGame()">重新开始</button>`;
+  } else {
+    h += `<button class="btn-retry" onclick="retryLevel()">重试</button>`;
+  }
+  document.getElementById('resultBox').innerHTML = h;
+  document.getElementById('resultModal').classList.remove('hidden');
+}
+
+function nextLevel() {
+  document.getElementById('resultModal').classList.add('hidden');
+  currentLevel++;
+  initLevel();
+}
+function retryLevel() {
+  document.getElementById('resultModal').classList.add('hidden');
+  initLevel();
+}
+function restartGame() {
+  document.getElementById('resultModal').classList.add('hidden');
+  currentLevel = 0;
+  completedLevels.clear();
+  initLevel();
+}
+
+// PLACEHOLDER_UPDATE_DRAW
+
+// ============ 关卡更新逻辑 ============
+function updateLevel(dt) {
+  const s = levelState;
+  switch(currentLevel) {
+    case 1: { // 浮力
+      const buoyancy = 25000;
+      const weight = 24000 + s.ballast * 3000;
+      const netForce = weight - buoyancy;
+      s.velocity += netForce * 0.00001 * dt;
+      s.velocity *= 0.98;
+      s.subDepth += s.velocity * dt;
+      s.subDepth = Math.max(0, Math.min(4000, s.subDepth));
+      if (s.subDepth <= 0) s.velocity = Math.max(0, s.velocity);
+      if (Math.abs(s.subDepth - s.targetDepth) < 50 && Math.abs(s.velocity) < 0.5) {
+        if (!s.reached) { s.reached = true; renderPanel(); }
+      }
+      break;
+    }
+    case 2: { // 声呐
+      for (let i = s.waves.length - 1; i >= 0; i--) {
+        const w = s.waves[i];
+        if (!w.returning) {
+          w.r += 300 * dt;
+          const terrainIdx = Math.floor((w.x - 320) / ((CW - 320) / 10));
+          const tIdx = Math.max(0, Math.min(10, terrainIdx));
+          const seabed = s.terrain[tIdx] / 11000 * CH;
+          if (w.y + w.r >= seabed) {
+            w.returning = true;
+            w.echoR = w.r;
+            const echoTime = w.r * 2 / (1500 * 50);
+            s.lastEcho = echoTime;
+            if (!s.profileData.find(p => Math.abs(p.x - w.x) < 30)) {
+              s.profileData.push({ x: w.x, depth: s.terrain[tIdx] });
+              s.profilePoints = s.profileData.length;
+            }
+          }
+        } else {
+          w.echoR -= 300 * dt;
+          if (w.echoR <= 0) {
+            s.waves.splice(i, 1);
+            s.pinging = false;
+            renderPanel();
+          }
+        }
+      }
+      break;
+    }
+    case 5: { // 耐压测试
+      if (s.testing) {
+        s.testDepth += 500 * dt;
+        const materials = [{strength:900},{strength:700},{strength:1200}];
+        const mat = materials[s.shellMat];
+        const maxD = Math.floor(mat.strength * s.thickness / 10 * (1 + (s.winMat === 0 ? 0.3 : -0.2)));
+        if (s.testDepth >= s.testTarget) {
+          s.testing = false;
+          s.testResult = 'pass';
+          if (s.testTarget >= 3000) s.pass3000 = true;
+          if (s.testTarget >= 10000) s.pass10000 = true;
+          renderPanel();
+        } else if (s.testDepth >= maxD) {
+          s.testing = false;
+          s.testDepth = maxD;
+          s.testResult = 'fail';
+          for (let i = 0; i < 20; i++) {
+            addParticle(CW * 0.6, CH * 0.5, (Math.random()-0.5)*200, (Math.random()-0.5)*200, '#ff6b6b', 1.5, 4);
+          }
+          renderPanel();
+        }
+      }
+      break;
+    }
+  }
+}
+
+// ============ 关卡绘制 ============
+function drawLevel() {
+  const s = levelState;
+  const ox = 320, ow = CW - 320;
+
+  switch(currentLevel) {
+    case 0: { // 水压
+      drawOceanBg(s.depth);
+      drawBubbles();
+      const subX = ox + ow * 0.5, subY = CH * 0.45;
+      const deform = s.depth / 11000;
+      drawSubmersible(subX, subY, 1.5, { deform });
+      // 压力表
+      const cx = ox + ow * 0.5, cy = CH * 0.12;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.beginPath(); ctx.arc(cx, cy, 40, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#00bfff';
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, 40, 0, Math.PI * 2); ctx.stroke();
+      const pressure = 1 + s.depth / 10;
+      const angle = -Math.PI * 0.75 + (pressure / 1100) * Math.PI * 1.5;
+      ctx.strokeStyle = '#ff6a33';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(angle) * 30, cy + Math.sin(angle) * 30);
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${pressure.toFixed(0)} atm`, cx, cy + 18);
+      // 深度标尺
+      const sx = ox + 30;
+      ctx.strokeStyle = '#4af';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(sx, 60); ctx.lineTo(sx, CH - 40); ctx.stroke();
+      for (let d = 0; d <= 11000; d += 1000) {
+        const yy = 60 + (d / 11000) * (CH - 100);
+        ctx.fillStyle = '#4af';
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${d}m`, sx + 6, yy + 3);
+        ctx.beginPath(); ctx.moveTo(sx - 3, yy); ctx.lineTo(sx + 3, yy); ctx.stroke();
+      }
+      const markerY = 60 + (s.depth / 11000) * (CH - 100);
+      ctx.fillStyle = '#ff6a33';
+      ctx.beginPath(); ctx.moveTo(sx - 8, markerY); ctx.lineTo(sx, markerY - 5); ctx.lineTo(sx, markerY + 5); ctx.closePath(); ctx.fill();
+      break;
+    }
+    case 1: { // 浮力
+      const depthRatio = s.subDepth / 4000;
+      drawOceanBg(s.subDepth);
+      drawBubbles();
+      // 目标线
+      const targetY = CH * 0.1 + (s.targetDepth / 4000) * CH * 0.8;
+      ctx.setLineDash([8, 4]);
+      ctx.strokeStyle = '#ff6b6b';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(ox, targetY); ctx.lineTo(CW, targetY); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#ff6b6b';
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(`目标: ${s.targetDepth}m`, ox + 10, targetY - 6);
+      // 潜器
+      const subY = CH * 0.1 + depthRatio * CH * 0.8;
+      drawSubmersible(ox + ow * 0.5, subY, 1.2);
+      // 力箭头
+      const ax = ox + ow * 0.5 + 50;
+      ctx.strokeStyle = '#2aaa5a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(ax, subY); ctx.lineTo(ax, subY - 30); ctx.stroke();
+      ctx.fillStyle = '#2aaa5a';
+      ctx.beginPath(); ctx.moveTo(ax, subY - 35); ctx.lineTo(ax - 5, subY - 25); ctx.lineTo(ax + 5, subY - 25); ctx.closePath(); ctx.fill();
+      ctx.font = '10px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText('浮力', ax + 8, subY - 20);
+      ctx.strokeStyle = '#ff6a33'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(ax, subY); ctx.lineTo(ax, subY + 30); ctx.stroke();
+      ctx.fillStyle = '#ff6a33';
+      ctx.beginPath(); ctx.moveTo(ax, subY + 35); ctx.lineTo(ax - 5, subY + 25); ctx.lineTo(ax + 5, subY + 25); ctx.closePath(); ctx.fill();
+      ctx.fillText('重力', ax + 8, subY + 30);
+      // 深度显示
+      ctx.fillStyle = '#fff'; ctx.font = '14px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(`${s.subDepth.toFixed(0)} m`, ox + ow * 0.5, CH - 20);
+      break;
+    }
+    // PLACEHOLDER_DRAW_CASES
+  }
+}
+
+// PLACEHOLDER_MAIN_LOOP
+</body>
+</html>

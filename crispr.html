@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRISPR 基因编辑原理 — 交互式教育游戏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#c0c0d0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;width:100vw;height:100vh}
+canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(100vh - 36px)}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888;transition:all .3s}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center;transition:all .2s}
+.act-btn:hover{background:#2a2a6a}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.sv{color:#60a5fa;font-weight:bold}
+.title{font-size:15px;color:#60a5fa;margin:8px 0 4px;font-weight:bold}
+.sub{font-size:11px;color:#666;margin-bottom:8px}
+.base-btn{display:inline-block;width:50px;height:36px;margin:3px;border-radius:8px;font-size:16px;font-weight:bold;cursor:pointer;border:2px solid #333;text-align:center;line-height:36px;transition:transform .1s}
+.base-btn:active{transform:scale(0.9)}
+.base-btn.A{background:#0a2a0a;color:#4ade80;border-color:#22c55e}
+.base-btn.T{background:#2a0a0a;color:#f87171;border-color:#ef4444}
+.base-btn.C{background:#0a0a2a;color:#60a5fa;border-color:#3b82f6}
+.base-btn.G{background:#2a2a0a;color:#facc15;border-color:#eab308}
+.base-btn:hover{filter:brightness(1.3)}
+.progress-row{display:flex;gap:4px;margin:6px 0;flex-wrap:wrap}
+.obj{font-size:11px;padding:3px 8px;border-radius:10px;border:1px solid #333;color:#888;background:#111;transition:all .3s}
+.obj.done{color:#4ade80;border-color:#22c55e;background:#0a2a1a}
+#infobar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid #1a1a3a;display:flex;align-items:center;padding:0 16px 0 332px;font-size:12px;color:#666;z-index:10}
+#infobar .sep{margin:0 12px;color:#333}
+.sel-row{display:flex;gap:4px;margin:4px 0;flex-wrap:wrap}
+.err-msg{background:#2a0a0a;border:1px solid #f87171;border-radius:8px;padding:8px;margin:6px 0;font-size:12px;color:#f87171;animation:errPulse .5s}
+@keyframes errPulse{0%{transform:scale(1)}50%{transform:scale(1.02)}100%{transform:scale(1)}}
+.quiz-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:100;display:flex;align-items:center;justify-content:center;animation:fadeIn .4s}
+.quiz-box{background:#0d0d24;border:2px solid #3b82f6;border-radius:16px;padding:24px;max-width:480px;width:90%;color:#c0c0d0;animation:quizIn .4s}
+.quiz-box h3{color:#60a5fa;font-size:16px;margin-bottom:16px;text-align:center}
+.quiz-q{font-size:14px;margin-bottom:16px;line-height:1.6}
+.quiz-opt{display:block;width:100%;padding:12px;margin:6px 0;border-radius:8px;border:1px solid #333;background:#111;color:#c0c0d0;font-size:13px;cursor:pointer;text-align:left;transition:all .2s}
+.quiz-opt:hover{background:#1a1a4a;border-color:#3b82f6}
+.quiz-opt.correct{background:#0a2a1a;border-color:#22c55e;color:#4ade80}
+.quiz-opt.wrong{background:#2a0a0a;border-color:#ef4444;color:#f87171}
+.quiz-opt:disabled{cursor:not-allowed;opacity:.6}
+.quiz-result{text-align:center;margin-top:12px;font-size:14px;font-weight:bold}
+.quiz-next{display:block;width:100%;padding:10px;margin-top:12px;border-radius:8px;border:1px solid #22c55e;background:#0a2a1a;color:#4ade80;font-size:13px;cursor:pointer;text-align:center}
+.quiz-next:hover{background:#0a3a2a}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes quizIn{from{opacity:0;transform:scale(0.9) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes levelFadeIn{from{opacity:0}to{opacity:1}}
+.delivery-warn{background:#1a1a0a;border:1px solid #facc15;border-radius:8px;padding:8px;margin:6px 0;font-size:11px;color:#facc15}
+.delivery-fail{background:#2a0a0a;border:1px solid #f87171;border-radius:8px;padding:8px;margin:6px 0;font-size:12px;color:#f87171}
+</style>
+</head>
+<body>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="infobar">
+<span id="ib-level">关卡 1/7</span><span class="sep">|</span>
+<span id="ib-title">DNA双螺旋</span><span class="sep">|</span>
+<span id="ib-status">进行中</span>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel');
+let W,H,curLevel=0,frame=0,animId,levelFadeAlpha=1;
+const completedLevels=new Set(),levelObjs=[[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false]];
+const BASE_COLORS={A:'#4ade80',T:'#f87171',C:'#60a5fa',G:'#facc15'};
+const COMP={A:'T',T:'A',C:'G',G:'C'};
+
+/* ===== SOUND ENGINE (Web Audio API) ===== */
+const AudioCtx=window.AudioContext||window.webkitAudioContext;
+let audioCtx;
+function ensureAudio(){if(!audioCtx)audioCtx=new AudioCtx();}
+function playSound(type){
+  ensureAudio();const ac=audioCtx,now=ac.currentTime;
+  if(type==='click'){
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);o.frequency.setValueAtTime(880,now);o.frequency.exponentialRampToValueAtTime(1200,now+0.05);
+    g.gain.setValueAtTime(0.15,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.start(now);o.stop(now+0.1);
+  }else if(type==='success'){
+    [523,659,784].forEach((f,i)=>{const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=f;g.gain.setValueAtTime(0.12,now+i*0.12);g.gain.exponentialRampToValueAtTime(0.001,now+i*0.12+0.3);o.start(now+i*0.12);o.stop(now+i*0.12+0.3);});
+  }else if(type==='fail'){
+    const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.type='sawtooth';o.frequency.setValueAtTime(300,now);o.frequency.exponentialRampToValueAtTime(150,now+0.2);g.gain.setValueAtTime(0.12,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.25);o.start(now);o.stop(now+0.25);
+  }else if(type==='boom'){
+    const buf=ac.createBuffer(1,ac.sampleRate*0.3,ac.sampleRate),d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);
+    const s=ac.createBufferSource(),g=ac.createGain();s.buffer=buf;s.connect(g);g.connect(ac.destination);g.gain.setValueAtTime(0.2,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);s.start(now);
+  }
+}
+
+/* ===== QUIZ SYSTEM ===== */
+const quizData=[
+  {q:'DNA中A和哪个碱基配对？',opts:['C','G','T'],ans:2},
+  {q:'CRISPR最初是什么的免疫系统？',opts:['人类','细菌','病毒'],ans:1},
+  {q:'sgRNA靠什么找到目标DNA？',opts:['随机碰撞','碱基互补配对','蛋白质引导'],ans:1},
+  {q:'Cas9切割DNA后留下什么？',opts:['单链缺口','双链断裂','碱基缺失'],ans:1},
+  {q:'HDR和NHEJ的主要区别是？',opts:['速度不同','HDR需要模板精确修复，NHEJ随机修复','作用位置不同'],ans:1},
+  {q:'脱靶效应最大的风险是？',opts:['效率降低','可能破坏重要基因导致癌症','浪费材料'],ans:1},
+  {q:'2023年FDA批准的首个CRISPR疗法治疗什么病？',opts:['癌症','镰刀型贫血','糖尿病'],ans:1},
+];
+let quizActive=false;
+function showQuiz(levelIdx){
+  quizActive=true;
+  const qd=quizData[levelIdx];
+  const overlay=document.createElement('div');overlay.className='quiz-overlay';overlay.id='quiz-overlay';
+  let h=`<div class="quiz-box"><h3>通关小测验</h3><div class="quiz-q">${qd.q}</div>`;
+  qd.opts.forEach((o,i)=>{h+=`<button class="quiz-opt" data-idx="${i}" onclick="quizAnswer(${levelIdx},${i},this)">  ${String.fromCharCode(65+i)}. ${o}</button>`;});
+  h+='<div class="quiz-result" id="quiz-result"></div></div>';
+  overlay.innerHTML=h;document.body.appendChild(overlay);
+}
+window.quizAnswer=function(lvl,idx,btn){
+  const qd=quizData[lvl],btns=document.querySelectorAll('.quiz-opt');
+  btns.forEach(b=>b.disabled=true);
+  if(idx===qd.ans){
+    btn.classList.add('correct');playSound('success');
+    document.getElementById('quiz-result').innerHTML='<span style="color:#4ade80">回答正确！</span>';
+  }else{
+    btn.classList.add('wrong');playSound('fail');
+    btns[qd.ans].classList.add('correct');
+    document.getElementById('quiz-result').innerHTML='<span style="color:#f87171">答错了！正确答案是 '+String.fromCharCode(65+qd.ans)+'</span>';
+  }
+  setTimeout(()=>{
+    const res=document.getElementById('quiz-result');
+    if(res)res.innerHTML+='<br><button class="quiz-next" onclick="closeQuiz()">继续 →</button>';
+  },800);
+};
+window.closeQuiz=function(){
+  const ov=document.getElementById('quiz-overlay');if(ov)ov.remove();quizActive=false;
+};
+
+function resize(){cv.width=W=cv.clientWidth;cv.height=H=cv.clientHeight;}
+window.addEventListener('resize',resize);
+
+/* ===== LEVELS DATA ===== */
+const levels=[
+  {name:'DNA双螺旋',sub:'生命的密码',concept:'DNA由4种碱基组成：腺嘌呤(A)与胸腺嘧啶(T)配对，胞嘧啶(C)与鸟嘌呤(G)配对，通过氢键连接形成双螺旋结构。',
+   objs:['正确配对3个碱基','完成整条链','观察双螺旋'],learn:'人类DNA有<span class="sv">30亿</span>碱基对，展开约<span class="sv">2米</span>长，却塞在仅<span class="sv">6微米</span>的细胞核里。如果把全身细胞的DNA首尾相连，可以往返太阳750次。'},
+  {name:'CRISPR天然来源',sub:'细菌免疫系统',concept:'CRISPR原本是细菌的免疫系统。细菌截取入侵病毒的DNA片段，存入CRISPR阵列，下次遇到相同病毒时即可识别并消灭。',
+   objs:['观察噬菌体入侵','截取并存储片段','抵御第二次入侵'],learn:'2020年，Jennifer Doudna和Emmanuelle Charpentier因发现CRISPR基因编辑技术获得<span class="sv">诺贝尔化学奖</span>。这是诺贝尔科学奖首次同时颁给两位女性。'},
+  {name:'向导RNA',sub:'精准定位',concept:'sgRNA（单向导RNA）是CRISPR的GPS。它与目标DNA序列互补配对，引导Cas9蛋白精确找到基因组中的目标位置。PAM序列（NGG）是必需的识别信号。',
+   objs:['设计互补sgRNA','找到PAM位置','成功配对'],learn:'20个碱基的sgRNA在30亿碱基对中足以唯一定位目标——<span class="sv">4²⁰ = 1万亿</span>种可能组合，远超人类基因组大小。'},
+  {name:'Cas9剪切',sub:'分子剪刀',concept:'Cas9蛋白在sgRNA引导下找到目标DNA，用RuvC和HNH两个核酸酶结构域分别切断DNA双链的两条链，产生双链断裂（DSB）。',
+   objs:['Cas9结合DNA','打开双链(R-loop)','完成双链断裂'],learn:'Cas9蛋白约<span class="sv">160kDa</span>，切割后触发细胞自身的DNA修复机制——这正是基因编辑的关键时刻。'},
+  {name:'基因修复',sub:'两条路径',concept:'DNA断裂后，细胞有两种修复方式：NHEJ（非同源末端连接）快速但易出错，常导致基因敲除；HDR（同源定向修复）精确但效率低，可实现基因敲入。',
+   objs:['NHEJ敲除基因','HDR精确插入','理解两种区别'],learn:'HDR效率通常只有<span class="sv">5-20%</span>，提高HDR效率是基因治疗的关键挑战。科学家正在开发碱基编辑器和先导编辑器来绕过这个限制。'},
+  {name:'脱靶检测',sub:'安全第一',concept:'sgRNA可能与基因组中其他相似序列部分匹配，导致Cas9在非目标位点错误切割。脱靶效应是CRISPR临床应用的主要安全隐患。',
+   objs:['找到正确靶点','找到所有脱靶位点','理解脱靶风险'],learn:'高保真Cas9变体（如<span class="sv">eSpCas9</span>、<span class="sv">HiFi Cas9</span>）可显著减少脱靶。临床应用前必须进行全基因组测序验证安全性。'},
+  {name:'基因治疗',sub:'治愈镰刀型贫血',concept:'HBB基因单碱基突变（GAG→GTG）导致血红蛋白异常，红细胞变成镰刀形。CRISPR可精确修复这个突变，使红细胞恢复正常圆盘形。',
+   objs:['识别突变位点','完成递送与切割','修复突变，红细胞恢复'],learn:'2023年FDA批准首个CRISPR基因疗法<span class="sv">Casgevy</span>，用于治疗镰刀型贫血和β-地中海贫血。<span class="sv">一次治疗，终身治愈</span>。'}
+];
+
+/* ===== PANEL RENDER ===== */
+let panelDirty=true;
+function renderPanel(){
+  if(!panelDirty)return;panelDirty=false;
+  const L=levels[curLevel],lo=levelObjs[curLevel];
+  let h='<div style="font-size:18px;color:#60a5fa;font-weight:bold;margin-bottom:2px">🧬 CRISPR 基因编辑</div>';
+  h+='<div class="sub">交互式教育游戏 · 7个关卡</div>';
+  h+='<div style="margin:6px 0">';
+  for(let i=0;i<levels.length;i++){
+    let cls='level-btn';if(i===curLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
+    h+=`<span class="${cls}" onclick="goLevel(${i})">${i+1}</span>`;
+  }
+  h+='</div>';
+  h+=`<div class="title">${L.name}</div><div class="sub">${L.sub}</div>`;
+  h+=`<div class="concept-box">${L.concept}</div>`;
+  h+='<div style="font-size:11px;color:#888;margin:6px 0">目标</div><div class="progress-row">';
+  for(let i=0;i<L.objs.length;i++){
+    h+=`<span class="obj${lo[i]?' done':''}">${lo[i]?'✓ ':''}${L.objs[i]}</span>`;
+  }
+  h+='</div>';
+  h+=`<div id="actions"></div>`;
+  if(completedLevels.has(curLevel)){
+    h+=`<div class="learn-box">💡 ${L.learn}</div>`;
+    if(curLevel<levels.length-1) h+=`<button class="act-btn green" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+    else h+=`<div class="learn-box" style="border-color:#22c55e;color:#4ade80;text-align:center;font-size:14px">🎉 恭喜通关！你已掌握CRISPR基因编辑的核心原理！</div>`;
+  }
+  panel.innerHTML=h;
+  if(typeof renderActions==='function')renderActions();
+  updateInfobar();
+}
+function updateInfobar(){
+  document.getElementById('ib-level').textContent=`关卡 ${curLevel+1}/7`;
+  document.getElementById('ib-title').textContent=levels[curLevel].name;
+  document.getElementById('ib-status').textContent=completedLevels.has(curLevel)?'✓ 已完成':'进行中';
+}
+function markObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;panelDirty=true;renderPanel();}}
+function checkComplete(){
+  const lo=levelObjs[curLevel];
+  if(lo[0]&&lo[1]&&lo[2]&&!completedLevels.has(curLevel)){
+    completedLevels.add(curLevel);playSound('success');
+    spawnGoldParticles(W*0.5,H*0.5,50);
+    panelDirty=true;renderPanel();
+    setTimeout(()=>showQuiz(curLevel),600);
+  }
+}
+function goLevel(n){curLevel=n;levelFadeAlpha=0;resetLevel();panelDirty=true;renderPanel();}
+
+/* ===== LEVEL STATE ===== */
+let lState={};
+function resetLevel(){
+  lState={};
+  if(curLevel===0)initLevel0();else if(curLevel===1)initLevel1();else if(curLevel===2)initLevel2();
+  else if(curLevel===3)initLevel3();else if(curLevel===4)initLevel4();else if(curLevel===5)initLevel5();
+  else if(curLevel===6)initLevel6();
+}
+
+/* ===== DRAWING HELPERS ===== */
+let goldParticles=[];
+function spawnGoldParticles(x,y,n){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,sp=80+Math.random()*200;
+    goldParticles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-50,life:1+Math.random()*1,maxLife:2,r:2+Math.random()*4,color:['#facc15','#fbbf24','#f59e0b','#fde68a'][Math.floor(Math.random()*4)]});
+  }
+}
+function drawBg(){
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(30,30,60,0.3)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+}
+function drawText(txt,x,y,color,size,align){
+  ctx.fillStyle=color||'#c0c0d0';ctx.font=`${size||14}px 'Segoe UI',system-ui,sans-serif`;ctx.textAlign=align||'center';ctx.textBaseline='middle';ctx.fillText(txt,x,y);
+}
+function drawRoundRect(x,y,w,h,r,fill,stroke){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+  if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke();}
+}
+function particles(arr,dt){
+  for(let i=arr.length-1;i>=0;i--){
+    const p=arr[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;
+    if(p.life<=0){arr.splice(i,1);continue;}
+    ctx.globalAlpha=p.life/p.maxLife;ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*(p.life/p.maxLife),0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+function spawnParticles(arr,x,y,color,n){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,sp=60+Math.random()*120;
+    arr.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:0.6+Math.random()*0.6,maxLife:1.2,r:2+Math.random()*3,color});
+  }
+}
+/* spark particles for Cas9 cut */
+function spawnSparks(arr,x,y,n){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,sp=100+Math.random()*200;
+    arr.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:0.3+Math.random()*0.5,maxLife:0.8,r:1+Math.random()*2,color:['#facc15','#fbbf24','#fff','#f59e0b'][Math.floor(Math.random()*4)]});
+  }
+}
+/* ===== LEVEL 0: DNA DOUBLE HELIX ===== */
+let l0={};
+function initLevel0(){
+  const seq='ATCGGA'.split('');
+  l0={seq,comp:seq.map(b=>COMP[b]),filled:Array(6).fill(null),selected:null,helixAnim:0,helixDone:false,showHelix:false,particles:[],errCount:0,errMsg:'',errTimer:0};
+}
+function renderActions(){
+  const el=document.getElementById('actions');if(!el)return;
+  if(curLevel===0)renderActions0(el);else if(curLevel===1)renderActions1(el);else if(curLevel===2)renderActions2(el);
+  else if(curLevel===3)renderActions3(el);else if(curLevel===4)renderActions4(el);else if(curLevel===5)renderActions5(el);
+  else if(curLevel===6)renderActions6(el);
+}
+function renderActions0(el){
+  if(l0.showHelix){el.innerHTML='<div class="hint-box">🧬 DNA正在扭转成双螺旋...</div>';return;}
+  let h='<div style="font-size:11px;color:#888;margin:6px 0">选择碱基填入右链空位</div><div class="sel-row">';
+  'ATCG'.split('').forEach(b=>{h+=`<span class="base-btn ${b}" onclick="l0pick('${b}')">${b}</span>`;});
+  h+='</div>';
+  const idx=l0.filled.findIndex(v=>v===null);
+  if(idx>=0)h+=`<div class="hint-box">当前位置 ${idx+1}/6：左链是 <b style="color:${BASE_COLORS[l0.seq[idx]]}">${l0.seq[idx]}</b>，互补碱基是？</div>`;
+  if(l0.errMsg)h+=`<div class="err-msg">${l0.errMsg}</div>`;
+  if(l0.errCount>=3)h+=`<div class="hint-box" style="border-color:#facc15;color:#facc15">📖 配对规则提醒：A↔T，C↔G<br>腺嘌呤(A)与胸腺嘧啶(T)配对<br>胞嘧啶(C)与鸟嘌呤(G)配对</div>`;
+  el.innerHTML=h;
+}
+window.l0pick=function(b){
+  const idx=l0.filled.findIndex(v=>v===null);if(idx<0)return;
+  if(b===l0.comp[idx]){
+    l0.filled[idx]=b;l0.errMsg='';l0.errCount=0;playSound('click');
+    spawnParticles(l0.particles,W*0.62,100+idx*60,BASE_COLORS[b],8);
+    const done=l0.filled.filter(v=>v!==null).length;
+    if(done>=3)markObj(0);
+    if(done===6){markObj(1);l0.showHelix=true;l0.helixAnim=0;setTimeout(()=>{markObj(2);checkComplete();},3000);}
+    panelDirty=true;renderPanel();
+  }else{
+    l0.flashErr=15;l0.errCount++;playSound('fail');
+    const expected=l0.comp[idx];
+    l0.errMsg=`${b}不能和${l0.seq[idx]}配对！${l0.seq[idx]}只能和${expected}配对`;
+    l0.errTimer=setTimeout(()=>{l0.errMsg='';panelDirty=true;renderPanel();},2500);
+    panelDirty=true;renderPanel();
+  }
+};
+function drawLevel0(){
+  const cx=W*0.5,startY=60,gap=60;
+  drawText('DNA碱基配对',cx,30,'#60a5fa',18);
+  if(l0.showHelix){
+    l0.helixAnim+=0.015;const t=Math.min(l0.helixAnim,1);
+    const ease=t<0.5?2*t*t:(1-Math.pow(-2*t+2,2)/2);
+    for(let i=0;i<30;i++){
+      const y=40+i*(H-80)/30;const phase=i*0.6+frame*0.025;
+      const xA=cx+Math.sin(phase)*80*ease;const xB=cx-Math.sin(phase)*80*ease;
+      const zA=Math.cos(phase);const zB=-zA;const rA=6+zA*3,rB=6+zB*3;
+      const bases='ATCGGA';const comps='TAGCCT';const bA=bases[i%6],bB=comps[i%6];
+      ctx.strokeStyle='rgba(100,100,160,0.3)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(xA,y);ctx.lineTo(xB,y);ctx.stroke();
+      if(zA>0){
+        ctx.fillStyle=BASE_COLORS[bB];ctx.beginPath();ctx.arc(xB,y,Math.max(rB,2),0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=BASE_COLORS[bA];ctx.beginPath();ctx.arc(xA,y,Math.max(rA,2),0,Math.PI*2);ctx.fill();
+      }else{
+        ctx.fillStyle=BASE_COLORS[bA];ctx.beginPath();ctx.arc(xA,y,Math.max(rA,2),0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=BASE_COLORS[bB];ctx.beginPath();ctx.arc(xB,y,Math.max(rB,2),0,Math.PI*2);ctx.fill();
+      }
+    }
+    drawText('🧬 双螺旋形成！',cx,H-40,'#4ade80',16);return;
+  }
+  const lx=cx-100,rx=cx+60;
+  ctx.strokeStyle='#2a2a5a';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(lx,startY-10);ctx.lineTo(lx,startY+6*gap-10);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(rx+40,startY-10);ctx.lineTo(rx+40,startY+6*gap-10);ctx.stroke();
+  for(let i=0;i<6;i++){
+    const y=startY+i*gap;const bL=l0.seq[i],bR=l0.filled[i];
+    drawRoundRect(lx-20,y-16,40,32,6,BASE_COLORS[bL]+'33',BASE_COLORS[bL]);
+    drawText(bL,lx,y,BASE_COLORS[bL],18);
+    if(bR){
+      ctx.strokeStyle='#4ade8066';ctx.lineWidth=2;ctx.setLineDash([4,4]);
+      ctx.beginPath();ctx.moveTo(lx+20,y);ctx.lineTo(rx,y);ctx.stroke();ctx.setLineDash([]);
+      drawRoundRect(rx,y-16,40,32,6,BASE_COLORS[bR]+'33',BASE_COLORS[bR]);
+      drawText(bR,rx+20,y,BASE_COLORS[bR],18);
+    }else{
+      drawRoundRect(rx,y-16,40,32,6,'#1a1a3a','#333');drawText('?',rx+20,y,'#555',18);
+      if(l0.filled.findIndex(v=>v===null)===i){ctx.strokeStyle='#60a5fa44';ctx.lineWidth=2;ctx.strokeRect(rx-4,y-20,48,40);}
+    }
+  }
+  if(l0.flashErr>0){l0.flashErr--;ctx.fillStyle=`rgba(248,113,113,${l0.flashErr/15*0.3})`;ctx.fillRect(0,0,W,H);}
+  particles(l0.particles,0.016);
+}
+/* ===== LEVEL 1: CRISPR ORIGIN ===== */
+let l1={};
+function initLevel1(){
+  l1={phase:0,phageX:W*0.8,phageY:-60,bacteriaX:W*0.4,bacteriaY:H*0.5,
+      dnaInjected:false,snippetCaptured:false,stored:false,
+      secondPhage:false,secondPhageX:W*0.85,secondPhageY:-60,destroyed:false,
+      particles:[],flashTimer:0,shakeTimer:0,dnaFlowT:0};
+}
+function renderActions1(el){
+  let h='';
+  if(l1.phase===0)h='<button class="act-btn" onclick="l1advance()">开始：噬菌体入侵 →</button>';
+  else if(l1.phase===1)h='<div class="hint-box">⚠️ 噬菌体正在注入DNA...</div>';
+  else if(l1.phase===2)h='<button class="act-btn" onclick="l1advance()">截取病毒DNA片段</button>';
+  else if(l1.phase===3)h='<button class="act-btn" onclick="l1advance()">存入CRISPR阵列</button>';
+  else if(l1.phase===4)h='<button class="act-btn" onclick="l1advance()">第二次入侵开始 →</button><div class="hint-box">✓ 片段已存储，细菌获得免疫记忆</div>';
+  else if(l1.phase===5)h='<div class="hint-box">🛡️ 细菌识别到已知病毒！正在消灭...</div>';
+  else if(l1.phase===6)h='<div class="hint-box" style="color:#4ade80">✓ 入侵者已被消灭！细菌免疫系统生效。</div>';
+  el.innerHTML=h;
+}
+window.l1advance=function(){
+  if(l1.phase===0){l1.phase=1;l1.shakeTimer=60;markObj(0);setTimeout(()=>{l1.phase=2;l1.dnaInjected=true;panelDirty=true;renderPanel();},2000);panelDirty=true;renderPanel();}
+  else if(l1.phase===2){l1.phase=3;l1.snippetCaptured=true;playSound('click');markObj(1);panelDirty=true;renderPanel();}
+  else if(l1.phase===3){l1.phase=4;l1.stored=true;panelDirty=true;renderPanel();}
+  else if(l1.phase===4){l1.phase=5;l1.secondPhage=true;
+    setTimeout(()=>{l1.phase=6;l1.destroyed=true;playSound('boom');markObj(2);checkComplete();spawnParticles(l1.particles,l1.secondPhageX,200,'#f87171',30);panelDirty=true;renderPanel();},2500);
+    panelDirty=true;renderPanel();}
+};
+function drawLevel1(){
+  const bx=l1.bacteriaX,by=l1.bacteriaY;
+  // shake effect during injection
+  let sx=0,sy=0;
+  if(l1.shakeTimer>0){l1.shakeTimer--;sx=Math.sin(l1.shakeTimer*1.5)*3;sy=Math.cos(l1.shakeTimer*2)*2;}
+  drawText('细菌免疫系统',W*0.5,25,'#60a5fa',18);
+  ctx.save();ctx.translate(sx,sy);
+  ctx.fillStyle='#1a4a3a';ctx.beginPath();ctx.ellipse(bx,by,100,60,0,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#4ade80';ctx.lineWidth=2;ctx.stroke();
+  drawText('细菌',bx,by,'#4ade80',14);
+  if(l1.stored){drawRoundRect(bx-50,by+15,100,20,4,'#0a2a4a','#3b82f6');drawText('CRISPR阵列 [■■■]',bx,by+25,'#60a5fa',10);}
+  ctx.restore();
+  if(l1.phase>=1&&!l1.dnaInjected){l1.phageY=Math.min(l1.phageY+2,by-100);}else if(l1.phase===0){l1.phageY=-60;}
+  if(l1.phase>=1&&l1.phase<=3){
+    drawPhage(l1.phageX-200,l1.phageY,'#8b5cf6');
+    if(l1.dnaInjected){
+      // DNA flow animation
+      l1.dnaFlowT+=0.03;
+      const fx=l1.phageX-200,fy=l1.phageY+30,tx=bx,ty=by-40;
+      ctx.strokeStyle='#f8717188';ctx.lineWidth=2;ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.moveTo(fx,fy);ctx.lineTo(tx,ty);ctx.stroke();ctx.setLineDash([]);
+      // flowing dots along the line
+      for(let d=0;d<5;d++){
+        const t=((l1.dnaFlowT+d*0.2)%1);
+        const px=fx+(tx-fx)*t,py=fy+(ty-fy)*t;
+        ctx.fillStyle='#f87171';ctx.beginPath();ctx.arc(px,py,3,0,Math.PI*2);ctx.fill();
+      }
+      drawText('DNA注入',l1.phageX-120,l1.phageY+10,'#f87171',11);
+    }
+  }
+  if(l1.snippetCaptured&&l1.phase===3){drawRoundRect(bx-30,by-30,60,16,4,'#f8717133','#f87171');drawText('截取片段',bx,by-22,'#f87171',10);}
+  if(l1.secondPhage&&!l1.destroyed){
+    l1.secondPhageY=Math.min(l1.secondPhageY+1.5,by-120);
+    drawPhage(l1.secondPhageX-150,l1.secondPhageY,'#a855f7');
+    ctx.strokeStyle='#4ade8066';ctx.lineWidth=3;ctx.beginPath();ctx.arc(bx,by,110+Math.sin(frame*0.1)*5,0,Math.PI*2);ctx.stroke();
+  }
+  if(l1.destroyed){drawText('✕ 已消灭',l1.secondPhageX-150,240,'#f87171',11);}
+  particles(l1.particles,0.016);
+}
+function drawPhage(x,y,color){
+  ctx.fillStyle=color;
+  ctx.beginPath();ctx.moveTo(x,y-20);ctx.lineTo(x+15,y-10);ctx.lineTo(x+15,y+10);ctx.lineTo(x,y+20);ctx.lineTo(x-15,y+10);ctx.lineTo(x-15,y-10);ctx.closePath();ctx.fill();
+  ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x,y+20);ctx.lineTo(x,y+50);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x-15,y+50);ctx.lineTo(x,y+40);ctx.lineTo(x+15,y+50);ctx.stroke();
+  drawText('噬菌体',x,y,`${color}cc`,10);
+}
+/* ===== LEVEL 2: sgRNA DESIGN (with mismatch failure) ===== */
+let l2={};
+function initLevel2(){
+  const target='ATCGGACTAGCTTGACCTAG'.split('');
+  l2={target,sgRNA:Array(20).fill(null),curIdx:0,aligned:false,particles:[],errCount:0,mismatchCount:0,errMsg:'',failMsg:''};
+}
+function renderActions2(el){
+  if(l2.aligned){el.innerHTML='<div class="hint-box" style="color:#4ade80">✓ sgRNA已成功与目标DNA配对！</div>';return;}
+  if(l2.failMsg){el.innerHTML=`<div class="err-msg">${l2.failMsg}</div><button class="act-btn" onclick="l2reset()">重新设计sgRNA</button>`;return;}
+  let h='<div style="font-size:11px;color:#888;margin:4px 0">构建互补sgRNA（位置 '+(l2.curIdx+1)+'/20）</div>';
+  h+='<div class="sel-row">';
+  'AUCG'.split('').forEach(b=>{h+=`<span class="base-btn ${b==='U'?'T':b}" onclick="l2pick('${b}')">${b}</span>`;});
+  h+='</div>';
+  const dnaBase=l2.target[l2.curIdx];
+  h+=`<div class="hint-box">DNA: <b style="color:${BASE_COLORS[dnaBase]}">${dnaBase}</b> → RNA互补碱基？（RNA用U代替T）</div>`;
+  if(l2.mismatchCount>0)h+=`<div class="hint-box" style="border-color:#facc15;color:#facc15">⚠ 已有${l2.mismatchCount}个不匹配（超过2个将导致失败）</div>`;
+  if(l2.errMsg)h+=`<div class="err-msg">${l2.errMsg}</div>`;
+  el.innerHTML=h;
+}
+window.l2pick=function(b){
+  if(l2.curIdx>=20||l2.aligned||l2.failMsg)return;
+  const rnaComp={A:'U',T:'A',C:'G',G:'C'};
+  const correct=rnaComp[l2.target[l2.curIdx]];
+  if(b===correct){
+    l2.sgRNA[l2.curIdx]=b;l2.curIdx++;l2.errMsg='';playSound('click');
+    if(l2.curIdx>=3)markObj(0);
+    if(l2.curIdx>=17)markObj(1);
+    if(l2.curIdx>=20){markObj(2);l2.aligned=true;setTimeout(()=>checkComplete(),500);}
+    panelDirty=true;renderPanel();
+  }else{
+    l2.sgRNA[l2.curIdx]=b;l2.curIdx++;l2.mismatchCount++;playSound('fail');
+    l2.errMsg=`${b}不是正确的互补碱基，已记录为不匹配`;
+    if(l2.mismatchCount>2){
+      l2.failMsg='匹配度不足，Cas9无法识别目标！超过2个碱基不匹配，sgRNA无法稳定结合DNA。请重新设计。';
+      playSound('fail');
+    }
+    panelDirty=true;renderPanel();
+  }
+};
+window.l2reset=function(){
+  l2.sgRNA=Array(20).fill(null);l2.curIdx=0;l2.mismatchCount=0;l2.errMsg='';l2.failMsg='';
+  panelDirty=true;renderPanel();
+};
+function drawLevel2(){
+  drawText('向导RNA设计',W*0.5,25,'#60a5fa',18);
+  const startX=40,y1=H*0.3,y2=H*0.5,bw=Math.min((W-80)/20,36),bh=30;
+  drawText('目标DNA (5\'→3\')',startX+10*bw,y1-30,'#888',12);
+  for(let i=0;i<20;i++){
+    const x=startX+i*bw;const isPAM=i>=17;
+    const fill=isPAM?'#facc1522':'#1a1a3a';const stroke=isPAM?'#eab308':BASE_COLORS[l2.target[i]];
+    drawRoundRect(x,y1-bh/2,bw-2,bh,4,fill,stroke);
+    drawText(l2.target[i],x+bw/2-1,y1,BASE_COLORS[l2.target[i]],14);
+    if(isPAM&&i===17)drawText('PAM',x+bw*1.5,y1-bh/2-12,'#facc15',11);
+  }
+  drawText('sgRNA (3\'→5\')',startX+10*bw,y2-30,'#22d3ee',12);
+  const rnaComp={A:'U',T:'A',C:'G',G:'C'};
+  for(let i=0;i<20;i++){
+    const x=startX+i*bw;const b=l2.sgRNA[i];
+    if(b){
+      const expected=rnaComp[l2.target[i]];const isMismatch=b!==expected;
+      const bc=isMismatch?'#f87171':b==='U'?'#f87171':b==='A'?'#4ade80':b==='C'?'#60a5fa':'#facc15';
+      drawRoundRect(x,y2-bh/2,bw-2,bh,4,(isMismatch?'#f8717133':bc+'22'),(isMismatch?'#f87171':bc));
+      drawText(b,x+bw/2-1,y2,bc,14);
+      if(!isMismatch){ctx.strokeStyle='#4ade8044';ctx.lineWidth=1;ctx.setLineDash([2,2]);ctx.beginPath();ctx.moveTo(x+bw/2-1,y1+bh/2);ctx.lineTo(x+bw/2-1,y2-bh/2);ctx.stroke();ctx.setLineDash([]);}
+      else{drawText('✕',x+bw/2-1,y2+bh/2+8,'#f87171',10);}
+    }else if(i===l2.curIdx&&!l2.failMsg){
+      drawRoundRect(x,y2-bh/2,bw-2,bh,4,'#60a5fa11','#60a5fa');drawText('?',x+bw/2-1,y2,'#60a5fa',14);
+    }else{drawRoundRect(x,y2-bh/2,bw-2,bh,4,'#111','#333');}
+  }
+  if(l2.aligned)drawText('✓ sgRNA配对完成！',W*0.5,H*0.75,'#4ade80',16);
+  if(l2.failMsg)drawText('✕ sgRNA设计失败 — 匹配度不足',W*0.5,H*0.75,'#f87171',16);
+}
+/* ===== LEVEL 3: Cas9 CUTTING (with scissor + spark animation) ===== */
+let l3={};
+function initLevel3(){
+  l3={phase:0,cas9X:W*0.8,cas9Y:H*0.3,rloopOpen:0,cutDone:false,particles:[],cutFlash:0,scissorAnim:0,clawAngle:0};
+}
+function renderActions3(el){
+  let h='';
+  if(l3.phase===0)h='<button class="act-btn" onclick="l3advance()">Cas9蛋白结合DNA →</button>';
+  else if(l3.phase===1)h='<button class="act-btn" onclick="l3advance()">打开双链 (R-loop) →</button>';
+  else if(l3.phase===2)h='<button class="act-btn" onclick="l3advance()">✂️ 剪切！</button>';
+  else h='<div class="hint-box" style="color:#4ade80">✓ 双链断裂完成！DNA修复机制即将启动。</div>';
+  el.innerHTML=h;
+}
+window.l3advance=function(){
+  if(l3.phase===0){l3.phase=1;markObj(0);panelDirty=true;renderPanel();}
+  else if(l3.phase===1){l3.phase=2;markObj(1);panelDirty=true;renderPanel();}
+  else if(l3.phase===2){
+    l3.phase=3;l3.cutDone=true;l3.cutFlash=30;l3.scissorAnim=1;
+    playSound('boom');
+    spawnSparks(l3.particles,W*0.45,H*0.5,60);
+    spawnParticles(l3.particles,W*0.45,H*0.5,'#60a5fa',20);
+    markObj(2);checkComplete();panelDirty=true;renderPanel();
+  }
+};
+function drawLevel3(){
+  drawText('Cas9分子剪刀',W*0.5,25,'#60a5fa',18);
+  const cx=W*0.45,cy=H*0.5,dnaLen=300;
+  if(!l3.cutDone){
+    ctx.strokeStyle='#4ade80';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(cx-dnaLen,cy-8);ctx.lineTo(cx+dnaLen,cy-8);ctx.stroke();
+    ctx.strokeStyle='#60a5fa';ctx.beginPath();ctx.moveTo(cx-dnaLen,cy+8);ctx.lineTo(cx+dnaLen,cy+8);ctx.stroke();
+    if(l3.phase>=2){
+      const op=Math.min(l3.rloopOpen,30);l3.rloopOpen+=0.5;
+      ctx.fillStyle='#0a0a1a';ctx.beginPath();ctx.ellipse(cx,cy,40,op,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle='#facc1566';ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(cx,cy,40,op,0,0,Math.PI*2);ctx.stroke();
+      drawText('R-loop',cx,cy-op-10,'#facc15',10);
+    }
+  }else{
+    const gap=20+Math.sin(frame*0.05)*5;
+    ctx.strokeStyle='#4ade80';ctx.lineWidth=4;
+    ctx.beginPath();ctx.moveTo(cx-dnaLen,cy-8);ctx.lineTo(cx-gap,cy-8);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx+gap,cy-8);ctx.lineTo(cx+dnaLen,cy-8);ctx.stroke();
+    ctx.strokeStyle='#60a5fa';
+    ctx.beginPath();ctx.moveTo(cx-dnaLen,cy+8);ctx.lineTo(cx-gap,cy+8);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx+gap,cy+8);ctx.lineTo(cx+dnaLen,cy+8);ctx.stroke();
+    drawText('✂',cx,cy,'#facc15',20);
+    if(l3.cutFlash>0){l3.cutFlash--;ctx.fillStyle=`rgba(250,204,21,${l3.cutFlash/30*0.2})`;ctx.fillRect(0,0,W,H);}
+  }
+  if(l3.phase>=1){
+    const tx=cx,ty=cy;
+    if(l3.phase===1){l3.cas9X+=(tx-l3.cas9X)*0.05;l3.cas9Y+=(ty-60-l3.cas9Y)*0.05;}
+    // scissor closing animation
+    const clawClose=l3.cutDone?Math.min(l3.scissorAnim,0.5):0;
+    if(l3.cutDone)l3.scissorAnim=Math.min(l3.scissorAnim+0.02,0.5);
+    drawCas9(Math.min(l3.cas9X,cx),l3.cas9Y,clawClose);
+  }
+  if(l3.phase>=1){drawText('sgRNA',cx-80,cy-50,'#22d3ee',11);ctx.strokeStyle='#22d3ee44';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cx-80,cy-42);ctx.lineTo(cx-20,cy-15);ctx.stroke();}
+  particles(l3.particles,0.016);
+}
+function drawCas9(x,y,clawClose){
+  clawClose=clawClose||0;
+  ctx.fillStyle='#6366f1';ctx.globalAlpha=0.7;
+  ctx.beginPath();ctx.ellipse(x,y,60,35,0,0,Math.PI*2);ctx.fill();
+  // claws with closing animation
+  const clawSpread=40-clawClose*30;
+  ctx.beginPath();ctx.ellipse(x-clawSpread,y+30-clawClose*15,25,15,-0.5+clawClose,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(x+clawSpread,y+30-clawClose*15,25,15,0.5-clawClose,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;ctx.strokeStyle='#818cf8';ctx.lineWidth=2;
+  ctx.beginPath();ctx.ellipse(x,y,60,35,0,0,Math.PI*2);ctx.stroke();
+  drawText('Cas9',x,y-5,'#e0e7ff',13);
+  drawText('RuvC',x-clawSpread,y+30-clawClose*15,'#c7d2fe',9);
+  drawText('HNH',x+clawSpread,y+30-clawClose*15,'#c7d2fe',9);
+}
+/* ===== LEVEL 4: GENE REPAIR ===== */
+let l4={};
+function initLevel4(){
+  l4={phase:0,nhejDone:false,hdrDone:false,nhejBases:[],hdrTemplate:'GCTA',hdrFilled:[],particles:[]};
+}
+function renderActions4(el){
+  let h='';
+  if(l4.phase===0){
+    h='<div class="hint-box">DNA已断裂，选择修复路径：</div>';
+    h+='<button class="act-btn" onclick="l4choose(\'nhej\')">路径A: NHEJ（非同源末端连接）</button>';
+    h+='<button class="act-btn" onclick="l4choose(\'hdr\')">路径B: HDR（同源定向修复）</button>';
+  }else if(l4.phase===1){h='<div class="hint-box">⚡ NHEJ修复中...碱基随机插入/删除</div>';
+  }else if(l4.phase===2){
+    h='<div class="hint-box" style="color:#facc15">NHEJ完成：基因被破坏（敲除）。移码突变导致蛋白无法正常表达。</div>';
+    if(!l4.hdrDone)h+='<button class="act-btn" onclick="l4choose(\'hdr\')">现在尝试 HDR →</button>';
+  }else if(l4.phase===3){
+    h='<div style="font-size:11px;color:#888;margin:4px 0">输入修复模板碱基（'+l4.hdrTemplate+'）</div><div class="sel-row">';
+    'ATCG'.split('').forEach(b=>{h+=`<span class="base-btn ${b}" onclick="l4hdr('${b}')">${b}</span>`;});
+    h+='</div>';
+    h+=`<div class="hint-box">模板位置 ${l4.hdrFilled.length+1}/4：需要 <b>${l4.hdrTemplate[l4.hdrFilled.length]}</b></div>`;
+  }else if(l4.phase===4){h='<div class="hint-box" style="color:#4ade80">✓ HDR完成：新基因精确插入！修复模板引导了精确修复。</div>';}
+  el.innerHTML=h;
+}
+window.l4choose=function(path){
+  if(path==='nhej'){
+    l4.phase=1;const bases='ATCG';l4.nhejBases=[];
+    for(let i=0;i<3;i++)l4.nhejBases.push(bases[Math.floor(Math.random()*4)]);
+    setTimeout(()=>{l4.phase=2;l4.nhejDone=true;markObj(0);panelDirty=true;renderPanel();},1500);
+    panelDirty=true;renderPanel();
+  }else{l4.phase=3;l4.hdrFilled=[];panelDirty=true;renderPanel();}
+};
+window.l4hdr=function(b){
+  if(l4.hdrFilled.length>=4)return;
+  if(b===l4.hdrTemplate[l4.hdrFilled.length]){
+    l4.hdrFilled.push(b);playSound('click');
+    if(l4.hdrFilled.length===4){l4.phase=4;l4.hdrDone=true;markObj(1);markObj(2);checkComplete();}
+    panelDirty=true;renderPanel();
+  }else{playSound('fail');}
+};
+function drawLevel4(){
+  drawText('基因修复路径',W*0.5,25,'#60a5fa',18);
+  const cx=W*0.5,cy=H*0.4,gap=40;
+  ctx.strokeStyle='#4ade80';ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(cx-200,cy-6);ctx.lineTo(cx-gap,cy-6);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+gap,cy-6);ctx.lineTo(cx+200,cy-6);ctx.stroke();
+  ctx.strokeStyle='#60a5fa';
+  ctx.beginPath();ctx.moveTo(cx-200,cy+6);ctx.lineTo(cx-gap,cy+6);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+gap,cy+6);ctx.lineTo(cx+200,cy+6);ctx.stroke();
+  drawText('DSB',cx,cy-25,'#f87171',12);
+  if(l4.nhejDone){
+    const ny=cy+100;drawText('NHEJ结果（易错）',cx-120,ny-30,'#facc15',12);
+    ctx.strokeStyle='#4ade80';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx-280,ny);ctx.lineTo(cx-60,ny);ctx.stroke();
+    for(let i=0;i<l4.nhejBases.length;i++){
+      const bx=cx-50+i*22;drawRoundRect(bx,ny-12,20,24,4,BASE_COLORS[l4.nhejBases[i]]+'44',BASE_COLORS[l4.nhejBases[i]]);
+      drawText(l4.nhejBases[i],bx+10,ny,BASE_COLORS[l4.nhejBases[i]],12);
+    }
+    ctx.beginPath();ctx.moveTo(cx+20,ny);ctx.lineTo(cx+200,ny);ctx.stroke();
+    drawText('⚠ 移码突变 → 基因敲除',cx,ny+30,'#facc15',11);
+  }
+  if(l4.hdrDone||l4.phase===3){
+    const hy=cy+220;drawText('HDR结果（精确）',cx+120,hy-30,'#4ade80',12);
+    ctx.strokeStyle='#4ade80';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(cx-200,hy);ctx.lineTo(cx-40,hy);ctx.stroke();
+    for(let i=0;i<4;i++){
+      const bx=cx-30+i*22;const b=l4.hdrFilled[i];
+      if(b){drawRoundRect(bx,hy-12,20,24,4,'#4ade8033','#4ade80');drawText(b,bx+10,hy,'#4ade80',12);
+      }else{drawRoundRect(bx,hy-12,20,24,4,'#1a1a3a','#333');if(i===l4.hdrFilled.length)drawText('?',bx+10,hy,'#60a5fa',12);}
+    }
+    ctx.beginPath();ctx.moveTo(cx+60,hy);ctx.lineTo(cx+200,hy);ctx.stroke();
+    if(l4.hdrDone)drawText('✓ 精确修复 → 基因敲入',cx,hy+30,'#4ade80',11);
+    if(l4.phase===3){drawRoundRect(cx-50,hy+40,100,24,6,'#0a2a4a','#3b82f6');drawText('修复模板: '+l4.hdrTemplate,cx,hy+52,'#60a5fa',11);}
+  }
+}
+/* ===== LEVEL 5: OFF-TARGET (with missed-site warning) ===== */
+let l5={};
+function initLevel5(){
+  const target='ATCGGACTAGCTTGACCTAG';
+  const sites=[
+    {seq:target,pos:50,isTarget:true,label:'正确靶点',match:100},
+    {seq:'ATCGGACTAGCTTGACCTGG',pos:200,isTarget:false,label:'脱靶位点1',match:90},
+    {seq:'ATCGGACTAGCTTAACCTAG',pos:340,isTarget:false,label:'脱靶位点2',match:95},
+    {seq:'ATCGGACTAGCATGACCTAG',pos:480,isTarget:false,label:'脱靶位点3',match:95},
+  ];
+  l5={target,sites,marked:new Set(),scanX:0,scanning:false,particles:[],missedMsg:'',submitted:false};
+}
+function renderActions5(el){
+  let h='<div style="font-size:11px;color:#888;margin:4px 0">点击Canvas上的序列标记可疑位点</div>';
+  if(!l5.scanning)h+='<button class="act-btn" onclick="l5scan()">开始sgRNA扫描 →</button>';
+  else{
+    h+='<div class="hint-box">🔍 sgRNA正在扫描基因组...点击标记可疑位点</div>';
+    if(!l5.submitted)h+=`<button class="act-btn green" onclick="l5submit()">完成标记</button>`;
+  }
+  const found=l5.marked.size;
+  h+=`<div class="hint-box">已标记: ${found}/4 个位点</div>`;
+  if(l5.missedMsg)h+=`<div class="err-msg">${l5.missedMsg}</div>`;
+  el.innerHTML=h;
+}
+window.l5scan=function(){l5.scanning=true;panelDirty=true;renderPanel();};
+window.l5submit=function(){
+  // Check if all off-target sites are marked
+  const offTargetIndices=[1,2,3];
+  const missed=offTargetIndices.filter(i=>!l5.marked.has(i));
+  if(missed.length>0){
+    l5.missedMsg=`遗漏了${missed.length}个脱靶位点！临床上这可能导致严重副作用，甚至引发癌症。请继续标记所有可疑位点。`;
+    playSound('fail');panelDirty=true;renderPanel();return;
+  }
+  l5.submitted=true;l5.missedMsg='';
+  if(l5.marked.has(0))markObj(0);
+  markObj(1);markObj(2);checkComplete();
+  panelDirty=true;renderPanel();
+};
+function drawLevel5(){
+  drawText('脱靶检测',W*0.5,25,'#60a5fa',18);
+  const startY=80;
+  l5.sites.forEach((s,si)=>{
+    const y=startY+si*110;const marked=l5.marked.has(si);
+    drawText(s.label,80,y,'#888',11,'left');
+    drawText(`匹配度: ${s.match}%`,W-80,y,s.isTarget?'#4ade80':'#f87171',11,'right');
+    const bw=Math.min((W-60)/20,28);
+    for(let i=0;i<20;i++){
+      const x=30+i*bw;const mismatch=s.seq[i]!==l5.target[i];
+      const fill=mismatch?'#f8717133':'#1a1a3a';const stroke=mismatch?'#f87171':BASE_COLORS[s.seq[i]];
+      drawRoundRect(x,y+10,bw-2,22,3,fill,stroke);
+      drawText(s.seq[i],x+bw/2-1,y+21,mismatch?'#f87171':BASE_COLORS[s.seq[i]],11);
+    }
+    if(marked){
+      ctx.strokeStyle=s.isTarget?'#4ade80':'#f87171';ctx.lineWidth=2;ctx.strokeRect(25,y-5,W-50,50);
+      drawText(s.isTarget?'✓ 正确靶点':'⚠ 脱靶位点',W*0.5,y+50,s.isTarget?'#4ade80':'#f87171',11);
+    }
+  });
+  if(l5.scanning){l5.scanX=(l5.scanX+2)%W;ctx.strokeStyle='#22d3ee44';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(l5.scanX,60);ctx.lineTo(l5.scanX,H);ctx.stroke();}
+}
+cv.addEventListener('click',function(e){
+  if(curLevel===5&&l5.scanning&&!l5.submitted){
+    const rect=cv.getBoundingClientRect();
+    const mx=(e.clientX-rect.left)*(W/rect.width),my=(e.clientY-rect.top)*(H/rect.height);
+    const startY=80;
+    l5.sites.forEach((s,si)=>{
+      const y=startY+si*110;
+      if(my>y-10&&my<y+55&&!l5.marked.has(si)){
+        l5.marked.add(si);playSound('click');
+        if(s.isTarget)markObj(0);
+        l5.missedMsg='';panelDirty=true;renderPanel();
+      }
+    });
+  }
+});
+/* ===== LEVEL 6: GENE THERAPY (with delivery consequences) ===== */
+let l6={};
+function initLevel6(){
+  l6={phase:0,delivery:null,cas9Progress:0,repairDone:false,cellMorph:0,particles:[],deliveryFail:false,deliveryMsg:'',deliveryAttempts:0};
+}
+function renderActions6(el){
+  let h='';
+  if(l6.phase===0){
+    h='<div class="hint-box">HBB基因突变：<b style="color:#f87171">GAG→GTG</b>（第6位密码子）<br>导致血红蛋白异常，红细胞变形为镰刀状</div>';
+    h+='<button class="act-btn" onclick="l6advance()">识别突变位点 →</button>';
+  }else if(l6.phase===1){
+    h='<div class="hint-box" style="color:#facc15">✓ 突变位点已标记。选择递送方式：</div>';
+    h+='<div style="font-size:11px;color:#888;margin:4px 0">场景：体内治疗（需要将CRISPR递送到患者骨髓造血干细胞）</div>';
+    h+='<button class="act-btn" onclick="l6deliver(\'AAV\')">AAV 腺相关病毒</button>';
+    h+='<button class="act-btn" onclick="l6deliver(\'LNP\')">LNP 脂质纳米颗粒</button>';
+    h+='<button class="act-btn" onclick="l6deliver(\'EP\')">电穿孔</button>';
+    if(l6.deliveryMsg)h+=`<div class="${l6.deliveryFail?'delivery-fail':'delivery-warn'}">${l6.deliveryMsg}</div>`;
+  }else if(l6.phase===2){
+    h=`<div class="hint-box">🚀 ${l6.delivery} 递送中...CRISPR组件进入细胞</div>`;
+  }else if(l6.phase===3){
+    h='<div class="hint-box">✂️ Cas9正在切割突变位点...</div>';
+  }else if(l6.phase===4){
+    h='<div style="font-size:11px;color:#888;margin:4px 0">HDR修复：将T修复为A</div><div class="sel-row">';
+    'ATCG'.split('').forEach(b=>{h+=`<span class="base-btn ${b}" onclick="l6fix('${b}')">${b}</span>`;});
+    h+='</div>';
+    h+=`<div class="hint-box">修复 G<b style="color:#f87171">T</b>G → G<b style="color:#4ade80">A</b>G</div>`;
+  }else if(l6.phase===5){
+    h='<div class="hint-box" style="color:#4ade80">✓ 突变修复成功！红细胞正在恢复正常形态...</div>';
+  }else if(l6.phase===6){
+    h='<div class="hint-box" style="color:#4ade80;font-size:13px">🎉 镰刀型贫血治愈！红细胞恢复正常圆盘形。</div>';
+  }
+  el.innerHTML=h;
+}
+window.l6advance=function(){l6.phase=1;markObj(0);panelDirty=true;renderPanel();};
+window.l6deliver=function(method){
+  l6.deliveryAttempts++;
+  if(method==='EP'){
+    l6.deliveryFail=true;l6.deliveryMsg='电穿孔失败！电穿孔只适合体外(ex vivo)操作，无法用于体内递送到骨髓。请选择其他方式。';
+    playSound('fail');panelDirty=true;renderPanel();return;
+  }
+  if(method==='AAV'){
+    l6.deliveryFail=false;l6.deliveryMsg='⚠ AAV递送成功，但注意：AAV可能引发免疫反应，且载荷容量有限(~4.7kb)。Cas9基因较大，需要特殊设计。';
+  }else if(method==='LNP'){
+    l6.deliveryFail=false;l6.deliveryMsg='⚠ LNP递送成功。LNP安全性好但靶向效率较低，需要较高剂量。优点是可递送mRNA，表达短暂更安全。';
+  }
+  l6.delivery=method;l6.phase=2;panelDirty=true;renderPanel();
+  setTimeout(()=>{l6.phase=3;playSound('boom');panelDirty=true;renderPanel();
+    setTimeout(()=>{l6.phase=4;markObj(1);panelDirty=true;renderPanel();},2000);
+  },2000);
+};
+window.l6fix=function(b){
+  if(b==='A'){
+    l6.phase=5;l6.repairDone=true;playSound('success');
+    spawnParticles(l6.particles,W*0.5,H*0.35,'#4ade80',30);
+    setTimeout(()=>{l6.phase=6;markObj(2);checkComplete();panelDirty=true;renderPanel();},2500);
+    panelDirty=true;renderPanel();
+  }else{
+    playSound('fail');l6.flashErr=15;
+  }
+};
+function drawLevel6(){
+  drawText('基因治疗：治愈镰刀型贫血',W*0.5,25,'#60a5fa',18);
+  const cx=W*0.5,cy=H*0.35;
+  drawText('HBB基因',cx,cy-50,'#888',12);
+  const codons=[['G','A','G'],['C','T','A'],l6.repairDone?['G','A','G']:['G','T','G'],['A','C','C'],['T','G','G']];
+  const labels=['正常','正常',l6.repairDone?'已修复':'突变!','正常','正常'];
+  const bw=28;const totalW=codons.length*3*bw+codons.length*10;let sx=cx-totalW/2;
+  codons.forEach((codon,ci)=>{
+    codon.forEach((b,bi)=>{
+      const x=sx+bi*bw;const isMut=ci===2&&!l6.repairDone;
+      drawRoundRect(x,cy-15,bw-2,30,4,isMut?'#f8717133':'#1a1a3a',isMut?'#f87171':BASE_COLORS[b]);
+      drawText(b,x+bw/2-1,cy,isMut?'#f87171':BASE_COLORS[b],14);
+    });
+    drawText(labels[ci],sx+bw*1.5-1,cy+28,ci===2?(l6.repairDone?'#4ade80':'#f87171'):'#555',9);
+    sx+=3*bw+10;
+  });
+  // Red blood cells with smooth morph
+  const rcy=H*0.72;drawText('红细胞形态',cx,rcy-50,'#888',12);
+  if(l6.repairDone)l6.cellMorph=Math.min(l6.cellMorph+0.005,1);
+  for(let i=0;i<5;i++){const x=cx-120+i*60;drawRBC(x,rcy,l6.repairDone?l6.cellMorph:0);}
+  if(l6.phase===2){
+    ctx.fillStyle='#6366f166';ctx.beginPath();ctx.arc(cx+Math.sin(frame*0.05)*30,cy-80+Math.sin(frame*0.03)*10,15,0,Math.PI*2);ctx.fill();
+    drawText(l6.delivery,cx+Math.sin(frame*0.05)*30,cy-80+Math.sin(frame*0.03)*10,'#a5b4fc',10);
+  }
+  if(l6.phase===3){drawCas9(cx,cy-70,0);drawText('✂️ 切割中...',cx,cy-110,'#facc15',12);}
+  if(l6.flashErr>0){l6.flashErr--;ctx.fillStyle=`rgba(248,113,113,${l6.flashErr/15*0.3})`;ctx.fillRect(0,0,W,H);}
+  particles(l6.particles,0.016);
+}
+function drawRBC(x,y,morph){
+  // smooth sickle -> disc transition
+  const ease=morph<0.5?2*morph*morph:(1-Math.pow(-2*morph+2,2)/2);
+  ctx.fillStyle=`rgb(${220-ease*20},${38+ease*20},${38+ease*20})`;
+  if(ease<0.5){
+    const s=1-ease*2;
+    ctx.beginPath();ctx.moveTo(x-20,y);
+    ctx.quadraticCurveTo(x-10,y-20*s,x+20,y-10*s);
+    ctx.quadraticCurveTo(x+25,y,x+20,y+10*s);
+    ctx.quadraticCurveTo(x-10,y+20*s,x-20,y);
+    ctx.fill();ctx.strokeStyle='#f87171';ctx.lineWidth=1;ctx.stroke();
+  }else{
+    const n=(ease-0.5)*2;
+    ctx.beginPath();ctx.arc(x,y,18,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=`rgb(${248-n*100},${113+n*50},${113+n*50})`;ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle=`rgba(${185-n*50},${28+n*30},${28+n*30},${n})`;ctx.beginPath();ctx.arc(x,y,8*n,0,Math.PI*2);ctx.fill();
+  }
+}
+/* ===== MAIN LOOP ===== */
+function mainLoop(){
+  frame++;resize();drawBg();
+  // level fade-in
+  if(levelFadeAlpha<1)levelFadeAlpha=Math.min(levelFadeAlpha+0.04,1);
+  ctx.globalAlpha=levelFadeAlpha;
+  if(curLevel===0)drawLevel0();else if(curLevel===1)drawLevel1();else if(curLevel===2)drawLevel2();
+  else if(curLevel===3)drawLevel3();else if(curLevel===4)drawLevel4();else if(curLevel===5)drawLevel5();
+  else if(curLevel===6)drawLevel6();
+  ctx.globalAlpha=1;
+  // gold completion particles (always on top)
+  particles(goldParticles,0.016);
+  animId=requestAnimationFrame(mainLoop);
+}
+resize();initLevel0();panelDirty=true;renderPanel();mainLoop();
+</script>
+</body>
+</html>

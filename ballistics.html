@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>弹道物理原理探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#ff6a33}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#ff6a33,#ff9a5c);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}
+.g-text{color:#c0c0e0}
+.g-text.done{color:#4ade80;text-decoration:line-through}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:#2a2a6a}
+.act-btn:disabled{opacity:0.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}
+.sv{color:#60a5fa;font-weight:bold}
+.section-title{font-size:13px;font-weight:700;color:#eee;margin:10px 0 6px}
+.level-title{font-size:16px;font-weight:700;color:#ff6a33;margin:8px 0 4px}
+.level-sub{font-size:12px;color:#888;margin-bottom:8px}
+
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:rgba(10,10,30,0.95);border-top:1px solid #1a1a3a;z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}
+#bottom-bar .bb-right{text-align:right}
+
+.result-box{text-align:center;max-width:420px;background:rgba(10,10,26,.98);border:1px solid #2a2a5a;border-radius:16px;padding:28px 36px}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-desc{font-size:13px;color:#999;line-height:1.6;margin-bottom:16px}
+.result-box .rb-learn{text-align:left;background:#0e0e20;border-radius:8px;padding:12px 14px;font-size:12px;color:#8ab4ff;line-height:1.7;margin-bottom:16px}
+.result-box .rb-learn b{color:#ff6a33}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#ff6a33;color:#fff}
+.result-box .btn-retry{background:#2a2a5a;color:#ccc}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🎯 <span class="gold">弹道</span>物理原理探险</h1>
+  <div class="sub">6 个关卡，亲手体验经典力学核心原理</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">🏹</div>抛体运动</div>
+    <div class="feat"><div class="fi">💨</div>空气阻力</div>
+    <div class="feat"><div class="fi">⚖️</div>动量守恒</div>
+    <div class="feat"><div class="fi">🌍</div>科里奥利力</div>
+    <div class="feat"><div class="fi">🪂</div>终端速度</div>
+    <div class="feat"><div class="fi">🪐</div>三体问题</div>
+  </div>
+</div>
+</div>
+
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let CW, CH, time = 0, animId;
+let gameState = 'start', currentLevel = 0;
+let levelState = {}, stars = [], particles = [];
+const G = 9.81, dt = 1/60;
+const panelEl = document.getElementById('panel');
+
+const levels = [
+  { title:'抛体运动', sub:'45度最远', concept:'斜抛运动：物体以一定角度和速度抛出后，只受重力作用，走抛物线轨迹。在没有空气阻力时，45° 发射角能让物体飞得最远。',
+    goals:['发射一次观察抛物线','用 45° 发射观察最远距离','命中目标靶子'],
+    learn:'在没有空气阻力的理想情况下，<b>45度角</b>能让物体飞得最远。这是因为 45° 完美平衡了水平速度和滞空时间。古代投石机的操作手凭经验就知道这个道理——现代物理只是用数学证明了它。' },
+  { title:'空气阻力', sub:'真空 vs 现实', concept:'空气阻力与速度的平方成正比（F = ½ρCdAv²）。真空中的完美抛物线在现实中会被"压扁"，飞行距离大幅缩短。',
+    goals:['对比真空和有阻力的轨迹','观察高速时阻力影响更大','发现现实最佳角度不是 45°'],
+    learn:'在真实世界中，空气阻力会"偷走"物体的动能。速度越快，阻力越大（和速度的平方成正比！）。所以棒球投手投出的球不是完美抛物线，狙击手要考虑的也远不止重力。现实中的最佳发射角度通常在 <b>30°~40°</b> 之间。' },
+  { title:'动量守恒', sub:'牛顿摆', concept:'动量 = 质量 × 速度。碰撞中总动量守恒。弹性碰撞中动能也守恒。牛顿摆完美展示了这两个守恒定律。',
+    goals:['释放 1 个球观察结果','释放 2 个球观察结果','释放 3 个球观察结果'],
+    learn:'牛顿摆完美展示了<b>动量守恒</b>和<b>能量守恒</b>。释放 1 个球，动量只够让 1 个球以相同速度弹起。释放 2 个球，就有 2 个球弹起。这不是魔法，是物理定律在精确地"记账"——动量和能量一分不差地传递。' },
+  { title:'科里奥利力', sub:'地球自转的影响', concept:'在旋转的地球上，运动物体会偏转（北半球向右偏）。远程射击和导弹必须考虑这个效应。',
+    goals:['观察不补偿时的偏转','理解科里奥利力方向','补偿偏转命中目标'],
+    learn:'地球每天自转一圈，赤道表面速度约 <b>1670km/h</b>。当你向北发射物体时，它保持着出发点的东向速度，但越往北地面东向速度越慢——所以物体看起来向右偏了。这就是科里奥利力，它影响着洋流、台风旋转方向，以及远程弹道。' },
+  { title:'终端速度', sub:'自由落体的极限', concept:'下落物体加速到一定速度后，空气阻力等于重力，不再加速，达到终端速度。羽毛和铁球在真空中同时落地。',
+    goals:['在真空中验证同时落地','在大气中观察不同终端速度','打开降落伞降低终端速度'],
+    learn:'伽利略说"不同重量的物体同时落地"——在真空中确实如此！但在空气中，轻的物体表面积相对更大，空气阻力影响更大。跳伞员的终端速度约 <b>200km/h</b>，打开伞后降到 <b>20km/h</b>。没有空气阻力，降落伞就是一块没用的布。' },
+  { title:'三体问题', sub:'混沌的开始', concept:'两个天体的运动可以精确计算，但加入第三个天体后，运动变得不可预测——这就是三体问题，混沌理论的经典案例。',
+    goals:['运行一次模拟观察轨迹','尝试 8 字形预设','微调初始位置观察蝴蝶效应'],
+    learn:'三体问题没有通解——这是数学上已经证明的。三个天体的引力相互作用产生<b>混沌</b>：初始条件的微小差异会导致完全不同的结果。这就是为什么长期天气预报不可能精确，也是刘慈欣《三体》小说的科学基础。宇宙比我们想象的更不可预测。' }
+];
+let levelDone = levels.map(()=>[]);
+
+// === 星空 ===
+function initStars(){ stars=[]; for(let i=0;i<100;i++) stars.push({x:Math.random()*2000,y:Math.random()*1200,r:Math.random()*1.5+.3,tw:Math.random()*Math.PI*2,sp:Math.random()*.02+.005}); }
+function drawStars(){ for(let s of stars){ const a=.4+.6*Math.abs(Math.sin(s.tw+time*s.sp)); ctx.fillStyle=`rgba(255,255,255,${a})`; ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill(); } }
+
+// === 粒子 ===
+function addP(x,y,vx,vy,col,life,sz){ particles.push({x,y,vx,vy,col,life,ml:life,sz:sz||3}); }
+function updateP(d){ for(let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.x+=p.vx*d; p.y+=p.vy*d; p.life-=d; if(p.life<=0) particles.splice(i,1); } }
+function drawP(){ for(let p of particles){ const a=Math.max(0,p.life/p.ml); ctx.globalAlpha=a; ctx.fillStyle=p.col; ctx.beginPath(); ctx.arc(p.x,p.y,p.sz*a,0,Math.PI*2); ctx.fill(); } ctx.globalAlpha=1; }
+
+// === 尺寸 ===
+function resize(){ CW=canvas.width=innerWidth; CH=canvas.height=innerHeight; initStars(); }
+window.addEventListener('resize', resize); resize();
+
+// === 面板渲染 ===
+function renderPanel(){
+  const lv = levels[currentLevel];
+  const done = levelDone[currentLevel];
+  let h = '<div style="margin-bottom:8px">';
+  levels.forEach((l,i)=>{
+    const cls = i===currentLevel?'active':(levelDone[i].length>=l.goals.length?'done':'');
+    h+=`<span class="level-btn ${cls}" onclick="switchLevel(${i})">${i+1}. ${l.title}</span>`;
+  });
+  h+='</div>';
+  h+=`<div class="level-title">${lv.title}</div><div class="level-sub">${lv.sub}</div>`;
+  h+=`<div class="concept-box">${lv.concept}</div>`;
+  h+=`<div class="section-title">目标清单</div>`;
+  lv.goals.forEach((g,i)=>{
+    const d = done.includes(i);
+    h+=`<div class="goal-row"><span class="g-icon">${d?'✅':'⬜'}</span><span class="g-text${d?' done':''}">${g}</span></div>`;
+  });
+  h += renderLevelControls();
+  if(done.length >= lv.goals.length){
+    h+=`<div class="learn-box">${lv.learn}</div>`;
+    if(currentLevel < levels.length-1) h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
+  }
+  panelEl.innerHTML = h;
+}
+
+function markGoal(idx){
+  if(!levelDone[currentLevel].includes(idx)){ levelDone[currentLevel].push(idx); renderPanel(); }
+}
+
+function switchLevel(i){ currentLevel=i; initLevel(); renderPanel(); }
+
+// === 底部栏 ===
+function updateBottom(left,right){
+  const b=document.getElementById('bottom-bar'); b.style.display='flex';
+  document.getElementById('bbLeft').textContent=left||'';
+  document.getElementById('bbRight').textContent=right||'弹道物理原理探险';
+}
+
+// === 启动 ===
+function startGame(){ document.getElementById('startScreen').classList.add('hidden'); panelEl.style.display='block'; gameState='play'; initLevel(); renderPanel(); updateBottom('拖拽/点击交互','弹道物理原理探险'); loop(); }
+
+// ============ 关卡控制面板 ============
+function renderLevelControls(){
+  let h='<div class="section-title">操作区</div>';
+  const s = levelState;
+  if(currentLevel===0){
+    h+=`<div class="slider-wrap"><label>发射角度: <span class="sv">${s.angle||45}°</span></label><input type="range" min="5" max="85" value="${s.angle||45}" oninput="setAngle(this.value)"></div>`;
+    h+=`<div class="slider-wrap"><label>发射速度: <span class="sv">${s.speed||30} m/s</span></label><input type="range" min="10" max="50" value="${s.speed||30}" oninput="setSpeed(this.value)"></div>`;
+    h+=`<button class="act-btn" onclick="doFire()">发射</button>`;
+    h+=`<button class="act-btn" style="border-color:#f44;color:#f88" onclick="clearTrails()">清除轨迹</button>`;
+    h+=`<div class="hint-box">提示：调整角度和速度，尝试命中右侧靶子。试试 45° 看看是不是飞得最远！</div>`;
+  } else if(currentLevel===1){
+    h+=`<div class="slider-wrap"><label>发射角度: <span class="sv">${s.angle||45}°</span></label><input type="range" min="10" max="80" value="${s.angle||45}" oninput="setAngle(this.value)"></div>`;
+    h+=`<div class="slider-wrap"><label>发射速度: <span class="sv">${s.speed||30} m/s</span></label><input type="range" min="10" max="50" value="${s.speed||30}" oninput="setSpeed(this.value)"></div>`;
+    h+=`<button class="act-btn" onclick="doFire()">同时发射对比</button>`;
+    h+=`<button class="act-btn" style="border-color:#f44;color:#f88" onclick="clearTrails()">清除轨迹</button>`;
+    h+=`<div class="hint-box">提示：左边是真空，右边有空气阻力。提高速度观察差异变大！</div>`;
+  } else if(currentLevel===2){
+    h+=`<div class="slider-wrap"><label>拉起球数: <span class="sv">${s.pullCount||1}</span></label><input type="range" min="1" max="3" value="${s.pullCount||1}" oninput="setPullCount(this.value)"></div>`;
+    h+=`<button class="act-btn" onclick="doRelease()">释放</button>`;
+    h+=`<div class="hint-box">提示：选择拉起 1~3 个球，释放后观察另一侧弹起几个球。</div>`;
+  } else if(currentLevel===3){
+    h+=`<div class="slider-wrap"><label>方向补偿: <span class="sv">${(s.offset||0).toFixed(1)}°</span></label><input type="range" min="-10" max="10" step="0.5" value="${s.offset||0}" oninput="setOffset(this.value)"></div>`;
+    h+=`<button class="act-btn" onclick="doFireCoriolis()">发射</button>`;
+    h+=`<button class="act-btn" style="border-color:#f44;color:#f88" onclick="clearTrails()">清除轨迹</button>`;
+    h+=`<div class="hint-box">提示：从南向北发射，物体会向右偏。调整补偿角度来命中目标！</div>`;
+  } else if(currentLevel===4){
+    const modes = ['真空对比','大气对比','跳伞员'];
+    h+=modes.map((m,i)=>`<button class="act-btn${s.subMode===i?' green':''}" onclick="setSubMode(${i})">${m}</button>`).join('');
+    if(s.subMode===2 && s.falling && !s.parachute) h+=`<button class="act-btn green" onclick="openParachute()">打开降落伞</button>`;
+    if(!s.falling) h+=`<button class="act-btn" onclick="doDrop()">释放</button>`;
+    h+=`<div class="hint-box">${s.subMode===0?'真空管中羽毛和铁球同时落地！':s.subMode===1?'大气中铁球先落地，羽毛飘飘悠悠。':s.subMode===2?'观察速度曲线，在合适时机打开降落伞。':'选择一个场景开始。'}</div>`;
+  } else if(currentLevel===5){
+    const presets = ['随机','8字形','等边三角形'];
+    h+=presets.map((p,i)=>`<button class="act-btn" onclick="setPreset(${i})">${p}</button>`).join('');
+    h+=`<button class="act-btn green" onclick="doSimulate()">开始模拟</button>`;
+    h+=`<button class="act-btn" style="border-color:#f44;color:#f88" onclick="resetThreeBody()">重置</button>`;
+    h+=`<div class="hint-box">提示：拖拽三个天体设置初始位置，或选择预设。观察轨迹的混沌行为！</div>`;
+  }
+  return h;
+}
+
+// ============ 关卡初始化 ============
+function initLevel(){
+  particles=[];
+  if(currentLevel===0) initLevel0();
+  else if(currentLevel===1) initLevel1();
+  else if(currentLevel===2) initLevel2();
+  else if(currentLevel===3) initLevel3();
+  else if(currentLevel===4) initLevel4();
+  else if(currentLevel===5) initLevel5();
+}
+
+// ============ 第1关：抛体运动 ============
+function initLevel0(){
+  const ox=380, groundY=CH-80;
+  const targetX = ox + 500 + Math.random()*200;
+  levelState = { angle:45, speed:30, trails:[], ball:null, ox, groundY, targetX, targetR:25, fireCount:0 };
+}
+function setAngle(v){ levelState.angle=+v; renderPanel(); }
+function setSpeed(v){ levelState.speed=+v; renderPanel(); }
+function clearTrails(){ levelState.trails=[]; if(levelState.trailsV) levelState.trailsV=[]; if(levelState.trailsA) levelState.trailsA=[]; }
+
+function doFire0(){
+  const s=levelState, rad=s.angle*Math.PI/180;
+  const scale = (CH-120)/((50*50)/G);
+  s.ball = { x:s.ox, y:s.groundY, vx:s.speed*Math.cos(rad)*scale*0.5, vy:-s.speed*Math.sin(rad)*scale*0.5, trail:[], color:`hsl(${(s.fireCount*60)%360},70%,60%)`, alive:true, t:0 };
+  s.fireCount++;
+  markGoal(0);
+  if(Math.abs(s.angle-45)<=2) markGoal(1);
+}
+
+function updateLevel0(){
+  const s=levelState; if(!s.ball||!s.ball.alive) return;
+  const b=s.ball, gPx = G * ((CH-120)/((50*50)/G)) * 0.5;
+  b.vy += gPx * dt;
+  b.x += b.vx * dt * 60; b.y += b.vy * dt * 60;
+  b.trail.push({x:b.x,y:b.y});
+  if(b.y >= s.groundY){
+    b.y=s.groundY; b.alive=false;
+    s.trails.push({pts:[...b.trail],color:b.color});
+    for(let i=0;i<12;i++) addP(b.x,s.groundY,Math.random()*4-2,-Math.random()*3,'#aa8844',0.6,2);
+    const dx=b.x-s.targetX;
+    if(Math.abs(dx)<s.targetR+8){
+      markGoal(2);
+      for(let i=0;i<20;i++) addP(s.targetX,s.groundY-10,Math.random()*6-3,-Math.random()*5,`hsl(${Math.random()*60},90%,60%)`,0.8,3);
+    }
+  }
+}
+
+function drawLevel0(){
+  const s=levelState;
+  // 地面
+  const grd=ctx.createLinearGradient(0,s.groundY,0,CH);
+  grd.addColorStop(0,'#1a4a1a'); grd.addColorStop(1,'#0a2a0a');
+  ctx.fillStyle=grd; ctx.fillRect(0,s.groundY,CW,CH-s.groundY);
+  // 弹射器
+  drawCatapult(s.ox, s.groundY, s.angle);
+  // 靶子
+  drawTarget(s.targetX, s.groundY, s.targetR);
+  // 历史轨迹
+  for(let t of s.trails) drawTrail(t.pts, t.color);
+  // 当前球
+  if(s.ball){
+    if(s.ball.alive) drawTrail(s.ball.trail, s.ball.color);
+    drawBall(s.ball.x, s.ball.y, 8, s.ball.color);
+  }
+  // 角度指示
+  const rad=s.angle*Math.PI/180;
+  ctx.strokeStyle='rgba(96,165,250,0.4)'; ctx.setLineDash([4,4]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(s.ox,s.groundY); ctx.lineTo(s.ox+Math.cos(-rad)*120,s.groundY+Math.sin(-rad)*120); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawCatapult(x,y,angle){
+  ctx.fillStyle='#5a3a1a'; ctx.fillRect(x-15,y-40,30,40);
+  ctx.fillStyle='#7a5a2a'; ctx.fillRect(x-20,y-8,40,8);
+  const rad=angle*Math.PI/180;
+  ctx.strokeStyle='#aa8844'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(x,y-35); ctx.lineTo(x+Math.cos(-rad)*40,y-35+Math.sin(-rad)*40); ctx.stroke();
+  ctx.fillStyle='#ddd'; ctx.beginPath(); ctx.arc(x+Math.cos(-rad)*42,y-35+Math.sin(-rad)*42,6,0,Math.PI*2); ctx.fill();
+}
+
+function drawTarget(x,y,r){
+  const colors=['#ff2222','#ffffff','#ff2222','#ffffff','#ff2222'];
+  for(let i=4;i>=0;i--){
+    ctx.fillStyle=colors[i]; ctx.beginPath(); ctx.arc(x,y-r,r*(i+1)/5,0,Math.PI*2); ctx.fill();
+  }
+  ctx.fillStyle='#8a4a1a'; ctx.fillRect(x-3,y-r*0.3,6,r*0.3+2);
+}
+
+function drawTrail(pts,color){
+  if(pts.length<2) return;
+  ctx.strokeStyle=color; ctx.globalAlpha=0.5; ctx.lineWidth=2; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y);
+  for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].x,pts[i].y);
+  ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1;
+}
+
+function drawBall(x,y,r,color){
+  ctx.fillStyle=color||'#eee';
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.4)';
+  ctx.beginPath(); ctx.arc(x-r*0.3,y-r*0.3,r*0.3,0,Math.PI*2); ctx.fill();
+}
+
+// ============ 第2关：空气阻力 ============
+function initLevel1(){
+  const groundY=CH-80;
+  levelState = { angle:45, speed:30, trailsV:[], trailsA:[], ballV:null, ballA:null, groundY, ox:380, fireCount:0, midX:CW/2+160 };
+}
+
+function doFire1(){
+  const s=levelState, rad=s.angle*Math.PI/180;
+  const scale=0.8, ox=s.ox, gy=s.groundY;
+  const vx0=s.speed*Math.cos(rad), vy0=s.speed*Math.sin(rad);
+  // 真空轨迹预计算
+  let pts=[]; let x=0,y=0,vx=vx0,vy=vy0,t=0;
+  while(y>=0||t===0){ pts.push({x:ox+x*scale, y:gy-y*scale}); vx=vx0; vy=vy0-G*t; x=vx0*t; y=vy0*t-0.5*G*t*t; t+=0.02; if(t>20) break; }
+  // 有阻力轨迹预计算
+  let ptsA=[]; x=0;y=0;vx=vx0;vy=vy0;
+  const dragCoeff=0.005;
+  for(let i=0;i<2000;i++){
+    ptsA.push({x:ox+x*scale, y:gy-y*scale});
+    const spd=Math.sqrt(vx*vx+vy*vy);
+    const drag=dragCoeff*spd*spd;
+    const ax=-drag*vx/(spd||1), ay=-drag*vy/(spd||1)-G;
+    vx+=ax*0.02; vy+=ay*0.02; x+=vx*0.02; y+=vy*0.02;
+    if(y<0) break;
+  }
+  const col=`hsl(${(s.fireCount*50)%360},70%,60%)`;
+  s.ballV={pts,idx:0,color:col,done:false};
+  s.ballA={pts:ptsA,idx:0,color:col,done:false};
+  s.fireCount++;
+  markGoal(0);
+  if(s.speed>=35) markGoal(1);
+  if(s.angle>=25 && s.angle<=42) markGoal(2);
+}
+
+function updateLevel1(){
+  const s=levelState;
+  [s.ballV,s.ballA].forEach(b=>{
+    if(!b||b.done) return;
+    b.idx = Math.min(b.idx+2, b.pts.length-1);
+    if(b.idx>=b.pts.length-1){ b.done=true; }
+  });
+  if(s.ballV && s.ballV.done && s.ballA && s.ballA.done){
+    s.trailsV.push({pts:s.ballV.pts,color:s.ballV.color});
+    s.trailsA.push({pts:s.ballA.pts,color:s.ballA.color});
+    s.ballV=null; s.ballA=null;
+  }
+}
+
+function drawLevel1(){
+  const s=levelState, mid=s.midX;
+  // 分割线
+  ctx.strokeStyle='#333'; ctx.lineWidth=1; ctx.setLineDash([6,4]);
+  ctx.beginPath(); ctx.moveTo(mid,0); ctx.lineTo(mid,s.groundY); ctx.stroke(); ctx.setLineDash([]);
+  // 标签
+  ctx.fillStyle='#555'; ctx.font='14px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('真空',s.ox+(mid-s.ox)/2,30); ctx.fillText('有空气阻力',mid+(CW-mid)/2,30);
+  // 左侧黑色背景
+  ctx.fillStyle='rgba(0,0,10,0.3)'; ctx.fillRect(320,0,mid-320,s.groundY);
+  // 右侧浅蓝背景+风粒子
+  ctx.fillStyle='rgba(20,30,60,0.3)'; ctx.fillRect(mid,0,CW-mid,s.groundY);
+  // 风粒子
+  for(let i=0;i<8;i++){
+    const px=mid+((time*40+i*120)%(CW-mid)), py=50+i*60+Math.sin(time+i)*20;
+    ctx.fillStyle='rgba(100,150,200,0.15)'; ctx.fillRect(px,py,20,1);
+  }
+  // 地面
+  const grd=ctx.createLinearGradient(0,s.groundY,0,CH);
+  grd.addColorStop(0,'#1a4a1a'); grd.addColorStop(1,'#0a2a0a');
+  ctx.fillStyle=grd; ctx.fillRect(0,s.groundY,CW,CH-s.groundY);
+  // 弹射器
+  drawCatapult(s.ox, s.groundY, s.angle);
+  // 历史轨迹
+  for(let t of s.trailsV) drawTrail(t.pts,t.color);
+  for(let t of s.trailsA) drawTrail(t.pts,t.color);
+  // 当前球
+  [s.ballV,s.ballA].forEach(b=>{
+    if(!b) return;
+    const p=b.pts[b.idx];
+    drawTrail(b.pts.slice(0,b.idx+1),b.color);
+    drawBall(p.x,p.y,7,b.color);
+  });
+}
+
+// 统一发射入口
+function doFire(){ if(currentLevel===0) doFire0(); else if(currentLevel===1) doFire1(); }
+
+// ============ 第3关：牛顿摆 ============
+function initLevel2(){
+  const cx=CW/2+160, cy=CH*0.25, ropeLen=CH*0.35, ballR=22, gap=ballR*2+4;
+  const balls=[];
+  for(let i=0;i<5;i++){
+    balls.push({ idx:i, angle:0, angVel:0, x:cx+(i-2)*gap, y:cy+ropeLen, r:ballR });
+  }
+  levelState = { cx, cy, ropeLen, ballR, gap, balls, pullCount:1, phase:'idle', t:0, damping:0.999 };
+}
+function setPullCount(v){ levelState.pullCount=+v; renderPanel(); }
+
+function doRelease(){
+  const s=levelState;
+  if(s.phase!=='idle') return;
+  s.phase='swing'; s.t=0;
+  for(let i=0;i<s.pullCount;i++){
+    s.balls[i].angle = -Math.PI/4;
+    s.balls[i].angVel = 0;
+  }
+}
+
+function updateLevel2(){
+  const s=levelState;
+  if(s.phase==='idle') return;
+  const gAcc = G / (s.ropeLen/50);
+  // 简化牛顿摆物理：摆动+碰撞传递
+  for(let b of s.balls){
+    b.angVel += -gAcc * Math.sin(b.angle) * dt;
+    b.angVel *= s.damping;
+    b.angle += b.angVel * dt;
+    b.x = s.cx + (b.idx-2)*s.gap + Math.sin(b.angle)*s.ropeLen;
+    b.y = s.cy + Math.cos(b.angle)*s.ropeLen;
+  }
+  // 碰撞检测
+  for(let i=0;i<4;i++){
+    const a=s.balls[i], b=s.balls[i+1];
+    const dx=b.x-a.x;
+    if(dx < s.ballR*2 && a.angVel > 0.001){
+      // 弹性碰撞：交换速度
+      const tmp=a.angVel; a.angVel=b.angVel; b.angVel=tmp;
+      // 分离
+      if(dx<s.ballR*2){ b.angle=a.angle+0.001; }
+    }
+  }
+  for(let i=4;i>0;i--){
+    const a=s.balls[i], b=s.balls[i-1];
+    const dx=b.x-a.x;
+    if(-dx < s.ballR*2 && a.angVel < -0.001){
+      const tmp=a.angVel; a.angVel=b.angVel; b.angVel=tmp;
+      if(-dx<s.ballR*2){ b.angle=a.angle-0.001; }
+    }
+  }
+  s.t+=dt;
+  // 检测目标
+  if(s.t>0.5){
+    if(s.pullCount===1) markGoal(0);
+    if(s.pullCount===2) markGoal(1);
+    if(s.pullCount===3) markGoal(2);
+  }
+  // 衰减后回到idle
+  let maxVel=0;
+  for(let b of s.balls) maxVel=Math.max(maxVel,Math.abs(b.angVel));
+  if(s.t>3 && maxVel<0.005){ s.phase='idle'; for(let b of s.balls){ b.angle=0; b.angVel=0; } }
+}
+
+function drawLevel2(){
+  const s=levelState;
+  // 支架
+  ctx.fillStyle='#444'; ctx.fillRect(s.cx-s.gap*3, s.cy-10, s.gap*6, 8);
+  ctx.fillStyle='#333'; ctx.fillRect(s.cx-s.gap*3-8, s.cy-10, 8, CH*0.5);
+  ctx.fillRect(s.cx+s.gap*3, s.cy-10, 8, CH*0.5);
+  // 球和线
+  for(let b of s.balls){
+    const anchorX = s.cx + (b.idx-2)*s.gap;
+    ctx.strokeStyle='#666'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(anchorX, s.cy); ctx.lineTo(b.x, b.y); ctx.stroke();
+    // 金属球
+    const grd=ctx.createRadialGradient(b.x-b.r*0.3,b.y-b.r*0.3,b.r*0.1,b.x,b.y,b.r);
+    grd.addColorStop(0,'#eee'); grd.addColorStop(0.5,'#aaa'); grd.addColorStop(1,'#666');
+    ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#555'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.stroke();
+  }
+  // 动量显示
+  ctx.fillStyle='#888'; ctx.font='11px sans-serif'; ctx.textAlign='center';
+  for(let b of s.balls){
+    const v = (b.angVel*s.ropeLen).toFixed(1);
+    ctx.fillText(`v=${v}`,b.x,b.y+b.r+16);
+  }
+}
+
+// ============ 第4关：科里奥利力 ============
+function initLevel3(){
+  const cx=CW/2+160, cy=CH/2, earthR=Math.min(CW-400,CH-100)*0.38;
+  levelState = { cx, cy, earthR, offset:0, rotation:0, trails:[], projectile:null, fireCount:0,
+    targetAngle: Math.PI*0.08, // 目标在北方偏东一点
+  };
+}
+function setOffset(v){ levelState.offset=+v; renderPanel(); }
+
+function doFireCoriolis(){
+  const s=levelState;
+  const startAngle = Math.PI/2; // 从南方（底部）
+  const sx = s.cx + Math.cos(startAngle)*s.earthR*0.85;
+  const sy = s.cy + Math.sin(startAngle)*s.earthR*0.85;
+  const aimAngle = -Math.PI/2 + (s.offset)*Math.PI/180; // 向北+补偿
+  const spd = 3;
+  s.projectile = { x:sx, y:sy, vx:Math.cos(aimAngle)*spd, vy:Math.sin(aimAngle)*spd, trail:[{x:sx,y:sy}], alive:true, t:0, hasOffset:s.offset!==0 };
+  s.fireCount++;
+  if(s.offset===0) markGoal(0);
+}
+
+function updateLevel3(){
+  const s=levelState;
+  s.rotation += 0.003;
+  if(!s.projectile||!s.projectile.alive) return;
+  const p=s.projectile;
+  // 科里奥利偏转（简化：向右偏）
+  const omega = 0.015;
+  const corX = 2*omega*p.vy;
+  const corY = -2*omega*p.vx;
+  p.vx += corX; p.vy += corY;
+  p.x += p.vx; p.y += p.vy;
+  p.trail.push({x:p.x,y:p.y});
+  p.t++;
+  // 检查是否出界或到达目标区域
+  const dx=p.x-s.cx, dy=p.y-s.cy, dist=Math.sqrt(dx*dx+dy*dy);
+  if(dist>s.earthR*1.1 || p.t>300){
+    p.alive=false;
+    s.trails.push({pts:[...p.trail],color:p.hasOffset?'#4ade80':'#f87171'});
+  }
+  // 目标检测
+  const tAngle = -Math.PI/2 + s.targetAngle;
+  const tx = s.cx + Math.cos(tAngle)*s.earthR*0.6;
+  const ty = s.cy + Math.sin(tAngle)*s.earthR*0.6;
+  if(Math.sqrt((p.x-tx)**2+(p.y-ty)**2)<20){
+    p.alive=false;
+    s.trails.push({pts:[...p.trail],color:'#4ade80'});
+    markGoal(2);
+    for(let i=0;i<15;i++) addP(tx,ty,Math.random()*4-2,Math.random()*4-2,'#4ade80',0.8,3);
+  }
+  if(s.fireCount>=1 && !p.hasOffset) markGoal(1);
+}
+
+function drawLevel3(){
+  const s=levelState;
+  // 地球（俯视）
+  ctx.save(); ctx.translate(s.cx,s.cy); ctx.rotate(s.rotation);
+  // 地球圆盘
+  const grd=ctx.createRadialGradient(0,0,0,0,0,s.earthR);
+  grd.addColorStop(0,'#1a3a6a'); grd.addColorStop(0.7,'#0a2a4a'); grd.addColorStop(1,'#061a2a');
+  ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(0,0,s.earthR,0,Math.PI*2); ctx.fill();
+  // 经纬线
+  ctx.strokeStyle='rgba(100,150,200,0.2)'; ctx.lineWidth=1;
+  for(let r=s.earthR*0.25;r<s.earthR;r+=s.earthR*0.25){
+    ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.stroke();
+  }
+  for(let a=0;a<Math.PI*2;a+=Math.PI/6){
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(Math.cos(a)*s.earthR,Math.sin(a)*s.earthR); ctx.stroke();
+  }
+  // 北极标记
+  ctx.fillStyle='#fff'; ctx.font='bold 14px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('N',0,-s.earthR*0.08);
+  ctx.restore();
+  // 目标
+  const tAngle = -Math.PI/2 + s.targetAngle;
+  const tx = s.cx + Math.cos(tAngle)*s.earthR*0.6;
+  const ty = s.cy + Math.sin(tAngle)*s.earthR*0.6;
+  ctx.fillStyle='#ff4444'; ctx.beginPath(); ctx.arc(tx,ty,10,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font='11px sans-serif'; ctx.textAlign='center'; ctx.fillText('目标',tx,ty-16);
+  // 发射点
+  const sx = s.cx, sy = s.cy + s.earthR*0.85;
+  ctx.fillStyle='#60a5fa'; ctx.beginPath(); ctx.arc(sx,sy,8,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.fillText('发射点',sx,sy+20);
+  // 轨迹
+  for(let t of s.trails) drawTrail(t.pts,t.color);
+  if(s.projectile && s.projectile.alive){
+    drawTrail(s.projectile.trail,'#fbbf24');
+    const p=s.projectile;
+    drawBall(p.x,p.y,6,'#fbbf24');
+  }
+  // 旋转方向箭头
+  ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.lineWidth=2;
+  const arrowR=s.earthR+20;
+  ctx.beginPath(); ctx.arc(s.cx,s.cy,arrowR,-0.3,0.3); ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.3)';
+  const ax=s.cx+Math.cos(0.3)*arrowR, ay=s.cy+Math.sin(0.3)*arrowR;
+  ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(ax-8,ay-6); ctx.lineTo(ax+2,ay-10); ctx.fill();
+  ctx.fillStyle='#666'; ctx.font='11px sans-serif'; ctx.fillText('自转方向',s.cx+arrowR+10,s.cy);
+}
+
+// ============ 第5关：终端速度 ============
+function initLevel4(){
+  levelState = { subMode:0, falling:false, parachute:false, t:0,
+    ironY:0, featherY:0, ironV:0, featherV:0,
+    skydiverY:0, skydiverV:0, speedHistory:[],
+    startY:80, groundY:CH-100, featherWobble:0 };
+}
+function setSubMode(v){ levelState.subMode=+v; levelState.falling=false; levelState.parachute=false; levelState.t=0; levelState.speedHistory=[]; renderPanel(); }
+
+function doDrop(){
+  const s=levelState;
+  s.falling=true; s.t=0; s.parachute=false;
+  s.ironY=s.startY; s.featherY=s.startY; s.ironV=0; s.featherV=0;
+  s.skydiverY=s.startY; s.skydiverV=0; s.speedHistory=[];
+  renderPanel();
+}
+
+function openParachute(){
+  levelState.parachute=true;
+  markGoal(2);
+  renderPanel();
+}
+
+function updateLevel4(){
+  const s=levelState;
+  if(!s.falling) return;
+  s.t+=dt;
+  const gy=s.groundY;
+  if(s.subMode===0){
+    // 真空：同加速度
+    s.ironV += G*3*dt; s.featherV += G*3*dt;
+    s.ironY += s.ironV*dt; s.featherY += s.featherV*dt;
+    if(s.ironY>=gy){ s.ironY=gy; s.featherY=gy; s.falling=false; markGoal(0); renderPanel(); }
+  } else if(s.subMode===1){
+    // 大气：铁球终端速度高，羽毛终端速度低
+    const ironDrag=0.001, featherDrag=0.08;
+    s.ironV += (G*3 - ironDrag*s.ironV*s.ironV*Math.sign(s.ironV))*dt;
+    s.featherV += (G*3 - featherDrag*s.featherV*s.featherV*Math.sign(s.featherV))*dt;
+    s.ironY += s.ironV*dt; s.featherY += s.featherV*dt;
+    s.featherWobble = Math.sin(s.t*5)*15;
+    if(s.ironY>=gy){ s.ironY=gy; if(s.featherY<gy) markGoal(1); }
+    if(s.featherY>=gy){ s.featherY=gy; if(s.ironY>=gy){ s.falling=false; markGoal(1); renderPanel(); } }
+  } else {
+    // 跳伞
+    const drag = s.parachute ? 0.06 : 0.003;
+    s.skydiverV += (G*3 - drag*s.skydiverV*s.skydiverV*Math.sign(s.skydiverV))*dt;
+    s.skydiverY += s.skydiverV*dt;
+    s.speedHistory.push(s.skydiverV);
+    if(s.skydiverY>=gy){ s.skydiverY=gy; s.falling=false; renderPanel(); }
+  }
+}
+
+function drawLevel4(){
+  const s=levelState, cx=CW/2+160, w=CW-340;
+  if(s.subMode===0){
+    // 真空管
+    ctx.strokeStyle='rgba(100,200,255,0.3)'; ctx.lineWidth=2;
+    ctx.strokeRect(cx-80,s.startY-20,60,s.groundY-s.startY+30);
+    ctx.strokeRect(cx+20,s.startY-20,60,s.groundY-s.startY+30);
+    ctx.fillStyle='#888'; ctx.font='12px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('铁球',cx-50,s.startY-28); ctx.fillText('羽毛',cx+50,s.startY-28);
+    ctx.fillText('真空',cx,s.startY-48); ctx.font='11px sans-serif'; ctx.fillStyle='#666';
+    ctx.fillText('（无空气阻力）',cx,s.startY-32);
+    // 铁球
+    ctx.fillStyle='#aaa'; ctx.beginPath(); ctx.arc(cx-50,s.ironY,12,0,Math.PI*2); ctx.fill();
+    // 羽毛
+    drawFeather(cx+50,s.featherY,0);
+    // 地面
+    ctx.fillStyle='#333'; ctx.fillRect(cx-100,s.groundY,200,4);
+  } else if(s.subMode===1){
+    // 大气
+    ctx.fillStyle='rgba(30,50,80,0.2)'; ctx.fillRect(340,0,w,s.groundY);
+    // 风粒子
+    for(let i=0;i<6;i++){
+      const px=360+((time*30+i*150)%w), py=80+i*80+Math.sin(time+i)*15;
+      ctx.fillStyle='rgba(100,150,200,0.15)'; ctx.fillRect(px,py,15,1);
+    }
+    ctx.fillStyle='#888'; ctx.font='12px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('铁球',cx-80,s.startY-28); ctx.fillText('羽毛',cx+80,s.startY-28);
+    ctx.fillText('大气环境',cx,s.startY-48);
+    // 铁球
+    ctx.fillStyle='#aaa'; ctx.beginPath(); ctx.arc(cx-80,s.ironY,12,0,Math.PI*2); ctx.fill();
+    // 羽毛（飘动）
+    drawFeather(cx+80+s.featherWobble,s.featherY,Math.sin(s.t*3)*0.3);
+    // 地面
+    const grd=ctx.createLinearGradient(0,s.groundY,0,CH);
+    grd.addColorStop(0,'#1a4a1a'); grd.addColorStop(1,'#0a2a0a');
+    ctx.fillStyle=grd; ctx.fillRect(340,s.groundY,w,CH-s.groundY);
+    // 速度标注
+    ctx.fillStyle='#60a5fa'; ctx.font='11px sans-serif';
+    ctx.fillText(`v=${(s.ironV*3.3).toFixed(0)} km/h`,cx-80,s.ironY+24);
+    ctx.fillText(`v=${(s.featherV*3.3).toFixed(0)} km/h`,cx+80+s.featherWobble,s.featherY+24);
+  } else {
+    // 跳伞
+    ctx.fillStyle='rgba(30,50,80,0.15)'; ctx.fillRect(340,0,w,s.groundY);
+    // 天空渐变
+    const sky=ctx.createLinearGradient(0,0,0,s.groundY);
+    sky.addColorStop(0,'rgba(10,10,40,0.5)'); sky.addColorStop(1,'rgba(40,80,120,0.3)');
+    ctx.fillStyle=sky; ctx.fillRect(340,0,w,s.groundY);
+    // 跳伞员
+    drawSkydiver(cx,s.skydiverY,s.parachute);
+    // 速度计
+    const spd=(s.skydiverV*3.3).toFixed(0);
+    ctx.fillStyle='#60a5fa'; ctx.font='bold 16px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(`${spd} km/h`,cx,s.skydiverY-40-(s.parachute?60:0));
+    // 速度曲线
+    if(s.speedHistory.length>2){
+      const graphX=CW-280, graphY=80, graphW=200, graphH=150;
+      ctx.strokeStyle='#333'; ctx.lineWidth=1;
+      ctx.strokeRect(graphX,graphY,graphW,graphH);
+      ctx.fillStyle='#666'; ctx.font='10px sans-serif'; ctx.textAlign='left';
+      ctx.fillText('速度曲线',graphX,graphY-6);
+      ctx.strokeStyle='#3b82f6'; ctx.lineWidth=2;
+      ctx.beginPath();
+      const maxV=Math.max(...s.speedHistory)*1.1||1;
+      for(let i=0;i<s.speedHistory.length;i++){
+        const px=graphX+i/s.speedHistory.length*graphW;
+        const py=graphY+graphH-s.speedHistory[i]/maxV*graphH;
+        i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+      }
+      ctx.stroke();
+    }
+    // 地面
+    const grd=ctx.createLinearGradient(0,s.groundY,0,CH);
+    grd.addColorStop(0,'#1a4a1a'); grd.addColorStop(1,'#0a2a0a');
+    ctx.fillStyle=grd; ctx.fillRect(340,s.groundY,w,CH-s.groundY);
+  }
+}
+
+function drawFeather(x,y,rot){
+  ctx.save(); ctx.translate(x,y); ctx.rotate(rot||0);
+  ctx.fillStyle='#f0e6d0';
+  ctx.beginPath(); ctx.ellipse(0,0,4,14,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#d4c4a0'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,-14); ctx.lineTo(0,14); ctx.stroke();
+  for(let i=-12;i<12;i+=3){
+    ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(i>0?3:-3,i+2); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawSkydiver(x,y,chute){
+  if(chute){
+    // 降落伞
+    ctx.fillStyle='rgba(255,100,50,0.7)';
+    ctx.beginPath(); ctx.arc(x,y-55,40,Math.PI,0); ctx.fill();
+    ctx.strokeStyle='#aa6633'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x-35,y-55); ctx.lineTo(x-5,y-15); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x+35,y-55); ctx.lineTo(x+5,y-15); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x,y-55); ctx.lineTo(x,y-15); ctx.stroke();
+  }
+  // 人形
+  ctx.fillStyle='#ddd';
+  ctx.beginPath(); ctx.arc(x,y-10,6,0,Math.PI*2); ctx.fill(); // 头
+  ctx.strokeStyle='#ddd'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(x,y-4); ctx.lineTo(x,y+12); ctx.stroke(); // 身
+  ctx.beginPath(); ctx.moveTo(x-8,y+4); ctx.lineTo(x,y); ctx.lineTo(x+8,y+4); ctx.stroke(); // 臂
+  ctx.beginPath(); ctx.moveTo(x-6,y+18); ctx.lineTo(x,y+12); ctx.lineTo(x+6,y+18); ctx.stroke(); // 腿
+}
+
+// ============ 第6关：三体问题 ============
+function initLevel5(){
+  const cx=CW/2+160, cy=CH/2;
+  levelState = { cx, cy, bodies:[], running:false, trails:[[],[],[]], dragging:-1, simCount:0, preset:-1 };
+  setPreset(0);
+}
+
+function setPreset(idx){
+  const s=levelState, cx=s.cx, cy=s.cy, sp=120;
+  s.running=false; s.trails=[[],[],[]]; s.preset=idx;
+  if(idx===0){
+    // 随机
+    s.bodies=[
+      {x:cx-sp+Math.random()*40-20, y:cy-sp+Math.random()*40-20, vx:Math.random()*0.6-0.3, vy:Math.random()*0.6-0.3, m:1, color:'#f87171', r:10},
+      {x:cx+sp+Math.random()*40-20, y:cy-sp+Math.random()*40-20, vx:Math.random()*0.6-0.3, vy:Math.random()*0.6-0.3, m:1, color:'#60a5fa', r:10},
+      {x:cx+Math.random()*40-20, y:cy+sp+Math.random()*40-20, vx:Math.random()*0.6-0.3, vy:Math.random()*0.6-0.3, m:1, color:'#4ade80', r:10}
+    ];
+  } else if(idx===1){
+    // 8字形
+    const v=0.35;
+    s.bodies=[
+      {x:cx-80, y:cy, vx:0, vy:v*1.5, m:1, color:'#f87171', r:10},
+      {x:cx+80, y:cy, vx:0, vy:-v*1.5, m:1, color:'#60a5fa', r:10},
+      {x:cx, y:cy, vx:v*0.3, vy:0, m:1, color:'#4ade80', r:10}
+    ];
+  } else {
+    // 等边三角形
+    const R=100, v=0.4;
+    s.bodies=[];
+    const cols=['#f87171','#60a5fa','#4ade80'];
+    for(let i=0;i<3;i++){
+      const a=i*Math.PI*2/3 - Math.PI/2;
+      s.bodies.push({x:cx+Math.cos(a)*R, y:cy+Math.sin(a)*R, vx:-Math.sin(a)*v, vy:Math.cos(a)*v, m:1, color:cols[i], r:10});
+    }
+  }
+  renderPanel();
+}
+
+function resetThreeBody(){ initLevel5(); renderPanel(); }
+
+function doSimulate(){
+  const s=levelState;
+  s.running=true; s.trails=[[],[],[]]; s.simCount++;
+  if(s.simCount>=1) markGoal(0);
+  if(s.preset===1) markGoal(1);
+  if(s.simCount>=2) markGoal(2);
+  renderPanel();
+}
+
+function updateLevel5(){
+  const s=levelState;
+  if(!s.running) return;
+  const GC=800, steps=4;
+  for(let step=0;step<steps;step++){
+    const sdt=0.15/steps;
+    // 计算加速度
+    const acc=s.bodies.map(()=>({ax:0,ay:0}));
+    for(let i=0;i<3;i++){
+      for(let j=i+1;j<3;j++){
+        const dx=s.bodies[j].x-s.bodies[i].x, dy=s.bodies[j].y-s.bodies[i].y;
+        const dist=Math.sqrt(dx*dx+dy*dy)+5;
+        const f=GC/(dist*dist*dist);
+        acc[i].ax+=f*dx*s.bodies[j].m; acc[i].ay+=f*dy*s.bodies[j].m;
+        acc[j].ax-=f*dx*s.bodies[i].m; acc[j].ay-=f*dy*s.bodies[i].m;
+      }
+    }
+    for(let i=0;i<3;i++){
+      s.bodies[i].vx+=acc[i].ax*sdt; s.bodies[i].vy+=acc[i].ay*sdt;
+      s.bodies[i].x+=s.bodies[i].vx*sdt*60; s.bodies[i].y+=s.bodies[i].vy*sdt*60;
+    }
+  }
+  // 记录轨迹
+  for(let i=0;i<3;i++){
+    s.trails[i].push({x:s.bodies[i].x, y:s.bodies[i].y});
+    if(s.trails[i].length>600) s.trails[i].shift();
+  }
+  // 检查是否飞出边界
+  for(let b of s.bodies){
+    if(b.x<0||b.x>CW||b.y<0||b.y>CH){ s.running=false; break; }
+  }
+}
+
+function drawLevel5(){
+  const s=levelState;
+  // 引力线
+  ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+  for(let i=0;i<3;i++){
+    for(let j=i+1;j<3;j++){
+      ctx.beginPath(); ctx.moveTo(s.bodies[i].x,s.bodies[i].y); ctx.lineTo(s.bodies[j].x,s.bodies[j].y); ctx.stroke();
+    }
+  }
+  ctx.setLineDash([]);
+  // 轨迹
+  for(let i=0;i<3;i++){
+    const t=s.trails[i];
+    if(t.length<2) continue;
+    for(let j=1;j<t.length;j++){
+      const a=j/t.length;
+      ctx.strokeStyle=s.bodies[i].color; ctx.globalAlpha=a*0.5; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(t[j-1].x,t[j-1].y); ctx.lineTo(t[j].x,t[j].y); ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+  }
+  // 天体
+  for(let b of s.bodies){
+    const grd=ctx.createRadialGradient(b.x-b.r*0.3,b.y-b.r*0.3,b.r*0.2,b.x,b.y,b.r*1.5);
+    grd.addColorStop(0,b.color); grd.addColorStop(0.6,b.color); grd.addColorStop(1,'transparent');
+    ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(b.x,b.y,b.r*1.5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=b.color; ctx.beginPath(); ctx.arc(b.x,b.y,b.r,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.arc(b.x-b.r*0.3,b.y-b.r*0.3,b.r*0.3,0,Math.PI*2); ctx.fill();
+  }
+  // 拖拽提示
+  if(!s.running){
+    ctx.fillStyle='#555'; ctx.font='12px sans-serif'; ctx.textAlign='center';
+    ctx.fillText('拖拽天体调整位置，然后点击"开始模拟"',s.cx,CH-50);
+  }
+}
+
+// ============ 鼠标交互 ============
+let mouseX=0, mouseY=0, mouseDown=false;
+canvas.addEventListener('mousedown',e=>{
+  mouseX=e.clientX; mouseY=e.clientY; mouseDown=true;
+  if(currentLevel===5 && !levelState.running){
+    for(let i=0;i<levelState.bodies.length;i++){
+      const b=levelState.bodies[i];
+      if(Math.sqrt((mouseX-b.x)**2+(mouseY-b.y)**2)<20){ levelState.dragging=i; break; }
+    }
+  }
+});
+canvas.addEventListener('mousemove',e=>{
+  mouseX=e.clientX; mouseY=e.clientY;
+  if(currentLevel===5 && levelState.dragging>=0){
+    levelState.bodies[levelState.dragging].x=mouseX;
+    levelState.bodies[levelState.dragging].y=mouseY;
+  }
+});
+canvas.addEventListener('mouseup',()=>{ mouseDown=false; if(currentLevel===5) levelState.dragging=-1; });
+
+// ============ 主循环 ============
+function loop(){
+  time+=dt;
+  ctx.clearRect(0,0,CW,CH);
+  ctx.fillStyle='#0a0a1a'; ctx.fillRect(0,0,CW,CH);
+  drawStars();
+
+  if(currentLevel===0){ updateLevel0(); drawLevel0(); }
+  else if(currentLevel===1){ updateLevel1(); drawLevel1(); }
+  else if(currentLevel===2){ updateLevel2(); drawLevel2(); }
+  else if(currentLevel===3){ updateLevel3(); drawLevel3(); }
+  else if(currentLevel===4){ updateLevel4(); drawLevel4(); }
+  else if(currentLevel===5){ updateLevel5(); drawLevel5(); }
+
+  updateP(dt); drawP();
+  animId=requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>

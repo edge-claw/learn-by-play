@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>量子计算原理 - 交互式教育游戏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#c0c0d0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+canvas{display:block;position:absolute;top:0;left:320px}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888;transition:all .3s}
+.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:13px;cursor:pointer;text-align:center;transition:all .3s}
+.act-btn:hover{background:#2a2a6a}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.act-btn.red{border-color:#ef4444;background:#2a0a0a;color:#f87171}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+.learn-box{background:#0a1a2a;border:1px solid #1e40af;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#93c5fd}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px}.sv{color:#60a5fa;font-weight:bold}
+#infoBar{position:absolute;bottom:0;left:320px;right:0;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid #1a1a3a;display:flex;align-items:center;padding:0 16px;font-size:12px;color:#888;z-index:10}
+.panel h3{color:#60a5fa;font-size:14px;margin:8px 0 4px}
+.panel h4{color:#93c5fd;font-size:12px;margin:6px 0 2px}
+.obj-item{font-size:12px;margin:2px 0;color:#a0a0c0}
+.obj-item.done{color:#4ade80}
+.err-msg{background:#2a0a0a;border:1px solid #ef4444;border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:#f87171;animation:errShake .4s}
+@keyframes errShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.quiz-box{background:#0d0d2a;border:1px solid #6366f1;border-radius:10px;padding:12px;margin:10px 0}
+.quiz-box h4{color:#a5b4fc;margin-bottom:8px;font-size:13px}
+.quiz-opt{display:block;width:100%;padding:8px 12px;margin:4px 0;border-radius:6px;border:1px solid #333;background:#111;color:#a0a0c0;font-size:12px;cursor:pointer;text-align:left;transition:all .3s}
+.quiz-opt:hover{border-color:#6366f1;background:#1a1a3a}
+.quiz-opt.correct{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.quiz-opt.wrong{border-color:#ef4444;background:#2a0a0a;color:#f87171}
+.quiz-opt:disabled{cursor:not-allowed;opacity:.7}
+.quiz-result{padding:8px;margin-top:8px;border-radius:6px;font-size:12px}
+.quiz-result.pass{background:#0a2a1a;border:1px solid #22c55e;color:#4ade80}
+.quiz-result.fail{background:#2a0a0a;border:1px solid #ef4444;color:#f87171}
+</style>
+</head>
+<body>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="infoBar">量子计算原理交互式教育游戏 | 共7关</div>
+<script>
+// ===== 音效系统 (Web Audio API) =====
+const AudioCtx=window.AudioContext||window.webkitAudioContext;
+let audioCtx=null;
+function ensureAudio(){if(!audioCtx)audioCtx=new AudioCtx();}
+function playSound(type){
+ ensureAudio();
+ const now=audioCtx.currentTime;
+ if(type==='click'){
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.frequency.setValueAtTime(800,now);o.frequency.exponentialRampToValueAtTime(1200,now+0.05);
+  g.gain.setValueAtTime(0.15,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.08);
+  o.start(now);o.stop(now+0.08);
+ }else if(type==='success'){
+  [523,659,784].forEach((f,i)=>{
+   const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+   o.connect(g);g.connect(audioCtx.destination);
+   o.frequency.setValueAtTime(f,now+i*0.12);
+   g.gain.setValueAtTime(0.15,now+i*0.12);g.gain.exponentialRampToValueAtTime(0.001,now+i*0.12+0.3);
+   o.start(now+i*0.12);o.stop(now+i*0.12+0.3);
+  });
+ }else if(type==='fail'){
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.type='sawtooth';o.frequency.setValueAtTime(300,now);o.frequency.exponentialRampToValueAtTime(100,now+0.3);
+  g.gain.setValueAtTime(0.15,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.35);
+  o.start(now);o.stop(now+0.35);
+ }else if(type==='boom'){
+  const buf=audioCtx.createBuffer(1,audioCtx.sampleRate*0.3,audioCtx.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(audioCtx.sampleRate*0.08));
+  const s=audioCtx.createBufferSource(),g=audioCtx.createGain();
+  s.buffer=buf;s.connect(g);g.connect(audioCtx.destination);
+  g.gain.setValueAtTime(0.25,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);
+  s.start(now);
+ }
+}
+
+// ===== 粒子系统 =====
+let particles=[];
+function spawnParticles(x,y,count,color,opts={}){
+ const life=opts.life||60,speed=opts.speed||3,size=opts.size||3,gravity=opts.gravity||0;
+ for(let i=0;i<count;i++){
+  const angle=Math.random()*Math.PI*2,v=Math.random()*speed+0.5;
+  particles.push({x,y,vx:Math.cos(angle)*v,vy:Math.sin(angle)*v+gravity,
+   life,maxLife:life,color,size:Math.random()*size+1,type:opts.type||'normal'});
+ }
+}
+function spawnColdParticles(x,y,w,h,count){
+ for(let i=0;i<count;i++){
+  particles.push({x:x+Math.random()*w,y:y,vx:(Math.random()-0.5)*0.5,vy:Math.random()*1.5+0.5,
+   life:80+Math.random()*40,maxLife:120,color:'rgba(100,180,255,',size:Math.random()*3+1,type:'cold'});
+ }
+}
+function updateParticles(){
+ for(let i=particles.length-1;i>=0;i--){
+  const p=particles[i];
+  p.x+=p.vx;p.y+=p.vy;p.life--;
+  if(p.type==='cold')p.vy+=0.01;
+  if(p.life<=0)particles.splice(i,1);
+ }
+}
+function drawParticles(){
+ particles.forEach(p=>{
+  const alpha=p.life/p.maxLife;
+  if(p.type==='cold'){
+   ctx.fillStyle=p.color+alpha+')';
+  }else{
+   ctx.fillStyle=p.color;ctx.globalAlpha=alpha;
+  }
+  ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;
+ });
+}
+
+// ===== 关卡切换动画 =====
+let fadeAlpha=0,fadeDir=0,fadePending=-1;
+function fadeToLevel(n){
+ if(fadeDir!==0)return;
+ fadePending=n;fadeDir=1;fadeAlpha=0;
+}
+function updateFade(){
+ if(fadeDir===1){
+  fadeAlpha+=0.05;
+  if(fadeAlpha>=1){fadeAlpha=1;fadeDir=-1;
+   curLevel=fadePending;resetLevelState();renderPanel();
+  }
+ }else if(fadeDir===-1){
+  fadeAlpha-=0.05;
+  if(fadeAlpha<=0){fadeAlpha=0;fadeDir=0;fadePending=-1;}
+ }
+}
+function drawFade(){
+ if(fadeAlpha>0){
+  ctx.fillStyle=`rgba(10,10,26,${fadeAlpha})`;ctx.fillRect(0,0,W,H);
+ }
+}
+
+// ===== 全局状态 =====
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const panel=document.getElementById('panel'),infoBar=document.getElementById('infoBar');
+let W,H,curLevel=0,animId,animTime=0;
+const completedLevels=new Set();
+// PLACEHOLDER_LEVELS
+const levels=[
+{name:'量子比特 — 叠加态',concept:'经典比特只能是0或1，量子比特可同时处于0和1的叠加态。布洛赫球可以直观表示量子态。',
+ objs:['拖动箭头到赤道（叠加态）','执行测量观察坍缩','理解概率性（重复测量）'],
+ learn:'量子比特的叠加态是量子计算的基础。就像旋转中的硬币——只有"看"它时才选择正反面。',
+ quiz:{q:'量子比特和经典比特的最大区别是？',opts:['A. 更快','B. 可以同时处于0和1的叠加态','C. 更安全'],ans:1}},
+{name:'量子门 — 操控量子态',concept:'H门创建叠加态，X门翻转比特，Z门改变相位。量子门是酉变换，可逆。',
+ objs:['用H门创建叠加态','用X门翻转量子比特','挑战：用门序列将|0⟩变为|1⟩'],
+ learn:'量子计算的本质是精心安排量子门序列，让正确答案的概率被放大，错误答案的概率被抑制。',
+ quiz:{q:'H门（Hadamard门）的作用是？',opts:['A. 翻转量子态','B. 创建叠加态','C. 测量量子态'],ans:1}},
+{name:'量子纠缠 — 超距关联',concept:'两个量子比特纠缠后，测量一个立刻知道另一个的状态，无论相距多远。',
+ objs:['制备贝尔纠缠态','测量左比特观察右比特坍缩','验证100%关联'],
+ learn:'量子纠缠不能用来传递信息（不违反相对论），但它是量子计算和量子通信的核心资源。',
+ quiz:{q:'量子纠缠能用来超光速传信息吗？',opts:['A. 能','B. 不能，还需要经典信道','C. 只能传一次'],ans:1}},
+{name:'量子隐形传态',concept:'利用预共享的纠缠对+经典通信，可以传送未知量子态。原始态在传送后被销毁。',
+ objs:['设定要传送的量子态','完成Bell测量','Bob恢复量子态'],
+ learn:'2017年，墨子号卫星实现了1200公里的量子隐形传态实验，创造世界纪录。',
+ quiz:{q:'量子隐形传态后，原始量子态会怎样？',opts:['A. 被复制','B. 被销毁（不可克隆定理）','C. 不变'],ans:1}},
+{name:'量子并行 — Deutsch算法',concept:'经典计算需查询2次才能判断函数是常数还是平衡的，量子计算只需1次。',
+ objs:['用经典方式判断函数（2次查询）','正确组装量子电路（H-Oracle-H-测量）','理解量子并行优势'],
+ learn:'Shor算法能在多项式时间内分解大数（破解RSA），Grover算法能将搜索加速到平方根级别。',
+ quiz:{q:'量子计算机比经典计算机快的根本原因是？',opts:['A. CPU更快','B. 量子并行（叠加态同时计算）','C. 内存更大'],ans:1}},
+{name:'量子纠错 — 对抗噪声',concept:'3比特重复码：将1个逻辑比特编码为3个物理比特，通过多数表决检测和修复单比特翻转错误。',
+ objs:['检测到错误比特位置','成功修复错误','30秒内修复5个错误'],
+ learn:'实用的量子计算机可能需要数百万个物理量子比特来编码几千个逻辑量子比特，纠错开销巨大。',
+ quiz:{q:'为什么量子纠错很难？',opts:['A. 量子态不能直接测量（会坍缩）','B. 量子比特太贵','C. 算法太复杂'],ans:0}},
+{name:'量子计算机 — 完整系统',concept:'超导量子比特工作在15mK（接近绝对零度），需要稀释制冷机、微波控制线和读出电路。',
+ objs:['正确组装量子计算机组件','冷却到15mK工作温度','运行量子算法观察加速'],
+ learn:'IBM、Google、中国的祖冲之号都在竞争量子霸权。量子计算在密码破解、药物设计、材料模拟等领域有望提供指数级加速。',
+ quiz:{q:'当前超导量子计算机需要冷却到多低？',opts:['A. -100°C','B. -200°C','C. 15毫开尔文（接近绝对零度）'],ans:2}}
+];
+
+// ===== 关卡状态 =====
+let lState={};
+let quizState={answered:false,selected:-1,correct:false};
+let errMsg='',errTimer=0;
+// PLACEHOLDER_RESET
+function resetLevelState(){
+ quizState={answered:false,selected:-1,correct:false};
+ errMsg='';errTimer=0;
+ switch(curLevel){
+  case 0:lState={theta:0.3,phi:0,dragging:false,measured:false,measResult:-1,
+   objDone:[false,false,false],measureCount:0,wasEquator:false};break;
+  case 1:lState={circuit:[],stateTheta:0,statePhi:0,objDone:[false,false,false],animating:false,
+   challengeMode:false,challengeTarget:'|1⟩',challengeGates:[],challengeChecked:false,challengeWrong:false};break;
+  case 2:lState={entangled:false,leftMeasured:false,rightMeasured:false,leftResult:-1,rightResult:-1,
+   separation:0,objDone:[false,false,false],correlationCount:0,correlationMatch:0,animPhase:0,pulsePos:0};break;
+  case 3:lState={step:0,aliceTheta:Math.PI/3,alicePhi:Math.PI/4,bellResult:-1,bobTheta:0,bobPhi:0,
+   objDone:[false,false,false],recovered:false};break;
+  case 4:lState={funcs:[[0,0],[1,1],[0,1],[1,0]],curFunc:0,classicalStep:0,classicalQueries:0,
+   quantumDone:false,objDone:[false,false,false],classicalResults:[],showQuantum:false,
+   circuitSlots:['','','',''],buildStep:0,circuitWrong:false,circuitChecked:false};break;
+  case 5:lState={bits:[0,0,0],errorBit:-1,syndrome:-1,fixCount:0,timer:0,timerStarted:false,
+   objDone:[false,false,false],detected:false,gameOver:false,lastTime:0,
+   wrongFix:false,allRed:false,manualFix:-1};break;
+  case 6:lState={components:[],placed:{fridge:false,cable:false,chip:false},temp:300,coolingDown:false,
+   running:false,runProgress:0,objDone:[false,false,false],dragComp:null,compPositions:{},
+   classicalTime:0,quantumTime:0,showResult:false,
+   assemblyOrder:[],wrongOrder:false,wrongOrderMsg:''};break;
+ }
+}
+// PLACEHOLDER_PANEL
+// ===== 面板渲染 =====
+function showError(msg){errMsg=msg;errTimer=Date.now();playSound('fail');renderPanel();}
+function renderPanel(){
+ let h='<h3 style="margin-bottom:8px">🔬 量子计算原理</h3><div style="margin-bottom:8px">';
+ levels.forEach((l,i)=>{
+  let cls='level-btn';
+  if(i===curLevel)cls+=' active';
+  if(completedLevels.has(i))cls+=' done';
+  h+=`<span class="${cls}" onclick="switchLevel(${i})">${i+1}</span>`;
+ });
+ h+='</div>';
+ const L=levels[curLevel];
+ h+=`<h3>第${curLevel+1}关：${L.name}</h3>`;
+ h+=`<div class="concept-box">${L.concept}</div>`;
+ h+='<h4>目标</h4>';
+ const od=lState.objDone||[];
+ L.objs.forEach((o,i)=>{
+  const done=od[i];
+  h+=`<div class="obj-item${done?' done':''}">${done?'✅':'⬜'} ${o}</div>`;
+ });
+ // 错误提示
+ if(errMsg&&Date.now()-errTimer<2000){
+  h+=`<div class="err-msg">❌ ${errMsg}</div>`;
+ }
+ // 关卡特定控件
+ h+=renderLevelControls();
+ // 通关检测+小测验
+ if(od.every(v=>v)){
+  if(!completedLevels.has(curLevel)){
+   completedLevels.add(curLevel);
+   playSound('success');
+   // 通关金色粒子
+   spawnParticles(W/2,H/2,50,'#fbbf24',{speed:4,life:80,size:4});
+   spawnParticles(W/2,H/2,30,'#f59e0b',{speed:3,life:60,size:3});
+  }
+  h+=`<div class="learn-box">💡 ${L.learn}</div>`;
+  // 小测验
+  h+=renderQuiz();
+  if(quizState.correct){
+   if(curLevel<levels.length-1){
+    h+=`<button class="act-btn green" onclick="switchLevel(${curLevel+1})">进入第${curLevel+2}关 →</button>`;
+   }else{
+    h+='<div class="learn-box" style="border-color:#f59e0b;color:#fbbf24">🎉 恭喜通关！你已掌握量子计算的核心原理。从叠加态到量子纠错，从Deutsch算法到完整量子计算机，这些概念构成了量子信息科学的基石。</div>';
+   }
+  }
+ }
+ panel.innerHTML=h;
+}
+function renderQuiz(){
+ const L=levels[curLevel];
+ if(!L.quiz)return '';
+ const q=L.quiz;
+ let h='<div class="quiz-box"><h4>📝 通关小测验</h4>';
+ h+=`<div style="font-size:12px;color:#c0c0d0;margin-bottom:8px">${q.q}</div>`;
+ q.opts.forEach((opt,i)=>{
+  let cls='quiz-opt';
+  if(quizState.answered){
+   if(i===q.ans)cls+=' correct';
+   else if(i===quizState.selected&&i!==q.ans)cls+=' wrong';
+  }
+  const dis=quizState.answered?'disabled':'';
+  h+=`<button class="${cls}" ${dis} onclick="answerQuiz(${i})">${opt}</button>`;
+ });
+ if(quizState.answered){
+  if(quizState.correct){
+   h+='<div class="quiz-result pass">✅ 回答正确！</div>';
+  }else{
+   h+='<div class="quiz-result fail">❌ 答错了，1秒后可重选</div>';
+  }
+ }
+ h+='</div>';
+ return h;
+}
+function answerQuiz(i){
+ if(quizState.answered)return;
+ playSound('click');
+ quizState.answered=true;quizState.selected=i;
+ const q=levels[curLevel].quiz;
+ if(i===q.ans){quizState.correct=true;playSound('success');}
+ else{playSound('fail');setTimeout(()=>{quizState={answered:false,selected:-1,correct:false};renderPanel();},1000);}
+ renderPanel();
+}
+// PLACEHOLDER_CONTROLS
+function renderLevelControls(){
+ let h='';
+ switch(curLevel){
+  case 0:
+   h+=`<div class="concept-box" style="font-size:11px">|ψ⟩ = ${Math.cos(lState.theta/2).toFixed(2)}|0⟩ + ${Math.sin(lState.theta/2).toFixed(2)}e<sup>i${lState.phi.toFixed(1)}</sup>|1⟩<br>P(|0⟩)=${(Math.cos(lState.theta/2)**2*100).toFixed(0)}% &nbsp; P(|1⟩)=${(Math.sin(lState.theta/2)**2*100).toFixed(0)}%</div>`;
+   if(!lState.measured){
+    h+='<div class="hint-box">🖱️ 在布洛赫球上拖动箭头改变量子态</div>';
+    h+=`<button class="act-btn" onclick="playSound('click');doMeasure()">📏 测量</button>`;
+   }else{
+    h+=`<div class="concept-box" style="border-color:#f59e0b;color:#fbbf24">测量结果：|${lState.measResult}⟩ — 量子态已坍缩！</div>`;
+    h+=`<button class="act-btn" onclick="playSound('click');resetQubit()">🔄 重置量子比特</button>`;
+   }
+   break;
+  case 1:
+   h+='<div style="display:flex;gap:4px;margin:8px 0">';
+   ['H','X','Z'].forEach(g=>{
+    h+=`<button class="act-btn" style="flex:1" onclick="playSound('click');addGate('${g}')">${g}门</button>`;
+   });
+   h+='</div>';
+   h+=`<div class="concept-box" style="font-size:11px">电路：|0⟩ → ${lState.circuit.length?lState.circuit.join(' → '):'(空)'} → 测量</div>`;
+   h+=`<button class="act-btn" onclick="playSound('click');clearCircuit()">🗑️ 清空电路</button>`;
+   // 挑战模式
+   if(lState.objDone[0]&&lState.objDone[1]&&!lState.objDone[2]){
+    h+='<div class="hint-box">🎯 挑战：用门序列将|0⟩变为|1⟩，然后点击验证</div>';
+    h+=`<button class="act-btn" style="border-color:#f59e0b;color:#fbbf24" onclick="playSound('click');checkChallenge()">🎯 验证目标态</button>`;
+   }
+   break;
+  case 2:
+   if(!lState.entangled){
+    h+=`<button class="act-btn" onclick="playSound('click');prepareBell()">🔗 制备贝尔纠缠态</button>`;
+   }else{
+    h+=`<div class="concept-box" style="border-color:#a855f7;color:#c084fc">纠缠态：|Φ⁺⟩ = (|00⟩+|11⟩)/√2</div>`;
+    if(!lState.leftMeasured){
+     h+=`<button class="act-btn" onclick="playSound('click');measureLeft()">📏 测量左比特</button>`;
+    }else{
+     h+=`<div class="concept-box" style="border-color:#f59e0b;color:#fbbf24">左：|${lState.leftResult}⟩ → 右：|${lState.rightResult}⟩ 瞬间坍缩！</div>`;
+     h+=`<div class="concept-box" style="font-size:11px">关联统计：${lState.correlationCount}次测量，${lState.correlationMatch}次一致 (${lState.correlationCount?((lState.correlationMatch/lState.correlationCount*100).toFixed(0)):'0'}%)</div>`;
+     h+=`<button class="act-btn" onclick="playSound('click');resetEntangle()">🔄 重新制备并测量</button>`;
+    }
+   }
+   break;
+  case 3:h+=renderTeleportControls();break;
+  case 4:h+=renderDeutschControls();break;
+  case 5:h+=renderErrorCorrControls();break;
+  case 6:h+=renderQCControls();break;
+ }
+ return h;
+}
+// PLACEHOLDER_TELEPORT
+function renderTeleportControls(){
+ let h='';
+ const steps=['设定要传送的量子态','分发纠缠对','Alice执行Bell测量','经典信道传送结果','Bob修正恢复量子态'];
+ h+=`<div class="concept-box" style="font-size:11px">步骤 ${lState.step+1}/5：${steps[lState.step]}</div>`;
+ if(lState.step===0){
+  h+=`<div class="slider-wrap"><label>θ角：<span class="sv">${(lState.aliceTheta/Math.PI*180).toFixed(0)}°</span></label><input type="range" min="0" max="314" value="${Math.round(lState.aliceTheta*100)}" oninput="lState.aliceTheta=this.value/100;renderPanel()"></div>`;
+  h+=`<button class="act-btn" onclick="playSound('click');teleportStep()">确认量子态 →</button>`;
+ }else if(lState.step<4){
+  h+=`<button class="act-btn" onclick="playSound('click');teleportStep()">${steps[lState.step]} →</button>`;
+ }else{
+  h+=`<div class="concept-box" style="border-color:#22c55e;color:#4ade80">✅ 量子态传送成功！Bob的量子比特已恢复为Alice的原始态。</div>`;
+ }
+ return h;
+}
+function renderDeutschControls(){
+ let h='';
+ const fNames=['f₁: 常数0','f₂: 常数1','f₃: 平衡(恒等)','f₄: 平衡(取反)'];
+ h+=`<div class="concept-box" style="font-size:11px">当前黑盒：${fNames[lState.curFunc]}</div>`;
+ h+='<div style="display:flex;gap:4px;margin:4px 0;flex-wrap:wrap">';
+ lState.funcs.forEach((_,i)=>{
+  h+=`<button class="level-btn${i===lState.curFunc?' active':''}" onclick="playSound('click');lState.curFunc=${i};lState.classicalStep=0;lState.classicalQueries=0;lState.classicalResults=[];lState.quantumDone=false;lState.showQuantum=false;lState.buildStep=0;lState.circuitSlots=['','','',''];lState.circuitWrong=false;lState.circuitChecked=false;renderPanel()">f${i+1}</button>`;
+ });
+ h+='</div>';
+ if(!lState.showQuantum){
+  if(lState.classicalStep===0){
+   h+=`<button class="act-btn" onclick="playSound('click');classicalQuery(0)">经典查询 f(0)</button>`;
+  }else if(lState.classicalStep===1){
+   h+=`<div class="concept-box" style="font-size:11px">f(0) = ${lState.classicalResults[0]}（已用1次查询）</div>`;
+   h+=`<button class="act-btn" onclick="playSound('click');classicalQuery(1)">经典查询 f(1)</button>`;
+  }else{
+   const f=lState.funcs[lState.curFunc];
+   const type=f[0]===f[1]?'常数函数':'平衡函数';
+   h+=`<div class="concept-box" style="font-size:11px">f(0)=${f[0]}, f(1)=${f[1]} → ${type}（用了2次查询）</div>`;
+   h+=`<button class="act-btn" onclick="playSound('click');lState.showQuantum=true;renderPanel()">切换到量子方式 →</button>`;
+  }
+ }else{
+  // 量子电路组装挑战
+  if(!lState.circuitChecked){
+   h+='<div class="hint-box">🎯 组装Deutsch量子电路：选择正确的门序列</div>';
+   const gateChoices=['H','Oracle','H','测量'];
+   h+=`<div class="concept-box" style="font-size:11px">电路槽位：`;
+   for(let i=0;i<4;i++){
+    h+=`[${lState.circuitSlots[i]||'空'}] `;
+   }
+   h+=`</div>`;
+   h+=`<div style="font-size:11px;color:#888;margin:4px 0">点击按钮依次填入槽位（第${lState.buildStep+1}个）</div>`;
+   const btns=['H','Oracle','测量','Z'];
+   btns.forEach(b=>{
+    h+=`<button class="act-btn" style="padding:6px;margin:2px 0" onclick="playSound('click');fillCircuitSlot('${b}')">${b}</button>`;
+   });
+   h+=`<button class="act-btn" style="border-color:#f59e0b;color:#fbbf24" onclick="playSound('click');checkDeutschCircuit()">✅ 验证电路</button>`;
+   h+=`<button class="act-btn" onclick="playSound('click');lState.buildStep=0;lState.circuitSlots=['','','',''];lState.circuitWrong=false;renderPanel()">🗑️ 重置电路</button>`;
+  }else if(!lState.quantumDone){
+   h+=`<button class="act-btn" onclick="playSound('click');quantumDeutsch()">🔬 运行Deutsch量子电路（1次查询）</button>`;
+  }else{
+   const f=lState.funcs[lState.curFunc];
+   const type=f[0]===f[1]?'常数函数':'平衡函数';
+   h+=`<div class="concept-box" style="border-color:#22c55e;color:#4ade80">量子结果：${type}（仅用1次查询！）</div>`;
+   h+=`<div class="concept-box" style="font-size:11px">经典：2次查询 vs 量子：1次查询 — 量子并行优势！</div>`;
+  }
+ }
+ return h;
+}
+// PLACEHOLDER_ERRCORR
+function renderErrorCorrControls(){
+ let h='';
+ if(!lState.timerStarted){
+  h+=`<button class="act-btn" onclick="playSound('click');startErrorCorr()">▶ 开始挑战（30秒修复5个错误）</button>`;
+ }else if(lState.gameOver){
+  h+=`<div class="concept-box" style="border-color:${lState.fixCount>=5?'#22c55e':'#ef4444'};color:${lState.fixCount>=5?'#4ade80':'#f87171'}">时间到！修复了 ${lState.fixCount}/5 个错误</div>`;
+  h+=`<button class="act-btn" onclick="playSound('click');startErrorCorr()">🔄 重新挑战</button>`;
+ }else{
+  const elapsed=((Date.now()-lState.lastTime)/1000);
+  const remain=Math.max(0,30-elapsed).toFixed(1);
+  h+=`<div class="concept-box" style="font-size:11px">⏱️ 剩余：${remain}s | 已修复：${lState.fixCount}/5</div>`;
+  h+=`<div class="concept-box" style="font-size:13px;text-align:center;letter-spacing:8px">${lState.bits.map((b,i)=>{
+   const color=lState.allRed?'#f87171':(i===lState.errorBit?'#f87171':'#60a5fa');
+   return `<span style="color:${color};font-weight:bold">${b}</span>`;
+  }).join('')}</div>`;
+  if(lState.allRed){
+   h+=`<div class="err-msg">❌ 修复了错误的位置！错误扩散了！</div>`;
+  }else if(lState.errorBit>=0&&!lState.detected){
+   h+=`<button class="act-btn" onclick="playSound('click');detectError()">🔍 综合征测量</button>`;
+  }else if(lState.detected){
+   h+=`<div class="concept-box" style="font-size:11px;color:#fbbf24">检测到第 ${lState.syndrome+1} 位错误！</div>`;
+   h+='<div style="display:flex;gap:4px;margin:4px 0">';
+   for(let i=0;i<3;i++){
+    h+=`<button class="act-btn" style="flex:1;padding:6px" onclick="playSound('click');tryFixBit(${i})">修复第${i+1}位</button>`;
+   }
+   h+='</div>';
+  }else{
+   h+=`<div class="hint-box">等待噪声注入...</div>`;
+  }
+ }
+ return h;
+}
+function renderQCControls(){
+ let h='';
+ const comps=['稀释制冷机（外层）','微波线缆（中层）','量子芯片（最内层）'];
+ const keys=['fridge','cable','chip'];
+ if(!lState.placed.fridge||!lState.placed.cable||!lState.placed.chip){
+  h+='<h4>按正确顺序安装组件</h4>';
+  comps.forEach((c,i)=>{
+   const placed=lState.placed[keys[i]];
+   h+=`<div class="obj-item${placed?' done':''}">${placed?'✅':'⬜'} ${c}</div>`;
+  });
+  if(lState.wrongOrder){
+   h+=`<div class="err-msg">❌ ${lState.wrongOrderMsg}</div>`;
+  }
+  h+='<div style="display:flex;gap:4px;margin:4px 0;flex-wrap:wrap">';
+  keys.forEach((k,i)=>{
+   if(!lState.placed[k]){
+    h+=`<button class="act-btn" style="flex:1;padding:6px" onclick="playSound('click');tryPlaceComp('${k}')">📦 ${['制冷机','线缆','芯片'][i]}</button>`;
+   }
+  });
+  h+='</div>';
+ }else if(!lState.coolingDown&&lState.temp>16){
+  h+=`<div class="slider-wrap"><label>温度：<span class="sv">${lState.temp.toFixed(1)} K</span></label></div>`;
+  h+=`<button class="act-btn" onclick="playSound('click');startCooling()">❄️ 启动制冷（目标15mK）</button>`;
+ }else if(lState.coolingDown){
+  h+=`<div class="concept-box" style="font-size:13px;text-align:center">🌡️ 冷却中... <span class="sv">${lState.temp.toFixed(lState.temp<1?3:1)} K</span></div>`;
+ }else if(!lState.running&&!lState.showResult){
+  h+=`<div class="concept-box" style="border-color:#22c55e;color:#4ade80">✅ 温度已达 15mK，量子芯片就绪</div>`;
+  h+=`<button class="act-btn green" onclick="playSound('click');runQuantumAlgo()">🚀 运行Shor算法（分解15=3×5）</button>`;
+ }else if(lState.running){
+  h+=`<div class="concept-box" style="font-size:11px">运行中... ${(lState.runProgress*100).toFixed(0)}%</div>`;
+ }else{
+  h+=`<div class="concept-box" style="border-color:#22c55e;color:#4ade80">经典计算：${lState.classicalTime}ms<br>量子计算：${lState.quantumTime}ms<br>加速比：${(lState.classicalTime/lState.quantumTime).toFixed(1)}x</div>`;
+ }
+ return h;
+}
+// PLACEHOLDER_LOGIC1
+// ===== 关卡1：量子比特 =====
+function doMeasure(){
+ if(lState.measured)return;
+ const p0=Math.cos(lState.theta/2)**2;
+ lState.measResult=Math.random()<p0?0:1;
+ lState.measured=true;
+ lState.theta=lState.measResult===0?0:Math.PI;
+ lState.phi=0;
+ lState.measureCount++;
+ playSound('boom');
+ // 坍缩粒子效果
+ const cx=W/2,cy=H/2;
+ spawnParticles(cx,cy,40,'#fbbf24',{speed:5,life:40,size:3});
+ spawnParticles(cx,cy,20,'#f87171',{speed:3,life:30,size:2});
+ if(!lState.objDone[1]){lState.objDone[1]=true;}
+ if(lState.measureCount>=2&&lState.wasEquator){lState.objDone[2]=true;}
+ renderPanel();
+}
+function resetQubit(){
+ lState.measured=false;lState.measResult=-1;
+ lState.theta=Math.PI/2;lState.phi=0;
+ renderPanel();
+}
+
+// ===== 关卡2：量子门 + 挑战 =====
+function addGate(g){
+ if(lState.animating)return;
+ lState.circuit.push(g);
+ let t=0,p=0;
+ lState.circuit.forEach(gate=>{
+  if(gate==='X'){t=Math.PI-t;p=p+Math.PI;}
+  else if(gate==='H'){
+   const a=Math.cos(t/2),b=Math.sin(t/2)*Math.cos(p),c=Math.sin(t/2)*Math.sin(p);
+   const newA=(a+b)/Math.sqrt(2),newB=(a-b)/Math.sqrt(2);
+   const r=Math.sqrt(newA*newA+newB*newB+c*c);
+   t=2*Math.acos(Math.min(1,Math.max(-1,newA/r)));
+   p=Math.atan2(c,newB);
+  }else if(gate==='Z'){p=p+Math.PI;}
+ });
+ lState.stateTheta=((t%Math.PI)+Math.PI)%(2*Math.PI);
+ if(lState.stateTheta>Math.PI)lState.stateTheta=2*Math.PI-lState.stateTheta;
+ lState.statePhi=p;
+ if(lState.circuit.length===1&&lState.circuit[0]==='H'){lState.objDone[0]=true;}
+ if(lState.circuit.length===1&&lState.circuit[0]==='X'){lState.objDone[1]=true;}
+ renderPanel();
+}
+function clearCircuit(){
+ lState.circuit=[];lState.stateTheta=0;lState.statePhi=0;
+ renderPanel();
+}
+function checkChallenge(){
+ // 目标：|0⟩变为|1⟩，即theta接近PI
+ if(Math.abs(lState.stateTheta-Math.PI)<0.1){
+  lState.objDone[2]=true;
+  playSound('success');
+  spawnParticles(W/2,H/2,30,'#4ade80',{speed:3,life:50});
+ }else{
+  showError('测量结果不对！当前态不是|1⟩，请重新选择门序列');
+  playSound('boom');
+  spawnParticles(W/2,H/2,20,'#f87171',{speed:4,life:30});
+ }
+ renderPanel();
+}
+
+// ===== 关卡3：量子纠缠 =====
+function prepareBell(){
+ lState.entangled=true;lState.leftMeasured=false;lState.rightMeasured=false;
+ lState.separation=0;
+ if(!lState.objDone[0])lState.objDone[0]=true;
+ renderPanel();
+}
+function measureLeft(){
+ if(!lState.entangled||lState.leftMeasured)return;
+ lState.leftResult=Math.random()<0.5?0:1;
+ lState.rightResult=lState.leftResult;
+ lState.leftMeasured=true;lState.rightMeasured=true;
+ lState.correlationCount++;lState.correlationMatch++;
+ playSound('boom');
+ // 坍缩粒子
+ spawnParticles(W*0.3,H/2,25,'#fbbf24',{speed:3,life:35});
+ spawnParticles(W*0.7,H/2,25,'#fbbf24',{speed:3,life:35});
+ if(!lState.objDone[1])lState.objDone[1]=true;
+ if(lState.correlationCount>=3)lState.objDone[2]=true;
+ renderPanel();
+}
+function resetEntangle(){
+ lState.entangled=false;lState.leftMeasured=false;lState.rightMeasured=false;
+ lState.leftResult=-1;lState.rightResult=-1;
+ prepareBell();
+}
+// PLACEHOLDER_LOGIC2
+// ===== 关卡4：量子隐形传态 =====
+function teleportStep(){
+ if(lState.step===0){lState.objDone[0]=true;lState.step=1;}
+ else if(lState.step===1){lState.step=2;}
+ else if(lState.step===2){
+  lState.bellResult=Math.floor(Math.random()*4);
+  lState.objDone[1]=true;lState.step=3;
+ }else if(lState.step===3){
+  lState.step=4;lState.bobTheta=lState.aliceTheta;lState.bobPhi=lState.alicePhi;
+  lState.recovered=true;lState.objDone[2]=true;
+ }
+ renderPanel();
+}
+
+// ===== 关卡5：Deutsch算法 + 电路组装挑战 =====
+function classicalQuery(x){
+ const f=lState.funcs[lState.curFunc];
+ lState.classicalResults.push(f[x]);
+ lState.classicalQueries++;lState.classicalStep++;
+ if(lState.classicalStep>=2){if(!lState.objDone[0])lState.objDone[0]=true;}
+ renderPanel();
+}
+function fillCircuitSlot(gate){
+ if(lState.buildStep>=4)return;
+ lState.circuitSlots[lState.buildStep]=gate;
+ lState.buildStep++;
+ renderPanel();
+}
+function checkDeutschCircuit(){
+ const slots=lState.circuitSlots;
+ // 正确顺序：H, Oracle, H, 测量
+ if(slots[0]==='H'&&slots[1]==='Oracle'&&slots[2]==='H'&&slots[3]==='测量'){
+  lState.circuitChecked=true;
+  if(!lState.objDone[1])lState.objDone[1]=true;
+  playSound('success');
+  spawnParticles(W/2,H/2,30,'#4ade80',{speed:3,life:50});
+ }else{
+  showError('电路顺序错误！正确顺序是 H → Oracle → H → 测量');
+  lState.buildStep=0;lState.circuitSlots=['','','',''];
+ }
+ renderPanel();
+}
+function quantumDeutsch(){
+ lState.quantumDone=true;
+ if(lState.objDone[0])lState.objDone[2]=true;
+ renderPanel();
+}
+
+// ===== 关卡6：量子纠错 + 错误修复位选择 =====
+function startErrorCorr(){
+ lState.bits=[0,0,0];lState.errorBit=-1;lState.syndrome=-1;
+ lState.fixCount=0;lState.timerStarted=true;lState.gameOver=false;
+ lState.detected=false;lState.lastTime=Date.now();
+ lState.objDone=[false,false,false];lState.allRed=false;lState.wrongFix=false;
+ injectError();renderPanel();
+}
+function injectError(){
+ if(lState.gameOver)return;
+ lState.bits=[0,0,0];
+ lState.errorBit=Math.floor(Math.random()*3);
+ lState.bits[lState.errorBit]=1;
+ lState.detected=false;lState.syndrome=-1;lState.allRed=false;lState.wrongFix=false;
+ renderPanel();
+}
+function detectError(){
+ lState.syndrome=lState.errorBit;
+ lState.detected=true;
+ if(!lState.objDone[0])lState.objDone[0]=true;
+ renderPanel();
+}
+function tryFixBit(i){
+ if(i===lState.errorBit){
+  // 正确修复
+  lState.bits[lState.errorBit]=0;
+  lState.errorBit=-1;lState.detected=false;
+  lState.fixCount++;lState.allRed=false;
+  playSound('success');
+  if(!lState.objDone[1])lState.objDone[1]=true;
+  if(lState.fixCount>=5){lState.objDone[2]=true;lState.gameOver=true;renderPanel();return;}
+  setTimeout(()=>injectError(),500+Math.random()*1000);
+ }else{
+  // 错误修复 → 错误扩散
+  playSound('fail');
+  lState.allRed=true;lState.wrongFix=true;
+  lState.bits=[1,1,1];
+  spawnParticles(W/2,H/2,30,'#f87171',{speed:4,life:40});
+  setTimeout(()=>{lState.allRed=false;injectError();},1500);
+ }
+ renderPanel();
+}
+
+// ===== 关卡7：量子计算机 + 组装顺序验证 =====
+function tryPlaceComp(c){
+ // 正确顺序：fridge(外层) → cable(中层) → chip(最内层)
+ const order=['fridge','cable','chip'];
+ const names={fridge:'稀释制冷机',cable:'微波线缆',chip:'量子芯片'};
+ const nextIdx=lState.assemblyOrder.length;
+ if(c!==order[nextIdx]){
+  lState.wrongOrder=true;
+  if(c==='chip'&&nextIdx<2){
+   lState.wrongOrderMsg='量子芯片必须在最内层（最冷处）！先安装外层制冷机';
+   // 温度过高退相干效果
+   spawnParticles(W/2,H/2,40,'#f87171',{speed:5,life:50});
+  }else if(c==='cable'&&nextIdx===0){
+   lState.wrongOrderMsg='先安装稀释制冷机（外层壳体）！';
+  }else{
+   lState.wrongOrderMsg=`安装顺序错误！应先安装${names[order[nextIdx]]}`;
+  }
+  playSound('fail');
+  renderPanel();
+  setTimeout(()=>{lState.wrongOrder=false;renderPanel();},2000);
+  return;
+ }
+ lState.placed[c]=true;
+ lState.assemblyOrder.push(c);
+ lState.wrongOrder=false;
+ if(lState.placed.fridge&&lState.placed.cable&&lState.placed.chip){lState.objDone[0]=true;}
+ renderPanel();
+}
+function startCooling(){
+ lState.coolingDown=true;renderPanel();
+ const cool=()=>{
+  if(lState.temp>0.015){
+   lState.temp*=0.92;if(lState.temp<0.02)lState.temp=0.015;
+   // 冷气粒子
+   if(Math.random()<0.3)spawnColdParticles(W/2-120,80,240,1,3);
+   renderPanel();requestAnimationFrame(cool);
+  }else{
+   lState.coolingDown=false;lState.temp=0.015;lState.objDone[1]=true;renderPanel();
+  }
+ };
+ cool();
+}
+function runQuantumAlgo(){
+ lState.running=true;lState.runProgress=0;renderPanel();
+ const run=()=>{
+  lState.runProgress+=0.02;
+  if(lState.runProgress>=1){
+   lState.running=false;lState.showResult=true;
+   lState.classicalTime=4200;lState.quantumTime=180;
+   lState.objDone[2]=true;renderPanel();
+  }else{renderPanel();requestAnimationFrame(run);}
+ };
+ run();
+}
+// PLACEHOLDER_SWITCH
+// ===== 关卡切换 =====
+function switchLevel(n){
+ if(n===curLevel)return;
+ playSound('click');
+ fadeToLevel(n);
+}
+
+// ===== 布洛赫球绘制（渐变填充） =====
+function project3D(x,y,z,cx,cy,scale,rotY,rotX){
+ const cosY=Math.cos(rotY),sinY=Math.sin(rotY);
+ let x1=x*cosY-z*sinY,z1=x*sinY+z*cosY;
+ const cosX=Math.cos(rotX),sinX=Math.sin(rotX);
+ let y1=y*cosX-z1*sinX,z2=y*sinX+z1*cosX;
+ return{x:cx+x1*scale,y:cy-y1*scale,z:z2};
+}
+function drawBlochSphere(cx,cy,r,theta,phi,label,highlight){
+ const rotY=0.4,rotX=-0.3;
+ // 渐变球面
+ const grad=ctx.createRadialGradient(cx-r*0.3,cy-r*0.3,r*0.1,cx,cy,r*1.1);
+ if(highlight){
+  grad.addColorStop(0,'rgba(168,85,247,0.15)');grad.addColorStop(0.7,'rgba(168,85,247,0.05)');grad.addColorStop(1,'rgba(168,85,247,0)');
+ }else{
+  grad.addColorStop(0,'rgba(96,165,250,0.12)');grad.addColorStop(0.7,'rgba(96,165,250,0.04)');grad.addColorStop(1,'rgba(96,165,250,0)');
+ }
+ ctx.fillStyle=grad;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+ // 球面光泽
+ const sheen=ctx.createRadialGradient(cx-r*0.25,cy-r*0.25,0,cx-r*0.25,cy-r*0.25,r*0.6);
+ sheen.addColorStop(0,'rgba(255,255,255,0.08)');sheen.addColorStop(1,'rgba(255,255,255,0)');
+ ctx.fillStyle=sheen;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+ // 经线
+ ctx.strokeStyle=highlight?'rgba(168,85,247,0.3)':'rgba(42,42,90,0.6)';ctx.lineWidth=0.8;
+ for(let i=0;i<6;i++){
+  const a=i*Math.PI/6;ctx.beginPath();
+  for(let t=0;t<=Math.PI*2;t+=0.1){
+   const x=Math.sin(t)*Math.cos(a),y=Math.cos(t),z=Math.sin(t)*Math.sin(a);
+   const p=project3D(x,y,z,cx,cy,r,rotY,rotX);
+   t===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y);
+  }ctx.stroke();
+ }
+ // 纬线
+ for(let i=1;i<4;i++){
+  const lat=(i/4)*Math.PI;ctx.beginPath();
+  for(let t=0;t<=Math.PI*2;t+=0.1){
+   const x=Math.sin(lat)*Math.cos(t),y=Math.cos(lat),z=Math.sin(lat)*Math.sin(t);
+   const p=project3D(x,y,z,cx,cy,r,rotY,rotX);
+   t===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y);
+  }ctx.stroke();
+ }
+ // 坐标轴
+ const axes=[{v:[0,1.3,0],l:'|0⟩',c:'#60a5fa'},{v:[0,-1.3,0],l:'|1⟩',c:'#f87171'},
+  {v:[1.3,0,0],l:'+',c:'#888'},{v:[0,0,1.3],l:'',c:'#888'}];
+ axes.forEach(a=>{
+  const p=project3D(...a.v,cx,cy,r,rotY,rotX);
+  ctx.strokeStyle=a.c;ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(p.x,p.y);ctx.stroke();
+  if(a.l){ctx.fillStyle=a.c;ctx.font='12px monospace';ctx.fillText(a.l,p.x+4,p.y-4);}
+ });
+ // 量子态箭头
+ const sx=Math.sin(theta)*Math.cos(phi),sy=Math.cos(theta),sz=Math.sin(theta)*Math.sin(phi);
+ const sp=project3D(sx,sy,sz,cx,cy,r,rotY,rotX);
+ // 箭头发光
+ ctx.shadowColor='#fbbf24';ctx.shadowBlur=10;
+ ctx.strokeStyle='#fbbf24';ctx.lineWidth=3;
+ ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(sp.x,sp.y);ctx.stroke();
+ ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(sp.x,sp.y,6,0,Math.PI*2);ctx.fill();
+ ctx.shadowBlur=0;
+ if(label){ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.fillText(label,cx-r,cy+r+20);}
+}
+// PLACEHOLDER_DRAW
+// ===== Canvas 绘制主循环 =====
+function drawLevel(){
+ ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+ const cw=W,ch=H-36;
+ switch(curLevel){
+  case 0:drawLevel0(cw,ch);break;
+  case 1:drawLevel1(cw,ch);break;
+  case 2:drawLevel2(cw,ch);break;
+  case 3:drawLevel3(cw,ch);break;
+  case 4:drawLevel4(cw,ch);break;
+  case 5:drawLevel5(cw,ch);break;
+  case 6:drawLevel6(cw,ch);break;
+ }
+ updateParticles();drawParticles();
+ updateFade();drawFade();
+}
+
+function drawLevel0(cw,ch){
+ const cx=cw/2,cy=ch/2,r=Math.min(cw,ch)*0.3;
+ drawBlochSphere(cx,cy,r,lState.theta,lState.phi,'');
+ ctx.fillStyle='#60a5fa';ctx.font='16px monospace';
+ const a=Math.cos(lState.theta/2).toFixed(2),b=Math.sin(lState.theta/2).toFixed(2);
+ ctx.fillText(`|ψ⟩ = ${a}|0⟩ + ${b}|1⟩`,cx-120,cy+r+50);
+ if(lState.measured){
+  ctx.fillStyle='#fbbf24';ctx.font='20px sans-serif';
+  ctx.fillText(`测量结果：|${lState.measResult}⟩`,cx-80,cy+r+80);
+ }
+ ctx.fillStyle='#555';ctx.font='12px sans-serif';
+ ctx.fillText('拖动黄色箭头改变量子态',cx-80,40);
+}
+
+function drawLevel1(cw,ch){
+ const cx=cw/2,cy=ch*0.45,r=Math.min(cw,ch)*0.22;
+ drawBlochSphere(cx,cy,r,lState.stateTheta,lState.statePhi,'');
+ const circY=ch*0.82,startX=60,gapX=80;
+ ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;
+ ctx.beginPath();ctx.moveTo(startX,circY);ctx.lineTo(startX+gapX*(lState.circuit.length+1),circY);ctx.stroke();
+ ctx.fillStyle='#60a5fa';ctx.font='14px monospace';
+ ctx.fillText('|0⟩',startX-40,circY+5);
+ lState.circuit.forEach((g,i)=>{
+  const gx=startX+gapX*(i+0.5);
+  ctx.fillStyle='#1a1a4a';ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;
+  ctx.fillRect(gx-18,circY-18,36,36);ctx.strokeRect(gx-18,circY-18,36,36);
+  ctx.fillStyle='#60a5fa';ctx.font='bold 16px monospace';ctx.textAlign='center';
+  ctx.fillText(g,gx,circY+6);ctx.textAlign='left';
+ });
+ // 挑战提示
+ if(lState.objDone[0]&&lState.objDone[1]&&!lState.objDone[2]){
+  ctx.fillStyle='#f59e0b';ctx.font='14px sans-serif';
+  ctx.fillText('🎯 目标：将|0⟩变为|1⟩',cx-70,40);
+ }
+}
+
+function drawLevel2(cw,ch){
+ const cx1=cw*0.3,cx2=cw*0.7,cy=ch/2,r=Math.min(cw,ch)*0.2;
+ let t1=Math.PI/2,p1=0,t2=Math.PI/2,p2=0;
+ if(lState.leftMeasured){
+  t1=lState.leftResult===0?0:Math.PI;
+  t2=lState.rightResult===0?0:Math.PI;
+ }
+ drawBlochSphere(cx1,cy,r,t1,p1,'Alice（左）',lState.entangled);
+ drawBlochSphere(cx2,cy,r,t2,p2,'Bob（右）',lState.entangled);
+ // 纠缠连线 + 脉冲波动画
+ if(lState.entangled&&!lState.leftMeasured){
+  const lineX1=cx1+r+10,lineX2=cx2-r-10;
+  ctx.strokeStyle='#a855f7';ctx.lineWidth=2;ctx.setLineDash([8,4]);
+  ctx.beginPath();ctx.moveTo(lineX1,cy);ctx.lineTo(lineX2,cy);ctx.stroke();
+  ctx.setLineDash([]);
+  // 脉冲光点
+  lState.pulsePos=(lState.pulsePos+0.015)%1;
+  const px1=lineX1+(lineX2-lineX1)*lState.pulsePos;
+  const px2=lineX2-(lineX2-lineX1)*lState.pulsePos;
+  ctx.shadowColor='#a855f7';ctx.shadowBlur=12;
+  ctx.fillStyle='#c084fc';
+  ctx.beginPath();ctx.arc(px1,cy,4,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(px2,cy,4,0,Math.PI*2);ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#c084fc';ctx.font='14px sans-serif';
+  ctx.fillText('量子纠缠',cw/2-30,cy-r-20);
+ }
+ if(lState.leftMeasured){
+  ctx.fillStyle='#fbbf24';ctx.font='16px monospace';
+  ctx.fillText(`|${lState.leftResult}⟩`,cx1-10,cy+r+40);
+  ctx.fillText(`|${lState.rightResult}⟩`,cx2-10,cy+r+40);
+  ctx.strokeStyle='#fbbf24';ctx.lineWidth=3;ctx.beginPath();
+  const mx=(cx1+cx2)/2;
+  ctx.moveTo(cx1+r+20,cy);ctx.lineTo(mx-20,cy-15);ctx.lineTo(mx,cy+10);ctx.lineTo(cx2-r-20,cy);
+  ctx.stroke();
+ }
+}
+// PLACEHOLDER_DRAW2
+function drawLevel3(cw,ch){
+ const steps=['设定量子态','分发纠缠对','Bell测量','经典信道','Bob恢复'];
+ const colors=['#3b82f6','#a855f7','#f59e0b','#22c55e','#60a5fa'];
+ const regions=[{x:40,w:cw*0.28,label:'Alice'},{x:cw*0.36,w:cw*0.28,label:'量子信道'},{x:cw*0.68,w:cw*0.28,label:'Bob'}];
+ regions.forEach((rg,i)=>{
+  ctx.strokeStyle=i===1?'#a855f7':'#3b82f6';ctx.lineWidth=1;
+  ctx.strokeRect(rg.x,60,rg.w,ch-120);
+  ctx.fillStyle=ctx.strokeStyle;ctx.font='14px sans-serif';
+  ctx.fillText(rg.label,rg.x+rg.w/2-20,50);
+ });
+ const stepY=ch-40;
+ steps.forEach((s,i)=>{
+  const sx=40+i*(cw-80)/5;
+  ctx.fillStyle=i<=lState.step?colors[i]:'#333';
+  ctx.beginPath();ctx.arc(sx+30,stepY,8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=i<=lState.step?'#ccc':'#555';ctx.font='10px sans-serif';
+  ctx.fillText(s,sx,stepY+20);
+ });
+ if(lState.step>=0){
+  drawBlochSphere(regions[0].x+regions[0].w/2,ch/2,60,lState.aliceTheta,lState.alicePhi,'');
+ }
+ if(lState.step>=1){
+  ctx.strokeStyle='#a855f7';ctx.setLineDash([6,3]);ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(regions[0].x+regions[0].w,ch/2);
+  ctx.lineTo(regions[2].x,ch/2);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#c084fc';ctx.font='12px sans-serif';
+  ctx.fillText('EPR对',regions[1].x+regions[1].w/2-15,ch/2-10);
+ }
+ if(lState.step>=2){
+  ctx.fillStyle='#fbbf24';ctx.font='14px monospace';
+  ctx.fillText(`Bell结果: ${['Φ⁺','Φ⁻','Ψ⁺','Ψ⁻'][lState.bellResult]}`,regions[0].x+10,ch/2+80);
+ }
+ if(lState.step>=3){
+  ctx.strokeStyle='#22c55e';ctx.lineWidth=2;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(regions[0].x+regions[0].w,ch/2+60);
+  ctx.lineTo(regions[2].x,ch/2+60);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#4ade80';ctx.font='11px sans-serif';
+  ctx.fillText('经典比特',regions[1].x+regions[1].w/2-20,ch/2+55);
+ }
+ if(lState.step>=4){
+  drawBlochSphere(regions[2].x+regions[2].w/2,ch/2,60,lState.bobTheta,lState.bobPhi,'');
+  ctx.fillStyle='#4ade80';ctx.font='14px sans-serif';
+  ctx.fillText('✅ 态已恢复',regions[2].x+regions[2].w/2-35,ch/2+90);
+ }
+}
+function drawLevel4(cw,ch){
+ const f=lState.funcs[lState.curFunc];
+ const fNames=['f₁: 常数0','f₂: 常数1','f₃: 平衡(恒等)','f₄: 平衡(取反)'];
+ const bx=cw/2-60,by=ch/2-50,bw=120,bh=100;
+ ctx.fillStyle='#1a1a3a';ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;
+ ctx.fillRect(bx,by,bw,bh);ctx.strokeRect(bx,by,bw,bh);
+ ctx.fillStyle='#60a5fa';ctx.font='16px monospace';ctx.textAlign='center';
+ ctx.fillText('黑盒 Uf',bx+bw/2,by+bh/2+6);
+ ctx.fillStyle='#888';ctx.font='12px sans-serif';
+ ctx.fillText(fNames[lState.curFunc],bx+bw/2,by-10);ctx.textAlign='left';
+ ctx.fillStyle='#555';ctx.font='12px monospace';
+ ctx.fillText(`f(0)=${f[0]}  f(1)=${f[1]}`,bx,by+bh+30);
+ if(!lState.showQuantum){
+  ctx.fillStyle='#f59e0b';ctx.font='14px sans-serif';ctx.fillText('经典方式',40,60);
+  if(lState.classicalStep>=1){
+   ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+   ctx.beginPath();ctx.moveTo(bx-80,by+30);ctx.lineTo(bx,by+30);ctx.stroke();
+   ctx.fillStyle='#fbbf24';ctx.font='13px monospace';ctx.fillText(`x=0 → f(0)=${f[0]}`,bx-120,by+20);
+  }
+  if(lState.classicalStep>=2){
+   ctx.strokeStyle='#f59e0b';
+   ctx.beginPath();ctx.moveTo(bx-80,by+70);ctx.lineTo(bx,by+70);ctx.stroke();
+   ctx.fillStyle='#fbbf24';ctx.font='13px monospace';ctx.fillText(`x=1 → f(1)=${f[1]}`,bx-120,by+60);
+   ctx.fillStyle='#4ade80';ctx.font='14px sans-serif';
+   ctx.fillText(`结论：${f[0]===f[1]?'常数':'平衡'}函数（2次查询）`,bx-120,by+bh+60);
+  }
+ }else{
+  ctx.fillStyle='#60a5fa';ctx.font='14px sans-serif';ctx.fillText('Deutsch量子电路',40,60);
+  const cy1=by+20,cy2=by+70,sx=80;
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(sx,cy1);ctx.lineTo(bx+bw+100,cy1);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(sx,cy2);ctx.lineTo(bx+bw+100,cy2);ctx.stroke();
+  ctx.fillStyle='#60a5fa';ctx.font='13px monospace';
+  ctx.fillText('|0⟩',sx-35,cy1+5);ctx.fillText('|1⟩',sx-35,cy2+5);
+  [sx+30,bx+bw+20].forEach(gx=>{
+   ctx.fillStyle='#1a1a4a';ctx.strokeStyle='#3b82f6';
+   ctx.fillRect(gx-15,cy1-15,30,30);ctx.strokeRect(gx-15,cy1-15,30,30);
+   ctx.fillStyle='#60a5fa';ctx.font='bold 14px monospace';ctx.textAlign='center';
+   ctx.fillText('H',gx,cy1+5);ctx.textAlign='left';
+  });
+  const hx2=sx+30;
+  ctx.fillStyle='#1a1a4a';ctx.strokeStyle='#3b82f6';
+  ctx.fillRect(hx2-15,cy2-15,30,30);ctx.strokeRect(hx2-15,cy2-15,30,30);
+  ctx.fillStyle='#60a5fa';ctx.font='bold 14px monospace';ctx.textAlign='center';
+  ctx.fillText('H',hx2,cy2+5);ctx.textAlign='left';
+  if(lState.quantumDone){
+   const mx=bx+bw+60;
+   ctx.fillStyle='#fbbf24';ctx.font='14px monospace';
+   const result=f[0]===f[1]?'|0⟩ → 常数':'|1⟩ → 平衡';
+   ctx.fillText(result,mx+20,cy1+5);
+   ctx.fillStyle='#4ade80';ctx.font='14px sans-serif';
+   ctx.fillText('仅1次查询！',mx+20,cy1+30);
+  }
+ }
+}
+// PLACEHOLDER_DRAW3
+function drawLevel5(cw,ch){
+ const cx=cw/2,cy=ch/2;
+ const bitW=80,bitH=100,gap=40;
+ const startX=cx-(bitW*3+gap*2)/2;
+ for(let i=0;i<3;i++){
+  const bx=startX+i*(bitW+gap),by=cy-bitH/2;
+  const isError=lState.allRed||i===lState.errorBit;
+  ctx.fillStyle=isError?'rgba(248,113,113,0.15)':'rgba(96,165,250,0.1)';
+  ctx.strokeStyle=isError?'#f87171':'#3b82f6';ctx.lineWidth=2;
+  ctx.fillRect(bx,by,bitW,bitH);ctx.strokeRect(bx,by,bitW,bitH);
+  ctx.fillStyle=isError?'#f87171':'#60a5fa';
+  ctx.font='bold 36px monospace';ctx.textAlign='center';
+  ctx.fillText(lState.bits[i],bx+bitW/2,by+bitH/2+12);
+  ctx.fillStyle='#888';ctx.font='12px sans-serif';
+  ctx.fillText(`比特${i+1}`,bx+bitW/2,by-10);ctx.textAlign='left';
+ }
+ ctx.fillStyle='#60a5fa';ctx.font='16px sans-serif';
+ ctx.fillText('3比特重复码纠错',cx-70,60);
+ ctx.fillStyle='#888';ctx.font='12px sans-serif';
+ ctx.fillText('逻辑|0⟩ → |000⟩    逻辑|1⟩ → |111⟩',cx-120,90);
+ if(lState.detected){
+  ctx.fillStyle='#fbbf24';ctx.font='14px sans-serif';
+  ctx.fillText(`综合征测量：第 ${lState.syndrome+1} 位异常`,cx-80,cy+bitH/2+40);
+ }
+ if(lState.allRed){
+  ctx.fillStyle='#f87171';ctx.font='16px sans-serif';
+  ctx.fillText('❌ 错误扩散！',cx-50,cy+bitH/2+40);
+ }
+ if(lState.timerStarted&&!lState.gameOver){
+  const elapsed=(Date.now()-lState.lastTime)/1000;
+  const remain=Math.max(0,30-elapsed);
+  ctx.fillStyle='#1a1a3a';ctx.fillRect(startX,cy+bitH/2+60,bitW*3+gap*2,10);
+  ctx.fillStyle=remain>10?'#3b82f6':'#f59e0b';
+  ctx.fillRect(startX,cy+bitH/2+60,(bitW*3+gap*2)*(remain/30),10);
+  if(remain<=0&&!lState.gameOver){
+   lState.gameOver=true;if(lState.fixCount>=5)lState.objDone[2]=true;renderPanel();
+  }
+ }
+}
+
+function drawLevel6(cw,ch){
+ const cx=cw/2,cy=ch/2;
+ if(lState.placed.fridge){
+  ctx.fillStyle='rgba(96,165,250,0.1)';ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;
+  const fx=cx-120,fy=80,fw=240,fh=ch-160;
+  ctx.fillRect(fx,fy,fw,fh);ctx.strokeRect(fx,fy,fw,fh);
+  ctx.fillStyle='#60a5fa';ctx.font='13px sans-serif';
+  ctx.fillText('稀释制冷机',fx+fw/2-35,fy+20);
+  const layers=['300K','77K','4K','0.8K','0.015K'];
+  const layerColors=['#f87171','#f59e0b','#fbbf24','#60a5fa','#818cf8'];
+  layers.forEach((l,i)=>{
+   const ly=fy+40+i*(fh-80)/5;
+   ctx.strokeStyle=layerColors[i];ctx.setLineDash([4,4]);
+   ctx.beginPath();ctx.moveTo(fx+10,ly);ctx.lineTo(fx+fw-10,ly);ctx.stroke();
+   ctx.setLineDash([]);
+   ctx.fillStyle=layerColors[i];ctx.font='10px monospace';ctx.fillText(l,fx+fw-40,ly-3);
+  });
+ }
+ if(lState.placed.cable){
+  ctx.strokeStyle='#a855f7';ctx.lineWidth=2;
+  for(let i=0;i<3;i++){
+   const lx=cx-40+i*40;ctx.beginPath();ctx.moveTo(lx,100);
+   for(let y=100;y<ch-100;y+=4){ctx.lineTo(lx+Math.sin(y*0.1)*8,y);}
+   ctx.stroke();
+  }
+  ctx.fillStyle='#c084fc';ctx.font='11px sans-serif';ctx.fillText('微波控制线',cx-30,ch-90);
+ }
+ if(lState.placed.chip){
+  const chipX=cx-40,chipY=cy+40,chipW=80,chipH=60;
+  ctx.fillStyle='#1a1a4a';ctx.strokeStyle='#818cf8';ctx.lineWidth=2;
+  ctx.fillRect(chipX,chipY,chipW,chipH);ctx.strokeRect(chipX,chipY,chipW,chipH);
+  for(let i=0;i<3;i++){for(let j=0;j<3;j++){
+   ctx.fillStyle='#818cf8';ctx.beginPath();
+   ctx.arc(chipX+20+i*20,chipY+15+j*15,3,0,Math.PI*2);ctx.fill();
+  }}
+  ctx.fillStyle='#818cf8';ctx.font='10px sans-serif';ctx.fillText('量子芯片',chipX+10,chipY+chipH+15);
+ }
+ // 冷气粒子持续效果
+ if(lState.coolingDown&&Math.random()<0.15){
+  spawnColdParticles(cx-100,100,200,1,2);
+ }
+ if(lState.coolingDown||lState.temp<=0.016){
+  ctx.fillStyle='#fbbf24';ctx.font='20px monospace';
+  ctx.fillText(`${lState.temp.toFixed(lState.temp<1?3:1)} K`,cx+140,cy);
+ }
+ if(lState.running){
+  ctx.fillStyle='#1a1a3a';ctx.fillRect(cx-100,ch-60,200,16);
+  ctx.fillStyle='#3b82f6';ctx.fillRect(cx-100,ch-60,200*lState.runProgress,16);
+  ctx.fillStyle='#ccc';ctx.font='11px sans-serif';
+  ctx.fillText(`Shor算法运行中 ${(lState.runProgress*100).toFixed(0)}%`,cx-60,ch-46);
+ }
+ if(lState.showResult){
+  ctx.fillStyle='#4ade80';ctx.font='18px sans-serif';ctx.fillText('15 = 3 × 5',cx-50,ch-80);
+  ctx.fillStyle='#888';ctx.font='13px sans-serif';
+  ctx.fillText(`经典: ${lState.classicalTime}ms  量子: ${lState.quantumTime}ms  加速: ${(lState.classicalTime/lState.quantumTime).toFixed(1)}x`,cx-130,ch-50);
+ }
+}
+// PLACEHOLDER_MOUSE
+// ===== 鼠标交互（关卡1拖拽布洛赫球） =====
+let mouseDown=false,lastMX=0,lastMY=0;
+cv.addEventListener('mousedown',e=>{
+ if(curLevel!==0||lState.measured)return;
+ mouseDown=true;lastMX=e.offsetX;lastMY=e.offsetY;
+});
+cv.addEventListener('mousemove',e=>{
+ if(!mouseDown||curLevel!==0)return;
+ const dx=e.offsetX-lastMX,dy=e.offsetY-lastMY;
+ lState.theta=Math.max(0,Math.min(Math.PI,lState.theta+dy*0.01));
+ lState.phi+=dx*0.01;
+ lastMX=e.offsetX;lastMY=e.offsetY;
+ if(Math.abs(lState.theta-Math.PI/2)<0.2){
+  if(!lState.objDone[0]){lState.objDone[0]=true;lState.wasEquator=true;renderPanel();}
+ }
+});
+cv.addEventListener('mouseup',()=>{mouseDown=false;});
+cv.addEventListener('mouseleave',()=>{mouseDown=false;});
+
+// ===== 窗口大小 =====
+function resize(){
+ W=window.innerWidth-320;H=window.innerHeight;
+ cv.width=W;cv.height=H;
+ cv.style.width=W+'px';cv.style.height=H+'px';
+}
+window.addEventListener('resize',resize);
+
+// ===== 动画循环 =====
+function animate(){
+ animTime++;
+ drawLevel();
+ if(curLevel===5&&lState.timerStarted&&!lState.gameOver){
+  const elapsed=(Date.now()-lState.lastTime)/1000;
+  if(elapsed>=30){
+   lState.gameOver=true;if(lState.fixCount>=5)lState.objDone[2]=true;renderPanel();
+  }
+ }
+ animId=requestAnimationFrame(animate);
+}
+
+// ===== 信息栏更新 =====
+function updateInfo(){
+ const done=completedLevels.size;
+ infoBar.textContent=`量子计算原理 | 第${curLevel+1}关：${levels[curLevel].name} | 进度：${done}/${levels.length}关`;
+}
+setInterval(updateInfo,500);
+
+// ===== 初始化 =====
+resize();resetLevelState();renderPanel();animate();
+</script>
+</body>
+</html>

@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>边缘 AI 部署模拟器</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #080810; color: #fff; font-family: -apple-system, 'SF Pro', sans-serif; overflow: hidden; height: 100vh; display: flex; }
+
+/* 左侧面板 - 模型仓库 */
+#sidebar { width: 260px; background: rgba(12,12,28,0.98); border-right: 1px solid #1a1a3a; display: flex; flex-direction: column; z-index: 10; }
+#sidebar .panel-title { padding: 12px 16px; font-size: 14px; font-weight: 600; color: #c8943e; border-bottom: 1px solid #1a1a3a; letter-spacing: 1px; }
+#model-list { flex: 1; overflow-y: auto; padding: 8px; }
+.model-card { background: #141428; border: 1px solid #2a2a4a; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; cursor: grab; transition: all 0.2s; user-select: none; }
+.model-card:hover { border-color: #c8943e; background: #1a1a38; }
+.model-card.dragging { opacity: 0.4; }
+.model-card.deployed { border-color: #2aaa5a; background: #0a1a0a; }
+.model-card .mc-name { font-size: 14px; font-weight: 600; color: #eee; }
+.model-card .mc-type { font-size: 11px; color: #888; margin-top: 2px; }
+.model-card .mc-stats { display: flex; gap: 8px; margin-top: 6px; font-size: 11px; }
+.model-card .mc-stats span { color: #6a8aff; }
+.model-card .mc-bar { height: 3px; background: #1a1a3a; border-radius: 2px; margin-top: 6px; }
+.model-card .mc-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+/* 右侧面板 - 监控 */
+#monitor { width: 280px; background: rgba(12,12,28,0.98); border-left: 1px solid #1a1a3a; display: flex; flex-direction: column; z-index: 10; }
+#monitor .panel-title { padding: 12px 16px; font-size: 14px; font-weight: 600; color: #c8943e; border-bottom: 1px solid #1a1a3a; }
+#monitor-content { flex: 1; overflow-y: auto; padding: 12px; }
+.mon-section { margin-bottom: 16px; }
+.mon-section .mon-label { font-size: 12px; color: #888; margin-bottom: 6px; }
+.mon-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 13px; }
+.mon-row .mon-key { color: #aaa; }
+.mon-row .mon-val { color: #fff; font-weight: 500; font-variant-numeric: tabular-nums; }
+.mon-row .mon-val.good { color: #2aaa5a; }
+.mon-row .mon-val.warn { color: #ffaa00; }
+.mon-row .mon-val.bad { color: #ff4444; }
+.mon-bar { height: 6px; background: #1a1a3a; border-radius: 3px; margin: 4px 0; }
+.mon-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.mon-divider { height: 1px; background: #1a1a3a; margin: 12px 0; }
+
+/* 量化面板 */
+#quant-panel { display: none; background: #0a0a1e; border: 1px solid #2a2a5a; border-radius: 8px; padding: 12px; margin-top: 8px; }
+#quant-panel .qp-title { font-size: 13px; color: #c8943e; font-weight: 600; margin-bottom: 8px; }
+.quant-option { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; color: #ccc; transition: all 0.2s; margin-bottom: 4px; }
+.quant-option:hover { background: #1a1a3a; }
+.quant-option.selected { background: #2a2a5a; color: #fff; border: 1px solid #c8943e; }
+.quant-option .qo-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+/* 推理预览 */
+#preview-area { border-top: 1px solid #1a1a3a; padding: 8px; }
+#preview-canvas { width: 100%; height: 160px; background: #050510; border-radius: 6px; border: 1px solid #1a1a3a; }
+
+/* 中间主区域 */
+#main { flex: 1; display: flex; flex-direction: column; position: relative; }
+#top-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: rgba(12,12,28,0.95); border-bottom: 1px solid #1a1a3a; }
+#top-bar button { background: #1a1a3a; color: #aaa; border: 1px solid #2a2a5a; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+#top-bar button:hover { background: #2a2a5a; color: #fff; }
+#top-bar button.active { background: #c8943e; color: #fff; border-color: #e0a848; }
+#top-bar .tb-title { font-size: 14px; font-weight: 600; color: #c8943e; margin-right: 8px; }
+#top-bar .tb-device { font-size: 12px; color: #6a8aff; margin-left: auto; }
+#canvas-wrap { flex: 1; position: relative; }
+#canvas { width: 100%; height: 100%; display: block; }
+#drop-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: rgba(200,148,62,0.15); font-size: 20px; pointer-events: none; text-align: center; line-height: 1.8; }
+#bottom-bar { display: flex; align-items: center; gap: 12px; padding: 6px 12px; background: rgba(12,12,28,0.95); border-top: 1px solid #1a1a3a; font-size: 12px; color: #666; }
+#bottom-bar .highlight { color: #c8943e; }
+
+/* 设备选择弹窗 */
+.device-selector { display: none; position: absolute; top: 40px; left: 50%; transform: translateX(-50%); background: rgba(10,10,30,0.98); border: 1px solid #c8943e; border-radius: 10px; padding: 16px; z-index: 50; min-width: 500px; }
+.device-selector .ds-title { font-size: 15px; color: #c8943e; font-weight: 600; margin-bottom: 12px; }
+.device-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.device-card { background: #141428; border: 1px solid #2a2a5a; border-radius: 8px; padding: 12px; cursor: pointer; transition: all 0.2s; text-align: center; }
+.device-card:hover { border-color: #c8943e; background: #1a1a38; }
+.device-card.selected { border-color: #2aaa5a; background: #0a1a10; }
+.device-card .dc-icon { font-size: 28px; margin-bottom: 6px; }
+.device-card .dc-name { font-size: 13px; font-weight: 600; color: #eee; }
+.device-card .dc-spec { font-size: 11px; color: #888; margin-top: 4px; line-height: 1.4; }
+
+/* 成就/得分 */
+#score-bar { position: absolute; top: 8px; right: 8px; background: rgba(10,10,30,0.9); border: 1px solid #2a2a5a; border-radius: 8px; padding: 8px 14px; font-size: 13px; z-index: 20; }
+#score-bar .score-label { color: #888; font-size: 11px; }
+#score-bar .score-val { color: #c8943e; font-size: 20px; font-weight: 700; }
+
+/* tooltip */
+#tooltip { position: absolute; display: none; background: rgba(10,10,30,0.95); border: 1px solid #c8943e; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #ccc; pointer-events: none; z-index: 100; max-width: 280px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<!-- 左侧：模型仓库 -->
+<div id="sidebar">
+  <div class="panel-title">📦 模型仓库</div>
+  <div id="model-list"></div>
+</div>
+
+<!-- 中间：芯片可视化 -->
+<div id="main">
+  <div id="top-bar">
+    <span class="tb-title">◈ 边缘 AI 部署模拟器</span>
+    <button onclick="toggleDeviceSelector()">🔧 切换设备</button>
+    <button onclick="resetAll()">🔄 重置</button>
+    <button id="btnPause" onclick="togglePause()">⏸</button>
+    <button id="btnHeat" onclick="toggleHeat()">🌡</button>
+    <span class="tb-device" id="deviceLabel">📟 RK3588 · 8nm · 6 TOPS NPU</span>
+  </div>
+  <div id="canvas-wrap">
+    <canvas id="canvas"></canvas>
+    <div id="drop-hint">拖拽左侧模型到芯片上部署<br>或点击模型后点击「部署」</div>
+    <div id="score-bar">
+      <div class="score-label">部署得分</div>
+      <div class="score-val" id="scoreVal">0</div>
+    </div>
+    <div class="device-selector" id="deviceSelector">
+      <div class="ds-title">选择边缘设备</div>
+      <div class="device-grid" id="deviceGrid"></div>
+    </div>
+  </div>
+  <div id="bottom-bar">
+    <span id="statusText">就绪 — 选择模型开始部署</span>
+    <span class="highlight" id="perfText" style="margin-left:auto"></span>
+  </div>
+</div>
+
+<!-- 右侧：监控面板 -->
+<div id="monitor">
+  <div class="panel-title">📊 实时监控</div>
+  <div id="monitor-content">
+    <div class="mon-section">
+      <div class="mon-label">⚡ 性能指标</div>
+      <div class="mon-row"><span class="mon-key">FPS</span><span class="mon-val" id="monFps">—</span></div>
+      <div class="mon-row"><span class="mon-key">延迟</span><span class="mon-val" id="monLatency">—</span></div>
+      <div class="mon-row"><span class="mon-key">吞吐</span><span class="mon-val" id="monThroughput">—</span></div>
+    </div>
+    <div class="mon-divider"></div>
+    <div class="mon-section">
+      <div class="mon-label">🖥 硬件状态</div>
+      <div class="mon-row"><span class="mon-key">NPU 负载</span><span class="mon-val" id="monNpu">0%</span></div>
+      <div class="mon-bar"><div class="mon-bar-fill" id="monNpuBar" style="width:0%;background:#e8443a"></div></div>
+      <div class="mon-row"><span class="mon-key">CPU 负载</span><span class="mon-val" id="monCpu">0%</span></div>
+      <div class="mon-bar"><div class="mon-bar-fill" id="monCpuBar" style="width:0%;background:#3a7aff"></div></div>
+      <div class="mon-row"><span class="mon-key">内存</span><span class="mon-val" id="monMem">0 / 8 GB</span></div>
+      <div class="mon-bar"><div class="mon-bar-fill" id="monMemBar" style="width:0%;background:#5a9a9a"></div></div>
+      <div class="mon-row"><span class="mon-key">温度</span><span class="mon-val" id="monTemp">35°C</span></div>
+      <div class="mon-row"><span class="mon-key">功耗</span><span class="mon-val" id="monPower">2.1 W</span></div>
+    </div>
+    <div class="mon-divider"></div>
+    <div class="mon-section">
+      <div class="mon-label">🧠 模型信息</div>
+      <div id="monModelInfo" style="font-size:12px;color:#888;">未部署模型</div>
+    </div>
+    <div id="quant-panel">
+      <div class="qp-title">⚙️ 量化选项</div>
+      <div id="quant-options"></div>
+    </div>
+    <div class="mon-divider"></div>
+    <div class="mon-section">
+      <div class="mon-label">🏆 部署历史</div>
+      <div id="history-list" style="font-size:12px;color:#888;">暂无记录</div>
+    </div>
+  </div>
+  <div id="preview-area">
+    <canvas id="preview-canvas"></canvas>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+// ===== 设备定义 =====
+const DEVICES = [
+  { id: 'rk3588', name: 'RK3588', icon: '📟', spec: '8nm · A76×4 + A55×4', npu: 6, npuCores: 3, npuLabel: '6 TOPS', gpu: 'Mali-G610', mem: 8, tdp: 10, color: '#e8443a',
+    modules: [
+      { id: 'a76', name: 'A76×4', sub: 'CPU 大核', x: 80, y: 60, w: 200, h: 70, color: '#3a7aff' },
+      { id: 'a55', name: 'A55×4', sub: 'CPU 小核', x: 300, y: 60, w: 140, h: 70, color: '#2a5aaa' },
+      { id: 'npu0', name: 'NPU 0', sub: '2 TOPS', x: 80, y: 180, w: 120, h: 100, color: '#e8443a' },
+      { id: 'npu1', name: 'NPU 1', sub: '2 TOPS', x: 220, y: 180, w: 120, h: 100, color: '#e8443a' },
+      { id: 'npu2', name: 'NPU 2', sub: '2 TOPS', x: 360, y: 180, w: 120, h: 100, color: '#e8443a' },
+      { id: 'gpu', name: 'Mali-G610', sub: 'GPU', x: 510, y: 180, w: 140, h: 100, color: '#2aaa5a' },
+      { id: 'vpu', name: 'VPU', sub: '8K 编解码', x: 80, y: 340, w: 140, h: 70, color: '#aa7a2a' },
+      { id: 'isp', name: 'ISP', sub: '48MP', x: 240, y: 340, w: 100, h: 70, color: '#8a5acc' },
+      { id: 'ddr', name: 'LPDDR5', sub: '51.2 GB/s', x: 510, y: 60, w: 140, h: 70, color: '#5a9a9a' },
+      { id: 'io', name: 'PCIe/USB/HDMI', sub: '外设', x: 360, y: 340, w: 200, h: 70, color: '#5a6a7a' },
+    ],
+    buses: [
+      { from: {x:80,y:150}, to: {x:660,y:150}, w: 5, color: '#c8943e', label: 'AXI 总线' },
+      { from: {x:80,y:320}, to: {x:660,y:320}, w: 4, color: '#5a9a9a80', label: 'NoC 互联' },
+      { from: {x:140,y:150}, to: {x:140,y:180}, w: 2, color: '#e8443a60' },
+      { from: {x:280,y:150}, to: {x:280,y:180}, w: 2, color: '#e8443a60' },
+      { from: {x:420,y:150}, to: {x:420,y:180}, w: 2, color: '#e8443a60' },
+      { from: {x:580,y:150}, to: {x:580,y:180}, w: 2, color: '#2aaa5a60' },
+      { from: {x:580,y:130}, to: {x:580,y:150}, w: 3, color: '#5a9a9a60' },
+      { from: {x:120,y:320}, to: {x:120,y:340}, w: 2, color: '#aa7a2a60' },
+      { from: {x:460,y:320}, to: {x:460,y:340}, w: 2, color: '#5a6a7a60' },
+    ]
+  },
+  { id: 'jetson', name: 'Jetson Nano', icon: '🟢', spec: 'Maxwell 128 CUDA · A57×4', npu: 0.47, npuCores: 1, npuLabel: '472 GFLOPS (GPU)', gpu: 'Maxwell 128C', mem: 4, tdp: 10, color: '#76b900',
+    modules: [
+      { id: 'a57', name: 'A57×4', sub: 'CPU', x: 80, y: 60, w: 200, h: 80, color: '#3a7aff' },
+      { id: 'gpu', name: 'Maxwell', sub: '128 CUDA', x: 320, y: 60, w: 200, h: 160, color: '#76b900' },
+      { id: 'ddr', name: 'LPDDR4', sub: '25.6 GB/s', x: 80, y: 200, w: 200, h: 70, color: '#5a9a9a' },
+      { id: 'io', name: 'CSI/USB/GPIO', sub: '外设', x: 80, y: 320, w: 440, h: 60, color: '#5a6a7a' },
+    ],
+    buses: [
+      { from: {x:80,y:160}, to: {x:540,y:160}, w: 5, color: '#c8943e', label: '系统总线' },
+      { from: {x:80,y:300}, to: {x:540,y:300}, w: 3, color: '#5a9a9a60', label: '外设总线' },
+      { from: {x:420,y:160}, to: {x:420,y:60}, w: 2, color: '#76b90060' },
+    ]
+  },
+  { id: 'rpi5', name: 'Raspberry Pi 5', icon: '🍓', spec: 'A76×4 · 无NPU', npu: 0, npuCores: 0, npuLabel: '无 NPU (CPU only)', gpu: 'VideoCore VII', mem: 8, tdp: 12, color: '#c51a4a',
+    modules: [
+      { id: 'a76', name: 'A76×4', sub: '2.4GHz CPU', x: 80, y: 60, w: 250, h: 100, color: '#3a7aff' },
+      { id: 'gpu', name: 'VideoCore VII', sub: 'GPU', x: 370, y: 60, w: 180, h: 100, color: '#2aaa5a' },
+      { id: 'ddr', name: 'LPDDR4X', sub: '34 GB/s', x: 80, y: 220, w: 200, h: 70, color: '#5a9a9a' },
+      { id: 'io', name: 'PCIe/USB/ETH', sub: '外设', x: 320, y: 220, w: 230, h: 70, color: '#5a6a7a' },
+    ],
+    buses: [
+      { from: {x:80,y:180}, to: {x:560,y:180}, w: 5, color: '#c8943e', label: '系统总线' },
+    ]
+  },
+];
+
+// ===== AI 模型定义 =====
+const MODELS = [
+  { id: 'yolov8n', name: 'YOLOv8-Nano', type: '目标检测', size: 6.3, params: '3.2M', accuracy: 37.3, accLabel: 'mAP', flops: 8.7,
+    quant: { fp32: { size: 6.3, acc: 37.3, fps: {} }, fp16: { size: 3.2, acc: 37.1, fps: {} }, int8: { size: 1.8, acc: 36.2, fps: {} } },
+    icon: '🎯', desc: '超轻量检测模型，适合实时场景' },
+  { id: 'yolov8s', name: 'YOLOv8-Small', type: '目标检测', size: 22.5, params: '11.2M', accuracy: 44.9, accLabel: 'mAP', flops: 28.6,
+    quant: { fp32: { size: 22.5, acc: 44.9, fps: {} }, fp16: { size: 11.3, acc: 44.7, fps: {} }, int8: { size: 6.2, acc: 43.8, fps: {} } },
+    icon: '🎯', desc: '均衡检测模型，精度与速度兼顾' },
+  { id: 'yolov8m', name: 'YOLOv8-Medium', type: '目标检测', size: 52.0, params: '25.9M', accuracy: 50.2, accLabel: 'mAP', flops: 78.9,
+    quant: { fp32: { size: 52.0, acc: 50.2, fps: {} }, fp16: { size: 26.0, acc: 50.0, fps: {} }, int8: { size: 14.0, acc: 48.9, fps: {} } },
+    icon: '🎯', desc: '中等检测模型，高精度场景' },
+  { id: 'mobilenet', name: 'MobileNet-V3', type: '图像分类', size: 22.0, params: '5.4M', accuracy: 75.2, accLabel: 'Top-1', flops: 0.22,
+    quant: { fp32: { size: 22.0, acc: 75.2, fps: {} }, fp16: { size: 11.0, acc: 75.0, fps: {} }, int8: { size: 5.8, acc: 73.8, fps: {} } },
+    icon: '🏷️', desc: '移动端分类模型，极致轻量' },
+  { id: 'resnet50', name: 'ResNet-50', type: '图像分类', size: 97.8, params: '25.6M', accuracy: 76.1, accLabel: 'Top-1', flops: 4.1,
+    quant: { fp32: { size: 97.8, acc: 76.1, fps: {} }, fp16: { size: 48.9, acc: 76.0, fps: {} }, int8: { size: 25.2, acc: 74.8, fps: {} } },
+    icon: '🏷️', desc: '经典分类模型，工业标准' },
+  { id: 'deeplabv3', name: 'DeepLabV3+', type: '语义分割', size: 162, params: '40.4M', accuracy: 78.5, accLabel: 'mIoU', flops: 83.0,
+    quant: { fp32: { size: 162, acc: 78.5, fps: {} }, fp16: { size: 81, acc: 78.3, fps: {} }, int8: { size: 42, acc: 76.1, fps: {} } },
+    icon: '🖼️', desc: '语义分割模型，像素级分类' },
+];
+
+// 预估 FPS（简化模拟）
+function estimateFps(model, quant, device) {
+  // 基于 FLOPS 和设备算力的简化估算
+  const baseMap = {
+    'rk3588': { fp32: 2, fp16: 5, int8: 18 },  // NPU 加速
+    'jetson': { fp32: 3, fp16: 8, int8: 6 },    // CUDA
+    'rpi5':   { fp32: 0.8, fp16: 0.8, int8: 1.2 }, // CPU only
+  };
+  const base = baseMap[device.id]?.[quant] || 1;
+  const complexity = model.flops || 10;
+  let fps = base * (30 / complexity);
+  // 小模型更快
+  if (model.size < 10) fps *= 1.5;
+  if (model.size > 100) fps *= 0.5;
+  // 内存不够会严重拖慢
+  const qData = model.quant[quant];
+  if (qData.size / 1000 > device.mem * 0.7) fps *= 0.2;
+  return Math.max(0.1, Math.min(120, fps));
+}
+
+// ===== 全局状态 =====
+let currentDevice = DEVICES[0];
+let deployedModel = null;
+let currentQuant = 'int8';
+let paused = false;
+let showHeat = false;
+let time = 0;
+let score = 0;
+let history = [];
+let particles = [];
+let inferRunning = false;
+let hwState = { npuLoad: 0, cpuLoad: 0.05, memUsed: 0.8, temp: 35, power: 2.1 };
+let simFps = 0;
+let simLatency = 0;
+let detections = [];
+
+// ===== Canvas =====
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const previewCanvas = document.getElementById('preview-canvas');
+const previewCtx = previewCanvas.getContext('2d');
+let CW, CH, chipScale;
+
+// ===== 初始化 =====
+function init() {
+  buildModelList();
+  buildDeviceGrid();
+  updateDeviceLabel();
+  requestAnimationFrame(loop);
+}
+
+function buildModelList() {
+  const list = document.getElementById('model-list');
+  list.innerHTML = '';
+  for (let m of MODELS) {
+    const card = document.createElement('div');
+    card.className = 'model-card' + (deployedModel?.id === m.id ? ' deployed' : '');
+    card.setAttribute('data-model', m.id);
+    card.innerHTML = `
+      <div class="mc-name">${m.icon} ${m.name}</div>
+      <div class="mc-type">${m.type} · ${m.desc}</div>
+      <div class="mc-stats">
+        <span>📐 ${m.size}MB</span>
+        <span>🔢 ${m.params}</span>
+        <span>📊 ${m.accLabel} ${m.accuracy}</span>
+      </div>
+      <div class="mc-bar"><div class="mc-bar-fill" style="width:${Math.min(100,m.size/1.6)}%;background:${m.size>100?'#ff4444':m.size>30?'#ffaa00':'#44ff44'}"></div></div>
+    `;
+    card.onclick = () => selectModel(m);
+    list.appendChild(card);
+  }
+}
+
+function buildDeviceGrid() {
+  const grid = document.getElementById('deviceGrid');
+  grid.innerHTML = '';
+  for (let d of DEVICES) {
+    const card = document.createElement('div');
+    card.className = 'device-card' + (d.id === currentDevice.id ? ' selected' : '');
+    card.innerHTML = `
+      <div class="dc-icon">${d.icon}</div>
+      <div class="dc-name">${d.name}</div>
+      <div class="dc-spec">${d.spec}<br>NPU: ${d.npuLabel}<br>内存: ${d.mem}GB · TDP: ${d.tdp}W</div>
+    `;
+    card.onclick = () => switchDevice(d);
+    grid.appendChild(card);
+  }
+}
+
+// ===== 模型操作 =====
+function selectModel(model) {
+  // 显示量化选项
+  const qp = document.getElementById('quant-panel');
+  qp.style.display = 'block';
+  const qoDiv = document.getElementById('quant-options');
+  qoDiv.innerHTML = '';
+  const quantTypes = [
+    { key: 'fp32', label: 'FP32 (原始)', color: '#ff6b6b', desc: '最高精度，最大体积' },
+    { key: 'fp16', label: 'FP16 (半精度)', color: '#ffd93d', desc: '精度微降，体积减半' },
+    { key: 'int8', label: 'INT8 (量化)', color: '#2aaa5a', desc: '体积最小，NPU 加速' },
+  ];
+  for (let q of quantTypes) {
+    const qData = model.quant[q.key];
+    const fps = estimateFps(model, q.key, currentDevice);
+    const opt = document.createElement('div');
+    opt.className = 'quant-option' + (q.key === currentQuant ? ' selected' : '');
+    opt.innerHTML = `
+      <div class="qo-dot" style="background:${q.color}"></div>
+      <div>
+        <div>${q.label}</div>
+        <div style="font-size:10px;color:#888">${qData.size}MB · ${model.accLabel} ${qData.acc} · ~${fps.toFixed(1)} FPS</div>
+      </div>
+    `;
+    opt.onclick = (e) => { e.stopPropagation(); currentQuant = q.key; selectModel(model); };
+    qoDiv.appendChild(opt);
+  }
+  // 部署按钮
+  const btn = document.createElement('button');
+  btn.style.cssText = 'width:100%;margin-top:10px;padding:8px;background:#c8943e;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;';
+  btn.textContent = `🚀 部署 ${model.name} (${currentQuant.toUpperCase()})`;
+  btn.onclick = (e) => { e.stopPropagation(); deployModel(model); };
+  qoDiv.appendChild(btn);
+
+  document.getElementById('monModelInfo').innerHTML = `
+    <div style="color:#eee;font-weight:600">${model.icon} ${model.name}</div>
+    <div>类型: ${model.type}</div>
+    <div>参数: ${model.params}</div>
+    <div>精度: ${model.accLabel} ${model.accuracy}</div>
+    <div>FLOPS: ${model.flops} G</div>
+  `;
+}
+
+function deployModel(model) {
+  const qData = model.quant[currentQuant];
+  // 检查内存
+  if (qData.size / 1000 > currentDevice.mem * 0.9) {
+    document.getElementById('statusText').textContent = `❌ 内存不足！${model.name} (${currentQuant}) 需要 ${qData.size}MB，设备仅 ${currentDevice.mem}GB`;
+    shakeScore();
+    return;
+  }
+  deployedModel = model;
+  inferRunning = true;
+  const fps = estimateFps(model, currentQuant, currentDevice);
+  simFps = fps;
+  simLatency = 1000 / fps;
+
+  // 更新硬件状态
+  const intensity = Math.min(1, model.flops / 50);
+  if (currentDevice.id === 'rk3588') {
+    hwState.npuLoad = currentQuant === 'int8' ? Math.min(0.95, intensity * 1.2) : intensity * 0.3;
+    hwState.cpuLoad = currentQuant === 'fp32' ? Math.min(0.95, intensity * 0.8) : 0.15;
+  } else if (currentDevice.id === 'jetson') {
+    hwState.npuLoad = Math.min(0.95, intensity * 0.9); // GPU as NPU
+    hwState.cpuLoad = 0.2;
+  } else {
+    hwState.npuLoad = 0;
+    hwState.cpuLoad = Math.min(0.98, intensity * 1.2); // CPU only
+  }
+  hwState.memUsed = 0.8 + qData.size / 1000;
+  hwState.temp = 35 + hwState.npuLoad * 30 + hwState.cpuLoad * 20;
+  hwState.power = 2.1 + hwState.npuLoad * currentDevice.tdp * 0.6 + hwState.cpuLoad * currentDevice.tdp * 0.3;
+
+  // 计算得分
+  const fpsScore = Math.min(50, fps * 1.5);
+  const effScore = fps / hwState.power * 5;
+  const accScore = qData.acc / model.accuracy * 30;
+  const newScore = Math.round(fpsScore + effScore + accScore);
+  score += newScore;
+  document.getElementById('scoreVal').textContent = score;
+
+  // 记录历史
+  history.push({ model: model.name, quant: currentQuant, device: currentDevice.name, fps: fps.toFixed(1), score: newScore });
+  updateHistory();
+
+  // 生成粒子
+  spawnDeployParticles();
+
+  document.getElementById('statusText').textContent = `✅ ${model.name} (${currentQuant.toUpperCase()}) 已部署到 ${currentDevice.name} — ${fps.toFixed(1)} FPS`;
+  document.getElementById('drop-hint').style.display = 'none';
+  buildModelList();
+}
+
+function spawnDeployParticles() {
+  const dev = currentDevice;
+  // 找 NPU/GPU 模块位置
+  const target = dev.modules.find(m => m.id.startsWith('npu') || m.id === 'gpu') || dev.modules[0];
+  const ddr = dev.modules.find(m => m.id === 'ddr') || dev.modules[dev.modules.length - 1];
+  for (let i = 0; i < 8; i++) {
+    setTimeout(() => {
+      particles.push(new DataParticle(
+        [{ x: ddr.x + ddr.w/2, y: ddr.y + ddr.h/2 }, { x: (ddr.x+target.x)/2, y: 150 }, { x: target.x + target.w/2, y: target.y + target.h/2 }],
+        ['#ff6b6b','#ffd93d','#6bcb77','#4d96ff','#ff922b','#cc5de8'][i%6],
+        0.4 + Math.random() * 0.3
+      ));
+    }, i * 120);
+  }
+}
+
+// ===== 数据粒子 =====
+class DataParticle {
+  constructor(path, color, speed) {
+    this.path = path;
+    this.color = color;
+    this.speed = speed;
+    this.progress = 0;
+    this.alive = true;
+    this.size = 3 + Math.random() * 3;
+    this.trail = [];
+  }
+  update(dt) {
+    this.progress += this.speed * dt;
+    if (this.progress >= 1) this.alive = false;
+    const pos = this.getPos();
+    this.trail.push({ x: pos.x, y: pos.y, a: 1 });
+    if (this.trail.length > 12) this.trail.shift();
+    for (let t of this.trail) t.a *= 0.85;
+  }
+  getPos() {
+    const n = this.path.length - 1;
+    const t = Math.min(this.progress, 0.999);
+    const seg = Math.floor(t * n);
+    const local = (t * n) - seg;
+    const a = this.path[seg], b = this.path[Math.min(seg+1, n)];
+    return { x: a.x + (b.x - a.x) * local, y: a.y + (b.y - a.y) * local };
+  }
+}
+
+// ===== 推理预览 =====
+let previewTime = 0;
+const PREVIEW_OBJECTS = [
+  { type: 'person', x: 0.15, y: 0.4, w: 0.08, h: 0.25, vx: 0.02, color: '#ff6b6b', label: '行人 92%' },
+  { type: 'car', x: 0.6, y: 0.55, w: 0.18, h: 0.12, vx: -0.03, color: '#4d96ff', label: '汽车 97%' },
+  { type: 'person', x: 0.8, y: 0.35, w: 0.07, h: 0.22, vx: -0.01, color: '#ff6b6b', label: '行人 88%' },
+  { type: 'bike', x: 0.35, y: 0.5, w: 0.1, h: 0.1, vx: 0.015, color: '#2aaa5a', label: '自行车 85%' },
+  { type: 'dog', x: 0.5, y: 0.65, w: 0.08, h: 0.06, vx: 0.01, color: '#ffd93d', label: '狗 78%' },
+];
+
+function drawPreview(dt) {
+  const rect = previewCanvas.getBoundingClientRect();
+  const dpr = devicePixelRatio || 1;
+  previewCanvas.width = rect.width * dpr;
+  previewCanvas.height = rect.height * dpr;
+  previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const pw = rect.width, ph = rect.height;
+
+  // 背景 - 模拟街景
+  previewCtx.fillStyle = '#1a1a2e';
+  previewCtx.fillRect(0, 0, pw, ph);
+  // 天空
+  const skyGrad = previewCtx.createLinearGradient(0, 0, 0, ph * 0.4);
+  skyGrad.addColorStop(0, '#0a0a20');
+  skyGrad.addColorStop(1, '#1a1a30');
+  previewCtx.fillStyle = skyGrad;
+  previewCtx.fillRect(0, 0, pw, ph * 0.4);
+  // 地面
+  previewCtx.fillStyle = '#2a2a3e';
+  previewCtx.fillRect(0, ph * 0.7, pw, ph * 0.3);
+  // 道路线
+  previewCtx.strokeStyle = '#3a3a4e';
+  previewCtx.setLineDash([10, 15]);
+  previewCtx.beginPath();
+  previewCtx.moveTo(0, ph * 0.65);
+  previewCtx.lineTo(pw, ph * 0.65);
+  previewCtx.stroke();
+  previewCtx.setLineDash([]);
+
+  if (!inferRunning) {
+    previewCtx.fillStyle = '#666';
+    previewCtx.font = '14px sans-serif';
+    previewCtx.textAlign = 'center';
+    previewCtx.fillText('部署模型后开始推理预览', pw/2, ph/2);
+    return;
+  }
+
+  previewTime += dt;
+  // 更新物体位置
+  for (let obj of PREVIEW_OBJECTS) {
+    obj.x += obj.vx * dt;
+    if (obj.x > 1.1) obj.x = -0.15;
+    if (obj.x < -0.2) obj.x = 1.1;
+  }
+
+  // 绘制检测结果
+  const showDetection = simFps > 1;
+  if (showDetection) {
+    for (let obj of PREVIEW_OBJECTS) {
+      const ox = obj.x * pw, oy = obj.y * ph;
+      const ow = obj.w * pw, oh = obj.h * ph;
+
+      // 简化物体形状
+      previewCtx.fillStyle = obj.color + '40';
+      previewCtx.fillRect(ox, oy, ow, oh);
+
+      // 检测框
+      previewCtx.strokeStyle = obj.color;
+      previewCtx.lineWidth = 2;
+      previewCtx.strokeRect(ox, oy, ow, oh);
+
+      // 标签
+      const labelW = previewCtx.measureText(obj.label).width + 8;
+      previewCtx.fillStyle = obj.color;
+      previewCtx.fillRect(ox, oy - 16, labelW, 16);
+      previewCtx.fillStyle = '#fff';
+      previewCtx.font = '10px sans-serif';
+      previewCtx.textAlign = 'left';
+      previewCtx.fillText(obj.label, ox + 4, oy - 4);
+    }
+  }
+
+  // FPS 水印
+  previewCtx.fillStyle = 'rgba(0,0,0,0.6)';
+  previewCtx.fillRect(4, 4, 80, 20);
+  previewCtx.fillStyle = simFps > 20 ? '#2aaa5a' : simFps > 10 ? '#ffaa00' : '#ff4444';
+  previewCtx.font = 'bold 12px monospace';
+  previewCtx.textAlign = 'left';
+  previewCtx.fillText(`${simFps.toFixed(1)} FPS`, 8, 18);
+}
+
+// ===== 芯片渲染 =====
+function resize() {
+  const wrap = document.getElementById('canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const dpr = devicePixelRatio || 1;
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  CW = rect.width;
+  CH = rect.height;
+  chipScale = Math.min(CW / 740, CH / 480);
+}
+
+function drawChip() {
+  ctx.fillStyle = '#080810';
+  ctx.fillRect(0, 0, CW, CH);
+
+  const ox = (CW - 700 * chipScale) / 2;
+  const oy = (CH - 440 * chipScale) / 2;
+  ctx.save();
+  ctx.translate(ox, oy);
+  ctx.scale(chipScale, chipScale);
+
+  // 芯片边框
+  ctx.strokeStyle = '#2a2a4a';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6, 3]);
+  ctx.strokeRect(30, 20, 640, 400);
+  ctx.setLineDash([]);
+
+  // 引脚
+  ctx.fillStyle = '#c8943e30';
+  for (let i = 0; i < 16; i++) {
+    ctx.fillRect(45 + i * 38, 10, 14, 10);
+    ctx.fillRect(45 + i * 38, 420, 14, 10);
+  }
+  for (let i = 0; i < 9; i++) {
+    ctx.fillRect(18, 40 + i * 42, 12, 18);
+    ctx.fillRect(670, 40 + i * 42, 12, 18);
+  }
+
+  const dev = currentDevice;
+
+  // 总线
+  for (let bus of dev.buses) {
+    ctx.strokeStyle = bus.color;
+    ctx.lineWidth = bus.w;
+    ctx.beginPath();
+    ctx.moveTo(bus.from.x, bus.from.y);
+    ctx.lineTo(bus.to.x, bus.to.y);
+    ctx.stroke();
+    if (bus.label) {
+      ctx.fillStyle = bus.color + '80';
+      ctx.font = '9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(bus.label, (bus.from.x + bus.to.x) / 2, bus.from.y - 6);
+    }
+    // 脉冲
+    if (bus.from.y === bus.to.y && bus.w >= 4 && inferRunning) {
+      const px = bus.from.x + ((time * 100) % (bus.to.x - bus.from.x));
+      ctx.fillStyle = bus.color + '80';
+      ctx.beginPath();
+      ctx.arc(px, bus.from.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // 模块
+  for (let m of dev.modules) {
+    let load = 0;
+    if (inferRunning) {
+      if (m.id.startsWith('npu')) load = hwState.npuLoad;
+      else if (m.id === 'gpu' && currentDevice.id === 'jetson') load = hwState.npuLoad;
+      else if (m.id.startsWith('a7') || m.id.startsWith('a5')) load = hwState.cpuLoad;
+      else if (m.id === 'ddr') load = hwState.memUsed / currentDevice.mem;
+      else load = 0.1;
+    }
+
+    // 热力图
+    if (showHeat && load > 0) {
+      const r = Math.floor(load * 255);
+      ctx.fillStyle = `rgba(${r},${Math.floor(load*40)},${Math.floor((1-load)*60)},0.5)`;
+      ctx.fillRect(m.x - 3, m.y - 3, m.w + 6, m.h + 6);
+    }
+
+    // 模块背景
+    const grad = ctx.createLinearGradient(m.x, m.y, m.x, m.y + m.h);
+    grad.addColorStop(0, m.color + (inferRunning ? 'aa' : '66'));
+    grad.addColorStop(1, m.color + '33');
+    ctx.fillStyle = grad;
+    roundRect(ctx, m.x, m.y, m.w, m.h, 5);
+    ctx.fill();
+
+    // 边框
+    ctx.strokeStyle = m.color + '88';
+    ctx.lineWidth = 1;
+    roundRect(ctx, m.x, m.y, m.w, m.h, 5);
+    ctx.stroke();
+
+    // 活跃发光
+    if (load > 0.4) {
+      ctx.shadowColor = m.color;
+      ctx.shadowBlur = 8 * load;
+      roundRect(ctx, m.x, m.y, m.w, m.h, 5);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    // 负载条
+    if (load > 0) {
+      const bw = m.w - 8, bh = 3;
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(m.x + 4, m.y + m.h - 8, bw, bh);
+      ctx.fillStyle = load > 0.8 ? '#ff4444' : load > 0.5 ? '#ffaa00' : '#44ff44';
+      ctx.fillRect(m.x + 4, m.y + m.h - 8, bw * load, bh);
+    }
+
+    // 文字
+    ctx.fillStyle = '#fff';
+    ctx.font = `bold ${Math.min(13, m.w / 7)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(m.name, m.x + m.w / 2, m.y + m.h / 2 - 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = `${Math.min(10, m.w / 9)}px sans-serif`;
+    ctx.fillText(m.sub, m.x + m.w / 2, m.y + m.h / 2 + 10);
+  }
+
+  // 数据粒子
+  for (let p of particles) {
+    const pos = p.getPos();
+    for (let t of p.trail) {
+      ctx.fillStyle = p.color + Math.floor(t.a * 60).toString(16).padStart(2, '0');
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, p.size * 0.4 * t.a, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = p.color + '25';
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, p.size * 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 芯片型号
+  ctx.fillStyle = '#c8943e25';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText(currentDevice.name, 650, 410);
+
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+// ===== UI 控制 =====
+function togglePause() {
+  paused = !paused;
+  document.getElementById('btnPause').textContent = paused ? '▶' : '⏸';
+}
+
+function toggleHeat() {
+  showHeat = !showHeat;
+  document.getElementById('btnHeat').classList.toggle('active', showHeat);
+}
+
+function toggleDeviceSelector() {
+  const sel = document.getElementById('deviceSelector');
+  sel.style.display = sel.style.display === 'none' ? 'block' : 'none';
+}
+
+function switchDevice(dev) {
+  currentDevice = dev;
+  deployedModel = null;
+  inferRunning = false;
+  hwState = { npuLoad: 0, cpuLoad: 0.05, memUsed: 0.8, temp: 35, power: 2.1 };
+  simFps = 0;
+  particles = [];
+  updateDeviceLabel();
+  buildDeviceGrid();
+  buildModelList();
+  document.getElementById('statusText').textContent = `已切换到 ${dev.name}`;
+  document.getElementById('drop-hint').style.display = '';
+  document.getElementById('deviceSelector').style.display = 'none';
+  document.getElementById('quant-panel').style.display = 'none';
+  document.getElementById('monModelInfo').innerHTML = '未部署模型';
+}
+
+function updateDeviceLabel() {
+  document.getElementById('deviceLabel').textContent =
+    `📟 ${currentDevice.name} · ${currentDevice.npuLabel} · 内存 ${currentDevice.mem}GB`;
+}
+
+function resetAll() {
+  deployedModel = null;
+  inferRunning = false;
+  hwState = { npuLoad: 0, cpuLoad: 0.05, memUsed: 0.8, temp: 35, power: 2.1 };
+  simFps = 0;
+  particles = [];
+  score = 0;
+  history = [];
+  document.getElementById('scoreVal').textContent = '0';
+  document.getElementById('statusText').textContent = '就绪 — 选择模型开始部署';
+  document.getElementById('drop-hint').style.display = '';
+  document.getElementById('quant-panel').style.display = 'none';
+  document.getElementById('monModelInfo').innerHTML = '未部署模型';
+  updateHistory();
+  buildModelList();
+}
+
+function updateMonitor() {
+  const fpsEl = document.getElementById('monFps');
+  const latEl = document.getElementById('monLatency');
+  const thrEl = document.getElementById('monThroughput');
+  if (inferRunning) {
+    const jitter = (Math.random() - 0.5) * simFps * 0.1;
+    const dispFps = Math.max(0, simFps + jitter);
+    fpsEl.textContent = dispFps.toFixed(1);
+    fpsEl.className = 'mon-val ' + (dispFps > 20 ? 'good' : dispFps > 10 ? 'warn' : 'bad');
+    latEl.textContent = (1000 / dispFps).toFixed(1) + ' ms';
+    latEl.className = 'mon-val ' + (dispFps > 20 ? 'good' : dispFps > 10 ? 'warn' : 'bad');
+    thrEl.textContent = (dispFps * 0.8).toFixed(1) + ' img/s';
+  } else {
+    fpsEl.textContent = latEl.textContent = thrEl.textContent = '—';
+    fpsEl.className = latEl.className = thrEl.className = 'mon-val';
+  }
+  document.getElementById('monNpu').textContent = (hwState.npuLoad * 100).toFixed(0) + '%';
+  document.getElementById('monNpuBar').style.width = (hwState.npuLoad * 100) + '%';
+  document.getElementById('monNpuBar').style.background = hwState.npuLoad > 0.8 ? '#ff4444' : '#e8443a';
+  document.getElementById('monCpu').textContent = (hwState.cpuLoad * 100).toFixed(0) + '%';
+  document.getElementById('monCpuBar').style.width = (hwState.cpuLoad * 100) + '%';
+  document.getElementById('monMem').textContent = hwState.memUsed.toFixed(1) + ' / ' + currentDevice.mem + ' GB';
+  document.getElementById('monMemBar').style.width = (hwState.memUsed / currentDevice.mem * 100) + '%';
+  const tempEl = document.getElementById('monTemp');
+  tempEl.textContent = hwState.temp.toFixed(0) + '°C';
+  tempEl.className = 'mon-val ' + (hwState.temp > 75 ? 'bad' : hwState.temp > 55 ? 'warn' : 'good');
+  document.getElementById('monPower').textContent = hwState.power.toFixed(1) + ' W';
+  document.getElementById('perfText').textContent = inferRunning ?
+    `效率: ${(simFps / hwState.power).toFixed(2)} FPS/W` : '';
+}
+
+function updateHistory() {
+  const el = document.getElementById('history-list');
+  if (history.length === 0) { el.innerHTML = '暂无记录'; return; }
+  el.innerHTML = history.slice(-5).reverse().map(h =>
+    `<div style="padding:3px 0;border-bottom:1px solid #1a1a3a">
+      ${h.model} · ${h.quant} · ${h.device}<br>
+      <span style="color:#6a8aff">${h.fps} FPS</span> · <span style="color:#c8943e">+${h.score}分</span>
+    </div>`
+  ).join('');
+}
+
+function shakeScore() {
+  const el = document.getElementById('score-bar');
+  el.style.animation = 'none';
+  el.offsetHeight;
+  el.style.animation = 'shake 0.3s ease';
+}
+
+// ===== 持续推理粒子 =====
+let inferParticleTimer = 0;
+function spawnInferParticles(dt) {
+  if (!inferRunning) return;
+  inferParticleTimer += dt;
+  const interval = 1.5 / Math.max(1, simFps / 10);
+  if (inferParticleTimer >= interval) {
+    inferParticleTimer = 0;
+    const dev = currentDevice;
+    const ddr = dev.modules.find(m => m.id === 'ddr');
+    const npuMods = dev.modules.filter(m => m.id.startsWith('npu'));
+    const gpuMod = dev.modules.find(m => m.id === 'gpu');
+    const target = npuMods.length > 0 && currentQuant === 'int8' ? npuMods[Math.floor(Math.random() * npuMods.length)] : (gpuMod || dev.modules[0]);
+    if (ddr && target) {
+      const busY = dev.buses[0]?.from.y || 150;
+      particles.push(new DataParticle(
+        [
+          { x: ddr.x + ddr.w/2, y: ddr.y + ddr.h/2 },
+          { x: ddr.x + ddr.w/2, y: busY },
+          { x: target.x + target.w/2, y: busY },
+          { x: target.x + target.w/2, y: target.y + target.h/2 }
+        ],
+        ['#ff6b6b','#ffd93d','#4d96ff','#20c997','#ff922b'][Math.floor(Math.random()*5)],
+        0.5 + Math.random() * 0.5
+      ));
+    }
+  }
+}
+
+// ===== 主循环 =====
+let lastTime = 0;
+function loop(ts) {
+  requestAnimationFrame(loop);
+  if (!lastTime) { lastTime = ts; return; }
+  const rawDt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+  if (!paused) {
+    const dt = rawDt;
+    time += dt;
+    for (let p of particles) p.update(dt);
+    particles = particles.filter(p => p.alive);
+    spawnInferParticles(dt);
+    // 温度波动
+    if (inferRunning) {
+      hwState.temp += (Math.random() - 0.5) * 0.3;
+      hwState.power += (Math.random() - 0.5) * 0.05;
+    }
+  }
+  resize();
+  drawChip();
+  updateMonitor();
+  drawPreview(paused ? 0 : rawDt);
+}
+
+init();
+</script>
+</body>
+</html>

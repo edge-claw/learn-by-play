@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Bitcoin Promo — Learn by Play</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;cursor:none}
+canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// ── 常量 ──
+const W=1920, H=1080;
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+canvas.width=W; canvas.height=H;
+// 自适应缩放
+function fitScreen(){
+  const s=Math.min(innerWidth/W, innerHeight/H);
+  canvas.style.width=W*s+'px'; canvas.style.height=H*s+'px';
+  canvas.style.position='absolute';
+  canvas.style.left=(innerWidth-W*s)/2+'px';
+  canvas.style.top=(innerHeight-H*s)/2+'px';
+}
+fitScreen(); window.onresize=fitScreen;
+
+// ── 颜色 ──
+const ORANGE='#f7931a', BLUE='#3a7aff', GREEN='#2aaa5a', RED='#ff4444', BG='#080810';
+
+// ── 缓动 ──
+function easeOut(t){return 1-Math.pow(1-t,3)}
+function easeInOut(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2}
+
+// ── 粒子系统 ──
+let particles=[];
+function spawnP(x,y,count,hueBase,spread){
+  for(let i=0;i<count;i++){
+    const a=Math.random()*Math.PI*2, sp=2+Math.random()*5;
+    particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-1.5,life:1,
+      color:`hsl(${hueBase+Math.random()*spread},100%,${50+Math.random()*30}%)`,size:2+Math.random()*4});
+  }
+}
+function updateP(dt){
+  for(let p of particles){p.x+=p.vx;p.y+=p.vy;p.vy+=.08;p.life-=dt*1.2}
+  particles=particles.filter(p=>p.life>0);
+}
+function drawP(){
+  for(let p of particles){
+    ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();
+  }
+  ctx.globalAlpha=1;
+}
+
+// ── 星空背景 ──
+const stars=Array.from({length:200},()=>({x:Math.random()*W,y:Math.random()*H,r:.3+Math.random()*1.2,o:.2+Math.random()*.5}));
+function drawStars(alpha){
+  for(let s of stars){ctx.globalAlpha=s.o*alpha;ctx.fillStyle='#aaccff';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill()}
+  ctx.globalAlpha=1;
+}
+
+// ── 网络节点 ──
+const NAMES=['Alice','Bob','Charlie','David','Eve','Frank','Grace','Helen'];
+const cx=W/2, cy=H/2-40, nr=260;
+const nodeTargets=NAMES.map((_,i)=>{const a=i/8*Math.PI*2-Math.PI/2;return{x:cx+Math.cos(a)*nr,y:cy+Math.sin(a)*nr}});
+const edgePairs=[];
+for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){if(j===i+1||(i===0&&j===7)||Math.random()<.35)edgePairs.push([i,j])}
+
+// ── 区块数据 ──
+const TXLIST=['Alice→Bob 0.5 BTC','Charlie→Eve 1.2 BTC','David→Frank 0.3 BTC','Grace→Helen 0.8 BTC','Bob→Alice 2.0 BTC'];
+const DOUBLE_TX='Alice→Eve 0.5 BTC';
+function fakeHash(seed){let h=0x811c9dc5;for(let i=0;i<seed.length;i++){h^=seed.charCodeAt(i);h=Math.imul(h,0x01000193)}return((h>>>0).toString(16)).padStart(8,'0')}
+
+// ── 时间轴 ──
+let t=0, startTime=0;
+
+// ── 幕1: 开场 ──
+function drawScene1(lt){
+  // lt: 0~3
+  const p=Math.min(1,lt/.8); // 0~0.8s 放大
+  const scale=easeOut(p)*1;
+  const rot=easeOut(p)*Math.PI*.15;
+  const alpha=easeOut(Math.min(1,lt/.5));
+
+  ctx.save();
+  ctx.translate(W/2,H/2-60);
+  ctx.rotate(Math.sin(rot)*0.1);
+  ctx.scale(scale,scale);
+  ctx.globalAlpha=alpha;
+
+  // ₿ 符号
+  ctx.font='bold 180px -apple-system,sans-serif';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  const grd=ctx.createLinearGradient(-80,-80,80,80);
+  grd.addColorStop(0,'#f7931a');grd.addColorStop(1,'#ffcc00');
+  ctx.fillStyle=grd;
+  ctx.fillText('₿',0,0);
+
+  // 光晕
+  const glowR=ctx.createRadialGradient(0,0,40,0,0,160);
+  glowR.addColorStop(0,'rgba(247,147,26,.25)');glowR.addColorStop(1,'rgba(247,147,26,0)');
+  ctx.fillStyle=glowR;
+  ctx.beginPath();ctx.arc(0,0,160,0,Math.PI*2);ctx.fill();
+
+  ctx.restore();
+
+  // 粒子爆发
+  if(lt>.3&&lt<.35) spawnP(W/2,H/2-60,80,30,30);
+
+  // 标题
+  if(lt>1){
+    const ta=easeOut(Math.min(1,(lt-1)/.6));
+    ctx.globalAlpha=ta;
+    ctx.fillStyle='#fff';ctx.font='bold 52px "PingFang SC",sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('比特币原理探险',W/2,H/2+100);
+    ctx.fillStyle='#888';ctx.font='22px "PingFang SC",sans-serif';
+    ctx.fillText('6关互动游戏 · 从零理解区块链',W/2,H/2+145);
+    ctx.globalAlpha=1;
+  }
+}
+
+// ── 幕2: 网络传播 (3-8s) ──
+let netNodes=[], netEdges=[], netBroadcasts=[], netReceived=new Set();
+function initNet(){
+  netNodes=NAMES.map((n,i)=>({name:n,x:W/2,y:H/2-40,tx:nodeTargets[i].x,ty:nodeTargets[i].y,pulse:0,received:false,isYou:i===0}));
+  netEdges=edgePairs.map(([a,b])=>({a,b}));
+  netBroadcasts=[];netReceived.clear();
+}
+initNet();
+
+function drawScene2(lt){
+  const nodeAlpha=easeOut(Math.min(1,lt/.8));
+  const spread=easeOut(Math.min(1,lt/.6));
+  for(let nd of netNodes){nd.x=W/2+(nd.tx-W/2)*spread;nd.y=(H/2-40)+(nd.ty-(H/2-40))*spread}
+  if(spread>.5){
+    ctx.globalAlpha=nodeAlpha*(spread-.5)*2;
+    for(let e of netEdges){const a=netNodes[e.a],b=netNodes[e.b];ctx.strokeStyle='#1a1a3a';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}
+    ctx.globalAlpha=1;
+  }
+  if(lt>1.5&&netBroadcasts.length===0&&!netReceived.has(0)){
+    netReceived.add(0);netNodes[0].received=true;netNodes[0].pulse=1;
+    const queue=[{node:0,delay:0}];const visited=new Set([0]);
+    while(queue.length){const cur=queue.shift();for(let e of netEdges){let nb=-1;if(e.a===cur.node&&!visited.has(e.b))nb=e.b;if(e.b===cur.node&&!visited.has(e.a))nb=e.a;if(nb>=0){visited.add(nb);const d=cur.delay+.4+Math.random()*.3;netBroadcasts.push({from:cur.node,to:nb,startT:lt+d-.4,dur:.4,done:false});queue.push({node:nb,delay:d})}}}
+  }
+  for(let br of netBroadcasts){
+    if(lt<br.startT)continue;const p=Math.min(1,(lt-br.startT)/br.dur);
+    const a=netNodes[br.from],b=netNodes[br.to];const bx=a.x+(b.x-a.x)*p,by=a.y+(b.y-a.y)*p;
+    ctx.fillStyle=ORANGE;ctx.beginPath();ctx.arc(bx,by,6,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(247,147,26,.2)';ctx.beginPath();ctx.arc(bx,by,14,0,Math.PI*2);ctx.fill();
+    if(p>=1&&!br.done){br.done=true;netNodes[br.to].received=true;netNodes[br.to].pulse=1;spawnP(b.x,b.y,8,30,20)}
+  }
+  ctx.globalAlpha=nodeAlpha;
+  for(let nd of netNodes){
+    if(nd.pulse>0){ctx.strokeStyle=`rgba(${nd.isYou?'247,147,26':'58,122,255'},${nd.pulse})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(nd.x,nd.y,20+(1-nd.pulse)*15,0,Math.PI*2);ctx.stroke();nd.pulse=Math.max(0,nd.pulse-.015)}
+    const g=ctx.createRadialGradient(nd.x,nd.y,0,nd.x,nd.y,16);const c=nd.isYou?ORANGE:BLUE;g.addColorStop(0,c+'cc');g.addColorStop(1,c+'44');ctx.fillStyle=g;ctx.beginPath();ctx.arc(nd.x,nd.y,16,0,Math.PI*2);ctx.fill();
+    if(nd.isYou){ctx.strokeStyle=ORANGE;ctx.lineWidth=2;ctx.setLineDash([3,3]);ctx.beginPath();ctx.arc(nd.x,nd.y,22,0,Math.PI*2);ctx.stroke();ctx.setLineDash([])}
+    ctx.fillStyle='#ccc';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText(nd.isYou?nd.name+'(你)':nd.name,nd.x,nd.y+32);
+    if(nd.received){ctx.fillStyle=GREEN;ctx.font='bold 14px sans-serif';ctx.fillText('✓',nd.x+20,nd.y-16)}
+  }
+  ctx.globalAlpha=1;
+  if(lt>2){const a=easeOut(Math.min(1,(lt-2)/.5));ctx.globalAlpha=a;ctx.fillStyle=ORANGE;ctx.font='bold 28px "PingFang SC",sans-serif';ctx.textAlign='center';ctx.fillText('交易广播 → 全网验证',W/2,H-80);ctx.globalAlpha=1}
+}
+
+// ── SCENE3_PLACEHOLDER ──
+
+// ── 幕3: 打包区块 (8-12s) ──
+let txItems=[], doubleItem=null, blockFormed=false, blockFormT=0;
+function initTxItems(){
+  txItems=TXLIST.map((tx,i)=>({text:tx,x:W/2+(Math.random()-.5)*600,y:-40-i*60,ty:280+i*50,arrived:false,isDouble:false}));
+  doubleItem={text:DOUBLE_TX+' 🔴双花',x:W/2+200,y:-40-5*60,ty:280+5*50,arrived:false,isDouble:true,rejected:false,rejectT:0};
+  blockFormed=false;blockFormT=0;
+}
+initTxItems();
+
+function drawScene3(lt){
+  const boxX=W/2-180, boxY=200, boxW=360, boxH=380;
+  // 交易飞入
+  const flyDur=.8;
+  for(let i=0;i<txItems.length;i++){
+    const startT=i*.25;const p=Math.min(1,Math.max(0,(lt-startT)/flyDur));
+    const tx=txItems[i];tx.y=-40+(tx.ty+40)*easeOut(p);tx.arrived=p>=1;
+    if(p>0){ctx.globalAlpha=p;ctx.fillStyle='#1e1a10';ctx.fillRect(boxX+20,tx.y-14,boxW-40,28);ctx.strokeStyle=ORANGE+'66';ctx.strokeRect(boxX+20,tx.y-14,boxW-40,28);ctx.fillStyle='#a5f3a0';ctx.font='15px monospace';ctx.textAlign='center';ctx.fillText(tx.text,W/2,tx.y+5);ctx.globalAlpha=1}
+  }
+  // 双花交易
+  const dblStartT=txItems.length*.25;
+  const dp=Math.min(1,Math.max(0,(lt-dblStartT)/flyDur));
+  if(dp>0){
+    doubleItem.y=-40+(doubleItem.ty+40)*easeOut(dp);
+    if(!doubleItem.rejected){
+      ctx.globalAlpha=dp;ctx.fillStyle='#2a0a0a';ctx.fillRect(boxX+20,doubleItem.y-14,boxW-40,28);ctx.strokeStyle=RED;ctx.strokeRect(boxX+20,doubleItem.y-14,boxW-40,28);ctx.fillStyle='#ff6b6b';ctx.font='15px monospace';ctx.textAlign='center';ctx.fillText(doubleItem.text,W/2,doubleItem.y+5);ctx.globalAlpha=1;
+    }
+  }
+  // 弹出双花
+  if(lt>dblStartT+1.2&&!doubleItem.rejected){doubleItem.rejected=true;doubleItem.rejectT=lt;spawnP(W/2,doubleItem.y,30,0,20)}
+  if(doubleItem.rejected){
+    const rp=Math.min(1,(lt-doubleItem.rejectT)/.6);
+    const rx=W/2+300*easeOut(rp);
+    ctx.globalAlpha=1-rp;ctx.fillStyle='#2a0a0a';ctx.fillRect(rx-160,doubleItem.y-14,320,28);ctx.strokeStyle=RED;ctx.strokeRect(rx-160,doubleItem.y-14,320,28);ctx.fillStyle='#ff6b6b';ctx.font='15px monospace';ctx.textAlign='center';ctx.fillText('❌ '+doubleItem.text,rx,doubleItem.y+5);ctx.globalAlpha=1;
+  }
+  // 区块框
+  const boxAlpha=easeOut(Math.min(1,lt/.5));
+  ctx.globalAlpha=boxAlpha;ctx.strokeStyle=ORANGE+'88';ctx.lineWidth=2;
+  roundRect(ctx,boxX,boxY,boxW,boxH,12);ctx.stroke();
+  // 区块标题
+  if(lt>dblStartT+2&&!blockFormed){blockFormed=true;blockFormT=lt}
+  if(blockFormed){
+    const fp=easeOut(Math.min(1,(lt-blockFormT)/.5));
+    ctx.globalAlpha=fp;ctx.fillStyle=ORANGE;ctx.font='bold 20px "PingFang SC",sans-serif';ctx.textAlign='center';ctx.fillText('📦 区块 #2',W/2,boxY-15);
+    ctx.fillStyle='#888';ctx.font='12px monospace';ctx.textAlign='left';
+    ctx.fillText('哈希: '+fakeHash('block2')+fakeHash('b2x'),boxX+20,boxY+boxH+25);
+    ctx.fillText('时间: 2026-04-06 12:34:56',boxX+20,boxY+boxH+45);
+    ctx.globalAlpha=1;
+  }
+  ctx.globalAlpha=1;
+  // 底部文字
+  if(lt>2.5){const a=easeOut(Math.min(1,(lt-2.5)/.5));ctx.globalAlpha=a;ctx.fillStyle=ORANGE;ctx.font='bold 28px "PingFang SC",sans-serif';ctx.textAlign='center';ctx.fillText('打包区块 → 识别双花',W/2,H-80);ctx.globalAlpha=1}
+}
+
+// ── 幕4: 挖矿+链 (12-17s) ──
+let mineHashes=[], mineFound=false, mineFoundT=0, chainBlocks=[];
+function initMine(){
+  mineHashes=[];mineFound=false;mineFoundT=0;
+  chainBlocks=[
+    {id:1,hash:fakeHash('genesis'),label:'创世块',color:ORANGE},
+    {id:2,hash:fakeHash('block2'),label:'区块#2',color:ORANGE},
+    {id:3,hash:'???',label:'区块#3',color:'#555'},
+  ];
+}
+initMine();
+
+function drawScene4(lt){
+  // 挖矿哈希滚动 (0~2.5s)
+  if(lt<3){
+    const hashPerSec=12;const total=Math.floor(lt*hashPerSec);
+    while(mineHashes.length<total&&!mineFound){
+      const nonce=mineHashes.length+1;const h=fakeHash('mine'+nonce);
+      const isValid=mineHashes.length>=total-1&&lt>2;
+      mineHashes.push({nonce,hash:isValid?'000'+h.slice(3):h,valid:isValid});
+      if(isValid){mineFound=true;mineFoundT=lt;chainBlocks[2].hash='000'+h.slice(3);chainBlocks[2].color=GREEN;spawnP(W/2,H/2,60,30,40)}
+    }
+    // 显示最近几条
+    const showCount=8;const startIdx=Math.max(0,mineHashes.length-showCount);
+    const mineBoxX=W/2-300,mineBoxY=160;
+    ctx.fillStyle='rgba(10,10,24,.95)';roundRect(ctx,mineBoxX,mineBoxY,600,showCount*32+50,10);ctx.fill();ctx.strokeStyle=ORANGE+'55';roundRect(ctx,mineBoxX,mineBoxY,600,showCount*32+50,10);ctx.stroke();
+    ctx.fillStyle=ORANGE;ctx.font='bold 16px "PingFang SC",sans-serif';ctx.textAlign='left';ctx.fillText('⛏️ 挖矿中... 寻找有效 nonce',mineBoxX+16,mineBoxY+28);
+    ctx.fillStyle='#666';ctx.font='13px monospace';ctx.fillText('目标: 哈希以 000 开头',mineBoxX+16,mineBoxY+48);
+    for(let i=startIdx;i<mineHashes.length;i++){
+      const m=mineHashes[i];const y=mineBoxY+65+(i-startIdx)*32;
+      ctx.fillStyle=m.valid?GREEN:RED;ctx.font='14px monospace';ctx.textAlign='left';
+      ctx.fillText(`nonce=${String(m.nonce).padStart(4,' ')}  →  ${m.hash}  ${m.valid?'✅ 找到了！':'❌'}`,mineBoxX+20,y);
+    }
+  }
+
+  // 链式连接 (2.5s~)
+  if(lt>2.5){
+    const chainLt=lt-2.5;const chainY=H/2+60;const bw=200,bh=90,gap=60;
+    const totalW=chainBlocks.length*(bw+gap)-gap;const startX=(W-totalW)/2;
+    for(let i=0;i<chainBlocks.length;i++){
+      const b=chainBlocks[i];const bx=startX+i*(bw+gap);
+      const showP=easeOut(Math.min(1,(chainLt-i*.3)/.4));
+      if(showP<=0)continue;
+      ctx.globalAlpha=showP;
+      // 连接箭头
+      if(i>0){ctx.strokeStyle=b.color+'88';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(bx-gap+5,chainY+bh/2);ctx.lineTo(bx-5,chainY+bh/2);ctx.stroke();
+        ctx.fillStyle=b.color;ctx.beginPath();ctx.moveTo(bx-5,chainY+bh/2);ctx.lineTo(bx-15,chainY+bh/2-6);ctx.lineTo(bx-15,chainY+bh/2+6);ctx.closePath();ctx.fill()}
+      // 区块
+      ctx.fillStyle='#141428';roundRect(ctx,bx,chainY,bw,bh,8);ctx.fill();ctx.strokeStyle=b.color+'88';ctx.lineWidth=2;roundRect(ctx,bx,chainY,bw,bh,8);ctx.stroke();
+      ctx.fillStyle=b.color;ctx.font='bold 16px "PingFang SC",sans-serif';ctx.textAlign='center';ctx.fillText(b.label,bx+bw/2,chainY+28);
+      ctx.fillStyle='#888';ctx.font='11px monospace';ctx.fillText(b.hash.slice(0,16)+'...',bx+bw/2,chainY+52);
+      ctx.globalAlpha=1;
+    }
+    // 篡改动画 (4s~)
+    if(chainLt>3){
+      const tp=Math.min(1,(chainLt-3)/.5);
+      // 中间区块变红
+      const bx2=startX+1*(bw+gap);
+      ctx.globalAlpha=tp;ctx.fillStyle='rgba(255,68,68,.3)';roundRect(ctx,bx2,chainY,bw,bh,8);ctx.fill();
+      ctx.strokeStyle=RED;ctx.lineWidth=3;roundRect(ctx,bx2,chainY,bw,bh,8);ctx.stroke();
+      ctx.fillStyle=RED;ctx.font='bold 24px sans-serif';ctx.textAlign='center';ctx.fillText('✏️ 篡改!',bx2+bw/2,chainY-15);
+      // 后续区块碎裂
+      if(tp>.5){
+        const bx3=startX+2*(bw+gap);
+        ctx.fillStyle='rgba(255,68,68,.2)';roundRect(ctx,bx3,chainY,bw,bh,8);ctx.fill();ctx.strokeStyle=RED;ctx.lineWidth=2;ctx.setLineDash([4,3]);roundRect(ctx,bx3,chainY,bw,bh,8);ctx.stroke();ctx.setLineDash([]);
+        ctx.fillStyle=RED;ctx.font='bold 14px "PingFang SC",sans-serif';ctx.fillText('❌ 哈希失效',bx3+bw/2,chainY+72);
+      }
+      ctx.globalAlpha=1;
+    }
+  }
+  // 底部文字
+  if(lt>1.5){const a=easeOut(Math.min(1,(lt-1.5)/.5));ctx.globalAlpha=a;ctx.fillStyle=ORANGE;ctx.font='bold 28px "PingFang SC",sans-serif';ctx.textAlign='center';ctx.fillText('工作量证明 → 不可篡改',W/2,H-80);ctx.globalAlpha=1}
+}
+
+// ── SCENE5_PLACEHOLDER ──
+
+// ── 幕5: 收尾 CTA (17-21s) ──
+function drawScene5(lt){
+  // 大标题
+  const p=easeOut(Math.min(1,lt/.8));
+  ctx.globalAlpha=p;
+  // Learn by Play
+  ctx.font='bold 80px -apple-system,"PingFang SC",sans-serif';ctx.textAlign='center';
+  const grd=ctx.createLinearGradient(W/2-300,H/2-60,W/2+300,H/2+60);
+  grd.addColorStop(0,'#60a5fa');grd.addColorStop(.5,'#a78bfa');grd.addColorStop(1,'#f472b6');
+  ctx.fillStyle=grd;
+  ctx.fillText('Learn by Play',W/2,H/2-30);
+  // 副标题
+  if(lt>.5){
+    const sp=easeOut(Math.min(1,(lt-.5)/.5));
+    ctx.globalAlpha=sp;ctx.fillStyle='#ccc';ctx.font='28px "PingFang SC",sans-serif';
+    ctx.fillText('玩中学科学 — 零依赖 · 浏览器直接玩 · 完全免费',W/2,H/2+40);
+  }
+  // 比特币特色
+  if(lt>1){
+    const bp=easeOut(Math.min(1,(lt-1)/.5));
+    ctx.globalAlpha=bp;ctx.fillStyle=ORANGE;ctx.font='24px "PingFang SC",sans-serif';
+    ctx.fillText('₿ 比特币原理探险 — 6关互动，从交易到挖矿',W/2,H/2+100);
+  }
+  // 粒子
+  if(lt>.2&&lt<.3)spawnP(W/2,H/2-50,100,200,160);
+  ctx.globalAlpha=1;
+}
+
+// ── roundRect 工具 ──
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+}
+
+// ── 场景过渡 ──
+const SCENES=[
+  {start:0,end:3.5,draw:drawScene1},
+  {start:3,end:8.5,draw:drawScene2},
+  {start:8,end:12.5,draw:drawScene3},
+  {start:12,end:17.5,draw:drawScene4},
+  {start:17,end:22,draw:drawScene5},
+];
+
+// ── 主循环 ──
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(!startTime)startTime=ts;
+  const dt=1/60;
+  t=(ts-startTime)/1000;
+
+  // 背景
+  ctx.fillStyle=BG;ctx.fillRect(0,0,W,H);
+  drawStars(Math.min(1,t/.5));
+
+  // 场景
+  for(let sc of SCENES){
+    if(t>=sc.start&&t<sc.end){
+      // 淡入淡出
+      let alpha=1;
+      if(t<sc.start+.5)alpha=easeOut((t-sc.start)/.5);
+      if(t>sc.end-.5)alpha=easeOut((sc.end-t)/.5);
+      ctx.globalAlpha=alpha;
+      sc.draw(t-sc.start);
+      ctx.globalAlpha=1;
+    }
+  }
+
+  // 粒子（始终渲染）
+  updateP(dt);drawP();
+
+  // 循环播放
+  if(t>22){startTime=ts;t=0;particles=[];initNet();initTxItems();initMine()}
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

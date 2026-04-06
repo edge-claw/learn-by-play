@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Ethereum Promo — Learn by Play</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;cursor:none}
+canvas{display:block}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const W=1920,H=1080;
+const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+canvas.width=W;canvas.height=H;
+function fitScreen(){const s=Math.min(innerWidth/W,innerHeight/H);canvas.style.width=W*s+'px';canvas.style.height=H*s+'px';canvas.style.position='absolute';canvas.style.left=(innerWidth-W*s)/2+'px';canvas.style.top=(innerHeight-H*s)/2+'px'}
+fitScreen();window.onresize=fitScreen;
+
+const ETH='#627eea',ETH2='#8a9ff5',GREEN='#2aaa5a',RED='#ff4444',ORANGE='#f7931a',BG='#080810';
+function easeOut(t){return 1-Math.pow(1-t,3)}
+function easeInOut(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2}
+
+// ── 粒子 ──
+let particles=[];
+function spawnP(x,y,count,hueBase,spread){for(let i=0;i<count;i++){const a=Math.random()*Math.PI*2,sp=2+Math.random()*5;particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-1.5,life:1,color:`hsl(${hueBase+Math.random()*spread},100%,${50+Math.random()*30}%)`,size:2+Math.random()*4})}}
+function updateP(dt){for(let p of particles){p.x+=p.vx;p.y+=p.vy;p.vy+=.08;p.life-=dt*1.2}particles=particles.filter(p=>p.life>0)}
+function drawP(){for(let p of particles){ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+
+// ── 星空 ──
+const stars=Array.from({length:200},()=>({x:Math.random()*W,y:Math.random()*H,r:.3+Math.random()*1.2,o:.2+Math.random()*.5}));
+function drawStars(a){for(let s of stars){ctx.globalAlpha=s.o*a;ctx.fillStyle='#aaccff';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
+
+// ── 幕1: 开场 (0-3.5s) ──
+function drawScene1(lt){
+  const p=easeOut(Math.min(1,lt/.8)),alpha=easeOut(Math.min(1,lt/.5));
+  ctx.save();ctx.translate(W/2,H/2-60);ctx.scale(p,p);ctx.globalAlpha=alpha;
+  // ⟠ 以太坊菱形
+  ctx.font='bold 200px -apple-system,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  const grd=ctx.createLinearGradient(-80,-100,80,100);grd.addColorStop(0,'#627eea');grd.addColorStop(1,'#a78bfa');
+  ctx.fillStyle=grd;ctx.fillText('⟠',0,0);
+  // 光晕
+  const gl=ctx.createRadialGradient(0,0,40,0,0,180);gl.addColorStop(0,'rgba(98,126,234,.3)');gl.addColorStop(1,'rgba(98,126,234,0)');
+  ctx.fillStyle=gl;ctx.beginPath();ctx.arc(0,0,180,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+  if(lt>.3&&lt<.35)spawnP(W/2,H/2-60,80,230,40);
+  if(lt>1){const ta=easeOut(Math.min(1,(lt-1)/.6));ctx.globalAlpha=ta;ctx.fillStyle='#fff';ctx.font='bold 52px "PingFang SC",sans-serif';ctx.textAlign='center';ctx.fillText('以太坊原理探险',W/2,H/2+100);ctx.fillStyle='#888';ctx.font='22px "PingFang SC",sans-serif';ctx.fillText('6关互动游戏 · 智能合约 · DeFi · NFT',W/2,H/2+145);ctx.globalAlpha=1}
+}
+
+// ── PLACEHOLDER_S2 ──
+
+// ── 幕2: 智能合约 (3-8s) ──
+const codeLines=[
+  {text:'contract VendingMachine {',cls:'kw'},
+  {text:'  mapping(address => uint) coins;',cls:'var'},
+  {text:'  function buy() payable {',cls:'fn'},
+  {text:'    require(msg.value >= 1 ether);',cls:'str'},
+  {text:'    coins[msg.sender] += 1; // 🍫',cls:'cm'},
+  {text:'  }',cls:''},
+  {text:'}',cls:''},
+];
+function drawScene2(lt){
+  // 代码编辑器
+  const boxX=W/2-340,boxY=140,boxW=680,boxH=340;
+  const boxAlpha=easeOut(Math.min(1,lt/.5));
+  ctx.globalAlpha=boxAlpha;
+  ctx.fillStyle='#0c0c1e';roundRect(ctx,boxX,boxY,boxW,boxH,12);ctx.fill();
+  ctx.strokeStyle=ETH+'44';ctx.lineWidth=2;roundRect(ctx,boxX,boxY,boxW,boxH,12);ctx.stroke();
+  // 标题栏
+  ctx.fillStyle='#1a1a38';roundRect(ctx,boxX,boxY,boxW,36,12);ctx.fill();
+  ctx.fillStyle='#888';ctx.font='13px "PingFang SC",sans-serif';ctx.textAlign='left';ctx.fillText('📝 VendingMachine.sol — 自动售货机合约',boxX+16,boxY+24);
+  // 代码逐行出现
+  const lineH=38;
+  for(let i=0;i<codeLines.length;i++){
+    const lineT=.5+i*.35;const lp=Math.min(1,Math.max(0,(lt-lineT)/.3));
+    if(lp<=0)continue;
+    ctx.globalAlpha=boxAlpha*lp;
+    const y=boxY+60+i*lineH;
+    // 行号
+    ctx.fillStyle='#444';ctx.font='14px "Menlo",monospace';ctx.textAlign='right';ctx.fillText(String(i+1),boxX+35,y);
+    // 代码
+    const cl=codeLines[i];
+    const colors={kw:'#c678dd',fn:'#61afef',str:'#98c379',var:'#e5c07b',cm:'#5c6370','':'#abb2bf'};
+    ctx.fillStyle=colors[cl.cls]||'#abb2bf';ctx.font='16px "Menlo","Monaco",monospace';ctx.textAlign='left';ctx.fillText(cl.text,boxX+50,y);
+  }
+  ctx.globalAlpha=1;
+  // 执行动画：投入 1 ETH → 获得 🍫
+  if(lt>3.5){
+    const ep=Math.min(1,(lt-3.5)/1);
+    const coinX=W/2-200+400*easeOut(ep),coinY=boxY+boxH+60;
+    ctx.globalAlpha=easeOut(Math.min(1,(lt-3.5)/.3));
+    // ETH 币飞入
+    if(ep<.5){
+      ctx.font='36px sans-serif';ctx.textAlign='center';ctx.fillText('⟠',coinX,coinY);
+      ctx.fillStyle=ETH;ctx.font='16px "PingFang SC",sans-serif';ctx.fillText('1 ETH',coinX,coinY+30);
+    }
+    // 巧克力飞出
+    if(ep>.5){
+      const cp=easeOut((ep-.5)*2);
+      ctx.font='48px sans-serif';ctx.textAlign='center';ctx.fillText('🍫',W/2+100+cp*150,coinY-cp*40);
+      if(ep>.5&&ep<.55)spawnP(W/2+100,coinY,20,30,30);
+    }
+    // 箭头
+    ctx.fillStyle=ETH;ctx.font='bold 28px sans-serif';ctx.textAlign='center';ctx.fillText('→',W/2,coinY-5);
+    ctx.globalAlpha=1;
+  }
+  // 底部文字
+  if(lt>2){const a=easeOut(Math.min(1,(lt-2)/.5));ctx.globalAlpha=a;ctx.fillStyle=ETH;ctx.font='bold 28px "PingFang SC",sans-serif';ctx.textAlign='center';ctx.fillText('智能合约 — 代码即规则，无需中间商',W/2,H-80);ctx.globalAlpha=1}
+}
+
+// ── 幕3: Gas + NFT (8-13s) ──
+const gasOps=[{name:'转账',gas:21000,icon:'💸'},{name:'部署合约',gas:500000,icon:'📝'},{name:'铸造NFT',gas:150000,icon:'🎨'},{name:'Swap',gas:180000,icon:'🔄'}];
+function drawScene3(lt){
+  // Gas 仪表盘
+  const panelX=W/2-400,panelY=160,panelW=380,panelH=360;
+  const pa=easeOut(Math.min(1,lt/.5));
+  ctx.globalAlpha=pa;
+  ctx.fillStyle='#0c0c1e';roundRect(ctx,panelX,panelY,panelW,panelH,12);ctx.fill();
+  ctx.strokeStyle=ETH+'44';roundRect(ctx,panelX,panelY,panelW,panelH,12);ctx.stroke();
+  ctx.fillStyle=ETH;ctx.font='bold 20px "PingFang SC",sans-serif';ctx.textAlign='left';ctx.fillText('⛽ Gas 消耗对比',panelX+20,panelY+35);
+  for(let i=0;i<gasOps.length;i++){
+    const opT=.5+i*.5;const op=Math.min(1,Math.max(0,(lt-opT)/.4));
+    if(op<=0)continue;
+    const y=panelY+70+i*65;const maxGas=500000;const barW=(panelW-120)*gasOps[i].gas/maxGas*easeOut(op);
+    ctx.globalAlpha=pa*op;
+    ctx.fillStyle='#888';ctx.font='16px "PingFang SC",sans-serif';ctx.textAlign='left';
+    ctx.fillText(gasOps[i].icon+' '+gasOps[i].name,panelX+20,y+5);
+    // 条形图
+    ctx.fillStyle=ETH+'33';roundRect(ctx,panelX+20,y+14,panelW-60,20,4);ctx.fill();
+    ctx.fillStyle=ETH;roundRect(ctx,panelX+20,y+14,barW,20,4);ctx.fill();
+    ctx.fillStyle='#ccc';ctx.font='13px monospace';ctx.textAlign='right';
+    ctx.fillText(gasOps[i].gas.toLocaleString()+' Gas',panelX+panelW-25,y+30);
+  }
+  ctx.globalAlpha=1;
+
+  // NFT 卡片
+  const nftX=W/2+50,nftY=160,nftW=350,nftH=360;
+  if(lt>2){
+    const np=easeOut(Math.min(1,(lt-2)/.6));
+    ctx.globalAlpha=np;
+    // NFT 卡片背景
+    const ngrd=ctx.createLinearGradient(nftX,nftY,nftX+nftW,nftY+nftH);
+    ngrd.addColorStop(0,'#1a1a38');ngrd.addColorStop(1,'#0e0e20');
+    ctx.fillStyle=ngrd;roundRect(ctx,nftX,nftY,nftW,nftH,16);ctx.fill();
+    ctx.strokeStyle=ETH+'66';ctx.lineWidth=2;roundRect(ctx,nftX,nftY,nftW,nftH,16);ctx.stroke();
+    // NFT 图片区域
+    const imgY=nftY+20,imgH=200;
+    const igrd=ctx.createLinearGradient(nftX+20,imgY,nftX+nftW-20,imgY+imgH);
+    igrd.addColorStop(0,'#2a1a4a');igrd.addColorStop(.5,'#1a2a5a');igrd.addColorStop(1,'#1a4a3a');
+    ctx.fillStyle=igrd;roundRect(ctx,nftX+20,imgY,nftW-40,imgH,10);ctx.fill();
+    // NFT 艺术（抽象图形）
+    ctx.save();ctx.beginPath();roundRect(ctx,nftX+20,imgY,nftW-40,imgH,10);ctx.clip();
+    const artT=lt*0.5;
+    for(let i=0;i<5;i++){
+      ctx.fillStyle=`hsla(${230+i*30+artT*20},70%,60%,.3)`;
+      ctx.beginPath();ctx.arc(nftX+80+i*55+Math.sin(artT+i)*20,imgY+100+Math.cos(artT*1.3+i)*30,30+i*8,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+    // NFT 信息
+    ctx.fillStyle='#fff';ctx.font='bold 18px "PingFang SC",sans-serif';ctx.textAlign='left';ctx.fillText('CryptoArt #0042',nftX+25,nftY+250);
+    ctx.fillStyle=ETH;ctx.font='14px monospace';ctx.fillText('ERC-721 · TokenID: 42',nftX+25,nftY+275);
+    ctx.fillStyle='#888';ctx.font='13px "PingFang SC",sans-serif';ctx.fillText('所有者: 0x7a3b...f91c (你)',nftX+25,nftY+300);
+    ctx.fillStyle=GREEN;ctx.font='bold 16px "PingFang SC",sans-serif';ctx.fillText('独一无二 · 不可替代',nftX+25,nftY+330);
+    ctx.globalAlpha=1;
+  }
+  // 底部文字
+  if(lt>3){const a=easeOut(Math.min(1,(lt-3)/.5));ctx.globalAlpha=a;ctx.fillStyle=ETH;ctx.font='bold 28px "PingFang SC",sans-serif';ctx.textAlign='center';ctx.fillText('Gas 费 · ERC-20 代币 · NFT 数字资产',W/2,H-80);ctx.globalAlpha=1}
+}
+
+// ── PLACEHOLDER_S4 ──
+
+// ── 幕4: DeFi + PoS (13-18s) ──
+function drawScene4(lt){
+  // AMM 流动性池
+  const poolCx=W/2-250,poolCy=H/2-20,poolR=140;
+  const pa=easeOut(Math.min(1,lt/.6));
+  ctx.globalAlpha=pa;
+  // 池子圆
+  const pgrd=ctx.createRadialGradient(poolCx,poolCy,0,poolCx,poolCy,poolR);
+  pgrd.addColorStop(0,'rgba(98,126,234,.15)');pgrd.addColorStop(1,'rgba(98,126,234,.02)');
+  ctx.fillStyle=pgrd;ctx.beginPath();ctx.arc(poolCx,poolCy,poolR,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle=ETH+'66';ctx.lineWidth=2;ctx.beginPath();ctx.arc(poolCx,poolCy,poolR,0,Math.PI*2);ctx.stroke();
+  // ETH 和 TOKEN
+  ctx.font='40px sans-serif';ctx.textAlign='center';
+  ctx.fillText('⟠',poolCx-50,poolCy-10);ctx.fillText('🪙',poolCx+50,poolCy-10);
+  ctx.fillStyle=ETH;ctx.font='bold 16px "PingFang SC",sans-serif';
+  ctx.fillText('10 ETH',poolCx-50,poolCy+30);
+  ctx.fillStyle=ORANGE;ctx.fillText('10,000 TOKEN',poolCx+50,poolCy+30);
+  ctx.fillStyle='#ccc';ctx.font='14px "PingFang SC",sans-serif';ctx.fillText('流动性池',poolCx,poolCy-poolR-15);
+  // x × y = k 公式
+  ctx.fillStyle=ETH;ctx.font='bold 20px monospace';ctx.fillText('x × y = k',poolCx,poolCy+80);
+  ctx.fillStyle='#888';ctx.font='14px "PingFang SC",sans-serif';ctx.fillText('自动做市商 (AMM)',poolCx,poolCy+105);
+
+  // Swap 动画
+  if(lt>1.5){
+    const sp=Math.min(1,(lt-1.5)/1);
+    const sx=poolCx-poolR-80+easeOut(sp)*(poolR+40);
+    ctx.font='28px sans-serif';ctx.fillText('⟠',sx,poolCy+poolR+50);
+    if(sp>.7){
+      const tp=easeOut((sp-.7)/.3);
+      ctx.font='28px sans-serif';ctx.fillText('🪙',poolCx+poolR+40-tp*80,poolCy+poolR+50);
+      if(sp>.7&&sp<.75)spawnP(poolCx,poolCy,15,230,30);
+    }
+  }
+
+  // PoS 质押
+  const posX=W/2+200,posY=180,posW=350,posH=400;
+  if(lt>2){
+    const pp=easeOut(Math.min(1,(lt-2)/.6));
+    ctx.globalAlpha=pp;
+    ctx.fillStyle='#0c0c1e';roundRect(ctx,posX,posY,posW,posH,12);ctx.fill();
+    ctx.strokeStyle=GREEN+'66';roundRect(ctx,posX,posY,posW,posH,12);ctx.stroke();
+    ctx.fillStyle=GREEN;ctx.font='bold 20px "PingFang SC",sans-serif';ctx.textAlign='center';ctx.fillText('🔒 PoS 权益证明',posX+posW/2,posY+35);
+    // 验证者列表
+    const validators=[{name:'你',stake:32,active:true},{name:'Alice',stake:32,active:true},{name:'Bob',stake:32,active:true},{name:'Eve',stake:32,active:false}];
+    for(let i=0;i<validators.length;i++){
+      const vt=2.5+i*.4;const vp=Math.min(1,Math.max(0,(lt-vt)/.3));
+      if(vp<=0)continue;
+      const vy=posY+60+i*70;
+      ctx.globalAlpha=pp*vp;
+      ctx.fillStyle=validators[i].active?'#0a2a0a':'#2a0a0a';
+      roundRect(ctx,posX+15,vy,posW-30,55,8);ctx.fill();
+      ctx.strokeStyle=validators[i].active?GREEN+'66':RED+'66';
+      roundRect(ctx,posX+15,vy,posW-30,55,8);ctx.stroke();
+      ctx.fillStyle='#ccc';ctx.font='15px "PingFang SC",sans-serif';ctx.textAlign='left';
+      ctx.fillText((validators[i].name==='你'?'👤 ':'')+'验证者: '+validators[i].name,posX+30,vy+22);
+      ctx.fillStyle=ETH;ctx.font='13px monospace';
+      ctx.fillText('质押: '+validators[i].stake+' ETH',posX+30,vy+42);
+      ctx.fillStyle=validators[i].active?GREEN:RED;ctx.font='bold 13px sans-serif';ctx.textAlign='right';
+      ctx.fillText(validators[i].active?'✅ 在线':'❌ 罚没',posX+posW-25,vy+32);
+    }
+    // Eve 被罚没动画
+    if(lt>4.5){
+      const slashP=Math.min(1,(lt-4.5)/.3);
+      if(slashP>0&&slashP<.1)spawnP(posX+posW/2,posY+60+3*70+27,20,0,20);
+    }
+    ctx.globalAlpha=1;
+  }
+  ctx.globalAlpha=1;
+  if(lt>3){const a=easeOut(Math.min(1,(lt-3)/.5));ctx.globalAlpha=a;ctx.fillStyle=ETH;ctx.font='bold 28px "PingFang SC",sans-serif';ctx.textAlign='center';ctx.fillText('DeFi 去中心化金融 · PoS 质押挖矿',W/2,H-80);ctx.globalAlpha=1}
+}
+
+// ── 幕5: CTA (18-22s) ──
+function drawScene5(lt){
+  const p=easeOut(Math.min(1,lt/.8));
+  ctx.globalAlpha=p;
+  ctx.font='bold 80px -apple-system,"PingFang SC",sans-serif';ctx.textAlign='center';
+  const grd=ctx.createLinearGradient(W/2-300,H/2-60,W/2+300,H/2+60);
+  grd.addColorStop(0,'#60a5fa');grd.addColorStop(.5,'#a78bfa');grd.addColorStop(1,'#f472b6');
+  ctx.fillStyle=grd;ctx.fillText('Learn by Play',W/2,H/2-30);
+  if(lt>.5){const sp=easeOut(Math.min(1,(lt-.5)/.5));ctx.globalAlpha=sp;ctx.fillStyle='#ccc';ctx.font='28px "PingFang SC",sans-serif';ctx.fillText('玩中学科学 — 零依赖 · 浏览器直接玩 · 完全免费',W/2,H/2+40)}
+  if(lt>1){const bp=easeOut(Math.min(1,(lt-1)/.5));ctx.globalAlpha=bp;ctx.fillStyle=ETH;ctx.font='24px "PingFang SC",sans-serif';ctx.fillText('⟠ 以太坊原理探险 — 6关互动，从合约到 DeFi',W/2,H/2+100)}
+  if(lt>.2&&lt<.3)spawnP(W/2,H/2-50,100,230,130);
+  ctx.globalAlpha=1;
+}
+
+// ── 场景时间轴 ──
+const SCENES=[
+  {start:0,end:3.5,draw:drawScene1},
+  {start:3,end:8.5,draw:drawScene2},
+  {start:8,end:13.5,draw:drawScene3},
+  {start:13,end:18.5,draw:drawScene4},
+  {start:18,end:22,draw:drawScene5},
+];
+
+// ── 主循环 ──
+let t=0,startTime=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(!startTime)startTime=ts;
+  const dt=1/60;t=(ts-startTime)/1000;
+  ctx.fillStyle=BG;ctx.fillRect(0,0,W,H);
+  drawStars(Math.min(1,t/.5));
+  for(let sc of SCENES){
+    if(t>=sc.start&&t<sc.end){
+      let alpha=1;
+      if(t<sc.start+.5)alpha=easeOut((t-sc.start)/.5);
+      if(t>sc.end-.5)alpha=easeOut((sc.end-t)/.5);
+      ctx.globalAlpha=alpha;sc.draw(t-sc.start);ctx.globalAlpha=1;
+    }
+  }
+  updateP(dt);drawP();
+  if(t>22){startTime=ts;t=0;particles=[]}
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
