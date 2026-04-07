@@ -99,7 +99,20 @@ function initP300(){L.p300Grid=[];const chars='ABCDEF脑机接口控制GHIJKL思
 function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight-36;}
 window.onresize=resize;resize();
 cv.onmousemove=e=>{const r=cv.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;};
-cv.onmousedown=e=>{mouse.down=true;mouse.clicked=true;};
+cv.onmousedown=e=>{
+  mouse.down=true;mouse.clicked=true;
+  const r=cv.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  if(curLevel===0&&L.channels){
+    L.channels.forEach(ch=>{
+      if(Math.abs(mx-ch.x)<12&&Math.abs(my-ch.y)<16){
+        ch.open=!ch.open;
+        if(!L.apActive){L.apActive=true;L.apPhase=0;L.apPos=0;}
+        completeObj(0);
+      }
+    });
+  }
+};
 cv.onmouseup=()=>{mouse.down=false;};
 function startGame(){ov.style.display='none';panel.style.display='block';bar.style.display='flex';resetLevel(0);renderPanel();renderBar();}
 function goLevel(li){if(li<0||li>6)return;curLevel=li;resetLevel(li);renderPanel();renderBar();}
@@ -247,6 +260,7 @@ function drawWave(x,y,w,h,freq,amp,color,noise,label){
 // Level draw functions
 function drawLevel0(){
   let cw=W-PL,ch=H-36;
+  cv.style.cursor='default';
   // Background grid
   ctx.strokeStyle='rgba(124,58,237,0.06)';ctx.lineWidth=1;
   for(let i=0;i<cw;i+=40){ctx.beginPath();ctx.moveTo(PL+i,0);ctx.lineTo(PL+i,ch);ctx.stroke();}
@@ -256,7 +270,11 @@ function drawLevel0(){
   drawNeuron(nx,ny,cw*0.22,L.apActive?L.apPos:0);
   // Ion channels along axon
   if(L.channels.length===0){for(let i=0;i<6;i++)L.channels.push({x:nx+cw*0.22*0.15+i*cw*0.22*1.2/6,y:ny+cw*0.22*0.1,open:false});}
-  L.channels.forEach((ch,i)=>{ctx.beginPath();ctx.rect(ch.x-6,ch.y-10,12,20);ctx.fillStyle=ch.open?'rgba(250,204,21,0.5)':'rgba(124,58,237,0.3)';ctx.fill();ctx.strokeStyle=ch.open?'#facc15':'#7c3aed';ctx.lineWidth=1;ctx.stroke();ctx.fillStyle='#94a3b8';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText(ch.open?'开':'关',ch.x,ch.y+28);});
+  L.channels.forEach((ch,i)=>{
+    let hover=Math.abs(mouse.x-ch.x)<12&&Math.abs(mouse.y-ch.y)<16;
+    ctx.beginPath();ctx.rect(ch.x-6,ch.y-10,12,20);ctx.fillStyle=ch.open?'rgba(250,204,21,0.5)':hover?'rgba(124,58,237,0.5)':'rgba(124,58,237,0.3)';ctx.fill();ctx.strokeStyle=ch.open?'#facc15':hover?'#a78bfa':'#7c3aed';ctx.lineWidth=hover?2:1;ctx.stroke();ctx.fillStyle='#94a3b8';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText(ch.open?'开':'关',ch.x,ch.y+28);
+    if(hover){cv.style.cursor='pointer';}
+  });
   // Membrane potential graph
   let gx=PL+cw*0.05,gy=ch*0.78,gw=cw*0.9,gh=ch*0.18;
   ctx.fillStyle='rgba(10,10,30,0.7)';ctx.fillRect(gx,gy,gw,gh);ctx.strokeStyle='rgba(124,58,237,0.3)';ctx.strokeRect(gx,gy,gw,gh);
