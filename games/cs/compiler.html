@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>编译原理探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#fff;font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#00ff88}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#00ff88,#00cc66);color:#0a0a1a;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+#lp{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,26,.97);border-right:1px solid #1a1a3a;z-index:20;display:none;flex-direction:column;overflow:hidden}
+#lp .lp-head{padding:12px 16px;border-bottom:1px solid #1a1a3a;display:flex;align-items:center;justify-content:space-between}
+#lp .lp-title{font-size:14px;font-weight:700;color:#00ff88}
+#lp .lp-step{font-size:11px;color:#888}
+#lp-body{flex:1;overflow-y:auto;padding:0}
+.mission{margin:12px;padding:14px;background:#141428;border:1px solid #2a2a5a;border-radius:10px}
+.mission .m-level{font-size:11px;color:#00ff88;font-weight:600;letter-spacing:1px}
+.mission .m-title{font-size:17px;font-weight:700;margin:4px 0;color:#eee}
+.mission .m-desc{font-size:13px;color:#999;line-height:1.6}
+.mission .m-concept{margin-top:10px;padding:8px 10px;background:#0e0e20;border-radius:6px;font-size:12px;color:#6a8aff;line-height:1.6}
+.mission .m-concept b{color:#8ab4ff}
+.hint-b{margin:0 12px;padding:10px 14px;background:#1a1a38;border-left:3px solid #00ff88;border-radius:0 8px 8px 0;font-size:12px;color:#80ffbb;line-height:1.5;margin-bottom:8px}
+.act-section{margin:12px}
+.act-section .as-label{font-size:12px;color:#888;margin-bottom:8px;font-weight:600}
+.act-btn{width:100%;padding:12px;background:linear-gradient(135deg,#00ff88,#00cc66);color:#0a0a1a;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;transition:all .2s}
+.act-btn:hover{filter:brightness(1.1)}
+.act-btn:disabled{background:#333;color:#666;cursor:not-allowed;filter:none}
+.act-btn.blue{background:linear-gradient(135deg,#3a7aff,#5a9aff);color:#fff}
+.act-btn.red{background:linear-gradient(135deg,#e8443a,#ff6b6b);color:#fff}
+.act-btn.purple{background:linear-gradient(135deg,#9a5aff,#b47aff);color:#fff}
+.act-btn.gold{background:linear-gradient(135deg,#ffd700,#ffaa00);color:#0a0a1a}
+.obj-list{margin:8px 12px;padding:10px;background:#141428;border:1px solid #2a2a5a;border-radius:8px}
+.obj-item{font-size:12px;color:#999;padding:3px 0;display:flex;align-items:center;gap:6px}
+.obj-item.done{color:#00ff88}
+.obj-item .oi{width:14px;height:14px;border:1px solid #444;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-size:10px}
+.obj-item.done .oi{background:#00ff88;border-color:#00ff88;color:#0a0a1a}
+.token-btn{display:inline-block;padding:4px 10px;margin:3px;border-radius:5px;font-size:13px;font-family:'Courier New',monospace;cursor:pointer;border:1px solid #333;transition:all .2s}
+.token-btn:hover{filter:brightness(1.2)}
+.token-btn.selected{box-shadow:0 0 8px rgba(0,255,136,.5)}
+.token-type-btn{padding:6px 12px;margin:3px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid #444;background:#1a1a3a;color:#ccc;transition:all .2s}
+.token-type-btn:hover{border-color:#00ff88}
+.token-type-btn.active{border-color:#00ff88;color:#00ff88;background:#0e2a1a}
+.tree-node-btn{padding:6px 14px;margin:3px;border-radius:6px;font-size:13px;cursor:pointer;border:1px solid #444;background:#1a1a3a;color:#ccc;font-family:'Courier New',monospace;transition:all .2s}
+.tree-node-btn:hover{border-color:#ffd700;color:#ffd700}
+.tree-node-btn.placed{background:#2a2a5a;border-color:#00ff88;color:#00ff88}
+.error-line{padding:6px 10px;margin:4px 0;background:#1a1a3a;border-radius:6px;font-size:12px;font-family:'Courier New',monospace;color:#ccc;cursor:pointer;border:2px solid transparent;transition:all .2s}
+.error-line:hover{border-color:#ff6b6b}
+.error-line.marked{border-color:#ff6b6b;background:#2a1a1a;color:#ff6b6b}
+.error-line.correct{border-color:#00ff88;background:#1a2a1a;color:#00ff88}
+.ir-line{padding:5px 8px;margin:3px 0;background:#1a1a3a;border-radius:5px;font-size:11px;font-family:'Courier New',monospace;color:#ccc;cursor:pointer;border:1px solid transparent}
+.ir-line:hover{border-color:#5a9aff}
+.ir-line.selected{border-color:#5a9aff;background:#1a1a3a}
+.ir-line.optimized{border-color:#00ff88;background:#0e2a1a;color:#00ff88}
+.ir-line.removed{text-decoration:line-through;color:#666;background:#1a1010}
+.reg-slot{display:inline-block;padding:4px 10px;margin:2px;border-radius:5px;font-size:12px;font-family:'Courier New',monospace;background:#1a1a3a;border:1px solid #333;color:#888;min-width:60px;text-align:center}
+.reg-slot.active{border-color:#ffd700;color:#ffd700;background:#2a2a1a}
+.learn-box{margin:8px 12px;padding:10px;background:#0e0e20;border-radius:8px;font-size:12px;color:#8ab4ff;line-height:1.7}
+.learn-box b,.learn-box .sv{color:#00ff88;font-weight:700}
+.result-box{text-align:center;max-width:460px;background:rgba(10,10,26,.98);border:1px solid #2a2a5a;border-radius:16px;padding:28px 36px}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-desc{font-size:13px;color:#999;line-height:1.6;margin-bottom:16px}
+.result-box .rb-learn{text-align:left;background:#0e0e20;border-radius:8px;padding:12px 14px;font-size:12px;color:#8ab4ff;line-height:1.7;margin-bottom:16px}
+.result-box .rb-learn b{color:#00ff88}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#00ff88;color:#0a0a1a}
+.result-box .btn-retry{background:#2a2a5a;color:#ccc}
+#bar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:rgba(10,10,26,.95);border-top:1px solid #1a1a3a;z-index:20;display:none;align-items:center;padding:0 16px;font-size:12px;color:#888}
+#bar .bar-level{color:#00ff88;font-weight:700;margin-right:12px}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🔧 <span class="gold">编译原理</span> 探险</h1>
+  <div class="sub">7 个关卡，从源代码到机器码的奇妙旅程</div>
+  <button class="start-btn" onclick="startGame()">开始探索</button>
+  <div class="features">
+    <div class="feat"><div class="fi">📝</div>词法分析</div>
+    <div class="feat"><div class="fi">🌳</div>语法分析</div>
+    <div class="feat"><div class="fi">🔍</div>语义分析</div>
+    <div class="feat"><div class="fi">📋</div>中间代码</div>
+    <div class="feat"><div class="fi">⚡</div>代码优化</div>
+    <div class="feat"><div class="fi">🖥️</div>目标代码</div>
+    <div class="feat"><div class="fi">🔗</div>完整流水线</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div id="lp">
+  <div class="lp-head"><span class="lp-title" id="lpTitle">第 1 关</span><span class="lp-step" id="lpStep">1/7</span></div>
+  <div id="lp-body"></div>
+</div>
+<div id="bar"><span class="bar-level" id="barLevel"></span><span id="barInfo"></span></div>
+<script>
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,gameState='start',currentLevel=0,levelState={},completedLevels=new Set(),particles=[];
+const ACCENT='#00ff88',GOLD='#ffd700',BLUE='#5a9aff',PURPLE='#b47aff',RED='#ff4444';
+const PANEL_W=320;
+
+function resize(){CW=canvas.width=window.innerWidth;CH=canvas.height=window.innerHeight}
+window.addEventListener('resize',resize);resize();
+
+function spawnParticles(x,y,color,n=12){for(let i=0;i<n;i++)particles.push({x,y,vx:(Math.random()-.5)*4,vy:(Math.random()-.5)*4,life:1,color,r:Math.random()*3+1})}
+function updateParticles(){particles=particles.filter(p=>{p.x+=p.vx;p.y+=p.vy;p.life-=.02;return p.life>0})}
+function drawParticles(){particles.forEach(p=>{ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()});ctx.globalAlpha=1}
+
+// Level objectives tracking
+const levelObjs=Array.from({length:7},()=>[false,false,false]);
+function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;updateObjDisplay();spawnParticles(160,200,ACCENT,20);if(levelObjs[li].every(v=>v))setTimeout(()=>showResult(li),600)}}
+function updateObjDisplay(){const el=document.getElementById('objList');if(!el)return;const items=el.querySelectorAll('.obj-item');items.forEach((it,i)=>{if(levelObjs[currentLevel][i])it.classList.add('done')})}
+
+// Level definitions
+const levels=[
+{title:'词法分析',sub:'Lexical Analysis',icon:'📝',
+ desc:'源代码 → Token 流。扫描器逐字符读取源代码，识别关键字、标识符、数字、运算符等词法单元。',
+ concept:'<b>词法分析器（Lexer）</b>是编译器的第一个阶段。它将字符流分割成有意义的<b>Token</b>序列。每个 Token 有类型（关键字、标识符、数字、运算符）和值。',
+ objs:['识别所有关键字和标识符','正确分类数字和运算符','完成全部 Token 分类']},
+{title:'语法分析',sub:'Parsing',icon:'🌳',
+ desc:'Token 流 → 语法树（AST）。解析器根据语法规则，将 Token 序列组织成树形结构。',
+ concept:'<b>语法分析器（Parser）</b>根据<b>上下文无关文法</b>构建抽象语法树。运算符优先级决定了树的结构：乘法比加法优先级高，所以 3+4*2 中 4*2 先结合。',
+ objs:['理解运算符优先级','正确构建 AST 节点','完成语法树构建']},
+{title:'语义分析',sub:'Semantic Analysis',icon:'🔍',
+ desc:'类型检查、作用域解析、符号表管理。确保程序在语义上是正确的。',
+ concept:'<b>语义分析</b>检查程序的含义是否正确。包括<b>类型检查</b>（int 不能和 string 相加）、<b>作用域解析</b>（变量是否已声明）、<b>符号表</b>记录所有标识符信息。',
+ objs:['找出类型错误','识别未声明变量','发现所有语义错误']},
+{title:'中间代码生成',sub:'IR Generation',icon:'📋',
+ desc:'AST → 三地址码。将高级语言的树形结构转换为线性的中间表示。',
+ concept:'<b>三地址码</b>是一种中间表示，每条指令最多包含三个操作数。形如 <b>t1 = a + b</b>。它比源代码更接近机器码，但仍然与具体硬件无关。',
+ objs:['理解三地址码格式','正确生成临时变量','完成 IR 生成']},
+{title:'代码优化',sub:'Optimization',icon:'⚡',
+ desc:'常量折叠、死代码消除、公共子表达式消除。让程序运行更快。',
+ concept:'<b>编译器优化</b>在不改变程序语义的前提下提升性能。<b>常量折叠</b>：编译期计算常量表达式。<b>死代码消除</b>：删除不可达代码。<b>公共子表达式消除</b>：避免重复计算。',
+ objs:['应用常量折叠','消除死代码','识别公共子表达式']},
+{title:'目标代码生成',sub:'Code Generation',icon:'🖥️',
+ desc:'中间代码 → 汇编指令。进行寄存器分配，生成目标机器的指令。',
+ concept:'<b>代码生成器</b>将中间代码映射到目标机器指令。<b>寄存器分配</b>决定哪些变量放在寄存器中。寄存器数量有限，需要合理分配以减少内存访问。',
+ objs:['完成寄存器分配','生成正确的汇编指令','优化寄存器使用']},
+{title:'完整编译流水线',sub:'Full Pipeline',icon:'🔗',
+ desc:'从源代码到可执行文件的完整旅程。观察每个阶段如何变换代码。',
+ concept:'<b>编译流水线</b>：源代码 → 词法分析 → 语法分析 → 语义分析 → 中间代码 → 优化 → 目标代码。每个阶段都是一次<b>程序变换</b>，逐步降低抽象层次。',
+ objs:['观察完整编译过程','理解各阶段输出','回答总结问题']}
+];
+
+// ===== UI helpers =====
+function $(id){return document.getElementById(id)}
+function showPanel(){$('lp').style.display='flex';$('bar').style.display='flex'}
+function hidePanel(){$('lp').style.display='none';$('bar').style.display='none'}
+function setBar(lv,info){$('barLevel').textContent=lv;$('barInfo').textContent=info}
+
+function startGame(){$('startScreen').classList.add('hidden');loadLevel(0)}
+function loadLevel(idx){
+  currentLevel=idx;gameState='play';levelState={};
+  levelObjs[idx]=[false,false,false];
+  $('lpTitle').textContent=levels[idx].icon+' '+levels[idx].title;
+  $('lpStep').textContent=(idx+1)+'/7';
+  setBar('第'+(idx+1)+'关: '+levels[idx].title,levels[idx].sub);
+  showPanel();buildPanel(idx);initLevel(idx);
+}
+
+function buildPanel(idx){
+  const L=levels[idx];
+  let h='<div class="mission"><div class="m-level">关卡 '+(idx+1)+'</div>';
+  h+='<div class="m-title">'+L.title+'</div>';
+  h+='<div class="m-desc">'+L.desc+'</div>';
+  h+='<div class="m-concept">'+L.concept+'</div></div>';
+  h+='<div class="obj-list" id="objList">';
+  L.objs.forEach((o,i)=>{h+='<div class="obj-item" id="obj'+i+'"><span class="oi">'+(levelObjs[idx][i]?'✓':'')+'</span>'+o+'</div>'});
+  h+='</div>';
+  h+='<div id="controls"></div>';
+  $('lp-body').innerHTML=h;
+  buildControls(idx);
+}
+
+function buildControls(idx){
+  const c=$('controls');
+  if(idx===0)buildLexerControls(c);
+  else if(idx===1)buildParserControls(c);
+  else if(idx===2)buildSemanticControls(c);
+  else if(idx===3)buildIRControls(c);
+  else if(idx===4)buildOptControls(c);
+  else if(idx===5)buildCodegenControls(c);
+  else if(idx===6)buildPipelineControls(c);
+}
+
+// ===== Result modal =====
+const learnTexts=[
+  '词法分析器将源代码分割成 <span class="sv">Token 流</span>。每个 Token 包含类型和值。关键字（如 int, return）是语言预定义的，标识符是用户定义的名称，字面量是常量值。<b>正则表达式</b>和<b>有限自动机（DFA）</b>是实现词法分析的核心技术。',
+  '语法分析器根据<span class="sv">上下文无关文法</span>构建 AST。运算符优先级和结合性决定了树的形状。<b>递归下降</b>和 <b>LR 分析</b>是两种主流的语法分析方法。AST 是后续所有分析和变换的基础数据结构。',
+  '语义分析确保程序<span class="sv">类型安全</span>且<span class="sv">作用域正确</span>。符号表是一个从名称到属性的映射，支持嵌套作用域查找。类型检查可以在编译期捕获大量错误，这就是为什么静态类型语言更安全。',
+  '三地址码是一种<span class="sv">线性中间表示</span>，每条指令最多三个操作数。它比 AST 更接近机器码，但仍然与硬件无关。<b>SSA（静态单赋值）</b>形式是现代编译器最常用的 IR，每个变量只被赋值一次。',
+  '编译器优化是在<span class="sv">不改变语义</span>的前提下提升性能。常量折叠在编译期计算常量表达式，死代码消除删除不可达代码，公共子表达式消除避免重复计算。现代编译器（如 LLVM）有<b>上百种</b>优化 pass。',
+  '代码生成将 IR 映射到<span class="sv">目标机器指令</span>。寄存器分配是 NP 完全问题，通常用<b>图着色算法</b>近似求解。指令选择决定用哪些机器指令实现每个 IR 操作。好的代码生成器能充分利用硬件特性。',
+  '编译器是一个<span class="sv">多阶段流水线</span>，每个阶段都是一次程序变换。从高级源代码到低级机器码，抽象层次逐步降低。理解编译原理能帮助你写出更高效的代码，也能更好地理解语言设计的权衡。'
+];
+
+function showResult(li){
+  const L=levels[li];completedLevels.add(li);
+  let h='<div class="rb-icon">🎉</div><div class="rb-title">'+L.title+' 通关！</div>';
+  h+='<div class="rb-desc">你已掌握编译器的'+L.title+'阶段</div>';
+  h+='<div class="rb-learn">'+learnTexts[li]+'</div>';
+  if(li<6)h+='<button class="btn-next" onclick="nextLevel()">下一关 →</button>';
+  else h+='<button class="btn-next" onclick="showFinal()">查看总结 🏆</button>';
+  h+='<button class="btn-retry" onclick="retryLevel()">重玩</button>';
+  $('resultBox').innerHTML=h;$('resultModal').classList.remove('hidden');
+}
+function nextLevel(){$('resultModal').classList.add('hidden');loadLevel(currentLevel+1)}
+function retryLevel(){$('resultModal').classList.add('hidden');loadLevel(currentLevel)}
+function showFinal(){
+  let h='<div class="rb-icon">🏆</div><div class="rb-title">全部通关！</div>';
+  h+='<div class="rb-desc">你已完成从源代码到机器码的完整旅程</div>';
+  h+='<div class="rb-learn">编译器将人类可读的<span class="sv">高级语言</span>翻译成机器可执行的<span class="sv">低级指令</span>。这个过程经历了词法分析、语法分析、语义分析、中间代码生成、优化和目标代码生成六个阶段。每个阶段都是计算机科学的经典问题。</div>';
+  h+='<button class="btn-retry" onclick="$(`resultModal`).classList.add(`hidden`);loadLevel(0)">重新开始</button>';
+  $('resultBox').innerHTML=h;
+}
+
+// ========== LEVEL 1: LEXER ==========
+const lexCode='int x = 42 + y;';
+const lexTokens=[
+  {text:'int',type:'keyword',color:'#5a9aff'},
+  {text:'x',type:'identifier',color:'#00ff88'},
+  {text:'=',type:'operator',color:'#ff6b6b'},
+  {text:'42',type:'number',color:'#ffd700'},
+  {text:'+',type:'operator',color:'#ff6b6b'},
+  {text:'y',type:'identifier',color:'#00ff88'},
+  {text:';',type:'punctuation',color:'#b47aff'}
+];
+const typeColors={keyword:'#5a9aff',identifier:'#00ff88',number:'#ffd700',operator:'#ff6b6b',punctuation:'#b47aff'};
+const typeNames={keyword:'关键字',identifier:'标识符',number:'数字',operator:'运算符',punctuation:'标点'};
+
+function buildLexerControls(c){
+  levelState.selectedToken=null;levelState.classified=new Array(lexTokens.length).fill(null);
+  levelState.scanX=0;levelState.scannedTokens=[];
+  let h='<div class="hint-b">点击下方的 Token，然后选择它的类型进行分类</div>';
+  h+='<div class="act-section"><div class="as-label">源代码 Token</div><div id="tokenList">';
+  lexTokens.forEach((t,i)=>{h+='<span class="token-btn" style="background:'+t.color+'22;color:'+t.color+';border-color:'+t.color+'44" onclick="selectToken('+i+')" id="tk'+i+'">'+t.text+'</span>'});
+  h+='</div></div>';
+  h+='<div class="act-section"><div class="as-label">Token 类型</div><div id="typeList">';
+  Object.keys(typeNames).forEach(k=>{h+='<span class="token-type-btn" onclick="classifyToken(\''+k+'\')" id="tt_'+k+'">'+typeNames[k]+'</span>'});
+  h+='</div></div>';
+  h+='<div class="act-section"><button class="act-btn" onclick="startLexScan()">▶ 启动扫描器</button></div>';
+  c.innerHTML=h;
+}
+function selectToken(i){
+  levelState.selectedToken=i;
+  document.querySelectorAll('.token-btn').forEach(e=>e.classList.remove('selected'));
+  $('tk'+i).classList.add('selected');
+}
+function classifyToken(type){
+  const i=levelState.selectedToken;if(i===null)return;
+  levelState.classified[i]=type;
+  const t=lexTokens[i];
+  $('tk'+i).style.borderColor=typeColors[type];
+  $('tk'+i).style.boxShadow='0 0 8px '+typeColors[type]+'44';
+  if(type===t.type){
+    $('tk'+i).style.background=typeColors[type]+'44';
+    spawnParticles(160,300,typeColors[type],8);
+  }else{
+    $('tk'+i).style.background='#ff000033';
+  }
+  // Check objectives
+  const kw=lexTokens.filter((t,j)=>['keyword','identifier'].includes(t.type)&&levelState.classified[j]===t.type);
+  if(kw.length>=3)completeObj(0,0);
+  const no=lexTokens.filter((t,j)=>['number','operator','punctuation'].includes(t.type)&&levelState.classified[j]===t.type);
+  if(no.length>=3)completeObj(0,1);
+  if(lexTokens.every((t,j)=>levelState.classified[j]===t.type))completeObj(0,2);
+}
+function startLexScan(){levelState.scanning=true;levelState.scanX=0;levelState.scannedTokens=[]}
+
+// ========== LEVEL 2: PARSER ==========
+// Expression: 3 + 4 * 2 -> AST
+const parseTokens=['3','+','4','*','2'];
+const correctAST={op:'+',left:{val:'3'},right:{op:'*',left:{val:'4'},right:{val:'2'}}};
+
+function buildParserControls(c){
+  levelState.treeNodes=[];levelState.buildStep=0;levelState.astBuilt=false;
+  let h='<div class="hint-b">表达式: <b>3 + 4 * 2</b><br>按正确顺序构建语法树（注意运算符优先级：* 先于 +）</div>';
+  h+='<div class="act-section"><div class="as-label">步骤 1: 选择优先级最高的运算</div>';
+  h+='<div id="parseStep">';
+  h+='<span class="tree-node-btn" onclick="pickParseOp(\'*\')">4 * 2 (先算乘法)</span>';
+  h+='<span class="tree-node-btn" onclick="pickParseOp(\'+\')">3 + 4 (先算加法)</span>';
+  h+='</div></div>';
+  h+='<div class="act-section" id="parseStep2" style="display:none"></div>';
+  h+='<div class="act-section" id="parseStep3" style="display:none"></div>';
+  c.innerHTML=h;
+}
+function pickParseOp(op){
+  if(levelState.buildStep!==0)return;
+  if(op==='*'){
+    levelState.buildStep=1;levelState.treeNodes.push({op:'*',l:'4',r:'2'});
+    completeObj(1,0);spawnParticles(160,250,GOLD,10);
+    $('parseStep').innerHTML='<span class="tree-node-btn placed">✓ 4 * 2 → 节点 [*]</span>';
+    $('parseStep2').style.display='block';
+    $('parseStep2').innerHTML='<div class="as-label">步骤 2: 构建根节点</div><span class="tree-node-btn" onclick="buildRoot()">3 + [*] (加法为根)</span>';
+  }else{
+    $('parseStep').innerHTML='<div style="color:#ff6b6b;font-size:12px;padding:8px">❌ 乘法优先级更高，应该先处理 4*2</div><span class="tree-node-btn" onclick="pickParseOp(\'*\')">4 * 2 (先算乘法)</span><span class="tree-node-btn" onclick="pickParseOp(\'+\')">3 + 4 (先算加法)</span>';
+  }
+}
+function buildRoot(){
+  if(levelState.buildStep!==1)return;
+  levelState.buildStep=2;levelState.treeNodes.push({op:'+',l:'3',r:'[*]'});
+  completeObj(1,1);spawnParticles(160,300,ACCENT,10);
+  $('parseStep2').innerHTML='<span class="tree-node-btn placed">✓ 3 + [*] → 根节点 [+]</span>';
+  $('parseStep3').style.display='block';
+  $('parseStep3').innerHTML='<div class="as-label">步骤 3: 确认 AST</div><button class="act-btn" onclick="confirmAST()">✓ 确认语法树</button>';
+  levelState.astBuilt=true;
+}
+function confirmAST(){completeObj(1,2);spawnParticles(160,350,ACCENT,15)}
+
+// ========== LEVEL 3: SEMANTIC ANALYSIS ==========
+const semCode=[
+  {line:'int a = 10;',hasError:false},
+  {line:'string b = "hello";',hasError:false},
+  {line:'int c = a + b;',hasError:true,errMsg:'类型错误: int + string'},
+  {line:'int d = x + 1;',hasError:true,errMsg:'未声明变量: x'},
+  {line:'float e = a / 3;',hasError:false},
+  {line:'int f = a + d;',hasError:true,errMsg:'使用了错误变量 d（依赖未声明的 x）'}
+];
+
+function buildSemanticControls(c){
+  levelState.marked=new Set();levelState.correctMarks=0;
+  let h='<div class="hint-b">点击有语义错误的代码行将其标记。找出所有类型错误和未声明变量。</div>';
+  h+='<div class="act-section"><div class="as-label">代码检查</div>';
+  semCode.forEach((s,i)=>{h+='<div class="error-line" id="sem'+i+'" onclick="toggleSemError('+i+')"><span style="color:#666;margin-right:8px">'+(i+1)+'</span>'+s.line+'</div>'});
+  h+='</div>';
+  h+='<div class="act-section"><button class="act-btn blue" onclick="checkSemErrors()">🔍 检查结果</button></div>';
+  h+='<div id="semResult" style="margin:8px 12px;font-size:12px"></div>';
+  c.innerHTML=h;
+}
+function toggleSemError(i){
+  const el=$('sem'+i);
+  if(levelState.marked.has(i)){levelState.marked.delete(i);el.classList.remove('marked')}
+  else{levelState.marked.add(i);el.classList.add('marked')}
+}
+function checkSemErrors(){
+  let correct=0,total=semCode.filter(s=>s.hasError).length;
+  semCode.forEach((s,i)=>{
+    const el=$('sem'+i);
+    if(s.hasError&&levelState.marked.has(i)){el.classList.add('correct');el.classList.remove('marked');correct++}
+    else if(!s.hasError&&levelState.marked.has(i)){el.style.borderColor='#ff4444';el.style.background='#2a1010'}
+  });
+  let msg='';
+  if(correct>=1)completeObj(2,0);
+  if(correct>=2)completeObj(2,1);
+  if(correct>=total){completeObj(2,2);msg='<span style="color:#00ff88">✓ 找到全部 '+total+' 个错误！</span>'}
+  else msg='<span style="color:#ffd700">找到 '+correct+'/'+total+' 个错误，继续检查</span>';
+  $('semResult').innerHTML=msg;
+  // Show error messages
+  semCode.forEach((s,i)=>{if(s.hasError&&levelState.marked.has(i)){const el=$('sem'+i);el.title=s.errMsg}});
+}
+
+// ========== LEVEL 4: IR GENERATION ==========
+// AST for: a = b + c * 2
+const irExpected=['t1 = c * 2','t2 = b + t1','a = t2'];
+
+function buildIRControls(c){
+  levelState.irLines=[];levelState.irStep=0;
+  let h='<div class="hint-b">将表达式 <b>a = b + c * 2</b> 转换为三地址码。<br>规则：每条指令最多一个运算符，用临时变量 t1, t2... 存中间结果。</div>';
+  h+='<div class="act-section"><div class="as-label">选择第一条指令（最内层运算）</div>';
+  h+='<div id="irChoices">';
+  h+='<div class="ir-line" onclick="pickIR(0,0)">t1 = c * 2</div>';
+  h+='<div class="ir-line" onclick="pickIR(0,1)">t1 = b + c</div>';
+  h+='<div class="ir-line" onclick="pickIR(0,2)">a = b + c * 2</div>';
+  h+='</div></div>';
+  h+='<div id="irGenerated" class="act-section" style="display:none"></div>';
+  h+='<div id="irStep2" style="display:none"></div>';
+  h+='<div id="irStep3" style="display:none"></div>';
+  c.innerHTML=h;
+}
+function pickIR(step,choice){
+  if(step===0){
+    if(choice===0){
+      levelState.irStep=1;levelState.irLines.push('t1 = c * 2');
+      completeObj(3,0);spawnParticles(160,250,BLUE,10);
+      $('irChoices').innerHTML='<div class="ir-line optimized">✓ t1 = c * 2</div>';
+      $('irStep2').style.display='block';
+      $('irStep2').innerHTML='<div class="act-section"><div class="as-label">第二条指令</div><div class="ir-line" onclick="pickIR(1,0)">t2 = b + t1</div><div class="ir-line" onclick="pickIR(1,1)">t2 = b + c</div></div>';
+    }else{
+      $('irChoices').innerHTML+='<div style="color:#ff6b6b;font-size:11px;padding:4px">❌ 先处理优先级最高的运算 c*2</div>';
+    }
+  }else if(step===1){
+    if(choice===0){
+      levelState.irStep=2;levelState.irLines.push('t2 = b + t1');
+      completeObj(3,1);spawnParticles(160,300,BLUE,10);
+      $('irStep2').innerHTML='<div class="act-section"><div class="ir-line optimized">✓ t2 = b + t1</div></div>';
+      $('irStep3').style.display='block';
+      $('irStep3').innerHTML='<div class="act-section"><div class="as-label">最后一条指令</div><div class="ir-line" onclick="pickIR(2,0)">a = t2</div><div class="ir-line" onclick="pickIR(2,1)">a = b + t1</div></div>';
+    }else{
+      $('irStep2').innerHTML+='<div style="color:#ff6b6b;font-size:11px;padding:4px">❌ 应使用 t1 代替 c*2</div>';
+    }
+  }else if(step===2){
+    if(choice===0){
+      levelState.irLines.push('a = t2');
+      completeObj(3,2);spawnParticles(160,350,ACCENT,15);
+      $('irStep3').innerHTML='<div class="act-section"><div class="ir-line optimized">✓ a = t2</div></div>';
+    }else{
+      $('irStep3').innerHTML+='<div style="color:#ff6b6b;font-size:11px;padding:4px">❌ 应赋值 t2 给 a</div>';
+    }
+  }
+}
+
+// ========== LEVEL 5: OPTIMIZATION ==========
+const optCode=[
+  {line:'t1 = 3 * 4',opt:'constfold',result:'t1 = 12',desc:'常量折叠: 3*4=12'},
+  {line:'t2 = a + b',opt:null,result:null,desc:null},
+  {line:'t3 = a + b',opt:'cse',result:'t3 = t2',desc:'公共子表达式: 与 t2 相同'},
+  {line:'t4 = t1 + t2',opt:null,result:null,desc:null},
+  {line:'if false goto L1',opt:'dead',result:'(删除)',desc:'死代码: 条件永假'},
+  {line:'t5 = t4 + 1',opt:'dead',result:'(删除)',desc:'死代码: L1 块内不可达'},
+  {line:'L1:',opt:'dead',result:'(删除)',desc:'死代码: 标签不可达'},
+  {line:'return t4',opt:null,result:null,desc:null}
+];
+
+function buildOptControls(c){
+  levelState.optimized=new Set();levelState.optTypes={};
+  let h='<div class="hint-b">识别可优化的代码行，点击选择优化类型。<br>优化类型：常量折叠 / 死代码消除 / 公共子表达式消除</div>';
+  h+='<div class="act-section"><div class="as-label">中间代码</div>';
+  optCode.forEach((o,i)=>{h+='<div class="ir-line" id="opt'+i+'" onclick="selectOpt('+i+')">'+o.line+'</div>'});
+  h+='</div>';
+  h+='<div class="act-section" id="optActions" style="display:none"><div class="as-label">选择优化类型</div>';
+  h+='<button class="act-btn gold" onclick="applyOpt(\'constfold\')" style="font-size:13px;padding:8px">常量折叠</button>';
+  h+='<button class="act-btn red" onclick="applyOpt(\'dead\')" style="font-size:13px;padding:8px">死代码消除</button>';
+  h+='<button class="act-btn blue" onclick="applyOpt(\'cse\')" style="font-size:13px;padding:8px">公共子表达式消除</button>';
+  h+='</div>';
+  h+='<div id="optResult" style="margin:8px 12px;font-size:12px"></div>';
+  c.innerHTML=h;
+}
+function selectOpt(i){
+  levelState.selectedOpt=i;
+  document.querySelectorAll('.ir-line').forEach(e=>e.classList.remove('selected'));
+  $('opt'+i).classList.add('selected');
+  $('optActions').style.display='block';
+}
+function applyOpt(type){
+  const i=levelState.selectedOpt;if(i===undefined)return;
+  const o=optCode[i];
+  if(o.opt===type){
+    levelState.optimized.add(i);levelState.optTypes[i]=type;
+    const el=$('opt'+i);
+    if(type==='dead'){el.classList.add('removed');el.innerHTML='<s>'+o.line+'</s> <span style="color:#ff6b6b">← '+o.desc+'</span>'}
+    else{el.classList.add('optimized');el.innerHTML=o.result+' <span style="color:#00ff88">← '+o.desc+'</span>'}
+    spawnParticles(160,250,type==='constfold'?GOLD:type==='dead'?RED:BLUE,10);
+    // Check objectives
+    const types=Object.values(levelState.optTypes);
+    if(types.includes('constfold'))completeObj(4,0);
+    if(types.filter(t=>t==='dead').length>=2)completeObj(4,1);
+    if(types.includes('cse'))completeObj(4,2);
+  }else if(o.opt===null){
+    $('optResult').innerHTML='<span style="color:#ff6b6b">这行不需要优化</span>';
+  }else{
+    $('optResult').innerHTML='<span style="color:#ffd700">优化类型不对，再想想</span>';
+  }
+}
+
+// ========== LEVEL 6: CODE GENERATION ==========
+const cgIR=['t1 = a + b','t2 = c * 2','t3 = t1 - t2','return t3'];
+const cgRegs=['R0','R1','R2','R3'];
+const cgExpectedAsm=[
+  {ir:'t1 = a + b',asm:['LOAD R0, a','LOAD R1, b','ADD R0, R0, R1'],regs:{R0:'t1'}},
+  {ir:'t2 = c * 2',asm:['LOAD R1, c','MUL R1, R1, #2'],regs:{R1:'t2'}},
+  {ir:'t3 = t1 - t2',asm:['SUB R2, R0, R1'],regs:{R2:'t3'}},
+  {ir:'return t3',asm:['MOV R0, R2','RET'],regs:{R0:'t3'}}
+];
+
+function buildCodegenControls(c){
+  levelState.cgStep=0;levelState.regState={R0:'-',R1:'-',R2:'-',R3:'-'};levelState.asmLines=[];
+  let h='<div class="hint-b">将三地址码映射到汇编指令，分配寄存器 R0-R3。</div>';
+  h+='<div class="act-section"><div class="as-label">寄存器状态</div><div id="regFile">';
+  cgRegs.forEach(r=>{h+='<span class="reg-slot" id="reg_'+r+'">'+r+': -</span>'});
+  h+='</div></div>';
+  h+='<div class="act-section"><div class="as-label">当前 IR 指令</div><div id="cgCurrentIR" class="ir-line optimized">'+cgIR[0]+'</div></div>';
+  h+='<div class="act-section"><div class="as-label">选择正确的汇编序列</div><div id="cgChoices"></div></div>';
+  h+='<div id="cgGenerated" style="margin:8px 12px"></div>';
+  c.innerHTML=h;
+  showCGChoices(0);
+}
+function showCGChoices(step){
+  const choices=[
+    [['LOAD R0, a / LOAD R1, b / ADD R0, R0, R1',true],['ADD R0, a, b',false],['MOV a, R0 / MOV b, R1',false]],
+    [['LOAD R1, c / MUL R1, R1, #2',true],['MUL R1, c, 2',false],['LOAD R2, c / ADD R2, R2, R2',false]],
+    [['SUB R2, R0, R1',true],['SUB R0, R0, R1',false],['LOAD R2, t1 / SUB R2, R2, R1',false]],
+    [['MOV R0, R2 / RET',true],['RET R2',false],['STORE t3, R2 / RET',false]]
+  ];
+  let h='';
+  choices[step].forEach((ch,i)=>{
+    h+='<div class="ir-line" onclick="pickCG('+step+','+i+','+ch[1]+')">'+ch[0].replace(/\//g,'<br>')+'</div>';
+  });
+  $('cgChoices').innerHTML=h;
+}
+function pickCG(step,idx,correct){
+  if(step!==levelState.cgStep)return;
+  if(correct){
+    levelState.cgStep++;
+    const exp=cgExpectedAsm[step];
+    // Update register display
+    Object.entries(exp.regs).forEach(([r,v])=>{
+      levelState.regState[r]=v;
+      const el=$('reg_'+r);el.textContent=r+': '+v;el.classList.add('active');
+    });
+    levelState.asmLines.push(...exp.asm);
+    spawnParticles(160,300,GOLD,10);
+    // Update generated asm display
+    let gh='<div class="as-label">已生成汇编</div>';
+    levelState.asmLines.forEach(a=>{gh+='<div class="ir-line optimized" style="font-size:11px">'+a+'</div>'});
+    $('cgGenerated').innerHTML=gh;
+    if(step===0)completeObj(5,0);
+    if(step===1)completeObj(5,1);
+    if(step<3){
+      $('cgCurrentIR').textContent=cgIR[step+1];
+      showCGChoices(step+1);
+    }else{
+      completeObj(5,2);
+      $('cgChoices').innerHTML='<div style="color:#00ff88;font-size:13px;padding:8px">✓ 所有指令已生成！</div>';
+    }
+  }else{
+    $('cgChoices').innerHTML+='<div style="color:#ff6b6b;font-size:11px;padding:4px">❌ 指令不正确，注意寄存器分配</div>';
+    showCGChoices(step);
+  }
+}
+
+// ========== LEVEL 7: FULL PIPELINE ==========
+const pipeStages=['源代码','词法分析','语法分析','语义分析','中间代码','优化','目标代码'];
+const pipeCode='int sum = a + b * 2;';
+const pipeOutputs=[
+  'int sum = a + b * 2;',
+  '[KW:int] [ID:sum] [OP:=] [ID:a] [OP:+] [ID:b] [OP:*] [NUM:2] [PUNC:;]',
+  'AST: Assign(sum, Add(a, Mul(b, 2)))',
+  '✓ 类型检查通过: int = int + int*int',
+  't1 = b * 2\nt2 = a + t1\nsum = t2',
+  't1 = b << 1  // *2 → 左移优化\nt2 = a + t1\nsum = t2',
+  'LOAD R0, b\nSHL R0, R0, #1\nLOAD R1, a\nADD R0, R1, R0\nSTORE sum, R0'
+];
+const quizQ={q:'编译器的哪个阶段负责检查 "int + string" 这样的类型错误？',
+  opts:['词法分析','语法分析','语义分析','代码优化'],ans:2};
+
+function buildPipelineControls(c){
+  levelState.pipeStage=0;levelState.pipeRunning=false;levelState.quizAnswered=false;
+  let h='<div class="hint-b">观察代码 <b>'+pipeCode+'</b> 经过编译器各阶段的变换过程。</div>';
+  h+='<div class="act-section"><button class="act-btn" onclick="startPipeline()">▶ 启动编译流水线</button></div>';
+  h+='<div id="pipeOutput" style="margin:8px 12px"></div>';
+  h+='<div id="pipeQuiz" style="display:none"></div>';
+  c.innerHTML=h;
+}
+function startPipeline(){
+  levelState.pipeRunning=true;levelState.pipeStage=0;
+  completeObj(6,0);
+  advancePipe();
+}
+function advancePipe(){
+  if(levelState.pipeStage>=pipeStages.length){
+    levelState.pipeRunning=false;
+    completeObj(6,1);
+    showPipeQuiz();return;
+  }
+  const s=levelState.pipeStage;
+  let h='';
+  for(let i=0;i<=s;i++){
+    const stageColor=['#888','#5a9aff','#00ff88','#ff6b6b','#ffd700','#b47aff','#ff8800'][i];
+    h+='<div style="margin:6px 0"><div style="font-size:11px;color:'+stageColor+';font-weight:700">'+pipeStages[i]+'</div>';
+    h+='<div style="font-size:11px;font-family:monospace;color:#ccc;background:#141428;padding:6px 8px;border-radius:5px;border-left:3px solid '+stageColor+';white-space:pre-wrap;margin-top:2px">'+pipeOutputs[i]+'</div></div>';
+  }
+  $('pipeOutput').innerHTML=h;
+  levelState.pipeStage++;
+  if(levelState.pipeRunning)setTimeout(advancePipe,1200);
+}
+function showPipeQuiz(){
+  let h='<div class="act-section"><div class="as-label">总结问题</div>';
+  h+='<div style="font-size:13px;color:#eee;margin:8px 12px;line-height:1.6">'+quizQ.q+'</div>';
+  quizQ.opts.forEach((o,i)=>{
+    h+='<div class="ir-line" onclick="answerQuiz('+i+')" id="quiz'+i+'">'+o+'</div>';
+  });
+  h+='</div>';
+  $('pipeQuiz').style.display='block';
+  $('pipeQuiz').innerHTML=h;
+}
+function answerQuiz(i){
+  if(levelState.quizAnswered)return;
+  if(i===quizQ.ans){
+    levelState.quizAnswered=true;
+    $('quiz'+i).classList.add('optimized');
+    $('quiz'+i).innerHTML+=' ✓ 正确！';
+    completeObj(6,2);spawnParticles(160,400,ACCENT,15);
+  }else{
+    $('quiz'+i).style.borderColor='#ff4444';
+    $('quiz'+i).innerHTML+=' ✗';
+  }
+}
+
+// ========== INIT LEVEL (canvas state) ==========
+function initLevel(idx){
+  levelState.animTime=0;
+  if(idx===0){levelState.scanning=false;levelState.scanX=0;levelState.scannedTokens=[]}
+  if(idx===1){levelState.treeAnim=0}
+  if(idx===2){levelState.symbolTable=[{name:'a',type:'int',scope:0},{name:'b',type:'string',scope:0},{name:'e',type:'float',scope:0}]}
+  if(idx===6){levelState.pipeAnimStage=-1}
+}
+
+// ========== CANVAS RENDERING ==========
+const ox=()=>PANEL_W+20; // canvas offset x
+const cw=()=>CW-PANEL_W-40; // canvas usable width
+const cy=()=>CH/2; // canvas center y
+
+function drawBg(){
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,CW,CH);
+  // Grid
+  ctx.strokeStyle='#111122';ctx.lineWidth=1;
+  for(let x=PANEL_W;x<CW;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke()}
+  for(let y=0;y<CH;y+=40){ctx.beginPath();ctx.moveTo(PANEL_W,y);ctx.lineTo(CW,y);ctx.stroke()}
+}
+
+function drawLevel0(){
+  // Lexer visualization
+  const baseX=ox()+40,baseY=80;
+  ctx.font='bold 16px monospace';ctx.fillStyle='#888';ctx.fillText('源代码:',baseX,baseY);
+  // Draw source code characters
+  const charW=18;
+  ctx.font='18px monospace';
+  let cx2=baseX;
+  for(let i=0;i<lexCode.length;i++){
+    const ch=lexCode[i];
+    ctx.fillStyle='#555';ctx.fillText(ch,cx2,baseY+40);
+    cx2+=charW;
+  }
+  // Scanner beam
+  if(levelState.scanning){
+    levelState.scanX+=1.5;
+    const beamX=baseX+levelState.scanX;
+    if(beamX<baseX+lexCode.length*charW){
+      ctx.strokeStyle=ACCENT;ctx.lineWidth=2;ctx.globalAlpha=.6;
+      ctx.beginPath();ctx.moveTo(beamX,baseY+20);ctx.lineTo(beamX,baseY+50);ctx.stroke();
+      ctx.globalAlpha=1;
+      // Glow
+      const grd=ctx.createRadialGradient(beamX,baseY+35,0,beamX,baseY+35,30);
+      grd.addColorStop(0,'rgba(0,255,136,.3)');grd.addColorStop(1,'rgba(0,255,136,0)');
+      ctx.fillStyle=grd;ctx.fillRect(beamX-30,baseY+5,60,60);
+    }
+    // Check which tokens are scanned
+    let pos=0;
+    lexTokens.forEach((t,i)=>{
+      const tStart=lexCode.indexOf(t.text,pos);
+      const tEnd=tStart+t.text.length;
+      if(beamX>baseX+tEnd*charW&&!levelState.scannedTokens.includes(i)){
+        levelState.scannedTokens.push(i);
+        spawnParticles(baseX+tStart*charW+t.text.length*charW/2,baseY+100+i*36,t.color,6);
+      }
+      pos=tEnd;
+    });
+  }
+  // Draw scanned tokens
+  let ty=baseY+100;
+  levelState.scannedTokens.forEach(i=>{
+    const t=lexTokens[i];
+    const tw=ctx.measureText(t.text).width+20;
+    ctx.fillStyle=t.color+'33';ctx.strokeStyle=t.color;ctx.lineWidth=1;
+    roundRect(ctx,baseX+10,ty-14,tw,28,6);ctx.fill();ctx.stroke();
+    ctx.fillStyle=t.color;ctx.font='14px monospace';ctx.fillText(t.text,baseX+20,ty+4);
+    ctx.fillStyle='#666';ctx.font='10px sans-serif';ctx.fillText(typeNames[t.type],baseX+tw+20,ty+4);
+    ty+=36;
+  });
+  // Token type legend
+  const legendY=CH-180;
+  ctx.font='bold 12px sans-serif';ctx.fillStyle='#666';ctx.fillText('Token 类型图例:',baseX,legendY);
+  let lx=baseX;
+  Object.entries(typeNames).forEach(([k,v])=>{
+    ctx.fillStyle=typeColors[k];ctx.fillRect(lx,legendY+12,12,12);
+    ctx.fillStyle='#aaa';ctx.font='11px sans-serif';ctx.fillText(v,lx+16,legendY+22);
+    lx+=80;
+  });
+}
+
+function drawLevel1(){
+  // AST visualization
+  const cx2=ox()+cw()/2,baseY=80;
+  ctx.font='bold 16px sans-serif';ctx.fillStyle='#888';ctx.textAlign='center';
+  ctx.fillText('表达式: 3 + 4 * 2',cx2,baseY);
+  ctx.fillText('抽象语法树 (AST)',cx2,baseY+30);
+  if(levelState.buildStep>=1){
+    // Draw * node
+    const my=baseY+160;
+    drawTreeNode(cx2+100,my,'*',GOLD);
+    drawTreeNode(cx2+50,my+70,'4',ACCENT);
+    drawTreeNode(cx2+150,my+70,'2',ACCENT);
+    drawTreeEdge(cx2+100,my+16,cx2+50,my+54);
+    drawTreeEdge(cx2+100,my+16,cx2+150,my+54);
+  }
+  if(levelState.buildStep>=2){
+    // Draw + root
+    const ry=baseY+80;
+    drawTreeNode(cx2,ry,'+',GOLD);
+    drawTreeNode(cx2-100,ry+70,'3',ACCENT);
+    drawTreeEdge(cx2,ry+16,cx2-100,ry+54);
+    drawTreeEdge(cx2,ry+16,cx2+100,baseY+144);
+    // Label
+    ctx.font='11px sans-serif';ctx.fillStyle='#666';
+    ctx.fillText('根节点',cx2,ry-20);
+    ctx.fillText('左子树',cx2-100,ry+110);
+    ctx.fillText('右子树 (优先计算)',cx2+100,baseY+260);
+  }
+  ctx.textAlign='left';
+}
+function drawTreeNode(x,y,label,color){
+  ctx.beginPath();ctx.arc(x,y,22,0,Math.PI*2);
+  ctx.fillStyle=color+'22';ctx.fill();
+  ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle=color;ctx.font='bold 18px monospace';ctx.textAlign='center';ctx.fillText(label,x,y+6);
+}
+function drawTreeEdge(x1,y1,x2,y2){
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
+  ctx.strokeStyle='#444';ctx.lineWidth=1.5;ctx.stroke();
+}
+
+function drawLevel2(){
+  // Semantic analysis - symbol table visualization
+  const baseX=ox()+40,baseY=80;
+  ctx.font='bold 16px sans-serif';ctx.fillStyle='#888';ctx.fillText('符号表 & 作用域',baseX,baseY);
+  // Draw symbol table
+  const st=levelState.symbolTable||[];
+  const tableX=baseX,tableY=baseY+30;
+  ctx.fillStyle='#141428';ctx.strokeStyle='#2a2a5a';ctx.lineWidth=1;
+  roundRect(ctx,tableX,tableY,300,30+st.length*28,8);ctx.fill();ctx.stroke();
+  ctx.font='bold 12px monospace';ctx.fillStyle=GOLD;
+  ctx.fillText('名称',tableX+15,tableY+20);ctx.fillText('类型',tableX+100,tableY+20);ctx.fillText('作用域',tableX+200,tableY+20);
+  ctx.strokeStyle='#2a2a5a';ctx.beginPath();ctx.moveTo(tableX+10,tableY+28);ctx.lineTo(tableX+290,tableY+28);ctx.stroke();
+  st.forEach((s,i)=>{
+    const sy=tableY+48+i*28;
+    ctx.fillStyle=ACCENT;ctx.font='13px monospace';ctx.fillText(s.name,tableX+15,sy);
+    ctx.fillStyle=BLUE;ctx.fillText(s.type,tableX+100,sy);
+    ctx.fillStyle='#888';ctx.fillText('scope_'+s.scope,tableX+200,sy);
+  });
+  // Draw scope boxes
+  const scopeY=tableY+30+st.length*28+40;
+  ctx.font='bold 14px sans-serif';ctx.fillStyle='#888';ctx.fillText('作用域链查找:',baseX,scopeY);
+  // Scope 0 (global)
+  ctx.strokeStyle='#5a9aff44';ctx.lineWidth=2;
+  roundRect(ctx,baseX,scopeY+15,320,80,8);ctx.stroke();
+  ctx.fillStyle='#5a9aff';ctx.font='11px sans-serif';ctx.fillText('全局作用域 (scope_0)',baseX+10,scopeY+32);
+  ctx.fillStyle='#aaa';ctx.font='12px monospace';ctx.fillText('int a, string b, float e',baseX+10,scopeY+52);
+  // Error highlight
+  ctx.fillStyle='#ff6b6b44';
+  roundRect(ctx,baseX,scopeY+110,320,50,8);ctx.fill();
+  ctx.strokeStyle='#ff6b6b';ctx.lineWidth=1;
+  roundRect(ctx,baseX,scopeY+110,320,50,8);ctx.stroke();
+  ctx.fillStyle='#ff6b6b';ctx.font='12px sans-serif';
+  ctx.fillText('❌ 变量 x 未在任何作用域中找到',baseX+10,scopeY+135);
+  ctx.fillText('❌ int + string 类型不兼容',baseX+10,scopeY+152);
+}
+
+function drawLevel3(){
+  // IR generation visualization
+  const baseX=ox()+40,baseY=60;
+  ctx.font='bold 16px sans-serif';ctx.fillStyle='#888';ctx.fillText('AST → 三地址码',baseX,baseY);
+  // Draw mini AST
+  const ax=baseX+120,ay=baseY+60;
+  drawTreeNode(ax,ay,'=',GOLD);
+  drawTreeNode(ax-80,ay+60,'a','#888');
+  drawTreeNode(ax+80,ay+60,'+',GOLD);
+  drawTreeNode(ax+20,ay+120,'b',ACCENT);
+  drawTreeNode(ax+140,ay+120,'*',GOLD);
+  drawTreeNode(ax+100,ay+180,'c',ACCENT);
+  drawTreeNode(ax+180,ay+180,'2','#ffd700');
+  drawTreeEdge(ax,ay+16,ax-80,ay+44);drawTreeEdge(ax,ay+16,ax+80,ay+44);
+  drawTreeEdge(ax+80,ay+76,ax+20,ay+104);drawTreeEdge(ax+80,ay+76,ax+140,ay+104);
+  drawTreeEdge(ax+140,ay+136,ax+100,ay+164);drawTreeEdge(ax+140,ay+136,ax+180,ay+164);
+  // Arrow to IR
+  const irX=baseX+40,irY=baseY+300;
+  ctx.strokeStyle=ACCENT;ctx.lineWidth=2;ctx.setLineDash([5,5]);
+  ctx.beginPath();ctx.moveTo(ax,ay+200);ctx.lineTo(ax,irY-20);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font='bold 14px sans-serif';ctx.fillStyle=ACCENT;ctx.fillText('▼ 三地址码',irX,irY);
+  // Show generated IR lines
+  levelState.irLines.forEach((line,i)=>{
+    ctx.fillStyle='#141428';roundRect(ctx,irX,irY+10+i*30,250,24,5);ctx.fill();
+    ctx.strokeStyle=ACCENT+'44';roundRect(ctx,irX,irY+10+i*30,250,24,5);ctx.stroke();
+    ctx.fillStyle=ACCENT;ctx.font='13px monospace';ctx.fillText(line,irX+10,irY+27+i*30);
+  });
+  ctx.textAlign='left';
+}
+
+function drawLevel4(){
+  // Optimization visualization
+  const baseX=ox()+40,baseY=60;
+  ctx.font='bold 16px sans-serif';ctx.fillStyle='#888';ctx.fillText('代码优化',baseX,baseY);
+  // Performance meter
+  const optCount=Object.keys(levelState.optTypes||{}).length;
+  const totalOpt=optCode.filter(o=>o.opt).length;
+  const pct=optCount/totalOpt;
+  ctx.font='bold 14px sans-serif';ctx.fillStyle='#888';ctx.fillText('优化进度',baseX,baseY+40);
+  // Progress bar
+  ctx.fillStyle='#1a1a3a';roundRect(ctx,baseX,baseY+50,300,20,10);ctx.fill();
+  ctx.fillStyle=ACCENT;roundRect(ctx,baseX,baseY+50,300*pct,20,10);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+  ctx.fillText(Math.round(pct*100)+'%',baseX+150,baseY+64);ctx.textAlign='left';
+  // Optimization types legend
+  const ly=baseY+100;
+  ctx.font='bold 13px sans-serif';ctx.fillStyle='#888';ctx.fillText('优化技术:',baseX,ly);
+  const opts=[{name:'常量折叠',color:GOLD,desc:'编译期计算常量表达式'},{name:'死代码消除',color:RED,desc:'删除不可达代码'},{name:'公共子表达式消除',color:BLUE,desc:'避免重复计算'}];
+  opts.forEach((o,i)=>{
+    const oy=ly+25+i*60;
+    ctx.fillStyle=o.color+'22';roundRect(ctx,baseX,oy,300,48,8);ctx.fill();
+    ctx.strokeStyle=o.color+'66';roundRect(ctx,baseX,oy,300,48,8);ctx.stroke();
+    ctx.fillStyle=o.color;ctx.font='bold 13px sans-serif';ctx.fillText(o.name,baseX+12,oy+20);
+    ctx.fillStyle='#999';ctx.font='11px sans-serif';ctx.fillText(o.desc,baseX+12,oy+38);
+    // Check mark if applied
+    const applied=Object.values(levelState.optTypes||{}).includes(o.name==='常量折叠'?'constfold':o.name==='死代码消除'?'dead':'cse');
+    if(applied){ctx.fillStyle=ACCENT;ctx.font='bold 16px sans-serif';ctx.fillText('✓',baseX+270,oy+25)}
+  });
+  // Speed comparison
+  const sy=ly+220;
+  ctx.font='bold 13px sans-serif';ctx.fillStyle='#888';ctx.fillText('性能提升:',baseX,sy);
+  const speedup=1+optCount*0.3;
+  ctx.fillStyle='#141428';roundRect(ctx,baseX,sy+10,300,40,8);ctx.fill();
+  ctx.fillStyle=ACCENT;ctx.font='bold 20px sans-serif';ctx.textAlign='center';
+  ctx.fillText(speedup.toFixed(1)+'x 加速',baseX+150,sy+37);ctx.textAlign='left';
+}
+
+function drawLevel5(){
+  // Code generation - register file visualization
+  const baseX=ox()+40,baseY=60;
+  ctx.font='bold 16px sans-serif';ctx.fillStyle='#888';ctx.fillText('寄存器分配 & 指令生成',baseX,baseY);
+  // Register file
+  const rfX=baseX+20,rfY=baseY+40;
+  ctx.fillStyle='#141428';roundRect(ctx,rfX-10,rfY-10,280,160,10);ctx.fill();
+  ctx.strokeStyle='#2a2a5a';roundRect(ctx,rfX-10,rfY-10,280,160,10);ctx.stroke();
+  ctx.font='bold 12px sans-serif';ctx.fillStyle='#888';ctx.fillText('CPU 寄存器文件',rfX,rfY+8);
+  const rs=levelState.regState||{R0:'-',R1:'-',R2:'-',R3:'-'};
+  cgRegs.forEach((r,i)=>{
+    const ry=rfY+25+i*30;
+    const active=rs[r]!=='-';
+    ctx.fillStyle=active?GOLD+'22':'#1a1a3a';
+    roundRect(ctx,rfX,ry,250,24,5);ctx.fill();
+    ctx.strokeStyle=active?GOLD:' #333';ctx.lineWidth=1;
+    roundRect(ctx,rfX,ry,250,24,5);ctx.stroke();
+    ctx.fillStyle=active?GOLD:'#666';ctx.font='bold 13px monospace';
+    ctx.fillText(r,rfX+10,ry+16);
+    ctx.fillStyle=active?'#fff':'#444';ctx.font='13px monospace';
+    ctx.fillText(rs[r],rfX+60,ry+16);
+    // Data flow animation
+    if(active){
+      const pulse=Math.sin(time*3+i)*0.3+0.7;
+      ctx.fillStyle=GOLD;ctx.globalAlpha=pulse*0.5;
+      ctx.fillRect(rfX+50,ry+2,3,20);
+      ctx.globalAlpha=1;
+    }
+  });
+  // Assembly output
+  const asmY=rfY+180;
+  ctx.font='bold 14px sans-serif';ctx.fillStyle='#888';ctx.fillText('生成的汇编代码:',baseX,asmY);
+  (levelState.asmLines||[]).forEach((a,i)=>{
+    const ay=asmY+20+i*22;
+    ctx.fillStyle=ACCENT;ctx.font='12px monospace';ctx.fillText(a,baseX+10,ay);
+  });
+}
+
+function drawLevel6(){
+  // Full pipeline visualization
+  const baseX=ox()+20,baseY=60;
+  const stageW=(cw()-40)/7;
+  ctx.font='bold 14px sans-serif';ctx.fillStyle='#888';ctx.textAlign='center';
+  ctx.fillText('编译流水线',baseX+cw()/2,baseY);
+  const colors=['#888','#5a9aff','#00ff88','#ff6b6b','#ffd700','#b47aff','#ff8800'];
+  const icons=['📝','📝','🌳','🔍','📋','⚡','🖥️'];
+  const currentStage=levelState.pipeStage||0;
+  pipeStages.forEach((s,i)=>{
+    const sx=baseX+i*stageW+stageW/2;
+    const sy=baseY+50;
+    const active=i<currentStage;
+    const current=i===currentStage-1;
+    // Stage box
+    ctx.fillStyle=active?colors[i]+'22':'#141428';
+    roundRect(ctx,sx-stageW/2+5,sy,stageW-10,80,8);ctx.fill();
+    ctx.strokeStyle=active?colors[i]:' #2a2a5a';ctx.lineWidth=current?2:1;
+    roundRect(ctx,sx-stageW/2+5,sy,stageW-10,80,8);ctx.stroke();
+    // Glow for current
+    if(current){
+      const grd=ctx.createRadialGradient(sx,sy+40,0,sx,sy+40,50);
+      grd.addColorStop(0,colors[i]+'33');grd.addColorStop(1,'transparent');
+      ctx.fillStyle=grd;ctx.fillRect(sx-50,sy-10,100,100);
+    }
+    ctx.font='20px sans-serif';ctx.fillText(icons[i],sx,sy+30);
+    ctx.font='bold 10px sans-serif';ctx.fillStyle=active?colors[i]:'#666';
+    ctx.fillText(s,sx,sy+55);
+    ctx.fillStyle=active?ACCENT:'#333';ctx.font='12px sans-serif';
+    ctx.fillText(active?'✓':'○',sx,sy+72);
+    // Arrow
+    if(i<6){
+      ctx.strokeStyle=active?colors[i]+'88':'#333';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(sx+stageW/2-5,sy+40);ctx.lineTo(sx+stageW/2+5,sy+40);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(sx+stageW/2+2,sy+36);ctx.lineTo(sx+stageW/2+8,sy+40);ctx.lineTo(sx+stageW/2+2,sy+44);ctx.stroke();
+    }
+  });
+  // Data flow animation
+  if(levelState.pipeRunning&&currentStage>0&&currentStage<=7){
+    const fromX=baseX+(currentStage-1)*stageW+stageW/2;
+    const toX=baseX+Math.min(currentStage,6)*stageW+stageW/2;
+    const progress=(time*2)%1;
+    const px=fromX+(toX-fromX)*progress;
+    ctx.fillStyle=colors[Math.min(currentStage,6)];
+    ctx.beginPath();ctx.arc(px,baseY+90,4,0,Math.PI*2);ctx.fill();
+  }
+  // Show current stage output below
+  if(currentStage>0){
+    const outY=baseY+170;
+    ctx.font='bold 13px sans-serif';ctx.fillStyle=colors[currentStage-1];
+    ctx.fillText(pipeStages[currentStage-1]+' 输出:',baseX+cw()/2,outY);
+    ctx.font='12px monospace';ctx.fillStyle='#ccc';
+    const lines=pipeOutputs[currentStage-1].split('\n');
+    lines.forEach((l,i)=>{ctx.fillText(l,baseX+cw()/2,outY+22+i*18)});
+  }
+  ctx.textAlign='left';
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+}
+
+// ========== MAIN DRAW LOOP ==========
+function drawStartBg(){
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,CW,CH);
+  // Floating code particles
+  ctx.font='14px monospace';ctx.globalAlpha=.15;
+  const words=['int','float','if','else','return','while','for','void','class','struct','=','+','*','{','}','(',')'];
+  for(let i=0;i<30;i++){
+    const w=words[i%words.length];
+    const x=((i*137+time*20)%CW);
+    const y=((i*97+time*10)%(CH));
+    ctx.fillStyle=i%3===0?ACCENT:i%3===1?GOLD:BLUE;
+    ctx.fillText(w,x,y);
+  }
+  ctx.globalAlpha=1;
+}
+
+function draw(){
+  time+=0.016;
+  if(gameState==='start'){drawStartBg();updateParticles();drawParticles()}
+  else if(gameState==='play'){
+    drawBg();
+    if(currentLevel===0)drawLevel0();
+    else if(currentLevel===1)drawLevel1();
+    else if(currentLevel===2)drawLevel2();
+    else if(currentLevel===3)drawLevel3();
+    else if(currentLevel===4)drawLevel4();
+    else if(currentLevel===5)drawLevel5();
+    else if(currentLevel===6)drawLevel6();
+    updateParticles();drawParticles();
+  }
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+</body>
+</html>

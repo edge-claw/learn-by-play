@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>操作系统原理 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#c0c0d0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(100vh - 36px)}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100vh - 36px);background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;display:none}
+.panel h3{color:#a78bfa;font-size:15px;margin:8px 0 6px}
+.panel p,.panel li{font-size:12px;line-height:1.6;color:#999}
+.panel ul{padding-left:16px;margin-bottom:8px}
+.bar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:#0d0d24;border-top:1px solid #1a1a3a;display:flex;align-items:center;padding:0 16px;font-size:13px;color:#666;z-index:20;display:none}
+.bar .level-btns{display:flex;gap:4px;margin-left:auto}
+.level-btn{background:#1a1a3a;border:1px solid #2a2a5a;color:#888;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:12px}
+.level-btn:hover,.level-btn.active{background:#8b5cf6;color:#fff;border-color:#a78bfa}
+.concept-box{background:#111128;border:1px solid #2a2a4a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6}
+.concept-box b{color:#a78bfa}
+.act-btn{background:linear-gradient(135deg,#8b5cf6,#a78bfa);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;margin:4px 2px;transition:transform .15s}
+.act-btn:hover{transform:scale(1.04)}
+.act-btn.sm{padding:5px 10px;font-size:11px}
+.act-btn.outline{background:none;border:1px solid #8b5cf6;color:#a78bfa}
+.act-btn.outline:hover{background:#8b5cf620}
+.hint-box{background:#1a1a38;border-left:3px solid #8b5cf6;border-radius:0 8px 8px 0;padding:8px 10px;margin:8px 0;font-size:11px;color:#8ab4ff;line-height:1.5}
+.learn-box{background:#0f2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;color:#6dca88;line-height:1.6;display:none}
+.learn-box .sv{color:#a78bfa;font-weight:700}
+.obj-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px}
+.obj-row .dot{width:14px;height:14px;border-radius:50%;border:2px solid #444;display:flex;align-items:center;justify-content:center;font-size:9px}
+.obj-row .dot.done{border-color:#2aaa5a;background:#2aaa5a;color:#fff}
+.obj-row .dot.done::after{content:'✓'}
+.obj-row span{color:#aaa}
+select,.num-input{background:#1a1a3a;border:1px solid #2a2a5a;color:#c0c0d0;padding:4px 8px;border-radius:4px;font-size:12px;margin:2px}
+.num-input{width:60px}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:520px}
+.start-box h1{font-size:36px;color:#a78bfa;margin-bottom:8px;letter-spacing:2px}
+.start-box .subtitle{font-size:15px;color:#888;margin-bottom:28px}
+.start-box .features{display:flex;flex-wrap:wrap;gap:16px;margin:24px 0;justify-content:center}
+.start-box .feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.start-box .feat .fi{font-size:26px;margin-bottom:4px}
+.start-btn{background:linear-gradient(135deg,#8b5cf6,#a78bfa);color:#fff;border:none;padding:14px 48px;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.ctrl-row{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin:4px 0}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;margin:2px}
+.tag.r{background:#ff444430;color:#ff6666}.tag.g{background:#2aaa5a30;color:#6dca88}.tag.b{background:#4d96ff30;color:#8ab4ff}.tag.y{background:#f0a03030;color:#f0c060}.tag.p{background:#8b5cf630;color:#a78bfa}
+</style>
+</head>
+<body>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+<h1>⚙️ 操作系统原理 探险</h1>
+<p class="subtitle">7 个关卡，从进程管理到文件系统</p>
+<div class="features">
+<div class="feat"><div class="fi">🔄</div>进程管理</div>
+<div class="feat"><div class="fi">📊</div>CPU调度</div>
+<div class="feat"><div class="fi">🧠</div>内存管理</div>
+<div class="feat"><div class="fi">📄</div>页面置换</div>
+<div class="feat"><div class="fi">🔒</div>同步死锁</div>
+<div class="feat"><div class="fi">📁</div>文件系统</div>
+<div class="feat"><div class="fi">💿</div>磁盘调度</div>
+</div>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+</div>
+</div>
+<canvas id="cv"></canvas>
+<div class="panel" id="panel"></div>
+<div class="bar" id="bar"><span id="barText"></span><div class="level-btns" id="levelBtns"></div></div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),barText=document.getElementById('barText'),levelBtns=document.getElementById('levelBtns');
+let W,H,curLevel=-1,animId,mouse={x:0,y:0};
+const COLORS={bg:'#0a0a1a',purple:'#a78bfa',dpurple:'#8b5cf6',green:'#2aaa5a',red:'#ff4444',blue:'#4d96ff',yellow:'#f0c060',grid:'#1a1a3a',text:'#c0c0d0',dim:'#666'};
+function resize(){cv.width=W=cv.offsetWidth;cv.height=H=cv.offsetHeight}
+window.addEventListener('resize',resize);
+// Level objectives: 7 levels x 3 objectives each
+const levelObjs=Array.from({length:7},()=>[false,false,false]);
+const levelNames=['进程管理','CPU 调度','内存管理','页面置换','同步与死锁','文件系统','磁盘调度'];
+const levelIcons=['🔄','📊','🧠','📄','🔒','📁','💿'];
+function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();checkAllDone(li)}}
+function checkAllDone(li){if(levelObjs[li].every(v=>v)){document.querySelectorAll('.learn-box').forEach(e=>e.style.display='block')}}
+function startGame(){document.getElementById('startScreen').classList.add('hidden');panel.style.display='block';bar.style.display='flex';buildLevelBtns();goLevel(0)}
+function buildLevelBtns(){levelBtns.innerHTML='';for(let i=0;i<7;i++){const b=document.createElement('button');b.className='level-btn';b.textContent=(i+1);b.onclick=()=>goLevel(i);levelBtns.appendChild(b)}}
+function goLevel(i){curLevel=i;document.querySelectorAll('.level-btn').forEach((b,j)=>b.classList.toggle('active',j===i));barText.textContent=`关卡 ${i+1}/7: ${levelIcons[i]} ${levelNames[i]}`;initLevel(i);renderPanel()}
+function objHTML(li){return levelObjs[li].map((v,i)=>`<div class="obj-row"><div class="dot${v?' done':''}"></div><span>${objTexts[li][i]}</span></div>`).join('')}
+const objTexts=[
+['创建一个进程','触发状态转换到等待','观察上下文切换'],
+['运行 FCFS 调度','运行 Round Robin','比较平均等待时间'],
+['完成虚拟地址转换','触发缺页中断','观察 TLB 命中'],
+['运行 FIFO 置换','运行 LRU 置换','比较缺页率'],
+['触发死锁','识别死锁条件','用策略避免死锁'],
+['创建文件','理解 inode 结构','观察索引分配'],
+['运行 FCFS 磁盘调度','运行 SCAN 调度','比较总寻道距离']
+];
+// ===== LEVEL 1: Process Management =====
+let procs=[],procIdCnt=0,ctxSwitchCount=0,selectedProc=null;
+const PSTATES=['新建','就绪','运行','等待','终止'];
+const PCOLORS=['#4d96ff','#f0c060','#2aaa5a','#ff6666','#666'];
+function initL1(){procs=[];procIdCnt=0;ctxSwitchCount=0;selectedProc=null}
+function createProc(){const p={id:++procIdCnt,state:0,x:0,y:0,tx:0,ty:0,age:0,burst:Math.floor(Math.random()*5)+3};procs.push(p);setTimeout(()=>{p.state=1;renderPanel()},600);completeObj(0,0);renderPanel()}
+function runProc(){const r=procs.find(p=>p.state===2);if(r){r.state=1;ctxSwitchCount++;completeObj(0,2)}const p=procs.find(p=>p.state===1);if(p){p.state=2;renderPanel()}}
+function blockProc(){const p=procs.find(p=>p.state===2);if(p){p.state=3;completeObj(0,1);setTimeout(()=>{p.state=1;renderPanel()},2000);renderPanel()}}
+function termProc(){const p=procs.find(p=>p.state===2);if(p){p.state=4;renderPanel()}}
+function drawL1(){ctx.clearRect(0,0,W,H);const stateX=[W*0.1,W*0.35,W*0.6,W*0.6,W*0.85];const stateY=[H*0.15,H*0.15,H*0.15,H*0.55,H*0.55];
+// Draw state boxes
+for(let i=0;i<5;i++){ctx.strokeStyle=PCOLORS[i];ctx.lineWidth=2;ctx.strokeRect(stateX[i]-50,stateY[i]-20,100,40);ctx.fillStyle=PCOLORS[i];ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(PSTATES[i],stateX[i],stateY[i]+5)}
+// Draw arrows
+ctx.strokeStyle='#333';ctx.lineWidth=1.5;const arrows=[[0,1],[1,2],[2,3],[3,1],[2,4]];
+arrows.forEach(([a,b])=>{const ax=stateX[a]+50,ay=stateY[a],bx=stateX[b]-50,by=stateY[b];ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();const ang=Math.atan2(by-ay,bx-ax);ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx-8*Math.cos(ang-0.4),by-8*Math.sin(ang-0.4));ctx.lineTo(bx-8*Math.cos(ang+0.4),by-8*Math.sin(ang+0.4));ctx.fill()});
+// Draw processes
+procs.forEach((p,i)=>{const si=p.state;const cnt=procs.filter((q,j)=>j<=i&&q.state===si).length-1;p.tx=stateX[si]-30+cnt*35;p.ty=stateY[si]+35;p.x+=(p.tx-p.x)*0.1;p.y+=(p.ty-p.y)*0.1;
+ctx.fillStyle=PCOLORS[si]+'80';ctx.fillRect(p.x,p.y,30,24);ctx.fillStyle='#fff';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText('P'+p.id,p.x+15,p.y+16)});
+// Info
+ctx.fillStyle='#555';ctx.font='12px sans-serif';ctx.textAlign='left';ctx.fillText(`进程数: ${procs.length}  上下文切换: ${ctxSwitchCount}`,10,H-20)}
+// ===== LEVEL 2: CPU Scheduling =====
+let schedAlgo='FCFS',schedProcs=[],schedResult=[],schedRunning=false,schedTime=0,schedCompared=false;
+function initL2(){schedProcs=[{name:'P1',arrive:0,burst:6},{name:'P2',arrive:1,burst:4},{name:'P3',arrive:2,burst:2},{name:'P4',arrive:3,burst:3}];schedResult=[];schedRunning=false;schedTime=0;schedCompared=false}
+function addSchedProc(){const n=schedProcs.length+1;schedProcs.push({name:'P'+n,arrive:Math.floor(Math.random()*4),burst:Math.floor(Math.random()*6)+1});renderPanel()}
+function runSchedule(){const ps=schedProcs.map(p=>({...p,remain:p.burst,start:-1,end:-1,wait:0}));schedResult=[];let t=0,q=[],done=[];
+if(schedAlgo==='FCFS'){ps.sort((a,b)=>a.arrive-b.arrive);ps.forEach(p=>{if(t<p.arrive)t=p.arrive;p.start=t;p.end=t+p.burst;for(let i=0;i<p.burst;i++)schedResult.push({t:t+i,proc:p.name});t=p.end;p.wait=p.start-p.arrive});completeObj(1,0)}
+else if(schedAlgo==='SJF'){let rem=[...ps];t=0;while(rem.length){let avail=rem.filter(p=>p.arrive<=t);if(!avail.length){t++;schedResult.push({t:t-1,proc:'idle'});continue}avail.sort((a,b)=>a.burst-b.burst);let p=avail[0];p.start=t;p.end=t+p.burst;p.wait=p.start-p.arrive;for(let i=0;i<p.burst;i++)schedResult.push({t:t+i,proc:p.name});t=p.end;rem=rem.filter(q=>q!==p)}}
+else if(schedAlgo==='RR'){let rem=ps.filter(()=>true),tq=2;t=0;let rq=[];while(rem.length||rq.length){let newArr=rem.filter(p=>p.arrive<=t);newArr.sort((a,b)=>a.arrive-b.arrive);rq.push(...newArr);rem=rem.filter(p=>p.arrive>t);if(!rq.length){t++;schedResult.push({t:t-1,proc:'idle'});continue}let p=rq.shift();if(p.start<0)p.start=t;let run=Math.min(tq,p.remain);for(let i=0;i<run;i++)schedResult.push({t:t+i,proc:p.name});t+=run;p.remain-=run;let newArr2=rem.filter(p=>p.arrive<=t);newArr2.sort((a,b)=>a.arrive-b.arrive);rq.push(...newArr2);rem=rem.filter(p=>p.arrive>t);if(p.remain>0)rq.push(p);else{p.end=t;p.wait=p.end-p.arrive-p.burst}}completeObj(1,1)}
+schedRunning=true;schedTime=0;renderPanel()}
+function drawL2(){ctx.clearRect(0,0,W,H);if(!schedResult.length){ctx.fillStyle='#444';ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText('选择调度算法并点击"运行调度"',W/2,H/2);return}
+const bw=Math.min(40,W/(schedResult.length+2)),bh=30,ox=40,oy=60;
+const colors={'P1':'#4d96ff','P2':'#f0c060','P3':'#2aaa5a','P4':'#ff6666','P5':'#a78bfa','P6':'#ff8844','idle':'#333'};
+const maxT=Math.min(schedTime,schedResult.length);
+for(let i=0;i<maxT;i++){const r=schedResult[i];ctx.fillStyle=colors[r.proc]||'#888';ctx.fillRect(ox+i*bw,oy,bw-2,bh);ctx.fillStyle='#fff';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(r.proc,ox+i*bw+bw/2,oy+bh/2+4)}
+// Time axis
+ctx.fillStyle='#555';ctx.font='10px sans-serif';for(let i=0;i<=schedResult.length;i++){ctx.textAlign='center';ctx.fillText(i,ox+i*bw,oy+bh+14)}
+// Process info table
+const ps=schedProcs;let ty=oy+bh+40;ctx.fillStyle='#888';ctx.font='bold 12px sans-serif';ctx.textAlign='left';ctx.fillText('进程  到达  执行  等待  周转',ox,ty);ty+=18;
+let totalWait=0,cnt=0;ps.forEach(p=>{const wait=schedResult.length>0?Math.max(0,(schedResult.findIndex(r=>r.proc===p.name))-p.arrive):0;const turn=wait+p.burst;totalWait+=wait;cnt++;ctx.fillStyle=colors[p.name]||'#aaa';ctx.fillText(`${p.name}    ${p.arrive}     ${p.burst}     ${wait}     ${turn}`,ox,ty);ty+=16});
+if(maxT>=schedResult.length){ctx.fillStyle='#a78bfa';ctx.fillText(`平均等待: ${(totalWait/cnt).toFixed(1)}`,ox,ty+10)}
+if(schedTime<schedResult.length)schedTime++;else schedRunning=false}
+// ===== LEVEL 3: Memory Management =====
+let pageTable=[],tlb=[],memFrames=[],vaddrInput=0,lastTranslation=null,tlbHits=0,pageFaults=0;
+const PAGE_SIZE=4096,NUM_PAGES=16,NUM_FRAMES=8;
+function initL3(){pageTable=Array.from({length:NUM_PAGES},(_,i)=>({valid:Math.random()>0.3,frame:Math.floor(Math.random()*NUM_FRAMES)}));
+// ensure some invalid
+pageTable[5].valid=false;pageTable[11].valid=false;pageTable[14].valid=false;
+tlb=[];memFrames=Array.from({length:NUM_FRAMES},(_,i)=>({page:-1}));pageTable.forEach((e,i)=>{if(e.valid)memFrames[e.frame]={page:i}});
+vaddrInput=0;lastTranslation=null;tlbHits=0;pageFaults=0}
+function translateAddr(){const vaddr=vaddrInput;const pageNum=Math.floor(vaddr/PAGE_SIZE);const offset=vaddr%PAGE_SIZE;
+if(pageNum>=NUM_PAGES){lastTranslation={error:'页号越界'};renderPanel();return}
+// Check TLB
+const tlbEntry=tlb.find(e=>e.page===pageNum);if(tlbEntry){tlbHits++;completeObj(2,2);lastTranslation={vaddr,pageNum,offset,frame:tlbEntry.frame,paddr:tlbEntry.frame*PAGE_SIZE+offset,src:'TLB命中'};completeObj(2,0);renderPanel();return}
+// Check page table
+const pte=pageTable[pageNum];if(!pte.valid){pageFaults++;completeObj(2,1);const f=memFrames.findIndex(f=>f.page===-1);if(f>=0){pte.valid=true;pte.frame=f;memFrames[f]={page:pageNum}}else{const victim=Math.floor(Math.random()*NUM_FRAMES);const oldPage=memFrames[victim].page;if(oldPage>=0)pageTable[oldPage].valid=false;pte.valid=true;pte.frame=victim;memFrames[victim]={page:pageNum}}
+lastTranslation={vaddr,pageNum,offset,frame:pte.frame,paddr:pte.frame*PAGE_SIZE+offset,src:'缺页中断→已加载'}}
+else{lastTranslation={vaddr,pageNum,offset,frame:pte.frame,paddr:pte.frame*PAGE_SIZE+offset,src:'页表命中'};completeObj(2,0)}
+// Update TLB (FIFO, max 4)
+tlb.push({page:pageNum,frame:pte.frame});if(tlb.length>4)tlb.shift();renderPanel()}
+function drawL3(){ctx.clearRect(0,0,W,H);const vx=30,vy=30,fw=50,fh=28;
+// Virtual address space
+ctx.fillStyle='#a78bfa';ctx.font='bold 13px sans-serif';ctx.textAlign='left';ctx.fillText('虚拟页表',vx,vy);
+for(let i=0;i<NUM_PAGES;i++){const y=vy+14+i*fh;ctx.fillStyle=pageTable[i].valid?'#1a3a2a':'#3a1a1a';ctx.fillRect(vx,y,fw*2.5,fh-2);ctx.strokeStyle='#333';ctx.strokeRect(vx,y,fw*2.5,fh-2);ctx.fillStyle=pageTable[i].valid?'#6dca88':'#ff6666';ctx.font='10px sans-serif';ctx.fillText(`页${i} → ${pageTable[i].valid?'帧'+pageTable[i].frame:'无效'}`,vx+4,y+18)}
+// Physical memory
+const px=vx+fw*3+40;ctx.fillStyle='#4d96ff';ctx.font='bold 13px sans-serif';ctx.fillText('物理内存帧',px,vy);
+for(let i=0;i<NUM_FRAMES;i++){const y=vy+14+i*fh*2;ctx.fillStyle=memFrames[i].page>=0?'#1a2a3a':'#1a1a2a';ctx.fillRect(px,y,fw*2,fh*2-2);ctx.strokeStyle='#333';ctx.strokeRect(px,y,fw*2,fh*2-2);ctx.fillStyle='#8ab4ff';ctx.font='11px sans-serif';ctx.fillText(`帧${i}: ${memFrames[i].page>=0?'页'+memFrames[i].page:'空'}`,px+4,y+20)}
+// TLB
+const tx=px+fw*2+60;ctx.fillStyle='#f0c060';ctx.font='bold 13px sans-serif';ctx.fillText('TLB 缓存',tx,vy);
+tlb.forEach((e,i)=>{const y=vy+14+i*fh;ctx.fillStyle='#2a2a1a';ctx.fillRect(tx,y,fw*2,fh-2);ctx.strokeStyle='#444';ctx.strokeRect(tx,y,fw*2,fh-2);ctx.fillStyle='#f0c060';ctx.font='10px sans-serif';ctx.fillText(`页${e.page}→帧${e.frame}`,tx+4,y+18)});
+// Translation result
+if(lastTranslation){const ry=H-80;ctx.fillStyle='#222';ctx.fillRect(30,ry,W-60,60);ctx.strokeStyle='#a78bfa';ctx.strokeRect(30,ry,W-60,60);ctx.fillStyle='#c0c0d0';ctx.font='13px sans-serif';ctx.textAlign='left';
+if(lastTranslation.error){ctx.fillText(`错误: ${lastTranslation.error}`,40,ry+30)}
+else{ctx.fillText(`虚拟地址 ${lastTranslation.vaddr} → 页${lastTranslation.pageNum}+偏移${lastTranslation.offset} → 物理地址 ${lastTranslation.paddr}  [${lastTranslation.src}]`,40,ry+25);ctx.fillStyle='#888';ctx.fillText(`TLB命中: ${tlbHits}  缺页中断: ${pageFaults}`,40,ry+45)}}}
+// ===== LEVEL 4: Page Replacement =====
+let prAlgo='FIFO',prSeq=[],prFrameCount=3,prResult=[],prFaults=0,prStep=0,prRunning=false,prHistory={};
+function initL4(){prSeq=[7,0,1,2,0,3,0,4,2,3,0,3,2,1,2,0,1,7,0,1];prFrameCount=3;prResult=[];prFaults=0;prStep=0;prRunning=false;prHistory={}}
+function runPageReplace(){prResult=[];prFaults=0;prStep=0;
+let frames=[];const steps=[];
+if(prAlgo==='FIFO'){let ptr=0;prSeq.forEach(pg=>{const hit=frames.includes(pg);if(!hit){if(frames.length<prFrameCount)frames.push(pg);else{frames[ptr%prFrameCount]=pg;ptr++}prFaults++}steps.push({page:pg,frames:[...frames],fault:!hit})});completeObj(3,0)}
+else if(prAlgo==='LRU'){let recent=[];prSeq.forEach(pg=>{const hit=frames.includes(pg);if(hit){recent=recent.filter(p=>p!==pg);recent.push(pg)}else{if(frames.length<prFrameCount){frames.push(pg)}else{const lru=recent.shift();const idx=frames.indexOf(lru);frames[idx]=pg}recent.push(pg);prFaults++}steps.push({page:pg,frames:[...frames],fault:!hit})});completeObj(3,1)}
+else if(prAlgo==='OPT'){prSeq.forEach((pg,si)=>{const hit=frames.includes(pg);if(!hit){if(frames.length<prFrameCount){frames.push(pg)}else{let farthest=-1,victim=0;frames.forEach((f,fi)=>{const next=prSeq.slice(si+1).indexOf(f);const dist=next===-1?Infinity:next;if(dist>farthest){farthest=dist;victim=fi}});frames[victim]=pg}prFaults++}steps.push({page:pg,frames:[...frames],fault:!hit})})}
+prResult=steps;prHistory[prAlgo]=prFaults;prRunning=true;
+if(Object.keys(prHistory).length>=2)completeObj(3,2);renderPanel()}
+function drawL4(){ctx.clearRect(0,0,W,H);if(!prResult.length){ctx.fillStyle='#444';ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText('选择页面置换算法并运行',W/2,H/2);return}
+const bw=Math.min(36,(W-80)/prResult.length),ox=40,oy=50;const maxStep=Math.min(prStep,prResult.length);
+// Header: page sequence
+ctx.fillStyle='#888';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText('访问序列',ox-20,oy-10);
+for(let i=0;i<prResult.length;i++){const x=ox+i*bw;ctx.fillStyle=i<maxStep?(prResult[i].fault?'#ff444480':'#2aaa5a80'):'#1a1a3a';ctx.fillRect(x,oy,bw-2,24);ctx.fillStyle=i<maxStep?'#fff':'#555';ctx.font='bold 11px sans-serif';ctx.fillText(prResult[i].page,x+bw/2,oy+16)}
+// Frames
+for(let f=0;f<prFrameCount;f++){const fy=oy+34+f*28;ctx.fillStyle='#555';ctx.font='11px sans-serif';ctx.textAlign='right';ctx.fillText(`帧${f}`,ox-6,fy+18);
+for(let i=0;i<maxStep;i++){const x=ox+i*bw;const frames=prResult[i].frames;ctx.fillStyle=frames[f]!==undefined?'#1a2a3a':'#111';ctx.fillRect(x,fy,bw-2,24);ctx.strokeStyle='#333';ctx.strokeRect(x,fy,bw-2,24);if(frames[f]!==undefined){ctx.fillStyle='#8ab4ff';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText(frames[f],x+bw/2,fy+16)}}}
+// Stats
+const sy=oy+34+prFrameCount*28+20;ctx.fillStyle='#a78bfa';ctx.font='bold 13px sans-serif';ctx.textAlign='left';
+let statsText=`${prAlgo}: 缺页 ${prFaults}/${prSeq.length} (${(prFaults/prSeq.length*100).toFixed(0)}%)`;
+Object.entries(prHistory).forEach(([k,v])=>{if(k!==prAlgo)statsText+=`  |  ${k}: ${v}/${prSeq.length}`});
+ctx.fillText(statsText,ox,sy);
+if(prStep<prResult.length)prStep++}
+// ===== LEVEL 5: Dining Philosophers =====
+let phils=[],forks=[],philStrategy='none',deadlocked=false,philRunning=false,deadlockTriggered=false,deadlockAvoided=false;
+function initL5(){phils=Array.from({length:5},(_,i)=>({id:i,state:'thinking',leftFork:false,rightFork:false,timer:Math.random()*100}));forks=Array.from({length:5},()=>({taken:false,by:-1}));deadlocked=false;philRunning=true;deadlockTriggered=false;deadlockAvoided=false;philStrategy='none'}
+function setPhilStrategy(s){philStrategy=s;phils.forEach(p=>{p.state='thinking';p.leftFork=false;p.rightFork=false;p.timer=Math.random()*100});forks.forEach(f=>{f.taken=false;f.by=-1});deadlocked=false;renderPanel()}
+function stepPhils(){if(deadlocked)return;
+phils.forEach((p,i)=>{p.timer--;if(p.timer>0)return;const left=i,right=(i+1)%5;
+if(p.state==='thinking'){if(philStrategy==='ordered'&&i===4){if(!forks[right].taken){forks[right].taken=true;forks[right].by=i;p.rightFork=true;p.state='hasRight'}
+}else{if(!forks[left].taken){forks[left].taken=true;forks[left].by=i;p.leftFork=true;p.state='hasLeft'}}p.timer=20+Math.random()*30}
+else if(p.state==='hasLeft'){if(!forks[right].taken){forks[right].taken=true;forks[right].by=i;p.rightFork=true;p.state='eating';p.timer=40+Math.random()*30}else p.timer=5}
+else if(p.state==='hasRight'){if(!forks[left].taken){forks[left].taken=true;forks[left].by=i;p.leftFork=true;p.state='eating';p.timer=40+Math.random()*30}else p.timer=5}
+else if(p.state==='eating'){forks[left].taken=false;forks[left].by=-1;forks[right].taken=false;forks[right].by=-1;p.leftFork=false;p.rightFork=false;p.state='thinking';p.timer=30+Math.random()*40;
+if(philStrategy!=='none'&&!deadlockAvoided){deadlockAvoided=true;completeObj(4,2);renderPanel()}}});
+// Check deadlock
+if(philStrategy==='none'){const allWaiting=phils.every(p=>p.state==='hasLeft');if(allWaiting){deadlocked=true;if(!deadlockTriggered){deadlockTriggered=true;completeObj(4,0);completeObj(4,1);renderPanel()}}}}
+function drawL5(){ctx.clearRect(0,0,W,H);const cx=W/2,cy=H/2-20,r=Math.min(W,H)*0.28;
+// Table
+ctx.beginPath();ctx.arc(cx,cy,r*0.5,0,Math.PI*2);ctx.fillStyle='#1a1a2a';ctx.fill();ctx.strokeStyle='#333';ctx.lineWidth=2;ctx.stroke();
+// Philosophers and forks
+for(let i=0;i<5;i++){const ang=-Math.PI/2+i*Math.PI*2/5;const px=cx+Math.cos(ang)*r,py=cy+Math.sin(ang)*r;
+// Fork between i and (i+1)
+const fang=ang+Math.PI/5;const fx=cx+Math.cos(fang)*r*0.55,fy=cy+Math.sin(fang)*r*0.55;ctx.fillStyle=forks[i].taken?'#ff6666':'#f0c060';ctx.beginPath();ctx.arc(fx,fy,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#000';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText('🍴',fx,fy+3);
+// Philosopher
+const col=phils[i].state==='eating'?'#2aaa5a':phils[i].state==='thinking'?'#4d96ff':deadlocked?'#ff4444':'#f0c060';
+ctx.beginPath();ctx.arc(px,py,22,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 13px sans-serif';ctx.fillText('P'+i,px,py+5);
+// State label
+ctx.fillStyle='#999';ctx.font='10px sans-serif';const stateNames={'thinking':'思考','hasLeft':'持左叉','hasRight':'持右叉','eating':'进餐'};ctx.fillText(stateNames[phils[i].state],px,py+38)}
+if(deadlocked){ctx.fillStyle='#ff4444';ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillText('💀 死锁发生！所有哲学家都持有左叉等待右叉',cx,H-40)}
+ctx.fillStyle='#666';ctx.font='12px sans-serif';ctx.textAlign='left';ctx.fillText(`策略: ${philStrategy==='none'?'无（可能死锁）':philStrategy==='ordered'?'有序资源分配':'超时重试'}`,10,H-15)}
+// ===== LEVEL 6: File System =====
+let fsFiles=[],fsInodes=[],fsDiskBlocks=[],fsNextInode=0;
+const FS_BLOCKS=32;
+function initL6(){fsFiles=[{name:'/',type:'dir',inode:0,children:[]}];fsInodes=[{id:0,type:'dir',blocks:[],size:0}];fsDiskBlocks=Array(FS_BLOCKS).fill(null);fsNextInode=1}
+function fsCreateFile(name,size){const blocks=[];const needed=Math.ceil(size/4)||1;for(let i=0;i<FS_BLOCKS&&blocks.length<needed;i++){if(!fsDiskBlocks[i])blocks.push(i)}
+if(blocks.length<needed)return;const inode={id:fsNextInode++,type:'file',blocks,size};fsInodes.push(inode);blocks.forEach(b=>fsDiskBlocks[b]=inode.id);
+const root=fsFiles[0];root.children.push({name,type:'file',inode:inode.id});completeObj(5,0);if(fsNextInode>2)completeObj(5,1);if(blocks.length>1)completeObj(5,2);renderPanel()}
+function fsCreateDir(name){const inode={id:fsNextInode++,type:'dir',blocks:[],size:0};fsInodes.push(inode);fsFiles[0].children.push({name,type:'dir',inode:inode.id,children:[]});renderPanel()}
+function drawL6(){ctx.clearRect(0,0,W,H);
+// Directory tree
+const tx=30,ty=40;ctx.fillStyle='#a78bfa';ctx.font='bold 14px sans-serif';ctx.textAlign='left';ctx.fillText('📁 目录树',tx,ty);
+let dy=ty+20;function drawTree(node,depth){const indent=depth*20;const icon=node.type==='dir'?'📁':'📄';ctx.fillStyle=node.type==='dir'?'#f0c060':'#8ab4ff';ctx.font='12px sans-serif';ctx.fillText(`${icon} ${node.name}  (inode ${node.inode})`,tx+indent,dy);dy+=18;
+if(node.children)node.children.forEach(c=>drawTree(c,depth+1))}
+drawTree(fsFiles[0],0);
+// Disk blocks
+const bx=30,by=H*0.45,bs=28,cols=8;ctx.fillStyle='#4d96ff';ctx.font='bold 14px sans-serif';ctx.fillText('💿 磁盘块布局',bx,by);
+for(let i=0;i<FS_BLOCKS;i++){const col=i%cols,row=Math.floor(i/cols);const x=bx+col*(bs+4),y=by+16+row*(bs+4);
+ctx.fillStyle=fsDiskBlocks[i]!==null?'#1a3a2a':'#1a1a2a';ctx.fillRect(x,y,bs,bs);ctx.strokeStyle=fsDiskBlocks[i]!==null?'#2aaa5a':'#333';ctx.strokeRect(x,y,bs,bs);ctx.fillStyle=fsDiskBlocks[i]!==null?'#6dca88':'#444';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText(fsDiskBlocks[i]!==null?`i${fsDiskBlocks[i]}`:i,x+bs/2,y+bs/2+3)}
+// Inode table
+const ix=bx+cols*(bs+4)+40,iy=by;ctx.fillStyle='#f0c060';ctx.font='bold 14px sans-serif';ctx.textAlign='left';ctx.fillText('📋 Inode 表',ix,iy);
+fsInodes.forEach((inode,i)=>{const y=iy+18+i*40;ctx.fillStyle='#1a1a2a';ctx.fillRect(ix,y,200,34);ctx.strokeStyle='#333';ctx.strokeRect(ix,y,200,34);ctx.fillStyle='#c0c0d0';ctx.font='11px sans-serif';ctx.fillText(`inode ${inode.id} [${inode.type}]`,ix+6,y+14);ctx.fillStyle='#888';ctx.fillText(`块: [${inode.blocks.join(',')}] 大小: ${inode.size}`,ix+6,y+28)})}
+// ===== LEVEL 7: Disk Scheduling =====
+let diskReqs=[],diskAlgo='FCFS',diskHead=50,diskResult=[],diskStep=0,diskRunning=false,diskHistory={},DISK_MAX=200;
+function initL7(){diskReqs=[98,183,37,122,14,124,65,67];diskHead=50;diskResult=[];diskStep=0;diskRunning=false;diskHistory={}}
+function addDiskReq(){const r=Math.floor(Math.random()*DISK_MAX);diskReqs.push(r);renderPanel()}
+function runDiskSched(){const reqs=[...diskReqs];let head=diskHead,order=[head],total=0;
+if(diskAlgo==='FCFS'){reqs.forEach(r=>{total+=Math.abs(r-head);head=r;order.push(r)});completeObj(6,0)}
+else if(diskAlgo==='SSTF'){let rem=[...reqs];while(rem.length){rem.sort((a,b)=>Math.abs(a-head)-Math.abs(b-head));const next=rem.shift();total+=Math.abs(next-head);head=next;order.push(next)}}
+else if(diskAlgo==='SCAN'){let rem=[...reqs];rem.sort((a,b)=>a-b);const left=rem.filter(r=>r<head).reverse(),right=rem.filter(r=>r>=head);
+right.forEach(r=>{total+=Math.abs(r-head);head=r;order.push(r)});if(head<DISK_MAX-1){total+=Math.abs(DISK_MAX-1-head);head=DISK_MAX-1;order.push(DISK_MAX-1)}
+left.forEach(r=>{total+=Math.abs(r-head);head=r;order.push(r)});completeObj(6,1)}
+diskResult=order;diskHistory[diskAlgo]=total;diskStep=1;diskRunning=true;
+if(Object.keys(diskHistory).length>=2)completeObj(6,2);renderPanel()}
+function drawL7(){ctx.clearRect(0,0,W,H);if(!diskResult.length){ctx.fillStyle='#444';ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText('添加磁盘请求并选择调度算法',W/2,H/2);return}
+const ox=60,oy=50,trackW=W-120,trackH=H-120;const maxStep=Math.min(diskStep,diskResult.length);
+// Track axis
+ctx.strokeStyle='#333';ctx.lineWidth=1;for(let t=0;t<=DISK_MAX;t+=20){const x=ox+(t/DISK_MAX)*trackW;ctx.beginPath();ctx.moveTo(x,oy);ctx.lineTo(x,oy+trackH);ctx.stroke();if(t%40===0){ctx.fillStyle='#555';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(t,x,oy-6)}}
+// Draw head movement
+ctx.strokeStyle='#a78bfa';ctx.lineWidth=2;ctx.beginPath();
+for(let i=0;i<maxStep;i++){const x=ox+(diskResult[i]/DISK_MAX)*trackW;const y=oy+(i/(diskResult.length-1||1))*trackH;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();
+// Draw points
+for(let i=0;i<maxStep;i++){const x=ox+(diskResult[i]/DISK_MAX)*trackW;const y=oy+(i/(diskResult.length-1||1))*trackH;ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle=i===0?'#f0c060':i===maxStep-1?'#2aaa5a':'#a78bfa';ctx.fill();ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillText(diskResult[i],x+8,y+4)}
+// Stats
+let total=0;for(let i=1;i<diskResult.length;i++)total+=Math.abs(diskResult[i]-diskResult[i-1]);
+ctx.fillStyle='#a78bfa';ctx.font='bold 13px sans-serif';ctx.textAlign='left';let st=`${diskAlgo}: 总寻道距离 ${total}`;
+Object.entries(diskHistory).forEach(([k,v])=>{if(k!==diskAlgo)st+=` | ${k}: ${v}`});ctx.fillText(st,ox,H-20);
+if(diskStep<diskResult.length)diskStep++}
+// ===== RENDER PANEL =====
+function renderPanel(){let h='';const li=curLevel;
+if(li===0){h+=`<h3>🔄 关卡1: 进程管理</h3>
+<div class="concept-box"><b>进程</b>是程序的执行实例，拥有独立的 PCB（进程控制块）。<br>进程状态: <b>新建→就绪→运行→等待→终止</b><br><b>上下文切换</b>: CPU 从一个进程切换到另一个进程时保存/恢复寄存器状态。</div>
+<div class="ctrl-row"><button class="act-btn" onclick="createProc()">创建进程</button><button class="act-btn outline" onclick="runProc()">调度运行</button></div>
+<div class="ctrl-row"><button class="act-btn sm outline" onclick="blockProc()">I/O阻塞</button><button class="act-btn sm outline" onclick="termProc()">终止进程</button></div>
+<div class="hint-box">💡 创建进程后，点"调度运行"让就绪进程获得CPU。点"I/O阻塞"模拟进程等待I/O。</div>
+<h3>目标</h3>${objHTML(0)}
+<div class="learn-box">✅ 进程是OS资源分配的基本单位。状态转换由<span class="sv">调度器</span>和<span class="sv">中断</span>驱动。上下文切换有开销，频繁切换会降低性能。</div>`}
+else if(li===1){h+=`<h3>📊 关卡2: CPU 调度</h3>
+<div class="concept-box"><b>CPU调度</b>决定哪个就绪进程获得CPU。<br>• <b>FCFS</b>: 先来先服务<br>• <b>SJF</b>: 最短作业优先<br>• <b>RR</b>: 时间片轮转(量子=2)</div>
+<div class="ctrl-row"><select onchange="schedAlgo=this.value"><option value="FCFS">FCFS</option><option value="SJF">SJF</option><option value="RR">Round Robin</option></select>
+<button class="act-btn" onclick="runSchedule()">运行调度</button><button class="act-btn sm outline" onclick="addSchedProc()">+进程</button></div>
+<div style="font-size:11px;color:#888;margin:4px 0">进程队列:</div>`;
+schedProcs.forEach(p=>{h+=`<div style="font-size:11px;color:#aaa">  ${p.name}: 到达=${p.arrive} 执行=${p.burst}</div>`});
+h+=`<div class="hint-box">💡 尝试不同算法观察甘特图变化。RR 用时间片=2 轮转执行。</div>
+<h3>目标</h3>${objHTML(1)}
+<div class="learn-box">✅ <span class="sv">FCFS</span>简单但可能导致护航效应。<span class="sv">SJF</span>平均等待最优但需预知执行时间。<span class="sv">RR</span>公平但时间片选择影响性能。</div>`}
+else if(li===2){h+=`<h3>🧠 关卡3: 内存管理</h3>
+<div class="concept-box"><b>分页</b>将虚拟地址空间分成固定大小的页(4KB)。<br><b>页表</b>记录虚拟页→物理帧的映射。<br><b>TLB</b>是页表的高速缓存，加速地址转换。</div>
+<div class="ctrl-row">虚拟地址: <input class="num-input" type="number" value="0" min="0" max="65535" onchange="vaddrInput=+this.value">
+<button class="act-btn" onclick="translateAddr()">转换</button></div>
+<div class="ctrl-row"><button class="act-btn sm outline" onclick="vaddrInput=5*4096+100;document.querySelector('.num-input').value=vaddrInput;translateAddr()">访问无效页</button></div>
+<div class="hint-box">💡 输入虚拟地址(0-65535)，观察页表查找过程。页5/11/14初始无效，访问会触发缺页中断。</div>
+<h3>目标</h3>${objHTML(2)}
+<div class="learn-box">✅ 虚拟地址 = <span class="sv">页号×4096+偏移</span>。TLB命中可节省一次内存访问。缺页中断需从磁盘加载页面，代价约<span class="sv">10ms</span>。</div>`}
+else if(li===3){h+=`<h3>📄 关卡4: 页面置换</h3>
+<div class="concept-box">物理内存有限时，需要<b>页面置换</b>算法决定淘汰哪一页。<br>• <b>FIFO</b>: 淘汰最早进入的页<br>• <b>LRU</b>: 淘汰最久未使用的页<br>• <b>OPT</b>: 淘汰最远将来才用的页(理论最优)</div>
+<div class="ctrl-row"><select onchange="prAlgo=this.value"><option value="FIFO">FIFO</option><option value="LRU">LRU</option><option value="OPT">OPT(最优)</option></select>
+帧数: <input class="num-input" type="number" value="3" min="2" max="5" onchange="prFrameCount=+this.value">
+<button class="act-btn" onclick="runPageReplace()">运行</button></div>
+<div style="font-size:11px;color:#888;margin:4px 0">访问序列: ${prSeq.join(', ')}</div>
+<div class="hint-box">💡 分别运行 FIFO 和 LRU，比较缺页率。OPT 是理论下界。</div>
+<h3>目标</h3>${objHTML(3)}`;
+if(Object.keys(prHistory).length>0){h+=`<div style="font-size:11px;color:#aaa;margin:4px 0">`;Object.entries(prHistory).forEach(([k,v])=>{h+=`<span class="tag p">${k}: ${v}次缺页</span> `});h+=`</div>`}
+h+=`<div class="learn-box">✅ <span class="sv">Belady异常</span>: FIFO增加帧数可能增加缺页。LRU近似OPT，实际系统常用<span class="sv">时钟算法</span>(近似LRU)。</div>`}
+else if(li===4){h+=`<h3>🔒 关卡5: 同步与死锁</h3>
+<div class="concept-box"><b>哲学家就餐问题</b>: 5个哲学家围坐圆桌，每人需要左右两把叉子才能进餐。<br><b>死锁四条件</b>: 互斥、持有等待、不可抢占、循环等待。<br>打破任一条件即可避免死锁。</div>
+<div class="ctrl-row"><button class="act-btn" onclick="setPhilStrategy('none')">无策略(可死锁)</button></div>
+<div class="ctrl-row"><button class="act-btn outline" onclick="setPhilStrategy('ordered')">有序资源分配</button></div>
+<div class="hint-box">💡 先用"无策略"观察死锁发生（所有人持左叉等右叉）。再用"有序资源分配"（P4先拿右叉）打破循环等待。</div>
+<h3>目标</h3>${objHTML(4)}
+<div class="learn-box">✅ 死锁需同时满足<span class="sv">四个条件</span>。有序资源分配打破<span class="sv">循环等待</span>条件。银行家算法可动态避免死锁但开销大。</div>`}
+else if(li===5){h+=`<h3>📁 关卡6: 文件系统</h3>
+<div class="concept-box"><b>inode</b>存储文件元数据（大小、权限、磁盘块指针）。<br><b>目录</b>是特殊文件，存储文件名→inode的映射。<br><b>索引分配</b>: inode中存储所有数据块号。</div>
+<div class="ctrl-row"><button class="act-btn" onclick="fsCreateFile('doc'+fsNextInode+'.txt',Math.floor(Math.random()*12)+4)">创建文件</button>
+<button class="act-btn outline" onclick="fsCreateDir('dir'+fsNextInode)">创建目录</button></div>
+<div class="ctrl-row"><button class="act-btn sm outline" onclick="fsCreateFile('big'+fsNextInode+'.dat',20)">创建大文件</button></div>
+<div class="hint-box">💡 创建文件观察 inode 分配和磁盘块映射。大文件会占用多个磁盘块。</div>
+<h3>目标</h3>${objHTML(5)}
+<div class="learn-box">✅ <span class="sv">inode</span>与文件名分离，支持硬链接。索引分配支持随机访问，大文件用<span class="sv">间接块</span>扩展。ext4单文件最大<span class="sv">16TB</span>。</div>`}
+else if(li===6){h+=`<h3>💿 关卡7: 磁盘调度</h3>
+<div class="concept-box"><b>磁盘调度</b>优化磁头移动顺序，减少寻道时间。<br>• <b>FCFS</b>: 按请求顺序服务<br>• <b>SSTF</b>: 最短寻道时间优先<br>• <b>SCAN</b>: 电梯算法，单向扫描</div>
+<div class="ctrl-row"><select onchange="diskAlgo=this.value"><option value="FCFS">FCFS</option><option value="SSTF">SSTF</option><option value="SCAN">SCAN</option></select>
+<button class="act-btn" onclick="runDiskSched()">运行</button><button class="act-btn sm outline" onclick="addDiskReq()">+请求</button></div>
+<div style="font-size:11px;color:#888;margin:4px 0">磁头位置: ${diskHead} | 请求队列: ${diskReqs.join(', ')}</div>
+<div class="hint-box">💡 分别运行 FCFS 和 SCAN，比较总寻道距离。SCAN 像电梯一样单向移动。</div>
+<h3>目标</h3>${objHTML(6)}`;
+if(Object.keys(diskHistory).length>0){h+=`<div style="font-size:11px;color:#aaa;margin:4px 0">`;Object.entries(diskHistory).forEach(([k,v])=>{h+=`<span class="tag p">${k}: ${v}</span> `});h+=`</div>`}
+h+=`<div class="learn-box">✅ <span class="sv">SCAN</span>避免了SSTF的饥饿问题。现代SSD无机械寻道，调度算法影响小。HDD仍需优化，<span class="sv">NCQ</span>在硬件层做调度。</div>`}
+if(levelObjs[li].every(v=>v)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+if(levelObjs[li].every(v=>v)&&li===6)h+=`<div style="text-align:center;margin-top:12px;color:#4ade80;font-size:14px">🎉 恭喜通关！全部 7 个关卡已完成！</div>`;
+panel.innerHTML=h}
+function initLevel(i){if(animId)cancelAnimationFrame(animId);resize();
+if(i===0)initL1();else if(i===1)initL2();else if(i===2)initL3();else if(i===3)initL4();else if(i===4)initL5();else if(i===5)initL6();else if(i===6)initL7();
+animate()}
+function animate(){animId=requestAnimationFrame(animate);
+if(curLevel===0)drawL1();
+else if(curLevel===1)drawL2();
+else if(curLevel===2)drawL3();
+else if(curLevel===3)drawL4();
+else if(curLevel===4){stepPhils();drawL5()}
+else if(curLevel===5)drawL6();
+else if(curLevel===6)drawL7()}
+cv.addEventListener('mousemove',e=>{const r=cv.getBoundingClientRect();mouse.x=(e.clientX-r.left)*(cv.width/r.width);mouse.y=(e.clientY-r.top)*(cv.height/r.height)});
+resize();
+</script>
+</body>
+</html>

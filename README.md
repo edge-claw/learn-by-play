@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/games-28-blue?style=flat-square" alt="28 games"/>
-  <img src="https://img.shields.io/badge/levels-150+-green?style=flat-square" alt="150+ levels"/>
+  <img src="https://img.shields.io/badge/games-49-blue?style=flat-square" alt="49 games"/>
+  <img src="https://img.shields.io/badge/levels-297+-green?style=flat-square" alt="297+ levels"/>
   <img src="https://img.shields.io/badge/dependencies-0-orange?style=flat-square" alt="zero dependencies"/>
   <img src="https://img.shields.io/github/license/edge-claw/learn-by-play?style=flat-square" alt="MIT license"/>
 </p>
@@ -19,17 +19,20 @@
 
 ## 游戏列表
 
-| 领域 | 游戏 | 关卡 |
-|------|------|------|
-| 计算机与AI | 芯片内部可视化 · 边缘AI部署 · 神经网络构建 · 密码学与安全 | 交互/5/7/7关 |
-| 区块链 | 比特币原理 · 以太坊原理 | 6/6关 |
-| 物理学 | 火箭物理 · 核物理 · 量子计算 · 超导体 · 粒子加速器 · 激光物理 · 闪电与等离子体 | 6/7/7/7/7/7/7关 |
-| 生物与医学 | CRISPR基因编辑 · 免疫系统大战 · 蛋白质折叠 · 纳米机器人 | 7/7/7/7关 |
-| 太空探索 | 黑洞物理 · 太阳系建造者 · 空间站工程 | 7/7/7关 |
-| 工程技术 | 半导体制造 · 3D打印 · 电池与储能 · 全息投影 | 7/7/7/7关 |
-| 地球与环境 | 气候系统模拟 · 海洋深潜探索 | 7/7关 |
+| 领域 | 游戏 |
+|------|------|
+| 计算机与AI | 芯片内部可视化 · 边缘AI部署 · 神经网络构建 · 密码学与安全 · 编译原理 · 计算机组成原理 · 操作系统原理 · 计算机网络 · 数据结构与算法 |
+| 数学 | 微积分可视化 · 线性代数 · 概率与统计 · 图论与算法 · 分形与混沌 |
+| 化学 | 原子结构与元素周期表 · 化学反应与动力学 |
+| 区块链 | 比特币原理 · 以太坊原理 |
+| 物理学 | 火箭物理 · 核物理 · 量子计算 · 超导体 · 粒子加速器 · 激光物理 · 闪电与等离子体 |
+| 生物与医学 | CRISPR基因编辑 · 免疫系统大战 · 蛋白质折叠 · 纳米机器人 · 脑机接口 |
+| 太空探索 | 黑洞物理 · 太阳系建造者 · 空间站工程 · SpaceX与可回收火箭 |
+| 工程技术 | 半导体制造 · 3D打印 · 电池与储能 · 全息投影 · 机器人学 |
+| 地球与环境 | 气候系统模拟 · 海洋深潜探索 |
+| 电子信息 | 模拟电路 · 数字电路 · 信号与系统 · 微波与天线 · 雷达原理 · 超声原理 |
 
-共 **28 个游戏**，**150+ 个关卡**，覆盖 **7 大领域**。
+共 **49 个游戏**，**297+ 个关卡**，覆盖 **10 大领域**。
 
 ## 特点
 

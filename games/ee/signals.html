@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>信号与系统 实验室</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e0e0e0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+#overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,10,26,0.97);z-index:100;display:flex;align-items:center;justify-content:center;flex-direction:column}
+#overlay h1{font-size:2.8em;margin-bottom:12px;color:#f472b6}
+#overlay .sub{font-size:1.1em;color:#a0a0c0;margin-bottom:30px}
+#overlay .icons{display:flex;gap:18px;margin-bottom:36px;flex-wrap:wrap;justify-content:center}
+#overlay .icons span{font-size:2em;background:rgba(236,72,153,0.12);border-radius:12px;padding:12px 16px;border:1px solid rgba(236,72,153,0.25)}
+#startBtn{background:linear-gradient(135deg,#ec4899,#a855f7);color:#fff;border:none;padding:16px 48px;font-size:1.2em;border-radius:12px;cursor:pointer;transition:transform 0.2s}
+#startBtn:hover{transform:scale(1.05)}
+#main{display:none;flex:1;flex-direction:row;overflow:hidden}
+#panel{width:320px;min-width:320px;background:#0f0f2a;border-right:1px solid #1a1a3a;display:flex;flex-direction:column;overflow-y:auto;padding:16px}
+#panel h2{color:#f472b6;font-size:1.15em;margin-bottom:8px}
+#panel .desc{color:#a0a0c0;font-size:0.88em;line-height:1.5;margin-bottom:12px}
+#panel .objectives{margin-bottom:14px}
+#panel .obj{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:0.88em}
+#panel .obj .dot{width:16px;height:16px;border-radius:50%;border:2px solid #ec4899;flex-shrink:0}
+#panel .obj.done .dot{background:#ec4899}
+#panel .obj.done{color:#f472b6}
+#panel .controls{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+#panel .ctrl-group{display:flex;flex-direction:column;gap:4px}
+#panel .ctrl-group label{font-size:0.82em;color:#888}
+#panel .ctrl-group select,#panel .ctrl-group input[type=range]{width:100%;background:#1a1a3a;color:#e0e0e0;border:1px solid #2a2a4a;border-radius:6px;padding:6px 8px;font-size:0.88em}
+#panel .ctrl-group input[type=range]{padding:4px 0;accent-color:#ec4899}
+#panel .ctrl-group .val{font-size:0.78em;color:#f472b6;text-align:right}
+#panel .learn-box{background:rgba(236,72,153,0.08);border:1px solid rgba(236,72,153,0.2);border-radius:8px;padding:10px;margin-top:12px;font-size:0.85em;line-height:1.5;display:none}
+#panel .learn-box h3{color:#f472b6;margin-bottom:6px;font-size:0.95em}
+.nav-btns{display:flex;gap:8px;margin-top:auto;padding-top:12px}
+.nav-btns button{flex:1;padding:8px;background:#1a1a3a;color:#e0e0e0;border:1px solid #2a2a4a;border-radius:6px;cursor:pointer;font-size:0.88em}
+.nav-btns button:hover{background:#2a2a4a}
+.nav-btns button:disabled{opacity:0.4;cursor:default}
+#canvasWrap{flex:1;position:relative}
+#cv{display:block;width:100%;height:100%}
+#bar{height:36px;background:#0f0f2a;border-top:1px solid #1a1a3a;display:none;align-items:center;padding:0 16px;font-size:0.85em;color:#888}
+#bar .level-dots{display:flex;gap:6px;margin-left:16px}
+#bar .level-dots span{width:10px;height:10px;border-radius:50%;background:#1a1a3a;border:1px solid #2a2a4a;cursor:pointer}
+#bar .level-dots span.active{background:#ec4899;border-color:#ec4899}
+#bar .level-dots span.completed{background:#22c55e;border-color:#22c55e}
+</style>
+</head>
+<body>
+<div id="overlay">
+<h1>📊 信号与系统 实验室</h1>
+<p class="sub">7 个关卡，从时域到频域的信号之旅</p>
+<div class="icons">
+<span>〰️</span><span>➕</span><span>🔄</span><span>🎵</span><span>📈</span><span>🔽</span><span>📡</span>
+</div>
+<button id="startBtn">开始探索</button>
+</div>
+<div id="main">
+<div id="panel"></div>
+<div id="canvasWrap"><canvas id="cv"></canvas></div>
+</div>
+<div id="bar"></div>
+<script>
+// ========== 全局状态 ==========
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W, H, curLevel = 0, animId, time = 0;
+const PINK = '#ec4899', PINK2 = '#f472b6', GREEN = '#22c55e', CYAN = '#06b6d4', YELLOW = '#eab308', ORANGE = '#f97316', PURPLE = '#a855f7';
+
+const levels = [
+  { title:'关卡 1: 基本信号', desc:'认识常见信号波形：正弦波、方波、三角波、脉冲和阶跃信号。调节参数观察波形变化。',
+    objs:['生成正弦波','调节频率和幅度','生成方波'],
+    learn:'信号是随时间变化的物理量。正弦波是最基本的信号，任何周期信号都可以分解为正弦波的叠加（傅里叶定理）。频率决定振荡快慢，幅度决定信号强弱，相位决定起始位置。'},
+  { title:'关卡 2: 信号运算', desc:'对两个信号进行加法、乘法、时移、尺度变换和翻转运算，观察运算结果。',
+    objs:['信号相加','信号相乘（调制）','时移操作'],
+    learn:'信号运算是信号处理的基础。加法用于信号混合，乘法用于调制，时移改变信号出现的时刻，尺度变换改变信号的时间尺度。'},
+  { title:'关卡 3: 卷积', desc:'卷积是 LTI 系统的核心运算。观察"翻转-滑动-积分"的过程，理解卷积的几何意义。',
+    objs:['理解翻转操作','观察滑动过程','得到卷积结果'],
+    learn:'卷积 y(t)=∫x(τ)h(t-τ)dτ 描述了 LTI 系统的输入输出关系。h(t) 是系统的冲激响应。卷积的步骤：翻转 h(τ)→h(-τ)，平移 h(t-τ)，相乘并积分。'},
+  { title:'关卡 4: 傅里叶级数', desc:'周期信号可以分解为不同频率的正弦/余弦分量之和。逐步添加谐波，观察逼近效果。',
+    objs:['添加基波','叠加 3 次谐波','用 N 次谐波逼近方波'],
+    learn:'傅里叶级数：任何满足狄利克雷条件的周期信号都可以展开为 f(t)=a₀+Σ(aₙcos(nωt)+bₙsin(nωt))。方波的傅里叶级数只含奇次谐波：4/π·Σ sin(nωt)/n (n=1,3,5...)'},
+  { title:'关卡 5: 傅里叶变换', desc:'将信号从时域变换到频域，观察频谱特征。调节采样率体验混叠现象。',
+    objs:['观察正弦波频谱','观察方波频谱','触发采样混叠'],
+    learn:'傅里叶变换 F(ω)=∫f(t)e^(-jωt)dt 将时域信号映射到频域。采样定理（奈奎斯特）：采样频率必须大于信号最高频率的 2 倍，否则产生混叠。'},
+  { title:'关卡 6: 滤波', desc:'通过低通、高通、带通滤波器处理混合信号，观察频域滤波效果。',
+    objs:['低通滤波提取基波','高通滤波提取高频','带通滤波'],
+    learn:'滤波器是一种 LTI 系统，通过其频率响应 H(ω) 选择性地通过或抑制特定频率分量。低通滤波器保留低频，高通保留高频，带通保留特定频段。'},
+  { title:'关卡 7: 调制与解调', desc:'AM 调幅将基带信号搬移到高频载波上传输，包络检波实现解调。',
+    objs:['实现 AM 调制','调节调制深度','包络检波解调'],
+    learn:'调幅 AM：s(t)=[1+m·x(t)]·cos(ωct)，其中 m 是调制深度。m<1 时可用包络检波解调。调制将信号频谱搬移到载波频率附近，是无线通信的基础。'}
+];
+
+const levelObjs = levels.map(l => l.objs.map(() => false));
+const levelCompleted = levels.map(() => false);
+
+// 每关的控件状态
+const S = {
+  // L1
+  sigType: 'sine', freq: 2, amp: 1, phase: 0,
+  // L2
+  sig1: 'sine', sig2: 'square', op: 'add', timeShift: 0, scaleK: 1,
+  // L3
+  convSig1: 'rect', convSig2: 'rect', convT: -3, convPlaying: false, convSpeed: 0.02,
+  // L4
+  harmonics: 1,
+  // L5
+  fftSig: 'sine', sampleRate: 64, fftFreq: 5,
+  // L6
+  filterType: 'lowpass', cutoff: 5, bandwidth: 4,
+  // L7
+  carrierFreq: 20, modDepth: 0.5, modType: 'am', baseFreq: 2
+};
+
+// ========== 工具函数 ==========
+function resize() {
+  const wrap = document.getElementById('canvasWrap');
+  W = cv.width = wrap.clientWidth * devicePixelRatio;
+  H = cv.height = wrap.clientHeight * devicePixelRatio;
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  W = wrap.clientWidth; H = wrap.clientHeight;
+}
+
+function genSignal(type, t, freq, amp, phase) {
+  const w = 2 * Math.PI * freq;
+  const p = phase || 0;
+  switch(type) {
+    case 'sine': return amp * Math.sin(w * t + p);
+    case 'square': return amp * Math.sign(Math.sin(w * t + p));
+    case 'triangle': return amp * (2 / Math.PI) * Math.asin(Math.sin(w * t + p));
+    case 'pulse': { const v = (t * freq + p/(2*Math.PI)) % 1; return v >= 0 && v < 0.1 ? amp : 0; }
+    case 'step': return t >= 0 ? amp : 0;
+    case 'rect': return (t >= -0.5 && t <= 0.5) ? amp : 0;
+    case 'exp': return t >= 0 ? amp * Math.exp(-2 * t) : 0;
+    default: return 0;
+  }
+}
+
+function drawWave(pts, x, y, w, h, color, label, fill) {
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = 2;
+  // axes
+  ctx.strokeStyle = '#2a2a4a'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x, y + h/2); ctx.lineTo(x + w, y + h/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + w/2, y); ctx.lineTo(x + w/2, y + h); ctx.stroke();
+  // wave
+  ctx.strokeStyle = color; ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let i = 0; i < pts.length; i++) {
+    const px = x + (i / (pts.length - 1)) * w;
+    const py = y + h/2 - pts[i] * (h/2) * 0.85;
+    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+  if (fill) {
+    ctx.lineTo(x + w, y + h/2); ctx.lineTo(x, y + h/2); ctx.closePath();
+    ctx.fillStyle = color.replace(')', ',0.15)').replace('rgb', 'rgba');
+    ctx.fill();
+  }
+  if (label) {
+    ctx.fillStyle = color; ctx.font = '13px sans-serif';
+    ctx.fillText(label, x + 4, y + 14);
+  }
+  ctx.restore();
+}
+
+function drawBars(vals, x, y, w, h, color, label, maxVal) {
+  ctx.save();
+  const n = vals.length;
+  const bw = Math.max(2, w / n - 2);
+  const mv = maxVal || Math.max(...vals.map(Math.abs), 0.01);
+  ctx.strokeStyle = '#2a2a4a'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x + w, y + h); ctx.stroke();
+  for (let i = 0; i < n; i++) {
+    const bh = (Math.abs(vals[i]) / mv) * h * 0.9;
+    const bx = x + (i / n) * w;
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.7;
+    ctx.fillRect(bx, y + h - bh, bw, bh);
+  }
+  ctx.globalAlpha = 1;
+  if (label) { ctx.fillStyle = color; ctx.font = '13px sans-serif'; ctx.fillText(label, x + 4, y + 14); }
+  ctx.restore();
+}
+
+function completeObj(li, oi) {
+  if (levelObjs[li][oi]) return;
+  levelObjs[li][oi] = true;
+  updatePanel();
+  if (levelObjs[li].every(Boolean)) {
+    levelCompleted[li] = true;
+    const lb = document.querySelector('.learn-box');
+    if (lb) lb.style.display = 'block';
+    updateBar();
+  }
+}
+
+// ========== 关卡渲染 ==========
+function renderLevel0() {
+  // 基本信号
+  const pts = [];
+  const N = 500;
+  for (let i = 0; i < N; i++) {
+    const t = (i / N) * 4 - 2;
+    pts.push(genSignal(S.sigType, t, S.freq, S.amp, S.phase));
+  }
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0a0a1a'; ctx.fillRect(0, 0, W, H);
+  const pad = 40;
+  drawWave(pts, pad, pad, W - pad*2, H - pad*2, PINK, `${S.sigType} f=${S.freq}Hz A=${S.amp.toFixed(1)}`, true);
+  // 标注
+  ctx.fillStyle = '#666'; ctx.font = '12px sans-serif';
+  ctx.fillText('t →', W - pad - 20, H/2 + 16);
+  ctx.fillText('A ↑', W/2 + 4, pad + 16);
+  // 目标检测
+  if (S.sigType === 'sine') completeObj(0, 0);
+  if (S.freq !== 2 || S.amp !== 1) completeObj(0, 1);
+  if (S.sigType === 'square') completeObj(0, 2);
+}
+
+function renderLevel1() {
+  // 信号运算
+  const N = 500;
+  const pts1 = [], pts2 = [], ptsR = [];
+  for (let i = 0; i < N; i++) {
+    const t = (i / N) * 4 - 2;
+    const v1 = genSignal(S.sig1, t, 2, 1, 0);
+    const v2 = genSignal(S.sig2, t - S.timeShift, 3, 0.7, 0);
+    pts1.push(v1); pts2.push(v2);
+    let r = 0;
+    switch(S.op) {
+      case 'add': r = v1 + v2; break;
+      case 'multiply': r = v1 * v2; break;
+      case 'shift': r = genSignal(S.sig1, t - S.timeShift, 2, 1, 0); break;
+      case 'scale': r = genSignal(S.sig1, t * S.scaleK, 2, 1, 0); break;
+      case 'flip': r = genSignal(S.sig1, -t, 2, 1, 0); break;
+    }
+    ptsR.push(r);
+  }
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0a0a1a'; ctx.fillRect(0, 0, W, H);
+  const pad = 30, h3 = (H - pad*4) / 3;
+  drawWave(pts1, pad, pad, W - pad*2, h3, CYAN, `信号 A: ${S.sig1}`);
+  drawWave(pts2, pad, pad*2 + h3, W - pad*2, h3, YELLOW, `信号 B: ${S.sig2}`);
+  // 运算符号
+  ctx.fillStyle = PINK; ctx.font = 'bold 20px sans-serif';
+  const opSymbols = {add:'+', multiply:'×', shift:'→', scale:'⇔', flip:'↔'};
+  ctx.fillText(opSymbols[S.op] || '+', W/2, pad*2 + h3 - 4);
+  drawWave(ptsR, pad, pad*3 + h3*2, W - pad*2, h3, PINK, `结果: ${S.op}`, true);
+  if (S.op === 'add') completeObj(1, 0);
+  if (S.op === 'multiply') completeObj(1, 1);
+  if (S.op === 'shift' && Math.abs(S.timeShift) > 0.1) completeObj(1, 2);
+}
+
+function renderLevel2() {
+  // 卷积
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0a0a1a'; ctx.fillRect(0, 0, W, H);
+  const pad = 30, N = 400;
+  const h4 = (H - pad*5) / 4;
+  const tRange = 6, dt = tRange / N;
+  // x(τ)
+  const ptsX = [];
+  for (let i = 0; i < N; i++) {
+    const tau = (i / N) * tRange - tRange/2;
+    ptsX.push(genSignal(S.convSig1, tau, 1, 1, 0));
+  }
+  drawWave(ptsX, pad, pad, W - pad*2, h4, CYAN, 'x(τ)');
+  // h(t-τ) 翻转并滑动
+  const ptsH = [];
+  for (let i = 0; i < N; i++) {
+    const tau = (i / N) * tRange - tRange/2;
+    ptsH.push(genSignal(S.convSig2, S.convT - tau, 1, 1, 0));
+  }
+  drawWave(ptsH, pad, pad*2 + h4, W - pad*2, h4, YELLOW, `h(t-τ), t=${S.convT.toFixed(1)}`);
+  // 乘积 x(τ)·h(t-τ)
+  const ptsProd = [];
+  for (let i = 0; i < N; i++) {
+    ptsProd.push(ptsX[i] * ptsH[i]);
+  }
+  drawWave(ptsProd, pad, pad*3 + h4*2, W - pad*2, h4, ORANGE, 'x(τ)·h(t-τ)', true);
+  // 卷积结果
+  const convN = 200;
+  const ptsConv = [];
+  for (let i = 0; i < convN; i++) {
+    const t = (i / convN) * tRange - tRange/2;
+    let sum = 0;
+    for (let j = 0; j < 100; j++) {
+      const tau = (j / 100) * tRange - tRange/2;
+      sum += genSignal(S.convSig1, tau, 1, 1, 0) * genSignal(S.convSig2, t - tau, 1, 1, 0) * (tRange/100);
+    }
+    ptsConv.push(sum);
+  }
+  const maxC = Math.max(...ptsConv.map(Math.abs), 0.01);
+  const normConv = ptsConv.map(v => v / maxC);
+  drawWave(normConv, pad, pad*4 + h4*3, W - pad*2, h4, PINK, 'y(t) = x*h 卷积结果', true);
+  // 滑动指示线
+  const lineX = pad + ((S.convT + tRange/2) / tRange) * (W - pad*2);
+  ctx.strokeStyle = '#ec489966'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(lineX, 0); ctx.lineTo(lineX, H); ctx.stroke();
+  ctx.setLineDash([]);
+  // 目标
+  if (S.convT > -2.5) completeObj(2, 0);
+  if (S.convPlaying || S.convT > -1) completeObj(2, 1);
+  if (S.convT > 2) completeObj(2, 2);
+}
+
+function renderLevel3() {
+  // 傅里叶级数
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0a0a1a'; ctx.fillRect(0, 0, W, H);
+  const pad = 30, N = 500;
+  const hTop = (H - pad*3) * 0.35;
+  const hBot = (H - pad*3) * 0.4;
+  const hBar = (H - pad*3) * 0.25;
+  const colors = [PINK, CYAN, YELLOW, GREEN, ORANGE, PURPLE, '#ef4444', '#14b8a6'];
+  // 各谐波分量（小图）
+  const maxH = Math.min(S.harmonics, 8);
+  const compW = (W - pad*2) / Math.min(maxH, 4);
+  const compH = hTop / Math.ceil(maxH / 4);
+  for (let k = 0; k < maxH; k++) {
+    const n = 2*k + 1; // 奇次谐波
+    const pts = [];
+    for (let i = 0; i < 100; i++) {
+      const t = (i / 100) * 2 * Math.PI;
+      pts.push((4 / Math.PI) * Math.sin(n * t) / n);
+    }
+    const col = k % 4, row = Math.floor(k / 4);
+    drawWave(pts, pad + col*compW, pad + row*compH, compW - 4, compH - 4, colors[k % colors.length], `n=${n}`);
+  }
+  // 叠加结果
+  const ptsSum = [];
+  for (let i = 0; i < N; i++) {
+    const t = (i / N) * 4 * Math.PI;
+    let sum = 0;
+    for (let k = 0; k < S.harmonics; k++) {
+      const n = 2*k + 1;
+      sum += (4 / Math.PI) * Math.sin(n * t) / n;
+    }
+    ptsSum.push(sum);
+  }
+  drawWave(ptsSum, pad, pad*2 + hTop, W - pad*2, hBot, PINK, `叠加结果 (${S.harmonics} 个谐波)`, true);
+  // 理想方波参考
+  const ptsSq = [];
+  for (let i = 0; i < N; i++) {
+    const t = (i / N) * 4 * Math.PI;
+    ptsSq.push(Math.sign(Math.sin(t)));
+  }
+  ctx.globalAlpha = 0.3;
+  drawWave(ptsSq, pad, pad*2 + hTop, W - pad*2, hBot, '#666', '');
+  ctx.globalAlpha = 1;
+  // 频谱柱状图
+  const barVals = [];
+  for (let k = 0; k < Math.max(S.harmonics, 5); k++) {
+    const n = 2*k + 1;
+    barVals.push(k < S.harmonics ? 4 / (Math.PI * n) : 0);
+  }
+  drawBars(barVals, pad, pad*3 + hTop + hBot, W - pad*2, hBar, CYAN, '频谱 |cₙ|');
+  // 频率标注
+  ctx.fillStyle = '#666'; ctx.font = '11px sans-serif';
+  for (let k = 0; k < Math.min(barVals.length, 10); k++) {
+    const bx = pad + (k / barVals.length) * (W - pad*2);
+    ctx.fillText(`${2*k+1}ω`, bx, H - 4);
+  }
+  if (S.harmonics >= 1) completeObj(3, 0);
+  if (S.harmonics >= 2) completeObj(3, 1);
+  if (S.harmonics >= 5) completeObj(3, 2);
+}
+
+function renderLevel4() {
+  // 傅里叶变换 FFT
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0a0a1a'; ctx.fillRect(0, 0, W, H);
+  const pad = 30;
+  const halfW = (W - pad*3) / 2;
+  const hFull = H - pad*2;
+  // 时域信号
+  const N = 256;
+  const pts = [];
+  for (let i = 0; i < N; i++) {
+    const t = i / S.sampleRate;
+    pts.push(genSignal(S.fftSig, t, S.fftFreq, 1, 0));
+  }
+  drawWave(pts, pad, pad, halfW, hFull, CYAN, `时域: ${S.fftSig} (${S.fftFreq}Hz, Fs=${S.sampleRate}Hz)`);
+  // 简易 DFT
+  const spectrum = [];
+  const freqBins = N / 2;
+  for (let k = 0; k < freqBins; k++) {
+    let re = 0, im = 0;
+    for (let n = 0; n < N; n++) {
+      const angle = -2 * Math.PI * k * n / N;
+      re += pts[n] * Math.cos(angle);
+      im += pts[n] * Math.sin(angle);
+    }
+    spectrum.push(Math.sqrt(re*re + im*im) / N);
+  }
+  drawBars(spectrum, pad*2 + halfW, pad, halfW, hFull, PINK, `频域 (0~${S.sampleRate/2}Hz)`);
+  // 频率标注
+  ctx.fillStyle = '#666'; ctx.font = '11px sans-serif';
+  const freqStep = S.sampleRate / 2;
+  for (let f = 0; f <= freqStep; f += Math.max(1, Math.floor(freqStep/8))) {
+    const bx = pad*2 + halfW + (f / freqStep) * halfW;
+    ctx.fillText(`${f}`, bx, H - 4);
+  }
+  // 采样点标记
+  if (S.sampleRate <= 20) {
+    ctx.fillStyle = YELLOW; ctx.font = '12px sans-serif';
+    ctx.fillText('⚠ 采样率过低，可能出现混叠！', pad + 4, H - 8);
+  }
+  if (S.fftSig === 'sine') completeObj(4, 0);
+  if (S.fftSig === 'square') completeObj(4, 1);
+  if (S.sampleRate < S.fftFreq * 2) completeObj(4, 2);
+}
+
+function renderLevel5() {
+  // 滤波
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0a0a1a'; ctx.fillRect(0, 0, W, H);
+  const pad = 30;
+  const h3 = (H - pad*4) / 3;
+  const N = 256;
+  // 混合信号: 2Hz + 8Hz + 15Hz
+  const freqs = [2, 8, 15];
+  const amps = [1, 0.5, 0.3];
+  const pts = [];
+  for (let i = 0; i < N; i++) {
+    const t = i / 64;
+    let v = 0;
+    freqs.forEach((f, j) => v += amps[j] * Math.sin(2*Math.PI*f*t));
+    pts.push(v);
+  }
+  // 输入频谱
+  const specIn = [];
+  for (let k = 0; k < N/2; k++) {
+    let re = 0, im = 0;
+    for (let n = 0; n < N; n++) {
+      const angle = -2*Math.PI*k*n/N;
+      re += pts[n]*Math.cos(angle); im += pts[n]*Math.sin(angle);
+    }
+    specIn.push(Math.sqrt(re*re+im*im)/N);
+  }
+  drawBars(specIn, pad, pad, W-pad*2, h3, CYAN, '输入信号频谱 (2Hz+8Hz+15Hz)');
+  // 滤波器频率响应
+  const filterResp = [];
+  for (let k = 0; k < N/2; k++) {
+    const f = k * 64 / N;
+    let g = 0;
+    switch(S.filterType) {
+      case 'lowpass': g = f <= S.cutoff ? 1 : 0; break;
+      case 'highpass': g = f >= S.cutoff ? 1 : 0; break;
+      case 'bandpass': g = (f >= S.cutoff && f <= S.cutoff + S.bandwidth) ? 1 : 0; break;
+    }
+    filterResp.push(g);
+  }
+  // 绘制滤波器响应
+  const filterPts = filterResp.map(v => v);
+  drawBars(filterResp, pad, pad*2+h3, W-pad*2, h3, YELLOW,
+    `${S.filterType==='lowpass'?'低通':S.filterType==='highpass'?'高通':'带通'}滤波器 (fc=${S.cutoff}Hz)`, 1);
+  // 输出频谱
+  const specOut = specIn.map((v,i) => v * filterResp[i]);
+  drawBars(specOut, pad, pad*3+h3*2, W-pad*2, h3, PINK, '输出信号频谱');
+  // 目标
+  if (S.filterType === 'lowpass' && S.cutoff <= 5) completeObj(5, 0);
+  if (S.filterType === 'highpass' && S.cutoff >= 10) completeObj(5, 1);
+  if (S.filterType === 'bandpass') completeObj(5, 2);
+}
+
+function renderLevel6() {
+  // 调制与解调
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0a0a1a'; ctx.fillRect(0, 0, W, H);
+  const pad = 30;
+  const h4 = (H - pad*5) / 4;
+  const N = 600;
+  const ptsBase = [], ptsCarrier = [], ptsMod = [], ptsDemod = [];
+  for (let i = 0; i < N; i++) {
+    const t = (i / N) * 4;
+    const base = Math.sin(2*Math.PI*S.baseFreq*t);
+    const carrier = Math.cos(2*Math.PI*S.carrierFreq*t);
+    ptsBase.push(base);
+    ptsCarrier.push(carrier);
+    let modulated;
+    if (S.modType === 'am') {
+      modulated = (1 + S.modDepth * base) * carrier;
+    } else {
+      modulated = Math.cos(2*Math.PI*S.carrierFreq*t + S.modDepth * 5 * Math.sin(2*Math.PI*S.baseFreq*t));
+    }
+    ptsMod.push(modulated);
+    // 包络检波（取绝对值 + 低通）
+    ptsDemod.push(Math.abs(modulated));
+  }
+  // 简单低通平滑解调信号
+  const smoothed = [];
+  const win = 15;
+  for (let i = 0; i < N; i++) {
+    let sum = 0, cnt = 0;
+    for (let j = Math.max(0,i-win); j <= Math.min(N-1,i+win); j++) { sum += ptsDemod[j]; cnt++; }
+    smoothed.push(sum/cnt);
+  }
+  drawWave(ptsBase, pad, pad, W-pad*2, h4, CYAN, `基带信号 (${S.baseFreq}Hz)`);
+  drawWave(ptsCarrier, pad, pad*2+h4, W-pad*2, h4, YELLOW, `载波 (${S.carrierFreq}Hz)`);
+  const maxMod = Math.max(...ptsMod.map(Math.abs), 0.01);
+  drawWave(ptsMod.map(v=>v/maxMod), pad, pad*3+h4*2, W-pad*2, h4, PINK, `${S.modType==='am'?'AM':'FM'} 已调信号 (m=${S.modDepth.toFixed(1)})`);
+  const maxSm = Math.max(...smoothed, 0.01);
+  drawWave(smoothed.map(v=>v/maxSm*2-1), pad, pad*4+h4*3, W-pad*2, h4, GREEN, '包络检波解调');
+  // 包络线
+  if (S.modType === 'am') {
+    ctx.save(); ctx.strokeStyle = '#ec489944'; ctx.lineWidth = 1; ctx.setLineDash([3,3]);
+    ctx.beginPath();
+    for (let i = 0; i < N; i++) {
+      const t = (i/N)*4;
+      const env = 1 + S.modDepth * Math.sin(2*Math.PI*S.baseFreq*t);
+      const px = pad + (i/(N-1))*(W-pad*2);
+      const py = (pad*3+h4*2) + h4/2 - (env/maxMod)*(h4/2)*0.85;
+      i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+    }
+    ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+  }
+  if (S.modType === 'am') completeObj(6, 0);
+  if (S.modDepth !== 0.5) completeObj(6, 1);
+  if (S.modType === 'am' && S.modDepth < 1) completeObj(6, 2);
+}
+
+// ========== 面板与初始化 ==========
+const renderFns = [renderLevel0, renderLevel1, renderLevel2, renderLevel3, renderLevel4, renderLevel5, renderLevel6];
+
+function buildPanel() {
+  const p = document.getElementById('panel');
+  const L = levels[curLevel];
+  let html = `<h2>${L.title}</h2><p class="desc">${L.desc}</p>`;
+  html += '<div class="objectives">';
+  L.objs.forEach((o, i) => {
+    const done = levelObjs[curLevel][i];
+    html += `<div class="obj ${done?'done':''}"><div class="dot"></div><span>${o}</span></div>`;
+  });
+  html += '</div><div class="controls">';
+  html += getPanelControls(curLevel);
+  html += '</div>';
+  html += `<div class="learn-box" ${levelCompleted[curLevel]?'style="display:block"':''}><h3>💡 知识点</h3><p>${L.learn}</p></div>`;
+  html += '<div class="nav-btns">';
+  html += `<button onclick="goLevel(${curLevel-1})" ${curLevel===0?'disabled':''}>← 上一关</button>`;
+  html += `<button onclick="goLevel(${curLevel+1})" ${curLevel===6?'disabled':''}>下一关 →</button>`;
+  html += '</div>';
+  p.innerHTML = html;
+  bindControls(curLevel);
+}
+
+function getPanelControls(li) {
+  switch(li) {
+    case 0: return `
+      <div class="ctrl-group"><label>信号类型</label>
+        <select id="c-sigType"><option value="sine">正弦波</option><option value="square">方波</option><option value="triangle">三角波</option><option value="pulse">脉冲</option><option value="step">阶跃</option></select></div>
+      <div class="ctrl-group"><label>频率 (Hz)</label><input type="range" id="c-freq" min="0.5" max="10" step="0.5" value="${S.freq}"><div class="val">${S.freq} Hz</div></div>
+      <div class="ctrl-group"><label>幅度</label><input type="range" id="c-amp" min="0.1" max="2" step="0.1" value="${S.amp}"><div class="val">${S.amp.toFixed(1)}</div></div>
+      <div class="ctrl-group"><label>相位 (rad)</label><input type="range" id="c-phase" min="0" max="6.28" step="0.1" value="${S.phase}"><div class="val">${S.phase.toFixed(1)}</div></div>`;
+    case 1: return `
+      <div class="ctrl-group"><label>信号 A</label>
+        <select id="c-sig1"><option value="sine">正弦波</option><option value="square">方波</option><option value="triangle">三角波</option></select></div>
+      <div class="ctrl-group"><label>信号 B</label>
+        <select id="c-sig2"><option value="sine">正弦波</option><option value="square" selected>方波</option><option value="triangle">三角波</option></select></div>
+      <div class="ctrl-group"><label>运算</label>
+        <select id="c-op"><option value="add">加法 (+)</option><option value="multiply">乘法 (×)</option><option value="shift">时移 (→)</option><option value="scale">尺度变换</option><option value="flip">翻转</option></select></div>
+      <div class="ctrl-group"><label>时移量</label><input type="range" id="c-timeShift" min="-2" max="2" step="0.1" value="${S.timeShift}"><div class="val">${S.timeShift.toFixed(1)}</div></div>
+      <div class="ctrl-group"><label>尺度因子</label><input type="range" id="c-scaleK" min="0.2" max="3" step="0.1" value="${S.scaleK}"><div class="val">${S.scaleK.toFixed(1)}</div></div>`;
+    case 2: return `
+      <div class="ctrl-group"><label>信号 x(t)</label>
+        <select id="c-convSig1"><option value="rect">矩形脉冲</option><option value="exp">指数衰减</option><option value="sine">正弦波</option></select></div>
+      <div class="ctrl-group"><label>信号 h(t)</label>
+        <select id="c-convSig2"><option value="rect">矩形脉冲</option><option value="exp">指数衰减</option></select></div>
+      <div class="ctrl-group"><label>滑动位置 t</label><input type="range" id="c-convT" min="-3" max="3" step="0.05" value="${S.convT}"><div class="val">t = ${S.convT.toFixed(1)}</div></div>
+      <div class="ctrl-group"><label>自动播放</label>
+        <button id="c-convPlay" style="padding:6px;background:#1a1a3a;color:#e0e0e0;border:1px solid #2a2a4a;border-radius:6px;cursor:pointer">${S.convPlaying?'⏸ 暂停':'▶ 播放'}</button></div>`;
+    case 3: return `
+      <div class="ctrl-group"><label>谐波数量</label><input type="range" id="c-harmonics" min="1" max="20" step="1" value="${S.harmonics}"><div class="val">${S.harmonics} 个谐波</div></div>
+      <p style="font-size:0.82em;color:#888;margin-top:8px">方波 = (4/π) Σ sin(nωt)/n<br>n = 1, 3, 5, 7, ...</p>`;
+    case 4: return `
+      <div class="ctrl-group"><label>信号类型</label>
+        <select id="c-fftSig"><option value="sine">正弦波</option><option value="square">方波</option><option value="triangle">三角波</option></select></div>
+      <div class="ctrl-group"><label>信号频率 (Hz)</label><input type="range" id="c-fftFreq" min="1" max="25" step="1" value="${S.fftFreq}"><div class="val">${S.fftFreq} Hz</div></div>
+      <div class="ctrl-group"><label>采样率 (Hz)</label><input type="range" id="c-sampleRate" min="8" max="128" step="4" value="${S.sampleRate}"><div class="val">${S.sampleRate} Hz</div></div>
+      <p style="font-size:0.82em;color:#888;margin-top:8px">奈奎斯特: Fs > 2·fmax<br>当前 Fs/2 = ${S.sampleRate/2} Hz</p>`;
+    case 5: return `
+      <div class="ctrl-group"><label>滤波器类型</label>
+        <select id="c-filterType"><option value="lowpass">低通滤波器</option><option value="highpass">高通滤波器</option><option value="bandpass">带通滤波器</option></select></div>
+      <div class="ctrl-group"><label>截止频率 (Hz)</label><input type="range" id="c-cutoff" min="1" max="25" step="1" value="${S.cutoff}"><div class="val">${S.cutoff} Hz</div></div>
+      <div class="ctrl-group"><label>带宽 (Hz, 带通用)</label><input type="range" id="c-bandwidth" min="1" max="15" step="1" value="${S.bandwidth}"><div class="val">${S.bandwidth} Hz</div></div>
+      <p style="font-size:0.82em;color:#888;margin-top:8px">输入: 2Hz + 8Hz + 15Hz 混合信号</p>`;
+    case 6: return `
+      <div class="ctrl-group"><label>调制方式</label>
+        <select id="c-modType"><option value="am">AM 调幅</option><option value="fm">FM 调频</option></select></div>
+      <div class="ctrl-group"><label>基带频率 (Hz)</label><input type="range" id="c-baseFreq" min="1" max="5" step="0.5" value="${S.baseFreq}"><div class="val">${S.baseFreq} Hz</div></div>
+      <div class="ctrl-group"><label>载波频率 (Hz)</label><input type="range" id="c-carrierFreq" min="10" max="40" step="1" value="${S.carrierFreq}"><div class="val">${S.carrierFreq} Hz</div></div>
+      <div class="ctrl-group"><label>调制深度 m</label><input type="range" id="c-modDepth" min="0.1" max="1.5" step="0.1" value="${S.modDepth}"><div class="val">m = ${S.modDepth.toFixed(1)}</div></div>`;
+    default: return '';
+  }
+}
+
+function bindControls(li) {
+  function bind(id, key, isNum, cb) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.tagName === 'SELECT') {
+      el.value = S[key];
+      el.onchange = () => { S[key] = el.value; if(cb)cb(); updatePanel(); };
+    } else {
+      el.oninput = () => {
+        S[key] = isNum ? parseFloat(el.value) : el.value;
+        const valEl = el.parentElement.querySelector('.val');
+        if (valEl) {
+          if (key==='freq') valEl.textContent = S[key]+' Hz';
+          else if (key==='amp') valEl.textContent = S[key].toFixed(1);
+          else if (key==='phase') valEl.textContent = S[key].toFixed(1);
+          else if (key==='timeShift') valEl.textContent = S[key].toFixed(1);
+          else if (key==='scaleK') valEl.textContent = S[key].toFixed(1);
+          else if (key==='convT') valEl.textContent = 't = '+S[key].toFixed(1);
+          else if (key==='harmonics') valEl.textContent = S[key]+' 个谐波';
+          else if (key==='fftFreq') valEl.textContent = S[key]+' Hz';
+          else if (key==='sampleRate') valEl.textContent = S[key]+' Hz';
+          else if (key==='cutoff') valEl.textContent = S[key]+' Hz';
+          else if (key==='bandwidth') valEl.textContent = S[key]+' Hz';
+          else if (key==='carrierFreq') valEl.textContent = S[key]+' Hz';
+          else if (key==='baseFreq') valEl.textContent = S[key]+' Hz';
+          else if (key==='modDepth') valEl.textContent = 'm = '+S[key].toFixed(1);
+        }
+        if(cb)cb();
+      };
+    }
+  }
+  switch(li) {
+    case 0:
+      bind('c-sigType','sigType'); bind('c-freq','freq',true); bind('c-amp','amp',true); bind('c-phase','phase',true);
+      break;
+    case 1:
+      bind('c-sig1','sig1'); bind('c-sig2','sig2'); bind('c-op','op'); bind('c-timeShift','timeShift',true); bind('c-scaleK','scaleK',true);
+      break;
+    case 2:
+      bind('c-convSig1','convSig1'); bind('c-convSig2','convSig2'); bind('c-convT','convT',true);
+      const playBtn = document.getElementById('c-convPlay');
+      if (playBtn) playBtn.onclick = () => { S.convPlaying = !S.convPlaying; playBtn.textContent = S.convPlaying?'⏸ 暂停':'▶ 播放'; };
+      break;
+    case 3:
+      bind('c-harmonics','harmonics',true);
+      break;
+    case 4:
+      bind('c-fftSig','fftSig'); bind('c-fftFreq','fftFreq',true); bind('c-sampleRate','sampleRate',true);
+      break;
+    case 5:
+      bind('c-filterType','filterType'); bind('c-cutoff','cutoff',true); bind('c-bandwidth','bandwidth',true);
+      break;
+    case 6:
+      bind('c-modType','modType'); bind('c-baseFreq','baseFreq',true); bind('c-carrierFreq','carrierFreq',true); bind('c-modDepth','modDepth',true);
+      break;
+  }
+}
+
+function updatePanel() { buildPanel(); }
+
+function updateBar() {
+  const bar = document.getElementById('bar');
+  let html = `关卡 ${curLevel+1}/7: ${levels[curLevel].title}`;
+  html += '<div class="level-dots">';
+  for (let i = 0; i < 7; i++) {
+    const cls = i===curLevel?'active':(levelCompleted[i]?'completed':'');
+    html += `<span class="${cls}" onclick="goLevel(${i})"></span>`;
+  }
+  html += '</div>';
+  bar.innerHTML = html;
+}
+
+function goLevel(n) {
+  if (n < 0 || n > 6) return;
+  curLevel = n;
+  buildPanel();
+  updateBar();
+}
+
+function animate() {
+  time += 0.016;
+  // 卷积自动播放
+  if (curLevel === 2 && S.convPlaying) {
+    S.convT += S.convSpeed;
+    if (S.convT > 3) { S.convT = -3; }
+    const slider = document.getElementById('c-convT');
+    if (slider) { slider.value = S.convT; }
+    const valEl = slider && slider.parentElement.querySelector('.val');
+    if (valEl) valEl.textContent = 't = ' + S.convT.toFixed(1);
+  }
+  renderFns[curLevel]();
+  animId = requestAnimationFrame(animate);
+}
+
+// ========== 启动 ==========
+document.getElementById('startBtn').onclick = () => {
+  document.getElementById('overlay').style.display = 'none';
+  document.getElementById('main').style.display = 'flex';
+  document.getElementById('bar').style.display = 'flex';
+  resize();
+  buildPanel();
+  updateBar();
+  animate();
+};
+
+window.addEventListener('resize', resize);
+</script>
+</body>
+</html>

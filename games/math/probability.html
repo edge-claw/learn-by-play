@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>概率与统计 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e0e0e0;font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;width:100vw}
+.overlay{position:fixed;inset:0;background:rgba(5,5,15,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;color:#10b981;margin-bottom:8px;text-shadow:0 0 30px rgba(16,185,129,0.4)}
+.overlay .sub{font-size:18px;color:#6ee7b7;margin-bottom:32px}
+.overlay .desc{max-width:520px;color:#94a3b8;font-size:14px;line-height:1.8;margin-bottom:36px}
+.overlay .start-btn{background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;padding:14px 48px;font-size:18px;border-radius:12px;cursor:pointer;transition:all .3s}
+.overlay .start-btn:hover{transform:scale(1.05);box-shadow:0 0 24px rgba(16,185,129,0.5)}
+.panel{position:fixed;left:0;top:0;bottom:36px;width:320px;background:rgba(10,10,30,0.95);border-right:1px solid rgba(16,185,129,0.2);overflow-y:auto;padding:16px;display:none;z-index:10}
+.panel h2{color:#10b981;font-size:18px;margin-bottom:6px}
+.panel .level-title{color:#6ee7b7;font-size:13px;margin-bottom:12px}
+.panel .desc-text{color:#94a3b8;font-size:13px;line-height:1.7;margin-bottom:14px}
+.panel .obj-list{list-style:none;margin-bottom:14px}
+.panel .obj-list li{font-size:13px;padding:4px 0;color:#cbd5e1}
+.panel .obj-list li.done{color:#4ade80}
+.panel .obj-list li::before{content:'○ ';color:#475569}
+.panel .obj-list li.done::before{content:'● ';color:#4ade80}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:1px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.1);color:#6ee7b7;border-radius:8px;cursor:pointer;font-size:13px;transition:all .2s}
+.act-btn:hover{background:rgba(16,185,129,0.25)}
+.learn-box{background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:8px;padding:10px;margin-top:10px;font-size:12px;color:#a7f3d0;line-height:1.7}
+.learn-box b{color:#4ade80}
+canvas{position:fixed;left:320px;top:0;background:#0a0a1a}
+.bar{position:fixed;left:0;bottom:0;right:0;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid rgba(16,185,129,0.2);display:none;z-index:10;padding:0 16px;align-items:center;font-size:13px}
+.bar-inner{display:flex;align-items:center;height:100%;gap:8px}
+.bar-btn{background:none;border:1px solid rgba(16,185,129,0.3);color:#6ee7b7;padding:2px 12px;border-radius:4px;cursor:pointer;font-size:12px}
+.bar-btn:hover{background:rgba(16,185,129,0.15)}
+.bar-btn.active{background:rgba(16,185,129,0.3);color:#fff}
+.bar .progress{margin-left:auto;color:#64748b;font-size:12px}
+.slider-row{display:flex;align-items:center;gap:8px;margin:6px 0}
+.slider-row label{font-size:12px;color:#94a3b8;min-width:60px}
+.slider-row input[type=range]{flex:1;accent-color:#10b981}
+.slider-row .val{font-size:12px;color:#6ee7b7;min-width:36px;text-align:right}
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay">
+<h1>🎲 概率与统计 探险</h1>
+<div class="sub">Probability & Statistics Adventure</div>
+<div class="desc">
+从掷骰子到回归分析，7个关卡带你探索概率与统计的核心概念。<br>
+每一关都有交互式可视化，动手操作理解数学之美。
+</div>
+<button class="start-btn" onclick="startGame()">开始探索 →</button>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"><div class="bar-inner" id="barInner"></div></div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const panel=document.getElementById('panel'),bar=document.getElementById('bar'),barInner=document.getElementById('barInner');
+let W,H,curLevel=0,animId=null;
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+let levelData={};
+
+function resize(){
+  W=window.innerWidth-320;H=window.innerHeight-36;
+  cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';
+  draw();
+}
+window.addEventListener('resize',resize);
+
+function startGame(){
+  document.getElementById('overlay').style.display='none';
+  panel.style.display='block';bar.style.display='block';
+  resize();initLevel(0);renderBar();renderPanel();
+}
+
+function goLevel(n){curLevel=n;initLevel(n);renderBar();renderPanel();draw();}
+
+function completeObj(li,oi){
+  if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar();}
+}
+
+function renderBar(){
+  let h='';
+  for(let i=0;i<7;i++){
+    let done=levelObjs[i].every(v=>v);
+    let cls=i===curLevel?'bar-btn active':'bar-btn';
+    if(done)h+=`<button class="${cls}" onclick="goLevel(${i})" style="color:#4ade80">✓ ${i+1}</button>`;
+    else h+=`<button class="${cls}" onclick="goLevel(${i})">${i+1}</button>`;
+  }
+  let total=levelObjs.flat().filter(v=>v).length;
+  h+=`<span class="progress">进度 ${total}/21</span>`;
+  barInner.innerHTML=h;
+}
+
+const levelInfo=[
+  {title:'关卡1: 古典概率',sub:'掷骰子与抛硬币',desc:'通过大量模拟实验，观察频率如何趋近理论概率。',
+   objs:['抛硬币 100 次，观察正面频率','掷骰子 200 次，观察各面频率','频率与理论概率误差 < 5%'],
+   learn:'<b>大量重复实验</b>下，事件发生的频率会稳定在其理论概率附近。这就是频率学派对概率的定义。硬币正面概率 = 1/2，骰子每面概率 = 1/6。'},
+  {title:'关卡2: 条件概率与贝叶斯',sub:'贝叶斯定理可视化',desc:'拖动先验概率滑块，观察后验概率如何变化。理解 P(A|B) 的含义。',
+   objs:['调整先验概率观察后验变化','设置似然比 > 3 观察效果','找到使后验 > 0.9 的参数组合'],
+   learn:'<b>贝叶斯定理</b>: P(A|B) = P(B|A)·P(A) / P(B)。先验概率通过新证据更新为后验概率。似然比越大，证据越强，后验偏离先验越多。'},
+  {title:'关卡3: 随机变量与分布',sub:'探索常见分布',desc:'调整参数观察均匀分布、二项分布、泊松分布的形状变化。',
+   objs:['调整二项分布 n 和 p 参数','调整泊松分布 λ 参数','比较三种分布的形状差异'],
+   learn:'<b>概率分布</b>描述随机变量取各值的概率。二项分布 B(n,p) 描述 n 次独立试验中成功次数；泊松分布 Poi(λ) 描述单位时间内事件发生次数。'},
+  {title:'关卡4: 正态分布',sub:'中心极限定理',desc:'从任意分布中反复采样取均值，观察均值分布趋近正态分布。',
+   objs:['采样 50 次观察均值分布','采样 200 次看分布更接近正态','切换源分布验证 CLT 普适性'],
+   learn:'<b>中心极限定理 (CLT)</b>: 无论总体分布如何，样本均值的分布在样本量足够大时趋近正态分布 N(μ, σ²/n)。这是统计推断的基石。'},
+  {title:'关卡5: 大数定律',sub:'样本均值的收敛',desc:'不断增加样本量，观察样本均值如何收敛到总体期望值。',
+   objs:['观察 n=100 时的均值波动','观察 n=1000 时均值更稳定','确认 n=5000 时均值收敛'],
+   learn:'<b>大数定律</b>: 当样本量 n→∞ 时，样本均值几乎必然收敛到总体期望 μ。这解释了为什么保险公司、赌场能稳定盈利。'},
+  {title:'关卡6: 假设检验',sub:'p 值可视化',desc:'调整样本量和效应量，观察 p 值和检验功效的变化。',
+   objs:['理解 p 值含义（调整效应量）','增大样本量使 p < 0.05','观察效应量对功效的影响'],
+   learn:'<b>假设检验</b>: p 值是在零假设为真时，观察到当前或更极端结果的概率。p < α 则拒绝零假设。样本量越大、效应量越大，检验功效越高。'},
+  {title:'关卡7: 回归分析',sub:'最小二乘法',desc:'拖动数据点，观察回归线如何变化。理解最小二乘法拟合原理。',
+   objs:['观察初始回归线和 R² 值','拖动数据点改变回归线','添加离群点观察影响'],
+   learn:'<b>最小二乘法</b>: 找到使残差平方和 Σ(yᵢ - ŷᵢ)² 最小的直线 y = a + bx。R² 衡量拟合优度，越接近 1 拟合越好。离群点会显著影响回归结果。'}
+];
+
+// ===== Level 1: Classical Probability =====
+let L1={coins:0,heads:0,diceRolls:0,diceCounts:[0,0,0,0,0,0],coinHist:[],diceHist:[]};
+function initL1(){L1={coins:0,heads:0,diceRolls:0,diceCounts:[0,0,0,0,0,0],coinHist:[],diceHist:[]};}
+function flipCoins(n){
+  for(let i=0;i<n;i++){L1.coins++;if(Math.random()<0.5)L1.heads++;L1.coinHist.push(L1.heads/L1.coins);}
+  if(L1.coins>=100)completeObj(0,0);
+  if(Math.abs(L1.heads/L1.coins-0.5)<0.05&&L1.coins>=100)completeObj(0,2);
+  renderPanel();draw();
+}
+function rollDice(n){
+  for(let i=0;i<n;i++){L1.diceRolls++;let f=Math.floor(Math.random()*6);L1.diceCounts[f]++;
+    let maxDev=0;for(let j=0;j<6;j++)maxDev=Math.max(maxDev,Math.abs(L1.diceCounts[j]/L1.diceRolls-1/6));
+    L1.diceHist.push(maxDev);}
+  if(L1.diceRolls>=200)completeObj(0,1);
+  let maxDev=0;for(let j=0;j<6;j++)maxDev=Math.max(maxDev,Math.abs(L1.diceCounts[j]/L1.diceRolls-1/6));
+  if(maxDev<0.05&&L1.diceRolls>=200)completeObj(0,2);
+  renderPanel();draw();
+}
+// ===== Level 2: Bayes =====
+let L2={prior:0.5,likelihoodPos:0.9,likelihoodNeg:0.05,adjusted:false,highLR:false,highPost:false};
+function initL2(){L2={prior:0.5,likelihoodPos:0.9,likelihoodNeg:0.05,adjusted:false,highLR:false,highPost:false};}
+function updateBayes(){
+  let p=L2.prior,la=L2.likelihoodPos,lb=L2.likelihoodNeg;
+  L2.posterior=p*la/(p*la+(1-p)*lb);
+  L2.lr=la/lb;
+  if(L2.adjusted)completeObj(1,0);
+  if(L2.lr>3){L2.highLR=true;completeObj(1,1);}
+  if(L2.posterior>0.9){L2.highPost=true;completeObj(1,2);}
+  renderPanel();draw();
+}
+
+// ===== Level 3: Distributions =====
+let L3={dist:'binomial',binN:20,binP:0.5,poisLam:5,uniA:0,uniB:10,binAdj:false,poisAdj:false,compared:false};
+function initL3(){L3={dist:'binomial',binN:20,binP:0.5,poisLam:5,uniA:0,uniB:10,binAdj:false,poisAdj:false,compared:false};}
+function setDist(d){L3.dist=d;if(L3.binAdj&&L3.poisAdj)completeObj(2,2);renderPanel();draw();}
+function updateL3(){
+  if(L3.dist==='binomial')L3.binAdj=true;
+  if(L3.dist==='poisson')L3.poisAdj=true;
+  completeObj(2,L3.dist==='binomial'?0:L3.dist==='poisson'?1:2);
+  if(L3.binAdj&&L3.poisAdj){L3.compared=true;completeObj(2,2);}
+  renderPanel();draw();
+}
+
+// ===== Level 4: CLT =====
+let L4={srcDist:'uniform',samples:[],sampleMeans:[],sampleSize:30,totalSamples:0,switched:false};
+function initL4(){L4={srcDist:'uniform',samples:[],sampleMeans:[],sampleSize:30,totalSamples:0,switched:false};}
+function sampleCLT(n){
+  for(let i=0;i<n;i++){
+    let s=[];for(let j=0;j<L4.sampleSize;j++){
+      if(L4.srcDist==='uniform')s.push(Math.random()*10);
+      else if(L4.srcDist==='exponential')s.push(-2*Math.log(Math.random()));
+      else s.push(Math.random()<0.3?1:0);
+    }
+    let mean=s.reduce((a,b)=>a+b,0)/s.length;
+    L4.sampleMeans.push(mean);L4.totalSamples++;
+  }
+  if(L4.totalSamples>=50)completeObj(3,0);
+  if(L4.totalSamples>=200)completeObj(3,1);
+  renderPanel();draw();
+}
+function switchSrcDist(d){L4.srcDist=d;L4.sampleMeans=[];L4.totalSamples=0;L4.switched=true;
+  if(L4.switched)completeObj(3,2);renderPanel();draw();}
+
+// ===== Level 5: Law of Large Numbers =====
+let L5={values:[],runningMean:[],trueMean:3.5,n:0};
+function initL5(){L5={values:[],runningMean:[],trueMean:3.5,n:0};}
+function addSamplesLLN(count){
+  for(let i=0;i<count;i++){
+    let v=Math.floor(Math.random()*6)+1;L5.values.push(v);L5.n++;
+    L5.runningMean.push(L5.values.reduce((a,b)=>a+b,0)/L5.n);
+  }
+  if(L5.n>=100)completeObj(4,0);
+  if(L5.n>=1000)completeObj(4,1);
+  if(L5.n>=5000&&Math.abs(L5.runningMean[L5.n-1]-L5.trueMean)<0.1)completeObj(4,2);
+  renderPanel();draw();
+}
+
+// ===== Level 6: Hypothesis Testing =====
+let L6={sampleSize:30,effectSize:0.5,alpha:0.05,simulated:false,pVal:null,power:null,adjEffect:false,sigFound:false,powerObs:false};
+function initL6(){L6={sampleSize:30,effectSize:0.5,alpha:0.05,simulated:false,pVal:null,power:null,adjEffect:false,sigFound:false,powerObs:false};}
+function simulateHT(){
+  let n=L6.sampleSize,d=L6.effectSize;
+  // simulate t-test: sample from N(d,1) vs N(0,1)
+  let sum=0,sum2=0;
+  for(let i=0;i<n;i++){let x=randNorm(d,1);sum+=x;sum2+=x*x;}
+  let mean=sum/n,se=Math.sqrt((sum2/n-mean*mean)/(n-1))*Math.sqrt(1/n);
+  let t=mean/se;
+  // approximate p-value from t using normal approx
+  L6.pVal=2*(1-normalCDF(Math.abs(t)));
+  // power approximation
+  let ncp=d*Math.sqrt(n);
+  L6.power=1-normalCDF(1.96-ncp)+normalCDF(-1.96-ncp);
+  L6.simulated=true;
+  L6.adjEffect=true;completeObj(5,0);
+  if(L6.pVal<0.05){L6.sigFound=true;completeObj(5,1);}
+  if(L6.power>0.8){L6.powerObs=true;completeObj(5,2);}
+  renderPanel();draw();
+}
+function randNorm(mu,sig){let u=1-Math.random(),v=1-Math.random();return mu+sig*Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function normalCDF(x){let t=1/(1+0.2316419*Math.abs(x)),d=0.3989422804*Math.exp(-x*x/2),
+  p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.8212560+t*1.3302744))));return x>0?1-p:p;}
+function normalPDF(x){return Math.exp(-x*x/2)/Math.sqrt(2*Math.PI);}
+
+// ===== Level 7: Regression =====
+let L7={points:[],dragging:-1,slope:0,intercept:0,r2:0,addedOutlier:false};
+function initL7(){
+  L7.points=[];L7.dragging=-1;L7.addedOutlier=false;
+  for(let i=0;i<12;i++){let x=1+i*0.8+Math.random()*0.5;let y=1+0.8*x+randNorm(0,1.2);L7.points.push({x,y});}
+  calcRegression();completeObj(6,0);
+}
+function calcRegression(){
+  let pts=L7.points,n=pts.length;if(n<2)return;
+  let sx=0,sy=0,sxx=0,sxy=0;
+  for(let p of pts){sx+=p.x;sy+=p.y;sxx+=p.x*p.x;sxy+=p.x*p.y;}
+  L7.slope=(n*sxy-sx*sy)/(n*sxx-sx*sx);
+  L7.intercept=(sy-L7.slope*sx)/n;
+  let yMean=sy/n,ssTot=0,ssRes=0;
+  for(let p of pts){let yHat=L7.intercept+L7.slope*p.x;ssTot+=(p.y-yMean)**2;ssRes+=(p.y-yHat)**2;}
+  L7.r2=ssTot>0?1-ssRes/ssTot:0;
+}
+function addOutlier(){
+  let maxX=Math.max(...L7.points.map(p=>p.x));
+  L7.points.push({x:maxX*0.5,y:L7.intercept+L7.slope*maxX*0.5+8});
+  L7.addedOutlier=true;calcRegression();completeObj(6,2);renderPanel();draw();
+}
+
+// ===== Canvas mouse for L7 =====
+cv.addEventListener('mousedown',e=>{
+  if(curLevel!==6)return;
+  let rect=cv.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  let m=50,gw=W-100,gh=H-100;
+  for(let i=0;i<L7.points.length;i++){
+    let p=L7.points[i],px=m+(p.x/12)*gw,py=H-m-(p.y/15)*gh;
+    if(Math.hypot(mx-px,my-py)<12){L7.dragging=i;return;}
+  }
+});
+cv.addEventListener('mousemove',e=>{
+  if(L7.dragging<0||curLevel!==6)return;
+  let rect=cv.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  let m=50,gw=W-100,gh=H-100;
+  L7.points[L7.dragging].x=Math.max(0.1,Math.min(12,(mx-m)/gw*12));
+  L7.points[L7.dragging].y=Math.max(0,Math.min(15,(H-m-my)/gh*15));
+  calcRegression();completeObj(6,1);renderPanel();draw();
+});
+cv.addEventListener('mouseup',()=>{L7.dragging=-1;});
+
+function initLevel(n){
+  if(n===0)initL1();else if(n===1){initL2();updateBayes();}
+  else if(n===2)initL3();else if(n===3)initL4();
+  else if(n===4)initL5();else if(n===5)initL6();else if(n===6)initL7();
+}
+
+function renderPanel(){
+  let li=curLevel,info=levelInfo[li];
+  let h=`<h2>${info.title}</h2><div class="level-title">${info.sub}</div>`;
+  h+=`<div class="desc-text">${info.desc}</div>`;
+  h+=`<ul class="obj-list">`;
+  for(let i=0;i<3;i++){
+    h+=`<li class="${levelObjs[li][i]?'done':''}">${info.objs[i]}</li>`;
+  }
+  h+=`</ul>`;
+  // Level-specific controls
+  if(li===0){
+    h+=`<button class="act-btn" onclick="flipCoins(10)">抛硬币 ×10</button>`;
+    h+=`<button class="act-btn" onclick="flipCoins(50)">抛硬币 ×50</button>`;
+    h+=`<button class="act-btn" onclick="rollDice(10)">掷骰子 ×10</button>`;
+    h+=`<button class="act-btn" onclick="rollDice(100)">掷骰子 ×100</button>`;
+    h+=`<div style="margin-top:8px;font-size:12px;color:#64748b">硬币: ${L1.coins}次, 正面${L1.heads}次 (${L1.coins?((L1.heads/L1.coins*100).toFixed(1)):'0'}%)<br>骰子: ${L1.diceRolls}次</div>`;
+  }else if(li===1){
+    h+=`<div class="slider-row"><label>先验 P(A)</label><input type="range" min="1" max="99" value="${Math.round(L2.prior*100)}" oninput="L2.prior=this.value/100;L2.adjusted=true;updateBayes()"><span class="val">${(L2.prior).toFixed(2)}</span></div>`;
+    h+=`<div class="slider-row"><label>P(B|A)</label><input type="range" min="1" max="99" value="${Math.round(L2.likelihoodPos*100)}" oninput="L2.likelihoodPos=this.value/100;updateBayes()"><span class="val">${(L2.likelihoodPos).toFixed(2)}</span></div>`;
+    h+=`<div class="slider-row"><label>P(B|¬A)</label><input type="range" min="1" max="99" value="${Math.round(L2.likelihoodNeg*100)}" oninput="L2.likelihoodNeg=this.value/100;updateBayes()"><span class="val">${(L2.likelihoodNeg).toFixed(2)}</span></div>`;
+    h+=`<div style="margin-top:8px;font-size:12px;color:#64748b">似然比: ${L2.lr?L2.lr.toFixed(2):'-'} | 后验: ${L2.posterior?(L2.posterior*100).toFixed(1)+'%':'-'}</div>`;
+  }else if(li===2){
+    h+=`<button class="act-btn" onclick="setDist('binomial')" style="${L3.dist==='binomial'?'background:rgba(16,185,129,0.3)':''}">二项分布</button>`;
+    h+=`<button class="act-btn" onclick="setDist('poisson')" style="${L3.dist==='poisson'?'background:rgba(16,185,129,0.3)':''}">泊松分布</button>`;
+    h+=`<button class="act-btn" onclick="setDist('uniform')" style="${L3.dist==='uniform'?'background:rgba(16,185,129,0.3)':''}">均匀分布</button>`;
+    if(L3.dist==='binomial'){
+      h+=`<div class="slider-row"><label>n</label><input type="range" min="1" max="50" value="${L3.binN}" oninput="L3.binN=+this.value;updateL3()"><span class="val">${L3.binN}</span></div>`;
+      h+=`<div class="slider-row"><label>p</label><input type="range" min="1" max="99" value="${Math.round(L3.binP*100)}" oninput="L3.binP=this.value/100;updateL3()"><span class="val">${L3.binP.toFixed(2)}</span></div>`;
+    }else if(L3.dist==='poisson'){
+      h+=`<div class="slider-row"><label>λ</label><input type="range" min="1" max="20" value="${L3.poisLam}" oninput="L3.poisLam=+this.value;updateL3()"><span class="val">${L3.poisLam}</span></div>`;
+    }
+  }else if(li===3){
+    h+=`<button class="act-btn" onclick="sampleCLT(10)">采样 ×10</button>`;
+    h+=`<button class="act-btn" onclick="sampleCLT(50)">采样 ×50</button>`;
+    h+=`<button class="act-btn" onclick="switchSrcDist('uniform')" style="${L4.srcDist==='uniform'?'background:rgba(16,185,129,0.3)':''}">均匀分布源</button>`;
+    h+=`<button class="act-btn" onclick="switchSrcDist('exponential')" style="${L4.srcDist==='exponential'?'background:rgba(16,185,129,0.3)':''}">指数分布源</button>`;
+    h+=`<button class="act-btn" onclick="switchSrcDist('bernoulli')" style="${L4.srcDist==='bernoulli'?'background:rgba(16,185,129,0.3)':''}">伯努利分布源</button>`;
+    h+=`<div style="margin-top:8px;font-size:12px;color:#64748b">已采样: ${L4.totalSamples} 次 | 每组样本量: ${L4.sampleSize}</div>`;
+  }else if(li===4){
+    h+=`<button class="act-btn" onclick="addSamplesLLN(100)">+100 样本</button>`;
+    h+=`<button class="act-btn" onclick="addSamplesLLN(500)">+500 样本</button>`;
+    h+=`<button class="act-btn" onclick="addSamplesLLN(2000)">+2000 样本</button>`;
+    h+=`<div style="margin-top:8px;font-size:12px;color:#64748b">样本量: ${L5.n} | 当前均值: ${L5.n?(L5.runningMean[L5.n-1]).toFixed(4):'-'} | 期望: ${L5.trueMean}</div>`;
+  }else if(li===5){
+    h+=`<div class="slider-row"><label>样本量 n</label><input type="range" min="10" max="200" value="${L6.sampleSize}" oninput="L6.sampleSize=+this.value;renderPanel()"><span class="val">${L6.sampleSize}</span></div>`;
+    h+=`<div class="slider-row"><label>效应量 d</label><input type="range" min="0" max="200" value="${Math.round(L6.effectSize*100)}" oninput="L6.effectSize=this.value/100;renderPanel()"><span class="val">${L6.effectSize.toFixed(2)}</span></div>`;
+    h+=`<button class="act-btn" onclick="simulateHT()">运行检验</button>`;
+    if(L6.simulated)h+=`<div style="margin-top:8px;font-size:12px;color:#64748b">p 值: ${L6.pVal.toFixed(4)} ${L6.pVal<0.05?'✓ 显著':'✗ 不显著'}<br>检验功效: ${(L6.power*100).toFixed(1)}%</div>`;
+  }else if(li===6){
+    h+=`<div style="font-size:12px;color:#64748b;margin-bottom:6px">拖动数据点改变回归线</div>`;
+    h+=`<button class="act-btn" onclick="addOutlier()">添加离群点</button>`;
+    h+=`<div style="margin-top:8px;font-size:12px;color:#64748b">斜率: ${L7.slope.toFixed(3)} | 截距: ${L7.intercept.toFixed(3)}<br>R²: ${L7.r2.toFixed(4)}</div>`;
+  }
+  // Learn box + next level
+  if(levelObjs[li].every(v=>v)){
+    h+=`<div class="learn-box">${info.learn}</div>`;
+    if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+    if(li===6)h+=`<div style="text-align:center;margin-top:12px;color:#4ade80;font-size:14px">🎉 恭喜通关！全部 7 个关卡已完成！</div>`;
+  }
+  panel.innerHTML=h;
+}
+
+// ===== Drawing =====
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  if(curLevel===0)drawL1();
+  else if(curLevel===1)drawL2();
+  else if(curLevel===2)drawL3();
+  else if(curLevel===3)drawL4();
+  else if(curLevel===4)drawL5();
+  else if(curLevel===5)drawL6();
+  else if(curLevel===6)drawL7();
+}
+
+function drawAxes(m,gw,gh,xLabel,yLabel,xTicks,yTicks){
+  ctx.strokeStyle='#334155';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(m,m);ctx.lineTo(m,H-m);ctx.lineTo(W-m,H-m);ctx.stroke();
+  ctx.fillStyle='#64748b';ctx.font='11px sans-serif';ctx.textAlign='center';
+  if(xLabel)ctx.fillText(xLabel,m+gw/2,H-6);
+  ctx.save();ctx.translate(14,m+gh/2);ctx.rotate(-Math.PI/2);
+  if(yLabel)ctx.fillText(yLabel,0,0);ctx.restore();
+  if(xTicks)for(let t of xTicks){let x=m+t.pos*gw;ctx.fillText(t.label,x,H-m+14);}
+  if(yTicks)for(let t of yTicks){let y=H-m-t.pos*gh;ctx.textAlign='right';ctx.fillText(t.label,m-6,y+4);}
+}
+
+function drawL1(){
+  let m=50,gw=W-100,gh=(H-120)/2;
+  // Coin frequency chart
+  ctx.fillStyle='#10b981';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
+  ctx.fillText('硬币正面频率趋势',m,30);
+  if(L1.coinHist.length>1){
+    ctx.strokeStyle='#10b981';ctx.lineWidth=2;ctx.beginPath();
+    for(let i=0;i<L1.coinHist.length;i++){
+      let x=m+i/(L1.coinHist.length-1)*gw,y=40+gh-L1.coinHist[i]*gh;
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    // theoretical line
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;ctx.setLineDash([5,5]);
+    ctx.beginPath();ctx.moveTo(m,40+gh-0.5*gh);ctx.lineTo(m+gw,40+gh-0.5*gh);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';ctx.fillText('理论值 0.5',m+gw-60,40+gh-0.5*gh-6);
+  }
+  // Dice histogram
+  let dy=60+gh;
+  ctx.fillStyle='#10b981';ctx.font='bold 14px sans-serif';
+  ctx.fillText('骰子各面频率',m,dy);
+  if(L1.diceRolls>0){
+    let bw=gw/8;
+    for(let i=0;i<6;i++){
+      let freq=L1.diceCounts[i]/L1.diceRolls;
+      let bh=freq*gh*4;
+      let x=m+bw+i*bw,y=dy+10+gh-bh;
+      ctx.fillStyle='rgba(16,185,129,0.6)';ctx.fillRect(x,y,bw*0.7,bh);
+      ctx.fillStyle='#e0e0e0';ctx.font='11px sans-serif';ctx.textAlign='center';
+      ctx.fillText(''+(i+1),x+bw*0.35,dy+10+gh+14);
+      ctx.fillText((freq*100).toFixed(1)+'%',x+bw*0.35,y-4);
+    }
+    // theoretical line
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;ctx.setLineDash([5,5]);
+    let ty=dy+10+gh-(1/6)*gh*4;
+    ctx.beginPath();ctx.moveTo(m,ty);ctx.lineTo(m+gw,ty);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';ctx.textAlign='left';
+    ctx.fillText('理论值 16.7%',m+gw-80,ty-6);
+  }
+}
+
+function drawL2(){
+  let m=60,gw=W-120,gh=H-120;
+  ctx.fillStyle='#10b981';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
+  ctx.fillText('贝叶斯定理可视化',m,30);
+  // Draw probability bars
+  let bars=[
+    {label:'先验 P(A)',val:L2.prior,color:'#3b82f6'},
+    {label:'P(B|A)',val:L2.likelihoodPos,color:'#f59e0b'},
+    {label:'P(B|¬A)',val:L2.likelihoodNeg,color:'#ef4444'},
+    {label:'后验 P(A|B)',val:L2.posterior||0,color:'#10b981'}
+  ];
+  let bw=gw/6,gap=bw*0.4;
+  for(let i=0;i<bars.length;i++){
+    let x=m+gap+i*(bw+gap),bh=bars[i].val*gh*0.8;
+    let y=H-m-bh;
+    ctx.fillStyle=bars[i].color+'99';ctx.fillRect(x,y,bw,bh);
+    ctx.fillStyle=bars[i].color;ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+    ctx.fillText(bars[i].label,x+bw/2,H-m+18);
+    ctx.fillText((bars[i].val*100).toFixed(1)+'%',x+bw/2,y-8);
+  }
+  // Bayes formula
+  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';ctx.textAlign='center';
+  ctx.fillText('P(A|B) = P(B|A) × P(A) / [P(B|A)×P(A) + P(B|¬A)×P(¬A)]',W/2,H-10);
+  // Arrow showing update
+  if(L2.posterior!==undefined){
+    let x1=m+gap+0*( bw+gap)+bw/2,x2=m+gap+3*(bw+gap)+bw/2;
+    let y1=H-m-L2.prior*gh*0.8-20,y2=H-m-L2.posterior*gh*0.8-20;
+    ctx.strokeStyle='#4ade8088';ctx.lineWidth=2;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([]);
+  }
+}
+
+function drawL3(){
+  let m=60,gw=W-120,gh=H-120;
+  ctx.fillStyle='#10b981';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
+  let title=L3.dist==='binomial'?`二项分布 B(${L3.binN}, ${L3.binP.toFixed(2)})`:
+    L3.dist==='poisson'?`泊松分布 Poi(${L3.poisLam})`:`均匀分布 U(0, 10)`;
+  ctx.fillText(title,m,30);
+  let vals=[];
+  if(L3.dist==='binomial'){
+    for(let k=0;k<=L3.binN;k++){
+      let p=binomPMF(k,L3.binN,L3.binP);vals.push({x:k,p});
+    }
+  }else if(L3.dist==='poisson'){
+    let maxK=Math.max(20,L3.poisLam*3);
+    for(let k=0;k<=maxK;k++){let p=poisPMF(k,L3.poisLam);vals.push({x:k,p});}
+  }else{
+    for(let k=0;k<=10;k++)vals.push({x:k,p:0.1});
+  }
+  let maxP=Math.max(...vals.map(v=>v.p),0.01);
+  let maxX=Math.max(...vals.map(v=>v.x),1);
+  let bw=Math.min(gw/(vals.length+2),30);
+  for(let i=0;i<vals.length;i++){
+    let x=m+20+(i/(vals.length))*gw,bh=(vals[i].p/maxP)*gh*0.85;
+    let y=H-m-bh;
+    ctx.fillStyle='rgba(16,185,129,0.5)';ctx.fillRect(x,y,bw*0.8,bh);
+    ctx.strokeStyle='#10b981';ctx.lineWidth=1;ctx.strokeRect(x,y,bw*0.8,bh);
+    if(vals.length<=25||(i%Math.ceil(vals.length/15)===0)){
+      ctx.fillStyle='#94a3b8';ctx.font='10px sans-serif';ctx.textAlign='center';
+      ctx.fillText(''+vals[i].x,x+bw*0.4,H-m+14);
+    }
+  }
+  // Mean line
+  let mean=L3.dist==='binomial'?L3.binN*L3.binP:L3.dist==='poisson'?L3.poisLam:5;
+  let mx=m+20+(mean/maxX)*(gw-20);
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.setLineDash([5,5]);
+  ctx.beginPath();ctx.moveTo(mx,40);ctx.lineTo(mx,H-m);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText('μ = '+mean.toFixed(2),mx+6,50);
+}
+function binomPMF(k,n,p){
+  let c=0;for(let i=0;i<k;i++)c+=Math.log(n-i)-Math.log(i+1);
+  return Math.exp(c+k*Math.log(p)+(n-k)*Math.log(1-p));
+}
+function poisPMF(k,lam){
+  let logP=k*Math.log(lam)-lam;for(let i=2;i<=k;i++)logP-=Math.log(i);
+  return Math.exp(logP);
+}
+
+function drawL4(){
+  let m=60,gw=W-120,gh=H-120;
+  ctx.fillStyle='#10b981';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
+  let srcName=L4.srcDist==='uniform'?'均匀':L4.srcDist==='exponential'?'指数':'伯努利';
+  ctx.fillText('中心极限定理 — 源: '+srcName+' | 样本量: '+L4.totalSamples,m,30);
+  if(L4.sampleMeans.length<2)return;
+  // Build histogram of sample means
+  let mn=Math.min(...L4.sampleMeans),mx=Math.max(...L4.sampleMeans);
+  if(mx-mn<0.01){mn-=0.5;mx+=0.5;}
+  let bins=25,binW=(mx-mn)/bins,counts=new Array(bins).fill(0);
+  for(let v of L4.sampleMeans){let b=Math.min(bins-1,Math.floor((v-mn)/binW));counts[b]++;}
+  let maxC=Math.max(...counts,1);
+  let bw=gw/bins;
+  for(let i=0;i<bins;i++){
+    let bh=(counts[i]/maxC)*gh*0.8,x=m+i*bw,y=H-m-bh;
+    ctx.fillStyle='rgba(16,185,129,0.5)';ctx.fillRect(x,y,bw-1,bh);
+  }
+  // Overlay normal curve
+  let mean=L4.sampleMeans.reduce((a,b)=>a+b,0)/L4.sampleMeans.length;
+  let variance=L4.sampleMeans.reduce((a,b)=>a+(b-mean)**2,0)/L4.sampleMeans.length;
+  let sd=Math.sqrt(variance);
+  if(sd>0.001){
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.beginPath();
+    for(let i=0;i<=gw;i++){
+      let xv=mn+i/gw*(mx-mn);
+      let pdf=Math.exp(-((xv-mean)**2)/(2*sd*sd))/(sd*Math.sqrt(2*Math.PI));
+      let maxPdf=1/(sd*Math.sqrt(2*Math.PI));
+      let y=H-m-(pdf/maxPdf)*gh*0.8;
+      i===0?ctx.moveTo(m+i,y):ctx.lineTo(m+i,y);
+    }
+    ctx.stroke();
+    ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';
+    ctx.fillText(`正态拟合 N(${mean.toFixed(2)}, ${sd.toFixed(3)}²)`,m+gw-200,50);
+  }
+  // x-axis labels
+  ctx.fillStyle='#94a3b8';ctx.font='10px sans-serif';ctx.textAlign='center';
+  for(let i=0;i<=5;i++){
+    let v=mn+i/5*(mx-mn);ctx.fillText(v.toFixed(2),m+i/5*gw,H-m+14);
+  }
+}
+
+function drawL5(){
+  let m=60,gw=W-120,gh=H-120;
+  ctx.fillStyle='#10b981';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
+  ctx.fillText(`大数定律 — 掷骰子均值收敛 (n=${L5.n})`,m,30);
+  if(L5.n<2)return;
+  // Draw running mean
+  ctx.strokeStyle='#10b981';ctx.lineWidth=2;ctx.beginPath();
+  let step=Math.max(1,Math.floor(L5.n/gw));
+  for(let i=0;i<L5.n;i+=step){
+    let x=m+(i/L5.n)*gw;
+    let y=H-m-((L5.runningMean[i]-1)/5)*gh;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  // True mean line
+  let ty=H-m-((L5.trueMean-1)/5)*gh;
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.setLineDash([5,5]);
+  ctx.beginPath();ctx.moveTo(m,ty);ctx.lineTo(m+gw,ty);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#f59e0b';ctx.font='12px sans-serif';ctx.textAlign='left';
+  ctx.fillText('E[X] = 3.5',m+gw-80,ty-8);
+  // Confidence band
+  ctx.fillStyle='rgba(16,185,129,0.08)';
+  let bandH=0.1/5*gh;
+  ctx.fillRect(m,ty-bandH,gw,bandH*2);
+  // Axes
+  ctx.fillStyle='#94a3b8';ctx.font='10px sans-serif';ctx.textAlign='center';
+  for(let i=0;i<=5;i++){
+    let n2=Math.round(i/5*L5.n);ctx.fillText(''+n2,m+i/5*gw,H-m+14);
+  }
+  ctx.textAlign='right';
+  for(let v=1;v<=6;v++){
+    let y=H-m-((v-1)/5)*gh;ctx.fillText(''+v,m-8,y+4);
+  }
+}
+
+function drawL6(){
+  let m=60,gw=W-120,gh=H-120;
+  ctx.fillStyle='#10b981';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
+  ctx.fillText(`假设检验 — n=${L6.sampleSize}, d=${L6.effectSize.toFixed(2)}`,m,30);
+  // Draw null distribution
+  let cx=m+gw/2,cy=m+gh*0.4;
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<=gw;i++){
+    let z=-4+8*i/gw;
+    let y=cy-normalPDF(z)*gh*1.5;
+    i===0?ctx.moveTo(m+i,y):ctx.lineTo(m+i,y);
+  }
+  ctx.stroke();
+  ctx.fillStyle='#3b82f6';ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText('H₀ 分布 (μ=0)',m+10,cy-normalPDF(0)*gh*1.5-10);
+  // Critical region
+  let critZ=1.96;
+  ctx.fillStyle='rgba(239,68,68,0.2)';
+  ctx.beginPath();
+  let xCrit=m+(critZ+4)/8*gw;
+  ctx.moveTo(xCrit,cy);
+  for(let i=Math.floor((critZ+4)/8*gw);i<=gw;i++){
+    let z=-4+8*i/gw;ctx.lineTo(m+i,cy-normalPDF(z)*gh*1.5);
+  }
+  ctx.lineTo(m+gw,cy);ctx.closePath();ctx.fill();
+  // Left tail
+  ctx.beginPath();
+  let xCritL=m+(-critZ+4)/8*gw;
+  ctx.moveTo(m,cy);
+  for(let i=0;i<=Math.floor((-critZ+4)/8*gw);i++){
+    let z=-4+8*i/gw;ctx.lineTo(m+i,cy-normalPDF(z)*gh*1.5);
+  }
+  ctx.lineTo(xCritL,cy);ctx.closePath();ctx.fill();
+  // Alternative distribution
+  if(L6.simulated){
+    let ncp=L6.effectSize*Math.sqrt(L6.sampleSize);
+    ctx.strokeStyle='#10b981';ctx.lineWidth=2;ctx.beginPath();
+    for(let i=0;i<=gw;i++){
+      let z=-4+8*i/gw;
+      let y=cy-normalPDF(z-ncp)*gh*1.5;
+      i===0?ctx.moveTo(m+i,y):ctx.lineTo(m+i,y);
+    }
+    ctx.stroke();
+    ctx.fillStyle='#10b981';ctx.font='11px sans-serif';
+    let altPeak=m+(ncp+4)/8*gw;
+    ctx.fillText(`H₁ 分布 (μ=${ncp.toFixed(1)})`,altPeak-40,cy-normalPDF(0)*gh*1.5-10);
+    // Power shading
+    ctx.fillStyle='rgba(16,185,129,0.15)';
+    ctx.beginPath();ctx.moveTo(xCrit,cy);
+    for(let i=Math.floor((critZ+4)/8*gw);i<=gw;i++){
+      let z=-4+8*i/gw;ctx.lineTo(m+i,cy-normalPDF(z-ncp)*gh*1.5);
+    }
+    ctx.lineTo(m+gw,cy);ctx.closePath();ctx.fill();
+    // p-value indicator
+    if(L6.pVal!==null){
+      ctx.fillStyle=L6.pVal<0.05?'#4ade80':'#ef4444';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+      ctx.fillText(`p = ${L6.pVal.toFixed(4)}`,cx,H-m-20);
+      ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';
+      ctx.fillText(`功效 = ${(L6.power*100).toFixed(1)}%`,cx,H-m);
+    }
+  }
+  // Labels
+  ctx.fillStyle='#ef4444';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText('α/2 拒绝域',xCrit+30,cy+16);
+  ctx.fillText('α/2 拒绝域',xCritL-30,cy+16);
+  ctx.fillStyle='#94a3b8';ctx.font='10px sans-serif';
+  for(let z=-4;z<=4;z++){let x=m+(z+4)/8*gw;ctx.fillText(''+z,x,cy+30);}
+}
+
+function drawL7(){
+  let m=50,gw=W-100,gh=H-100;
+  ctx.fillStyle='#10b981';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
+  ctx.fillText(`回归分析 — y = ${L7.intercept.toFixed(2)} + ${L7.slope.toFixed(2)}x  |  R² = ${L7.r2.toFixed(4)}`,m,30);
+  // Grid
+  ctx.strokeStyle='#1e293b';ctx.lineWidth=0.5;
+  for(let i=0;i<=12;i++){let x=m+i/12*gw;ctx.beginPath();ctx.moveTo(x,m);ctx.lineTo(x,H-m);ctx.stroke();}
+  for(let i=0;i<=15;i++){let y=H-m-i/15*gh;ctx.beginPath();ctx.moveTo(m,y);ctx.lineTo(m+gw,y);ctx.stroke();}
+  // Axes labels
+  ctx.fillStyle='#64748b';ctx.font='10px sans-serif';ctx.textAlign='center';
+  for(let i=0;i<=12;i+=2){ctx.fillText(''+i,m+i/12*gw,H-m+16);}
+  ctx.textAlign='right';
+  for(let i=0;i<=15;i+=3){ctx.fillText(''+i,m-8,H-m-i/15*gh+4);}
+  // Regression line
+  let x1=0,y1=L7.intercept,x2=12,y2=L7.intercept+L7.slope*12;
+  let px1=m+(x1/12)*gw,py1=H-m-(y1/15)*gh;
+  let px2=m+(x2/12)*gw,py2=H-m-(y2/15)*gh;
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(px1,py1);ctx.lineTo(px2,py2);ctx.stroke();
+  // Residual lines and points
+  for(let i=0;i<L7.points.length;i++){
+    let p=L7.points[i];
+    let px=m+(p.x/12)*gw,py=H-m-(p.y/15)*gh;
+    let yHat=L7.intercept+L7.slope*p.x;
+    let pyHat=H-m-(yHat/15)*gh;
+    // Residual line
+    ctx.strokeStyle='rgba(239,68,68,0.3)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px,pyHat);ctx.stroke();
+    // Point
+    ctx.fillStyle=i===L7.dragging?'#f59e0b':'#10b981';
+    ctx.beginPath();ctx.arc(px,py,6,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();
+  }
+}
+
+resize();
+</script>
+</body>
+</html>

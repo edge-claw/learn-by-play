@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>图论与算法 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e0e0e0;font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;width:100vw}
+#overlay{position:fixed;inset:0;background:radial-gradient(ellipse at center,#1a1a3a 0%,#0a0a1a 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+#overlay h1{font-size:42px;color:#f59e0b;margin-bottom:8px;text-shadow:0 0 30px rgba(245,158,11,0.4)}
+#overlay .sub{font-size:18px;color:#94a3b8;margin-bottom:32px}
+#overlay .start-btn{padding:14px 48px;font-size:20px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:transform .2s,box-shadow .2s}
+#overlay .start-btn:hover{transform:scale(1.05);box-shadow:0 0 24px rgba(245,158,11,0.5)}
+#overlay .features{display:flex;gap:24px;margin-top:40px;flex-wrap:wrap;justify-content:center;max-width:700px}
+#overlay .feat{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:10px;padding:14px 18px;width:200px;text-align:center}
+#overlay .feat .icon{font-size:28px;margin-bottom:6px}
+#overlay .feat .ft{font-size:13px;color:#f59e0b;font-weight:600}
+#overlay .feat .fd{font-size:11px;color:#94a3b8;margin-top:4px}
+.panel{position:fixed;left:0;top:0;width:320px;height:calc(100vh - 36px);background:rgba(10,10,30,0.95);border-right:1px solid rgba(245,158,11,0.15);overflow-y:auto;padding:16px;display:none;z-index:10}
+.panel h2{color:#f59e0b;font-size:18px;margin-bottom:4px}
+.panel .level-sub{color:#94a3b8;font-size:12px;margin-bottom:12px}
+.panel .desc{font-size:13px;line-height:1.6;color:#cbd5e1;margin-bottom:12px}
+.panel .obj-list{list-style:none;margin-bottom:12px}
+.panel .obj-list li{font-size:12px;padding:4px 0;display:flex;align-items:center;gap:6px}
+.panel .obj-list li .ck{width:16px;height:16px;border-radius:4px;border:1px solid #475569;display:inline-flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+.panel .obj-list li .ck.done{background:#22c55e;border-color:#22c55e;color:#fff}
+.act-btn{display:block;width:100%;padding:8px;margin-top:6px;border:none;border-radius:8px;font-size:13px;cursor:pointer;background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);transition:background .2s}
+.act-btn:hover{background:rgba(245,158,11,0.25)}
+.learn-box{background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:10px;margin-top:10px;font-size:12px;line-height:1.6;color:#86efac}
+.learn-box b{color:#4ade80}
+canvas{position:fixed;left:320px;top:0;background:#0a0a1a;display:none}
+.bar{position:fixed;left:0;bottom:0;width:100%;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid rgba(245,158,11,0.15);display:none;z-index:10;padding:0 16px;align-items:center;justify-content:space-between}
+.bar .prog{font-size:12px;color:#94a3b8}
+.bar .prog span{color:#f59e0b;font-weight:600}
+.bar .nav-btns{display:flex;gap:4px}
+.bar .nav-btns button{padding:4px 12px;font-size:11px;background:rgba(245,158,11,0.1);color:#f59e0b;border:1px solid rgba(245,158,11,0.2);border-radius:6px;cursor:pointer}
+.bar .nav-btns button:hover{background:rgba(245,158,11,0.2)}
+.bar .nav-btns button.cur{background:rgba(245,158,11,0.3);font-weight:700}
+.hint{position:fixed;top:12px;right:12px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#fbbf24;padding:8px 14px;border-radius:8px;font-size:12px;z-index:20;display:none;max-width:300px;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="overlay">
+<h1>🔗 图论与算法 探险</h1>
+<p class="sub">从节点与边开始，探索图的奥秘世界</p>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="icon">🔵</div><div class="ft">图的基础</div><div class="fd">节点、边、度数</div></div>
+<div class="feat"><div class="icon">🔍</div><div class="ft">遍历算法</div><div class="fd">BFS / DFS 动画</div></div>
+<div class="feat"><div class="icon">🛤️</div><div class="ft">最短路径</div><div class="fd">Dijkstra 可视化</div></div>
+<div class="feat"><div class="icon">🌲</div><div class="ft">最小生成树</div><div class="fd">Kruskal / Prim</div></div>
+<div class="feat"><div class="icon">🎨</div><div class="ft">图着色</div><div class="fd">四色定理</div></div>
+<div class="feat"><div class="icon">🌊</div><div class="ft">网络流</div><div class="fd">Ford-Fulkerson</div></div>
+<div class="feat"><div class="icon">🔁</div><div class="ft">欧拉与哈密顿</div><div class="fd">七桥问题 / TSP</div></div>
+</div>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"></div>
+<div class="hint" id="hint"></div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),hintEl=document.getElementById('hint'),overlay=document.getElementById('overlay');
+let W,H,curLevel=0,animId=null,nodes=[],edges=[],dragging=null,dragOff={x:0,y:0},mousePos={x:0,y:0};
+let levelObjs=[[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false]];
+let levelState={};
+const COLORS=['#f59e0b','#3b82f6','#22c55e','#ef4444','#a855f7','#ec4899','#06b6d4','#84cc16'];
+const NODE_R=22;
+let directed=false,selectedNode=-1,animQueue=[],animRunning=false,animTimer=null;
+
+function resize(){W=Math.max(100,window.innerWidth-320);H=Math.max(100,window.innerHeight-36);cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';if(cv.style.display!=='none')draw()}
+function startGame(){overlay.style.display='none';panel.style.display='block';cv.style.display='block';bar.style.display='flex';resize();goLevel(0)}
+window.addEventListener('resize',resize);
+
+const levelInfo=[
+{title:'图的基础',sub:'关卡 1/7',desc:'图由<b>节点</b>（顶点）和<b>边</b>组成。点击空白创建节点，依次点击两个节点创建边。右键切换有向/无向模式。',objs:['创建至少 5 个节点','创建至少 6 条边','让某个节点度数 ≥ 3'],learn:'<b>图的基本概念：</b>图 G=(V,E) 由顶点集 V 和边集 E 组成。无向图的边没有方向，有向图的边有方向（箭头）。节点的<b>度数</b>是与它相连的边数。在有向图中分为入度和出度。'},
+{title:'图的遍历',sub:'关卡 2/7',desc:'选择一个起始节点，观察 <b>BFS</b>（广度优先）和 <b>DFS</b>（深度优先）的遍历顺序。BFS 像水波扩散，DFS 像走迷宫一条路走到底。',objs:['选择起点并运行 BFS','选择起点并运行 DFS','观察两种遍历的不同顺序'],learn:'<b>BFS</b> 使用队列，逐层访问邻居，适合找最短路径。<b>DFS</b> 使用栈（或递归），沿一条路径深入到底再回溯，适合检测环和拓扑排序。时间复杂度均为 O(V+E)。'},
+{title:'最短路径',sub:'关卡 3/7',desc:'点击选择<b>起点</b>（绿色）和<b>终点</b>（红色），然后运行 <b>Dijkstra</b> 算法。观察算法如何逐步松弛边，找到最短路径。',objs:['设置起点和终点','运行 Dijkstra 算法','找到最短路径（金色高亮）'],learn:'<b>Dijkstra 算法</b>维护一个距离表，每次选取未访问的最近节点，更新其邻居的距离（松弛操作）。使用优先队列时复杂度为 O((V+E)logV)。不能处理负权边。'},
+{title:'最小生成树',sub:'关卡 4/7',desc:'观察 <b>Kruskal</b> 和 <b>Prim</b> 算法如何从带权图中选出权值最小的边集，连接所有节点且不形成环。',objs:['运行 Kruskal 算法','运行 Prim 算法','观察两种算法选边顺序的差异'],learn:'<b>最小生成树</b>连接所有顶点，边权之和最小。<b>Kruskal</b> 按边权排序逐条加入（不成环则加），用并查集判环。<b>Prim</b> 从一个点出发，每次加入最近的新顶点。'},
+{title:'图着色',sub:'关卡 5/7',desc:'给图的每个节点着色，要求<b>相邻节点颜色不同</b>。点击节点切换颜色。试试能否只用 4 种颜色完成！',objs:['给所有节点着色','没有相邻节点同色','使用不超过 4 种颜色'],learn:'<b>四色定理</b>：任何平面图都可以用不超过 4 种颜色着色，使相邻区域颜色不同。这是1976年首个由计算机辅助证明的重要定理。图着色问题在编译器寄存器分配、地图绘制等领域有广泛应用。'},
+{title:'网络流',sub:'关卡 6/7',desc:'在网络中找从<b>源点 S</b> 到<b>汇点 T</b> 的最大流。观察 <b>Ford-Fulkerson</b> 算法如何沿增广路径逐步增加流量。',objs:['观察第一条增广路径','运行至最大流','理解最大流 = 最小割'],learn:'<b>最大流最小割定理</b>：网络的最大流等于最小割的容量。<b>Ford-Fulkerson</b> 反复寻找增广路径（残余网络中 S→T 的路径），沿路径增加流量，直到无增广路径。应用于交通规划、网络带宽分配等。'},
+{title:'欧拉与哈密顿',sub:'关卡 7/7',desc:'<b>欧拉路径</b>经过每条边恰好一次（七桥问题）。<b>哈密顿路径</b>经过每个节点恰好一次（旅行商问题）。点击边/节点来尝试构造路径。',objs:['找到欧拉路径（经过每条边一次）','找到哈密顿路径（经过每个节点一次）','理解两者的判定条件'],learn:'<b>欧拉路径</b>存在条件：连通图中奇数度节点为 0 或 2 个。<b>哈密顿路径</b>没有简单的充要条件，判定是 NP 完全问题。七桥问题（1736年欧拉）是图论的起源。旅行商问题（TSP）是经典 NP-hard 问题。'}
+];
+
+/* ===== GRAPH UTILITIES ===== */
+function mkNode(x,y,label){return{x,y,label:label||'',color:null,dist:Infinity,visited:false,prev:null,inMST:false,highlight:0}}
+function mkEdge(a,b,w,dir,cap){return{a,b,w:w||1,directed:!!dir,cap:cap||0,flow:0,inPath:false,inMST:false,highlight:0,visited:false}}
+function getAdj(ni){let r=[];edges.forEach((e,i)=>{if(e.a===ni)r.push({to:e.b,ei:i,w:e.w});else if(!e.directed&&e.b===ni)r.push({to:e.a,ei:i,w:e.w})});return r}
+function nodeDeg(ni){let d=0;edges.forEach(e=>{if(e.a===ni)d++;if(e.b===ni&&!e.directed)d++; if(e.b===ni&&e.directed)d++});return d}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function nodeAt(x,y){for(let i=nodes.length-1;i>=0;i--)if(dist({x,y},nodes[i])<=NODE_R)return i;return-1}
+function showHint(msg){hintEl.textContent=msg;hintEl.style.display='block';clearTimeout(hintEl._t);hintEl._t=setTimeout(()=>hintEl.style.display='none',3000)}
+function stopAnim(){if(animTimer){clearInterval(animTimer);animTimer=null}animRunning=false;animQueue=[]}
+/* PLACEHOLDER_B */
+
+/* ===== LEVEL SETUP ===== */
+function setupLevel(li){
+  nodes=[];edges=[];levelState={};selectedNode=-1;directed=false;stopAnim();
+  const cx=W/2,cy=H/2;
+  if(li===0){
+    // Level 1: empty canvas, user creates nodes/edges
+    levelState.mode='addNode'; // addNode or addEdge
+    levelState.edgeSrc=-1;
+  } else if(li===1){
+    // Level 2: BFS/DFS - preset graph
+    const pts=[[cx-180,cy-120],[cx+60,cy-150],[cx+200,cy-50],[cx+120,cy+100],[cx-60,cy+130],[cx-200,cy+30],[cx-80,cy-10]];
+    pts.forEach((p,i)=>nodes.push(mkNode(p[0],p[1],String(i))));
+    [[0,1],[0,5],[0,6],[1,2],[1,6],[2,3],[3,4],[4,5],[4,6],[5,6]].forEach(e=>edges.push(mkEdge(e[0],e[1])));
+    levelState.bfsOrder=[];levelState.dfsOrder=[];levelState.startNode=-1;levelState.mode='pick';
+  } else if(li===2){
+    // Level 3: Dijkstra - weighted graph
+    const pts=[[cx-220,cy-80],[cx-80,cy-160],[cx+100,cy-140],[cx+220,cy-40],[cx+140,cy+120],[cx-40,cy+100],[cx-180,cy+80]];
+    pts.forEach((p,i)=>nodes.push(mkNode(p[0],p[1],String(i))));
+    [[0,1,4],[0,6,2],[1,2,3],[1,5,6],[2,3,2],[2,5,5],[3,4,4],[4,5,3],[5,6,7],[0,5,9]].forEach(e=>edges.push(mkEdge(e[0],e[1],e[2])));
+    levelState.src=-1;levelState.dst=-1;levelState.mode='pickSrc';levelState.dijkDone=false;
+  } else if(li===3){
+    // Level 4: MST - weighted graph
+    const pts=[[cx-200,cy-100],[cx,cy-160],[cx+200,cy-100],[cx+160,cy+100],[cx-40,cy+140],[cx-180,cy+80]];
+    pts.forEach((p,i)=>nodes.push(mkNode(p[0],p[1],String(i))));
+    [[0,1,4],[0,5,2],[1,2,6],[1,5,5],[1,3,10],[2,3,3],[3,4,7],[3,5,9],[4,5,8],[1,4,11],[0,4,14]].forEach(e=>edges.push(mkEdge(e[0],e[1],e[2])));
+    levelState.kruskalDone=false;levelState.primDone=false;levelState.mstEdges=[];
+  } else if(li===4){
+    // Level 5: Graph coloring - planar graph
+    const ang=i=>Math.PI*2*i/7-Math.PI/2;
+    const R=Math.min(W,H)*0.32;
+    for(let i=0;i<7;i++)nodes.push(mkNode(cx+R*Math.cos(ang(i)),cy+R*Math.sin(ang(i)),String(i)));
+    [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,0],[0,3],[1,4],[2,5],[0,2]].forEach(e=>edges.push(mkEdge(e[0],e[1])));
+    levelState.palette=['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899'];
+  } else if(li===5){
+    // Level 6: Network flow
+    const pts=[[cx-260,cy],[cx-120,cy-120],[cx-120,cy+120],[cx+100,cy-120],[cx+100,cy+120],[cx+260,cy]];
+    'S,A,B,C,D,T'.split(',').forEach((l,i)=>nodes.push(mkNode(pts[i][0],pts[i][1],l)));
+    [[0,1,10,true],[0,2,8,true],[1,2,5,true],[1,3,7,true],[2,4,10,true],[3,4,6,true],[3,5,10,true],[4,5,8,true],[2,3,3,true]].forEach(e=>edges.push(mkEdge(e[0],e[1],e[2],e[3],e[2])));
+    levelState.maxFlow=0;levelState.augPaths=[];levelState.step=0;levelState.flowDone=false;
+    precomputeFlow();
+  } else if(li===6){
+    // Level 7: Euler & Hamilton
+    // Konigsberg-like graph (has Euler path: exactly 2 odd-degree nodes)
+    const pts=[[cx-200,cy-80],[cx,cy-160],[cx+200,cy-80],[cx+120,cy+100],[cx-120,cy+100],[cx,cy]];
+    pts.forEach((p,i)=>nodes.push(mkNode(p[0],p[1],String(i))));
+    [[0,1],[1,2],[2,3],[3,4],[4,0],[0,5],[1,5],[2,5],[3,5],[4,5]].forEach(e=>edges.push(mkEdge(e[0],e[1])));
+    levelState.eulerPath=[];levelState.hamPath=[];levelState.mode='euler';levelState.eulerDone=false;levelState.hamDone=false;
+    levelState.clickedEdges=[];levelState.clickedNodes=[];levelState.lastNode=-1;
+  }
+}
+/* PLACEHOLDER_C */
+
+/* ===== PRECOMPUTE FLOW (Level 6) ===== */
+function precomputeFlow(){
+  // BFS-based Ford-Fulkerson (Edmonds-Karp)
+  const n=nodes.length;
+  // Build capacity matrix from edges
+  let cap=Array.from({length:n},()=>Array(n).fill(0));
+  let flowMat=Array.from({length:n},()=>Array(n).fill(0));
+  edges.forEach(e=>{cap[e.a][e.b]=e.cap});
+  let paths=[];
+  while(true){
+    // BFS find augmenting path
+    let parent=Array(n).fill(-1);
+    let visited=Array(n).fill(false);
+    visited[0]=true;
+    let queue=[0];
+    while(queue.length>0){
+      let u=queue.shift();
+      for(let v=0;v<n;v++){
+        if(!visited[v]&&cap[u][v]-flowMat[u][v]>0){
+          visited[v]=true;parent[v]=u;queue.push(v);
+          if(v===n-1)break;
+        }
+      }
+      if(visited[n-1])break;
+    }
+    if(!visited[n-1])break;
+    // Find bottleneck
+    let bn=Infinity,v=n-1;
+    while(v!==0){let u=parent[v];bn=Math.min(bn,cap[u][v]-flowMat[u][v]);v=u}
+    // Record path
+    let path=[];v=n-1;
+    while(v!==0){path.unshift(v);v=parent[v]}
+    path.unshift(0);
+    paths.push({path,flow:bn});
+    // Update flow
+    v=n-1;
+    while(v!==0){let u=parent[v];flowMat[u][v]+=bn;flowMat[v][u]-=bn;v=u}
+  }
+  levelState.augPaths=paths;
+  levelState.totalMaxFlow=paths.reduce((s,p)=>s+p.flow,0);
+}
+
+/* ===== BFS / DFS (Level 2) ===== */
+function runBFS(start){
+  stopAnim();
+  nodes.forEach(n=>{n.visited=false;n.highlight=0});
+  edges.forEach(e=>{e.highlight=0;e.visited=false});
+  let order=[],queue=[start],visited=new Set([start]);
+  while(queue.length){
+    let u=queue.shift();order.push(u);
+    getAdj(u).forEach(({to,ei})=>{
+      if(!visited.has(to)){visited.add(to);queue.push(to);order.push({edge:ei})}
+    });
+  }
+  levelState.bfsOrder=order.filter(x=>typeof x==='number');
+  animateTraversal(order,()=>{levelObjs[1][0]=true;checkObjs();renderPanel()});
+}
+function runDFS(start){
+  stopAnim();
+  nodes.forEach(n=>{n.visited=false;n.highlight=0});
+  edges.forEach(e=>{e.highlight=0;e.visited=false});
+  let order=[],visited=new Set();
+  function dfs(u){
+    visited.add(u);order.push(u);
+    getAdj(u).forEach(({to,ei})=>{
+      if(!visited.has(to)){order.push({edge:ei});dfs(to)}
+    });
+  }
+  dfs(start);
+  levelState.dfsOrder=order.filter(x=>typeof x==='number');
+  animateTraversal(order,()=>{levelObjs[1][1]=true;if(levelObjs[1][0])levelObjs[1][2]=true;checkObjs();renderPanel()});
+}
+function animateTraversal(order,cb){
+  animRunning=true;let idx=0;
+  animTimer=setInterval(()=>{
+    if(idx>=order.length){clearInterval(animTimer);animTimer=null;animRunning=false;if(cb)cb();return}
+    let item=order[idx];
+    if(typeof item==='number'){nodes[item].visited=true;nodes[item].highlight=1}
+    else if(item.edge!==undefined){edges[item.edge].visited=true;edges[item.edge].highlight=1}
+    idx++;draw();
+  },400);
+}
+/* PLACEHOLDER_D */
+
+/* ===== DIJKSTRA (Level 3) ===== */
+function runDijkstra(){
+  if(levelState.src<0||levelState.dst<0){showHint('请先选择起点和终点');return}
+  stopAnim();
+  nodes.forEach(n=>{n.dist=Infinity;n.visited=false;n.prev=null;n.highlight=0});
+  edges.forEach(e=>{e.highlight=0;e.inPath=false});
+  nodes[levelState.src].dist=0;
+  let steps=[];
+  let unvisited=new Set(nodes.map((_,i)=>i));
+  while(unvisited.size>0){
+    let u=-1,md=Infinity;
+    unvisited.forEach(v=>{if(nodes[v].dist<md){md=nodes[v].dist;u=v}});
+    if(u<0||md===Infinity)break;
+    unvisited.delete(u);
+    steps.push({type:'visit',node:u,dist:md});
+    getAdj(u).forEach(({to,ei,w})=>{
+      let nd=md+w;
+      if(nd<nodes[to].dist){
+        nodes[to].dist=nd;nodes[to].prev=u;
+        steps.push({type:'relax',edge:ei,node:to,dist:nd});
+      }
+    });
+  }
+  // Trace shortest path
+  let path=[];
+  if(nodes[levelState.dst].dist<Infinity){
+    let v=levelState.dst;
+    while(v!==null&&v!==undefined){path.unshift(v);v=nodes[v].prev}
+  }
+  steps.push({type:'path',path});
+  // Reset for animation
+  nodes.forEach(n=>{n.dist=Infinity;n.visited=false;n.highlight=0});
+  nodes[levelState.src].dist=0;
+  animRunning=true;let idx=0;
+  animTimer=setInterval(()=>{
+    if(idx>=steps.length){clearInterval(animTimer);animTimer=null;animRunning=false;return}
+    let s=steps[idx];
+    if(s.type==='visit'){nodes[s.node].visited=true;nodes[s.node].highlight=1;nodes[s.node].dist=s.dist;levelObjs[2][1]=true}
+    else if(s.type==='relax'){edges[s.edge].highlight=1;nodes[s.node].dist=s.dist}
+    else if(s.type==='path'){
+      edges.forEach(e=>e.highlight=0);
+      for(let i=0;i<s.path.length-1;i++){
+        let a=s.path[i],b=s.path[i+1];
+        edges.forEach(e=>{if((e.a===a&&e.b===b)||(e.a===b&&e.b===a))e.inPath=true});
+        nodes[s.path[i]].highlight=2;
+      }
+      if(s.path.length>0)nodes[s.path[s.path.length-1]].highlight=2;
+      if(s.path.length>=2){levelObjs[2][2]=true}
+    }
+    idx++;checkObjs();renderPanel();draw();
+  },500);
+}
+
+/* ===== KRUSKAL (Level 4) ===== */
+function runKruskal(){
+  stopAnim();
+  edges.forEach(e=>{e.inMST=false;e.highlight=0});
+  nodes.forEach(n=>{n.inMST=false;n.highlight=0});
+  let sorted=[...edges.map((e,i)=>({...e,idx:i}))].sort((a,b)=>a.w-b.w);
+  let parent=nodes.map((_,i)=>i);
+  function find(x){while(parent[x]!==x)x=parent[x];return x}
+  let steps=[];
+  sorted.forEach(e=>{
+    let ra=find(e.a),rb=find(e.b);
+    if(ra!==rb){parent[ra]=rb;steps.push({edge:e.idx,accept:true})}
+    else steps.push({edge:e.idx,accept:false});
+  });
+  animRunning=true;let idx=0;
+  animTimer=setInterval(()=>{
+    if(idx>=steps.length){clearInterval(animTimer);animTimer=null;animRunning=false;levelObjs[3][0]=true;checkObjs();renderPanel();return}
+    let s=steps[idx];
+    if(s.accept){edges[s.edge].inMST=true;edges[s.edge].highlight=2;nodes[edges[s.edge].a].inMST=true;nodes[edges[s.edge].b].inMST=true}
+    else{edges[s.edge].highlight=3} // rejected - flash red
+    idx++;draw();
+    // Clear rejected highlight after brief flash
+    if(!steps[idx-1].accept)setTimeout(()=>{edges[steps[idx-1].edge].highlight=0;draw()},300);
+  },700);
+}
+/* PLACEHOLDER_E */
+
+/* ===== PRIM (Level 4) ===== */
+function runPrim(){
+  stopAnim();
+  edges.forEach(e=>{e.inMST=false;e.highlight=0});
+  nodes.forEach(n=>{n.inMST=false;n.highlight=0});
+  let inTree=new Set([0]);
+  nodes[0].inMST=true;nodes[0].highlight=1;
+  let steps=[];
+  while(inTree.size<nodes.length){
+    let bestE=-1,bestW=Infinity;
+    edges.forEach((e,i)=>{
+      let aIn=inTree.has(e.a),bIn=inTree.has(e.b);
+      if((aIn&&!bIn)||(bIn&&!aIn)){if(e.w<bestW){bestW=e.w;bestE=i}}
+    });
+    if(bestE<0)break;
+    let e=edges[bestE];
+    let newNode=inTree.has(e.a)?e.b:e.a;
+    inTree.add(newNode);
+    steps.push({edge:bestE,node:newNode});
+  }
+  animRunning=true;let idx=0;
+  animTimer=setInterval(()=>{
+    if(idx>=steps.length){clearInterval(animTimer);animTimer=null;animRunning=false;levelObjs[3][1]=true;if(levelObjs[3][0])levelObjs[3][2]=true;checkObjs();renderPanel();return}
+    let s=steps[idx];
+    edges[s.edge].inMST=true;edges[s.edge].highlight=2;
+    nodes[s.node].inMST=true;nodes[s.node].highlight=1;
+    idx++;draw();
+  },700);
+}
+
+/* ===== FLOW ANIMATION (Level 6) ===== */
+function runFlowStep(){
+  if(levelState.step>=levelState.augPaths.length){levelState.flowDone=true;levelObjs[5][1]=true;levelObjs[5][2]=true;checkObjs();renderPanel();showHint('最大流 = '+levelState.totalMaxFlow);return}
+  stopAnim();
+  edges.forEach(e=>{e.highlight=0;e.inPath=false});
+  let ap=levelState.augPaths[levelState.step];
+  // Highlight augmenting path
+  for(let i=0;i<ap.path.length-1;i++){
+    let a=ap.path[i],b=ap.path[i+1];
+    edges.forEach(e=>{if(e.a===a&&e.b===b){e.inPath=true;e.highlight=2}});
+  }
+  // Update flow on edges
+  for(let i=0;i<ap.path.length-1;i++){
+    let a=ap.path[i],b=ap.path[i+1];
+    edges.forEach(e=>{if(e.a===a&&e.b===b)e.flow+=ap.flow});
+  }
+  levelState.maxFlow+=ap.flow;
+  if(levelState.step===0){levelObjs[5][0]=true}
+  levelState.step++;
+  checkObjs();renderPanel();draw();
+  showHint('增广路径流量: '+ap.flow+'  当前总流: '+levelState.maxFlow);
+}
+
+/* ===== EULER / HAMILTON (Level 7) ===== */
+function resetEuler(){
+  levelState.clickedEdges=[];levelState.lastNode=-1;levelState.mode='euler';
+  edges.forEach(e=>{e.highlight=0;e.inPath=false});
+  nodes.forEach(n=>{n.highlight=0});
+  draw();renderPanel();
+}
+function resetHam(){
+  levelState.clickedNodes=[];levelState.lastNode=-1;levelState.mode='hamilton';
+  edges.forEach(e=>{e.highlight=0;e.inPath=false});
+  nodes.forEach(n=>{n.highlight=0});
+  draw();renderPanel();
+}
+function checkEulerComplete(){
+  if(levelState.clickedEdges.length===edges.length){
+    levelState.eulerDone=true;levelObjs[6][0]=true;
+    levelObjs[6][2]=true;
+    showHint('找到欧拉路径！经过了所有 '+edges.length+' 条边');
+    checkObjs();renderPanel();
+  }
+}
+function checkHamComplete(){
+  let visited=new Set(levelState.clickedNodes);
+  if(visited.size===nodes.length){
+    levelState.hamDone=true;levelObjs[6][1]=true;
+    levelObjs[6][2]=true;
+    showHint('找到哈密顿路径！经过了所有 '+nodes.length+' 个节点');
+    checkObjs();renderPanel();
+  }
+}
+/* PLACEHOLDER_F */
+
+/* ===== CHECK OBJECTIVES ===== */
+function checkObjs(){
+  let li=curLevel;
+  if(li===0){
+    levelObjs[0][0]=nodes.length>=5;
+    levelObjs[0][1]=edges.length>=6;
+    levelObjs[0][2]=nodes.some((_,i)=>nodeDeg(i)>=3);
+  } else if(li===4){
+    // Graph coloring checks
+    let allColored=nodes.every(n=>n.color!==null);
+    levelObjs[4][0]=allColored;
+    let noConflict=true;
+    if(allColored){
+      edges.forEach(e=>{if(nodes[e.a].color===nodes[e.b].color)noConflict=false});
+    }
+    levelObjs[4][1]=allColored&&noConflict;
+    let usedColors=new Set(nodes.map(n=>n.color).filter(c=>c!==null));
+    levelObjs[4][2]=allColored&&noConflict&&usedColors.size<=4;
+  }
+}
+
+/* ===== RENDER PANEL ===== */
+function renderPanel(){
+  let li=curLevel,info=levelInfo[li];
+  let h=`<h2>${info.title}</h2><div class="level-sub">${info.sub}</div>`;
+  h+=`<div class="desc">${info.desc}</div>`;
+  h+=`<ul class="obj-list">`;
+  info.objs.forEach((o,i)=>{
+    let done=levelObjs[li][i];
+    h+=`<li><span class="ck${done?' done':''}">${done?'✓':''}</span>${o}</li>`;
+  });
+  h+=`</ul>`;
+  // Level-specific controls
+  if(li===0){
+    h+=`<button class="act-btn" onclick="levelState.mode='addNode';levelState.edgeSrc=-1;showHint('点击空白创建节点')">模式: 添加节点</button>`;
+    h+=`<button class="act-btn" onclick="levelState.mode='addEdge';levelState.edgeSrc=-1;showHint('依次点击两个节点创建边')">模式: 添加边</button>`;
+    h+=`<button class="act-btn" onclick="directed=!directed;showHint(directed?'有向图模式':'无向图模式');draw()">切换: ${directed?'有向图':'无向图'}</button>`;
+    h+=`<button class="act-btn" onclick="nodes=[];edges=[];draw();checkObjs();renderPanel()">清空画布</button>`;
+    h+=`<div style="margin-top:8px;font-size:11px;color:#94a3b8">节点: ${nodes.length} | 边: ${edges.length}</div>`;
+    let maxDeg=0;nodes.forEach((_,i)=>{let d=nodeDeg(i);if(d>maxDeg)maxDeg=d});
+    h+=`<div style="font-size:11px;color:#94a3b8">最大度数: ${maxDeg}</div>`;
+  } else if(li===1){
+    h+=`<div style="font-size:11px;color:#94a3b8;margin-bottom:6px">点击节点选择起点，然后运行算法</div>`;
+    h+=`<button class="act-btn" onclick="if(levelState.startNode>=0)runBFS(levelState.startNode);else showHint('请先点击选择起点')">运行 BFS（广度优先）</button>`;
+    h+=`<button class="act-btn" onclick="if(levelState.startNode>=0)runDFS(levelState.startNode);else showHint('请先点击选择起点')">运行 DFS（深度优先）</button>`;
+    h+=`<button class="act-btn" onclick="stopAnim();nodes.forEach(n=>{n.visited=false;n.highlight=0});edges.forEach(e=>{e.highlight=0;e.visited=false});draw()">重置</button>`;
+    if(levelState.startNode>=0)h+=`<div style="font-size:11px;color:#4ade80;margin-top:4px">起点: 节点 ${levelState.startNode}</div>`;
+    if(levelState.bfsOrder.length)h+=`<div style="font-size:11px;color:#3b82f6;margin-top:2px">BFS: ${levelState.bfsOrder.join(' → ')}</div>`;
+    if(levelState.dfsOrder.length)h+=`<div style="font-size:11px;color:#a855f7;margin-top:2px">DFS: ${levelState.dfsOrder.join(' → ')}</div>`;
+  } else if(li===2){
+    h+=`<div style="font-size:11px;color:#94a3b8;margin-bottom:6px">${levelState.mode==='pickSrc'?'点击选择起点（绿色）':levelState.mode==='pickDst'?'点击选择终点（红色）':'起点终点已设置'}</div>`;
+    h+=`<button class="act-btn" onclick="runDijkstra()">运行 Dijkstra</button>`;
+    h+=`<button class="act-btn" onclick="levelState.src=-1;levelState.dst=-1;levelState.mode='pickSrc';nodes.forEach(n=>{n.dist=Infinity;n.visited=false;n.highlight=0;n.prev=null});edges.forEach(e=>{e.highlight=0;e.inPath=false});draw();renderPanel()">重置</button>`;
+    if(levelState.src>=0)h+=`<div style="font-size:11px;color:#22c55e;margin-top:4px">起点: 节点 ${levelState.src}</div>`;
+    if(levelState.dst>=0)h+=`<div style="font-size:11px;color:#ef4444">终点: 节点 ${levelState.dst}</div>`;
+  } else if(li===3){
+    h+=`<button class="act-btn" onclick="runKruskal()">运行 Kruskal 算法</button>`;
+    h+=`<button class="act-btn" onclick="runPrim()">运行 Prim 算法</button>`;
+    h+=`<button class="act-btn" onclick="edges.forEach(e=>{e.inMST=false;e.highlight=0});nodes.forEach(n=>{n.inMST=false;n.highlight=0});draw()">重置</button>`;
+    let mstW=0;edges.forEach(e=>{if(e.inMST)mstW+=e.w});
+    if(mstW>0)h+=`<div style="font-size:11px;color:#4ade80;margin-top:4px">MST 总权值: ${mstW}</div>`;
+  } else if(li===4){
+    h+=`<div style="font-size:11px;color:#94a3b8;margin-bottom:6px">点击节点切换颜色</div>`;
+    h+=`<div style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap">`;
+    levelState.palette.forEach((c,i)=>{h+=`<div style="width:20px;height:20px;border-radius:4px;background:${c};border:2px solid ${c}44"></div>`});
+    h+=`</div>`;
+    h+=`<button class="act-btn" onclick="nodes.forEach(n=>n.color=null);checkObjs();renderPanel();draw()">清除颜色</button>`;
+    let usedColors=new Set(nodes.map(n=>n.color).filter(c=>c!==null));
+    h+=`<div style="font-size:11px;color:#94a3b8;margin-top:4px">已用颜色数: ${usedColors.size}</div>`;
+  } else if(li===5){
+    h+=`<button class="act-btn" onclick="runFlowStep()">${levelState.flowDone?'已达最大流':'下一步增广'}</button>`;
+    h+=`<button class="act-btn" onclick="edges.forEach(e=>{e.flow=0;e.highlight=0;e.inPath=false});levelState.maxFlow=0;levelState.step=0;levelState.flowDone=false;levelObjs[5]=[false,false,false];draw();renderPanel()">重置</button>`;
+    h+=`<div style="font-size:11px;color:#4ade80;margin-top:4px">当前流量: ${levelState.maxFlow}${levelState.flowDone?' (最大流)':''}</div>`;
+    h+=`<div style="font-size:11px;color:#94a3b8">增广步骤: ${levelState.step} / ${levelState.augPaths.length}</div>`;
+  } else if(li===6){
+    h+=`<div style="font-size:11px;color:#94a3b8;margin-bottom:6px">${levelState.mode==='euler'?'欧拉模式：依次点击边构造路径':'哈密顿模式：依次点击节点构造路径'}</div>`;
+    h+=`<button class="act-btn" onclick="resetEuler()">欧拉路径模式</button>`;
+    h+=`<button class="act-btn" onclick="resetHam()">哈密顿路径模式</button>`;
+    h+=`<button class="act-btn" onclick="resetEuler()">重置</button>`;
+    if(levelState.mode==='euler')h+=`<div style="font-size:11px;color:#94a3b8;margin-top:4px">已选边: ${levelState.clickedEdges.length} / ${edges.length}</div>`;
+    else h+=`<div style="font-size:11px;color:#94a3b8;margin-top:4px">已选节点: ${levelState.clickedNodes.length} / ${nodes.length}</div>`;
+    // Show odd-degree info
+    let oddCount=0;nodes.forEach((_,i)=>{if(nodeDeg(i)%2!==0)oddCount++});
+    h+=`<div style="font-size:11px;color:#f59e0b;margin-top:4px">奇数度节点: ${oddCount} 个${oddCount<=2?' (欧拉路径存在)':' (无欧拉路径)'}</div>`;
+  }
+  // Learn box + next level button
+  if(levelObjs[li].every(v=>v)){
+    h+=`<div class="learn-box">${info.learn}</div>`;
+    if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+    if(li===6)h+=`<div style="text-align:center;margin-top:12px;color:#4ade80;font-size:14px">🎉 恭喜通关！全部 7 个关卡已完成！</div>`;
+  }
+  panel.innerHTML=h;
+}
+/* PLACEHOLDER_G */
+
+/* ===== RENDER BAR ===== */
+function renderBar(){
+  let completed=levelObjs.filter(l=>l.every(v=>v)).length;
+  let h=`<div class="prog">进度: <span>${completed}/7</span> 关卡完成</div>`;
+  h+=`<div class="nav-btns">`;
+  for(let i=0;i<7;i++){
+    let cls=i===curLevel?'cur':'';
+    let done=levelObjs[i].every(v=>v);
+    h+=`<button class="${cls}" onclick="goLevel(${i})" title="${levelInfo[i].title}">${done?'✓':''}${i+1}</button>`;
+  }
+  h+=`</div>`;
+  bar.innerHTML=h;
+}
+
+/* ===== GO TO LEVEL ===== */
+function goLevel(li){
+  curLevel=li;stopAnim();
+  setupLevel(li);
+  renderPanel();renderBar();draw();
+}
+
+/* ===== DRAWING ===== */
+function draw(){
+  if(!ctx)return;
+  ctx.clearRect(0,0,W,H);
+  // Draw grid
+  ctx.strokeStyle='rgba(245,158,11,0.04)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  // Draw edges
+  edges.forEach((e,i)=>{
+    let a=nodes[e.a],b=nodes[e.b];
+    if(!a||!b)return;
+    ctx.beginPath();
+    // Color based on state
+    if(e.inPath)ctx.strokeStyle='#f59e0b';
+    else if(e.inMST)ctx.strokeStyle='#22c55e';
+    else if(e.highlight===1)ctx.strokeStyle='#3b82f6';
+    else if(e.highlight===2)ctx.strokeStyle='#22c55e';
+    else if(e.highlight===3)ctx.strokeStyle='#ef4444';
+    else ctx.strokeStyle='rgba(148,163,184,0.4)';
+    ctx.lineWidth=e.inPath||e.inMST||e.highlight?3:1.5;
+    ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    // Arrow for directed edges
+    if(e.directed){
+      let angle=Math.atan2(b.y-a.y,b.x-a.x);
+      let mx=b.x-NODE_R*Math.cos(angle),my=b.y-NODE_R*Math.sin(angle);
+      ctx.beginPath();
+      ctx.moveTo(mx,my);
+      ctx.lineTo(mx-12*Math.cos(angle-0.3),my-12*Math.sin(angle-0.3));
+      ctx.lineTo(mx-12*Math.cos(angle+0.3),my-12*Math.sin(angle+0.3));
+      ctx.closePath();ctx.fillStyle=ctx.strokeStyle;ctx.fill();
+    }
+    // Edge weight label
+    if(e.w>1||curLevel===2||curLevel===3){
+      let mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+      ctx.fillStyle='#0a0a1a';ctx.fillRect(mx-10,my-8,20,16);
+      ctx.fillStyle='#fbbf24';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(e.w,mx,my);
+    }
+    // Flow label (Level 6)
+    if(curLevel===5&&e.cap>0){
+      let mx=(a.x+b.x)/2,my=(a.y+b.y)/2-12;
+      ctx.fillStyle='#0a0a1a';ctx.fillRect(mx-18,my-8,36,16);
+      ctx.fillStyle=e.flow>0?'#4ade80':'#94a3b8';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(e.flow+'/'+e.cap,mx,my);
+    }
+  });
+  // Draw nodes
+  nodes.forEach((n,i)=>{
+    ctx.beginPath();
+    // Glow for highlighted nodes
+    if(n.highlight===1||n.visited){
+      ctx.shadowColor=n.highlight===2?'#f59e0b':'#3b82f6';ctx.shadowBlur=15;
+    }
+    // Node fill color
+    let fill='#1e293b';
+    if(n.color!==null)fill=n.color;
+    else if(n.highlight===2)fill='#f59e0b';
+    else if(n.visited)fill='#1e40af';
+    else if(n.inMST)fill='#166534';
+    // Special colors for Dijkstra src/dst
+    if(curLevel===2){
+      if(i===levelState.src)fill='#22c55e';
+      if(i===levelState.dst)fill='#ef4444';
+    }
+    // Special for BFS/DFS start
+    if(curLevel===1&&i===levelState.startNode&&!n.visited)fill='#f59e0b';
+    // Special for flow source/sink
+    if(curLevel===5){
+      if(i===0)fill='#22c55e';
+      if(i===nodes.length-1)fill='#ef4444';
+    }
+    ctx.arc(n.x,n.y,NODE_R,0,Math.PI*2);
+    ctx.fillStyle=fill;ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.strokeStyle=n.highlight?'#f59e0b':'rgba(148,163,184,0.5)';
+    ctx.lineWidth=n.highlight?2.5:1.5;
+    ctx.stroke();
+    // Label
+    ctx.fillStyle='#fff';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(n.label,n.x,n.y);
+    // Distance label for Dijkstra
+    if(curLevel===2&&n.dist<Infinity&&n.visited){
+      ctx.fillStyle='#fbbf24';ctx.font='bold 10px sans-serif';
+      ctx.fillText('d='+n.dist,n.x,n.y+NODE_R+12);
+    }
+    // Degree label for Level 1
+    if(curLevel===0){
+      let deg=nodeDeg(i);
+      if(deg>0){ctx.fillStyle='#94a3b8';ctx.font='10px sans-serif';ctx.fillText('度:'+deg,n.x,n.y+NODE_R+12)}
+    }
+  });
+}
+/* PLACEHOLDER_H */
+
+/* ===== MOUSE EVENTS ===== */
+cv.addEventListener('mousedown',e=>{
+  let rect=cv.getBoundingClientRect();
+  let mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  let ni=nodeAt(mx,my);
+
+  if(e.button===2){e.preventDefault();return} // right click handled by contextmenu
+
+  if(curLevel===0){
+    if(levelState.mode==='addNode'){
+      if(ni<0){
+        nodes.push(mkNode(mx,my,String(nodes.length)));
+        checkObjs();renderPanel();draw();
+      } else {
+        // Start dragging
+        dragging=ni;dragOff={x:mx-nodes[ni].x,y:my-nodes[ni].y};
+      }
+    } else if(levelState.mode==='addEdge'){
+      if(ni>=0){
+        if(levelState.edgeSrc<0){
+          levelState.edgeSrc=ni;nodes[ni].highlight=1;draw();
+          showHint('已选节点 '+ni+'，点击另一个节点创建边');
+        } else {
+          if(ni!==levelState.edgeSrc){
+            // Check duplicate
+            let dup=edges.some(e=>(e.a===levelState.edgeSrc&&e.b===ni)||(e.a===ni&&e.b===levelState.edgeSrc));
+            if(!dup){
+              edges.push(mkEdge(levelState.edgeSrc,ni,1,directed));
+            }
+          }
+          nodes[levelState.edgeSrc].highlight=0;
+          levelState.edgeSrc=-1;
+          checkObjs();renderPanel();draw();
+        }
+      }
+    }
+  } else if(curLevel===1){
+    if(ni>=0&&!animRunning){
+      levelState.startNode=ni;
+      nodes.forEach(n=>{n.visited=false;n.highlight=0});
+      edges.forEach(e=>{e.highlight=0;e.visited=false});
+      renderPanel();draw();
+    }
+  } else if(curLevel===2){
+    if(ni>=0&&!animRunning){
+      if(levelState.mode==='pickSrc'){
+        levelState.src=ni;levelState.mode='pickDst';
+        levelObjs[2][0]=true;
+        renderPanel();draw();
+      } else if(levelState.mode==='pickDst'){
+        if(ni!==levelState.src){
+          levelState.dst=ni;levelState.mode='ready';
+          renderPanel();draw();
+        }
+      }
+    }
+  } else if(curLevel===4){
+    // Graph coloring - cycle through colors
+    if(ni>=0){
+      let palette=levelState.palette;
+      let curIdx=palette.indexOf(nodes[ni].color);
+      nodes[ni].color=palette[(curIdx+1)%palette.length];
+      checkObjs();renderPanel();draw();
+    }
+  } else if(curLevel===6){
+    if(levelState.mode==='euler'){
+      // Click near an edge to select it
+      let bestE=-1,bestD=30;
+      edges.forEach((e,i)=>{
+        if(levelState.clickedEdges.includes(i))return;
+        let a=nodes[e.a],b=nodes[e.b];
+        // Point-to-segment distance
+        let dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy);
+        if(len<1)return;
+        let t=Math.max(0,Math.min(1,((mx-a.x)*dx+(my-a.y)*dy)/(len*len)));
+        let px=a.x+t*dx,py=a.y+t*dy;
+        let d=Math.hypot(mx-px,my-py);
+        if(d<bestD){bestD=d;bestE=i}
+      });
+      if(bestE>=0){
+        let e=edges[bestE];
+        // Check connectivity: first edge or shares a node with last edge
+        if(levelState.clickedEdges.length===0){
+          levelState.clickedEdges.push(bestE);
+          levelState.lastNode=e.b; // arbitrary start
+          e.highlight=2;e.inPath=true;
+          draw();renderPanel();
+          checkEulerComplete();
+        } else {
+          // Must share a node with the last visited node
+          let last=levelState.lastNode;
+          if(e.a===last||e.b===last){
+            levelState.clickedEdges.push(bestE);
+            levelState.lastNode=(e.a===last)?e.b:e.a;
+            e.highlight=2;e.inPath=true;
+            draw();renderPanel();
+            checkEulerComplete();
+          } else {
+            showHint('必须选择与当前节点相连的边');
+          }
+        }
+      }
+    } else if(levelState.mode==='hamilton'){
+      if(ni>=0){
+        if(levelState.clickedNodes.includes(ni)){showHint('该节点已访问');return}
+        if(levelState.clickedNodes.length===0){
+          levelState.clickedNodes.push(ni);
+          levelState.lastNode=ni;
+          nodes[ni].highlight=2;
+          draw();renderPanel();
+          checkHamComplete();
+        } else {
+          // Must be adjacent to last node
+          let last=levelState.lastNode;
+          let adj=getAdj(last).map(a=>a.to);
+          if(adj.includes(ni)){
+            levelState.clickedNodes.push(ni);
+            levelState.lastNode=ni;
+            nodes[ni].highlight=2;
+            // Highlight the connecting edge
+            edges.forEach(e=>{
+              if((e.a===last&&e.b===ni)||(e.a===ni&&e.b===last))e.highlight=2;
+            });
+            draw();renderPanel();
+            checkHamComplete();
+          } else {
+            showHint('必须选择与当前节点相邻的节点');
+          }
+        }
+      }
+    }
+  }
+
+  // Generic drag start for non-level-0
+  if(curLevel!==0&&ni>=0&&!animRunning){
+    dragging=ni;dragOff={x:mx-nodes[ni].x,y:my-nodes[ni].y};
+  }
+});
+
+cv.addEventListener('mousemove',e=>{
+  let rect=cv.getBoundingClientRect();
+  let mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  mousePos={x:mx,y:my};
+  if(dragging!==null){
+    nodes[dragging].x=mx-dragOff.x;
+    nodes[dragging].y=my-dragOff.y;
+    draw();
+  }
+});
+
+cv.addEventListener('mouseup',()=>{dragging=null});
+cv.addEventListener('contextmenu',e=>{
+  e.preventDefault();
+  if(curLevel===0){directed=!directed;showHint(directed?'有向图模式':'无向图模式');renderPanel();draw()}
+});
+/* PLACEHOLDER_I */
+
+/* ===== ANIMATION LOOP ===== */
+function gameLoop(){
+  // Pulse effect for highlighted nodes
+  let t=Date.now()*0.003;
+  nodes.forEach(n=>{
+    if(n.highlight===1){
+      // subtle pulse handled in draw via shadowBlur
+    }
+  });
+  if(!animRunning)draw();
+  animId=requestAnimationFrame(gameLoop);
+}
+
+/* ===== INIT ===== */
+// Don't start game loop until startGame is called
+// But set up resize
+resize();
+</script>
+</body>
+</html>

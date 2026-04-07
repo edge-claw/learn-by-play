@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>雷达原理 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e0e0e0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+#overlay{position:fixed;inset:0;background:rgba(10,10,26,0.97);z-index:100;display:flex;align-items:center;justify-content:center}
+.start-box{text-align:center;max-width:520px}
+.start-box h1{font-size:2.4em;color:#22c55e;margin-bottom:8px}
+.start-box .sub{color:#94a3b8;font-size:1.1em;margin-bottom:24px}
+.features{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:28px}
+.feat{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:10px 14px;font-size:0.92em;min-width:120px}
+.feat span{font-size:1.3em;display:block;margin-bottom:4px}
+#startBtn{background:#22c55e;color:#0a0a1a;border:none;padding:14px 48px;font-size:1.2em;border-radius:12px;cursor:pointer;font-weight:700;transition:background 0.2s}
+#startBtn:hover{background:#4ade80}
+#main{display:none;flex:1;flex-direction:row;overflow:hidden}
+#panel{width:320px;min-width:320px;background:#0f172a;border-right:1px solid #1e293b;display:flex;flex-direction:column;overflow-y:auto;padding:16px}
+#panel h2{color:#22c55e;font-size:1.15em;margin-bottom:6px}
+#panel .desc{color:#94a3b8;font-size:0.88em;margin-bottom:12px;line-height:1.5}
+.obj-list{list-style:none;margin-bottom:14px}
+.obj-list li{padding:5px 0;font-size:0.9em;display:flex;align-items:center;gap:6px}
+.obj-list li::before{content:'○';color:#475569;font-size:1.1em}
+.obj-list li.done::before{content:'●';color:#22c55e}
+.ctrl-group{margin-bottom:12px}
+.ctrl-group label{display:block;font-size:0.85em;color:#94a3b8;margin-bottom:4px}
+.ctrl-group input[type=range]{width:100%;accent-color:#22c55e}
+.ctrl-group .val{color:#4ade80;font-size:0.85em;float:right}
+.btn{background:#1e293b;color:#4ade80;border:1px solid #22c55e;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:0.9em;margin:4px 2px;transition:background 0.2s}
+.btn:hover{background:#22c55e;color:#0a0a1a}
+.btn.active{background:#22c55e;color:#0a0a1a}
+.learn-box{background:#1a2e1a;border:1px solid #22c55e44;border-radius:8px;padding:10px;margin-top:10px;font-size:0.85em;line-height:1.6;display:none}
+.learn-box h3{color:#4ade80;margin-bottom:4px;font-size:0.95em}
+#canvasWrap{flex:1;position:relative;background:#0a0a1a}
+#cv{display:block;width:100%;height:100%}
+#bar{height:36px;background:#0f172a;border-top:1px solid #1e293b;display:none;align-items:center;padding:0 16px;font-size:0.88em;color:#94a3b8}
+#bar .level-nav{margin-left:auto;display:flex;gap:6px}
+#bar .level-nav button{background:#1e293b;color:#94a3b8;border:1px solid #334155;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:0.82em}
+#bar .level-nav button.cur{background:#22c55e;color:#0a0a1a;border-color:#22c55e}
+</style>
+</head>
+<body>
+<div id="overlay">
+<div class="start-box">
+<h1>🛰️ 雷达原理 探险</h1>
+<p class="sub">7 个关卡，从脉冲发射到目标追踪</p>
+<div class="features">
+<div class="feat"><span>📡</span>脉冲发射</div>
+<div class="feat"><span>⚡</span>脉冲参数</div>
+<div class="feat"><span>🌊</span>多普勒效应</div>
+<div class="feat"><span>📐</span>雷达方程</div>
+<div class="feat"><span>🔬</span>脉冲压缩</div>
+<div class="feat"><span>🎯</span>相控阵</div>
+<div class="feat"><span>🗺️</span>目标追踪</div>
+</div>
+<button id="startBtn">开始探索</button>
+</div>
+</div>
+<div id="main">
+<div id="panel"></div>
+<div id="canvasWrap"><canvas id="cv"></canvas></div>
+</div>
+<div id="bar">
+<span id="barText"></span>
+<div class="level-nav" id="levelNav"></div>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const panel=document.getElementById('panel'),bar=document.getElementById('bar');
+const barText=document.getElementById('barText'),levelNav=document.getElementById('levelNav');
+let W,H,curLevel=0,animId=null,time=0;
+const C=3e8; // speed of light
+
+// ===== Level objectives tracking =====
+const levelObjs=Array.from({length:7},()=>[false,false,false]);
+function completeObj(li,oi){
+  if(levelObjs[li][oi])return;
+  levelObjs[li][oi]=true;
+  updatePanel();
+  if(levelObjs[li].every(v=>v)){
+    const lb=panel.querySelector('.learn-box');
+    if(lb)lb.style.display='block';
+  }
+}
+
+// ===== Resize =====
+function resize(){
+  const wr=document.getElementById('canvasWrap');
+  W=cv.width=wr.clientWidth;H=cv.height=wr.clientHeight;
+}
+window.addEventListener('resize',resize);
+
+// ===== Level definitions =====
+const levels=[
+// --- Level 1: Radar Basics ---
+{title:'雷达基本原理',
+ desc:'发射电磁脉冲→目标反射→接收回波→测距。距离公式 R = cΔt/2',
+ objectives:['发射一次脉冲','接收回波信号','计算目标距离'],
+ learn:'<p>雷达通过测量电磁波往返时间来测距。光速 c≈3×10⁸ m/s，目标距离 R=cΔt/2。</p><p>回波信号强度随距离 R⁴ 衰减，这是雷达方程的核心。</p>',
+ st:{dist:150,pulse:null,echo:null,fired:false,received:false,calcDone:false},
+ controls(){return `
+   <div class="ctrl-group"><label>目标距离 <span class="val" id="distVal">${this.st.dist} km</span></label>
+   <input type="range" min="50" max="300" value="${this.st.dist}" id="distSlider"></div>
+   <button class="btn" id="fireBtn">🔴 发射脉冲</button>
+   <button class="btn" id="calcBtn">📏 计算距离</button>
+   <p class="desc" id="l1info" style="margin-top:8px"></p>`;},
+ afterPanel(){
+   const sl=document.getElementById('distSlider'),vl=document.getElementById('distVal');
+   const fb=document.getElementById('fireBtn'),cb=document.getElementById('calcBtn');
+   if(sl)sl.oninput=()=>{this.st.dist=+sl.value;vl.textContent=sl.value+' km';};
+   if(fb)fb.onclick=()=>{
+     this.st.pulse={x:0,t:0,speed:400,returning:false};
+     this.st.echo=null;this.st.fired=true;this.st.received=false;
+     completeObj(0,0);
+   };
+   if(cb)cb.onclick=()=>{
+     if(this.st.received){
+       const dt=this.st.dist*2/300;
+       document.getElementById('l1info').textContent=`Δt=${dt.toFixed(2)}ms, R=c×Δt/2=${this.st.dist}km ✓`;
+       this.st.calcDone=true;completeObj(0,2);
+     }else{
+       document.getElementById('l1info').textContent='请先发射并接收回波！';
+     }
+   };
+ },
+ init(){this.st={dist:150,pulse:null,echo:null,fired:false,received:false,calcDone:false};},
+ draw(c,w,h,t){
+   const cx=120,cy=h/2,tx=cx+this.st.dist/300*(w-200),ty=h/2;
+   // ground
+   c.fillStyle='#1a1a2e';c.fillRect(0,h*0.7,w,h*0.3);
+   // radar station
+   c.fillStyle='#22c55e';c.beginPath();c.moveTo(cx-20,cy+10);c.lineTo(cx+20,cy+10);c.lineTo(cx,cy-30);c.closePath();c.fill();
+   c.fillStyle='#4ade80';c.fillRect(cx-3,cy-50,6,20);
+   // dish
+   c.strokeStyle='#4ade80';c.lineWidth=3;c.beginPath();c.arc(cx,cy-55,15,Math.PI+0.3,2*Math.PI-0.3);c.stroke();
+   // target
+   c.fillStyle='#ef4444';c.beginPath();c.arc(tx,ty,12,0,Math.PI*2);c.fill();
+   c.fillStyle='#fca5a5';c.font='12px sans-serif';c.textAlign='center';c.fillText('目标',tx,ty-20);
+   // distance line
+   c.setLineDash([5,5]);c.strokeStyle='#334155';c.beginPath();c.moveTo(cx,cy);c.lineTo(tx,ty);c.stroke();c.setLineDash([]);
+   c.fillStyle='#64748b';c.font='11px sans-serif';c.textAlign='center';
+   c.fillText(this.st.dist+' km',(cx+tx)/2,cy-15);
+   // pulse animation
+   const st=this.st;
+   if(st.pulse){
+     st.pulse.t+=1/60;
+     if(!st.pulse.returning){
+       st.pulse.x+=st.pulse.speed/60;
+       if(st.pulse.x>=tx-cx){st.pulse.returning=true;st.pulse.x=tx-cx;}
+     }else{
+       st.pulse.x-=st.pulse.speed/60;
+       if(st.pulse.x<=0){
+         st.pulse=null;st.received=true;completeObj(0,1);
+         return;
+       }
+     }
+     const px=cx+st.pulse.x;
+     // wave front
+     const col=st.pulse.returning?'rgba(239,68,68,':'rgba(34,197,94,';
+     for(let r=0;r<3;r++){
+       const rr=10+r*12;
+       c.strokeStyle=col+(0.6-r*0.2)+')';c.lineWidth=2;
+       c.beginPath();c.arc(px,cy,rr,0,Math.PI*2);c.stroke();
+     }
+   }
+   // status
+   c.fillStyle='#94a3b8';c.font='13px sans-serif';c.textAlign='left';
+   let status=st.received?'✅ 回波已接收':st.fired?'⏳ 脉冲传播中...':'点击"发射脉冲"开始';
+   c.fillText(status,20,30);
+ }},
+// --- Level 2: Pulse Parameters ---
+{title:'脉冲参数',
+ desc:'脉冲宽度τ决定距离分辨率，PRF决定最大不模糊距离。占空比=τ×PRF。',
+ objectives:['理解PRF与最大距离关系','理解脉宽与分辨率','找到最优参数组合'],
+ learn:'<p>最大不模糊距离 Rmax=c/(2×PRF)。距离分辨率 ΔR=cτ/2。</p><p>高PRF→短不模糊距离但速度分辨好；低PRF→远距离但速度模糊。</p>',
+ st:{pw:10,prf:1000},
+ controls(){
+   const rmax=(C/(2*this.st.prf)/1000).toFixed(1);
+   const dR=(C*this.st.pw*1e-6/2).toFixed(1);
+   const duty=(this.st.pw*1e-6*this.st.prf*100).toFixed(2);
+   return `
+   <div class="ctrl-group"><label>脉冲宽度 τ <span class="val" id="pwVal">${this.st.pw} μs</span></label>
+   <input type="range" min="1" max="100" value="${this.st.pw}" id="pwSlider"></div>
+   <div class="ctrl-group"><label>PRF <span class="val" id="prfVal">${this.st.prf} Hz</span></label>
+   <input type="range" min="100" max="10000" step="100" value="${this.st.prf}" id="prfSlider"></div>
+   <p class="desc">最大不模糊距离: <b style="color:#4ade80">${rmax} km</b></p>
+   <p class="desc">距离分辨率 ΔR: <b style="color:#4ade80">${dR} m</b></p>
+   <p class="desc">占空比: <b style="color:#4ade80">${duty}%</b></p>`;},
+ afterPanel(){
+   const pws=document.getElementById('pwSlider'),prfs=document.getElementById('prfSlider');
+   if(pws)pws.oninput=()=>{this.st.pw=+pws.value;completeObj(1,1);updatePanel();};
+   if(prfs)prfs.oninput=()=>{this.st.prf=+prfs.value;completeObj(1,0);updatePanel();};
+   const rmax=C/(2*this.st.prf)/1000;
+   const dR=C*this.st.pw*1e-6/2;
+   if(rmax>100&&rmax<200&&dR<500)completeObj(1,2);
+ },
+ init(){this.st={pw:10,prf:1000};},
+ draw(c,w,h,t){
+   const pw=this.st.pw,prf=this.st.prf;
+   const pri=1/prf;const tScale=w*0.8/((3/prf));
+   const ox=60,oy=h*0.3,ah=80;
+   // title
+   c.fillStyle='#94a3b8';c.font='13px sans-serif';c.textAlign='left';
+   c.fillText('脉冲序列波形',ox,oy-ah-20);
+   // axes
+   c.strokeStyle='#334155';c.lineWidth=1;
+   c.beginPath();c.moveTo(ox,oy-ah);c.lineTo(ox,oy+10);c.lineTo(w-40,oy+10);c.stroke();
+   c.fillStyle='#64748b';c.font='11px sans-serif';
+   c.fillText('时间 →',w-80,oy+25);c.fillText('幅度',ox-40,oy-ah+10);
+   // draw 3 pulses
+   c.strokeStyle='#22c55e';c.lineWidth=2;c.beginPath();
+   const pwPx=pw*1e-6*tScale;const priPx=pri*tScale;
+   for(let i=0;i<3;i++){
+     const x0=ox+i*priPx;
+     c.moveTo(x0,oy);c.lineTo(x0,oy-ah);c.lineTo(x0+pwPx,oy-ah);c.lineTo(x0+pwPx,oy);
+     if(i<2){c.moveTo(x0+pwPx,oy);c.lineTo(x0+priPx,oy);}
+   }
+   c.stroke();
+   // annotations
+   c.strokeStyle='#4ade80';c.lineWidth=1;c.setLineDash([3,3]);
+   const x1=ox,x2=ox+pwPx;
+   c.beginPath();c.moveTo(x1,oy+30);c.lineTo(x2,oy+30);c.stroke();
+   c.fillStyle='#4ade80';c.textAlign='center';c.font='11px sans-serif';
+   c.fillText('τ='+pw+'μs',(x1+x2)/2,oy+45);
+   c.beginPath();c.moveTo(ox,oy+60);c.lineTo(ox+priPx,oy+60);c.stroke();
+   c.fillText('PRI='+((pri*1e6)|0)+'μs',(ox+ox+priPx)/2,oy+75);
+   c.setLineDash([]);
+   // distance-time diagram
+   const dy=h*0.65,dh=h*0.25;
+   c.fillStyle='#94a3b8';c.font='13px sans-serif';c.textAlign='left';
+   c.fillText('距离-时间关系',ox,dy-10);
+   c.strokeStyle='#334155';c.lineWidth=1;
+   c.beginPath();c.moveTo(ox,dy);c.lineTo(ox,dy+dh);c.lineTo(w-40,dy+dh);c.stroke();
+   c.fillStyle='#64748b';c.font='11px sans-serif';
+   c.fillText('距离(km)',ox-10,dy+10);c.fillText('时间',w-60,dy+dh+15);
+   const rmax=C/(2*prf)/1000;
+   // max range line
+   const rmaxY=dy+10;
+   c.strokeStyle='#ef4444';c.setLineDash([4,4]);c.beginPath();c.moveTo(ox,rmaxY);c.lineTo(w-40,rmaxY);c.stroke();c.setLineDash([]);
+   c.fillStyle='#ef4444';c.fillText('Rmax='+rmax.toFixed(0)+'km',w-160,rmaxY-5);
+   // animated pulse travel
+   const animT=(t*0.5)%1;
+   const px=ox+animT*(w-100-ox);
+   const py=dy+dh-animT*dh*0.9;
+   c.fillStyle='#22c55e';c.beginPath();c.arc(px,py,5,0,Math.PI*2);c.fill();
+   c.fillStyle='#22c55e44';c.beginPath();c.arc(px,py,10+Math.sin(t*8)*3,0,Math.PI*2);c.fill();
+ }},
+// --- Level 3: Doppler Effect ---
+{title:'多普勒效应',
+ desc:'运动目标使回波频率发生偏移。接近时频率升高，远离时降低。fd=2v/λ',
+ objectives:['观察接近目标的频移','观察远离目标的频移','用MTI滤除杂波'],
+ learn:'<p>多普勒频移 fd=2vr/λ=2vrf₀/c。径向速度 vr=fd×λ/2。</p><p>MTI（动目标指示）利用多普勒频移区分运动目标和静止杂波。</p>',
+ st:{vel:100,mti:false,approaching:true},
+ controls(){
+   const f0=10e9;const lam=C/f0;const fd=2*Math.abs(this.st.vel)/lam;
+   return `
+   <div class="ctrl-group"><label>目标速度 <span class="val" id="velVal">${this.st.vel} m/s</span></label>
+   <input type="range" min="-500" max="500" step="10" value="${this.st.vel}" id="velSlider"></div>
+   <p class="desc">载频: 10 GHz (λ=3cm)</p>
+   <p class="desc">多普勒频移: <b style="color:#4ade80">${(fd/1000).toFixed(1)} kHz</b></p>
+   <p class="desc">方向: <b style="color:${this.st.vel>0?'#ef4444':'#22c55e'}">${this.st.vel>0?'远离':'接近'}</b></p>
+   <button class="btn ${this.st.mti?'active':''}" id="mtiBtn">MTI ${this.st.mti?'ON':'OFF'}</button>`;},
+ afterPanel(){
+   const vs=document.getElementById('velSlider'),mb=document.getElementById('mtiBtn');
+   if(vs)vs.oninput=()=>{
+     this.st.vel=+vs.value;
+     if(this.st.vel<0)completeObj(2,0);
+     if(this.st.vel>0)completeObj(2,1);
+     updatePanel();
+   };
+   if(mb)mb.onclick=()=>{this.st.mti=!this.st.mti;if(this.st.mti)completeObj(2,2);updatePanel();};
+ },
+ init(){this.st={vel:100,mti:false};},
+ draw(c,w,h,t){
+   const vel=this.st.vel,f0=10e9,lam=C/f0;
+   const fd=2*vel/lam;
+   const cx=w/2,cy=h*0.35;
+   // TX wave
+   c.strokeStyle='#22c55e';c.lineWidth=2;c.beginPath();
+   for(let x=0;x<w;x++){
+     const y=cy-60+Math.sin(x*0.05+t*6)*25;
+     x===0?c.moveTo(x,y):c.lineTo(x,y);
+   }
+   c.stroke();
+   c.fillStyle='#22c55e';c.font='12px sans-serif';c.textAlign='left';
+   c.fillText('发射信号 f₀=10GHz',10,cy-90);
+   // RX wave (shifted)
+   const shift=fd/f0*20;
+   const rxY=cy+60;
+   c.strokeStyle='#ef4444';c.lineWidth=2;c.beginPath();
+   for(let x=0;x<w;x++){
+     const y=rxY+Math.sin(x*(0.05+shift*0.001)+t*6+fd*0.0001*t)*25;
+     x===0?c.moveTo(x,y):c.lineTo(x,y);
+   }
+   c.stroke();
+   c.fillStyle='#ef4444';c.font='12px sans-serif';
+   c.fillText(`回波信号 f₀${fd>=0?'+':'-'}${Math.abs(fd/1000).toFixed(1)}kHz`,10,rxY-30);
+   // Spectrum
+   const sy=h*0.7,sh=h*0.22,sx=80,sw=w-160;
+   c.strokeStyle='#334155';c.lineWidth=1;
+   c.beginPath();c.moveTo(sx,sy);c.lineTo(sx,sy+sh);c.lineTo(sx+sw,sy+sh);c.stroke();
+   c.fillStyle='#64748b';c.font='11px sans-serif';c.textAlign='center';
+   c.fillText('频率',sx+sw/2,sy+sh+15);c.textAlign='left';c.fillText('功率',sx-40,sy+10);
+   // clutter at f0
+   const f0x=sx+sw*0.5;
+   if(!this.st.mti){
+     c.fillStyle='rgba(100,100,100,0.5)';
+     for(let i=-20;i<=20;i++){
+       const bh=sh*0.6*Math.exp(-i*i/80);
+       c.fillRect(f0x+i*2,sy+sh-bh,3,bh);
+     }
+     c.fillStyle='#64748b';c.textAlign='center';c.fillText('杂波',f0x,sy+sh+15);
+   }
+   // target peak
+   const fdNorm=fd/100000;
+   const tpx=f0x+fdNorm*sw*0.3;
+   c.fillStyle='#22c55e';
+   const pkH=sh*0.8;
+   c.fillRect(tpx-2,sy+sh-pkH,4,pkH);
+   c.fillStyle='#4ade80';c.textAlign='center';c.font='11px sans-serif';
+   c.fillText('目标',tpx,sy-5);
+   // moving target indicator
+   c.fillStyle='#94a3b8';c.textAlign='right';c.font='12px sans-serif';
+   c.fillText(this.st.mti?'MTI: 杂波已滤除':'MTI: 关闭',w-20,sy-5);
+ }},
+// --- Level 4: Radar Equation ---
+{title:'雷达方程',
+ desc:'Rmax=∜(Pt·G²·λ²·σ / ((4π)³·Smin))。探测距离与功率的四次方根成正比。',
+ objectives:['理解R⁴关系','调参使探测距离翻倍','理解RCS对探测的影响'],
+ learn:'<p>雷达方程: R⁴ = Pt·G²·λ²·σ / ((4π)³·Smin)。要使距离翻倍，功率需增加16倍！</p><p>RCS(雷达截面积)取决于目标形状和材料，隐身飞机RCS可低至0.01m²。</p>',
+ st:{pt:100,gain:30,rcs:10,smin:-90,baseR:0},
+ controls(){
+   const lam=0.03;
+   const pt=this.st.pt*1000;const g=Math.pow(10,this.st.gain/10);
+   const sm=Math.pow(10,this.st.smin/10);
+   const r4=pt*g*g*lam*lam*this.st.rcs/(Math.pow(4*Math.PI,3)*sm);
+   const rmax=Math.pow(Math.max(r4,0),0.25)/1000;
+   if(!this.st.baseR)this.st.baseR=rmax;
+   if(rmax>=this.st.baseR*2)completeObj(3,1);
+   return `
+   <div class="ctrl-group"><label>发射功率 Pt <span class="val">${this.st.pt} kW</span></label>
+   <input type="range" min="1" max="1000" value="${this.st.pt}" id="ptSlider"></div>
+   <div class="ctrl-group"><label>天线增益 G <span class="val">${this.st.gain} dB</span></label>
+   <input type="range" min="10" max="50" value="${this.st.gain}" id="gainSlider"></div>
+   <div class="ctrl-group"><label>目标RCS σ <span class="val">${this.st.rcs} m²</span></label>
+   <input type="range" min="0.01" max="100" step="0.01" value="${this.st.rcs}" id="rcsSlider"></div>
+   <div class="ctrl-group"><label>接收灵敏度 <span class="val">${this.st.smin} dBm</span></label>
+   <input type="range" min="-120" max="-60" value="${this.st.smin}" id="sminSlider"></div>
+   <p class="desc">最大探测距离: <b style="color:#4ade80;font-size:1.1em">${rmax.toFixed(1)} km</b></p>
+   <p class="desc" style="font-size:0.8em;color:#64748b">基准距离: ${this.st.baseR.toFixed(1)} km (需翻倍到 ${(this.st.baseR*2).toFixed(1)} km)</p>`;},
+ afterPanel(){
+   ['pt','gain','rcs','smin'].forEach(k=>{
+     const el=document.getElementById(k+'Slider');
+     if(el)el.oninput=()=>{
+       this.st[k]=+el.value;
+       if(k==='pt'||k==='gain')completeObj(3,0);
+       if(k==='rcs')completeObj(3,2);
+       updatePanel();
+     };
+   });
+ },
+ init(){this.st={pt:100,gain:30,rcs:10,smin:-90,baseR:0};},
+ draw(c,w,h,t){
+   const lam=0.03;
+   const pt=this.st.pt*1000;const g=Math.pow(10,this.st.gain/10);
+   const sm=Math.pow(10,this.st.smin/10);
+   const r4=pt*g*g*lam*lam*this.st.rcs/(Math.pow(4*Math.PI,3)*sm);
+   const rmax=Math.pow(Math.max(r4,0),0.25)/1000;
+   // Power decay curve
+   const ox=80,oy=60,gw=w-160,gh=h*0.4;
+   c.strokeStyle='#334155';c.lineWidth=1;
+   c.beginPath();c.moveTo(ox,oy);c.lineTo(ox,oy+gh);c.lineTo(ox+gw,oy+gh);c.stroke();
+   c.fillStyle='#94a3b8';c.font='13px sans-serif';c.textAlign='center';
+   c.fillText('信号功率随距离衰减 (1/R⁴)',ox+gw/2,oy-10);
+   c.fillStyle='#64748b';c.font='11px sans-serif';
+   c.fillText('距离 (km)',ox+gw/2,oy+gh+20);c.textAlign='right';c.fillText('功率(dB)',ox-10,oy+10);
+   // curve
+   c.strokeStyle='#22c55e';c.lineWidth=2;c.beginPath();
+   for(let i=0;i<gw;i++){
+     const r=(i/gw)*rmax*2;
+     const pdb=r>0?10*Math.log10(pt*g*g*lam*lam*this.st.rcs/(Math.pow(4*Math.PI,3)*Math.pow(r*1000,4))):-30;
+     const ny=oy+gh-(pdb-(-200))/(0-(-200))*gh;
+     i===0?c.moveTo(ox+i,Math.max(oy,Math.min(oy+gh,ny))):c.lineTo(ox+i,Math.max(oy,Math.min(oy+gh,ny)));
+   }
+   c.stroke();
+   // threshold line
+   const thY=oy+gh-(this.st.smin-(-200))/(0-(-200))*gh;
+   c.strokeStyle='#ef4444';c.setLineDash([4,4]);c.beginPath();c.moveTo(ox,thY);c.lineTo(ox+gw,thY);c.stroke();c.setLineDash([]);
+   c.fillStyle='#ef4444';c.font='11px sans-serif';c.textAlign='left';c.fillText('检测门限 '+this.st.smin+'dBm',ox+gw-120,thY-5);
+   // Rmax marker
+   const rmaxX=ox+(rmax/(rmax*2))*gw;
+   c.strokeStyle='#4ade80';c.setLineDash([3,3]);c.beginPath();c.moveTo(rmaxX,oy);c.lineTo(rmaxX,oy+gh);c.stroke();c.setLineDash([]);
+   c.fillStyle='#4ade80';c.textAlign='center';c.fillText('Rmax='+rmax.toFixed(0)+'km',rmaxX,oy+gh+35);
+   // Visual radar + target
+   const vy=h*0.75,vr=Math.min(w*0.35,h*0.2);
+   c.fillStyle='#22c55e';c.beginPath();c.moveTo(w/2-15,vy+10);c.lineTo(w/2+15,vy+10);c.lineTo(w/2,vy-20);c.closePath();c.fill();
+   // range circle
+   const pulse=(t*0.8)%1;
+   c.strokeStyle='rgba(34,197,94,'+(1-pulse)+')';c.lineWidth=2;
+   c.beginPath();c.arc(w/2,vy,pulse*vr,0,Math.PI*2);c.stroke();
+   // RCS visualization
+   const rcsR=Math.sqrt(this.st.rcs)*3;
+   const tx=w/2+vr*0.7,ty=vy;
+   c.fillStyle='#ef4444';c.beginPath();c.arc(tx,ty,Math.max(3,rcsR),0,Math.PI*2);c.fill();
+   c.fillStyle='#fca5a5';c.font='11px sans-serif';c.textAlign='center';c.fillText('σ='+this.st.rcs+'m²',tx,ty-rcsR-8);
+ }},
+// --- Level 5: Pulse Compression ---
+{title:'脉冲压缩',
+ desc:'线性调频(Chirp)信号经匹配滤波后压缩为窄脉冲，兼顾能量和分辨率。',
+ objectives:['生成Chirp信号','匹配滤波压缩','提高距离分辨率'],
+ learn:'<p>Chirp信号频率线性递增，时宽-带宽积 TB=τ×B。匹配滤波后脉冲宽度≈1/B。</p><p>压缩比=TB，可达数百甚至上千，大幅提高距离分辨率。</p>',
+ st:{bw:5,pw:50,compressed:false,filtering:false,filterT:0},
+ controls(){
+   const tb=this.st.bw*this.st.pw;
+   const dR_orig=(C*this.st.pw*1e-6/2).toFixed(0);
+   const dR_comp=(C/(2*this.st.bw*1e6)).toFixed(1);
+   return `
+   <div class="ctrl-group"><label>Chirp带宽 B <span class="val">${this.st.bw} MHz</span></label>
+   <input type="range" min="1" max="50" value="${this.st.bw}" id="bwSlider"></div>
+   <div class="ctrl-group"><label>脉冲宽度 τ <span class="val">${this.st.pw} μs</span></label>
+   <input type="range" min="10" max="200" value="${this.st.pw}" id="pw5Slider"></div>
+   <p class="desc">时宽-带宽积 TB: <b style="color:#4ade80">${tb}</b></p>
+   <p class="desc">压缩前分辨率: ${dR_orig} m</p>
+   <p class="desc">压缩后分辨率: <b style="color:#4ade80">${dR_comp} m</b></p>
+   <p class="desc">压缩比: <b style="color:#4ade80">${tb}:1</b></p>
+   <button class="btn" id="chirpBtn">生成 Chirp</button>
+   <button class="btn" id="filterBtn">匹配滤波</button>`;},
+ afterPanel(){
+   const cb=document.getElementById('chirpBtn'),fb=document.getElementById('filterBtn');
+   const bws=document.getElementById('bwSlider'),pws=document.getElementById('pw5Slider');
+   if(bws)bws.oninput=()=>{this.st.bw=+bws.value;this.st.compressed=false;this.st.filtering=false;updatePanel();};
+   if(pws)pws.oninput=()=>{this.st.pw=+pws.value;this.st.compressed=false;this.st.filtering=false;updatePanel();};
+   if(cb)cb.onclick=()=>{completeObj(4,0);this.st.compressed=false;this.st.filtering=false;};
+   if(fb)fb.onclick=()=>{
+     if(!levelObjs[4][0]){alert('请先生成Chirp信号');return;}
+     this.st.filtering=true;this.st.filterT=time;completeObj(4,1);
+     const tb=this.st.bw*this.st.pw;
+     if(tb>100)completeObj(4,2);
+   };
+ },
+ init(){this.st={bw:5,pw:50,compressed:false,filtering:false,filterT:0};},
+ draw(c,w,h,t){
+   const bw=this.st.bw,pw=this.st.pw;
+   const ox=60,gw=w-120;
+   // Chirp waveform
+   const cy1=h*0.22,ah=60;
+   c.fillStyle='#94a3b8';c.font='13px sans-serif';c.textAlign='left';
+   c.fillText('Chirp 信号 (线性调频)',ox,cy1-ah-10);
+   c.strokeStyle='#334155';c.lineWidth=1;
+   c.beginPath();c.moveTo(ox,cy1);c.lineTo(ox+gw,cy1);c.stroke();
+   if(levelObjs[4][0]){
+     c.strokeStyle='#22c55e';c.lineWidth=1.5;c.beginPath();
+     for(let i=0;i<gw;i++){
+       const frac=i/gw;
+       const freq=2+frac*bw*0.8;
+       const y=cy1+Math.sin(frac*freq*40+t*3)*ah*(frac<0.05||frac>0.95?frac<0.05?frac*20:(1-frac)*20:1);
+       i===0?c.moveTo(ox+i,y):c.lineTo(ox+i,y);
+     }
+     c.stroke();
+     // frequency annotation
+     c.fillStyle='#4ade80';c.font='11px sans-serif';
+     c.fillText('f₁',ox,cy1+ah+15);c.fillText('f₂=f₁+B',ox+gw-40,cy1+ah+15);
+     c.strokeStyle='#4ade8044';c.beginPath();c.moveTo(ox,cy1+ah+5);c.lineTo(ox+gw,cy1+ah+5);c.stroke();
+   }else{
+     c.fillStyle='#475569';c.textAlign='center';c.fillText('点击"生成 Chirp"',ox+gw/2,cy1);
+   }
+   // Matched filter output
+   const cy2=h*0.58,ah2=80;
+   c.fillStyle='#94a3b8';c.font='13px sans-serif';c.textAlign='left';
+   c.fillText('匹配滤波输出',ox,cy2-ah2-10);
+   c.strokeStyle='#334155';c.lineWidth=1;
+   c.beginPath();c.moveTo(ox,cy2);c.lineTo(ox+gw,cy2);c.stroke();
+   if(this.st.filtering){
+     const elapsed=t-this.st.filterT;
+     const progress=Math.min(elapsed*2,1);
+     const tb=bw*pw;
+     const compWidth=Math.max(3,gw/tb);
+     c.strokeStyle='#ef4444';c.lineWidth=2;c.beginPath();
+     const center=gw/2;
+     for(let i=0;i<gw;i++){
+       const dx=i-center-ox;
+       const origW=gw*0.3;
+       const curW=origW*(1-progress)+compWidth*progress;
+       const amp=Math.exp(-dx*dx/(2*curW*curW))*ah2;
+       const sidelobe=progress>0.8?Math.sin(dx/(compWidth*1.5))*ah2*0.15*Math.exp(-Math.abs(dx)/(curW*3)):0;
+       const y=cy2-(amp+sidelobe);
+       i===0?c.moveTo(ox+i,y):c.lineTo(ox+i,y);
+     }
+     c.stroke();
+     if(progress>=1){
+       this.st.compressed=true;
+       c.fillStyle='#4ade80';c.font='11px sans-serif';c.textAlign='center';
+       c.fillText(`压缩比 ${tb}:1`,ox+gw/2,cy2+20);
+       c.fillText(`分辨率: ${(C/(2*bw*1e6)).toFixed(1)}m`,ox+gw/2,cy2+35);
+     }
+   }else{
+     c.fillStyle='#475569';c.textAlign='center';c.fillText('点击"匹配滤波"',ox+gw/2,cy2);
+   }
+   // comparison bar
+   const by=h*0.85,bh=30;
+   c.fillStyle='#94a3b8';c.font='12px sans-serif';c.textAlign='left';
+   c.fillText('分辨率对比:',ox,by-5);
+   const origR=C*pw*1e-6/2;const compR=C/(2*bw*1e6);
+   const maxR=origR;
+   c.fillStyle='#ef444488';c.fillRect(ox,by,(origR/maxR)*gw*0.8,bh/2-2);
+   c.fillStyle='#22c55e88';c.fillRect(ox,by+bh/2,(compR/maxR)*gw*0.8,bh/2-2);
+   c.fillStyle='#fca5a5';c.font='10px sans-serif';c.fillText(`原始: ${origR.toFixed(0)}m`,ox+(origR/maxR)*gw*0.8+5,by+10);
+   c.fillStyle='#4ade80';c.fillText(`压缩后: ${compR.toFixed(1)}m`,ox+Math.max((compR/maxR)*gw*0.8+5,5),by+bh-4);
+ }},
+// --- Level 6: Phased Array ---
+{title:'相控阵雷达',
+ desc:'通过控制各阵元的相位差，实现电子波束扫描，无需机械转动天线。',
+ objectives:['形成正前方波束','扫描到30°方向','实现多波束模式'],
+ learn:'<p>相控阵天线由N个阵元组成，相邻阵元相位差Δφ=2πd·sinθ/λ。</p><p>数字波束形成(DBF)可同时形成多个波束，大幅提高数据率。</p>',
+ st:{angle:0,nElem:16,multiBeam:false},
+ controls(){return `
+   <div class="ctrl-group"><label>波束指向 <span class="val" id="angVal">${this.st.angle}°</span></label>
+   <input type="range" min="-60" max="60" value="${this.st.angle}" id="angSlider"></div>
+   <div class="ctrl-group"><label>阵元数量 <span class="val">${this.st.nElem}</span></label>
+   <input type="range" min="4" max="32" step="2" value="${this.st.nElem}" id="neSlider"></div>
+   <button class="btn ${this.st.multiBeam?'active':''}" id="mbBtn">多波束 ${this.st.multiBeam?'ON':'OFF'}</button>
+   <p class="desc" style="margin-top:8px">相位差: ${(2*Math.PI*0.015*Math.sin(this.st.angle*Math.PI/180)/0.03*180/Math.PI).toFixed(1)}°/阵元</p>`;},
+ afterPanel(){
+   const as=document.getElementById('angSlider'),ns=document.getElementById('neSlider'),mb=document.getElementById('mbBtn');
+   if(as)as.oninput=()=>{
+     this.st.angle=+as.value;
+     if(Math.abs(this.st.angle)<3)completeObj(5,0);
+     if(Math.abs(this.st.angle-30)<3||Math.abs(this.st.angle+30)<3)completeObj(5,1);
+     updatePanel();
+   };
+   if(ns)ns.oninput=()=>{this.st.nElem=+ns.value;updatePanel();};
+   if(mb)mb.onclick=()=>{
+     this.st.multiBeam=!this.st.multiBeam;
+     if(this.st.multiBeam)completeObj(5,2);
+     updatePanel();
+   };
+ },
+ init(){this.st={angle:0,nElem:16,multiBeam:false};},
+ draw(c,w,h,t){
+   const N=this.st.nElem,ang=this.st.angle,lam=0.03,d=lam/2;
+   const acx=w/2,acy=h*0.85;
+   // Draw array elements
+   const arrW=Math.min(w*0.6,N*16);
+   const elemSp=arrW/N;
+   for(let i=0;i<N;i++){
+     const ex=acx-arrW/2+i*elemSp+elemSp/2;
+     const phase=(2*Math.PI*d*Math.sin(ang*Math.PI/180)/lam)*i;
+     const hue=((phase%(2*Math.PI))/(2*Math.PI)*120+120)%360;
+     c.fillStyle=`hsl(${hue},70%,50%)`;
+     c.fillRect(ex-4,acy-8,8,16);
+     c.strokeStyle=`hsl(${hue},70%,60%)`;c.lineWidth=1;
+     c.beginPath();c.arc(ex,acy+20,6,0,Math.PI*2);c.stroke();
+     const pa=phase%(2*Math.PI);
+     c.beginPath();c.moveTo(ex,acy+20);c.lineTo(ex+6*Math.cos(pa-Math.PI/2),acy+20+6*Math.sin(pa-Math.PI/2));c.stroke();
+   }
+   c.fillStyle='#94a3b8';c.font='11px sans-serif';c.textAlign='center';
+   c.fillText('阵列天线 ('+N+'阵元)',acx,acy+40);
+   // Draw beam pattern
+   const beams=this.st.multiBeam?[-20,0,20]:[ang];
+   const colors=['#22c55e','#3b82f6','#f59e0b'];
+   beams.forEach((ba,bi)=>{
+     const brad=ba*Math.PI/180;
+     c.strokeStyle=colors[bi%3];c.lineWidth=2;c.globalAlpha=0.7;
+     c.beginPath();
+     for(let a=-Math.PI/2;a<=Math.PI/2;a+=0.01){
+       const af=Math.sin(N*Math.PI*d*(Math.sin(a)-Math.sin(brad))/lam);
+       const ad=Math.sin(Math.PI*d*(Math.sin(a)-Math.sin(brad))/lam);
+       let gain=ad!==0?Math.abs(af/(N*ad)):1;
+       gain=Math.pow(gain,1.5);
+       const r=gain*Math.min(w,h)*0.35;
+       const px=acx+r*Math.sin(a);
+       const py=acy-r*Math.cos(a);
+       a===-Math.PI/2?c.moveTo(px,py):c.lineTo(px,py);
+     }
+     c.stroke();
+     const arLen=Math.min(w,h)*0.32;
+     c.strokeStyle=colors[bi%3];c.lineWidth=2;c.setLineDash([6,4]);
+     c.beginPath();c.moveTo(acx,acy);
+     c.lineTo(acx+arLen*Math.sin(brad),acy-arLen*Math.cos(brad));c.stroke();
+     c.setLineDash([]);
+     c.fillStyle=colors[bi%3];c.font='12px sans-serif';
+     c.fillText(ba+'°',acx+arLen*Math.sin(brad)*1.05,acy-arLen*Math.cos(brad)*1.05-8);
+     c.globalAlpha=1;
+   });
+   // angle markers
+   c.strokeStyle='#334155';c.lineWidth=1;
+   [-60,-30,0,30,60].forEach(a=>{
+     const ar=a*Math.PI/180;const r=Math.min(w,h)*0.38;
+     c.beginPath();c.moveTo(acx,acy);c.lineTo(acx+r*Math.sin(ar),acy-r*Math.cos(ar));c.stroke();
+     c.fillStyle='#475569';c.font='10px sans-serif';
+     c.fillText(a+'°',acx+r*1.05*Math.sin(ar),acy-r*1.05*Math.cos(ar));
+   });
+ }},
+// --- Level 7: Target Tracking ---
+{title:'目标追踪',
+ desc:'PPI显示器上检测目标，CFAR自适应门限检测，卡尔曼滤波预测航迹。',
+ objectives:['检测到目标','建立追踪航迹','预测目标位置'],
+ learn:'<p>CFAR(恒虚警率)根据周围噪声自适应调整检测门限。</p><p>卡尔曼滤波融合测量值和预测值，平滑航迹并预测未来位置。</p>',
+ st:{targets:[],tracks:[],sweepAngle:0,detected:false,tracking:false,predicting:false,scanSpeed:1},
+ controls(){return `
+   <div class="ctrl-group"><label>扫描速度 <span class="val">${this.st.scanSpeed.toFixed(1)}x</span></label>
+   <input type="range" min="0.5" max="3" step="0.1" value="${this.st.scanSpeed}" id="scanSlider"></div>
+   <button class="btn" id="detectBtn">🔍 CFAR检测</button>
+   <button class="btn" id="trackBtn">📌 建立航迹</button>
+   <button class="btn" id="predictBtn">🎯 预测位置</button>
+   <p class="desc" style="margin-top:8px">目标数: ${this.st.targets.length} | 航迹数: ${this.st.tracks.length}</p>`;},
+ afterPanel(){
+   const ss=document.getElementById('scanSlider');
+   const db=document.getElementById('detectBtn'),tb=document.getElementById('trackBtn'),pb=document.getElementById('predictBtn');
+   if(ss)ss.oninput=()=>{this.st.scanSpeed=+ss.value;updatePanel();};
+   if(db)db.onclick=()=>{this.st.detected=true;completeObj(6,0);updatePanel();};
+   if(tb)tb.onclick=()=>{
+     if(!this.st.detected){alert('请先执行CFAR检测');return;}
+     this.st.tracking=true;
+     this.st.tracks=this.st.targets.map(tg=>({...tg,history:[{x:tg.x,y:tg.y}],kalman:{x:tg.x,y:tg.y,vx:tg.vx,vy:tg.vy}}));
+     completeObj(6,1);updatePanel();
+   };
+   if(pb)pb.onclick=()=>{
+     if(!this.st.tracking){alert('请先建立航迹');return;}
+     this.st.predicting=true;completeObj(6,2);updatePanel();
+   };
+ },
+ init(){
+   this.st={targets:[],tracks:[],sweepAngle:0,detected:false,tracking:false,predicting:false,scanSpeed:1};
+   for(let i=0;i<4;i++){
+     const a=Math.random()*Math.PI*2,r=0.3+Math.random()*0.5;
+     const spd=0.02+Math.random()*0.03;
+     const da=Math.random()*Math.PI*2;
+     this.st.targets.push({x:Math.cos(a)*r,y:Math.sin(a)*r,vx:Math.cos(da)*spd,vy:Math.sin(da)*spd});
+   }
+ },
+ draw(c,w,h,t){
+   const cx=w/2,cy=h/2,R=Math.min(w,h)*0.44;
+   const st=this.st;
+   st.sweepAngle+=st.scanSpeed*0.02;
+   // PPI background
+   c.fillStyle='#0a1a0a';c.beginPath();c.arc(cx,cy,R,0,Math.PI*2);c.fill();
+   for(let i=1;i<=4;i++){
+     c.strokeStyle='#1a3a1a';c.lineWidth=1;
+     c.beginPath();c.arc(cx,cy,R*i/4,0,Math.PI*2);c.stroke();
+   }
+   c.strokeStyle='#1a3a1a';c.beginPath();c.moveTo(cx-R,cy);c.lineTo(cx+R,cy);c.moveTo(cx,cy-R);c.lineTo(cx,cy+R);c.stroke();
+   c.fillStyle='#2a5a2a';c.font='10px sans-serif';c.textAlign='left';
+   [25,50,75,100].forEach((v,i)=>c.fillText(v+'km',cx+R*(i+1)/4+3,cy-3));
+   // sweep
+   const sa=st.sweepAngle;
+   c.strokeStyle='#22c55e';c.lineWidth=2;c.globalAlpha=0.8;
+   c.beginPath();c.moveTo(cx,cy);c.lineTo(cx+R*Math.cos(sa),cy+R*Math.sin(sa));c.stroke();
+   c.globalAlpha=0.15;c.fillStyle='#22c55e';c.beginPath();c.moveTo(cx,cy);c.arc(cx,cy,R,sa-0.4,sa);c.closePath();c.fill();
+   c.globalAlpha=1;
+   // noise
+   for(let n=0;n<8;n++){
+     const nx=cx+(Math.random()-0.5)*2*R,ny=cy+(Math.random()-0.5)*2*R;
+     if(Math.sqrt((nx-cx)**2+(ny-cy)**2)<R){
+       c.fillStyle='rgba(34,197,94,0.12)';c.fillRect(nx,ny,2,2);
+     }
+   }
+   // targets
+   st.targets.forEach((tg,i)=>{
+     tg.x+=tg.vx/60;tg.y+=tg.vy/60;
+     const dr=Math.sqrt(tg.x*tg.x+tg.y*tg.y);
+     if(dr>0.85){tg.vx*=-1;tg.vy*=-1;}
+     const tx=cx+tg.x*R,ty=cy+tg.y*R;
+     const ta=Math.atan2(tg.y,tg.x);
+     const diff=((sa-ta)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+     if(diff<0.5){
+       const alpha=1-diff/0.5;
+       c.fillStyle=`rgba(34,197,94,${alpha*0.8})`;
+       c.beginPath();c.arc(tx,ty,5+alpha*3,0,Math.PI*2);c.fill();
+     }
+   });
+   // CFAR
+   if(st.detected){
+     st.targets.forEach(tg=>{
+       const tx=cx+tg.x*R,ty=cy+tg.y*R;
+       c.strokeStyle='#4ade80';c.lineWidth=1.5;c.strokeRect(tx-10,ty-10,20,20);
+       c.fillStyle='#4ade80';c.font='10px sans-serif';c.textAlign='center';c.fillText('DET',tx,ty-14);
+     });
+   }
+   // Tracking
+   if(st.tracking){
+     st.tracks.forEach((tr,i)=>{
+       const tg=st.targets[i];if(!tg)return;
+       const k=tr.kalman;
+       k.x+=(tg.x-k.x)*0.3;k.y+=(tg.y-k.y)*0.3;
+       k.vx+=(tg.vx-k.vx)*0.1;k.vy+=(tg.vy-k.vy)*0.1;
+       tr.history.push({x:k.x,y:k.y});
+       if(tr.history.length>60)tr.history.shift();
+       c.strokeStyle='#f59e0b';c.lineWidth=1;c.beginPath();
+       tr.history.forEach((p,j)=>{
+         const px=cx+p.x*R,py=cy+p.y*R;
+         j===0?c.moveTo(px,py):c.lineTo(px,py);
+       });
+       c.stroke();
+       const tx2=cx+k.x*R,ty2=cy+k.y*R;
+       c.strokeStyle='#f59e0b';c.lineWidth=2;
+       c.beginPath();c.arc(tx2,ty2,12,0,Math.PI*2);c.stroke();
+       c.beginPath();c.moveTo(tx2-14,ty2);c.lineTo(tx2+14,ty2);c.moveTo(tx2,ty2-14);c.lineTo(tx2,ty2+14);c.stroke();
+       c.fillStyle='#f59e0b';c.font='10px sans-serif';c.textAlign='left';c.fillText('T'+(i+1),tx2+15,ty2-5);
+       if(st.predicting){
+         const predT=2;
+         const px=cx+(k.x+k.vx*predT)*R,py=cy+(k.y+k.vy*predT)*R;
+         c.setLineDash([4,4]);c.strokeStyle='#ef4444';c.lineWidth=1;
+         c.beginPath();c.moveTo(tx2,ty2);c.lineTo(px,py);c.stroke();c.setLineDash([]);
+         c.fillStyle='#ef4444';c.beginPath();c.arc(px,py,6,0,Math.PI*2);c.fill();
+         c.fillStyle='#fca5a5';c.font='9px sans-serif';c.fillText('预测',px+8,py);
+       }
+     });
+   }
+   c.fillStyle='#22c55e';c.beginPath();c.arc(cx,cy,3,0,Math.PI*2);c.fill();
+   c.fillStyle='#94a3b8';c.font='12px sans-serif';c.textAlign='center';c.fillText('PPI 显示器',cx,cy+R+20);
+ }}
+];
+function goLevel(i){
+  curLevel=i;time=0;
+  if(levels[i].init)levels[i].init();
+  updatePanel();updateBar();
+}
+function updateBar(){
+  barText.textContent=`关卡 ${curLevel+1}/7: ${levels[curLevel].title}`;
+  levelNav.innerHTML='';
+  for(let i=0;i<7;i++){
+    const b=document.createElement('button');
+    b.textContent=i+1;
+    if(i===curLevel)b.className='cur';
+    b.onclick=()=>goLevel(i);
+    levelNav.appendChild(b);
+  }
+}
+function updatePanel(){
+  const L=levels[curLevel];
+  let h=`<h2>关卡${curLevel+1}: ${L.title}</h2><p class="desc">${L.desc}</p>`;
+  h+=`<ul class="obj-list">`;
+  L.objectives.forEach((o,i)=>{
+    h+=`<li class="${levelObjs[curLevel][i]?'done':''}">${o}</li>`;
+  });
+  h+=`</ul>`;
+  h+=L.controls();
+  h+=`<div class="learn-box"><h3>💡 知识点</h3>${L.learn}</div>`;
+  panel.innerHTML=h;
+  if(levelObjs[curLevel].every(v=>v)){
+    const lb=panel.querySelector('.learn-box');
+    if(lb)lb.style.display='block';
+  }
+  if(L.afterPanel)L.afterPanel();
+}
+
+// ===== Animation loop =====
+function loop(){
+  time+=1/60;
+  ctx.clearRect(0,0,W,H);
+  levels[curLevel].draw(ctx,W,H,time);
+  animId=requestAnimationFrame(loop);
+}
+
+// ===== Start =====
+document.getElementById('startBtn').onclick=()=>{
+  document.getElementById('overlay').style.display='none';
+  document.getElementById('main').style.display='flex';
+  bar.style.display='flex';
+  resize();
+  // init levels after DOM ready
+  initAllLevels();
+  goLevel(0);
+  loop();
+};
+
+// ===== LEVEL IMPLEMENTATIONS =====
+function initAllLevels(){
+  // levels are already defined with init methods
+  // just ensure first level is initialized
+  if(levels[0].init)levels[0].init();
+}
+</script>
+</body>
+</html>

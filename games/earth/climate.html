@@ -34,6 +34,17 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .slider-val{font-size:13px;color:#60a5fa;font-weight:bold}
 #infobar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid #1a1a3a;display:flex;align-items:center;padding:0 16px 0 332px;font-size:12px;color:#666;z-index:10}
 #infobar .sep{margin:0 12px;color:#333}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .hl{color:#4ade80}
+.start-box .sub{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#22c55e,#4ade80);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
 </style>
 </head>
 <body>
@@ -43,6 +54,23 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 <span id="ib-level">关卡 1/7</span><span class="sep">|</span>
 <span id="ib-title">能量平衡</span><span class="sep">|</span>
 <span id="ib-status">进行中</span>
+</div>
+
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🌡️ <span class="hl">气候系统</span>模拟器</h1>
+  <div class="sub">7 个关卡，从能量平衡到未来情景预测</div>
+  <button class="start-btn" onclick="startGame()">开始探索</button>
+  <div class="features">
+    <div class="feat"><div class="fi">☀️</div>能量平衡</div>
+    <div class="feat"><div class="fi">🏭</div>温室效应</div>
+    <div class="feat"><div class="fi">🌀</div>大气环流</div>
+    <div class="feat"><div class="fi">🌊</div>海洋传送带</div>
+    <div class="feat"><div class="fi">🧊</div>冰反馈</div>
+    <div class="feat"><div class="fi">🌲</div>碳循环</div>
+    <div class="feat"><div class="fi">📈</div>情景预测</div>
+  </div>
+</div>
 </div>
 <script>
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel');
@@ -60,7 +88,7 @@ let dragItem=null,dragOffX=0,dragOffY=0;
 const levels=[
 {name:'能量平衡',sub:'调节辐射收支使温度稳定',concept:'地球接收太阳短波辐射，同时向太空发射长波辐射。当收入=支出时，温度稳定。调节太阳辐射和反照率使天平平衡。',
  objs:['调节太阳辐射强度','调节地球反照率','使能量收支平衡'],
- learn:'地球能量平衡：太阳辐射到达地球约<span class="sv">1361 W/m²</span>（太阳常数），地球平均反照率约<span class="sv">0.30</span>，即30%的太阳辐射被反射回太空。吸收的能量加热地球，地球以红外辐射形式散热。当收入=支出时，温度稳定在约<span class="sv">15°C</span>。'},
+ learn:'地球能量平衡：太阳辐射到达地球约<span class="sv">1361 W/m²</span>（太阳常数），地球平均反照率约<span class="sv">0.30</span>，即30%的太阳辐射被反射回太空。吸收的能量加热地球，地球以红外辐射形式散热。当收入=支出时，无温室效应的平衡温度约<span class="sv">-18°C</span>。实际地球约15°C，差值由温室效应贡献（下一关）。'},
 {name:'温室效应',sub:'CO₂如何加热地球',concept:'地面发出的红外辐射被大气中CO₂分子截留并反射回地面，导致温度升高。调节CO₂浓度观察温度变化。',
  objs:['将CO₂升至400ppm','观察红外辐射被截留','对比有无温室气体温差'],
  learn:'没有温室效应，地球平均温度将是<span class="sv">-18°C</span>而非15°C。CO₂从工业革命前的<span class="sv">280ppm</span>升至如今超过<span class="sv">420ppm</span>。CO₂分子吸收特定波长（<span class="sv">15μm</span>）的红外辐射，振动后重新发射，部分返回地面——这就是温室效应的分子机制。'},
@@ -196,7 +224,7 @@ function setupUI1(area){
   <div class="hint-box">提示：当吸收能量≈发射能量时天平平衡，温度稳定</div>`;
 }
 function initL1(){
-  state.solar=1361;state.albedo=0.30;state.temp=15;state.balanced=false;state.balanceTimer=0;
+  state.solar=1361;state.albedo=0.30;state.temp=-18;state.balanced=false;state.balanceTimer=0;
   function loop(){
     frame++;drawBg();
     const cx=W*0.5,cy=H*0.5,er=Math.min(W,H)*0.15;
@@ -204,7 +232,7 @@ function initL1(){
     drawSun(W*0.12,H*0.15,40,frame);
     // solar rays to earth
     const solarIn=state.solar/4*(1-state.albedo);
-    const irOut=5.67e-8*Math.pow(state.temp+273,4)/4;
+    const irOut=5.67e-8*Math.pow(state.temp+273,4);
     // earth
     drawEarth(cx,cy,er);
     drawAtmosphere(cx,cy,er,0.2);
@@ -252,8 +280,8 @@ function initL1(){
     // fulcrum
     ctx.fillStyle='#666';ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx-8,by+15);ctx.lineTo(bx+8,by+15);ctx.closePath();ctx.fill();
     // temperature
-    state.temp+=(diff>0?0.02:-0.02)*Math.min(Math.abs(diff)/10,1);
-    state.temp=clamp(state.temp,-50,80);
+    state.temp+=(diff>0?0.03:-0.03)*Math.min(Math.abs(diff)/20,1);
+    state.temp=clamp(state.temp,-60,60);
     ctx.fillStyle='#fff';ctx.font='16px sans-serif';ctx.textAlign='center';
     ctx.fillText(`地球温度: ${state.temp.toFixed(1)}°C`,cx,cy+er+40);
     // balance check
@@ -272,10 +300,10 @@ function setupUI2(area){
   area.innerHTML=`
   <div class="slider-wrap"><label>CO₂浓度: <span class="slider-val" id="sv3">${state.co2||280}</span> ppm</label>
   <input type="range" min="280" max="800" value="${state.co2||280}" oninput="state.co2=+this.value;document.getElementById('sv3').textContent=this.value;if(state.co2>=400&&!levelObjs[1][0])completeObj(1,0)"></div>
-  <div class="hint-box">当前温度: <span id="tempDisp2">${(state.tempG||(-18)).toFixed(1)}</span>°C<br>无温室气体温度: -18°C</div>`;
+  <div class="hint-box">当前温度: <span id="tempDisp2">${(state.tempG||(15)).toFixed(1)}</span>°C<br>工业革命前(280ppm)温度: 15°C</div>`;
 }
 function initL2(){
-  state.co2=280;state.tempG=-18;state.co2Mols=[];state.irParticles=[];state.obj1Done=false;
+  state.co2=280;state.tempG=15;state.co2Mols=[];state.irParticles=[];state.obj1Done=false;
   for(let i=0;i<8;i++)state.co2Mols.push({x:rand(W*0.2,W*0.8),y:rand(H*0.2,H*0.45),vx:rand(-0.3,0.3),vy:rand(-0.2,0.2)});
   function loop(){
     frame++;drawBg();
@@ -292,6 +320,9 @@ function initL2(){
     drawEarth(cx,cy,er);
     // atmosphere band
     const ghFrac=clamp((state.co2-280)/520,0,1);
+    // 基础温室效应（水蒸气等）贡献约25°C，CO₂额外贡献约8°C（280ppm时）到16°C（800ppm时）
+    const baseGreenhouse=25;
+    const co2Warming=8+ghFrac*8;
     ctx.fillStyle=`rgba(60,100,180,${0.05+ghFrac*0.15})`;
     ctx.fillRect(0,H*0.18,W,H*0.5);
     // CO2 molecules
@@ -326,14 +357,14 @@ function initL2(){
       }
     });
     // temperature calc
-    const targetT=-18+ghFrac*33;
+    const targetT=-18+baseGreenhouse+co2Warming;
     state.tempG+=(targetT-state.tempG)*0.01;
     ctx.fillStyle='#fff';ctx.font='14px sans-serif';ctx.textAlign='center';
     ctx.fillText(`温度: ${state.tempG.toFixed(1)}°C`,cx,H*0.12);
     ctx.fillStyle='#888';ctx.font='11px sans-serif';
-    ctx.fillText(`无温室气体: -18°C  |  温室效应增温: ${(state.tempG+18).toFixed(1)}°C`,cx,H*0.15);
+    ctx.fillText(`280ppm基准: 15°C  |  CO₂增温: ${(state.tempG-15).toFixed(1)}°C`,cx,H*0.15);
     // check obj2: compare
-    if(state.tempG>0&&!levelObjs[1][2])completeObj(1,2);
+    if(state.tempG>16&&!levelObjs[1][2])completeObj(1,2);
     const td=document.getElementById('tempDisp2');if(td)td.textContent=state.tempG.toFixed(1);
     renderPanel();animId=requestAnimationFrame(loop);
   }
@@ -840,7 +871,7 @@ function initL7(){
 }
 
 /* ===== START ===== */
-loadLevel(0);
+function startGame(){document.getElementById('startScreen').classList.add('hidden');loadLevel(0)}
 </script>
 </body>
 </html>

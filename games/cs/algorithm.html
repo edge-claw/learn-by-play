@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>数据结构与算法 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e2e8f0;font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh}
+canvas{display:block}
+.overlay{position:fixed;inset:0;background:rgba(10,10,26,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+.overlay h1{font-size:42px;color:#8b5cf6;margin-bottom:8px;text-shadow:0 0 30px rgba(139,92,246,0.5)}
+.overlay .sub{font-size:18px;color:#a78bfa;margin-bottom:32px}
+.overlay .desc{max-width:520px;text-align:center;color:#94a3b8;font-size:14px;line-height:1.8;margin-bottom:36px}
+.overlay .start-btn{padding:14px 48px;font-size:18px;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:all .3s}
+.overlay .start-btn:hover{transform:scale(1.05);box-shadow:0 0 24px rgba(139,92,246,0.5)}
+.panel{position:fixed;left:0;top:0;bottom:36px;width:320px;background:rgba(10,10,30,0.95);border-right:1px solid rgba(139,92,246,0.2);overflow-y:auto;z-index:10;display:none;padding:16px}
+.panel h2{font-size:18px;color:#a78bfa;margin-bottom:8px}
+.panel h3{font-size:14px;color:#8b5cf6;margin:12px 0 6px}
+.panel p,.panel li{font-size:13px;color:#94a3b8;line-height:1.6}
+.panel ul{padding-left:18px}
+.obj-item{display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px}
+.obj-item .dot{width:16px;height:16px;border-radius:50%;border:2px solid #475569;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+.obj-item .dot.done{border-color:#22c55e;background:#22c55e;color:#fff}
+.act-btn{display:block;width:100%;padding:8px;margin:4px 0;font-size:13px;border:1px solid rgba(139,92,246,0.3);background:rgba(139,92,246,0.1);color:#c4b5fd;border-radius:6px;cursor:pointer;transition:all .2s;text-align:center}
+.act-btn:hover{background:rgba(139,92,246,0.25);border-color:#8b5cf6}
+.learn-box{background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:10px;margin-top:10px}
+.learn-box h4{color:#4ade80;font-size:13px;margin-bottom:6px}
+.learn-box p{font-size:12px;color:#86efac;line-height:1.6}
+.bar{position:fixed;left:0;right:0;bottom:0;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid rgba(139,92,246,0.2);display:none;z-index:10;padding:0 16px;align-items:center;justify-content:space-between;font-size:13px}
+.bar-left,.bar-right{display:flex;align-items:center;gap:8px}
+.bar-btn{padding:4px 12px;font-size:12px;background:rgba(139,92,246,0.15);border:1px solid rgba(139,92,246,0.3);color:#c4b5fd;border-radius:4px;cursor:pointer}
+.bar-btn:hover{background:rgba(139,92,246,0.3)}
+.bar-dots{display:flex;gap:4px}
+.bar-dot{width:8px;height:8px;border-radius:50%;background:#334155;cursor:pointer;transition:all .2s}
+.bar-dot.active{background:#8b5cf6;box-shadow:0 0 6px rgba(139,92,246,0.5)}
+.bar-dot.done{background:#22c55e}
+.panel::-webkit-scrollbar{width:4px}
+.panel::-webkit-scrollbar-thumb{background:#4c1d95;border-radius:2px}
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay">
+  <h1>🧮 数据结构与算法 探险</h1>
+  <div class="sub">Data Structures & Algorithms Adventure</div>
+  <div class="desc">
+    从数组到堆，7 个关卡带你深入理解核心数据结构与经典算法。<br>
+    每一关都有交互式可视化动画，亲手操作、直观感受算法之美。
+  </div>
+  <button class="start-btn" onclick="startGame()">开始探索 →</button>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"></div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay');
+let W,H,curLevel=0,animId=null,animQueue=[],animRunning=false;
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+// ===== 关卡数据 =====
+const levels=[
+  {name:'数组与链表',desc:'理解线性数据结构的基本操作与性能差异',objs:['在数组中插入3个元素','在链表中插入3个元素','删除操作各执行1次']},
+  {name:'栈与队列',desc:'掌握后进先出与先进先出的核心思想',objs:['完成入栈出栈各3次','完成括号匹配检测','完成BFS队列演示']},
+  {name:'排序算法',desc:'对比经典排序算法的执行过程与效率',objs:['运行冒泡排序','运行快速排序','运行归并排序']},
+  {name:'二叉树',desc:'理解树的结构与三种遍历方式',objs:['构建一棵二叉树','完成前序遍历','完成中序遍历']},
+  {name:'BST与平衡',desc:'理解二叉搜索树的性质与AVL旋转',objs:['插入5个节点构建BST','执行BST查找','触发AVL旋转']},
+  {name:'哈希表',desc:'理解哈希映射与冲突解决策略',objs:['插入3个键值对','观察一次哈希冲突','切换冲突解决方式']},
+  {name:'堆与优先队列',desc:'理解堆的性质与堆排序过程',objs:['构建一个最小堆','执行堆排序','观察上浮下沉动画']}
+];
+
+// ===== 关卡状态 =====
+let arrData=[],llData=[],arrOps=0,llOps=0,arrDel=false,llDel=false;
+let stackData=[],queueData=[],stackOps=0,bracketDone=false,bfsDone=false;
+let sortArr=[],sortAlgo='bubble',sortSteps=[],sortStep=0,sortRunning=false,sortDone={bubble:false,quick:false,merge:false};
+let treeNodes=[],treeTraversal=[],treeHighlight=-1,treeBuildDone=false,treePreDone=false,treeInDone=false;
+let bstRoot=null,bstNodes=[],bstInserted=0,bstSearchDone=false,avlRotated=false;
+let hashTable=[],hashMethod='chain',hashInserted=0,hashCollision=false,hashSwitched=false;
+let heapArr=[],heapBuilt=false,heapSorted=false,heapAnimSeen=false,heapSortSteps=[],heapSortStep=0;
+
+// ===== 动画系统 =====
+let anims=[];
+function addAnim(obj){anims.push({...obj,t:0})}
+function updateAnims(dt){
+  for(let i=anims.length-1;i>=0;i--){
+    anims[i].t+=dt;
+    if(anims[i].t>=anims[i].dur)anims.splice(i,1);
+  }
+}
+
+// ===== 工具函数 =====
+function resize(){W=cv.width=window.innerWidth-320;H=cv.height=window.innerHeight-36;cv.style.position='fixed';cv.style.left='320px';cv.style.top='0'}
+function lerp(a,b,t){return a+(b-a)*Math.min(1,Math.max(0,t))}
+function easeOut(t){return 1-Math.pow(1-t,3)}
+function randInt(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+function shuffle(a){for(let i=a.length-1;i>0;i--){let j=randInt(0,i);[a[i],a[j]]=[a[j],a[i]]}return a}
+
+// ===== 绘图工具 =====
+function drawRoundRect(x,y,w,h,r,fill,stroke){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+  if(fill){ctx.fillStyle=fill;ctx.fill()}
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke()}
+}
+function drawArrow(x1,y1,x2,y2,color){
+  ctx.strokeStyle=color||'#8b5cf6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  let a=Math.atan2(y2-y1,x2-x1),s=10;
+  ctx.fillStyle=color||'#8b5cf6';ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-s*Math.cos(a-0.4),y2-s*Math.sin(a-0.4));ctx.lineTo(x2-s*Math.cos(a+0.4),y2-s*Math.sin(a+0.4));ctx.fill();
+}
+function drawNode(x,y,r,val,color,highlight){
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+  ctx.fillStyle=highlight?'#f59e0b':(color||'rgba(139,92,246,0.3)');ctx.fill();
+  ctx.strokeStyle=highlight?'#fbbf24':(color?'#fff':'#8b5cf6');ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font='bold 14px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(val,x,y);
+}
+
+// ===== 启动 =====
+function startGame(){
+  overlay.style.display='none';panel.style.display='block';bar.style.display='flex';
+  resize();initLevel(0);requestAnimationFrame(gameLoop);
+}
+window.addEventListener('resize',()=>{if(panel.style.display==='block')resize()});
+
+let lastTime=0;
+function gameLoop(ts){
+  let dt=(ts-lastTime)/1000;lastTime=ts;if(dt>0.1)dt=0.1;
+  updateAnims(dt);ctx.clearRect(0,0,W,H);
+  drawLevel();animId=requestAnimationFrame(gameLoop);
+}
+
+function goLevel(n){curLevel=n;initLevel(n)}
+function initLevel(n){
+  curLevel=n;
+  switch(n){
+    case 0:initArrayLinkedList();break;
+    case 1:initStackQueue();break;
+    case 2:initSort();break;
+    case 3:initBinaryTree();break;
+    case 4:initBST();break;
+    case 5:initHashTable();break;
+    case 6:initHeap();break;
+  }
+  renderPanel();renderBar();
+}
+// ===== 渲染面板 =====
+function renderPanel(){
+  let li=curLevel,lv=levels[li],h='';
+  h+=`<h2>关卡 ${li+1}: ${lv.name}</h2><p>${lv.desc}</p>`;
+  h+=`<h3>🎯 目标</h3>`;
+  for(let i=0;i<3;i++){
+    let done=levelObjs[li][i];
+    h+=`<div class="obj-item"><span class="dot${done?' done':''}">${done?'✓':''}</span>${lv.objs[i]}</div>`;
+  }
+  h+=`<h3>🔧 操作</h3>`;
+  switch(li){
+    case 0:
+      h+=`<button class="act-btn" onclick="arrInsert()">数组：插入随机元素</button>`;
+      h+=`<button class="act-btn" onclick="arrDelete()">数组：删除末尾元素</button>`;
+      h+=`<button class="act-btn" onclick="llInsert()">链表：头部插入元素</button>`;
+      h+=`<button class="act-btn" onclick="llDelete()">链表：删除头部元素</button>`;
+      h+=`<button class="act-btn" onclick="resetArrayLL()">重置</button>`;
+      break;
+    case 1:
+      h+=`<button class="act-btn" onclick="stackPush()">入栈 Push</button>`;
+      h+=`<button class="act-btn" onclick="stackPop()">出栈 Pop</button>`;
+      h+=`<button class="act-btn" onclick="runBracketMatch()">括号匹配检测</button>`;
+      h+=`<button class="act-btn" onclick="runBFS()">BFS 队列演示</button>`;
+      h+=`<button class="act-btn" onclick="initStackQueue()">重置</button>`;
+      break;
+    case 2:
+      h+=`<button class="act-btn" onclick="runSort('bubble')">冒泡排序</button>`;
+      h+=`<button class="act-btn" onclick="runSort('quick')">快速排序</button>`;
+      h+=`<button class="act-btn" onclick="runSort('merge')">归并排序</button>`;
+      h+=`<button class="act-btn" onclick="initSort()">重置数组</button>`;
+      break;
+    case 3:
+      h+=`<button class="act-btn" onclick="buildTree()">构建二叉树</button>`;
+      h+=`<button class="act-btn" onclick="traverseTree('pre')">前序遍历</button>`;
+      h+=`<button class="act-btn" onclick="traverseTree('in')">中序遍历</button>`;
+      h+=`<button class="act-btn" onclick="traverseTree('post')">后序遍历</button>`;
+      h+=`<button class="act-btn" onclick="initBinaryTree()">重置</button>`;
+      break;
+    case 4:
+      h+=`<button class="act-btn" onclick="bstInsert()">插入随机节点</button>`;
+      h+=`<button class="act-btn" onclick="bstSearch()">查找节点</button>`;
+      h+=`<button class="act-btn" onclick="avlInsert()">AVL 插入(触发旋转)</button>`;
+      h+=`<button class="act-btn" onclick="initBST()">重置</button>`;
+      break;
+    case 5:
+      h+=`<button class="act-btn" onclick="hashInsert()">插入键值对</button>`;
+      h+=`<button class="act-btn" onclick="switchHashMethod()">切换冲突解决方式</button>`;
+      h+=`<button class="act-btn" onclick="initHashTable()">重置</button>`;
+      break;
+    case 6:
+      h+=`<button class="act-btn" onclick="heapBuild()">构建最小堆</button>`;
+      h+=`<button class="act-btn" onclick="heapSortRun()">堆排序</button>`;
+      h+=`<button class="act-btn" onclick="heapPushDemo()">插入元素(上浮)</button>`;
+      h+=`<button class="act-btn" onclick="initHeap()">重置</button>`;
+      break;
+  }
+  // 知识点
+  if(levelObjs[li].every(v=>v)){
+    h+=`<div class="learn-box"><h4>📚 知识点</h4><p>${getLearnText(li)}</p></div>`;
+    if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+    if(li===6)h+=`<div style="text-align:center;margin-top:12px;color:#4ade80;font-size:14px">🎉 恭喜通关！全部 7 个关卡已完成！</div>`;
+  }
+  panel.innerHTML=h;
+}
+function getLearnText(li){
+  const texts=[
+    '数组支持 O(1) 随机访问，但插入/删除需要移动元素 O(n)。链表插入/删除 O(1)，但访问需要遍历 O(n)。选择取决于操作频率。',
+    '栈(LIFO)适合括号匹配、函数调用栈、撤销操作。队列(FIFO)适合BFS、任务调度、消息队列。',
+    '冒泡排序 O(n²) 简单但慢；快速排序平均 O(n log n) 是实践中最快的通用排序；归并排序 O(n log n) 稳定但需额外空间。',
+    '前序(根左右)用于复制树；中序(左根右)用于BST有序输出；后序(左右根)用于删除树和表达式求值。',
+    'BST 查找/插入平均 O(log n)，最坏退化为链表 O(n)。AVL 树通过旋转保持平衡，保证 O(log n)。',
+    '哈希表平均 O(1) 查找。链地址法用链表处理冲突，简单但有额外指针开销。开放寻址法节省空间但可能聚集。',
+    '堆是完全二叉树，最小堆父节点 ≤ 子节点。插入 O(log n) 上浮，删除最小 O(log n) 下沉。堆排序 O(n log n) 原地排序。'
+  ];
+  return texts[li];
+}
+function renderBar(){
+  let h=`<div class="bar-left"><span style="color:#8b5cf6">关卡 ${curLevel+1}/7</span><span style="color:#64748b">|</span><span>${levels[curLevel].name}</span></div>`;
+  h+=`<div class="bar-right"><div class="bar-dots">`;
+  for(let i=0;i<7;i++){
+    let cls=i===curLevel?'active':(levelObjs[i].every(v=>v)?'done':'');
+    h+=`<div class="bar-dot ${cls}" onclick="goLevel(${i})" title="关卡${i+1}: ${levels[i].name}"></div>`;
+  }
+  h+=`</div>`;
+  if(curLevel>0)h+=`<button class="bar-btn" onclick="goLevel(${curLevel-1})">← 上一关</button>`;
+  if(curLevel<6)h+=`<button class="bar-btn" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+  h+=`</div>`;
+  bar.innerHTML=h;
+}
+function checkObj(li,idx){if(!levelObjs[li][idx]){levelObjs[li][idx]=true;renderPanel();renderBar()}}
+
+// ===== 绘制分发 =====
+function drawLevel(){
+  switch(curLevel){
+    case 0:drawArrayLinkedList();break;
+    case 1:drawStackQueue();break;
+    case 2:drawSort();break;
+    case 3:drawBinaryTreeVis();break;
+    case 4:drawBSTVis();break;
+    case 5:drawHashTableVis();break;
+    case 6:drawHeapVis();break;
+  }
+}
+// ===== 关卡0: 数组与链表 =====
+function initArrayLinkedList(){arrData=[];llData=[];arrOps=0;llOps=0;arrDel=false;llDel=false;anims=[]}
+function arrInsert(){
+  if(arrData.length>=12)return;
+  let v=randInt(1,99);arrData.push(v);arrOps++;
+  addAnim({type:'arr-insert',idx:arrData.length-1,dur:0.5});
+  if(arrOps>=3)checkObj(0,0);renderPanel();
+}
+function arrDelete(){
+  if(arrData.length===0)return;
+  addAnim({type:'arr-delete',idx:arrData.length-1,dur:0.4});
+  arrData.pop();arrDel=true;
+  if(arrDel&&llDel)checkObj(0,2);renderPanel();
+}
+function llInsert(){
+  let v=randInt(1,99);llData.unshift(v);llOps++;
+  addAnim({type:'ll-insert',dur:0.5});
+  if(llOps>=3)checkObj(0,1);renderPanel();
+}
+function llDelete(){
+  if(llData.length===0)return;
+  llData.shift();llDel=true;
+  addAnim({type:'ll-delete',dur:0.4});
+  if(arrDel&&llDel)checkObj(0,2);renderPanel();
+}
+function resetArrayLL(){initArrayLinkedList();renderPanel()}
+function drawArrayLinkedList(){
+  let cx=W/2,topY=60;
+  // 标题
+  ctx.fillStyle='#a78bfa';ctx.font='bold 20px sans-serif';ctx.textAlign='center';
+  ctx.fillText('数组 (Array)',cx,topY);
+  // 数组方格
+  let bw=50,bh=40,startX=cx-arrData.length*bw/2,ay=topY+30;
+  for(let i=0;i<arrData.length;i++){
+    let x=startX+i*bw,flash=anims.find(a=>a.type==='arr-insert'&&a.idx===i);
+    let alpha=flash?easeOut(flash.t/flash.dur):1;
+    drawRoundRect(x,ay,bw-4,bh,4,`rgba(139,92,246,${0.15+0.15*alpha})`,`rgba(139,92,246,${0.4+0.4*alpha})`);
+    ctx.fillStyle='#e2e8f0';ctx.font='bold 14px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(arrData[i],x+bw/2-2,ay+bh/2);
+    ctx.fillStyle='#64748b';ctx.font='10px monospace';ctx.fillText(i,x+bw/2-2,ay+bh+14);
+  }
+  // 复杂度标注
+  ctx.fillStyle='#64748b';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('访问 O(1) | 插入/删除 O(n)',cx,ay+bh+36);
+
+  // 链表
+  let llY=ay+bh+80;
+  ctx.fillStyle='#a78bfa';ctx.font='bold 20px sans-serif';ctx.fillText('链表 (Linked List)',cx,llY);
+  let nw=56,nh=36,gap=30,llStartX=cx-llData.length*(nw+gap)/2;
+  llY+=30;
+  for(let i=0;i<llData.length;i++){
+    let x=llStartX+i*(nw+gap);
+    let flash=anims.find(a=>a.type==='ll-insert')&&i===0;
+    let alpha=flash?easeOut(anims.find(a=>a.type==='ll-insert').t/0.5):1;
+    drawRoundRect(x,llY,nw,nh,6,`rgba(99,102,241,${0.15+0.15*alpha})`,`rgba(99,102,241,${0.4+0.4*alpha})`);
+    ctx.fillStyle='#e2e8f0';ctx.font='bold 14px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(llData[i],x+nw/2,llY+nh/2);
+    if(i<llData.length-1)drawArrow(x+nw+2,llY+nh/2,x+nw+gap-2,llY+nh/2,'#6366f1');
+  }
+  if(llData.length>0){
+    ctx.fillStyle='#4ade80';ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText('HEAD',llStartX+nw/2,llY-8);
+  }
+  ctx.fillStyle='#64748b';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('访问 O(n) | 头部插入/删除 O(1)',cx,llY+nh+24);
+}
+
+// ===== 关卡1: 栈与队列 =====
+let bracketStr='',bracketSteps=[],bracketStep=0,bracketRunning=false;
+let bfsGraph={},bfsQueue=[],bfsVisited=[],bfsSteps=[],bfsStep=0,bfsRunning=false;
+function initStackQueue(){
+  stackData=[];queueData=[];stackOps=0;bracketDone=false;bfsDone=false;
+  bracketStr='';bracketSteps=[];bracketStep=0;bracketRunning=false;
+  bfsGraph={};bfsQueue=[];bfsVisited=[];bfsSteps=[];bfsStep=0;bfsRunning=false;anims=[];
+}
+function stackPush(){
+  if(stackData.length>=8)return;
+  stackData.push(randInt(1,99));stackOps++;
+  addAnim({type:'stack-push',dur:0.4});
+  if(stackOps>=3&&stackData.length<stackOps)checkObj(1,0);renderPanel();
+}
+function stackPop(){
+  if(stackData.length===0)return;
+  stackData.pop();stackOps++;
+  addAnim({type:'stack-pop',dur:0.3});
+  if(stackOps>=6)checkObj(1,0);renderPanel();
+}
+function runBracketMatch(){
+  if(bracketRunning)return;
+  bracketStr='({[()]})';bracketSteps=[];bracketStep=0;bracketRunning=true;
+  let stk=[];
+  const match={'(':')','[':']','{':'}'};
+  for(let i=0;i<bracketStr.length;i++){
+    let c=bracketStr[i];
+    if('({['.includes(c)){stk.push({ch:c,idx:i});bracketSteps.push({action:'push',ch:c,idx:i,stack:[...stk]})}
+    else{let top=stk.pop();bracketSteps.push({action:'pop',ch:c,idx:i,matchIdx:top?top.idx:-1,stack:[...stk]})}
+  }
+  bracketSteps.push({action:'done',result:stk.length===0});
+  stepBracket();
+}
+function stepBracket(){
+  if(bracketStep>=bracketSteps.length){bracketRunning=false;bracketDone=true;checkObj(1,1);renderPanel();return}
+  bracketStep++;setTimeout(stepBracket,500);
+}
+function runBFS(){
+  if(bfsRunning)return;
+  bfsGraph={A:['B','C'],B:['D','E'],C:['F'],D:[],E:[],F:[]};
+  bfsQueue=['A'];bfsVisited=[];bfsSteps=[{queue:['A'],visited:[]}];bfsStep=0;bfsRunning=true;
+  let q=['A'],vis=new Set(['A']);
+  while(q.length){
+    let node=q.shift();vis.add(node);
+    let step={queue:[...q],visited:[...vis],current:node};
+    for(let nb of(bfsGraph[node]||[])){if(!vis.has(nb)){vis.add(nb);q.push(nb);}}
+    step.queueAfter=[...q];bfsSteps.push(step);
+  }
+  bfsSteps.push({done:true});stepBFS();
+}
+function stepBFS(){
+  if(bfsStep>=bfsSteps.length){bfsRunning=false;bfsDone=true;checkObj(1,2);renderPanel();return}
+  bfsStep++;setTimeout(stepBFS,700);
+}
+function drawStackQueue(){
+  // 栈
+  let sx=W*0.25,sy=60;
+  ctx.fillStyle='#a78bfa';ctx.font='bold 18px sans-serif';ctx.textAlign='center';ctx.fillText('栈 (Stack) — LIFO',sx,sy);
+  let bw=60,bh=32;sy+=20;
+  for(let i=stackData.length-1;i>=0;i--){
+    let y=sy+(stackData.length-1-i)*36;
+    drawRoundRect(sx-bw/2,y,bw,bh,4,'rgba(139,92,246,0.2)','#8b5cf6');
+    ctx.fillStyle='#e2e8f0';ctx.font='bold 14px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(stackData[i],sx,y+bh/2);
+    if(i===stackData.length-1){ctx.fillStyle='#4ade80';ctx.font='11px sans-serif';ctx.fillText('← TOP',sx+bw/2+30,y+bh/2)}
+  }
+  // 括号匹配
+  let bx=W*0.25,by=sy+320;
+  ctx.fillStyle='#a78bfa';ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('括号匹配',bx,by);
+  if(bracketStr){
+    by+=24;
+    for(let i=0;i<bracketStr.length;i++){
+      let step=bracketSteps[Math.min(bracketStep,bracketSteps.length-1)];
+      let highlight=step&&(step.idx===i||step.matchIdx===i);
+      ctx.fillStyle=highlight?'#f59e0b':'#94a3b8';ctx.font='bold 20px monospace';
+      ctx.fillText(bracketStr[i],bx-bracketStr.length*12/2+i*24,by);
+    }
+    if(bracketStep>0&&bracketStep<=bracketSteps.length){
+      let s=bracketSteps[bracketStep-1];
+      if(s.action==='done'){
+        ctx.fillStyle=s.result?'#4ade80':'#ef4444';ctx.font='14px sans-serif';
+        ctx.fillText(s.result?'✓ 括号匹配成功！':'✗ 括号不匹配',bx,by+30);
+      }
+    }
+  }
+  // BFS
+  let gx=W*0.7,gy=80;
+  ctx.fillStyle='#a78bfa';ctx.font='bold 18px sans-serif';ctx.textAlign='center';ctx.fillText('BFS 队列演示',gx,gy);
+  if(Object.keys(bfsGraph).length>0){
+    let pos={A:[gx,gy+60],B:[gx-80,gy+130],C:[gx+80,gy+130],D:[gx-120,gy+200],E:[gx-40,gy+200],F:[gx+80,gy+200]};
+    // edges
+    for(let n in bfsGraph)for(let nb of bfsGraph[n]){
+      if(pos[n]&&pos[nb])drawArrow(pos[n][0],pos[n][1],pos[nb][0],pos[nb][1],'#334155');
+    }
+    let curStep=bfsSteps[Math.min(bfsStep,bfsSteps.length-1)]||{};
+    for(let n in pos){
+      let visited=curStep.visited&&(curStep.visited instanceof Set?curStep.visited.has(n):curStep.visited.includes(n));
+      let isCurrent=curStep.current===n;
+      drawNode(pos[n][0],pos[n][1],20,n,visited?'rgba(34,197,94,0.3)':undefined,isCurrent);
+    }
+    // queue display
+    if(curStep.queueAfter){
+      ctx.fillStyle='#64748b';ctx.font='12px sans-serif';ctx.textAlign='center';
+      ctx.fillText('队列: ['+curStep.queueAfter.join(', ')+']',gx,gy+250);
+    }
+  }
+}
+// ===== 关卡2: 排序算法 =====
+let sortCompares=0,sortSwaps=0,sortHighlight=[-1,-1],sortSorted=[];
+function initSort(){
+  sortArr=shuffle(Array.from({length:16},(_,i)=>i*6+10));
+  sortSteps=[];sortStep=0;sortRunning=false;sortCompares=0;sortSwaps=0;
+  sortDone={bubble:false,quick:false,merge:false};sortHighlight=[-1,-1];sortSorted=[];anims=[];
+}
+function runSort(algo){
+  if(sortRunning)return;
+  sortArr=shuffle(Array.from({length:16},(_,i)=>i*6+10));
+  sortAlgo=algo;sortSteps=[];sortStep=0;sortCompares=0;sortSwaps=0;sortSorted=[];
+  let a=[...sortArr];
+  if(algo==='bubble')genBubbleSteps(a);
+  else if(algo==='quick'){genQuickSteps(a,0,a.length-1)}
+  else if(algo==='merge'){genMergeSteps(a,0,a.length-1)}
+  sortSteps.push({arr:[...a],hi:[-1,-1],done:true});
+  sortRunning=true;stepSort();
+}
+function genBubbleSteps(a){
+  for(let i=0;i<a.length;i++)for(let j=0;j<a.length-i-1;j++){
+    sortSteps.push({arr:[...a],hi:[j,j+1],cmp:true});
+    if(a[j]>a[j+1]){[a[j],a[j+1]]=[a[j+1],a[j]];sortSteps.push({arr:[...a],hi:[j,j+1],swap:true})}
+  }
+}
+function genQuickSteps(a,lo,hi){
+  if(lo>=hi)return;
+  let pivot=a[hi],i=lo;
+  for(let j=lo;j<hi;j++){
+    sortSteps.push({arr:[...a],hi:[j,hi],cmp:true});
+    if(a[j]<pivot){[a[i],a[j]]=[a[j],a[i]];sortSteps.push({arr:[...a],hi:[i,j],swap:true});i++}
+  }
+  [a[i],a[hi]]=[a[hi],a[i]];sortSteps.push({arr:[...a],hi:[i,hi],swap:true});
+  genQuickSteps(a,lo,i-1);genQuickSteps(a,i+1,hi);
+}
+function genMergeSteps(a,lo,hi){
+  if(lo>=hi)return;
+  let mid=Math.floor((lo+hi)/2);
+  genMergeSteps(a,lo,mid);genMergeSteps(a,mid+1,hi);
+  let left=a.slice(lo,mid+1),right=a.slice(mid+1,hi+1),i=0,j=0,k=lo;
+  while(i<left.length&&j<right.length){
+    sortSteps.push({arr:[...a],hi:[lo+i,mid+1+j],cmp:true});
+    if(left[i]<=right[j])a[k++]=left[i++];else a[k++]=right[j++];
+    sortSteps.push({arr:[...a],hi:[k-1,-1],swap:true});
+  }
+  while(i<left.length){a[k++]=left[i++];sortSteps.push({arr:[...a],hi:[k-1,-1],swap:true})}
+  while(j<right.length){a[k++]=right[j++];sortSteps.push({arr:[...a],hi:[k-1,-1],swap:true})}
+}
+function stepSort(){
+  if(sortStep>=sortSteps.length){
+    sortRunning=false;sortDone[sortAlgo]=true;
+    if(sortDone.bubble)checkObj(2,0);if(sortDone.quick)checkObj(2,1);if(sortDone.merge)checkObj(2,2);
+    renderPanel();return;
+  }
+  let s=sortSteps[sortStep];sortArr=[...s.arr];sortHighlight=s.hi||[-1,-1];
+  if(s.cmp)sortCompares++;if(s.swap)sortSwaps++;
+  sortStep++;
+  let speed=sortSteps.length>200?15:sortSteps.length>100?25:40;
+  setTimeout(stepSort,speed);
+}
+function drawSort(){
+  let cx=W/2,topY=40;
+  ctx.fillStyle='#a78bfa';ctx.font='bold 20px sans-serif';ctx.textAlign='center';
+  let algoNames={bubble:'冒泡排序',quick:'快速排序',merge:'归并排序'};
+  ctx.fillText(algoNames[sortAlgo]||'排序算法',cx,topY);
+  let bw=Math.min(40,W/sortArr.length-4),maxH=H-140,startX=cx-sortArr.length*(bw+4)/2;
+  let maxVal=Math.max(...sortArr,1);
+  for(let i=0;i<sortArr.length;i++){
+    let h=sortArr[i]/maxVal*maxH*0.7,x=startX+i*(bw+4),y=H-60-h;
+    let isHi=sortHighlight.includes(i);
+    ctx.fillStyle=isHi?'#f59e0b':'rgba(139,92,246,0.6)';
+    drawRoundRect(x,y,bw,h,3,ctx.fillStyle,null);
+    ctx.fillStyle='#94a3b8';ctx.font='10px monospace';ctx.textAlign='center';
+    ctx.fillText(sortArr[i],x+bw/2,y-6);
+  }
+  ctx.fillStyle='#64748b';ctx.font='13px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`比较: ${sortCompares}  交换: ${sortSwaps}  步骤: ${sortStep}/${sortSteps.length}`,cx,H-30);
+}
+
+// ===== 关卡3: 二叉树 =====
+let treeAnimStep=0,treeAnimRunning=false,treeTraversalResult=[];
+function initBinaryTree(){
+  treeNodes=[];treeTraversal=[];treeHighlight=-1;treeBuildDone=false;treePreDone=false;treeInDone=false;
+  treeAnimStep=0;treeAnimRunning=false;treeTraversalResult=[];anims=[];
+}
+function buildTree(){
+  if(treeBuildDone)return;
+  // 构建完全二叉树 [1..7]
+  treeNodes=[null,{v:1},{v:2},{v:3},{v:4},{v:5},{v:6},{v:7}];
+  treeBuildDone=true;checkObj(3,0);renderPanel();
+}
+function getTreePos(idx){
+  if(idx<1||idx>7)return null;
+  let depth=Math.floor(Math.log2(idx)),posInLevel=idx-Math.pow(2,depth);
+  let totalInLevel=Math.pow(2,depth);
+  let x=W*(posInLevel+0.5)/totalInLevel,y=60+depth*80;
+  return{x,y};
+}
+function traverseTree(order){
+  if(!treeBuildDone||treeAnimRunning)return;
+  treeTraversal=[];treeTraversalResult=[];treeAnimStep=0;treeAnimRunning=true;
+  function pre(i){if(i>7||!treeNodes[i])return;treeTraversal.push(i);pre(i*2);pre(i*2+1)}
+  function ino(i){if(i>7||!treeNodes[i])return;ino(i*2);treeTraversal.push(i);ino(i*2+1)}
+  function post(i){if(i>7||!treeNodes[i])return;post(i*2);post(i*2+1);treeTraversal.push(i)}
+  if(order==='pre')pre(1);else if(order==='in')ino(1);else post(1);
+  stepTreeTraversal(order);
+}
+function stepTreeTraversal(order){
+  if(treeAnimStep>=treeTraversal.length){
+    treeAnimRunning=false;treeHighlight=-1;
+    if(order==='pre'){treePreDone=true;checkObj(3,1)}
+    if(order==='in'){treeInDone=true;checkObj(3,2)}
+    renderPanel();return;
+  }
+  treeHighlight=treeTraversal[treeAnimStep];
+  treeTraversalResult.push(treeNodes[treeHighlight].v);
+  treeAnimStep++;setTimeout(()=>stepTreeTraversal(order),500);
+}
+function drawBinaryTreeVis(){
+  ctx.fillStyle='#a78bfa';ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillText('二叉树',W/2,36);
+  if(!treeBuildDone){ctx.fillStyle='#64748b';ctx.font='14px sans-serif';ctx.fillText('点击"构建二叉树"开始',W/2,H/2);return}
+  // edges
+  for(let i=1;i<=7;i++){
+    if(!treeNodes[i])continue;
+    let p=getTreePos(i);
+    if(i*2<=7&&treeNodes[i*2]){let c=getTreePos(i*2);ctx.strokeStyle='#334155';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(c.x,c.y);ctx.stroke()}
+    if(i*2+1<=7&&treeNodes[i*2+1]){let c=getTreePos(i*2+1);ctx.strokeStyle='#334155';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(c.x,c.y);ctx.stroke()}
+  }
+  for(let i=1;i<=7;i++){
+    if(!treeNodes[i])continue;
+    let p=getTreePos(i);drawNode(p.x,p.y,22,treeNodes[i].v,undefined,treeHighlight===i);
+  }
+  if(treeTraversalResult.length>0){
+    ctx.fillStyle='#4ade80';ctx.font='14px monospace';ctx.textAlign='center';
+    ctx.fillText('遍历: ['+treeTraversalResult.join(', ')+']',W/2,H-50);
+  }
+}
+// ===== 关卡4: BST与AVL =====
+function BSTNode(v){this.v=v;this.left=null;this.right=null;this.h=1}
+function bstHeight(n){return n?n.h:0}
+function bstUpdateH(n){if(n)n.h=1+Math.max(bstHeight(n.left),bstHeight(n.right))}
+function bstBF(n){return n?bstHeight(n.left)-bstHeight(n.right):0}
+function rotateRight(y){let x=y.left,t=x.right;x.right=y;y.left=t;bstUpdateH(y);bstUpdateH(x);return x}
+function rotateLeft(x){let y=x.right,t=y.left;y.left=x;x.right=t;bstUpdateH(x);bstUpdateH(y);return y}
+function avlInsertNode(node,v){
+  if(!node)return new BSTNode(v);
+  if(v<node.v)node.left=avlInsertNode(node.left,v);
+  else if(v>node.v)node.right=avlInsertNode(node.right,v);
+  else return node;
+  bstUpdateH(node);let bf=bstBF(node);
+  if(bf>1&&v<node.left.v){avlRotated=true;return rotateRight(node)}
+  if(bf<-1&&v>node.right.v){avlRotated=true;return rotateLeft(node)}
+  if(bf>1&&v>node.left.v){avlRotated=true;node.left=rotateLeft(node.left);return rotateRight(node)}
+  if(bf<-1&&v<node.right.v){avlRotated=true;node.right=rotateRight(node.right);return rotateLeft(node)}
+  return node;
+}
+let bstSearchTarget=-1,bstSearchPath=[],bstSearchStep=0,bstSearchRunning=false;
+function initBST(){
+  bstRoot=null;bstNodes=[];bstInserted=0;bstSearchDone=false;avlRotated=false;
+  bstSearchTarget=-1;bstSearchPath=[];bstSearchStep=0;bstSearchRunning=false;anims=[];
+}
+function bstInsertSimple(node,v){
+  if(!node)return new BSTNode(v);
+  if(v<node.v)node.left=bstInsertSimple(node.left,v);
+  else if(v>node.v)node.right=bstInsertSimple(node.right,v);
+  return node;
+}
+function bstInsert(){
+  let v=randInt(10,90);
+  bstRoot=bstInsertSimple(bstRoot,v);bstInserted++;
+  bstNodes=[];flattenBST(bstRoot,bstNodes);
+  if(bstInserted>=5)checkObj(4,0);renderPanel();
+}
+function flattenBST(node,arr,depth=0,pos=0.5,lo=0,hi=1){
+  if(!node)return;
+  arr.push({v:node.v,depth,pos,x:0,y:0});
+  flattenBST(node.left,arr,depth+1,(lo+pos)/2,lo,pos);
+  flattenBST(node.right,arr,depth+1,(pos+hi)/2,pos,hi);
+}
+function bstSearch(){
+  if(!bstRoot||bstSearchRunning)return;
+  bstSearchTarget=bstNodes[randInt(0,bstNodes.length-1)].v;
+  bstSearchPath=[];bstSearchStep=0;bstSearchRunning=true;
+  let node=bstRoot;
+  while(node){
+    bstSearchPath.push(node.v);
+    if(bstSearchTarget===node.v)break;
+    else if(bstSearchTarget<node.v)node=node.left;
+    else node=node.right;
+  }
+  stepBSTSearch();
+}
+function stepBSTSearch(){
+  if(bstSearchStep>=bstSearchPath.length){
+    bstSearchRunning=false;bstSearchDone=true;checkObj(4,1);renderPanel();return;
+  }
+  bstSearchStep++;setTimeout(stepBSTSearch,500);
+}
+function avlInsert(){
+  // 插入会导致不平衡的序列
+  bstRoot=null;avlRotated=false;
+  let vals=[30,20,10]; // 会触发右旋
+  for(let v of vals)bstRoot=avlInsertNode(bstRoot,v);
+  bstNodes=[];flattenBST(bstRoot,bstNodes);
+  if(avlRotated){checkObj(4,2);addAnim({type:'avl-rotate',dur:1})}
+  renderPanel();
+}
+function drawBSTVis(){
+  ctx.fillStyle='#a78bfa';ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillText('二叉搜索树 / AVL',W/2,36);
+  if(bstNodes.length===0){ctx.fillStyle='#64748b';ctx.font='14px sans-serif';ctx.fillText('点击"插入随机节点"开始',W/2,H/2);return}
+  // 计算位置
+  for(let n of bstNodes){n.x=n.pos*W;n.y=70+n.depth*70}
+  // edges
+  function drawEdges(node,depth,pos,lo,hi){
+    if(!node)return;
+    let x=pos*W,y=70+depth*70;
+    if(node.left){let cx=(lo+pos)/2*W,cy=70+(depth+1)*70;ctx.strokeStyle='#334155';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(cx,cy);ctx.stroke();drawEdges(node.left,depth+1,(lo+pos)/2,lo,pos)}
+    if(node.right){let cx=(pos+hi)/2*W,cy=70+(depth+1)*70;ctx.strokeStyle='#334155';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(cx,cy);ctx.stroke();drawEdges(node.right,depth+1,(pos+hi)/2,pos,hi)}
+  }
+  drawEdges(bstRoot,0,0.5,0,1);
+  for(let n of bstNodes){
+    let isSearchHi=bstSearchRunning&&bstSearchStep>0&&bstSearchPath.slice(0,bstSearchStep).includes(n.v);
+    let isFound=bstSearchRunning&&bstSearchStep===bstSearchPath.length&&n.v===bstSearchTarget;
+    drawNode(n.x,n.y,22,n.v,isFound?'rgba(34,197,94,0.4)':undefined,isSearchHi);
+  }
+  if(bstSearchRunning||bstSearchDone){
+    ctx.fillStyle='#4ade80';ctx.font='13px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`查找 ${bstSearchTarget}: ${bstSearchPath.slice(0,bstSearchStep).join(' → ')}`,W/2,H-40);
+  }
+  let rotAnim=anims.find(a=>a.type==='avl-rotate');
+  if(rotAnim){
+    ctx.fillStyle=`rgba(245,158,11,${1-rotAnim.t/rotAnim.dur})`;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+    ctx.fillText('⟳ AVL 旋转完成！树已平衡',W/2,H-70);
+  }
+}
+
+// ===== 关卡5: 哈希表 =====
+let hashKeys=['apple','banana','cherry','date','elderberry','fig','grape','honey'];
+let hashKeyIdx=0,hashAnimHighlight=-1;
+function initHashTable(){
+  hashTable=Array.from({length:8},()=>[]);hashMethod='chain';hashInserted=0;hashCollision=false;hashSwitched=false;hashKeyIdx=0;hashAnimHighlight=-1;anims=[];
+}
+function hashFn(key){let h=0;for(let c of key)h=(h*31+c.charCodeAt(0))%8;return h}
+function hashInsert(){
+  if(hashKeyIdx>=hashKeys.length)return;
+  let key=hashKeys[hashKeyIdx++],idx=hashFn(key);
+  hashAnimHighlight=idx;
+  if(hashTable[idx].length>0){hashCollision=true;checkObj(5,1)}
+  if(hashMethod==='chain'){hashTable[idx].push(key)}
+  else{
+    let i=idx;while(hashTable[i].length>0)i=(i+1)%8;
+    hashTable[i].push(key);hashAnimHighlight=i;
+  }
+  hashInserted++;
+  if(hashInserted>=3)checkObj(5,0);
+  addAnim({type:'hash-insert',slot:hashAnimHighlight,dur:0.6});renderPanel();
+}
+function switchHashMethod(){
+  hashMethod=hashMethod==='chain'?'open':'chain';
+  hashTable=Array.from({length:8},()=>[]);hashKeyIdx=0;hashInserted=0;hashCollision=false;
+  hashSwitched=true;checkObj(5,2);renderPanel();
+}
+function drawHashTableVis(){
+  ctx.fillStyle='#a78bfa';ctx.font='bold 20px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`哈希表 — ${hashMethod==='chain'?'链地址法':'开放寻址法'}`,W/2,36);
+  let slotW=Math.min(100,W/10),slotH=40,startX=W/2-4*slotW,sy=80;
+  for(let i=0;i<8;i++){
+    let x=startX+i*slotW;
+    let flash=anims.find(a=>a.type==='hash-insert'&&a.slot===i);
+    let alpha=flash?0.5+0.5*easeOut(flash.t/flash.dur):0.2;
+    drawRoundRect(x+2,sy,slotW-4,slotH,4,`rgba(139,92,246,${alpha})`,`rgba(139,92,246,0.5)`);
+    ctx.fillStyle='#c4b5fd';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(i,x+slotW/2,sy+slotH/2);
+    // chain items
+    for(let j=0;j<hashTable[i].length;j++){
+      let iy=sy+slotH+10+j*36;
+      drawRoundRect(x+4,iy,slotW-8,30,4,'rgba(99,102,241,0.2)','#6366f1');
+      ctx.fillStyle='#e2e8f0';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(hashTable[i][j],x+slotW/2,iy+15);
+      if(hashMethod==='chain'&&j===0){
+        drawArrow(x+slotW/2,sy+slotH,x+slotW/2,iy,'#6366f1');
+      }
+    }
+  }
+  ctx.fillStyle='#64748b';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('hash(key) = (key的字符码 × 31) mod 8',W/2,H-40);
+}
+// ===== 关卡6: 堆与优先队列 =====
+let heapAnimSteps=[],heapAnimStep=0,heapAnimRunning=false,heapHighlight=[-1,-1];
+function initHeap(){
+  heapArr=[];heapBuilt=false;heapSorted=false;heapAnimSeen=false;
+  heapSortSteps=[];heapSortStep=0;heapAnimSteps=[];heapAnimStep=0;heapAnimRunning=false;heapHighlight=[-1,-1];anims=[];
+}
+function heapParent(i){return Math.floor((i-1)/2)}
+function heapLeft(i){return 2*i+1}
+function heapRight(i){return 2*i+2}
+function heapBuild(){
+  if(heapBuilt)return;
+  heapArr=shuffle([15,8,23,4,42,16,7,11,27,3]);
+  heapAnimSteps=[];
+  // build min-heap via sift-down
+  let a=[...heapArr];
+  for(let i=Math.floor(a.length/2)-1;i>=0;i--)heapSiftDown(a,i,a.length);
+  heapArr=[...a];heapBuilt=true;heapAnimSeen=true;
+  checkObj(6,0);checkObj(6,2);renderPanel();
+}
+function heapSiftDown(a,i,n){
+  let smallest=i,l=2*i+1,r=2*i+2;
+  if(l<n&&a[l]<a[smallest])smallest=l;
+  if(r<n&&a[r]<a[smallest])smallest=r;
+  if(smallest!==i){
+    heapAnimSteps.push({arr:[...a],hi:[i,smallest],action:'swap'});
+    [a[i],a[smallest]]=[a[smallest],a[i]];
+    heapSiftDown(a,smallest,n);
+  }
+}
+function heapSiftUp(a,i){
+  while(i>0){
+    let p=heapParent(i);
+    if(a[i]<a[p]){
+      heapAnimSteps.push({arr:[...a],hi:[i,p],action:'swap'});
+      [a[i],a[p]]=[a[p],a[i]];i=p;
+    }else break;
+  }
+}
+function heapSortRun(){
+  if(!heapBuilt||heapAnimRunning)return;
+  heapSortSteps=[];heapSortStep=0;heapAnimRunning=true;
+  let a=[...heapArr];
+  for(let i=a.length-1;i>0;i--){
+    [a[0],a[i]]=[a[i],a[0]];
+    heapSortSteps.push({arr:[...a],hi:[0,i],sorted:a.length-i});
+    // sift down
+    let j=0,n=i;
+    while(true){
+      let s=j,l=2*j+1,r=2*j+2;
+      if(l<n&&a[l]<a[s])s=l;if(r<n&&a[r]<a[s])s=r;
+      if(s===j)break;
+      [a[j],a[s]]=[a[s],a[j]];
+      heapSortSteps.push({arr:[...a],hi:[j,s],sorted:a.length-i});
+      j=s;
+    }
+  }
+  heapSortSteps.push({arr:[...a],hi:[-1,-1],sorted:a.length,done:true});
+  stepHeapSort();
+}
+function stepHeapSort(){
+  if(heapSortStep>=heapSortSteps.length){
+    heapAnimRunning=false;heapSorted=true;checkObj(6,1);renderPanel();return;
+  }
+  let s=heapSortSteps[heapSortStep];heapArr=[...s.arr];heapHighlight=s.hi;
+  heapSortStep++;setTimeout(stepHeapSort,120);
+}
+function heapPushDemo(){
+  if(!heapBuilt||heapAnimRunning)return;
+  let v=randInt(1,50);heapArr.push(v);
+  heapAnimSteps=[];heapAnimRunning=true;
+  let a=[...heapArr];
+  heapSiftUp(a,a.length-1);
+  heapArr=[...a];
+  heapAnimSeen=true;checkObj(6,2);
+  // animate steps
+  let step=0;
+  function animStep(){
+    if(step>=heapAnimSteps.length){heapAnimRunning=false;heapHighlight=[-1,-1];renderPanel();return}
+    let s=heapAnimSteps[step];heapArr=[...s.arr];heapHighlight=s.hi;
+    step++;setTimeout(animStep,400);
+  }
+  animStep();
+}
+function drawHeapVis(){
+  ctx.fillStyle='#a78bfa';ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillText('堆与优先队列（最小堆）',W/2,36);
+  if(heapArr.length===0){ctx.fillStyle='#64748b';ctx.font='14px sans-serif';ctx.fillText('点击"构建最小堆"开始',W/2,H/2);return}
+  // 树形显示
+  let n=heapArr.length;
+  function getPos(i){
+    let d=Math.floor(Math.log2(i+1)),posInLvl=i+1-Math.pow(2,d),totalInLvl=Math.pow(2,d);
+    return{x:W*(posInLvl+0.5)/totalInLvl,y:70+d*70};
+  }
+  // edges
+  for(let i=0;i<n;i++){
+    let p=getPos(i);
+    let l=2*i+1,r=2*i+2;
+    if(l<n){let c=getPos(l);ctx.strokeStyle='#334155';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(c.x,c.y);ctx.stroke()}
+    if(r<n){let c=getPos(r);ctx.strokeStyle='#334155';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(c.x,c.y);ctx.stroke()}
+  }
+  // nodes
+  for(let i=0;i<n;i++){
+    let p=getPos(i);
+    let isHi=heapHighlight.includes(i);
+    drawNode(p.x,p.y,22,heapArr[i],undefined,isHi);
+  }
+  // 数组表示
+  let bw=36,startX=W/2-n*bw/2,ay=H-80;
+  ctx.fillStyle='#64748b';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('数组表示:',W/2,ay-10);
+  for(let i=0;i<n;i++){
+    let x=startX+i*bw;
+    drawRoundRect(x,ay,bw-2,28,3,'rgba(139,92,246,0.15)','rgba(139,92,246,0.3)');
+    ctx.fillStyle='#e2e8f0';ctx.font='12px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(heapArr[i],x+bw/2-1,ay+14);
+    ctx.fillStyle='#475569';ctx.font='9px monospace';ctx.fillText(i,x+bw/2-1,ay+32);
+  }
+}
+</script>
+</body>
+</html>

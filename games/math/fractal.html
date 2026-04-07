@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>分形与混沌 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e0e0e0;font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;width:100vw}
+canvas{display:block}
+.overlay{position:fixed;inset:0;background:rgba(10,10,26,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;color:#ec4899;margin-bottom:8px;text-shadow:0 0 30px rgba(236,72,153,0.5)}
+.overlay .sub{font-size:18px;color:#a78bfa;margin-bottom:32px}
+.overlay .desc{max-width:520px;font-size:14px;color:#94a3b8;line-height:1.8;margin-bottom:36px}
+.start-btn{background:linear-gradient(135deg,#ec4899,#a855f7);color:#fff;border:none;padding:14px 48px;font-size:18px;border-radius:30px;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s}
+.start-btn:hover{transform:scale(1.05);box-shadow:0 0 30px rgba(236,72,153,0.4)}
+.panel{position:fixed;left:0;top:0;bottom:36px;width:320px;background:rgba(10,10,30,0.95);border-right:1px solid rgba(236,72,153,0.2);overflow-y:auto;padding:16px;display:none;z-index:10}
+.panel h2{color:#ec4899;font-size:18px;margin-bottom:4px}
+.panel .level-tag{display:inline-block;background:rgba(236,72,153,0.15);color:#f472b6;font-size:12px;padding:2px 10px;border-radius:10px;margin-bottom:10px}
+.panel .desc-text{font-size:13px;color:#94a3b8;line-height:1.7;margin-bottom:12px}
+.panel .obj-list{list-style:none;margin-bottom:12px}
+.panel .obj-list li{font-size:13px;padding:4px 0;color:#cbd5e1}
+.panel .obj-list li.done{color:#4ade80}
+.panel .obj-list li::before{content:'○ ';color:#64748b}
+.panel .obj-list li.done::before{content:'● ';color:#4ade80}
+.learn-box{background:rgba(236,72,153,0.08);border:1px solid rgba(236,72,153,0.25);border-radius:8px;padding:10px;margin-top:10px;font-size:12px;color:#d1d5db;line-height:1.7}
+.learn-box strong{color:#f472b6}
+.act-btn{display:block;width:100%;padding:8px;margin-top:6px;border:none;border-radius:6px;font-size:13px;cursor:pointer;background:rgba(236,72,153,0.15);color:#f472b6;transition:background 0.2s}
+.act-btn:hover{background:rgba(236,72,153,0.3)}
+.slider-row{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12px;color:#94a3b8}
+.slider-row input[type=range]{flex:1;accent-color:#ec4899}
+.slider-row .val{min-width:32px;text-align:right;color:#f472b6}
+.bar{position:fixed;left:0;right:0;bottom:0;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid rgba(236,72,153,0.2);display:none;z-index:10;padding:0 16px;align-items:center;justify-content:space-between}
+.bar-left,.bar-right{display:flex;align-items:center;gap:8px}
+.bar-btn{background:none;border:1px solid rgba(236,72,153,0.3);color:#f472b6;padding:2px 12px;border-radius:4px;font-size:12px;cursor:pointer}
+.bar-btn:hover{background:rgba(236,72,153,0.15)}
+.bar-btn.active{background:rgba(236,72,153,0.25);border-color:#ec4899}
+.bar-progress{font-size:12px;color:#94a3b8}
+.hint{font-size:11px;color:#64748b;margin-top:4px;font-style:italic}
+</style>
+</head>
+<body>
+<div class="overlay" id="startOverlay">
+<h1>🌀 分形与混沌 探险</h1>
+<div class="sub">Fractals &amp; Chaos — 探索数学中最美的无穷</div>
+<div class="desc">
+从科赫雪花的自相似性，到 Mandelbrot 集的无穷深渊；<br>
+从分形树的自然之美，到洛伦兹吸引子的蝴蝶效应。<br>
+7 个关卡，带你走进分形与混沌的奇妙世界。
+</div>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"></div>
+<script>
+'use strict';
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar');
+let W,H,curLevel=0,animId=null,gameStarted=false;
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+let levelState={};
+const LN=['科赫雪花','Mandelbrot 集','Julia 集','分形树','蝴蝶效应','Logistic 映射','奇异吸引子'];
+const LD=[
+'科赫雪花是最经典的分形之一。从一个等边三角形开始，每条边中间三分之一替换为向外的等边三角形。调整迭代次数，观察雪花如何从简单变得无限复杂。',
+'Mandelbrot 集是复平面上最著名的分形。对每个点 c，迭代 z = z² + c，观察是否发散。用鼠标滚轮缩放，拖动平移，探索无穷细节。',
+'Julia 集与 Mandelbrot 集密切相关。固定参数 c，对每个起始点 z₀ 迭代 z = z² + c。拖动左侧的参数点，实时观察 Julia 集的形态变化。',
+'分形树模拟自然界中树木的分支结构。每个枝干末端分出两个子枝，角度和长度比例决定了树的形态。调整参数创造不同的树。',
+'洛伦兹吸引子展示了混沌系统的核心特征：对初始条件的极端敏感性。两条初始值仅差 0.001 的轨迹，最终会完全分离——这就是蝴蝶效应。',
+'Logistic 映射 x_{n+1} = r·x_n·(1-x_n) 是最简单的混沌系统。调整参数 r，观察系统从稳定→周期倍增→混沌的完整过程。',
+'奇异吸引子是混沌系统在相空间中的轨迹。探索 Lorenz、Rössler 和 Hénon 三种经典吸引子，观察粒子如何在确定性方程中产生看似随机的运动。'
+];
+const LOT=[
+['调整迭代次数到 3 以上','观察迭代 5 次的雪花','将迭代次数调到最大值 7'],
+['缩放 Mandelbrot 集 3 次以上','找到一个有趣的螺旋结构（缩放 10 倍以上）','探索到缩放 100 倍以上的深度'],
+['拖动参数 c 观察 Julia 集变化','找到一个连通的 Julia 集','找到一个完全碎裂的 Julia 集'],
+['调整分支角度观察树形变化','创建一棵对称的分形树','调整到 10 层以上的分形树'],
+['启动洛伦兹吸引子模拟','观察两条轨迹开始分离','等待轨迹完全分离（>500步）'],
+['调整 r 参数观察分岔图','找到第一个分岔点（r≈3.0）','将 r 调到混沌区域（r>3.57）'],
+['观察 Lorenz 吸引子','切换到 Rössler 吸引子','切换到 Hénon 吸引子']
+];
+const LT=[
+'<strong>自相似性</strong>：分形的核心特征是"部分与整体相似"。科赫雪花的每一小段边，放大后都和整条边一模一样。科赫雪花的周长是无穷大，但面积是有限的！其分形维数约为 1.26，介于一维线段和二维平面之间。',
+'<strong>Mandelbrot 集</strong>：这个集合的边界具有无穷的复杂性——无论放大多少倍，都能发现新的细节。集合内部的点（黑色区域）迭代永远不会发散，而边界附近的点需要很多次迭代才能判断。Mandelbrot 集的面积约为 1.5065。',
+'<strong>Julia 集</strong>：当参数 c 在 Mandelbrot 集内部时，对应的 Julia 集是连通的；当 c 在 Mandelbrot 集外部时，Julia 集是完全不连通的"尘埃"。这就是 Mandelbrot 集与 Julia 集的深刻联系。',
+'<strong>分形树</strong>：自然界中的树木、血管、河流网络都具有分形结构。分形树的分支角度和长度比例决定了它的形态。当角度接近 90° 时，树变得非常紧凑；角度较小时则更加舒展。',
+'<strong>蝴蝶效应</strong>：洛伦兹在 1963 年发现，确定性方程也能产生不可预测的行为。初始条件的微小差异会被指数放大，这就是"一只蝴蝶扇动翅膀可能引发龙卷风"的由来。这意味着长期天气预报从原理上就是不可能的。',
+'<strong>通往混沌之路</strong>：Logistic 映射展示了从有序到混沌的完整过程。r<3 时系统收敛到固定点；r≈3.449 时出现周期4；r≈3.57 后进入混沌。费根鲍姆发现，分岔点之间的比值趋近于常数 4.669...，这个常数在所有混沌系统中都出现！',
+'<strong>奇异吸引子</strong>：混沌系统虽然不可预测，但轨迹会被"吸引"到特定的几何结构上。Lorenz 吸引子像一只蝴蝶，Rössler 吸引子像一条折叠的带子。这些结构具有分数维度，是混沌与分形的交汇点。'
+];
+
+function resize(){W=window.innerWidth-320;H=window.innerHeight-36;cv.width=W;cv.height=H;cv.style.position='fixed';cv.style.left='320px';cv.style.top='0';cv.style.width=W+'px';cv.style.height=H+'px';if(gameStarted)drawLevel();}
+window.addEventListener('resize',resize);
+function startGame(){document.getElementById('startOverlay').style.display='none';panel.style.display='block';bar.style.display='flex';gameStarted=true;resize();goLevel(0);}
+function goLevel(n){curLevel=n;if(animId){cancelAnimationFrame(animId);animId=null;}cv.onmousedown=null;cv.onmousemove=null;cv.onmouseup=null;cv.onwheel=null;levelState={};initLevel(n);renderPanel();renderBar();drawLevel();}
+function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel();renderBar();}}
+function renderPanel(){let li=curLevel,h='';h+=`<span class="level-tag">关卡 ${li+1}/7</span>`;h+=`<h2>${LN[li]}</h2>`;h+=`<p class="desc-text">${LD[li]}</p>`;h+=`<ul class="obj-list">`;for(let i=0;i<3;i++)h+=`<li class="${levelObjs[li][i]?'done':''}">${LOT[li][i]}</li>`;h+=`</ul>`;h+=getPanelCtrl();if(levelObjs[li].every(v=>v)){h+=`<div class="learn-box">${LT[li]}</div>`;if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;if(li===6)h+=`<div style="text-align:center;margin-top:12px;color:#4ade80;font-size:14px">🎉 恭喜通关！全部 7 个关卡已完成！</div>`;}panel.innerHTML=h;}
+function renderBar(){let done=levelObjs.flat().filter(v=>v).length;let h=`<div class="bar-left">`;for(let i=0;i<7;i++){let cls=i===curLevel?'bar-btn active':'bar-btn';let ck=levelObjs[i].every(v=>v)?'✓ ':'';h+=`<button class="${cls}" onclick="goLevel(${i})">${ck}${i+1}</button>`;}h+=`</div><div class="bar-right"><span class="bar-progress">进度: ${done}/21</span></div>`;bar.innerHTML=h;}
+
+/* ===== Koch Snowflake (iterative point generation) ===== */
+function initL0(){levelState.iter=1;}
+function ctrlL0(){
+  let s=levelState;
+  let h=`<div class="slider-row"><span>迭代次数</span><input type="range" min="0" max="7" value="${s.iter}" oninput="levelState.iter=+this.value;drawLevel();if(+this.value>=3)completeObj(0);if(+this.value>=5)completeObj(1);if(+this.value>=7)completeObj(2)"><span class="val">${s.iter}</span></div>`;
+  h+=`<p class="hint">拖动滑块增加迭代次数，观察雪花的变化</p>`;
+  return h;
+}
+function kochPoints(x1,y1,x2,y2,depth){
+  // Iterative Koch: start with line segments, subdivide each one
+  let segs=[[x1,y1,x2,y2]];
+  for(let d=0;d<depth;d++){
+    let next=[];
+    for(let s of segs){
+      let sx=s[0],sy=s[1],ex=s[2],ey=s[3];
+      let dx=ex-sx,dy=ey-sy;
+      let ax=sx+dx/3,ay=sy+dy/3;
+      let bx=sx+dx*2/3,by=sy+dy*2/3;
+      let mx=ax+Math.cos(-Math.PI/3)*(bx-ax)-Math.sin(-Math.PI/3)*(by-ay);
+      let my=ay+Math.sin(-Math.PI/3)*(bx-ax)+Math.cos(-Math.PI/3)*(by-ay);
+      next.push([sx,sy,ax,ay],[ax,ay,mx,my],[mx,my,bx,by],[bx,by,ex,ey]);
+    }
+    segs=next;
+  }
+  let pts=[];
+  for(let s of segs)pts.push([s[2],s[3]]);
+  return pts;
+}
+function drawL0(){
+  ctx.clearRect(0,0,W,H);
+  let it=levelState.iter,cx=W/2,cy=H/2,r=Math.min(W,H)*0.38;
+  let tri=[];
+  for(let i=0;i<3;i++){let a=-Math.PI/2+i*Math.PI*2/3;tri.push([cx+r*Math.cos(a),cy+r*Math.sin(a)]);}
+  // generate all points
+  let allPts=[tri[0]];
+  for(let i=0;i<3;i++){let ni=(i+1)%3;allPts.push(...kochPoints(tri[i][0],tri[i][1],tri[ni][0],tri[ni][1],it));}
+  // draw with gradient
+  let grad=ctx.createLinearGradient(0,cy-r,0,cy+r);
+  grad.addColorStop(0,'#ec4899');grad.addColorStop(0.5,'#a855f7');grad.addColorStop(1,'#6366f1');
+  ctx.beginPath();ctx.moveTo(allPts[0][0],allPts[0][1]);
+  for(let i=1;i<allPts.length;i++)ctx.lineTo(allPts[i][0],allPts[i][1]);
+  ctx.closePath();
+  ctx.strokeStyle=grad;ctx.lineWidth=1.5;ctx.shadowColor='rgba(236,72,153,0.4)';ctx.shadowBlur=12;ctx.stroke();ctx.shadowBlur=0;
+  if(it>0){ctx.fillStyle='rgba(236,72,153,0.03)';ctx.fill();}
+  ctx.fillStyle='rgba(148,163,184,0.5)';ctx.font='13px sans-serif';ctx.textAlign='center';
+  let segs=3*Math.pow(4,it);
+  ctx.fillText(`迭代 ${it} 次 | 线段数: ${segs} | 维数 ≈ log4/log3 ≈ 1.26`,W/2,H-20);
+}
+
+/* ===== Mandelbrot Set (downsampled) ===== */
+function initL1(){
+  levelState.cx=-0.5;levelState.cy=0;levelState.scale=1.5;levelState.maxIter=80;
+  levelState.dragging=false;levelState.zoomCount=0;levelState.maxZoom=1;
+  cv.onwheel=function(e){
+    e.preventDefault();let rect=cv.getBoundingClientRect();
+    let mx=(e.clientX-rect.left)/W,my=(e.clientY-rect.top)/H;
+    let s=levelState,asp=W/H;
+    let wx=s.cx+(mx-0.5)*2*s.scale*asp,wy=s.cy+(my-0.5)*2*s.scale;
+    let f=e.deltaY>0?1.3:0.77;s.scale*=f;
+    s.cx=wx-(mx-0.5)*2*s.scale*asp;s.cy=wy-(my-0.5)*2*s.scale;
+    if(f<1){s.zoomCount++;let zl=1.5/s.scale;if(zl>s.maxZoom)s.maxZoom=zl;if(s.zoomCount>=3)completeObj(0);if(s.maxZoom>=10)completeObj(1);if(s.maxZoom>=100)completeObj(2);renderPanel();}
+    drawLevel();
+  };
+  cv.onmousedown=function(e){levelState.dragging=true;levelState.dx=e.clientX;levelState.dy=e.clientY;levelState.scx=levelState.cx;levelState.scy=levelState.cy;};
+  cv.onmousemove=function(e){if(!levelState.dragging)return;let s=levelState,asp=W/H;s.cx=s.scx-(e.clientX-s.dx)/W*2*s.scale*asp;s.cy=s.scy-(e.clientY-s.dy)/H*2*s.scale;drawLevel();};
+  cv.onmouseup=function(){levelState.dragging=false;};
+}
+function ctrlL1(){
+  let z=(1.5/levelState.scale).toFixed(1);
+  let h=`<p class="hint">🖱️ 滚轮缩放 | 拖动平移</p>`;
+  h+=`<p style="font-size:12px;color:#94a3b8;margin-top:4px">当前缩放: ${z}x</p>`;
+  h+=`<button class="act-btn" onclick="levelState.cx=-0.5;levelState.cy=0;levelState.scale=1.5;drawLevel();renderPanel()">重置视图</button>`;
+  h+=`<button class="act-btn" onclick="levelState.cx=-0.7435;levelState.cy=0.1314;levelState.scale=0.005;levelState.zoomCount=10;levelState.maxZoom=300;completeObj(0);completeObj(1);completeObj(2);drawLevel();renderPanel()">跳转到螺旋结构</button>`;
+  return h;
+}
+function drawL1(){
+  let ds=2,sw=Math.floor(W/ds),sh=Math.floor(H/ds);
+  let oc=document.createElement('canvas');oc.width=sw;oc.height=sh;
+  let ox=oc.getContext('2d');let img=ox.createImageData(sw,sh);let d=img.data;
+  let s=levelState,mi=s.maxIter,asp=W/H;
+  for(let py=0;py<sh;py++){for(let px=0;px<sw;px++){
+    let x0=s.cx+(px/sw-0.5)*2*s.scale*asp,y0=s.cy+(py/sh-0.5)*2*s.scale;
+    let x=0,y=0,i=0,xx=0,yy=0;
+    while(xx+yy<=4&&i<mi){y=2*x*y+y0;x=xx-yy+x0;xx=x*x;yy=y*y;i++;}
+    let idx=(py*sw+px)*4;
+    if(i===mi){d[idx]=d[idx+1]=d[idx+2]=0;}
+    else{let t=i/mi;let a=t*18.84;d[idx]=(Math.sin(a)*0.5+0.5)*200+30|0;d[idx+1]=(Math.sin(a+2.09)*0.5+0.5)*180+20|0;d[idx+2]=(Math.sin(a+4.18)*0.5+0.5)*220+35|0;}
+    d[idx+3]=255;
+  }}
+  ox.putImageData(img,0,0);ctx.clearRect(0,0,W,H);ctx.imageSmoothingEnabled=true;ctx.drawImage(oc,0,0,W,H);
+  ctx.fillStyle='rgba(148,163,184,0.4)';ctx.font='12px sans-serif';ctx.textAlign='right';
+  ctx.fillText(`缩放: ${(1.5/s.scale).toFixed(1)}x | 中心: (${s.cx.toFixed(4)}, ${s.cy.toFixed(4)})`,W-10,H-10);
+}
+
+/* ===== Julia Set ===== */
+function initL2(){
+  levelState.cr=-0.7;levelState.ci=0.27015;levelState.maxIter=60;
+  levelState.draggingP=false;levelState.changes=0;levelState.fConn=false;levelState.fDust=false;
+  cv.onmousedown=function(e){let r=cv.getBoundingClientRect();let mx=e.clientX-r.left,my=e.clientY-r.top;if(mx<200&&my<200){levelState.draggingP=true;updJulia(mx,my);}};
+  cv.onmousemove=function(e){if(!levelState.draggingP)return;let r=cv.getBoundingClientRect();updJulia(e.clientX-r.left,e.clientY-r.top);};
+  cv.onmouseup=function(){levelState.draggingP=false;};
+}
+function updJulia(mx,my){
+  let s=levelState;s.cr=(mx/200)*4-2;s.ci=(my/200)*4-2;s.changes++;
+  if(s.changes>=3)completeObj(0);
+  let x=0,y=0;for(let i=0;i<80;i++){let xt=x*x-y*y+s.cr;y=2*x*y+s.ci;x=xt;if(x*x+y*y>4){s.fDust=true;break;}}
+  if(x*x+y*y<=4)s.fConn=true;
+  if(s.fConn)completeObj(1);if(s.fDust)completeObj(2);
+  renderPanel();drawLevel();
+}
+function ctrlL2(){
+  let s=levelState;
+  let h=`<p style="font-size:12px;color:#94a3b8">参数 c = ${s.cr.toFixed(3)} + ${s.ci.toFixed(3)}i</p>`;
+  h+=`<p class="hint">在画布左上角的小窗口中拖动来改变参数 c</p>`;
+  h+=`<button class="act-btn" onclick="levelState.cr=-0.7;levelState.ci=0.27015;levelState.changes++;completeObj(0);drawLevel();renderPanel()">经典 Julia 集</button>`;
+  h+=`<button class="act-btn" onclick="levelState.cr=0.355;levelState.ci=0.355;levelState.changes++;levelState.fConn=true;completeObj(0);completeObj(1);drawLevel();renderPanel()">连通 Julia 集</button>`;
+  h+=`<button class="act-btn" onclick="levelState.cr=-1.5;levelState.ci=0;levelState.changes++;levelState.fDust=true;completeObj(0);completeObj(2);drawLevel();renderPanel()">碎裂 Julia 集</button>`;
+  return h;
+}
+function drawL2(){
+  let ds=2,sw=Math.floor(W/ds),sh=Math.floor(H/ds);
+  let oc=document.createElement('canvas');oc.width=sw;oc.height=sh;
+  let ox=oc.getContext('2d');let img=ox.createImageData(sw,sh);let d=img.data;
+  let s=levelState,mi=s.maxIter,cr=s.cr,ci=s.ci,sc=1.8,asp=W/H;
+  for(let py=0;py<sh;py++){for(let px=0;px<sw;px++){
+    let x=(px/sw-0.5)*2*sc*asp,y=(py/sh-0.5)*2*sc;let i=0;
+    while(x*x+y*y<=4&&i<mi){let xt=x*x-y*y+cr;y=2*x*y+ci;x=xt;i++;}
+    let idx=(py*sw+px)*4;
+    if(i===mi){d[idx]=15;d[idx+1]=5;d[idx+2]=25;}
+    else{let t=i/mi;let a=t*15.7;d[idx]=(Math.sin(a)*0.5+0.5)*220+35|0;d[idx+1]=(Math.sin(a+1.5)*0.5+0.5)*100+20|0;d[idx+2]=(Math.sin(a+3)*0.5+0.5)*230+25|0;}
+    d[idx+3]=255;
+  }}
+  ox.putImageData(img,0,0);ctx.clearRect(0,0,W,H);ctx.imageSmoothingEnabled=true;ctx.drawImage(oc,0,0,W,H);
+  // param picker overlay
+  let ps=180;ctx.fillStyle='rgba(10,10,30,0.85)';ctx.beginPath();ctx.roundRect(5,5,ps+10,ps+30,8);ctx.fill();
+  ctx.strokeStyle='rgba(236,72,153,0.4)';ctx.beginPath();ctx.roundRect(5,5,ps+10,ps+30,8);ctx.stroke();
+  // mini Mandelbrot
+  for(let py=0;py<ps;py+=3){for(let px=0;px<ps;px+=3){
+    let x0=(px/ps)*4-2,y0=(py/ps)*4-2,x=0,y=0,it=0;
+    while(x*x+y*y<=4&&it<20){let xt=x*x-y*y+x0;y=2*x*y+y0;x=xt;it++;}
+    if(it===20){ctx.fillStyle='rgba(120,50,140,0.5)';ctx.fillRect(10+px,10+py,3,3);}
+  }}
+  let cpx=10+(cr+2)/4*ps,cpy=10+(ci+2)/4*ps;
+  ctx.beginPath();ctx.arc(cpx,cpy,6,0,Math.PI*2);ctx.fillStyle='#ec4899';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='10px sans-serif';ctx.textAlign='left';
+  ctx.fillText(`c = ${cr.toFixed(3)} + ${ci.toFixed(3)}i`,10,10+ps+18);
+}
+
+/* ===== Fractal Tree ===== */
+function initL3(){levelState.angle=30;levelState.ratio=0.7;levelState.depth=6;}
+function ctrlL3(){
+  let s=levelState;
+  let h=`<div class="slider-row"><span>分支角度</span><input type="range" min="5" max="85" value="${s.angle}" oninput="levelState.angle=+this.value;drawLevel();completeObj(0);if(+this.value>=25&&+this.value<=35)completeObj(1)"><span class="val">${s.angle}°</span></div>`;
+  h+=`<div class="slider-row"><span>长度比例</span><input type="range" min="40" max="85" value="${Math.round(s.ratio*100)}" oninput="levelState.ratio=+this.value/100;drawLevel()"><span class="val">${Math.round(s.ratio*100)}%</span></div>`;
+  h+=`<div class="slider-row"><span>递归深度</span><input type="range" min="2" max="14" value="${s.depth}" oninput="levelState.depth=+this.value;drawLevel();if(+this.value>=10)completeObj(2)"><span class="val">${s.depth}</span></div>`;
+  h+=`<p class="hint">调整参数观察分形树的形态变化</p>`;
+  return h;
+}
+function drawBranch(x,y,len,ang,dep,maxD){
+  if(dep>maxD||len<1)return;
+  let x2=x+len*Math.cos(ang),y2=y+len*Math.sin(ang);
+  let t=dep/maxD,hue=120+t*180;
+  ctx.strokeStyle=`hsl(${hue},70%,${40+t*30}%)`;ctx.lineWidth=Math.max(1,(maxD-dep)*1.5);
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x2,y2);ctx.stroke();
+  if(dep===maxD){ctx.beginPath();ctx.arc(x2,y2,2,0,Math.PI*2);ctx.fillStyle=`hsla(${hue},80%,60%,0.6)`;ctx.fill();}
+  let a=levelState.angle*Math.PI/180,r=levelState.ratio;
+  drawBranch(x2,y2,len*r,ang-a,dep+1,maxD);drawBranch(x2,y2,len*r,ang+a,dep+1,maxD);
+}
+function drawL3(){
+  ctx.clearRect(0,0,W,H);
+  let grd=ctx.createLinearGradient(0,H*0.85,0,H);grd.addColorStop(0,'rgba(34,60,30,0.3)');grd.addColorStop(1,'rgba(20,40,20,0.1)');
+  ctx.fillStyle=grd;ctx.fillRect(0,H*0.85,W,H*0.15);
+  drawBranch(W/2,H*0.85,Math.min(W,H)*0.22,-Math.PI/2,0,levelState.depth);
+  ctx.fillStyle='rgba(148,163,184,0.5)';ctx.font='12px sans-serif';ctx.textAlign='center';
+  let b=Math.pow(2,levelState.depth+1)-1;
+  ctx.fillText(`角度: ${levelState.angle}° | 比例: ${Math.round(levelState.ratio*100)}% | 深度: ${levelState.depth} | 分支: ${b}`,W/2,H-15);
+}
+
+/* ===== Lorenz Attractor (Butterfly Effect) ===== */
+function initL4(){
+  levelState.running=false;levelState.step=0;
+  levelState.t1=[];levelState.t2=[];
+  levelState.x1=1;levelState.y1=1;levelState.z1=1;
+  levelState.x2=1.001;levelState.y2=1;levelState.z2=1;
+}
+function ctrlL4(){
+  let s=levelState;
+  let dist=s.t1.length>0?Math.sqrt((s.x1-s.x2)**2+(s.y1-s.y2)**2+(s.z1-s.z2)**2):0;
+  let h=`<p style="font-size:12px;color:#94a3b8">步数: ${s.step} | Δ初值: 0.001</p>`;
+  h+=`<p style="font-size:12px;color:#f472b6">轨迹距离: ${dist.toFixed(3)}</p>`;
+  if(!s.running)h+=`<button class="act-btn" onclick="levelState.running=true;completeObj(0);renderPanel();animLorenz()">▶ 启动模拟</button>`;
+  else h+=`<button class="act-btn" onclick="levelState.running=false;renderPanel()">⏸ 暂停</button>`;
+  h+=`<button class="act-btn" onclick="initL4();drawLevel();renderPanel()">🔄 重置</button>`;
+  h+=`<p class="hint">红色和蓝色轨迹的初始值仅差 0.001</p>`;
+  return h;
+}
+function lorStep(x,y,z){let dt=0.005;return[x+10*(y-x)*dt,y+(x*(28-z)-y)*dt,z+(x*y-8/3*z)*dt];}
+function animLorenz(){
+  if(!levelState.running||curLevel!==4)return;
+  let s=levelState;
+  for(let i=0;i<5;i++){
+    let r1=lorStep(s.x1,s.y1,s.z1);s.x1=r1[0];s.y1=r1[1];s.z1=r1[2];
+    let r2=lorStep(s.x2,s.y2,s.z2);s.x2=r2[0];s.y2=r2[1];s.z2=r2[2];
+    s.t1.push([s.x1,s.z1]);s.t2.push([s.x2,s.z2]);
+    if(s.t1.length>3000){s.t1.shift();s.t2.shift();}
+    s.step++;
+  }
+  let dist=Math.sqrt((s.x1-s.x2)**2+(s.y1-s.y2)**2+(s.z1-s.z2)**2);
+  if(dist>5)completeObj(1);if(s.step>500)completeObj(2);
+  drawLevel();animId=requestAnimationFrame(animLorenz);
+}
+function projLor(p){let sc=Math.min(W,H)/60;return[W/2+p[0]*sc*0.8,H/2-(p[1]-25)*sc*0.8];}
+function drawL4(){
+  ctx.clearRect(0,0,W,H);let s=levelState;
+  // trail 1
+  if(s.t1.length>2){for(let i=1;i<s.t1.length;i++){let p0=projLor(s.t1[i-1]),p1=projLor(s.t1[i]);ctx.beginPath();ctx.moveTo(p0[0],p0[1]);ctx.lineTo(p1[0],p1[1]);ctx.strokeStyle=`rgba(239,68,68,${0.1+0.7*i/s.t1.length})`;ctx.lineWidth=1.2;ctx.stroke();}}
+  // trail 2
+  if(s.t2.length>2){for(let i=1;i<s.t2.length;i++){let p0=projLor(s.t2[i-1]),p1=projLor(s.t2[i]);ctx.beginPath();ctx.moveTo(p0[0],p0[1]);ctx.lineTo(p1[0],p1[1]);ctx.strokeStyle=`rgba(96,165,250,${0.1+0.7*i/s.t2.length})`;ctx.lineWidth=1.2;ctx.stroke();}}
+  // heads
+  if(s.t1.length>0){
+    let p1=projLor(s.t1[s.t1.length-1]),p2=projLor(s.t2[s.t2.length-1]);
+    ctx.shadowColor='rgba(239,68,68,0.8)';ctx.shadowBlur=10;ctx.beginPath();ctx.arc(p1[0],p1[1],5,0,Math.PI*2);ctx.fillStyle='#ef4444';ctx.fill();
+    ctx.shadowColor='rgba(96,165,250,0.8)';ctx.beginPath();ctx.arc(p2[0],p2[1],5,0,Math.PI*2);ctx.fillStyle='#60a5fa';ctx.fill();ctx.shadowBlur=0;
+  }
+  ctx.fillStyle='rgba(239,68,68,0.7)';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText('轨迹 A (x₀=1.000)',10,20);
+  ctx.fillStyle='rgba(96,165,250,0.7)';ctx.fillText('轨迹 B (x₀=1.001)',10,36);
+  let dist=s.t1.length>0?Math.sqrt((s.x1-s.x2)**2+(s.y1-s.y2)**2+(s.z1-s.z2)**2):0;
+  ctx.fillStyle='rgba(148,163,184,0.5)';ctx.textAlign='center';ctx.font='12px sans-serif';
+  ctx.fillText(`洛伦兹吸引子 | 步数: ${s.step} | 距离: ${dist.toFixed(3)}`,W/2,H-15);
+}
+
+/* ===== Logistic Map ===== */
+function initL5(){levelState.r=2.5;}
+function ctrlL5(){
+  let s=levelState;
+  let h=`<div class="slider-row"><span>参数 r</span><input type="range" min="100" max="400" value="${Math.round(s.r*100)}" oninput="levelState.r=+this.value/100;drawLevel();completeObj(0);if(levelState.r>=2.9&&levelState.r<=3.1)completeObj(1);if(levelState.r>3.57)completeObj(2)"><span class="val">${s.r.toFixed(2)}</span></div>`;
+  let regime=s.r<3?'固定点':s.r<3.449?'周期2':s.r<3.544?'周期4':s.r<3.57?'周期8':'混沌';
+  h+=`<p style="font-size:12px;color:#f472b6;margin-top:4px">当前状态: ${regime}</p>`;
+  h+=`<p class="hint">拖动滑块改变 r 值，观察分岔图上红线的位置</p>`;
+  return h;
+}
+function drawL5(){
+  ctx.clearRect(0,0,W,H);let m=50,gw=W-m*2,gh=H-m*2,rMin=1,rMax=4;
+  // grid
+  ctx.strokeStyle='rgba(148,163,184,0.05)';ctx.lineWidth=0.5;
+  for(let i=0;i<=10;i++){let x=m+gw*i/10,y=m+gh*i/10;ctx.beginPath();ctx.moveTo(x,m);ctx.lineTo(x,m+gh);ctx.stroke();ctx.beginPath();ctx.moveTo(m,y);ctx.lineTo(m+gw,y);ctx.stroke();}
+  // bifurcation
+  for(let px=0;px<gw;px++){
+    let r=rMin+(px/gw)*(rMax-rMin),x=0.5;
+    for(let i=0;i<300;i++)x=r*x*(1-x);
+    for(let i=0;i<200;i++){x=r*x*(1-x);let py=m+gh*(1-x);let t=(r-rMin)/(rMax-rMin);ctx.fillStyle=`hsla(${280+t*80},70%,60%,${r>3.57?0.15:0.25})`;ctx.fillRect(m+px,py,1.5,1.5);}
+  }
+  // current r line
+  let rx=m+((levelState.r-rMin)/(rMax-rMin))*gw;
+  ctx.strokeStyle='rgba(239,68,68,0.7)';ctx.lineWidth=1.5;ctx.setLineDash([6,4]);ctx.beginPath();ctx.moveTo(rx,m);ctx.lineTo(rx,m+gh);ctx.stroke();ctx.setLineDash([]);
+  // orbit
+  let x=0.5,r=levelState.r;for(let i=0;i<300;i++)x=r*x*(1-x);
+  ctx.fillStyle='#ef4444';for(let i=0;i<80;i++){x=r*x*(1-x);ctx.beginPath();ctx.arc(rx,m+gh*(1-x),2.5,0,Math.PI*2);ctx.fill();}
+  // axes
+  ctx.strokeStyle='rgba(148,163,184,0.4)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(m,m);ctx.lineTo(m,m+gh);ctx.lineTo(m+gw,m+gh);ctx.stroke();
+  ctx.fillStyle='rgba(148,163,184,0.6)';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('参数 r',m+gw/2,H-10);
+  ctx.font='10px sans-serif';for(let rv=1;rv<=4;rv+=0.5){ctx.fillText(rv.toFixed(1),m+((rv-rMin)/(rMax-rMin))*gw,m+gh+16);}
+  // annotations
+  ctx.fillStyle='rgba(236,72,153,0.6)';ctx.font='10px sans-serif';
+  [{r:3.0,l:'周期2分岔'},{r:3.449,l:'周期4'},{r:3.57,l:'混沌开始'},{r:3.83,l:'周期3窗口'}].forEach(a=>{
+    let ax=m+((a.r-rMin)/(rMax-rMin))*gw;ctx.save();ctx.translate(ax,m-5);ctx.rotate(-0.3);ctx.fillText(a.l,0,0);ctx.restore();
+  });
+  ctx.fillStyle='#ef4444';ctx.font='12px sans-serif';ctx.fillText(`r = ${levelState.r.toFixed(2)}`,rx,m-15);
+}
+
+/* ===== Strange Attractors ===== */
+function initL6(){
+  levelState.type=0;levelState.particles=[];levelState.step=0;levelState.running=true;
+  resetAttr();
+}
+function resetAttr(){
+  let s=levelState;s.particles=[];s.step=0;
+  if(s.type<2){for(let i=0;i<8;i++)s.particles.push({x:0.1+i*0.5,y:0.1,z:0.1,trail:[]});}
+  else{for(let i=0;i<2000;i++)s.particles.push({x:Math.random()*2-1,y:Math.random()*2-1,trail:[]});}
+}
+function ctrlL6(){
+  let names=['Lorenz','Rössler','Hénon'],s=levelState;
+  let h=`<p style="font-size:12px;color:#94a3b8;margin-bottom:6px">当前: <strong style="color:#f472b6">${names[s.type]}</strong></p>`;
+  for(let i=0;i<3;i++){let ac=i===s.type?'background:rgba(236,72,153,0.3);':'';h+=`<button class="act-btn" style="${ac}" onclick="levelState.type=${i};resetAttr();checkAttr(${i});drawLevel();renderPanel()">切换到 ${names[i]}</button>`;}
+  h+=`<button class="act-btn" onclick="resetAttr();drawLevel()">🔄 重置粒子</button>`;
+  h+=`<p class="hint">切换不同的吸引子类型，观察粒子轨迹</p>`;
+  return h;
+}
+function checkAttr(t){if(t===0)completeObj(0);if(t===1)completeObj(1);if(t===2)completeObj(2);}
+function stepAttr(){
+  let s=levelState,t=s.type,dt=0.005;
+  for(let p of s.particles){
+    if(t===0){let dx=10*(p.y-p.x)*dt,dy=(p.x*(28-p.z)-p.y)*dt,dz=(p.x*p.y-8/3*p.z)*dt;p.x+=dx;p.y+=dy;p.z+=dz;p.trail.push([p.x,p.z]);if(p.trail.length>600)p.trail.shift();}
+    else if(t===1){let dx=(-p.y-p.z)*dt,dy=(p.x+0.2*p.y)*dt,dz=(0.2+p.z*(p.x-5.7))*dt;p.x+=dx;p.y+=dy;p.z+=dz;p.trail.push([p.x,p.y]);if(p.trail.length>600)p.trail.shift();}
+    else{let nx=1-1.4*p.x*p.x+p.y,ny=0.3*p.x;p.x=nx;p.y=ny;p.trail.push([p.x,p.y]);if(p.trail.length>200)p.trail.shift();}
+  }
+  s.step++;
+}
+function projAttr(p,t){
+  if(t===0){let sc=Math.min(W,H)/60;return[W/2+p[0]*sc*0.7,H/2-(p[1]-25)*sc*0.7];}
+  if(t===1){let sc=Math.min(W,H)/30;return[W/2+p[0]*sc*0.5,H/2-p[1]*sc*0.5];}
+  let sc=Math.min(W,H)/4;return[W/2+p[0]*sc,H/2-p[1]*sc];
+}
+function animAttr(){
+  if(curLevel!==6||!levelState.running)return;
+  let n=levelState.type===2?1:8;for(let i=0;i<n;i++)stepAttr();
+  checkAttr(levelState.type);drawLevel();animId=requestAnimationFrame(animAttr);
+}
+const ACOL=['#ec4899','#a78bfa','#60a5fa','#34d399','#fbbf24','#f87171','#818cf8','#2dd4bf'];
+function hexToRgb(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+function drawL6(){
+  ctx.clearRect(0,0,W,H);let s=levelState,t=s.type;
+  if(t===2){
+    for(let p of s.particles){let len=p.trail.length;for(let i=0;i<len;i++){let pp=projAttr(p.trail[i],t);if(pp[0]>0&&pp[0]<W&&pp[1]>0&&pp[1]<H){ctx.fillStyle=`rgba(236,72,153,${0.2+0.5*i/len})`;ctx.fillRect(pp[0],pp[1],1.5,1.5);}}}
+  }else{
+    for(let pi=0;pi<s.particles.length;pi++){
+      let p=s.particles[pi];if(p.trail.length<2)continue;
+      let [cr,cg,cb]=hexToRgb(ACOL[pi%ACOL.length]);
+      for(let i=1;i<p.trail.length;i++){
+        let p0=projAttr(p.trail[i-1],t),p1=projAttr(p.trail[i],t);
+        ctx.beginPath();ctx.moveTo(p0[0],p0[1]);ctx.lineTo(p1[0],p1[1]);
+        ctx.strokeStyle=`rgba(${cr},${cg},${cb},${0.05+0.6*i/p.trail.length})`;ctx.lineWidth=1.2;ctx.stroke();
+      }
+      let last=projAttr(p.trail[p.trail.length-1],t);
+      ctx.shadowColor=`rgba(${cr},${cg},${cb},0.8)`;ctx.shadowBlur=10;
+      ctx.beginPath();ctx.arc(last[0],last[1],3,0,Math.PI*2);ctx.fillStyle=ACOL[pi%ACOL.length];ctx.fill();ctx.shadowBlur=0;
+    }
+  }
+  let names=['Lorenz (σ=10, ρ=28, β=8/3)','Rössler (a=0.2, b=0.2, c=5.7)','Hénon (a=1.4, b=0.3)'];
+  ctx.fillStyle='rgba(148,163,184,0.5)';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText(names[t]+' — 步数: '+s.step,W/2,H-15);
+}
+
+/* ===== DISPATCH ===== */
+const initFns=[initL0,initL1,initL2,initL3,initL4,initL5,initL6];
+const drawFns=[drawL0,drawL1,drawL2,drawL3,drawL4,drawL5,drawL6];
+const ctrlFns=[ctrlL0,ctrlL1,ctrlL2,ctrlL3,ctrlL4,ctrlL5,ctrlL6];
+function initLevel(n){initFns[n]();if(n===6){levelState.running=true;checkAttr(0);animAttr();}}
+function drawLevel(){drawBg();drawFns[curLevel]();}
+function getPanelCtrl(){return ctrlFns[curLevel]();}
+
+/* ===== Background Stars ===== */
+let stars=[];
+for(let i=0;i<80;i++)stars.push({x:Math.random(),y:Math.random(),s:Math.random()*1.5+0.5,b:Math.random()});
+function drawBg(){
+  ctx.clearRect(0,0,W,H);
+  let t=Date.now()*0.001;
+  for(let s of stars){
+    let alpha=0.15+0.15*Math.sin(t*0.5+s.b*6.28);
+    ctx.fillStyle=`rgba(200,180,255,${alpha})`;
+    ctx.beginPath();ctx.arc(s.x*W,s.y*H,s.s,0,Math.PI*2);ctx.fill();
+  }
+}
+
+/* ===== Enhanced Koch: show iteration comparison ===== */
+function drawL0_enhanced(){
+  let it=levelState.iter,cx=W/2,cy=H/2,r=Math.min(W,H)*0.38;
+  let tri=[];
+  for(let i=0;i<3;i++){let a=-Math.PI/2+i*Math.PI*2/3;tri.push([cx+r*Math.cos(a),cy+r*Math.sin(a)]);}
+  // ghost of previous iteration
+  if(it>0){
+    let prevPts=[tri[0]];
+    for(let i=0;i<3;i++){let ni=(i+1)%3;prevPts=prevPts.concat(kochPoints(tri[i][0],tri[i][1],tri[ni][0],tri[ni][1],it-1));}
+    ctx.beginPath();ctx.moveTo(prevPts[0][0],prevPts[0][1]);
+    for(let i=1;i<prevPts.length;i++)ctx.lineTo(prevPts[i][0],prevPts[i][1]);
+    ctx.closePath();ctx.strokeStyle='rgba(236,72,153,0.12)';ctx.lineWidth=0.8;ctx.stroke();
+  }
+  // current iteration
+  let allPts=[tri[0]];
+  for(let i=0;i<3;i++){let ni=(i+1)%3;allPts=allPts.concat(kochPoints(tri[i][0],tri[i][1],tri[ni][0],tri[ni][1],it));}
+  let grad=ctx.createLinearGradient(0,cy-r,0,cy+r);
+  grad.addColorStop(0,'#ec4899');grad.addColorStop(0.5,'#a855f7');grad.addColorStop(1,'#6366f1');
+  ctx.beginPath();ctx.moveTo(allPts[0][0],allPts[0][1]);
+  for(let i=1;i<allPts.length;i++)ctx.lineTo(allPts[i][0],allPts[i][1]);
+  ctx.closePath();ctx.strokeStyle=grad;ctx.lineWidth=1.5;
+  ctx.shadowColor='rgba(236,72,153,0.4)';ctx.shadowBlur=12;ctx.stroke();ctx.shadowBlur=0;
+  if(it>0){ctx.fillStyle='rgba(236,72,153,0.03)';ctx.fill();}
+  // dimension info
+  ctx.fillStyle='rgba(148,163,184,0.5)';ctx.font='13px sans-serif';ctx.textAlign='center';
+  let segs=3*Math.pow(4,it);
+  let perim=(Math.pow(4/3,it)).toFixed(2);
+  ctx.fillText(`迭代 ${it} 次 | 线段数: ${segs} | 周长比: ${perim}x | 维数 ≈ log4/log3 ≈ 1.26`,W/2,H-20);
+  // mini comparison in corner
+  if(it>=2){
+    let ms=80,mx=W-ms-15,my=15;
+    ctx.fillStyle='rgba(10,10,30,0.7)';ctx.fillRect(mx-5,my-5,ms+10,ms*3+20);
+    ctx.strokeStyle='rgba(236,72,153,0.3)';ctx.strokeRect(mx-5,my-5,ms+10,ms*3+20);
+    for(let step=0;step<Math.min(3,it);step++){
+      let oy=my+step*(ms+5);
+      let miniTri=[];
+      for(let i=0;i<3;i++){let a=-Math.PI/2+i*Math.PI*2/3;miniTri.push([mx+ms/2+ms*0.4*Math.cos(a),oy+ms/2+ms*0.4*Math.sin(a)]);}
+      let miniPts=[miniTri[0]];
+      for(let i=0;i<3;i++){let ni=(i+1)%3;miniPts=miniPts.concat(kochPoints(miniTri[i][0],miniTri[i][1],miniTri[ni][0],miniTri[ni][1],step));}
+      ctx.beginPath();ctx.moveTo(miniPts[0][0],miniPts[0][1]);
+      for(let i=1;i<miniPts.length;i++)ctx.lineTo(miniPts[i][0],miniPts[i][1]);
+      ctx.closePath();ctx.strokeStyle=`rgba(236,72,153,${0.4+step*0.2})`;ctx.lineWidth=0.8;ctx.stroke();
+      ctx.fillStyle='rgba(148,163,184,0.4)';ctx.font='9px sans-serif';ctx.textAlign='center';
+      ctx.fillText(`n=${step}`,mx+ms/2,oy+ms-2);
+    }
+  }
+}
+drawFns[0]=drawL0_enhanced;
+
+/* ===== Enhanced Mandelbrot: adaptive iterations + info overlay ===== */
+function drawL1_enhanced(){
+  let ds=2,sw=Math.floor(W/ds),sh=Math.floor(H/ds);
+  let oc=document.createElement('canvas');oc.width=sw;oc.height=sh;
+  let ox=oc.getContext('2d');let img=ox.createImageData(sw,sh);let d=img.data;
+  let s=levelState,asp=W/H;
+  // adaptive max iterations based on zoom level
+  let zoomLevel=1.5/s.scale;
+  let mi=Math.min(300,Math.floor(80+Math.log(zoomLevel+1)*30));
+  for(let py=0;py<sh;py++){for(let px=0;px<sw;px++){
+    let x0=s.cx+(px/sw-0.5)*2*s.scale*asp,y0=s.cy+(py/sh-0.5)*2*s.scale;
+    let x=0,y=0,i=0,xx=0,yy=0;
+    while(xx+yy<=4&&i<mi){y=2*x*y+y0;x=xx-yy+x0;xx=x*x;yy=y*y;i++;}
+    let idx=(py*sw+px)*4;
+    if(i===mi){d[idx]=d[idx+1]=d[idx+2]=0;}
+    else{
+      // smooth coloring with log
+      let log2=Math.log(2);
+      let nu=Math.log(Math.log(Math.sqrt(xx+yy))/log2)/log2;
+      let si=i+1-(isNaN(nu)?0:nu);
+      let t=si/mi;
+      let a=t*18.84;
+      d[idx]=(Math.sin(a)*0.5+0.5)*200+30|0;
+      d[idx+1]=(Math.sin(a+2.09)*0.5+0.5)*180+20|0;
+      d[idx+2]=(Math.sin(a+4.18)*0.5+0.5)*220+35|0;
+    }
+    d[idx+3]=255;
+  }}
+  ox.putImageData(img,0,0);ctx.imageSmoothingEnabled=true;ctx.drawImage(oc,0,0,W,H);
+  // crosshair
+  ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=0.5;ctx.setLineDash([5,5]);
+  ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();ctx.setLineDash([]);
+  // info
+  ctx.fillStyle='rgba(148,163,184,0.4)';ctx.font='12px sans-serif';ctx.textAlign='right';
+  ctx.fillText(`缩放: ${zoomLevel.toFixed(1)}x | 迭代: ${mi} | 中心: (${s.cx.toFixed(6)}, ${s.cy.toFixed(6)})`,W-10,H-10);
+  // mini overview in corner
+  let ms=100;
+  ctx.fillStyle='rgba(10,10,30,0.7)';ctx.fillRect(W-ms-15,5,ms+10,ms+10);
+  ctx.strokeStyle='rgba(236,72,153,0.3)';ctx.strokeRect(W-ms-15,5,ms+10,ms+10);
+  let ox2=W-ms-10,oy2=10;
+  for(let py=0;py<ms;py+=2){for(let px=0;px<ms;px+=2){
+    let x0=-2+(px/ms)*3,y0=-1.5+(py/ms)*3;
+    let x=0,y=0,it=0;
+    while(x*x+y*y<=4&&it<20){let xt=x*x-y*y+x0;y=2*x*y+y0;x=xt;it++;}
+    if(it===20){ctx.fillStyle='rgba(100,50,120,0.5)';ctx.fillRect(ox2+px,oy2+py,2,2);}
+  }}
+  // current viewport indicator
+  let vx=ox2+((s.cx+2)/3)*ms,vy=oy2+((s.cy+1.5)/3)*ms;
+  let vw=Math.max(2,s.scale/1.5*ms*2),vh=Math.max(2,s.scale/1.5*ms*2/asp);
+  ctx.strokeStyle='rgba(239,68,68,0.7)';ctx.lineWidth=1;
+  ctx.strokeRect(vx-vw/2,vy-vh/2,vw,vh);
+}
+drawFns[1]=drawL1_enhanced;
+
+/* ===== Enhanced Fractal Tree: wind sway + leaf particles ===== */
+let treeTime=0;
+function drawL3_enhanced(){
+  let grd=ctx.createLinearGradient(0,H*0.85,0,H);
+  grd.addColorStop(0,'rgba(34,60,30,0.3)');grd.addColorStop(1,'rgba(20,40,20,0.1)');
+  ctx.fillStyle=grd;ctx.fillRect(0,H*0.85,W,H*0.15);
+  treeTime+=0.02;
+  drawBranchWind(W/2,H*0.85,Math.min(W,H)*0.22,-Math.PI/2,0,levelState.depth);
+  ctx.fillStyle='rgba(148,163,184,0.5)';ctx.font='12px sans-serif';ctx.textAlign='center';
+  let b=Math.pow(2,levelState.depth+1)-1,leaves=Math.pow(2,levelState.depth);
+  ctx.fillText(`角度: ${levelState.angle}° | 比例: ${Math.round(levelState.ratio*100)}% | 深度: ${levelState.depth} | 分支: ${b} | 叶: ${leaves}`,W/2,H-15);
+}
+function drawBranchWind(x,y,len,ang,dep,maxD){
+  if(dep>maxD||len<1)return;
+  // subtle wind sway increases with depth
+  let windOffset=Math.sin(treeTime+dep*0.5)*0.02*dep;
+  let actualAng=ang+windOffset;
+  let x2=x+len*Math.cos(actualAng),y2=y+len*Math.sin(actualAng);
+  let t=dep/maxD,hue=120+t*180;
+  ctx.strokeStyle=`hsl(${hue},70%,${40+t*30}%)`;ctx.lineWidth=Math.max(1,(maxD-dep)*1.5);
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x2,y2);ctx.stroke();
+  if(dep===maxD){
+    // leaf with glow
+    ctx.shadowColor=`hsla(${hue},80%,60%,0.4)`;ctx.shadowBlur=5;
+    ctx.beginPath();ctx.arc(x2,y2,2+Math.sin(treeTime+dep)*0.5,0,Math.PI*2);
+    ctx.fillStyle=`hsla(${hue},80%,60%,0.7)`;ctx.fill();ctx.shadowBlur=0;
+  }
+  let a=levelState.angle*Math.PI/180,r=levelState.ratio;
+  drawBranchWind(x2,y2,len*r,actualAng-a,dep+1,maxD);
+  drawBranchWind(x2,y2,len*r,actualAng+a,dep+1,maxD);
+}
+drawFns[3]=drawL3_enhanced;
+
+/* ===== Enhanced Lorenz: 3D rotation ===== */
+let lorAngle=0;
+function drawL4_enhanced(){
+  let s=levelState;lorAngle+=0.003;
+  let cosA=Math.cos(lorAngle),sinA=Math.sin(lorAngle);
+  function proj3d(x,y,z){
+    let rx=x*cosA-y*sinA,ry=x*sinA+y*cosA;
+    let sc=Math.min(W,H)/60;
+    return[W/2+rx*sc*0.6,H/2-(z-25)*sc*0.7];
+  }
+  // trail 1
+  if(s.t1.length>2){
+    for(let i=1;i<s.t1.length;i++){
+      let idx=i,pidx=i-1;
+      // reconstruct 3d from stored x,z and interpolated y
+      let p0=proj3d(s.t1[pidx][0]||0,0,s.t1[pidx][1]||0);
+      let p1=proj3d(s.t1[idx][0]||0,0,s.t1[idx][1]||0);
+      ctx.beginPath();ctx.moveTo(p0[0],p0[1]);ctx.lineTo(p1[0],p1[1]);
+      ctx.strokeStyle=`rgba(239,68,68,${0.1+0.7*i/s.t1.length})`;ctx.lineWidth=1.2;ctx.stroke();
+    }
+  }
+  // trail 2
+  if(s.t2.length>2){
+    for(let i=1;i<s.t2.length;i++){
+      let p0=proj3d(s.t2[i-1][0]||0,0,s.t2[i-1][1]||0);
+      let p1=proj3d(s.t2[i][0]||0,0,s.t2[i][1]||0);
+      ctx.beginPath();ctx.moveTo(p0[0],p0[1]);ctx.lineTo(p1[0],p1[1]);
+      ctx.strokeStyle=`rgba(96,165,250,${0.1+0.7*i/s.t2.length})`;ctx.lineWidth=1.2;ctx.stroke();
+    }
+  }
+  // heads with glow
+  if(s.t1.length>0){
+    let last1=s.t1[s.t1.length-1],last2=s.t2[s.t2.length-1];
+    let p1=proj3d(last1[0],0,last1[1]),p2=proj3d(last2[0],0,last2[1]);
+    ctx.shadowColor='rgba(239,68,68,0.8)';ctx.shadowBlur=12;
+    ctx.beginPath();ctx.arc(p1[0],p1[1],5,0,Math.PI*2);ctx.fillStyle='#ef4444';ctx.fill();
+    ctx.shadowColor='rgba(96,165,250,0.8)';
+    ctx.beginPath();ctx.arc(p2[0],p2[1],5,0,Math.PI*2);ctx.fillStyle='#60a5fa';ctx.fill();
+    ctx.shadowBlur=0;
+    // distance line
+    ctx.setLineDash([3,3]);ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=0.5;
+    ctx.beginPath();ctx.moveTo(p1[0],p1[1]);ctx.lineTo(p2[0],p2[1]);ctx.stroke();ctx.setLineDash([]);
+  }
+  // labels
+  ctx.fillStyle='rgba(239,68,68,0.7)';ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText('轨迹 A (x₀=1.000)',10,20);
+  ctx.fillStyle='rgba(96,165,250,0.7)';ctx.fillText('轨迹 B (x₀=1.001)',10,36);
+  let dist=s.t1.length>0?Math.sqrt((s.x1-s.x2)**2+(s.y1-s.y2)**2+(s.z1-s.z2)**2):0;
+  ctx.fillStyle='rgba(148,163,184,0.5)';ctx.textAlign='center';ctx.font='12px sans-serif';
+  ctx.fillText(`洛伦兹吸引子 (3D旋转) | 步数: ${s.step} | 距离: ${dist.toFixed(3)}`,W/2,H-15);
+}
+drawFns[4]=drawL4_enhanced;
+
+/* ===== Enhanced Logistic: cobweb diagram inset ===== */
+function drawL5_enhanced(){
+  drawL5(); // base bifurcation diagram
+  // cobweb diagram inset
+  let r=levelState.r,cw=160,ch=160,cx=W-cw-20,cy=20;
+  ctx.fillStyle='rgba(10,10,30,0.85)';ctx.beginPath();ctx.roundRect(cx-5,cy-5,cw+10,ch+30,8);ctx.fill();
+  ctx.strokeStyle='rgba(236,72,153,0.3)';ctx.beginPath();ctx.roundRect(cx-5,cy-5,cw+10,ch+30,8);ctx.stroke();
+  // y=x line
+  ctx.strokeStyle='rgba(148,163,184,0.3)';ctx.lineWidth=0.5;
+  ctx.beginPath();ctx.moveTo(cx,cy+ch);ctx.lineTo(cx+cw,cy);ctx.stroke();
+  // parabola y=rx(1-x)
+  ctx.beginPath();ctx.strokeStyle='rgba(236,72,153,0.6)';ctx.lineWidth=1;
+  for(let px=0;px<=cw;px++){
+    let x=px/cw,y=r*x*(1-x);
+    let py=cy+ch*(1-y);
+    if(px===0)ctx.moveTo(cx+px,py);else ctx.lineTo(cx+px,py);
+  }
+  ctx.stroke();
+  // cobweb iteration
+  let x=0.2;
+  ctx.beginPath();ctx.moveTo(cx+x*cw,cy+ch);ctx.strokeStyle='rgba(96,165,250,0.6)';ctx.lineWidth=0.8;
+  for(let i=0;i<40;i++){
+    let y=r*x*(1-x);
+    ctx.lineTo(cx+x*cw,cy+ch*(1-y)); // vertical to parabola
+    ctx.lineTo(cx+y*cw,cy+ch*(1-y)); // horizontal to y=x
+    x=y;
+  }
+  ctx.stroke();
+  ctx.fillStyle='rgba(148,163,184,0.5)';ctx.font='9px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`蛛网图 r=${r.toFixed(2)}`,cx+cw/2,cy+ch+18);
+}
+drawFns[5]=drawL5_enhanced;
+
+/* ===== Enhanced Attractor: particle count + equations ===== */
+function drawL6_enhanced(){
+  drawL6(); // base attractor
+  let s=levelState,t=s.type;
+  // equation overlay
+  let eqs=['dx/dt = σ(y-x)\ndy/dt = x(ρ-z)-y\ndz/dt = xy-βz','dx/dt = -y-z\ndy/dt = x+ay\ndz/dt = b+z(x-c)','x_{n+1} = 1-ax²_n+y_n\ny_{n+1} = bx_n'];
+  let eq=eqs[t].split('\n');
+  ctx.fillStyle='rgba(10,10,30,0.7)';ctx.beginPath();ctx.roundRect(10,H-80,180,60,6);ctx.fill();
+  ctx.fillStyle='rgba(236,72,153,0.7)';ctx.font='11px monospace';ctx.textAlign='left';
+  for(let i=0;i<eq.length;i++)ctx.fillText(eq[i],18,H-65+i*16);
+}
+drawFns[6]=drawL6_enhanced;
+
+/* ===== Lorenz animation needs redraw with enhanced version ===== */
+let origAnimLorenz=animLorenz;
+animLorenz=function(){
+  if(!levelState.running||curLevel!==4)return;
+  let s=levelState;
+  for(let i=0;i<5;i++){
+    let r1=lorStep(s.x1,s.y1,s.z1);s.x1=r1[0];s.y1=r1[1];s.z1=r1[2];
+    let r2=lorStep(s.x2,s.y2,s.z2);s.x2=r2[0];s.y2=r2[1];s.z2=r2[2];
+    s.t1.push([s.x1,s.z1]);s.t2.push([s.x2,s.z2]);
+    if(s.t1.length>3000){s.t1.shift();s.t2.shift();}
+    s.step++;
+  }
+  let dist=Math.sqrt((s.x1-s.x2)**2+(s.y1-s.y2)**2+(s.z1-s.z2)**2);
+  if(dist>5)completeObj(1);if(s.step>500)completeObj(2);
+  drawLevel();animId=requestAnimationFrame(animLorenz);
+};
+
+/* ===== Tree animation loop ===== */
+function animTree(){
+  if(curLevel!==3)return;
+  drawLevel();animId=requestAnimationFrame(animTree);
+}
+let origInitL3=initFns[3];
+initFns[3]=function(){origInitL3();animTree();};
+
+/* ===== Keyboard shortcuts ===== */
+document.addEventListener('keydown',function(e){
+  if(!gameStarted)return;
+  if(e.key>='1'&&e.key<='7'){goLevel(+e.key-1);e.preventDefault();}
+  if(e.key==='ArrowRight'&&curLevel<6){goLevel(curLevel+1);e.preventDefault();}
+  if(e.key==='ArrowLeft'&&curLevel>0){goLevel(curLevel-1);e.preventDefault();}
+});
+</script>
+</body>
+</html>

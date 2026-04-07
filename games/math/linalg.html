@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>线性代数 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh;width:100vw}
+.overlay{position:fixed;inset:0;background:radial-gradient(ellipse at center,#1a1a3e 0%,#0a0a1a 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+.overlay h1{font-size:48px;background:linear-gradient(135deg,#818cf8,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.overlay p{color:#94a3b8;font-size:16px;margin-bottom:32px}
+.overlay .sub{font-size:13px;color:#64748b;margin-top:16px;max-width:500px;text-align:center;line-height:1.6}
+.start-btn{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:14px 48px;font-size:18px;border-radius:12px;cursor:pointer;transition:transform .2s,box-shadow .2s}
+.start-btn:hover{transform:scale(1.05);box-shadow:0 0 30px rgba(99,102,241,.4)}
+.panel{position:fixed;left:0;top:0;width:320px;height:calc(100vh - 36px);background:rgba(10,10,30,.95);border-right:1px solid #1e1e3a;overflow-y:auto;padding:16px;display:none;z-index:10}
+.panel h2{font-size:18px;color:#a78bfa;margin-bottom:4px}
+.panel h3{font-size:14px;color:#6366f1;margin:12px 0 6px}
+.panel .desc{font-size:13px;color:#94a3b8;line-height:1.6;margin-bottom:12px}
+.panel .obj{font-size:13px;padding:6px 10px;margin:3px 0;border-radius:6px;background:rgba(99,102,241,.1);border-left:3px solid #4b5563}
+.panel .obj.done{border-left-color:#22c55e;background:rgba(34,197,94,.1)}
+.panel .obj.done::before{content:'✓ ';color:#22c55e}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;font-size:13px;cursor:pointer;background:rgba(99,102,241,.2);color:#a78bfa;transition:background .2s}
+.act-btn:hover{background:rgba(99,102,241,.35)}
+.learn-box{margin-top:12px;padding:10px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:8px;font-size:12px;color:#c4b5fd;line-height:1.6}
+.learn-box b{color:#a78bfa}
+canvas{position:fixed;right:0;top:0;display:none}
+.bar{position:fixed;bottom:0;left:0;right:0;height:36px;background:rgba(10,10,30,.95);border-top:1px solid #1e1e3a;display:none;align-items:center;padding:0 16px;font-size:13px;z-index:10}
+.bar .prog{color:#64748b;flex:1}
+.bar .prog span{color:#a78bfa}
+.bar-btn{background:none;border:1px solid #333;color:#94a3b8;padding:3px 12px;border-radius:4px;cursor:pointer;margin-left:6px;font-size:12px}
+.bar-btn:hover{border-color:#6366f1;color:#a78bfa}
+.bar-btn.active{border-color:#6366f1;background:rgba(99,102,241,.2);color:#a78bfa}
+.slider-row{display:flex;align-items:center;gap:8px;margin:4px 0}
+.slider-row label{font-size:12px;color:#94a3b8;min-width:50px}
+.slider-row input[type=range]{flex:1;accent-color:#6366f1}
+.slider-row .val{font-size:12px;color:#a78bfa;min-width:40px;text-align:right}
+input[type=number]{background:#1a1a3a;border:1px solid #333;color:#e2e8f0;padding:4px 8px;border-radius:4px;width:60px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="overlay" id="ov">
+<h1>线性代数 探险</h1>
+<p>7 个关卡 · 从向量到 SVD · 交互式可视化</p>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="sub">涵盖向量运算、矩阵变换、高斯消元、行列式、特征值、正交投影、SVD 分解<br>拖拽交互 · 实时可视化 · 零依赖单文件</div>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"></div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),ov=document.getElementById('ov');
+let W,H,curLevel=0,mouse={x:0,y:0,down:false,drag:null},animT=0;
+let levelObjs=[[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false]];
+// ===== Level state =====
+// L0: vector basics
+let v0a={x:2,y:1},v0b={x:1,y:2},v0scalar=2,v0mode='add';
+// L1: matrix transform
+let m1=[[1,0],[0,1]],m1angle=0,m1sx=1,m1sy=1,m1shx=0;
+// L2: gaussian elimination
+let gm=[[2,1,5],[4,-6,2],[1,3,7]],gStep=0,gHistory=[],gAnimating=false;
+// L3: determinant
+let d3a={x:3,y:0},d3b={x:0,y:2};
+// L4: eigenvalue
+let e4=[[2,1],[1,2]],e4t=0,e4showEig=false;
+// L5: orthogonal projection
+let p5a={x:3,y:2},p5b={x:4,y:1},p5step=0;
+// L6: SVD
+let svdM=[[3,1],[1,3]],svdStep=0,svdImgMode=false,svdRank=2;
+
+const levelNames=['向量基础','矩阵变换','线性方程组','行列式','特征值与特征向量','正交与投影','SVD 分解'];
+const levelDescs=[
+'探索向量的加法和数乘运算。拖动向量端点，观察运算结果的变化。',
+'通过旋转、缩放、剪切矩阵，观察 2D 图形如何被线性变换改变。',
+'用高斯消元法求解线性方程组，观察行变换的每一步。',
+'拖动两个向量，观察它们构成的平行四边形面积（行列式的绝对值）。',
+'观察矩阵作用下的特征向量——它们的方向不会改变，只会被拉伸。',
+'将一个向量投影到另一个向量上，体验 Gram-Schmidt 正交化过程。',
+'奇异值分解将矩阵分解为旋转-缩放-旋转，观察其几何意义。'
+];
+const levelObjTexts=[
+['拖动向量 a 使其 x>3','拖动向量 b 使加法结果长度>5','将数乘系数调到 3 并观察'],
+['旋转图形 45°','将 X 缩放到 2 倍','应用剪切变换 (shx≥1)'],
+['执行第一步行变换','完成消元得到阶梯形','回代求出解'],
+['使平行四边形面积>8','使行列式为负值','使面积接近 0 (|det|<0.5)'],
+['观察特征向量方向不变','调整矩阵使特征值分离','播放变换动画'],
+['观察投影向量','完成第一步正交化','完成 Gram-Schmidt 得到正交基'],
+['观察 SVD 三步分解','切换到图像压缩模式','调整秩观察压缩效果']
+];
+const learnTexts=[
+'<b>向量</b>是有大小和方向的量。向量加法遵循平行四边形法则；数乘改变向量的长度（和可能的方向）。向量是线性代数的基本构建块。',
+'<b>矩阵变换</b>将平面上的点映射到新位置。旋转矩阵保持形状不变，缩放改变大小，剪切使形状倾斜。所有线性变换都可以用矩阵表示。',
+'<b>高斯消元</b>通过行变换将增广矩阵化为阶梯形，再回代求解。三种行变换：交换行、行乘常数、行加减。这是求解线性方程组的基本方法。',
+'<b>行列式</b>衡量线性变换对面积/体积的缩放因子。|det|=面积缩放比，det<0 表示翻转了方向。det=0 意味着变换将空间压缩到更低维度。',
+'<b>特征向量</b>是矩阵作用下方向不变的向量，对应的缩放因子就是<b>特征值</b>。Av=λv，特征值分解揭示了矩阵的本质行为。',
+'<b>正交投影</b>是向量在另一方向上的"影子"。Gram-Schmidt 过程将一组线性无关向量转化为正交基，是 QR 分解的基础。',
+'<b>SVD</b>（奇异值分解）将任意矩阵分解为 UΣV^T：先旋转(V^T)、再缩放(Σ)、再旋转(U)。奇异值的大小反映了各方向的重要性，可用于数据压缩和降噪。'
+];
+
+function resize(){
+  W=window.innerWidth-320;H=window.innerHeight-36;
+  cv.width=W;cv.height=H;
+  cv.style.width=W+'px';cv.style.height=H+'px';
+}
+window.addEventListener('resize',resize);
+
+function startGame(){
+  ov.style.display='none';
+  panel.style.display='block';
+  cv.style.display='block';
+  bar.style.display='flex';
+  resize();
+  goLevel(0);
+  requestAnimationFrame(loop);
+}
+
+function goLevel(n){curLevel=n;renderPanel();renderBar();}
+
+function renderBar(){
+  let done=levelObjs.reduce((s,a)=>s+a.filter(v=>v).length,0);
+  let total=21;
+  let h=`<div class="prog">关卡 <span>${curLevel+1}/7</span> · 进度 <span>${done}/${total}</span></div>`;
+  for(let i=0;i<7;i++){
+    let cls=i===curLevel?'bar-btn active':'bar-btn';
+    let check=levelObjs[i].every(v=>v)?'✓ ':'';
+    h+=`<button class="${cls}" onclick="goLevel(${i})">${check}${i+1}</button>`;
+  }
+  bar.innerHTML=h;
+}
+
+function renderPanel(){
+  let li=curLevel;
+  let h=`<h2>关卡 ${li+1}: ${levelNames[li]}</h2>`;
+  h+=`<div class="desc">${levelDescs[li]}</div>`;
+  h+=`<h3>目标</h3>`;
+  for(let i=0;i<3;i++){
+    h+=`<div class="obj${levelObjs[li][i]?' done':''}">${levelObjTexts[li][i]}</div>`;
+  }
+  // Level-specific controls
+  if(li===0) h+=renderL0Controls();
+  else if(li===1) h+=renderL1Controls();
+  else if(li===2) h+=renderL2Controls();
+  else if(li===3) h+=renderL3Controls();
+  else if(li===4) h+=renderL4Controls();
+  else if(li===5) h+=renderL5Controls();
+  else if(li===6) h+=renderL6Controls();
+  // Learn box
+  if(levelObjs[li].every(v=>v)){
+    h+=`<div class="learn-box">${learnTexts[li]}</div>`;
+    if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+    if(li===6)h+=`<div style="text-align:center;margin-top:12px;color:#4ade80;font-size:14px">🎉 恭喜通关！全部 7 个关卡已完成！</div>`;
+  }
+  panel.innerHTML=h;
+  renderBar();
+}
+
+// ===== Drawing helpers =====
+function ox(){return W/2}
+function oy(){return H/2}
+function sc(){return Math.min(W,H)/8}
+
+function drawGrid(){
+  let s=sc(),cx=ox(),cy=oy();
+  ctx.strokeStyle='#1e1e3a';ctx.lineWidth=1;
+  for(let i=-10;i<=10;i++){
+    ctx.beginPath();ctx.moveTo(cx+i*s,0);ctx.lineTo(cx+i*s,H);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,cy+i*s);ctx.lineTo(W,cy+i*s);ctx.stroke();
+  }
+  ctx.strokeStyle='#2a2a4a';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx,0);ctx.lineTo(cx,H);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(W,cy);ctx.stroke();
+  // axis labels
+  ctx.fillStyle='#4b5563';ctx.font='11px sans-serif';
+  ctx.fillText('x',W-15,cy-8);ctx.fillText('y',cx+8,14);
+}
+
+function drawArrow(fx,fy,tx,ty,color,lw,label){
+  let s=sc(),cx=ox(),cy=oy();
+  let x1=cx+fx*s,y1=cy-fy*s,x2=cx+tx*s,y2=cy-ty*s;
+  let angle=Math.atan2(y2-y1,x2-x1);
+  let len=Math.sqrt((x2-x1)**2+(y2-y1)**2);
+  ctx.strokeStyle=color;ctx.fillStyle=color;ctx.lineWidth=lw||2;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  // arrowhead
+  let hs=10;
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hs*Math.cos(angle-0.4),y2-hs*Math.sin(angle-0.4));
+  ctx.lineTo(x2-hs*Math.cos(angle+0.4),y2-hs*Math.sin(angle+0.4));
+  ctx.closePath();ctx.fill();
+  if(label){
+    ctx.font='bold 13px sans-serif';
+    let lx=x2+12*Math.cos(angle-0.5),ly=y2+12*Math.sin(angle-0.5);
+    ctx.fillText(label,lx,ly);
+  }
+}
+
+function drawDot(vx,vy,color,r){
+  let s=sc(),cx=ox(),cy=oy();
+  ctx.fillStyle=color;ctx.beginPath();
+  ctx.arc(cx+vx*s,cy-vy*s,r||5,0,Math.PI*2);ctx.fill();
+}
+
+function screenToWorld(sx,sy){
+  let s=sc(),cx=ox(),cy=oy();
+  return{x:(sx-cx)/s,y:-(sy-cy)/s};
+}
+
+function worldToScreen(wx,wy){
+  let s=sc(),cx=ox(),cy=oy();
+  return{x:cx+wx*s,y:cy-wy*s};
+}
+
+function nearVec(mx,my,vx,vy,thresh){
+  let p=worldToScreen(vx,vy);
+  return Math.hypot(mx-p.x,my-p.y)<(thresh||20);
+}
+
+// ===== Level 0: Vector Basics =====
+function renderL0Controls(){
+  let h='<h3>操作</h3>';
+  h+=`<button class="act-btn ${v0mode==='add'?'style="background:rgba(99,102,241,.4)"':''}" onclick="v0mode='add';renderPanel()">向量加法 a+b</button>`;
+  h+=`<button class="act-btn ${v0mode==='scalar'?'style="background:rgba(99,102,241,.4)"':''}" onclick="v0mode='scalar';renderPanel()">数乘 k·a</button>`;
+  h+=`<div class="slider-row"><label>系数 k</label><input type="range" min="-3" max="3" step="0.1" value="${v0scalar}" oninput="v0scalar=+this.value;checkL0();renderPanel()"><span class="val">${v0scalar.toFixed(1)}</span></div>`;
+  h+=`<div style="font-size:12px;color:#64748b;margin-top:8px">a = (${v0a.x.toFixed(1)}, ${v0a.y.toFixed(1)})　b = (${v0b.x.toFixed(1)}, ${v0b.y.toFixed(1)})</div>`;
+  if(v0mode==='add'){
+    let r={x:v0a.x+v0b.x,y:v0a.y+v0b.y};
+    h+=`<div style="font-size:12px;color:#818cf8;margin-top:4px">a+b = (${r.x.toFixed(1)}, ${r.y.toFixed(1)})　|a+b| = ${Math.hypot(r.x,r.y).toFixed(2)}</div>`;
+  }else{
+    let r={x:v0a.x*v0scalar,y:v0a.y*v0scalar};
+    h+=`<div style="font-size:12px;color:#818cf8;margin-top:4px">${v0scalar.toFixed(1)}·a = (${r.x.toFixed(1)}, ${r.y.toFixed(1)})</div>`;
+  }
+  h+=`<div style="font-size:11px;color:#4b5563;margin-top:8px">💡 拖动紫色(a)和蓝色(b)箭头端点</div>`;
+  return h;
+}
+function checkL0(){
+  if(v0a.x>3)levelObjs[0][0]=true;
+  let sum={x:v0a.x+v0b.x,y:v0a.y+v0b.y};
+  if(Math.hypot(sum.x,sum.y)>5)levelObjs[0][1]=true;
+  if(Math.abs(v0scalar-3)<0.15)levelObjs[0][2]=true;
+}
+function drawL0(){
+  drawGrid();
+  if(v0mode==='add'){
+    drawArrow(0,0,v0a.x,v0a.y,'#a78bfa',2.5,'a');
+    drawArrow(0,0,v0b.x,v0b.y,'#60a5fa',2.5,'b');
+    // parallelogram
+    let rx=v0a.x+v0b.x,ry=v0a.y+v0b.y;
+    let s=sc(),cx=ox(),cy=oy();
+    ctx.strokeStyle='rgba(167,139,250,0.3)';ctx.setLineDash([5,5]);ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(cx+v0a.x*s,cy-v0a.y*s);ctx.lineTo(cx+rx*s,cy-ry*s);
+    ctx.moveTo(cx+v0b.x*s,cy-v0b.y*s);ctx.lineTo(cx+rx*s,cy-ry*s);
+    ctx.stroke();ctx.setLineDash([]);
+    drawArrow(0,0,rx,ry,'#f472b6',3,'a+b');
+    drawDot(v0a.x,v0a.y,'#a78bfa',6);
+    drawDot(v0b.x,v0b.y,'#60a5fa',6);
+  }else{
+    drawArrow(0,0,v0a.x,v0a.y,'#a78bfa',2,'a');
+    let rx=v0a.x*v0scalar,ry=v0a.y*v0scalar;
+    drawArrow(0,0,rx,ry,'#f472b6',3,v0scalar.toFixed(1)+'·a');
+    drawDot(v0a.x,v0a.y,'#a78bfa',6);
+  }
+}
+
+// ===== Level 1: Matrix Transform =====
+function updateM1(){
+  let c=Math.cos(m1angle),sn=Math.sin(m1angle);
+  m1=[[c*m1sx+m1shx*(-sn)*m1sy, -sn*m1sy+m1shx*c*m1sx],[sn*m1sx,c*m1sy]];
+  // simplified: apply rotation then scale then shear
+  m1=[[m1sx*c-m1sy*sn*m1shx, -m1sy*sn],[m1sx*sn+m1sy*c*m1shx, m1sy*c]];
+  // cleaner: R * S * Shear
+  let sh=[[1,m1shx],[0,1]];
+  let ss=[[m1sx,0],[0,m1sy]];
+  let rot=[[c,-sn],[sn,c]];
+  // M = R * Sh * S
+  let t=matMul2(rot,matMul2(sh,ss));
+  m1=t;
+  checkL1();
+}
+function matMul2(a,b){return[[a[0][0]*b[0][0]+a[0][1]*b[1][0],a[0][0]*b[0][1]+a[0][1]*b[1][1]],[a[1][0]*b[0][0]+a[1][1]*b[1][0],a[1][0]*b[0][1]+a[1][1]*b[1][1]]];}
+function renderL1Controls(){
+  let h='<h3>变换参数</h3>';
+  h+=`<div class="slider-row"><label>旋转</label><input type="range" min="0" max="${(Math.PI*2).toFixed(2)}" step="0.01" value="${m1angle}" oninput="m1angle=+this.value;updateM1();renderPanel()"><span class="val">${(m1angle*180/Math.PI).toFixed(0)}°</span></div>`;
+  h+=`<div class="slider-row"><label>缩放X</label><input type="range" min="0.1" max="3" step="0.1" value="${m1sx}" oninput="m1sx=+this.value;updateM1();renderPanel()"><span class="val">${m1sx.toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>缩放Y</label><input type="range" min="0.1" max="3" step="0.1" value="${m1sy}" oninput="m1sy=+this.value;updateM1();renderPanel()"><span class="val">${m1sy.toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>剪切X</label><input type="range" min="-2" max="2" step="0.1" value="${m1shx}" oninput="m1shx=+this.value;updateM1();renderPanel()"><span class="val">${m1shx.toFixed(1)}</span></div>`;
+  h+=`<button class="act-btn" onclick="m1angle=0;m1sx=1;m1sy=1;m1shx=0;updateM1();renderPanel()">重置</button>`;
+  h+=`<div style="font-size:12px;color:#64748b;margin-top:8px">矩阵 M = [${m1[0][0].toFixed(2)}, ${m1[0][1].toFixed(2)}; ${m1[1][0].toFixed(2)}, ${m1[1][1].toFixed(2)}]</div>`;
+  h+=`<div style="font-size:12px;color:#64748b">det(M) = ${(m1[0][0]*m1[1][1]-m1[0][1]*m1[1][0]).toFixed(3)}</div>`;
+  return h;
+}
+function checkL1(){
+  if(Math.abs(m1angle-Math.PI/4)<0.1)levelObjs[1][0]=true;
+  if(Math.abs(m1sx-2)<0.15)levelObjs[1][1]=true;
+  if(m1shx>=1)levelObjs[1][2]=true;
+}
+function drawL1(){
+  drawGrid();
+  // original shape (unit square + triangle)
+  let shape=[[0,0],[1,0],[1,1],[0,1]];
+  let s=sc(),cx=ox(),cy=oy();
+  // draw original
+  ctx.strokeStyle='rgba(99,102,241,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();
+  shape.forEach((p,i)=>{let x=cx+p[0]*s,y=cy-p[1]*s;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+  ctx.closePath();ctx.stroke();ctx.setLineDash([]);
+  // transformed shape
+  let ts=shape.map(p=>({x:m1[0][0]*p[0]+m1[0][1]*p[1],y:m1[1][0]*p[0]+m1[1][1]*p[1]}));
+  ctx.fillStyle='rgba(99,102,241,0.15)';ctx.strokeStyle='#a78bfa';ctx.lineWidth=2;
+  ctx.beginPath();
+  ts.forEach((p,i)=>{let x=cx+p.x*s,y=cy-p.y*s;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+  ctx.closePath();ctx.fill();ctx.stroke();
+  // basis vectors
+  drawArrow(0,0,m1[0][0],m1[1][0],'#f472b6',2.5,'e₁\'');
+  drawArrow(0,0,m1[0][1],m1[1][1],'#60a5fa',2.5,'e₂\'');
+  // original basis (faint)
+  drawArrow(0,0,1,0,'rgba(244,114,182,0.3)',1);
+  drawArrow(0,0,0,1,'rgba(96,165,250,0.3)',1);
+}
+
+// ===== Level 2: Gaussian Elimination =====
+function initGauss(){
+  gm=[[2,1,5],[4,-6,2],[1,3,7]];gStep=0;gHistory=[JSON.parse(JSON.stringify(gm))];gAnimating=false;
+}
+initGauss();
+function gaussOp(type,r1,r2,factor){
+  let m=gm;
+  if(type==='swap'){let t=m[r1];m[r1]=m[r2];m[r2]=t;}
+  else if(type==='scale'){for(let j=0;j<m[r1].length;j++)m[r1][j]*=factor;}
+  else if(type==='add'){for(let j=0;j<m[r1].length;j++)m[r1][j]+=factor*m[r2][j];}
+  gHistory.push(JSON.parse(JSON.stringify(m)));
+  gStep++;
+  checkL2();
+}
+function renderL2Controls(){
+  let h='<h3>增广矩阵</h3>';
+  h+=`<div style="font-family:monospace;font-size:13px;background:#111;padding:8px;border-radius:6px;margin:4px 0">`;
+  for(let i=0;i<3;i++){
+    h+=`<div style="margin:2px 0">[`;
+    for(let j=0;j<3;j++){
+      let sep=j===1?' ':j===0?'':' ';
+      let bar=j===2?' | ':'  ';
+      h+=`${gm[i][j].toFixed(2)}${bar}`;
+    }
+    h+=`]</div>`;
+  }
+  h+=`</div>`;
+  h+=`<h3>行变换操作</h3>`;
+  if(gStep===0){
+    h+=`<button class="act-btn" onclick="gaussOp('add',1,0,-2);renderPanel()">R2 ← R2 - 2·R1</button>`;
+    h+=`<button class="act-btn" onclick="gaussOp('add',2,0,-0.5);renderPanel()">R3 ← R3 - 0.5·R1</button>`;
+  }else if(gStep===1){
+    h+=`<button class="act-btn" onclick="gaussOp('add',2,0,-0.5);renderPanel()">R3 ← R3 - 0.5·R1</button>`;
+  }else if(gStep===2){
+    h+=`<button class="act-btn" onclick="gaussOp('add',2,1,gm[2][1]/(-gm[1][1]));renderPanel()">R3 ← R3 - (${(gm[2][1]/gm[1][1]).toFixed(2)})·R2</button>`;
+  }else if(gStep>=3&&!levelObjs[2][2]){
+    h+=`<button class="act-btn" onclick="solveGauss();renderPanel()">回代求解</button>`;
+  }
+  if(gStep>0)h+=`<button class="act-btn" onclick="initGauss();renderPanel()">重置</button>`;
+  if(levelObjs[2][2]){
+    let x3=gm[2][2]/gm[2][1]||0;
+    // back substitution display
+    h+=`<div style="font-size:12px;color:#4ade80;margin-top:8px">解: x₁=${((gm[0][2]-gm[0][1]*x3)/gm[0][0]).toFixed(2)}, x₂=${x3.toFixed(2)}, x₃ 由增广列确定</div>`;
+  }
+  return h;
+}
+function solveGauss(){levelObjs[2][2]=true;}
+function checkL2(){
+  if(gStep>=1)levelObjs[2][0]=true;
+  if(gStep>=3)levelObjs[2][1]=true;
+}
+function drawL2(){
+  drawGrid();
+  let s=sc()*0.8,cx=ox(),cy=oy();
+  // Draw equations as lines
+  let colors=['#a78bfa','#60a5fa','#f472b6'];
+  let labels=['2x+y=5','4x-6y=2','x+3y=7'];
+  let eqs=gHistory[0];// original equations
+  for(let i=0;i<3;i++){
+    let a=eqs[i][0],b=eqs[i][1],c=eqs[i][2];
+    ctx.strokeStyle=colors[i];ctx.lineWidth=2;
+    ctx.beginPath();
+    if(Math.abs(b)>0.001){
+      let y1=(c-a*(-6))/b,y2=(c-a*6)/b;
+      ctx.moveTo(cx+(-6)*s,cy-y1*s);ctx.lineTo(cx+6*s,cy-y2*s);
+    }else{
+      let x=c/a;
+      ctx.moveTo(cx+x*s,cy-6*s);ctx.lineTo(cx+x*s,cy+6*s);
+    }
+    ctx.stroke();
+    ctx.fillStyle=colors[i];ctx.font='12px sans-serif';
+    if(Math.abs(b)>0.001){
+      let yy=(c-a*4)/b;
+      ctx.fillText(labels[i],cx+4*s+5,cy-yy*s);
+    }
+  }
+  // step indicator
+  ctx.fillStyle='#64748b';ctx.font='13px sans-serif';
+  ctx.fillText(`消元步骤: ${gStep}/3`,20,30);
+  // highlight current matrix state
+  if(gStep>=3){
+    ctx.fillStyle='rgba(34,197,94,0.15)';
+    ctx.fillRect(cx-3*s,cy-3*s,6*s,6*s);
+    // intersection point
+    let sol=solveSystem(gHistory[0]);
+    if(sol){
+      drawDot(sol.x,sol.y,'#22c55e',8);
+      ctx.fillStyle='#22c55e';ctx.font='bold 13px sans-serif';
+      ctx.fillText(`解: (${sol.x.toFixed(2)}, ${sol.y.toFixed(2)})`,cx+sol.x*s+12,cy-sol.y*s-8);
+    }
+  }
+}
+function solveSystem(eq){
+  // solve 2-var from first two equations for display
+  let a1=eq[0][0],b1=eq[0][1],c1=eq[0][2];
+  let a2=eq[1][0],b2=eq[1][1],c2=eq[1][2];
+  let det=a1*b2-a2*b1;
+  if(Math.abs(det)<0.001)return null;
+  return{x:(c1*b2-c2*b1)/det,y:(a1*c2-a2*c1)/det};
+}
+
+// ===== Level 3: Determinant =====
+function renderL3Controls(){
+  let h='<h3>向量</h3>';
+  let det=d3a.x*d3b.y-d3a.y*d3b.x;
+  h+=`<div style="font-size:12px;color:#a78bfa;margin:4px 0">a = (${d3a.x.toFixed(1)}, ${d3a.y.toFixed(1)})</div>`;
+  h+=`<div style="font-size:12px;color:#60a5fa;margin:4px 0">b = (${d3b.x.toFixed(1)}, ${d3b.y.toFixed(1)})</div>`;
+  h+=`<div style="font-size:14px;color:#f472b6;margin:8px 0">det = ${det.toFixed(2)}</div>`;
+  h+=`<div style="font-size:14px;color:#fbbf24;margin:4px 0">|det| = 面积 = ${Math.abs(det).toFixed(2)}</div>`;
+  h+=`<div style="font-size:11px;color:#4b5563;margin-top:8px">💡 拖动紫色(a)和蓝色(b)箭头端点</div>`;
+  h+=`<button class="act-btn" onclick="d3a={x:3,y:0};d3b={x:0,y:2};renderPanel()">重置</button>`;
+  return h;
+}
+function checkL3(){
+  let det=d3a.x*d3b.y-d3a.y*d3b.x;
+  if(Math.abs(det)>8)levelObjs[3][0]=true;
+  if(det<0)levelObjs[3][1]=true;
+  if(Math.abs(det)<0.5)levelObjs[3][2]=true;
+}
+function drawL3(){
+  drawGrid();
+  let s=sc(),cx=ox(),cy=oy();
+  // parallelogram
+  ctx.fillStyle='rgba(251,191,36,0.15)';ctx.strokeStyle='rgba(251,191,36,0.4)';ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(cx,cy);
+  ctx.lineTo(cx+d3a.x*s,cy-d3a.y*s);
+  ctx.lineTo(cx+(d3a.x+d3b.x)*s,cy-(d3a.y+d3b.y)*s);
+  ctx.lineTo(cx+d3b.x*s,cy-d3b.y*s);
+  ctx.closePath();ctx.fill();ctx.stroke();
+  drawArrow(0,0,d3a.x,d3a.y,'#a78bfa',2.5,'a');
+  drawArrow(0,0,d3b.x,d3b.y,'#60a5fa',2.5,'b');
+  drawDot(d3a.x,d3a.y,'#a78bfa',6);
+  drawDot(d3b.x,d3b.y,'#60a5fa',6);
+  // area text
+  let det=d3a.x*d3b.y-d3a.y*d3b.x;
+  let mx=(d3a.x+d3b.x)/2,my=(d3a.y+d3b.y)/2;
+  ctx.fillStyle='#fbbf24';ctx.font='bold 16px sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText(`面积 = ${Math.abs(det).toFixed(2)}`,cx+mx*s,cy-my*s);
+  ctx.textAlign='left';
+  if(det<0){ctx.fillStyle='#f87171';ctx.font='12px sans-serif';ctx.fillText('(方向翻转, det<0)',cx+mx*s-40,cy-my*s+18);}
+}
+
+// ===== Level 4: Eigenvalues =====
+function eigenCalc(m){
+  let a=m[0][0],b=m[0][1],c=m[1][0],d=m[1][1];
+  let tr=a+d,det=a*d-b*c;
+  let disc=tr*tr-4*det;
+  if(disc<0)return{l1:tr/2,l2:tr/2,v1:{x:1,y:0},v2:{x:0,y:1},complex:true};
+  let l1=(tr+Math.sqrt(disc))/2,l2=(tr-Math.sqrt(disc))/2;
+  let v1,v2;
+  if(Math.abs(b)>0.001){v1={x:b,y:l1-a};v2={x:b,y:l2-a};}
+  else if(Math.abs(c)>0.001){v1={x:l1-d,y:c};v2={x:l2-d,y:c};}
+  else{v1={x:1,y:0};v2={x:0,y:1};}
+  let n1=Math.hypot(v1.x,v1.y)||1,n2=Math.hypot(v2.x,v2.y)||1;
+  v1={x:v1.x/n1,y:v1.y/n1};v2={x:v2.x/n2,y:v2.y/n2};
+  return{l1,l2,v1,v2,complex:false};
+}
+function renderL4Controls(){
+  let h='<h3>矩阵 A</h3>';
+  h+=`<div class="slider-row"><label>a₁₁</label><input type="range" min="-3" max="3" step="0.1" value="${e4[0][0]}" oninput="e4[0][0]=+this.value;checkL4();renderPanel()"><span class="val">${e4[0][0].toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>a₁₂</label><input type="range" min="-3" max="3" step="0.1" value="${e4[0][1]}" oninput="e4[0][1]=+this.value;checkL4();renderPanel()"><span class="val">${e4[0][1].toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>a₂₁</label><input type="range" min="-3" max="3" step="0.1" value="${e4[1][0]}" oninput="e4[1][0]=+this.value;checkL4();renderPanel()"><span class="val">${e4[1][0].toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>a₂₂</label><input type="range" min="-3" max="3" step="0.1" value="${e4[1][1]}" oninput="e4[1][1]=+this.value;checkL4();renderPanel()"><span class="val">${e4[1][1].toFixed(1)}</span></div>`;
+  let eg=eigenCalc(e4);
+  h+=`<div style="font-size:12px;color:#f472b6;margin-top:8px">λ₁ = ${eg.l1.toFixed(3)}　λ₂ = ${eg.l2.toFixed(3)}</div>`;
+  if(eg.complex)h+=`<div style="font-size:11px;color:#f87171">复数特征值（旋转变换）</div>`;
+  h+=`<button class="act-btn" onclick="e4showEig=!e4showEig;renderPanel()">${e4showEig?'隐藏':'显示'}特征向量</button>`;
+  h+=`<button class="act-btn" onclick="e4t=0;e4Anim=true;levelObjs[4][2]=true;renderPanel()">播放变换动画</button>`;
+  h+=`<button class="act-btn" onclick="e4=[[ 2,1],[1,2]];e4showEig=false;e4Anim=false;renderPanel()">重置</button>`;
+  return h;
+}
+let e4Anim=false;
+function checkL4(){
+  let eg=eigenCalc(e4);
+  if(e4showEig&&!eg.complex)levelObjs[4][0]=true;
+  if(Math.abs(eg.l1-eg.l2)>1.5)levelObjs[4][1]=true;
+}
+function drawL4(){
+  drawGrid();
+  let s=sc(),cx=ox(),cy=oy();
+  let eg=eigenCalc(e4);
+  // draw unit circle and its transform
+  ctx.strokeStyle='rgba(99,102,241,0.3)';ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let t=0;t<=Math.PI*2;t+=0.05){ctx.lineTo(cx+Math.cos(t)*s,cy-Math.sin(t)*s);}
+  ctx.closePath();ctx.stroke();
+  // transformed circle
+  let blend=e4Anim?Math.min(e4t,1):1;
+  ctx.strokeStyle='#a78bfa';ctx.lineWidth=2;ctx.fillStyle='rgba(99,102,241,0.08)';
+  ctx.beginPath();
+  for(let t=0;t<=Math.PI*2;t+=0.05){
+    let px=Math.cos(t),py=Math.sin(t);
+    let tx=px+(e4[0][0]*px+e4[0][1]*py-px)*blend;
+    let ty=py+(e4[1][0]*px+e4[1][1]*py-py)*blend;
+    ctx.lineTo(cx+tx*s,cy-ty*s);
+  }
+  ctx.closePath();ctx.fill();ctx.stroke();
+  // eigenvectors
+  if(e4showEig&&!eg.complex){
+    let len=3;
+    drawArrow(0,0,eg.v1.x*len,eg.v1.y*len,'#22c55e',3,'v₁');
+    drawArrow(0,0,eg.v2.x*len,eg.v2.y*len,'#fbbf24',3,'v₂');
+    // show Av direction
+    let av1={x:e4[0][0]*eg.v1.x+e4[0][1]*eg.v1.y,y:e4[1][0]*eg.v1.x+e4[1][1]*eg.v1.y};
+    let av2={x:e4[0][0]*eg.v2.x+e4[0][1]*eg.v2.y,y:e4[1][0]*eg.v2.x+e4[1][1]*eg.v2.y};
+    drawArrow(0,0,av1.x*len,av1.y*len,'rgba(34,197,94,0.4)',1.5);
+    drawArrow(0,0,av2.x*len,av2.y*len,'rgba(251,191,36,0.4)',1.5);
+  }
+  if(e4Anim){e4t+=0.015;if(e4t>2)e4Anim=false;}
+}
+
+// ===== Level 5: Orthogonal Projection =====
+function renderL5Controls(){
+  let h='<h3>向量</h3>';
+  let proj=projVec(p5a,p5b);
+  h+=`<div style="font-size:12px;color:#a78bfa;margin:4px 0">a = (${p5a.x.toFixed(1)}, ${p5a.y.toFixed(1)})</div>`;
+  h+=`<div style="font-size:12px;color:#60a5fa;margin:4px 0">b = (${p5b.x.toFixed(1)}, ${p5b.y.toFixed(1)})</div>`;
+  h+=`<div style="font-size:12px;color:#f472b6;margin:4px 0">proj_b(a) = (${proj.x.toFixed(2)}, ${proj.y.toFixed(2)})</div>`;
+  h+=`<h3>Gram-Schmidt 正交化</h3>`;
+  h+=`<button class="act-btn" onclick="p5step=1;levelObjs[5][0]=true;checkL5();renderPanel()">步骤1: 计算投影</button>`;
+  h+=`<button class="act-btn" onclick="if(p5step>=1){p5step=2;levelObjs[5][1]=true;checkL5();renderPanel();}">步骤2: u₂ = a - proj</button>`;
+  h+=`<button class="act-btn" onclick="if(p5step>=2){p5step=3;levelObjs[5][2]=true;checkL5();renderPanel();}">步骤3: 归一化</button>`;
+  h+=`<button class="act-btn" onclick="p5step=0;p5a={x:3,y:2};p5b={x:4,y:1};renderPanel()">重置</button>`;
+  h+=`<div style="font-size:11px;color:#4b5563;margin-top:8px">💡 拖动紫色(a)和蓝色(b)箭头端点</div>`;
+  return h;
+}
+function projVec(a,b){let d=(a.x*b.x+a.y*b.y)/(b.x*b.x+b.y*b.y);return{x:d*b.x,y:d*b.y};}
+function checkL5(){/* objectives set by buttons */}
+function drawL5(){
+  drawGrid();
+  drawArrow(0,0,p5a.x,p5a.y,'#a78bfa',2.5,'a');
+  drawArrow(0,0,p5b.x,p5b.y,'#60a5fa',2.5,'b');
+  drawDot(p5a.x,p5a.y,'#a78bfa',6);
+  drawDot(p5b.x,p5b.y,'#60a5fa',6);
+  let proj=projVec(p5a,p5b);
+  if(p5step>=1){
+    drawArrow(0,0,proj.x,proj.y,'#f472b6',2.5,'proj');
+    // dashed line from a to proj
+    let s=sc(),cx=ox(),cy=oy();
+    ctx.strokeStyle='rgba(244,114,182,0.4)';ctx.setLineDash([4,4]);ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(cx+p5a.x*s,cy-p5a.y*s);ctx.lineTo(cx+proj.x*s,cy-proj.y*s);ctx.stroke();
+    ctx.setLineDash([]);
+    // right angle marker
+    let px=cx+proj.x*s,py=cy-proj.y*s;
+    ctx.strokeStyle='#f472b6';ctx.lineWidth=1;
+    let sz=10;
+    let dx=p5a.x-proj.x,dy=p5a.y-proj.y;
+    let nl=Math.hypot(dx,dy)||1;dx/=nl;dy/=nl;
+    let bx=p5b.x,by=p5b.y;
+    let bl=Math.hypot(bx,by)||1;bx/=bl;by/=bl;
+    ctx.beginPath();
+    ctx.moveTo(px+dx*sz*sc()/50,py-dy*sz*sc()/50);
+    ctx.lineTo(px+dx*sz*sc()/50+bx*sz*sc()/50,py-dy*sz*sc()/50+by*sz*sc()/50);
+    ctx.lineTo(px+bx*sz*sc()/50,py+by*sz*sc()/50);
+    ctx.stroke();
+  }
+  if(p5step>=2){
+    let u2={x:p5a.x-proj.x,y:p5a.y-proj.y};
+    drawArrow(0,0,u2.x,u2.y,'#22c55e',2.5,'u₂');
+  }
+  if(p5step>=3){
+    let u2={x:p5a.x-proj.x,y:p5a.y-proj.y};
+    let n1=Math.hypot(p5b.x,p5b.y)||1;
+    let n2=Math.hypot(u2.x,u2.y)||1;
+    let e1={x:p5b.x/n1*2,y:p5b.y/n1*2};
+    let e2={x:u2.x/n2*2,y:u2.y/n2*2};
+    drawArrow(0,0,e1.x,e1.y,'#fbbf24',3,'ê₁');
+    drawArrow(0,0,e2.x,e2.y,'#fb923c',3,'ê₂');
+  }
+}
+
+// ===== Level 6: SVD =====
+function svdCalc(m){
+  // 2x2 SVD: M = U * Sigma * V^T
+  let a=m[0][0],b=m[0][1],c=m[1][0],d=m[1][1];
+  // M^T M
+  let mtm=[[a*a+c*c,a*b+c*d],[a*b+c*d,b*b+d*d]];
+  let eg=eigenCalc(mtm);
+  let s1=Math.sqrt(Math.max(eg.l1,0)),s2=Math.sqrt(Math.max(eg.l2,0));
+  // V = eigenvectors of M^T M
+  let v1=eg.v1,v2=eg.v2;
+  // ensure right-handed
+  if(v1.x*v2.y-v1.y*v2.x<0){v2={x:-v2.x,y:-v2.y};}
+  // U = M*V / sigma
+  let u1,u2;
+  if(s1>0.001){u1={x:(a*v1.x+b*v1.y)/s1,y:(c*v1.x+d*v1.y)/s1};}else{u1={x:1,y:0};}
+  if(s2>0.001){u2={x:(a*v2.x+b*v2.y)/s2,y:(c*v2.x+d*v2.y)/s2};}else{u2={x:-u1.y,y:u1.x};}
+  return{s1,s2,u1,u2,v1,v2};
+}
+function renderL6Controls(){
+  let h='<h3>矩阵 M</h3>';
+  h+=`<div class="slider-row"><label>m₁₁</label><input type="range" min="-4" max="4" step="0.1" value="${svdM[0][0]}" oninput="svdM[0][0]=+this.value;renderPanel()"><span class="val">${svdM[0][0].toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>m₁₂</label><input type="range" min="-4" max="4" step="0.1" value="${svdM[0][1]}" oninput="svdM[0][1]=+this.value;renderPanel()"><span class="val">${svdM[0][1].toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>m₂₁</label><input type="range" min="-4" max="4" step="0.1" value="${svdM[1][0]}" oninput="svdM[1][0]=+this.value;renderPanel()"><span class="val">${svdM[1][0].toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>m₂₂</label><input type="range" min="-4" max="4" step="0.1" value="${svdM[1][1]}" oninput="svdM[1][1]=+this.value;renderPanel()"><span class="val">${svdM[1][1].toFixed(1)}</span></div>`;
+  let sv=svdCalc(svdM);
+  h+=`<div style="font-size:12px;color:#f472b6;margin-top:6px">σ₁ = ${sv.s1.toFixed(3)}　σ₂ = ${sv.s2.toFixed(3)}</div>`;
+  h+=`<h3>分解步骤</h3>`;
+  h+=`<button class="act-btn ${svdStep===0?'style="background:rgba(99,102,241,.4)"':''}" onclick="svdStep=0;svdImgMode=false;levelObjs[6][0]=true;renderPanel()">几何分解 (V^T → Σ → U)</button>`;
+  h+=`<button class="act-btn ${svdImgMode?'style="background:rgba(99,102,241,.4)"':''}" onclick="svdImgMode=true;levelObjs[6][1]=true;renderPanel()">图像压缩模式</button>`;
+  if(svdImgMode){
+    h+=`<div class="slider-row"><label>秩 k</label><input type="range" min="1" max="2" step="1" value="${svdRank}" oninput="svdRank=+this.value;levelObjs[6][2]=true;renderPanel()"><span class="val">${svdRank}</span></div>`;
+    h+=`<div style="font-size:11px;color:#64748b;margin-top:4px">秩 k=1: 仅保留最大奇异值，有损压缩<br>秩 k=2: 完整重建，无损</div>`;
+  }
+  h+=`<button class="act-btn" onclick="svdM=[[3,1],[1,3]];svdStep=0;svdImgMode=false;svdRank=2;renderPanel()">重置</button>`;
+  return h;
+}
+function drawL6(){
+  drawGrid();
+  let s=sc(),cx=ox(),cy=oy();
+  let sv=svdCalc(svdM);
+  if(!svdImgMode){
+    // Show SVD geometric decomposition
+    // Step 1: V^T rotation (right singular vectors)
+    let nPts=36;
+    // unit circle
+    ctx.strokeStyle='rgba(99,102,241,0.3)';ctx.lineWidth=1;
+    ctx.beginPath();
+    for(let i=0;i<=nPts;i++){let t=i/nPts*Math.PI*2;ctx.lineTo(cx+Math.cos(t)*s,cy-Math.sin(t)*s);}
+    ctx.closePath();ctx.stroke();
+    ctx.fillStyle='#4b5563';ctx.font='11px sans-serif';ctx.fillText('单位圆',cx+s+5,cy);
+    // After V^T
+    ctx.strokeStyle='#60a5fa';ctx.lineWidth=1.5;
+    ctx.beginPath();
+    for(let i=0;i<=nPts;i++){
+      let t=i/nPts*Math.PI*2;
+      let px=Math.cos(t),py=Math.sin(t);
+      // V^T * p
+      let vx=sv.v1.x*px+sv.v1.y*py;
+      let vy=sv.v2.x*px+sv.v2.y*py;
+      ctx.lineTo(cx+vx*s,cy-vy*s);
+    }
+    ctx.closePath();ctx.stroke();
+    // After Sigma
+    ctx.strokeStyle='#fbbf24';ctx.lineWidth=1.5;
+    ctx.beginPath();
+    for(let i=0;i<=nPts;i++){
+      let t=i/nPts*Math.PI*2;
+      let px=Math.cos(t),py=Math.sin(t);
+      let vx=sv.v1.x*px+sv.v1.y*py;
+      let vy=sv.v2.x*px+sv.v2.y*py;
+      ctx.lineTo(cx+vx*sv.s1*s,cy-vy*sv.s2*s);
+    }
+    ctx.closePath();ctx.stroke();
+    // After U (final = M applied)
+    ctx.strokeStyle='#a78bfa';ctx.lineWidth=2.5;ctx.fillStyle='rgba(167,139,250,0.1)';
+    ctx.beginPath();
+    for(let i=0;i<=nPts;i++){
+      let t=i/nPts*Math.PI*2;
+      let px=Math.cos(t),py=Math.sin(t);
+      let tx=svdM[0][0]*px+svdM[0][1]*py;
+      let ty=svdM[1][0]*px+svdM[1][1]*py;
+      ctx.lineTo(cx+tx*s,cy-ty*s);
+    }
+    ctx.closePath();ctx.fill();ctx.stroke();
+    // Labels
+    ctx.font='12px sans-serif';
+    ctx.fillStyle='#60a5fa';ctx.fillText('V^T (旋转)',cx-s*2,cy-s*2.5);
+    ctx.fillStyle='#fbbf24';ctx.fillText('Σ (缩放)',cx+s*0.5,cy-s*2.5);
+    ctx.fillStyle='#a78bfa';ctx.fillText('U (旋转) = M',cx+s*2,cy-s*2.5);
+    // singular vectors
+    drawArrow(0,0,sv.v1.x*2,sv.v1.y*2,'#60a5fa',1.5,'v₁');
+    drawArrow(0,0,sv.v2.x*2,sv.v2.y*2,'#38bdf8',1.5,'v₂');
+    drawArrow(0,0,sv.u1.x*sv.s1*2,sv.u1.y*sv.s1*2,'#a78bfa',1.5,'σ₁u₁');
+    drawArrow(0,0,sv.u2.x*sv.s2*2,sv.u2.y*sv.s2*2,'#c084fc',1.5,'σ₂u₂');
+  }else{
+    // Image compression demo: show a pixel grid
+    let gSize=8;
+    let imgData=[];
+    for(let r=0;r<gSize;r++){imgData[r]=[];for(let c=0;c<gSize;c++){
+      imgData[r][c]=Math.sin(r*0.5)*Math.cos(c*0.3)*0.5+0.5+Math.sin((r+c)*0.4)*0.2;
+    }}
+    // Simple SVD-like rank approximation visualization
+    let cellSz=Math.min(W/(gSize*3+4),H/(gSize+4));
+    let startX=30,startY=40;
+    // Original
+    ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
+    ctx.fillText('原始矩阵',startX,startY-8);
+    for(let r=0;r<gSize;r++)for(let c=0;c<gSize;c++){
+      let v=Math.max(0,Math.min(1,imgData[r][c]));
+      let g=Math.floor(v*255);
+      ctx.fillStyle=`rgb(${Math.floor(g*0.6)},${Math.floor(g*0.4)},${g})`;
+      ctx.fillRect(startX+c*cellSz,startY+r*cellSz,cellSz-1,cellSz-1);
+    }
+    // Rank-k approximation
+    // compute simple rank-1 approx: outer product of first left/right singular vectors
+    let u=[],vt=[];
+    // power iteration for dominant singular vector
+    let vec=[1,0,0,0,0,0,0,0];
+    for(let iter=0;iter<20;iter++){
+      let nv=new Array(gSize).fill(0);
+      for(let i=0;i<gSize;i++)for(let j=0;j<gSize;j++)nv[i]+=imgData[i][j]*vec[j];
+      let nm=Math.hypot(...nv)||1;nv=nv.map(x=>x/nm);
+      let nv2=new Array(gSize).fill(0);
+      for(let j=0;j<gSize;j++)for(let i=0;i<gSize;i++)nv2[j]+=imgData[i][j]*nv[i];
+      let nm2=Math.hypot(...nv2)||1;
+      u=nv;vt=nv2.map(x=>x/nm2);
+      let sigma=nm2;
+      vec=vt;
+    }
+    let sigma1=0;for(let i=0;i<gSize;i++)for(let j=0;j<gSize;j++)sigma1+=imgData[i][j]*u[i]*vt[j];
+    // rank-1 approx
+    let approx=[];
+    for(let r=0;r<gSize;r++){approx[r]=[];for(let c=0;c<gSize;c++){
+      if(svdRank===1)approx[r][c]=sigma1*u[r]*vt[c];
+      else approx[r][c]=imgData[r][c];
+    }}
+    let offX=startX+(gSize+2)*cellSz;
+    ctx.fillStyle='#94a3b8';ctx.fillText(`秩-${svdRank} 近似`,offX,startY-8);
+    for(let r=0;r<gSize;r++)for(let c=0;c<gSize;c++){
+      let v=Math.max(0,Math.min(1,approx[r][c]));
+      let g=Math.floor(v*255);
+      ctx.fillStyle=`rgb(${Math.floor(g*0.6)},${Math.floor(g*0.4)},${g})`;
+      ctx.fillRect(offX+c*cellSz,startY+r*cellSz,cellSz-1,cellSz-1);
+    }
+    // Error
+    let err=0;
+    for(let r=0;r<gSize;r++)for(let c=0;c<gSize;c++)err+=(imgData[r][c]-approx[r][c])**2;
+    err=Math.sqrt(err/(gSize*gSize));
+    let offX2=offX+(gSize+2)*cellSz;
+    ctx.fillStyle='#94a3b8';ctx.fillText('误差',offX2,startY-8);
+    for(let r=0;r<gSize;r++)for(let c=0;c<gSize;c++){
+      let v=Math.abs(imgData[r][c]-approx[r][c]);
+      let g=Math.floor(Math.min(1,v*3)*255);
+      ctx.fillStyle=`rgb(${g},${Math.floor(g*0.3)},${Math.floor(g*0.3)})`;
+      ctx.fillRect(offX2+c*cellSz,startY+r*cellSz,cellSz-1,cellSz-1);
+    }
+    ctx.fillStyle='#64748b';ctx.font='12px sans-serif';
+    ctx.fillText(`RMSE: ${err.toFixed(4)}`,offX2,startY+gSize*cellSz+16);
+    ctx.fillText(`压缩率: ${svdRank===1?'87.5%':'0%'}`,offX2,startY+gSize*cellSz+32);
+  }
+}
+
+// ===== Mouse interaction =====
+cv.addEventListener('mousedown',e=>{
+  let rect=cv.getBoundingClientRect();
+  let mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  mouse.down=true;mouse.x=mx;mouse.y=my;
+  if(curLevel===0){
+    if(nearVec(mx,my,v0a.x,v0a.y))mouse.drag='v0a';
+    else if(nearVec(mx,my,v0b.x,v0b.y))mouse.drag='v0b';
+  }else if(curLevel===3){
+    if(nearVec(mx,my,d3a.x,d3a.y))mouse.drag='d3a';
+    else if(nearVec(mx,my,d3b.x,d3b.y))mouse.drag='d3b';
+  }else if(curLevel===5){
+    if(nearVec(mx,my,p5a.x,p5a.y))mouse.drag='p5a';
+    else if(nearVec(mx,my,p5b.x,p5b.y))mouse.drag='p5b';
+  }
+});
+cv.addEventListener('mousemove',e=>{
+  if(!mouse.down||!mouse.drag)return;
+  let rect=cv.getBoundingClientRect();
+  let mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  let w=screenToWorld(mx,my);
+  // snap to 0.1
+  w.x=Math.round(w.x*10)/10;w.y=Math.round(w.y*10)/10;
+  if(mouse.drag==='v0a'){v0a=w;checkL0();}
+  else if(mouse.drag==='v0b'){v0b=w;checkL0();}
+  else if(mouse.drag==='d3a'){d3a=w;checkL3();}
+  else if(mouse.drag==='d3b'){d3b=w;checkL3();}
+  else if(mouse.drag==='p5a'){p5a=w;}
+  else if(mouse.drag==='p5b'){p5b=w;}
+  renderPanel();
+});
+cv.addEventListener('mouseup',()=>{mouse.down=false;mouse.drag=null;});
+cv.addEventListener('mouseleave',()=>{mouse.down=false;mouse.drag=null;});
+
+// Touch support
+cv.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  let t=e.touches[0],rect=cv.getBoundingClientRect();
+  let mx=t.clientX-rect.left,my=t.clientY-rect.top;
+  mouse.down=true;mouse.x=mx;mouse.y=my;
+  if(curLevel===0){
+    if(nearVec(mx,my,v0a.x,v0a.y,30))mouse.drag='v0a';
+    else if(nearVec(mx,my,v0b.x,v0b.y,30))mouse.drag='v0b';
+  }else if(curLevel===3){
+    if(nearVec(mx,my,d3a.x,d3a.y,30))mouse.drag='d3a';
+    else if(nearVec(mx,my,d3b.x,d3b.y,30))mouse.drag='d3b';
+  }else if(curLevel===5){
+    if(nearVec(mx,my,p5a.x,p5a.y,30))mouse.drag='p5a';
+    else if(nearVec(mx,my,p5b.x,p5b.y,30))mouse.drag='p5b';
+  }
+},{passive:false});
+cv.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(!mouse.down||!mouse.drag)return;
+  let t=e.touches[0],rect=cv.getBoundingClientRect();
+  let mx=t.clientX-rect.left,my=t.clientY-rect.top;
+  let w=screenToWorld(mx,my);
+  w.x=Math.round(w.x*10)/10;w.y=Math.round(w.y*10)/10;
+  if(mouse.drag==='v0a'){v0a=w;checkL0();}
+  else if(mouse.drag==='v0b'){v0b=w;checkL0();}
+  else if(mouse.drag==='d3a'){d3a=w;checkL3();}
+  else if(mouse.drag==='d3b'){d3b=w;checkL3();}
+  else if(mouse.drag==='p5a'){p5a=w;}
+  else if(mouse.drag==='p5b'){p5b=w;}
+  renderPanel();
+},{passive:false});
+cv.addEventListener('touchend',()=>{mouse.down=false;mouse.drag=null;});
+
+// ===== Main loop =====
+function loop(){
+  ctx.clearRect(0,0,W,H);
+  animT+=0.016;
+  if(curLevel===0)drawL0();
+  else if(curLevel===1)drawL1();
+  else if(curLevel===2)drawL2();
+  else if(curLevel===3)drawL3();
+  else if(curLevel===4)drawL4();
+  else if(curLevel===5)drawL5();
+  else if(curLevel===6)drawL6();
+  // cursor hint
+  if(curLevel===0||curLevel===3||curLevel===5){
+    ctx.fillStyle='rgba(167,139,250,0.5)';ctx.font='11px sans-serif';
+    ctx.fillText('拖动彩色端点',10,H-10);
+  }
+  requestAnimationFrame(loop);
+}
+</script>
+</script>
+</body>
+</html>

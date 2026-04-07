@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>超声原理 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e2e8f0;font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+#main{display:flex;flex:1;overflow:hidden}
+#panel{width:320px;min-width:320px;background:#111827;border-right:1px solid #1e293b;display:flex;flex-direction:column;overflow-y:auto;padding:16px}
+#cvs-wrap{flex:1;position:relative;background:#0a0a1a}
+canvas{display:block;width:100%;height:100%}
+#bar{height:36px;background:#111827;border-top:1px solid #1e293b;display:flex;align-items:center;padding:0 16px;font-size:13px;color:#94a3b8}
+.panel-title{font-size:18px;font-weight:700;color:#818cf8;margin-bottom:8px}
+.panel-desc{font-size:13px;color:#94a3b8;line-height:1.6;margin-bottom:12px}
+.obj-list{list-style:none;margin-bottom:12px}
+.obj-list li{font-size:13px;padding:4px 0;color:#cbd5e1}
+.obj-list li.done{color:#34d399}
+.obj-list li::before{content:'○ ';color:#6366f1}
+.obj-list li.done::before{content:'● ';color:#34d399}
+.ctrl-group{margin-bottom:12px}
+.ctrl-label{font-size:12px;color:#64748b;margin-bottom:4px;display:block}
+.ctrl-row{display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+select,input[type=range]{background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:4px 8px;font-size:13px}
+input[type=range]{flex:1;padding:0}
+button{background:#6366f1;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:14px;transition:background .2s}
+button:hover{background:#818cf8}
+button.sm{padding:4px 10px;font-size:12px;border-radius:4px}
+button.active{background:#34d399;color:#0a0a1a}
+.val{font-size:13px;color:#818cf8;min-width:50px;text-align:right}
+.learn-box{background:#1e293b;border-radius:8px;padding:12px;margin-top:8px}
+.learn-box h4{color:#34d399;font-size:14px;margin-bottom:6px}
+.learn-box p{font-size:12px;color:#94a3b8;line-height:1.6}
+.nav-row{display:flex;gap:8px;margin-top:auto;padding-top:12px}
+.nav-row button{flex:1}
+/* overlay */
+#overlay{position:fixed;inset:0;background:rgba(10,10,26,.95);display:flex;align-items:center;justify-content:center;z-index:100;flex-direction:column}
+#overlay.hidden{display:none}
+#overlay h1{font-size:42px;margin-bottom:8px;color:#818cf8}
+#overlay .sub{font-size:16px;color:#94a3b8;margin-bottom:24px}
+#overlay .features{display:flex;gap:16px;margin-bottom:32px;flex-wrap:wrap;justify-content:center}
+#overlay .feat{background:#1e293b;border-radius:8px;padding:12px 16px;text-align:center;width:100px}
+#overlay .feat .icon{font-size:28px;margin-bottom:4px}
+#overlay .feat .txt{font-size:11px;color:#94a3b8}
+#start-btn{font-size:18px;padding:14px 48px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#818cf8)}
+/* complete overlay */
+#complete-overlay{position:fixed;inset:0;background:rgba(10,10,26,.92);display:none;align-items:center;justify-content:center;z-index:99;flex-direction:column}
+#complete-overlay.show{display:flex}
+#complete-overlay h2{color:#34d399;font-size:28px;margin-bottom:12px}
+#complete-overlay p{color:#94a3b8;margin-bottom:20px;font-size:15px}
+</style>
+</head>
+<body>
+<!-- Start Overlay -->
+<div id="overlay">
+<h1>🔊 超声原理 探险</h1>
+<div class="sub">7 个关卡，从压电效应到医学成像</div>
+<div class="features">
+<div class="feat"><div class="icon">〰️</div><div class="txt">声波基础</div></div>
+<div class="feat"><div class="icon">⚡</div><div class="txt">压电效应</div></div>
+<div class="feat"><div class="icon">📡</div><div class="txt">超声探头</div></div>
+<div class="feat"><div class="icon">🪞</div><div class="txt">反射衰减</div></div>
+<div class="feat"><div class="icon">🖥️</div><div class="txt">B模式成像</div></div>
+<div class="feat"><div class="icon">🩸</div><div class="txt">多普勒</div></div>
+<div class="feat"><div class="icon">🔬</div><div class="txt">高级成像</div></div>
+</div>
+<button id="start-btn">开始探索</button>
+</div>
+<!-- Level Complete Overlay -->
+<div id="complete-overlay">
+<h2 id="comp-title"></h2>
+<p id="comp-desc"></p>
+<div id="comp-learn" class="learn-box" style="max-width:400px;margin-bottom:20px"></div>
+<button id="comp-next">下一关</button>
+</div>
+<!-- Main -->
+<div id="main">
+<div id="panel">
+<div class="panel-title" id="p-title"></div>
+<div class="panel-desc" id="p-desc"></div>
+<ul class="obj-list" id="p-objs"></ul>
+<div id="p-ctrls"></div>
+<div id="p-learn"></div>
+<div class="nav-row">
+<button id="btn-prev" class="sm">上一关</button>
+<button id="btn-next" class="sm">下一关</button>
+</div>
+</div>
+<div id="cvs-wrap"><canvas id="cvs"></canvas></div>
+</div>
+<div id="bar"><span id="bar-text"></span></div>
+<script>
+// === GLOBALS ===
+const cvs=document.getElementById('cvs'),ctx=cvs.getContext('2d');
+let W=0,H=0,curLevel=0,animId=0,time=0;
+const levelObjs=Array.from({length:7},()=>[false,false,false]);
+const levelComplete=Array(7).fill(false);
+
+// === LEVELS DATA ===
+const levels=[
+{name:'声波基础',desc:'纵波传播、声速、频率与波长、声阻抗',objs:['观察纵波在不同介质中传播','比较不同介质的声速','理解声阻抗概念'],
+ learn:'声波是纵波，粒子沿传播方向振动形成疏密相间的波。声速取决于介质密度和弹性模量。声阻抗 Z=ρ×c，是超声成像的物理基础。'},
+{name:'压电效应',desc:'正压电效应（机械→电）、逆压电效应（电→机械）',objs:['观察逆压电效应（发射超声）','观察正压电效应（接收回波）','理解换能器工作原理'],
+ learn:'压电晶体在电场作用下发生形变（逆压电效应），用于发射超声波。受到机械压力时产生电信号（正压电效应），用于接收回波。PZT 陶瓷是最常用的压电材料。'},
+{name:'超声探头',desc:'线阵/凸阵/相控阵探头、聚焦、近场远场',objs:['比较三种探头的声束形状','调节焦距观察聚焦效果','理解近场和远场分界'],
+ learn:'线阵探头产生矩形视野，适合浅表检查；凸阵探头扇形视野，适合腹部；相控阵探头可电子偏转声束。近场（菲涅尔区）声束汇聚，远场（夫琅禾费区）声束发散。'},
+{name:'反射与衰减',desc:'声阻抗失配→反射、反射系数、TGC补偿',objs:['观察不同界面的反射强度','理解超声衰减规律','调节TGC补偿深度衰减'],
+ learn:'两种介质声阻抗差异越大，反射越强。反射系数 R=(Z2-Z1)²/(Z2+Z1)²。超声在组织中每厘米衰减约 0.5-1 dB/MHz。TGC（时间增益补偿）对深层回波增益更大。'},
+{name:'B模式成像',desc:'A扫描→B扫描→2D图像、灰度映射',objs:['完成A扫描观察回波信号','构建B模式二维图像','识别不同组织结构'],
+ learn:'A模式显示回波幅度随深度变化。B模式将回波幅度映射为灰度亮度，多条扫描线组合成二维图像。实时B超帧率通常 30-60 fps。'},
+{name:'多普勒超声',desc:'血流速度测量、彩色多普勒、角度校正',objs:['测量血流速度','理解多普勒角度校正','区分动脉和静脉血流'],
+ learn:'多普勒频移 Δf=2f₀v·cosθ/c。角度θ越小，测量越准确（θ<60°）。彩色多普勒用红色表示朝向探头的血流，蓝色表示远离探头的血流。频谱多普勒显示速度随时间变化。'},
+{name:'高级成像',desc:'谐波成像、弹性成像、造影超声、3D超声',objs:['对比基波与谐波成像','观察组织弹性成像','理解造影增强效果'],
+ learn:'谐波成像利用组织非线性传播产生的二次谐波，减少伪影。弹性成像通过测量组织硬度辅助诊断肿瘤。造影超声使用微泡增强血流信号。3D/4D超声重建立体图像。'}
+];
+
+// === MEDIA DATA ===
+const media={
+  air:{name:'空气',speed:343,density:1.29,color:'#60a5fa',impedance:0.0004},
+  water:{name:'水',speed:1480,density:1000,color:'#3b82f6',impedance:1.48},
+  tissue:{name:'软组织',speed:1540,density:1060,color:'#f472b6',impedance:1.63},
+  bone:{name:'骨骼',speed:4080,density:1900,color:'#fbbf24',impedance:7.75}
+};
+const mediaKeys=['air','water','tissue','bone'];
+
+// === UTILITY ===
+function resize(){
+  const wr=document.getElementById('cvs-wrap');
+  W=cvs.width=wr.clientWidth;H=cvs.height=wr.clientHeight;
+}
+window.addEventListener('resize',resize);
+
+function completeObj(li,oi){
+  if(levelObjs[li][oi])return;
+  levelObjs[li][oi]=true;
+  updatePanel();
+  if(levelObjs[li].every(v=>v)&&!levelComplete[li]){
+    levelComplete[li]=true;
+    showComplete(li);
+  }
+}
+
+function showComplete(li){
+  const ov=document.getElementById('complete-overlay');
+  document.getElementById('comp-title').textContent='🎉 关卡'+(li+1)+' 完成！';
+  document.getElementById('comp-desc').textContent=levels[li].name;
+  document.getElementById('comp-learn').innerHTML='<h4>📚 知识点</h4><p>'+levels[li].learn+'</p>';
+  ov.classList.add('show');
+  document.getElementById('comp-next').onclick=()=>{
+    ov.classList.remove('show');
+    if(li<6)goLevel(li+1);
+  };
+}
+
+// === PANEL UPDATE ===
+function updatePanel(){
+  const L=levels[curLevel];
+  document.getElementById('p-title').textContent='关卡'+(curLevel+1)+'：'+L.name;
+  document.getElementById('p-desc').textContent=L.desc;
+  const ul=document.getElementById('p-objs');
+  ul.innerHTML='';
+  L.objs.forEach((o,i)=>{
+    const li=document.createElement('li');
+    li.textContent=o;
+    if(levelObjs[curLevel][i])li.className='done';
+    ul.appendChild(li);
+  });
+  document.getElementById('bar-text').textContent='关卡 '+(curLevel+1)+'/7 — '+L.name;
+  if(levelComplete[curLevel]){
+    document.getElementById('p-learn').innerHTML='<div class="learn-box"><h4>📚 知识点</h4><p>'+L.learn+'</p></div>';
+  }else{
+    document.getElementById('p-learn').innerHTML='';
+  }
+}
+
+// === LEVEL CONTROLLERS ===
+let levelState={};
+
+function buildControls(){
+  const c=document.getElementById('p-ctrls');
+  c.innerHTML='';
+  levelState={};
+  switch(curLevel){
+    case 0: buildLevel0Controls(c); break;
+    case 1: buildLevel1Controls(c); break;
+    case 2: buildLevel2Controls(c); break;
+    case 3: buildLevel3Controls(c); break;
+    case 4: buildLevel4Controls(c); break;
+    case 5: buildLevel5Controls(c); break;
+    case 6: buildLevel6Controls(c); break;
+  }
+}
+
+// --- Level 0: Sound Wave Basics ---
+function buildLevel0Controls(c){
+  levelState.medium='air';
+  levelState.freq=2;
+  levelState.particles=[];
+  levelState.mediaVisited=new Set(['air']);
+  c.innerHTML=`
+    <div class="ctrl-group"><span class="ctrl-label">选择介质</span>
+    <div class="ctrl-row">
+      <select id="c0-med"><option value="air">空气</option><option value="water">水</option><option value="tissue">软组织</option><option value="bone">骨骼</option></select>
+    </div></div>
+    <div class="ctrl-group"><span class="ctrl-label">频率 (MHz)</span>
+    <div class="ctrl-row"><input type="range" id="c0-freq" min="1" max="15" value="2" step="0.5"><span class="val" id="c0-fv">2.0</span></div></div>
+    <div class="ctrl-group" id="c0-info" style="font-size:12px;color:#94a3b8"></div>`;
+  document.getElementById('c0-med').onchange=e=>{
+    levelState.medium=e.target.value;
+    levelState.mediaVisited.add(e.target.value);
+    if(levelState.mediaVisited.size>=2)completeObj(0,1);
+    initParticles0();
+  };
+  document.getElementById('c0-freq').oninput=e=>{
+    levelState.freq=parseFloat(e.target.value);
+    document.getElementById('c0-fv').textContent=levelState.freq.toFixed(1);
+  };
+  initParticles0();
+  setTimeout(()=>completeObj(0,0),3000);
+}
+
+function initParticles0(){
+  const m=media[levelState.medium];
+  const rows=12,cols=40;
+  levelState.particles=[];
+  for(let r=0;r<rows;r++)for(let cl=0;cl<cols;cl++){
+    levelState.particles.push({bx:cl/(cols-1),by:0.2+r*0.05,phase:cl*0.3});
+  }
+  const info=document.getElementById('c0-info');
+  if(info){
+    const wl=(m.speed/(levelState.freq*1e6)*1000).toFixed(2);
+    info.innerHTML=`介质: ${m.name}<br>声速: ${m.speed} m/s<br>密度: ${m.density} kg/m³<br>声阻抗: ${m.impedance} MRayl<br>波长: ${wl} mm`;
+    if(m.impedance>0.001)completeObj(0,2);
+  }
+}
+
+function drawLevel0(){
+  const m=media[levelState.medium];
+  const wl=m.speed/(levelState.freq*1e6);
+  // update info
+  const info=document.getElementById('c0-info');
+  if(info){
+    const wlmm=(wl*1000).toFixed(2);
+    info.innerHTML=`介质: ${m.name}<br>声速: ${m.speed} m/s<br>密度: ${m.density} kg/m³<br>声阻抗: ${m.impedance} MRayl<br>波长: ${wlmm} mm`;
+  }
+  // draw particles
+  const speed=m.speed/1540;
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+  // title
+  ctx.fillStyle='#475569';ctx.font='14px sans-serif';
+  ctx.fillText('纵波传播可视化 — '+m.name,20,30);
+  // source
+  ctx.fillStyle='#6366f1';
+  ctx.fillRect(0,H*0.15,8,H*0.65);
+  ctx.fillStyle='#818cf8';ctx.font='11px sans-serif';
+  ctx.fillText('声源',2,H*0.13);
+  // particles
+  const amp=12;
+  levelState.particles.forEach(p=>{
+    const px=p.bx*W*0.9+40;
+    const py=p.by*H;
+    const displacement=Math.sin(time*speed*3-p.phase*levelState.freq*0.5)*amp;
+    const x=px+displacement;
+    const density=0.5+0.5*Math.sin(time*speed*3-p.phase*levelState.freq*0.5);
+    const alpha=0.3+density*0.7;
+    const radius=2+density*2;
+    ctx.beginPath();ctx.arc(x,py,radius,0,Math.PI*2);
+    ctx.fillStyle=m.color.replace(')',`,${alpha})`).replace('rgb','rgba');
+    if(m.color.startsWith('#')){
+      const r=parseInt(m.color.slice(1,3),16),g=parseInt(m.color.slice(3,5),16),b=parseInt(m.color.slice(5,7),16);
+      ctx.fillStyle=`rgba(${r},${g},${b},${alpha})`;
+    }
+    ctx.fill();
+  });
+  // wave overlay
+  ctx.strokeStyle='rgba(99,102,241,0.3)';ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let x=40;x<W;x+=2){
+    const y=H*0.5+Math.sin(time*speed*3-(x-40)*0.02*levelState.freq)*30;
+    x===40?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  // labels
+  ctx.fillStyle='#64748b';ctx.font='12px sans-serif';
+  ctx.fillText('疏',W*0.3,H*0.88);ctx.fillText('密',W*0.5,H*0.88);
+  ctx.fillText('传播方向 →',W*0.7,H*0.88);
+}
+
+// --- Level 1: Piezoelectric Effect ---
+function buildLevel1Controls(c){
+  levelState.mode='transmit';
+  levelState.voltage=0;
+  levelState.pressure=0;
+  levelState.crystalDeform=0;
+  levelState.signal=0;
+  levelState.txDone=false;
+  levelState.rxDone=false;
+  c.innerHTML=`
+    <div class="ctrl-group"><span class="ctrl-label">模式选择</span>
+    <div class="ctrl-row">
+      <button class="sm active" id="c1-tx">发射（逆压电）</button>
+      <button class="sm" id="c1-rx">接收（正压电）</button>
+    </div></div>
+    <div id="c1-tx-ctrl">
+      <div class="ctrl-group"><span class="ctrl-label">施加电压 (V)</span>
+      <div class="ctrl-row"><input type="range" id="c1-volt" min="-100" max="100" value="0"><span class="val" id="c1-vv">0</span></div></div>
+    </div>
+    <div id="c1-rx-ctrl" style="display:none">
+      <div class="ctrl-group"><span class="ctrl-label">施加压力 (kPa)</span>
+      <div class="ctrl-row"><input type="range" id="c1-press" min="0" max="100" value="0"><span class="val" id="c1-pv">0</span></div></div>
+    </div>
+    <div class="ctrl-group" style="font-size:12px;color:#94a3b8" id="c1-info">调节电压观察晶体形变</div>`;
+  document.getElementById('c1-tx').onclick=()=>{
+    levelState.mode='transmit';
+    document.getElementById('c1-tx').classList.add('active');
+    document.getElementById('c1-rx').classList.remove('active');
+    document.getElementById('c1-tx-ctrl').style.display='';
+    document.getElementById('c1-rx-ctrl').style.display='none';
+  };
+  document.getElementById('c1-rx').onclick=()=>{
+    levelState.mode='receive';
+    document.getElementById('c1-rx').classList.add('active');
+    document.getElementById('c1-tx').classList.remove('active');
+    document.getElementById('c1-tx-ctrl').style.display='none';
+    document.getElementById('c1-rx-ctrl').style.display='';
+  };
+  document.getElementById('c1-volt').oninput=e=>{
+    levelState.voltage=parseInt(e.target.value);
+    document.getElementById('c1-vv').textContent=levelState.voltage;
+    if(Math.abs(levelState.voltage)>50&&!levelState.txDone){levelState.txDone=true;completeObj(1,0);}
+  };
+  document.getElementById('c1-press').oninput=e=>{
+    levelState.pressure=parseInt(e.target.value);
+    document.getElementById('c1-pv').textContent=levelState.pressure;
+    if(levelState.pressure>50&&!levelState.rxDone){levelState.rxDone=true;completeObj(1,1);}
+    if(levelState.txDone&&levelState.rxDone)completeObj(1,2);
+  };
+}
+
+function drawLevel1(){
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+  const cx=W/2,cy=H*0.4;
+  const crystalW=120,crystalH=180;
+  let deform=0;
+  if(levelState.mode==='transmit'){
+    deform=levelState.voltage/100*15;
+    levelState.crystalDeform=deform;
+    levelState.signal=0;
+  }else{
+    deform=-levelState.pressure/100*10;
+    levelState.crystalDeform=deform;
+    levelState.signal=levelState.pressure/100;
+  }
+  // crystal body
+  ctx.save();
+  ctx.fillStyle='#4338ca';
+  ctx.strokeStyle='#818cf8';ctx.lineWidth=2;
+  const hw=crystalW/2+deform,hh=crystalH/2-Math.abs(deform)*0.5;
+  ctx.beginPath();
+  ctx.rect(cx-hw,cy-hh,hw*2,hh*2);
+  ctx.fill();ctx.stroke();
+  // crystal label
+  ctx.fillStyle='#e2e8f0';ctx.font='14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('PZT 压电晶体',cx,cy+5);
+  ctx.restore();
+  // electrodes
+  ctx.fillStyle='#fbbf24';
+  ctx.fillRect(cx-hw-8,cy-hh,8,hh*2);
+  ctx.fillRect(cx+hw,cy-hh,8,hh*2);
+  ctx.fillStyle='#92400e';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('电极',cx-hw-4,cy-hh-8);
+  ctx.fillText('电极',cx+hw+4,cy-hh-8);
+  if(levelState.mode==='transmit'){
+    // electric field arrows
+    const v=levelState.voltage/100;
+    if(Math.abs(v)>0.1){
+      ctx.strokeStyle=`rgba(251,191,36,${Math.abs(v)})`;ctx.lineWidth=2;
+      for(let i=-2;i<=2;i++){
+        const y=cy+i*25;
+        ctx.beginPath();ctx.moveTo(cx-hw+10,y);ctx.lineTo(cx+hw-10,y);ctx.stroke();
+        // arrowhead
+        const dir=v>0?1:-1;
+        ctx.beginPath();ctx.moveTo(cx+dir*(hw-20),y-5);ctx.lineTo(cx+dir*(hw-10),y);ctx.lineTo(cx+dir*(hw-20),y+5);ctx.stroke();
+      }
+      ctx.fillStyle='#fbbf24';ctx.font='12px sans-serif';
+      ctx.fillText('电场 E',cx,cy-hh-25);
+    }
+    // emitted wave
+    if(Math.abs(v)>0.3){
+      const waveAmp=Math.abs(v)*20;
+      ctx.strokeStyle=`rgba(99,102,241,${Math.abs(v)*0.6})`;ctx.lineWidth=2;
+      ctx.beginPath();
+      for(let y=cy+hh+10;y<H-20;y+=2){
+        const x=cx+Math.sin((y-cy)*0.05+time*5)*waveAmp;
+        y===cy+hh+10?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+      ctx.fillStyle='#818cf8';ctx.font='11px sans-serif';
+      ctx.fillText('超声波发射 ↓',cx,H-10);
+    }
+  }else{
+    // pressure arrows
+    const p=levelState.pressure/100;
+    if(p>0.1){
+      ctx.strokeStyle=`rgba(244,114,182,${p})`;ctx.lineWidth=2;
+      for(let i=-2;i<=2;i++){
+        const y=cy+i*25;
+        ctx.beginPath();ctx.moveTo(cx-hw-30,y);ctx.lineTo(cx-hw+5,y);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(cx+hw+30,y);ctx.lineTo(cx+hw-5,y);ctx.stroke();
+        // arrowheads inward
+        ctx.beginPath();ctx.moveTo(cx-hw-5,y-4);ctx.lineTo(cx-hw+5,y);ctx.lineTo(cx-hw-5,y+4);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(cx+hw+5,y-4);ctx.lineTo(cx+hw-5,y);ctx.lineTo(cx+hw+5,y+4);ctx.stroke();
+      }
+      ctx.fillStyle='#f472b6';ctx.font='12px sans-serif';
+      ctx.fillText('机械压力',cx,cy-hh-25);
+    }
+    // output signal
+    if(p>0.1){
+      ctx.strokeStyle='#34d399';ctx.lineWidth=2;
+      const sigY=H*0.78;
+      ctx.beginPath();
+      for(let x=cx-150;x<cx+150;x+=2){
+        const y=sigY+Math.sin((x-cx)*0.08)*p*25*Math.sin(time*4);
+        x===cx-150?ctx.moveTo(x,y):ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+      ctx.fillStyle='#34d399';ctx.font='12px sans-serif';
+      ctx.fillText('电信号输出',cx,sigY+45);
+    }
+  }
+  // title
+  ctx.fillStyle='#475569';ctx.font='14px sans-serif';ctx.textAlign='left';
+  ctx.fillText(levelState.mode==='transmit'?'逆压电效应：电压→形变→超声波':'正压电效应：压力→形变→电信号',20,30);
+}
+
+// --- Level 2: Ultrasound Probes ---
+function buildLevel2Controls(c){
+  levelState.probeType='linear';
+  levelState.focus=0.5;
+  levelState.aperture=0.6;
+  levelState.probesVisited=new Set(['linear']);
+  levelState.focusChanged=false;
+  c.innerHTML=`
+    <div class="ctrl-group"><span class="ctrl-label">探头类型</span>
+    <div class="ctrl-row">
+      <button class="sm active" id="c2-lin">线阵</button>
+      <button class="sm" id="c2-conv">凸阵</button>
+      <button class="sm" id="c2-phase">相控阵</button>
+    </div></div>
+    <div class="ctrl-group"><span class="ctrl-label">焦距</span>
+    <div class="ctrl-row"><input type="range" id="c2-focus" min="0.2" max="0.9" value="0.5" step="0.05"><span class="val" id="c2-fv">50%</span></div></div>
+    <div class="ctrl-group"><span class="ctrl-label">孔径</span>
+    <div class="ctrl-row"><input type="range" id="c2-aper" min="0.2" max="1" value="0.6" step="0.05"><span class="val" id="c2-av">60%</span></div></div>
+    <div class="ctrl-group" style="font-size:12px;color:#94a3b8" id="c2-info"></div>`;
+  const btns=['c2-lin','c2-conv','c2-phase'];
+  const types=['linear','convex','phased'];
+  btns.forEach((id,i)=>{
+    document.getElementById(id).onclick=()=>{
+      levelState.probeType=types[i];
+      levelState.probesVisited.add(types[i]);
+      btns.forEach(b=>document.getElementById(b).classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      if(levelState.probesVisited.size>=3)completeObj(2,0);
+    };
+  });
+  document.getElementById('c2-focus').oninput=e=>{
+    levelState.focus=parseFloat(e.target.value);
+    document.getElementById('c2-fv').textContent=Math.round(levelState.focus*100)+'%';
+    if(!levelState.focusChanged){levelState.focusChanged=true;completeObj(2,1);}
+  };
+  document.getElementById('c2-aper').oninput=e=>{
+    levelState.aperture=parseFloat(e.target.value);
+    document.getElementById('c2-av').textContent=Math.round(levelState.aperture*100)+'%';
+  };
+}
+
+function drawLevel2(){
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+  const pt=levelState.probeType;
+  const focusY=H*levelState.focus;
+  const aper=levelState.aperture;
+  const probeW=W*0.4*aper;
+  const cx=W/2;
+  // probe body
+  ctx.fillStyle='#334155';ctx.strokeStyle='#6366f1';ctx.lineWidth=2;
+  if(pt==='linear'){
+    ctx.fillRect(cx-probeW/2,20,probeW,30);ctx.strokeRect(cx-probeW/2,20,probeW,30);
+    // elements
+    const nElem=Math.floor(probeW/6);
+    ctx.fillStyle='#818cf8';
+    for(let i=0;i<nElem;i++){
+      ctx.fillRect(cx-probeW/2+i*6+1,25,4,20);
+    }
+  }else if(pt==='convex'){
+    ctx.beginPath();
+    ctx.arc(cx,20,probeW/2,0,Math.PI);
+    ctx.fill();ctx.stroke();
+    ctx.fillStyle='#818cf8';
+    for(let a=0;a<Math.PI;a+=0.08){
+      const x=cx+Math.cos(a)*(probeW/2-5);
+      const y=20+Math.sin(a)*(probeW/2-5);
+      ctx.fillRect(x-2,y-2,4,4);
+    }
+  }else{
+    ctx.fillRect(cx-30,20,60,30);ctx.strokeRect(cx-30,20,60,30);
+    ctx.fillStyle='#818cf8';
+    for(let i=0;i<10;i++)ctx.fillRect(cx-28+i*6,25,4,20);
+  }
+  // beam shape
+  const nearFieldEnd=focusY;
+  ctx.save();ctx.globalAlpha=0.15;
+  if(pt==='linear'){
+    // rectangular beam
+    const bw=probeW*0.8;
+    ctx.fillStyle='#6366f1';
+    ctx.beginPath();
+    ctx.moveTo(cx-bw/2,50);
+    ctx.lineTo(cx-bw*0.3,nearFieldEnd);
+    ctx.lineTo(cx-bw*0.5,H);
+    ctx.lineTo(cx+bw*0.5,H);
+    ctx.lineTo(cx+bw*0.3,nearFieldEnd);
+    ctx.lineTo(cx+bw/2,50);
+    ctx.closePath();ctx.fill();
+  }else if(pt==='convex'){
+    const angle=Math.PI*0.6;
+    ctx.fillStyle='#6366f1';
+    ctx.beginPath();
+    ctx.moveTo(cx-probeW*0.4,50);
+    ctx.lineTo(cx-probeW*0.8,H);
+    ctx.lineTo(cx+probeW*0.8,H);
+    ctx.lineTo(cx+probeW*0.4,50);
+    ctx.closePath();ctx.fill();
+  }else{
+    ctx.fillStyle='#6366f1';
+    ctx.beginPath();
+    ctx.moveTo(cx-25,50);
+    ctx.lineTo(cx-probeW*0.6,H);
+    ctx.lineTo(cx+probeW*0.6,H);
+    ctx.lineTo(cx+25,50);
+    ctx.closePath();ctx.fill();
+  }
+  ctx.restore();
+  // focus point
+  ctx.beginPath();ctx.arc(cx,nearFieldEnd,6,0,Math.PI*2);
+  ctx.fillStyle='#f59e0b';ctx.fill();
+  ctx.fillStyle='#f59e0b';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('焦点',cx+20,nearFieldEnd+4);
+  // near/far field line
+  ctx.setLineDash([5,5]);ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(cx-probeW,nearFieldEnd);ctx.lineTo(cx+probeW,nearFieldEnd);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';
+  ctx.fillText('← 近场（菲涅尔区）',cx,nearFieldEnd-10);
+  ctx.fillText('远场（夫琅禾费区）→',cx,nearFieldEnd+20);
+  // animated scan lines
+  const scanPhase=time*2%Math.PI*2;
+  ctx.strokeStyle='rgba(99,102,241,0.5)';ctx.lineWidth=1;
+  for(let i=0;i<5;i++){
+    const phase=scanPhase+i*0.5;
+    const progress=(Math.sin(phase)*0.5+0.5);
+    const y=50+progress*(H-70);
+    if(pt==='linear'){
+      const bw=probeW*0.8;
+      const w=bw*(1-progress*0.4);
+      ctx.beginPath();ctx.moveTo(cx-w/2,y);ctx.lineTo(cx+w/2,y);ctx.stroke();
+    }else{
+      const w=probeW*(0.3+progress*0.7);
+      ctx.beginPath();ctx.moveTo(cx-w/2,y);ctx.lineTo(cx+w/2,y);ctx.stroke();
+    }
+  }
+  // probe type label
+  const names={linear:'线阵探头',convex:'凸阵探头',phased:'相控阵探头'};
+  ctx.fillStyle='#475569';ctx.font='14px sans-serif';ctx.textAlign='left';
+  ctx.fillText(names[pt]+' — 声束形状可视化',20,H-20);
+  // check near/far obj
+  if(levelState.focusChanged)completeObj(2,2);
+  // info
+  const info=document.getElementById('c2-info');
+  if(info){
+    const descs={linear:'矩形视野，适合浅表血管、甲状腺',convex:'扇形视野，适合腹部、产科',phased:'小窗口大视野，适合心脏'};
+    info.textContent=descs[pt];
+  }
+}
+
+// --- Level 3: Reflection & Attenuation ---
+function buildLevel3Controls(c){
+  levelState.tgc=[0.5,0.6,0.7,0.8];
+  levelState.layers=[
+    {name:'皮肤',z:1.7,thick:0.08,color:'#d4a574',atten:0.5},
+    {name:'脂肪',z:1.38,thick:0.15,color:'#fbbf24',atten:0.6},
+    {name:'肌肉',z:1.7,thick:0.3,color:'#ef4444',atten:1.0},
+    {name:'骨骼',z:7.75,thick:0.15,color:'#e2e8f0',atten:5.0}
+  ];
+  levelState.reflSeen=false;
+  levelState.attenSeen=false;
+  levelState.tgcAdjusted=false;
+  c.innerHTML=`
+    <div class="ctrl-group"><span class="ctrl-label">组织层（从浅到深）</span>
+    <div style="font-size:12px;color:#94a3b8;margin-bottom:8px">皮肤→脂肪→肌肉→骨骼</div></div>
+    <div class="ctrl-group"><span class="ctrl-label">TGC 补偿（时间增益）</span>
+    <div class="ctrl-row"><span style="font-size:11px;color:#64748b;width:40px">浅层</span><input type="range" id="c3-tgc0" min="0" max="1" value="0.5" step="0.05"><span class="val" id="c3-tv0">50%</span></div>
+    <div class="ctrl-row"><span style="font-size:11px;color:#64748b;width:40px">中浅</span><input type="range" id="c3-tgc1" min="0" max="1" value="0.6" step="0.05"><span class="val" id="c3-tv1">60%</span></div>
+    <div class="ctrl-row"><span style="font-size:11px;color:#64748b;width:40px">中深</span><input type="range" id="c3-tgc2" min="0" max="1" value="0.7" step="0.05"><span class="val" id="c3-tv2">70%</span></div>
+    <div class="ctrl-row"><span style="font-size:11px;color:#64748b;width:40px">深层</span><input type="range" id="c3-tgc3" min="0" max="1" value="0.8" step="0.05"><span class="val" id="c3-tv3">80%</span></div>
+    </div>
+    <div class="ctrl-group" style="font-size:12px;color:#94a3b8" id="c3-info">观察超声波穿过多层组织的反射和衰减</div>`;
+  for(let i=0;i<4;i++){
+    document.getElementById('c3-tgc'+i).oninput=(e)=>{
+      levelState.tgc[i]=parseFloat(e.target.value);
+      document.getElementById('c3-tv'+i).textContent=Math.round(levelState.tgc[i]*100)+'%';
+      if(!levelState.tgcAdjusted){levelState.tgcAdjusted=true;completeObj(3,2);}
+    };
+  }
+  setTimeout(()=>{completeObj(3,0);},2000);
+  setTimeout(()=>{completeObj(3,1);},4000);
+}
+
+function drawLevel3(){
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+  const layers=levelState.layers;
+  const startY=60;const totalH=H-80;
+  // draw layers
+  let y=startY;
+  const layerYs=[startY];
+  layers.forEach((l,i)=>{
+    const h=l.thick*totalH/0.68;
+    ctx.fillStyle=l.color+'33';
+    ctx.fillRect(0,y,W,h);
+    ctx.strokeStyle=l.color+'88';ctx.lineWidth=1;
+    ctx.strokeRect(0,y,W,h);
+    ctx.fillStyle=l.color;ctx.font='12px sans-serif';ctx.textAlign='right';
+    ctx.fillText(l.name+' (Z='+l.z+')',W-10,y+h/2+4);
+    y+=h;
+    layerYs.push(y);
+  });
+  // probe
+  ctx.fillStyle='#334155';ctx.fillRect(W/2-30,10,60,45);
+  ctx.fillStyle='#818cf8';ctx.fillRect(W/2-25,15,50,35);
+  ctx.fillStyle='#e2e8f0';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText('探头',W/2,35);
+  // transmitted pulse animation
+  const pulseSpeed=150;
+  const pulseY=startY+(time*pulseSpeed)%(totalH+100);
+  // draw pulse going down
+  if(pulseY<y){
+    ctx.strokeStyle='#6366f1';ctx.lineWidth=2;
+    let amplitude=1;
+    // calculate attenuation
+    for(let i=0;i<layers.length;i++){
+      if(pulseY>layerYs[i+1]){
+        amplitude*=Math.exp(-layers[i].atten*layers[i].thick*2);
+      }
+    }
+    // apply TGC
+    const depthRatio=(pulseY-startY)/totalH;
+    const tgcIdx=Math.min(3,Math.floor(depthRatio*4));
+    const tgcGain=levelState.tgc[tgcIdx];
+    const displayAmp=amplitude*tgcGain;
+    ctx.strokeStyle=`rgba(99,102,241,${Math.min(1,displayAmp)})`;
+    ctx.beginPath();
+    for(let x=W/2-40;x<W/2+40;x+=2){
+      const vy=pulseY+Math.sin((x-W/2)*0.3)*5*displayAmp;
+      x===W/2-40?ctx.moveTo(x,vy):ctx.lineTo(x,vy);
+    }
+    ctx.stroke();
+  }
+  // reflection echoes at interfaces
+  for(let i=0;i<layers.length-1;i++){
+    const intY=layerYs[i+1];
+    const z1=layers[i].z,z2=layers[i+1].z;
+    const R=Math.pow((z2-z1)/(z2+z1),2);
+    // echo animation
+    const echoPhase=(time*3+i*1.5)%(Math.PI*2);
+    const echoAmp=R*30;
+    ctx.strokeStyle=`rgba(52,211,153,${R*2})`;ctx.lineWidth=2;
+    ctx.beginPath();
+    for(let x=W/2-60;x<W/2+60;x+=2){
+      const vy=intY+Math.sin((x-W/2)*0.2+echoPhase)*echoAmp;
+      x===W/2-60?ctx.moveTo(x,vy):ctx.lineTo(x,vy);
+    }
+    ctx.stroke();
+    // reflection coefficient label
+    ctx.fillStyle='#34d399';ctx.font='11px sans-serif';ctx.textAlign='left';
+    ctx.fillText('R='+R.toFixed(3),20,intY+4);
+  }
+  // A-scan display on right side
+  const ascanX=W*0.75;
+  ctx.strokeStyle='#334155';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(ascanX,startY);ctx.lineTo(ascanX,y);ctx.stroke();
+  ctx.fillStyle='#64748b';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('A扫描（回波幅度）',ascanX+50,startY-5);
+  // draw A-scan echoes
+  let cumAtten=1;
+  for(let i=0;i<layers.length-1;i++){
+    const intY=layerYs[i+1];
+    cumAtten*=Math.exp(-layers[i].atten*layers[i].thick);
+    const z1=layers[i].z,z2=layers[i+1].z;
+    const R=Math.pow((z2-z1)/(z2+z1),2);
+    const echoH=R*cumAtten*80;
+    const tgcIdx=Math.min(3,Math.floor((intY-startY)/totalH*4));
+    const compensated=echoH*levelState.tgc[tgcIdx]*2;
+    // raw echo
+    ctx.fillStyle='rgba(99,102,241,0.5)';
+    ctx.fillRect(ascanX,intY-2,echoH,4);
+    // compensated echo
+    ctx.fillStyle='#34d399';
+    ctx.fillRect(ascanX,intY+4,compensated,4);
+  }
+  ctx.fillStyle='#6366f1';ctx.font='10px sans-serif';
+  ctx.fillText('原始',ascanX+60,y+15);
+  ctx.fillStyle='#34d399';
+  ctx.fillText('TGC补偿后',ascanX+60,y+28);
+  ctx.fillStyle='#475569';ctx.font='14px sans-serif';ctx.textAlign='left';
+  ctx.fillText('超声反射与衰减 — TGC补偿',20,30);
+}
+
+// --- Level 4: B-Mode Imaging ---
+function buildLevel4Controls(c){
+  levelState.probeX=0.5;
+  levelState.scanLines=[];
+  levelState.bImage=null;
+  levelState.scanning=false;
+  levelState.scanDone=false;
+  levelState.aScanSeen=false;
+  levelState.structureFound=false;
+  // virtual tissue with structures
+  levelState.tissue=[];
+  // create tissue map
+  const tw=200,th=150;
+  levelState.tw=tw;levelState.th=th;
+  levelState.tissue=new Array(tw*th).fill(0);
+  // add some structures: cyst (dark), solid mass (bright), layers
+  for(let y=0;y<th;y++)for(let x=0;x<tw;x++){
+    let v=30+Math.random()*20; // base tissue
+    // skin layer
+    if(y<10)v=60+Math.random()*10;
+    // fat layer
+    if(y>=10&&y<30)v=20+Math.random()*15;
+    // muscle
+    if(y>=30&&y<100)v=40+Math.random()*25;
+    // cyst (anechoic)
+    const dx1=x-60,dy1=y-65;
+    if(dx1*dx1+dy1*dy1<400)v=5+Math.random()*5;
+    // solid mass (hyperechoic)
+    const dx2=x-140,dy2=y-70;
+    if(dx2*dx2+dy2*dy2<300)v=80+Math.random()*20;
+    // bone (very bright)
+    if(y>=100)v=90+Math.random()*10;
+    levelState.tissue[y*tw+x]=Math.min(255,Math.max(0,v));
+  }
+  c.innerHTML=`
+    <div class="ctrl-group"><span class="ctrl-label">探头位置</span>
+    <div class="ctrl-row"><input type="range" id="c4-pos" min="0" max="1" value="0.5" step="0.005"><span class="val" id="c4-pv">50%</span></div></div>
+    <div class="ctrl-group">
+    <button id="c4-scan" style="width:100%">自动扫描</button>
+    </div>
+    <div class="ctrl-group" style="font-size:12px;color:#94a3b8" id="c4-info">拖动探头位置查看A扫描，点击自动扫描构建B模式图像</div>`;
+  document.getElementById('c4-pos').oninput=e=>{
+    levelState.probeX=parseFloat(e.target.value);
+    document.getElementById('c4-pv').textContent=Math.round(levelState.probeX*100)+'%';
+    if(!levelState.aScanSeen){levelState.aScanSeen=true;completeObj(4,0);}
+  };
+  document.getElementById('c4-scan').onclick=()=>{
+    if(levelState.scanning)return;
+    levelState.scanning=true;
+    levelState.scanLines=[];
+    levelState.scanProgress=0;
+    document.getElementById('c4-scan').textContent='扫描中...';
+  };
+}
+
+function drawLevel4(){
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+  const tw=levelState.tw,th=levelState.th;
+  const tissueW=W*0.45,tissueH=H*0.7;
+  const tissueX=20,tissueY=60;
+  const bImgX=W*0.52,bImgY=60,bImgW=W*0.44,bImgH=H*0.7;
+  // draw tissue cross-section
+  ctx.fillStyle='#1e293b';ctx.fillRect(tissueX,tissueY,tissueW,tissueH);
+  const cellW=tissueW/tw,cellH=tissueH/th;
+  for(let y=0;y<th;y+=2)for(let x=0;x<tw;x+=2){
+    const v=levelState.tissue[y*tw+x];
+    const g=Math.floor(v*2);
+    ctx.fillStyle=`rgb(${g},${Math.floor(g*0.8)},${Math.floor(g*0.6)})`;
+    ctx.fillRect(tissueX+x*cellW,tissueY+y*cellH,cellW*2,cellH*2);
+  }
+  ctx.strokeStyle='#334155';ctx.lineWidth=1;
+  ctx.strokeRect(tissueX,tissueY,tissueW,tissueH);
+  ctx.fillStyle='#64748b';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('组织截面',tissueX+tissueW/2,tissueY-8);
+  // labels for structures
+  ctx.fillStyle='#60a5fa';ctx.font='10px sans-serif';
+  ctx.fillText('囊肿',tissueX+60*cellW,tissueY+85*cellH);
+  ctx.fillText('实性肿块',tissueX+140*cellW,tissueY+85*cellH);
+  // probe on tissue
+  const px=tissueX+levelState.probeX*tissueW;
+  ctx.fillStyle='#6366f1';ctx.fillRect(px-10,tissueY-15,20,15);
+  ctx.fillStyle='#818cf8';ctx.font='10px sans-serif';
+  ctx.fillText('▼',px,tissueY-2);
+  // A-scan line on tissue
+  ctx.strokeStyle='rgba(99,102,241,0.5)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(px,tissueY);ctx.lineTo(px,tissueY+tissueH);ctx.stroke();
+  ctx.setLineDash([]);
+  // scanning animation
+  if(levelState.scanning){
+    levelState.scanProgress+=0.003;
+    if(levelState.scanProgress>=1){
+      levelState.scanning=false;
+      levelState.scanDone=true;
+      levelState.scanProgress=1;
+      completeObj(4,1);
+      completeObj(4,2);
+      const btn=document.getElementById('c4-scan');
+      if(btn)btn.textContent='扫描完成';
+    }
+    // collect scan line
+    const scanX=Math.floor(levelState.scanProgress*tw);
+    if(!levelState.scanLines[scanX]){
+      const line=[];
+      for(let y=0;y<th;y++)line.push(levelState.tissue[y*tw+Math.min(scanX,tw-1)]);
+      levelState.scanLines[scanX]=line;
+    }
+    // show scanning probe position
+    const spx=tissueX+levelState.scanProgress*tissueW;
+    ctx.fillStyle='#34d399';ctx.fillRect(spx-2,tissueY-15,4,15);
+  }
+  // B-mode image area
+  ctx.fillStyle='#000';ctx.fillRect(bImgX,bImgY,bImgW,bImgH);
+  ctx.strokeStyle='#334155';ctx.strokeRect(bImgX,bImgY,bImgW,bImgH);
+  ctx.fillStyle='#64748b';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('B模式图像',bImgX+bImgW/2,bImgY-8);
+  // render collected scan lines
+  const maxLines=levelState.scanLines.length;
+  for(let x=0;x<maxLines;x++){
+    const line=levelState.scanLines[x];
+    if(!line)continue;
+    const bx=bImgX+(x/tw)*bImgW;
+    for(let y=0;y<th;y+=2){
+      const v=line[y];
+      const g=Math.floor(v*2.5);
+      ctx.fillStyle=`rgb(${g},${g},${g})`;
+      ctx.fillRect(bx,bImgY+(y/th)*bImgH,(bImgW/tw)+1,(bImgH/th)*2+1);
+    }
+  }
+  // A-scan waveform at bottom
+  const asY=tissueY+tissueH+20;
+  const col=Math.floor(levelState.probeX*tw);
+  ctx.strokeStyle='#6366f1';ctx.lineWidth=1;
+  ctx.beginPath();
+  for(let y=0;y<th;y++){
+    const v=levelState.tissue[y*tw+Math.min(col,tw-1)];
+    const ax=tissueX+(v/255)*tissueW*0.5;
+    const ay=asY+(y/th)*40;
+    y===0?ctx.moveTo(ax,ay):ctx.lineTo(ax,ay);
+  }
+  ctx.stroke();
+  ctx.fillStyle='#6366f1';ctx.font='10px sans-serif';ctx.textAlign='left';
+  ctx.fillText('A扫描波形',tissueX,asY-5);
+  ctx.fillStyle='#475569';ctx.font='14px sans-serif';
+  ctx.fillText('B模式成像 — 从A扫描到二维图像',20,30);
+}
+
+// --- Level 5: Doppler Ultrasound ---
+function buildLevel5Controls(c){
+  levelState.angle=45;
+  levelState.vesselType='artery';
+  levelState.flowSpeed=0.5;
+  levelState.measured=false;
+  levelState.angleCorrected=false;
+  levelState.veinSeen=false;
+  levelState.rbcs=[];
+  // init red blood cells
+  for(let i=0;i<60;i++){
+    levelState.rbcs.push({x:Math.random(),y:0.3+Math.random()*0.4,speed:0.3+Math.random()*0.4,size:2+Math.random()*2});
+  }
+  c.innerHTML=`
+    <div class="ctrl-group"><span class="ctrl-label">血管类型</span>
+    <div class="ctrl-row">
+      <button class="sm active" id="c5-art">动脉</button>
+      <button class="sm" id="c5-vein">静脉</button>
+    </div></div>
+    <div class="ctrl-group"><span class="ctrl-label">探头角度 θ (°)</span>
+    <div class="ctrl-row"><input type="range" id="c5-angle" min="0" max="80" value="45"><span class="val" id="c5-av">45°</span></div></div>
+    <div class="ctrl-group"><span class="ctrl-label">血流速度</span>
+    <div class="ctrl-row"><input type="range" id="c5-speed" min="0.1" max="1" value="0.5" step="0.05"><span class="val" id="c5-sv">50%</span></div></div>
+    <div class="ctrl-group" style="font-size:12px;color:#94a3b8" id="c5-info"></div>`;
+  document.getElementById('c5-art').onclick=()=>{
+    levelState.vesselType='artery';
+    document.getElementById('c5-art').classList.add('active');
+    document.getElementById('c5-vein').classList.remove('active');
+  };
+  document.getElementById('c5-vein').onclick=()=>{
+    levelState.vesselType='vein';
+    document.getElementById('c5-vein').classList.add('active');
+    document.getElementById('c5-art').classList.remove('active');
+    if(!levelState.veinSeen){levelState.veinSeen=true;}
+    if(levelState.measured&&levelState.veinSeen)completeObj(5,2);
+  };
+  document.getElementById('c5-angle').oninput=e=>{
+    levelState.angle=parseInt(e.target.value);
+    document.getElementById('c5-av').textContent=levelState.angle+'°';
+    if(!levelState.angleCorrected&&levelState.angle<60){levelState.angleCorrected=true;completeObj(5,1);}
+  };
+  document.getElementById('c5-speed').oninput=e=>{
+    levelState.flowSpeed=parseFloat(e.target.value);
+    document.getElementById('c5-sv').textContent=Math.round(levelState.flowSpeed*100)+'%';
+    if(!levelState.measured){levelState.measured=true;completeObj(5,0);}
+  };
+}
+
+function drawLevel5(){
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+  const isArtery=levelState.vesselType==='artery';
+  const angle=levelState.angle*Math.PI/180;
+  const speed=levelState.flowSpeed;
+  const vesselY=H*0.35,vesselH=60;
+  // vessel
+  ctx.fillStyle=isArtery?'rgba(239,68,68,0.15)':'rgba(59,130,246,0.15)';
+  ctx.fillRect(0,vesselY,W*0.7,vesselH);
+  ctx.strokeStyle=isArtery?'#ef4444':'#3b82f6';ctx.lineWidth=2;
+  ctx.strokeRect(0,vesselY,W*0.7,vesselH);
+  // vessel walls
+  ctx.fillStyle=isArtery?'#991b1b':'#1e3a5f';
+  ctx.fillRect(0,vesselY-3,W*0.7,3);
+  ctx.fillRect(0,vesselY+vesselH,W*0.7,3);
+  ctx.fillStyle='#94a3b8';ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText(isArtery?'动脉血管':'静脉血管',10,vesselY-10);
+  // flow direction arrow
+  ctx.fillStyle=isArtery?'#ef4444':'#3b82f6';
+  ctx.font='12px sans-serif';
+  ctx.fillText(isArtery?'血流方向 →':'← 血流方向',W*0.3,vesselY+vesselH+20);
+  // red blood cells
+  const dir=isArtery?1:-1;
+  levelState.rbcs.forEach(rbc=>{
+    rbc.x+=dir*rbc.speed*speed*0.005;
+    if(rbc.x>1.1)rbc.x=-0.1;
+    if(rbc.x<-0.1)rbc.x=1.1;
+    const rx=rbc.x*W*0.7;
+    const ry=vesselY+rbc.y*vesselH;
+    // parabolic flow profile
+    const relY=(rbc.y-0.5)*2;
+    const flowFactor=1-relY*relY;
+    ctx.beginPath();ctx.ellipse(rx,ry,rbc.size*1.5,rbc.size,0,0,Math.PI*2);
+    ctx.fillStyle=isArtery?`rgba(239,68,68,${0.5+flowFactor*0.5})`:`rgba(59,130,246,${0.5+flowFactor*0.5})`;
+    ctx.fill();
+  });
+  // probe
+  const probeX=W*0.35,probeY=vesselY-80;
+  ctx.save();
+  ctx.translate(probeX,probeY);
+  ctx.rotate(angle-Math.PI/2);
+  ctx.fillStyle='#334155';ctx.fillRect(-15,-25,30,50);
+  ctx.fillStyle='#818cf8';ctx.fillRect(-12,-20,24,40);
+  ctx.restore();
+  // beam line
+  ctx.strokeStyle='rgba(99,102,241,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(probeX,probeY);
+  ctx.lineTo(probeX+Math.sin(angle)*120,probeY+Math.cos(angle)*120);
+  ctx.stroke();ctx.setLineDash([]);
+  // angle arc
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;
+  ctx.beginPath();ctx.arc(probeX,vesselY,30,Math.PI*1.5,Math.PI*1.5+angle);ctx.stroke();
+  ctx.fillStyle='#f59e0b';ctx.font='12px sans-serif';ctx.textAlign='left';
+  ctx.fillText('θ='+levelState.angle+'°',probeX+35,vesselY-15);
+  // Doppler calculation
+  const f0=5; // MHz
+  const c=1540; // m/s
+  const v=speed*1.5; // m/s (max 1.5 m/s)
+  const cosTheta=Math.cos(angle);
+  const deltaF=2*f0*1e6*v*cosTheta/c;
+  const measuredV=deltaF*c/(2*f0*1e6*cosTheta);
+  // Color Doppler overlay
+  const cdY=vesselY,cdH=vesselH;
+  for(let x=0;x<W*0.7;x+=4){
+    for(let y=0;y<cdH;y+=4){
+      const relY2=((y/cdH)-0.5)*2;
+      const flowV=speed*(1-relY2*relY2);
+      if(flowV>0.05){
+        const intensity=flowV*0.6;
+        if(isArtery){
+          ctx.fillStyle=`rgba(255,${Math.floor(100-flowV*100)},0,${intensity})`;
+        }else{
+          ctx.fillStyle=`rgba(0,${Math.floor(100-flowV*100)},255,${intensity})`;
+        }
+        ctx.fillRect(x,cdY+y,4,4);
+      }
+    }
+  }
+  // Spectral Doppler display
+  const specY=H*0.6,specH=H*0.32,specW=W*0.7;
+  ctx.fillStyle='#000';ctx.fillRect(20,specY,specW,specH);
+  ctx.strokeStyle='#334155';ctx.strokeRect(20,specY,specW,specH);
+  // baseline
+  const baseY=specY+specH*0.5;
+  ctx.strokeStyle='#334155';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(20,baseY);ctx.lineTo(20+specW,baseY);ctx.stroke();
+  // spectral waveform
+  ctx.strokeStyle=isArtery?'#ef4444':'#3b82f6';ctx.lineWidth=2;
+  ctx.beginPath();
+  for(let x=0;x<specW;x+=2){
+    const t=(x/specW)*4+time*2;
+    let sv;
+    if(isArtery){
+      // pulsatile flow
+      const cardiac=Math.pow(Math.sin(t*Math.PI),3)*0.7+0.3;
+      sv=cardiac*speed*cosTheta;
+    }else{
+      // continuous flow with slight variation
+      sv=speed*cosTheta*(0.3+0.1*Math.sin(t*2));
+    }
+    const sy=baseY-sv*specH*0.4*(isArtery?1:-1);
+    x===0?ctx.moveTo(20+x,sy):ctx.lineTo(20+x,sy);
+  }
+  ctx.stroke();
+  ctx.fillStyle='#64748b';ctx.font='10px sans-serif';ctx.textAlign='left';
+  ctx.fillText('频谱多普勒',25,specY+12);
+  ctx.fillText('时间 →',20+specW-40,baseY+15);
+  ctx.textAlign='right';
+  ctx.fillText('+V',18,specY+15);
+  ctx.fillText('-V',18,specY+specH-5);
+  // info
+  const info=document.getElementById('c5-info');
+  if(info){
+    info.innerHTML=`频移: ${(deltaF/1000).toFixed(1)} kHz<br>测量速度: ${measuredV.toFixed(2)} m/s<br>实际速度: ${v.toFixed(2)} m/s<br>cos(${levelState.angle}°)=${cosTheta.toFixed(3)}`;
+  }
+  ctx.fillStyle='#475569';ctx.font='14px sans-serif';ctx.textAlign='left';
+  ctx.fillText('多普勒超声 — 血流速度测量',20,30);
+}
+
+// --- Level 6: Advanced Imaging ---
+function buildLevel6Controls(c){
+  levelState.mode='fundamental';
+  levelState.modesVisited=new Set(['fundamental']);
+  levelState.harmonicSeen=false;
+  levelState.elastSeen=false;
+  levelState.contrastSeen=false;
+  // generate tissue image data
+  levelState.imgData=[];
+  for(let y=0;y<100;y++)for(let x=0;x<150;x++){
+    let v=40+Math.random()*30;
+    if(y<8)v=55+Math.random()*10;
+    if(y>=8&&y<25)v=25+Math.random()*15;
+    const dx1=x-50,dy1=y-55;
+    if(dx1*dx1+dy1*dy1<250)v=8+Math.random()*8;
+    const dx2=x-110,dy2=y-50;
+    if(dx2*dx2+dy2*dy2<200)v=70+Math.random()*20;
+    if(y>=85)v=85+Math.random()*10;
+    levelState.imgData.push(Math.min(255,Math.max(0,v)));
+  }
+  c.innerHTML=`
+    <div class="ctrl-group"><span class="ctrl-label">成像模式</span>
+    <div class="ctrl-row" style="flex-direction:column;gap:4px">
+      <button class="sm active" id="c6-fund" style="width:100%">基波成像</button>
+      <button class="sm" id="c6-harm" style="width:100%">谐波成像</button>
+      <button class="sm" id="c6-elast" style="width:100%">弹性成像</button>
+      <button class="sm" id="c6-contrast" style="width:100%">造影超声</button>
+    </div></div>
+    <div class="ctrl-group" style="font-size:12px;color:#94a3b8" id="c6-info">切换不同成像模式，观察图像质量差异</div>`;
+  const modes=['fundamental','harmonic','elastography','contrast'];
+  const ids=['c6-fund','c6-harm','c6-elast','c6-contrast'];
+  ids.forEach((id,i)=>{
+    document.getElementById(id).onclick=()=>{
+      levelState.mode=modes[i];
+      levelState.modesVisited.add(modes[i]);
+      ids.forEach(b=>document.getElementById(b).classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      if(modes[i]==='harmonic'&&!levelState.harmonicSeen){levelState.harmonicSeen=true;completeObj(6,0);}
+      if(modes[i]==='elastography'&&!levelState.elastSeen){levelState.elastSeen=true;completeObj(6,1);}
+      if(modes[i]==='contrast'&&!levelState.contrastSeen){levelState.contrastSeen=true;completeObj(6,2);}
+    };
+  });
+}
+
+function drawLevel6(){
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+  const mode=levelState.mode;
+  const imgW=150,imgH=100;
+  const dispW=W*0.85,dispH=H*0.75;
+  const dispX=(W-dispW)/2,dispY=50;
+  ctx.fillStyle='#000';ctx.fillRect(dispX,dispY,dispW,dispH);
+  const cellW=dispW/imgW,cellH=dispH/imgH;
+  for(let y=0;y<imgH;y++)for(let x=0;x<imgW;x++){
+    let v=levelState.imgData[y*imgW+x];
+    let r,g,b;
+    if(mode==='fundamental'){
+      // standard B-mode with some noise
+      const noise=(Math.random()-0.5)*20;
+      const gv=Math.min(255,Math.max(0,Math.floor(v*2+noise)));
+      r=g=b=gv;
+    }else if(mode==='harmonic'){
+      // cleaner image, less noise, better contrast
+      const noise=(Math.random()-0.5)*5;
+      const gv=Math.min(255,Math.max(0,Math.floor(v*2.5+noise)));
+      r=g=b=gv;
+    }else if(mode==='elastography'){
+      // color overlay based on "stiffness"
+      const gv=Math.floor(v*2);
+      // stiffness: solid mass is stiff (red), cyst is soft (blue), normal is green
+      const dx2=x-110,dy2=y-50;
+      const inMass=dx2*dx2+dy2*dy2<200;
+      const dx1=x-50,dy1=y-55;
+      const inCyst=dx1*dx1+dy1*dy1<250;
+      if(inMass){
+        r=200+Math.floor(Math.random()*55);g=30;b=30; // stiff=red
+      }else if(inCyst){
+        r=30;g=30;b=200+Math.floor(Math.random()*55); // soft=blue
+      }else{
+        const stiffness=0.3+v/255*0.4;
+        r=Math.floor(stiffness*200);
+        g=Math.floor((1-Math.abs(stiffness-0.5)*2)*200);
+        b=Math.floor((1-stiffness)*200);
+      }
+    }else{
+      // contrast: enhanced blood vessels / vascular structures
+      const gv=Math.floor(v*2);
+      r=g=b=gv;
+      // simulate microbubble enhancement in vascular areas
+      const dx1=x-50,dy1=y-55;
+      const nearCyst=dx1*dx1+dy1*dy1<400&&dx1*dx1+dy1*dy1>250;
+      const dx2=x-110,dy2=y-50;
+      const nearMass=dx2*dx2+dy2*dy2<350&&dx2*dx2+dy2*dy2>200;
+      if(nearCyst||nearMass){
+        const flash=0.5+0.5*Math.sin(time*3+x*0.1+y*0.1);
+        r=Math.min(255,gv+Math.floor(flash*150));
+        g=Math.min(255,gv+Math.floor(flash*80));
+        b=gv;
+      }
+      // random microbubbles
+      if(Math.random()<0.01&&v>30&&v<70){
+        r=255;g=200;b=100;
+      }
+    }
+    ctx.fillStyle=`rgb(${r},${g},${b})`;
+    ctx.fillRect(dispX+x*cellW,dispY+y*cellH,cellW+1,cellH+1);
+  }
+  ctx.strokeStyle='#334155';ctx.strokeRect(dispX,dispY,dispW,dispH);
+  // mode label
+  const modeNames={fundamental:'基波成像（标准B模式）',harmonic:'谐波成像（减少伪影）',elastography:'弹性成像（组织硬度）',contrast:'造影超声（微泡增强）'};
+  ctx.fillStyle='#475569';ctx.font='14px sans-serif';ctx.textAlign='left';
+  ctx.fillText(modeNames[mode],20,30);
+  // legend for elastography
+  if(mode==='elastography'){
+    const legX=dispX+dispW-120,legY=dispY+dispH+10;
+    ctx.font='11px sans-serif';
+    ctx.fillStyle='#ef4444';ctx.fillRect(legX,legY,15,12);
+    ctx.fillStyle='#94a3b8';ctx.fillText('硬（肿瘤）',legX+20,legY+10);
+    ctx.fillStyle='#22c55e';ctx.fillRect(legX,legY+16,15,12);
+    ctx.fillStyle='#94a3b8';ctx.fillText('中等',legX+20,legY+26);
+    ctx.fillStyle='#3b82f6';ctx.fillRect(legX,legY+32,15,12);
+    ctx.fillStyle='#94a3b8';ctx.fillText('软（囊肿）',legX+20,legY+42);
+  }
+  if(mode==='contrast'){
+    ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';
+    ctx.fillText('✦ 微泡造影剂增强血管周围信号',dispX+10,dispY+dispH+20);
+  }
+  // info
+  const info=document.getElementById('c6-info');
+  if(info){
+    const descs={
+      fundamental:'标准B模式，使用发射频率（基波）成像。噪声较多，对比度一般。',
+      harmonic:'利用组织非线性传播产生的二次谐波成像，伪影更少，对比度更好。',
+      elastography:'通过测量组织在外力下的形变来评估硬度。红色=硬，蓝色=软。',
+      contrast:'注射微泡造影剂后，血管和灌注区域信号显著增强。'
+    };
+    info.textContent=descs[mode];
+  }
+}
+
+// === DRAW DISPATCH ===
+const drawFns=[drawLevel0,drawLevel1,drawLevel2,drawLevel3,drawLevel4,drawLevel5,drawLevel6];
+
+function animate(){
+  time+=0.016;
+  drawFns[curLevel]();
+  animId=requestAnimationFrame(animate);
+}
+
+// === NAVIGATION ===
+function goLevel(n){
+  if(n<0||n>6)return;
+  curLevel=n;
+  cancelAnimationFrame(animId);
+  updatePanel();
+  buildControls();
+  animate();
+}
+
+document.getElementById('btn-prev').onclick=()=>goLevel(curLevel-1);
+document.getElementById('btn-next').onclick=()=>goLevel(curLevel+1);
+
+// === START ===
+document.getElementById('start-btn').onclick=()=>{
+  document.getElementById('overlay').classList.add('hidden');
+  resize();
+  goLevel(0);
+};
+
+// initial resize
+resize();
+</script>
+</body>
+</html>

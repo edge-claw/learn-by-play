@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>化学反应与动力学 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e0e0e0;font-family:'Microsoft YaHei','PingFang SC',sans-serif;overflow:hidden;height:100vh;width:100vw}
+.overlay{position:fixed;inset:0;background:rgba(10,10,26,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+.overlay h1{font-size:42px;color:#f97316;margin-bottom:12px;text-shadow:0 0 30px rgba(249,115,22,0.5)}
+.overlay p{color:#aaa;font-size:16px;margin-bottom:30px;max-width:500px;text-align:center;line-height:1.7}
+.overlay .start-btn{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;border:none;padding:14px 48px;font-size:20px;border-radius:30px;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s}
+.overlay .start-btn:hover{transform:scale(1.05);box-shadow:0 0 25px rgba(249,115,22,0.5)}
+.main{display:flex;height:calc(100vh - 36px);width:100vw}
+.panel{width:320px;min-width:320px;background:rgba(10,10,30,0.95);border-right:1px solid #222;padding:16px;overflow-y:auto;display:none;font-size:13px;line-height:1.7}
+.panel h2{color:#f97316;font-size:18px;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px}
+.panel h3{color:#fb923c;font-size:14px;margin:10px 0 4px}
+.panel .obj{padding:3px 0;font-size:12px}
+.panel .obj.done{color:#4ade80}
+.panel .obj.todo{color:#888}
+.panel .learn-box{background:rgba(249,115,22,0.1);border:1px solid #f97316;border-radius:8px;padding:10px;margin-top:10px;font-size:12px;line-height:1.8;color:#fbbf24}
+.act-btn{display:block;width:100%;padding:8px;margin-top:6px;border:none;border-radius:6px;cursor:pointer;font-size:13px;background:#f97316;color:#fff;transition:background 0.2s}
+.act-btn:hover{background:#ea580c}
+.canvas-wrap{flex:1;position:relative;background:#0a0a1a}
+.canvas-wrap canvas{display:block;width:100%;height:100%}
+.bar{height:36px;background:rgba(10,10,30,0.95);border-top:1px solid #222;display:none;align-items:center;justify-content:center;gap:6px;padding:0 16px}
+.bar button{background:#1a1a2e;color:#ccc;border:1px solid #333;padding:4px 14px;border-radius:4px;cursor:pointer;font-size:12px;transition:all 0.2s}
+.bar button:hover{background:#2a2a3e}
+.bar button.active{background:#f97316;color:#fff;border-color:#f97316}
+.slider-row{display:flex;align-items:center;gap:6px;margin:4px 0}
+.slider-row label{font-size:11px;color:#aaa;min-width:50px}
+.slider-row input[type=range]{flex:1;accent-color:#f97316}
+.slider-row span{font-size:11px;color:#fb923c;min-width:40px;text-align:right}
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay">
+<h1>⚗️ 化学反应与动力学 探险</h1>
+<p>从配平方程式到电化学，7个关卡带你探索化学反应的奥秘。拖动原子、调节温度、观察电子转移，在互动中理解化学世界的规律。</p>
+<button class="start-btn" onclick="startGame()">开始探索 🔬</button>
+</div>
+<div class="main">
+<div class="panel" id="panel"></div>
+<div class="canvas-wrap"><canvas id="cv"></canvas></div>
+</div>
+<div class="bar" id="bar"></div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay');
+let W,H,curLevel=0,animId,time=0,mouse={x:0,y:0,down:false,drag:null};
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+const COLORS={bg:'#0a0a1a',primary:'#f97316',accent:'#fb923c',green:'#4ade80',blue:'#38bdf8',red:'#ef4444',purple:'#a78bfa',cyan:'#22d3ee',white:'#e0e0e0',dim:'#555'};
+const ATOM_COLORS={H:'#e0e0e0',O:'#ef4444',N:'#38bdf8',C:'#555',Fe:'#b0b0b0',Cu:'#f97316',Zn:'#a0a0a0',S:'#fbbf24',Cl:'#4ade80',Na:'#a78bfa',Ca:'#ddd',Ag:'#ccc',K:'#c084fc',Mn:'#d946ef',Cr:'#22d3ee'};
+const ATOM_RADIUS={H:14,O:18,N:17,C:18,Fe:22,Cu:22,Zn:22,S:20,Cl:20,Na:20,Ca:22,Ag:22,K:20,Mn:22,Cr:22};
+
+function resize(){cv.width=cv.parentElement.clientWidth;cv.height=cv.parentElement.clientHeight;W=cv.width;H=cv.height;}
+window.addEventListener('resize',resize);
+
+// === Level state vars ===
+let lv1={atoms:[],targets:[],equation:'',balanced:false,placed:0,showConserv:false};
+let lv2={mode:0,particles:[],phase:0,timer:0,reacted:false,demos:[
+  {name:'化合反应',eq:'2H₂ + O₂ → 2H₂O',desc:'两种或多种物质生成一种新物质'},
+  {name:'分解反应',eq:'2H₂O → 2H₂ + O₂',desc:'一种物质分解为两种或多种物质'},
+  {name:'置换反应',eq:'Zn + CuSO₄ → ZnSO₄ + Cu',desc:'一种单质与化合物反应，生成另一种单质和化合物'},
+  {name:'复分解反应',eq:'NaCl + AgNO₃ → AgCl↓ + NaNO₃',desc:'两种化合物互相交换成分'}
+]};
+let lv3={temp:25,conc:1.0,catalyst:false,rateData:[],time:0,running:false,maxPoints:200,reacted:false};
+let lv4={temp:400,pressure:1,concA:0.5,concB:0.5,eqPos:0.5,history:[],shifted:false,conditions:[]};
+let lv5={electrons:[],phase:0,oxNum:{},showTransfer:false,timer:0};
+let lv6={pH:7,volume:0,drops:0,curveData:[],titrating:false,indicator:'酚酞'};
+let lv7={mode:'galvanic',electrons:[],ions:[],voltage:0,timer:0,running:false};
+
+function startGame(){
+  overlay.style.display='none';
+  panel.style.display='block';
+  bar.style.display='flex';
+  resize();
+  initLevel(0);
+  loop();
+}
+function goLevel(n){curLevel=n;initLevel(n);}
+function loop(){animId=requestAnimationFrame(loop);time+=1/60;ctx.clearRect(0,0,W,H);drawLevel();renderBar();}
+
+function renderBar(){
+  let h='';
+  for(let i=0;i<7;i++){
+    let done=levelObjs[i].every(v=>v);
+    let cls=i===curLevel?'active':'';
+    h+=`<button class="${cls}" style="${done?'border-color:#4ade80;color:#4ade80':''}" onclick="goLevel(${i})">关卡${i+1}</button>`;
+  }
+  bar.innerHTML=h;
+}
+
+function objCheck(li,idx){
+  if(!levelObjs[li][idx]){levelObjs[li][idx]=true;renderPanel();}
+}
+
+function drawAtom(x,y,symbol,r,glow){
+  r=r||ATOM_RADIUS[symbol]||18;
+  let c=ATOM_COLORS[symbol]||'#888';
+  if(glow){ctx.shadowColor=c;ctx.shadowBlur=15;}
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+  let g=ctx.createRadialGradient(x-r*0.3,y-r*0.3,r*0.1,x,y,r);
+  g.addColorStop(0,'#fff');g.addColorStop(0.3,c);g.addColorStop(1,shadeColor(c,-40));
+  ctx.fillStyle=g;ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.stroke();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#000';ctx.font=`bold ${r*0.8}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(symbol,x,y);
+}
+function drawBond(x1,y1,x2,y2,type){
+  ctx.strokeStyle='rgba(200,200,200,0.6)';ctx.lineWidth=type===2?2:3;
+  if(type===2){let dx=y2-y1,dy=x1-x2,len=Math.sqrt(dx*dx+dy*dy)||1;dx=dx/len*3;dy=dy/len*3;
+    ctx.beginPath();ctx.moveTo(x1+dx,y1+dy);ctx.lineTo(x2+dx,y2+dy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x1-dx,y1-dy);ctx.lineTo(x2-dx,y2-dy);ctx.stroke();
+  }else{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+}
+function shadeColor(c,p){let n=parseInt(c.slice(1),16),r=Math.max(0,Math.min(255,(n>>16)+p)),g=Math.max(0,Math.min(255,((n>>8)&0xff)+p)),b=Math.max(0,Math.min(255,(n&0xff)+p));return'#'+(r<<16|g<<8|b).toString(16).padStart(6,'0');}
+function drawText(txt,x,y,size,color,align){ctx.fillStyle=color||COLORS.white;ctx.font=`${size||14}px sans-serif`;ctx.textAlign=align||'center';ctx.textBaseline='middle';ctx.fillText(txt,x,y);}
+function drawArrow(x1,y1,x2,y2,color,w){
+  ctx.strokeStyle=color||COLORS.accent;ctx.lineWidth=w||2;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  let a=Math.atan2(y2-y1,x2-x1),s=10;
+  ctx.fillStyle=color||COLORS.accent;ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-s*Math.cos(a-0.4),y2-s*Math.sin(a-0.4));ctx.lineTo(x2-s*Math.cos(a+0.4),y2-s*Math.sin(a+0.4));ctx.fill();
+}
+function drawGraph(ox,oy,gw,gh,data,maxY,color,xlabel,ylabel,labels){
+  ctx.strokeStyle='#333';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(ox,oy-gh);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(ox+gw,oy);ctx.stroke();
+  drawText(xlabel||'',ox+gw/2,oy+20,11,COLORS.dim);
+  ctx.save();ctx.translate(ox-25,oy-gh/2);ctx.rotate(-Math.PI/2);drawText(ylabel||'',0,0,11,COLORS.dim);ctx.restore();
+  if(data.length<2)return;
+  ctx.strokeStyle=color||COLORS.primary;ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<data.length;i++){let x=ox+i/(data.length-1)*gw,y=oy-data[i]/maxY*gh;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+  ctx.stroke();
+  if(labels){for(let i=0;i<labels.length;i++){let x=ox+i/(labels.length-1)*gw;drawText(labels[i],x,oy+12,9,COLORS.dim);}}
+}
+
+function initLevel(n){
+  curLevel=n;time=0;
+  if(n===0)initLv1();else if(n===1)initLv2();else if(n===2)initLv3();
+  else if(n===3)initLv4();else if(n===4)initLv5();else if(n===5)initLv6();else if(n===6)initLv7();
+  renderPanel();
+}
+function drawLevel(){
+  if(curLevel===0)drawLv1();else if(curLevel===1)drawLv2();else if(curLevel===2)drawLv3();
+  else if(curLevel===3)drawLv4();else if(curLevel===4)drawLv5();else if(curLevel===5)drawLv6();else if(curLevel===6)drawLv7();
+}
+
+// ========== LEVEL 1: 化学方程式配平 ==========
+function initLv1(){
+  lv1={atoms:[],targets:[],equation:'H₂ + O₂ → H₂O',balanced:false,placed:0,showConserv:false};
+  // 左侧原子池: 4H, 2O (配平: 2H₂ + O₂ → 2H₂O)
+  let pool=[{s:'H',n:4},{s:'O',n:2}];
+  let ax=80,ay=60;
+  pool.forEach((p,pi)=>{for(let i=0;i<p.n;i++){
+    lv1.atoms.push({symbol:p.s,x:ax+i*45,y:ay+pi*50,ox:ax+i*45,oy:ay+pi*50,placed:false,targetIdx:-1});
+  }});
+  // 右侧目标槽: 反应物 2H₂(4H) + O₂(2O) → 产物 2H₂O(4H+2O)
+  let tx=W*0.25,ty=H*0.55;
+  // 反应物侧
+  lv1.targets.push({x:tx,y:ty,label:'H₂',need:'H',count:0,max:2,side:'r'});
+  lv1.targets.push({x:tx+70,y:ty,label:'H₂',need:'H',count:0,max:2,side:'r'});
+  lv1.targets.push({x:tx+170,y:ty,label:'O₂',need:'O',count:0,max:2,side:'r'});
+  // 产物侧
+  lv1.targets.push({x:tx+320,y:ty,label:'H₂O',need:'H',count:0,max:2,side:'p'});
+  lv1.targets.push({x:tx+390,y:ty,label:'H₂O',need:'O',count:0,max:1,side:'p'});
+  lv1.targets.push({x:tx+460,y:ty,label:'H₂O',need:'H',count:0,max:2,side:'p'});
+  lv1.targets.push({x:tx+530,y:ty,label:'H₂O',need:'O',count:0,max:1,side:'p'});
+}
+function drawLv1(){
+  drawText('拖动原子到分子槽中，配平方程式',W/2,30,16,COLORS.accent);
+  drawText('2H₂  +  O₂  →  2H₂O',W/2,65,22,COLORS.primary);
+  // 原子池标题
+  drawText('原子池',80,100,13,COLORS.dim);
+  // 目标槽
+  let tx=W*0.25,ty=H*0.55;
+  drawText('反应物',tx+100,ty-50,14,COLORS.blue);
+  drawArrow(tx+230,ty,tx+280,ty,COLORS.accent,3);
+  drawText('产物',tx+420,ty-50,14,COLORS.green);
+  lv1.targets.forEach((t,i)=>{
+    ctx.strokeStyle=t.count>=t.max?COLORS.green:'#444';ctx.lineWidth=2;
+    ctx.strokeRect(t.x-25,t.y-25,50,50);
+    drawText(t.label,t.x,t.y+38,11,COLORS.dim);
+    drawText(`${t.need}:${t.count}/${t.max}`,t.x,t.y-35,10,t.count>=t.max?COLORS.green:'#666');
+  });
+  // 原子
+  lv1.atoms.forEach(a=>{
+    if(!a.placed)drawAtom(a.x,a.y,a.symbol,null,true);
+  });
+  // 质量守恒可视化
+  if(lv1.showConserv){
+    let cy=H*0.8;
+    drawText('✓ 质量守恒：反应前后原子种类和数目不变',W/2,cy,15,COLORS.green);
+    drawText('反应物: 4H + 2O = 6个原子',W/2-120,cy+25,12,COLORS.blue);
+    drawText('产物: 4H + 2O = 6个原子',W/2+120,cy+25,12,COLORS.green);
+  }
+  // 检查配平
+  let allFull=lv1.targets.every(t=>t.count>=t.max);
+  if(allFull&&!lv1.balanced){
+    lv1.balanced=true;lv1.showConserv=true;
+    objCheck(0,0);objCheck(0,1);objCheck(0,2);
+  }
+}
+
+// ========== LEVEL 2: 反应类型 ==========
+function initLv2(){
+  lv2.mode=0;lv2.phase=0;lv2.timer=0;lv2.reacted=false;
+  lv2.particles=[];
+  setupLv2Particles();
+}
+function setupLv2Particles(){
+  lv2.particles=[];lv2.phase=0;lv2.timer=0;lv2.reacted=false;
+  let cx=W/2,cy=H/2;
+  if(lv2.mode===0){// 化合: 2H₂ + O₂ → 2H₂O
+    lv2.particles.push({x:cx-120,y:cy-30,vx:1.2,vy:0.3,symbol:'H₂',color:COLORS.white,r:20});
+    lv2.particles.push({x:cx-120,y:cy+30,vx:1.0,vy:-0.2,symbol:'H₂',color:COLORS.white,r:20});
+    lv2.particles.push({x:cx+120,y:cy,vx:-1.1,vy:0.1,symbol:'O₂',color:COLORS.red,r:24});
+  }else if(lv2.mode===1){// 分解: 2H₂O → 2H₂ + O₂
+    lv2.particles.push({x:cx-40,y:cy,vx:0.5,vy:0.3,symbol:'H₂O',color:COLORS.blue,r:22});
+    lv2.particles.push({x:cx+40,y:cy,vx:-0.5,vy:-0.3,symbol:'H₂O',color:COLORS.blue,r:22});
+  }else if(lv2.mode===2){// 置换: Zn + CuSO₄ → ZnSO₄ + Cu
+    lv2.particles.push({x:cx-100,y:cy,vx:1.5,vy:0,symbol:'Zn',color:'#a0a0a0',r:22});
+    lv2.particles.push({x:cx+100,y:cy,vx:-0.5,vy:0,symbol:'CuSO₄',color:COLORS.primary,r:28});
+  }else{// 复分解: NaCl + AgNO₃ → AgCl↓ + NaNO₃
+    lv2.particles.push({x:cx-100,y:cy,vx:1.2,vy:0,symbol:'NaCl',color:COLORS.purple,r:24});
+    lv2.particles.push({x:cx+100,y:cy,vx:-1.2,vy:0,symbol:'AgNO₃',color:'#ccc',r:24});
+  }
+}
+function drawLv2(){
+  let d=lv2.demos[lv2.mode];
+  drawText(d.name,W/2,30,20,COLORS.primary);
+  drawText(d.eq,W/2,60,16,COLORS.accent);
+  drawText(d.desc,W/2,85,13,COLORS.dim);
+  lv2.timer+=1/60;
+  // 移动粒子
+  lv2.particles.forEach(p=>{
+    if(!lv2.reacted){p.x+=p.vx;p.y+=p.vy;}
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    let g=ctx.createRadialGradient(p.x-p.r*0.3,p.y-p.r*0.3,2,p.x,p.y,p.r);
+    g.addColorStop(0,'#fff');g.addColorStop(0.5,p.color);g.addColorStop(1,shadeColor(p.color,-30));
+    ctx.fillStyle=g;ctx.fill();ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.stroke();
+    drawText(p.symbol,p.x,p.y,p.r*0.6,'#000');
+  });
+  // 碰撞检测
+  if(!lv2.reacted&&lv2.particles.length>=2){
+    let a=lv2.particles[0],b=lv2.particles[1];
+    let dx=a.x-b.x,dy=a.y-b.y,dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<a.r+b.r+5){
+      lv2.reacted=true;
+      // 生成产物
+      setTimeout(()=>{
+        lv2.particles=[];
+        let cx=W/2,cy=H/2;
+        if(lv2.mode===0){
+          lv2.particles.push({x:cx-50,y:cy,vx:-0.5,vy:0.3,symbol:'H₂O',color:COLORS.blue,r:22});
+          lv2.particles.push({x:cx+50,y:cy,vx:0.5,vy:-0.3,symbol:'H₂O',color:COLORS.blue,r:22});
+        }else if(lv2.mode===1){
+          lv2.particles.push({x:cx-80,y:cy-20,vx:-1,vy:-0.5,symbol:'H₂',color:COLORS.white,r:18});
+          lv2.particles.push({x:cx-80,y:cy+20,vx:-0.8,vy:0.5,symbol:'H₂',color:COLORS.white,r:18});
+          lv2.particles.push({x:cx+80,y:cy,vx:1,vy:0,symbol:'O₂',color:COLORS.red,r:22});
+        }else if(lv2.mode===2){
+          lv2.particles.push({x:cx-60,y:cy,vx:-0.8,vy:0.3,symbol:'ZnSO₄',color:COLORS.blue,r:26});
+          lv2.particles.push({x:cx+60,y:cy,vx:0.8,vy:-0.3,symbol:'Cu',color:COLORS.primary,r:20});
+        }else{
+          lv2.particles.push({x:cx-60,y:cy,vx:-0.3,vy:1.5,symbol:'AgCl↓',color:'#ddd',r:24});
+          lv2.particles.push({x:cx+60,y:cy,vx:0.5,vy:-0.3,symbol:'NaNO₃',color:COLORS.cyan,r:24});
+        }
+        objCheck(1,lv2.mode<3?lv2.mode:2);
+      },500);
+      // 闪光效果
+      ctx.fillStyle='rgba(249,115,22,0.3)';ctx.beginPath();ctx.arc((a.x+b.x)/2,(a.y+b.y)/2,60,0,Math.PI*2);ctx.fill();
+    }
+  }
+  if(lv2.reacted){drawText('✓ 反应完成！',W/2,H-60,16,COLORS.green);}
+}
+
+// ========== LEVEL 3: 反应速率 ==========
+function initLv3(){
+  lv3={temp:25,conc:1.0,catalyst:false,rateData:[],time:0,running:false,maxPoints:200,reacted:false};
+}
+function calcRate(){
+  let base=0.01;
+  let tFactor=Math.exp((lv3.temp-25)/30);// 温度每升30度速率翻倍
+  let cFactor=lv3.conc;
+  let catFactor=lv3.catalyst?3:1;
+  return base*tFactor*cFactor*catFactor;
+}
+function drawLv3(){
+  drawText('调整条件，观察反应速率变化',W/2,25,16,COLORS.accent);
+  if(lv3.running){
+    lv3.time+=1/60;
+    let rate=calcRate();
+    let val=Math.min(1,lv3.rateData.length>0?lv3.rateData[lv3.rateData.length-1]+rate*0.02:rate*0.02);
+    if(lv3.rateData.length<lv3.maxPoints)lv3.rateData.push(val);
+    if(val>0.3&&!levelObjs[2][0]){objCheck(2,0);}
+    if(val>0.7&&!levelObjs[2][1]){objCheck(2,1);}
+    if(val>0.95){lv3.running=false;objCheck(2,2);}
+  }
+  // 绘制粒子动画
+  let rate=calcRate();
+  let cx=W/2,cy=H*0.35;
+  for(let i=0;i<20;i++){
+    let angle=time*rate*50+i*Math.PI*2/20;
+    let r=40+Math.sin(time*2+i)*15;
+    let px=cx+Math.cos(angle)*r*2,py=cy+Math.sin(angle)*r;
+    let speed=rate*5;
+    let alpha=Math.min(1,0.3+speed*0.5);
+    ctx.globalAlpha=alpha;
+    drawAtom(px,py,i%3===0?'O':i%3===1?'H':'N',8+speed*3);
+    ctx.globalAlpha=1;
+  }
+  // 速率曲线
+  let gx=W*0.15,gy=H*0.85,gw=W*0.7,gh=H*0.3;
+  drawGraph(gx,gy,gw,gh,lv3.rateData,1,COLORS.primary,'时间','反应进度');
+  // 速率值
+  drawText(`当前速率: ${rate.toFixed(4)} mol/(L·s)`,W/2,H*0.5,14,COLORS.accent);
+  drawText(`温度: ${lv3.temp}°C | 浓度: ${lv3.conc.toFixed(1)} mol/L | 催化剂: ${lv3.catalyst?'有':'无'}`,W/2,H*0.5+22,12,COLORS.dim);
+}
+
+// ========== LEVEL 4: 化学平衡 ==========
+function initLv4(){
+  lv4={temp:400,pressure:1,concA:0.5,concB:0.5,eqPos:0.5,history:[0.5],shifted:false,conditions:[]};
+}
+function drawLv4(){
+  drawText('Le Chatelier 原理：改变条件，观察平衡移动',W/2,25,16,COLORS.accent);
+  drawText('N₂ + 3H₂ ⇌ 2NH₃  (正反应放热)',W/2,55,18,COLORS.primary);
+  // 平衡位置可视化 - 天平
+  let cx=W/2,cy=H*0.4;
+  let tilt=(lv4.eqPos-0.5)*30;// 倾斜角度
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(tilt*Math.PI/180);
+  // 天平杆
+  ctx.strokeStyle=COLORS.accent;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-120,0);ctx.lineTo(120,0);ctx.stroke();
+  // 左盘 - 反应物
+  ctx.fillStyle='rgba(56,189,248,0.3)';ctx.beginPath();ctx.arc(-100,20,35,0,Math.PI*2);ctx.fill();
+  drawText('N₂+H₂',-100,20,12,COLORS.blue);
+  // 右盘 - 产物
+  ctx.fillStyle='rgba(74,222,128,0.3)';ctx.beginPath();ctx.arc(100,20,35,0,Math.PI*2);ctx.fill();
+  drawText('NH₃',100,20,12,COLORS.green);
+  ctx.restore();
+  // 支点
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx-15,cy+30);ctx.lineTo(cx+15,cy+30);ctx.closePath();ctx.fillStyle='#444';ctx.fill();
+  // 平衡位置指示
+  let barY=H*0.65,barW=W*0.6,barX=(W-barW)/2;
+  ctx.fillStyle='#1a1a2e';ctx.fillRect(barX,barY,barW,20);
+  ctx.fillStyle=COLORS.primary;ctx.fillRect(barX,barY,barW*lv4.eqPos,20);
+  drawText('← 反应物',barX-40,barY+10,11,COLORS.blue);
+  drawText('产物 →',barX+barW+40,barY+10,11,COLORS.green);
+  drawText(`平衡位置: ${(lv4.eqPos*100).toFixed(0)}%`,W/2,barY+35,13,COLORS.accent);
+  // 历史曲线
+  let gx=W*0.15,gy=H*0.95,gw=W*0.7,gh=H*0.15;
+  drawGraph(gx,gy,gw,gh,lv4.history,1,COLORS.green,'操作次数','平衡位置');
+  // 条件显示
+  drawText(`温度:${lv4.temp}K | 压强:${lv4.pressure}atm`,W/2,H*0.58,12,COLORS.dim);
+}
+function shiftEquilibrium(action){
+  let old=lv4.eqPos;
+  if(action==='tempUp'){lv4.temp+=100;lv4.eqPos=Math.max(0.1,lv4.eqPos-0.15);}// 升温，平衡左移（放热反应）
+  else if(action==='tempDown'){lv4.temp=Math.max(200,lv4.temp-100);lv4.eqPos=Math.min(0.9,lv4.eqPos+0.15);}
+  else if(action==='pressUp'){lv4.pressure+=1;lv4.eqPos=Math.min(0.9,lv4.eqPos+0.12);}// 加压，平衡右移（体积减小方向）
+  else if(action==='pressDown'){lv4.pressure=Math.max(1,lv4.pressure-1);lv4.eqPos=Math.max(0.1,lv4.eqPos-0.12);}
+  else if(action==='addN2'){lv4.eqPos=Math.min(0.9,lv4.eqPos+0.1);}// 加反应物，平衡右移
+  else if(action==='addNH3'){lv4.eqPos=Math.max(0.1,lv4.eqPos-0.1);}// 加产物，平衡左移
+  lv4.history.push(lv4.eqPos);
+  lv4.conditions.push(action);
+  if(lv4.eqPos!==old)lv4.shifted=true;
+  if(lv4.conditions.length>=1)objCheck(3,0);
+  if(lv4.conditions.length>=3)objCheck(3,1);
+  if(lv4.conditions.length>=5)objCheck(3,2);
+  renderPanel();
+}
+
+// ========== LEVEL 5: 氧化还原 ==========
+function initLv5(){
+  lv5={electrons:[],phase:0,oxNum:{Fe:0,Cu:2},showTransfer:false,timer:0,transferred:0};
+  // Fe + Cu²⁺ → Fe²⁺ + Cu (铁置换铜)
+  for(let i=0;i<2;i++){
+    lv5.electrons.push({x:W*0.3,y:H*0.4+i*20,tx:W*0.7,ty:H*0.4+i*20,progress:0,active:false});
+  }
+}
+function drawLv5(){
+  drawText('氧化还原反应：电子转移',W/2,25,16,COLORS.accent);
+  drawText('Fe + Cu²⁺ → Fe²⁺ + Cu',W/2,55,20,COLORS.primary);
+  let lx=W*0.3,rx=W*0.7,cy=H*0.4;
+  // Fe 原子
+  drawAtom(lx,cy,'Fe',35,true);
+  drawText(lv5.phase>=2?'Fe²⁺':'Fe',lx,cy+50,14,lv5.phase>=2?COLORS.blue:COLORS.white);
+  drawText(`氧化数: ${lv5.phase>=2?'+2':'0'}`,lx,cy+68,11,lv5.phase>=2?COLORS.red:COLORS.dim);
+  // Cu²⁺
+  drawAtom(rx,cy,'Cu',35,true);
+  drawText(lv5.phase>=2?'Cu':'Cu²⁺',rx,cy+50,14,lv5.phase>=2?COLORS.primary:COLORS.white);
+  drawText(`氧化数: ${lv5.phase>=2?'0':'+2'}`,rx,cy+68,11,lv5.phase>=2?COLORS.green:COLORS.dim);
+  // 电子转移动画
+  if(lv5.phase>=1){
+    lv5.electrons.forEach((e,i)=>{
+      if(e.progress<1){e.progress+=0.008;e.active=true;}
+      let px=lx+(rx-lx)*e.progress;
+      let py=cy+i*20-30+Math.sin(e.progress*Math.PI*3)*15;
+      ctx.fillStyle=COLORS.cyan;ctx.shadowColor=COLORS.cyan;ctx.shadowBlur=10;
+      ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();
+      ctx.shadowBlur=0;
+      drawText('e⁻',px,py-10,9,COLORS.cyan);
+    });
+    if(lv5.electrons.every(e=>e.progress>=1)&&lv5.phase===1){
+      lv5.phase=2;lv5.transferred=2;
+      objCheck(4,1);objCheck(4,2);
+    }
+  }
+  // 说明
+  let ey=H*0.7;
+  drawText('Fe 失去 2 个电子 → 被氧化（氧化数升高）',W/2,ey,13,COLORS.red);
+  drawText('Cu²⁺ 得到 2 个电子 → 被还原（氧化数降低）',W/2,ey+22,13,COLORS.blue);
+  // 氧化数变化追踪
+  if(lv5.phase>=2){
+    drawText('✓ 电子转移完成！氧化还原反应本质：电子的得失',W/2,ey+55,14,COLORS.green);
+  }
+}
+function startElectronTransfer(){
+  lv5.phase=1;
+  lv5.electrons.forEach(e=>{e.progress=0;e.active=true;});
+  objCheck(4,0);
+  renderPanel();
+}
+
+// ========== LEVEL 6: 酸碱反应 ==========
+function initLv6(){
+  lv6={pH:7,volume:0,drops:0,curveData:[7],titrating:false,indicator:'酚酞',totalDrops:0,eqPoint:false};
+}
+function drawLv6(){
+  drawText('酸碱滴定：NaOH 滴定 HCl',W/2,25,16,COLORS.accent);
+  // 烧杯
+  let bx=W*0.35,by=H*0.3,bw=120,bh=160;
+  ctx.strokeStyle='rgba(200,200,200,0.4)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx-10,by+bh);ctx.lineTo(bx+bw+10,by+bh);ctx.lineTo(bx+bw,by);ctx.stroke();
+  // 溶液颜色根据pH
+  let solColor=lv6.pH<4?'rgba(239,68,68,0.4)':lv6.pH<7?'rgba(239,68,68,'+(0.4-lv6.pH*0.04)+')':lv6.pH<8?'rgba(100,200,100,0.2)':lv6.pH<10?'rgba(200,100,200,'+(0.2+(lv6.pH-8)*0.15)+')':'rgba(200,100,200,0.6)';
+  let fillH=bh*0.7+lv6.totalDrops*0.5;if(fillH>bh-5)fillH=bh-5;
+  ctx.fillStyle=solColor;ctx.fillRect(bx-8,by+bh-fillH,bw+16,fillH);
+  // 滴定管
+  let dx=bx+bw/2,dy=by-80;
+  ctx.strokeStyle='rgba(200,200,200,0.5)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(dx-8,dy);ctx.lineTo(dx-8,dy+60);ctx.lineTo(dx-2,dy+70);ctx.lineTo(dx-2,dy+80);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(dx+8,dy);ctx.lineTo(dx+8,dy+60);ctx.lineTo(dx+2,dy+70);ctx.lineTo(dx+2,dy+80);ctx.stroke();
+  ctx.fillStyle='rgba(56,189,248,0.4)';ctx.fillRect(dx-6,dy+5,12,50);
+  drawText('NaOH',dx,dy-10,12,COLORS.blue);
+  // 滴落动画
+  if(lv6.titrating){
+    let dropY=dy+80+((time*80)%100);
+    if(dropY<by+bh-fillH){
+      ctx.fillStyle=COLORS.blue;ctx.beginPath();ctx.arc(dx,dropY,3,0,Math.PI*2);ctx.fill();
+    }
+  }
+  // pH 显示
+  let phX=W*0.7,phY=H*0.3;
+  // pH 计
+  ctx.fillStyle='#1a1a2e';ctx.fillRect(phX-50,phY,100,50);ctx.strokeStyle='#333';ctx.strokeRect(phX-50,phY,100,50);
+  drawText('pH',phX,phY-10,12,COLORS.dim);
+  drawText(lv6.pH.toFixed(1),phX,phY+25,28,lv6.pH<7?COLORS.red:lv6.pH>7?COLORS.blue:COLORS.green);
+  // pH 色带
+  let sbY=phY+65;
+  for(let i=0;i<=14;i++){
+    let hue=i/14*240;// 红→蓝
+    ctx.fillStyle=`hsl(${hue},70%,50%)`;ctx.fillRect(phX-50+i*7,sbY,7,12);
+  }
+  let markerX=phX-50+lv6.pH/14*98;
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.moveTo(markerX,sbY-5);ctx.lineTo(markerX-4,sbY);ctx.lineTo(markerX+4,sbY);ctx.fill();
+  drawText('0',phX-50,sbY+22,9,COLORS.dim);drawText('7',phX,sbY+22,9,COLORS.dim);drawText('14',phX+48,sbY+22,9,COLORS.dim);
+  // 滴定曲线
+  let gx=W*0.15,gy=H*0.92,gw=W*0.7,gh=H*0.25;
+  drawGraph(gx,gy,gw,gh,lv6.curveData,14,COLORS.primary,'NaOH 体积 (mL)','pH');
+  // 等当点标记
+  if(lv6.eqPoint){
+    let eqIdx=lv6.curveData.findIndex(v=>v>=7);
+    if(eqIdx>0){
+      let ex=gx+eqIdx/(lv6.curveData.length-1)*gw;
+      ctx.setLineDash([4,4]);ctx.strokeStyle=COLORS.green;ctx.beginPath();ctx.moveTo(ex,gy);ctx.lineTo(ex,gy-gh);ctx.stroke();ctx.setLineDash([]);
+      drawText('等当点',ex,gy-gh-10,11,COLORS.green);
+    }
+  }
+}
+function addDrop(){
+  lv6.drops++;lv6.totalDrops++;
+  // 模拟滴定曲线：HCl被NaOH中和
+  if(lv6.drops<=10)lv6.pH=1+lv6.drops*0.5;// 缓慢上升
+  else if(lv6.drops<=12)lv6.pH=6+(lv6.drops-10)*2;// 突跃
+  else if(lv6.drops<=13){lv6.pH=10;lv6.eqPoint=true;}
+  else lv6.pH=Math.min(13,10+(lv6.drops-13)*0.5);// 缓慢上升
+  lv6.curveData.push(lv6.pH);
+  if(lv6.drops>=3)objCheck(5,0);
+  if(lv6.eqPoint)objCheck(5,1);
+  if(lv6.drops>=15)objCheck(5,2);
+  renderPanel();
+}
+
+// ========== LEVEL 7: 电化学 ==========
+function initLv7(){
+  lv7={mode:'galvanic',electrons:[],ions:[],voltage:0,timer:0,running:false,phase:0};
+}
+function drawLv7(){
+  if(lv7.mode==='galvanic')drawGalvanic();
+  else drawElectrolysis();
+}
+function drawGalvanic(){
+  drawText('原电池：化学能 → 电能',W/2,25,16,COLORS.accent);
+  drawText('Zn-Cu 原电池（丹尼尔电池）',W/2,50,14,COLORS.dim);
+  let cx=W/2,cy=H*0.45;
+  // 左半电池 - Zn (负极)
+  ctx.strokeStyle='#444';ctx.lineWidth=2;
+  ctx.strokeRect(cx-200,cy-60,150,120);
+  ctx.fillStyle='rgba(56,189,248,0.15)';ctx.fillRect(cx-198,cy-58,146,116);
+  drawText('ZnSO₄溶液',cx-125,cy+75,11,COLORS.dim);
+  // Zn 电极
+  ctx.fillStyle='#a0a0a0';ctx.fillRect(cx-140,cy-80,20,100);
+  drawText('Zn(负极)',cx-130,cy-90,12,COLORS.blue);
+  drawText('氧化',cx-130,cy+30,11,COLORS.red);
+  // 右半电池 - Cu (正极)
+  ctx.strokeRect(cx+50,cy-60,150,120);
+  ctx.fillStyle='rgba(249,115,22,0.15)';ctx.fillRect(cx+52,cy-58,146,116);
+  drawText('CuSO₄溶液',cx+125,cy+75,11,COLORS.dim);
+  // Cu 电极
+  ctx.fillStyle=COLORS.primary;ctx.fillRect(cx+120,cy-80,20,100);
+  drawText('Cu(正极)',cx+130,cy-90,12,COLORS.primary);
+  drawText('还原',cx+130,cy+30,11,COLORS.blue);
+  // 盐桥
+  ctx.strokeStyle=COLORS.accent;ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(cx-50,cy-40);ctx.quadraticCurveTo(cx,cy-100,cx+50,cy-40);ctx.stroke();
+  drawText('盐桥',cx,cy-105,11,COLORS.accent);
+  // 导线
+  ctx.strokeStyle=COLORS.cyan;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx-130,cy-80);ctx.lineTo(cx-130,cy-120);ctx.lineTo(cx+130,cy-120);ctx.lineTo(cx+130,cy-80);ctx.stroke();
+  // 电子流动动画
+  if(lv7.running){
+    lv7.timer+=1/60;
+    for(let i=0;i<5;i++){
+      let t=((lv7.timer*0.5+i*0.2)%1);
+      let ex=cx-130+(cx+130-(cx-130))*t*2;
+      if(ex>cx+130)ex=cx+130;
+      let ey=cy-120;
+      if(t<0.5){ex=cx-130+260*t*2;}else{ex=cx+130;}
+      // 简化：沿导线移动
+      let px=cx-130+260*((lv7.timer*0.3+i*0.2)%1);
+      ctx.fillStyle=COLORS.cyan;ctx.shadowColor=COLORS.cyan;ctx.shadowBlur=8;
+      ctx.beginPath();ctx.arc(px,cy-120,4,0,Math.PI*2);ctx.fill();
+      ctx.shadowBlur=0;
+    }
+    // 离子迁移（盐桥中）
+    for(let i=0;i<3;i++){
+      let t=((lv7.timer*0.2+i*0.33)%1);
+      let ix=cx-50+(100)*t;
+      let iy=cy-40-60*Math.sin(t*Math.PI);
+      ctx.fillStyle=COLORS.accent;ctx.globalAlpha=0.6;
+      ctx.beginPath();ctx.arc(ix,iy,3,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=1;
+    }
+    drawArrow(cx-80,cy-130,cx+80,cy-130,COLORS.cyan,2);
+    drawText('e⁻ 流向',cx,cy-140,11,COLORS.cyan);
+    lv7.voltage=1.1;
+    objCheck(6,0);
+    if(lv7.timer>3)objCheck(6,1);
+  }
+  // 电压
+  drawText(`电压: ${lv7.voltage.toFixed(1)} V`,W/2,H*0.8,18,COLORS.green);
+  // 反应方程式
+  drawText('负极: Zn - 2e⁻ → Zn²⁺',W/2-100,H*0.87,12,COLORS.blue);
+  drawText('正极: Cu²⁺ + 2e⁻ → Cu',W/2+100,H*0.87,12,COLORS.primary);
+}
+function drawElectrolysis(){
+  drawText('电解池：电能 → 化学能',W/2,25,16,COLORS.accent);
+  drawText('电解 CuSO₄ 溶液',W/2,50,14,COLORS.dim);
+  let cx=W/2,cy=H*0.45;
+  // 电解槽
+  ctx.strokeStyle='#444';ctx.lineWidth=2;ctx.strokeRect(cx-120,cy-50,240,130);
+  ctx.fillStyle='rgba(56,189,248,0.1)';ctx.fillRect(cx-118,cy-48,236,126);
+  // 阴极（左）
+  ctx.fillStyle='#888';ctx.fillRect(cx-90,cy-70,15,100);
+  drawText('阴极(-)',cx-82,cy-80,11,COLORS.blue);
+  // 阳极（右）
+  ctx.fillStyle='#888';ctx.fillRect(cx+75,cy-70,15,100);
+  drawText('阳极(+)',cx+82,cy-80,11,COLORS.red);
+  // 电源
+  ctx.strokeStyle=COLORS.accent;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx-82,cy-70);ctx.lineTo(cx-82,cy-100);ctx.lineTo(cx+82,cy-100);ctx.lineTo(cx+82,cy-70);ctx.stroke();
+  ctx.fillStyle=COLORS.accent;ctx.fillRect(cx-20,cy-110,40,20);
+  drawText('电源',cx,cy-100,11,'#000');
+  if(lv7.running){
+    lv7.timer+=1/60;
+    // Cu²⁺ 向阴极迁移
+    for(let i=0;i<4;i++){
+      let t=((lv7.timer*0.15+i*0.25)%1);
+      let ix=cx+60-120*t;
+      let iy=cy+Math.sin(t*Math.PI*2)*20;
+      ctx.fillStyle=COLORS.primary;ctx.globalAlpha=0.7;
+      ctx.beginPath();ctx.arc(ix,iy,6,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=1;
+      drawText('Cu²⁺',ix,iy-10,8,COLORS.primary);
+    }
+    // SO₄²⁻ 向阳极迁移
+    for(let i=0;i<3;i++){
+      let t=((lv7.timer*0.12+i*0.33)%1);
+      let ix=cx-60+120*t;
+      let iy=cy+20+Math.sin(t*Math.PI*2)*15;
+      ctx.fillStyle=COLORS.cyan;ctx.globalAlpha=0.5;
+      ctx.beginPath();ctx.arc(ix,iy,5,0,Math.PI*2);ctx.fill();
+      ctx.globalAlpha=1;
+    }
+    objCheck(6,0);if(lv7.timer>3)objCheck(6,1);if(lv7.timer>6)objCheck(6,2);
+  }
+  drawText('阴极: Cu²⁺ + 2e⁻ → Cu',cx,H*0.85,12,COLORS.blue);
+  drawText('阳极: 2H₂O - 4e⁻ → O₂↑ + 4H⁺',cx,H*0.9,12,COLORS.red);
+}
+
+// ========== PANEL RENDERING ==========
+function renderPanel(){
+  let li=curLevel;
+  let h='';
+  const titles=['化学方程式配平','反应类型','反应速率','化学平衡','氧化还原','酸碱反应','电化学'];
+  const descs=[
+    '拖动原子到正确的分子槽中，完成方程式配平。体验质量守恒定律。',
+    '观察四种基本反应类型的动画演示：化合、分解、置换、复分解。',
+    '调整温度、浓度和催化剂，观察它们如何影响反应速率。',
+    '改变温度、压强和浓度，观察化学平衡如何移动（Le Chatelier 原理）。',
+    '观察铁置换铜的氧化还原反应，追踪电子转移和氧化数变化。',
+    '用 NaOH 滴定 HCl，观察 pH 变化和滴定曲线。',
+    '探索原电池和电解池，观察电子流动和离子迁移。'
+  ];
+  const objTexts=[
+    ['将原子拖入反应物槽','将原子拖入产物槽','完成配平，验证质量守恒'],
+    ['观察化合反应','观察分解反应','观察置换/复分解反应'],
+    ['启动反应观察速率','反应进度超过70%','完成反应（进度100%）'],
+    ['改变一个条件观察平衡移动','尝试3种不同操作','完成5次平衡调节'],
+    ['启动电子转移动画','观察电子从Fe转移到Cu²⁺','确认氧化数变化'],
+    ['滴加3滴NaOH','到达等当点(pH≈7)','完成完整滴定曲线'],
+    ['启动电池运行','观察电子流动3秒以上','切换到电解池模式']
+  ];
+  h+=`<h2>关卡 ${li+1}: ${titles[li]}</h2>`;
+  h+=`<p style="color:#aaa;font-size:12px;margin-bottom:8px">${descs[li]}</p>`;
+  h+=`<h3>目标</h3>`;
+  for(let i=0;i<3;i++){
+    let done=levelObjs[li][i];
+    h+=`<div class="obj ${done?'done':'todo'}">${done?'✅':'⬜'} ${objTexts[li][i]}</div>`;
+  }
+  // 操作按钮
+  h+=`<h3>操作</h3>`;
+  if(li===0){
+    h+=`<p style="font-size:11px;color:#888">用鼠标拖动原子到下方的分子槽中</p>`;
+    h+=`<button class="act-btn" onclick="initLv1();renderPanel()">重置原子</button>`;
+  }else if(li===1){
+    for(let i=0;i<4;i++){
+      let active=lv2.mode===i?'background:#ea580c':'';
+      h+=`<button class="act-btn" style="${active}" onclick="lv2.mode=${i};setupLv2Particles();renderPanel()">${lv2.demos[i].name}</button>`;
+    }
+  }else if(li===2){
+    h+=`<div class="slider-row"><label>温度</label><input type="range" min="0" max="100" value="${lv3.temp}" oninput="lv3.temp=+this.value;this.nextElementSibling.textContent=this.value+'°C';renderPanel()"><span>${lv3.temp}°C</span></div>`;
+    h+=`<div class="slider-row"><label>浓度</label><input type="range" min="1" max="30" value="${lv3.conc*10}" oninput="lv3.conc=+this.value/10;this.nextElementSibling.textContent=(+this.value/10).toFixed(1);renderPanel()"><span>${lv3.conc.toFixed(1)}</span></div>`;
+    h+=`<button class="act-btn" onclick="lv3.catalyst=!lv3.catalyst;renderPanel()">${lv3.catalyst?'移除催化剂':'添加催化剂'}</button>`;
+    h+=`<button class="act-btn" style="background:#22c55e" onclick="lv3.running=true;lv3.rateData=[];renderPanel()">开始反应</button>`;
+    h+=`<p style="font-size:11px;color:#888;margin-top:4px">速率=${calcRate().toFixed(4)} mol/(L·s)</p>`;
+  }else if(li===3){
+    h+=`<button class="act-btn" onclick="shiftEquilibrium('tempUp')">升高温度 (+100K)</button>`;
+    h+=`<button class="act-btn" onclick="shiftEquilibrium('tempDown')">降低温度 (-100K)</button>`;
+    h+=`<button class="act-btn" onclick="shiftEquilibrium('pressUp')">增大压强</button>`;
+    h+=`<button class="act-btn" onclick="shiftEquilibrium('pressDown')">减小压强</button>`;
+    h+=`<button class="act-btn" onclick="shiftEquilibrium('addN2')">加入 N₂</button>`;
+    h+=`<button class="act-btn" onclick="shiftEquilibrium('addNH3')">加入 NH₃</button>`;
+  }else if(li===4){
+    h+=`<button class="act-btn" style="background:#22c55e" onclick="startElectronTransfer()">启动电子转移</button>`;
+    h+=`<button class="act-btn" onclick="initLv5();renderPanel()">重置</button>`;
+  }else if(li===5){
+    h+=`<button class="act-btn" style="background:#38bdf8;color:#000" onclick="addDrop()">滴加 NaOH (1滴)</button>`;
+    h+=`<button class="act-btn" onclick="for(let i=0;i<5;i++)addDrop()">快速滴加 (5滴)</button>`;
+    h+=`<button class="act-btn" onclick="initLv6();renderPanel()">重置滴定</button>`;
+    h+=`<p style="font-size:11px;color:#888;margin-top:4px">已滴加: ${lv6.drops} 滴 | pH: ${lv6.pH.toFixed(1)}</p>`;
+  }else if(li===6){
+    h+=`<button class="act-btn" onclick="lv7.running=true;renderPanel()">启动电池</button>`;
+    h+=`<button class="act-btn" onclick="lv7.mode=lv7.mode==='galvanic'?'electrolysis':'galvanic';lv7.timer=0;lv7.running=false;if(lv7.mode==='electrolysis')objCheck(6,2);renderPanel()">${lv7.mode==='galvanic'?'切换到电解池':'切换到原电池'}</button>`;
+    h+=`<button class="act-btn" onclick="initLv7();renderPanel()">重置</button>`;
+  }
+  // 知识点
+  if(levelObjs[li].every(v=>v)){
+    const knowledge=[
+      '质量守恒定律：化学反应前后，原子的种类和数目不变。配平方程式就是确保等号两边每种原子数目相等。',
+      '四种基本反应类型：化合（多变一）、分解（一变多）、置换（单质换单质）、复分解（交换成分）。',
+      '影响反应速率的因素：温度升高加快（分子运动加剧）、浓度增大加快（碰撞频率增加）、催化剂降低活化能。',
+      'Le Chatelier 原理：改变平衡条件时，平衡向减弱该改变的方向移动。升温→吸热方向；加压→体积减小方向。',
+      '氧化还原反应本质是电子转移。失电子→氧化（氧化数升高），得电子→还原（氧化数降低）。',
+      '酸碱滴定利用中和反应确定未知浓度。等当点时酸碱恰好完全反应，pH突变形成滴定突跃。',
+      '原电池：化学能→电能，负极氧化、正极还原。电解池：电能→化学能，阴极还原、阳极氧化。'
+    ];
+    h+=`<div class="learn-box">💡 ${knowledge[li]}</div>`;
+  }
+  // 下一关按钮
+  if(levelObjs[li].every(v=>v)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+  if(levelObjs[li].every(v=>v)&&li===6)h+=`<div style="text-align:center;margin-top:12px;color:#4ade80;font-size:14px">🎉 恭喜通关！全部 7 个关卡已完成！</div>`;
+  panel.innerHTML=h;
+}
+
+// ========== MOUSE EVENTS (Level 1 drag) ==========
+cv.addEventListener('mousedown',e=>{
+  let rect=cv.getBoundingClientRect();
+  let mx=(e.clientX-rect.left)*(cv.width/rect.width);
+  let my=(e.clientY-rect.top)*(cv.height/rect.height);
+  mouse.down=true;mouse.x=mx;mouse.y=my;
+  if(curLevel===0){
+    for(let i=lv1.atoms.length-1;i>=0;i--){
+      let a=lv1.atoms[i];
+      if(!a.placed&&Math.hypot(a.x-mx,a.y-my)<(ATOM_RADIUS[a.symbol]||18)+5){
+        mouse.drag=i;break;
+      }
+    }
+  }
+});
+cv.addEventListener('mousemove',e=>{
+  let rect=cv.getBoundingClientRect();
+  mouse.x=(e.clientX-rect.left)*(cv.width/rect.width);
+  mouse.y=(e.clientY-rect.top)*(cv.height/rect.height);
+  if(mouse.drag!==null&&curLevel===0){
+    lv1.atoms[mouse.drag].x=mouse.x;
+    lv1.atoms[mouse.drag].y=mouse.y;
+  }
+});
+cv.addEventListener('mouseup',e=>{
+  if(mouse.drag!==null&&curLevel===0){
+    let a=lv1.atoms[mouse.drag];
+    let placed=false;
+    for(let t of lv1.targets){
+      if(t.need===a.symbol&&t.count<t.max&&Math.hypot(a.x-t.x,a.y-t.y)<40){
+        t.count++;a.placed=true;a.x=t.x+(t.count-1)*15-10;a.y=t.y;placed=true;
+        if(t.side==='r')objCheck(0,0);else objCheck(0,1);
+        break;
+      }
+    }
+    if(!placed){a.x=a.ox;a.y=a.oy;}
+    renderPanel();
+  }
+  mouse.down=false;mouse.drag=null;
+});
+// Touch support
+cv.addEventListener('touchstart',e=>{e.preventDefault();let t=e.touches[0];cv.dispatchEvent(new MouseEvent('mousedown',{clientX:t.clientX,clientY:t.clientY}));},{passive:false});
+cv.addEventListener('touchmove',e=>{e.preventDefault();let t=e.touches[0];cv.dispatchEvent(new MouseEvent('mousemove',{clientX:t.clientX,clientY:t.clientY}));},{passive:false});
+cv.addEventListener('touchend',e=>{cv.dispatchEvent(new MouseEvent('mouseup',{}));});
+</script>
+</body>
+</html>

@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>计算机组成原理 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#c0c0d0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(100vh - 36px)}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100vh - 36px);background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px}
+.bar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid #1a1a3a;display:flex;align-items:center;padding:0 16px;font-size:13px;color:#666;z-index:10}
+.bar .cur{color:#60a5fa;font-weight:600;margin-left:8px}
+.overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:540px}
+.start-box h1{font-size:38px;color:#60a5fa;margin-bottom:8px;letter-spacing:2px}
+.start-box .subtitle{font-size:15px;color:#888;margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:16px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:64px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.level-btn{display:block;width:100%;padding:8px 10px;margin-bottom:4px;background:#111128;border:1px solid #1a1a3a;border-radius:6px;color:#888;font-size:12px;cursor:pointer;text-align:left;transition:all .2s}
+.level-btn:hover{border-color:#3b82f6;color:#c0c0d0}
+.level-btn.active{border-color:#3b82f6;background:#0d1a3a;color:#60a5fa;font-weight:600}
+.level-btn.done{border-color:#22c55e;color:#22c55e}
+.concept-box{margin:10px 0;padding:10px;background:#0d0d28;border-left:3px solid #3b82f6;border-radius:0 6px 6px 0;font-size:12px;line-height:1.6;color:#8ab4ff}
+.act-btn{display:inline-block;padding:6px 14px;margin:3px;background:#1a1a3a;border:1px solid #2a2a5a;border-radius:6px;color:#c0c0d0;font-size:12px;cursor:pointer;transition:all .2s}
+.act-btn:hover{border-color:#3b82f6;background:#0d1a3a}
+.act-btn.sel{border-color:#3b82f6;background:#1a2a5a;color:#60a5fa}
+.hint-box{margin:8px 0;padding:8px 10px;background:#1a1a28;border-radius:6px;font-size:11px;color:#888;line-height:1.5}
+.learn-box{margin:8px 0;padding:10px;background:#0a1a0a;border:1px solid #1a3a1a;border-radius:6px;font-size:12px;color:#6c6;line-height:1.6}
+.learn-box .sv{color:#4ade80;font-weight:600}
+.obj-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px}
+.obj-row .oi{font-size:14px}
+.obj-row .ot{flex:1;color:#aaa}
+.obj-row.done .ot{color:#4ade80;text-decoration:line-through}
+.sec-title{font-size:13px;font-weight:600;color:#60a5fa;margin:10px 0 6px;border-bottom:1px solid #1a1a3a;padding-bottom:4px}
+.toggle-row{display:flex;align-items:center;gap:8px;margin:4px 0}
+.toggle-row label{font-size:12px;color:#aaa;flex:1}
+.toggle-btn{width:36px;height:20px;background:#333;border-radius:10px;cursor:pointer;position:relative;transition:background .2s;border:none}
+.toggle-btn.on{background:#3b82f6}
+.toggle-btn::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:left .2s}
+.toggle-btn.on::after{left:18px}
+select.ctrl-sel{background:#111128;border:1px solid #2a2a5a;color:#c0c0d0;padding:4px 8px;border-radius:4px;font-size:12px;width:100%}
+input.ctrl-inp{background:#111128;border:1px solid #2a2a5a;color:#c0c0d0;padding:4px 8px;border-radius:4px;font-size:12px;width:60px;text-align:center}
+.prog-bar{height:4px;background:#1a1a3a;border-radius:2px;margin:6px 0}
+.prog-fill{height:100%;background:#3b82f6;border-radius:2px;transition:width .3s}
+</style>
+</head>
+<body>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+<h1>🖥️ 计算机组成原理 探险</h1>
+<div class="subtitle">7 个关卡，从逻辑门到完整 CPU</div>
+<div class="features">
+<div class="feat"><div class="fi">🔲</div>逻辑门</div>
+<div class="feat"><div class="fi">➕</div>加法器</div>
+<div class="feat"><div class="fi">💾</div>存储器</div>
+<div class="feat"><div class="fi">⚙️</div>ALU</div>
+<div class="feat"><div class="fi">🔀</div>数据通路</div>
+<div class="feat"><div class="fi">🎛️</div>控制器</div>
+<div class="feat"><div class="fi">🖥️</div>CPU</div>
+</div>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+</div>
+</div>
+<div class="panel" id="panel" style="display:none"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar">关卡：<span class="cur" id="barInfo">-</span></div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('barInfo');
+let W,H,curLevel=0,time=0,animId;
+const BLUE='#3b82f6',LBLUE='#60a5fa',DARK='#0a0a1a',DIM='#1a1a3a';
+
+function resize(){cv.width=W=cv.offsetWidth*devicePixelRatio;cv.height=H=cv.offsetHeight*devicePixelRatio;ctx.scale(devicePixelRatio,devicePixelRatio)}
+window.onresize=resize;
+
+// ===== Level definitions =====
+const levels=[
+{name:'逻辑门',icon:'🔲',desc:'AND、OR、NOT、XOR 基本逻辑门与真值表',
+ objs:['验证 AND 门','验证 OR 门','用 NAND 构建 NOT'],
+ learn:'逻辑门是数字电路的基石。<span class="sv">AND</span> 门在所有输入为 1 时输出 1；<span class="sv">OR</span> 门在任一输入为 1 时输出 1；<span class="sv">NOT</span> 门反转输入。所有复杂电路都由这些基本门组合而成。'},
+{name:'加法器',icon:'➕',desc:'半加器 → 全加器 → 行波进位加法器',
+ objs:['理解半加器','观察进位传播','完成 4 位加法'],
+ learn:'<span class="sv">半加器</span>用 XOR 求和、AND 求进位。<span class="sv">全加器</span>额外接收低位进位。4 个全加器串联构成<span class="sv">行波进位加法器</span>，进位从最低位逐级传播到最高位。'},
+{name:'存储器',icon:'💾',desc:'SR 锁存器 → D 触发器 → 寄存器',
+ objs:['理解锁存原理','写入数据','读取验证'],
+ learn:'<span class="sv">SR 锁存器</span>通过交叉反馈实现 1 位存储。<span class="sv">D 触发器</span>在时钟边沿采样输入。多个触发器并联构成<span class="sv">寄存器</span>，是 CPU 内部最快的存储单元。'},
+{name:'ALU',icon:'⚙️',desc:'算术逻辑单元：加减法、逻辑运算、标志位',
+ objs:['执行加法','执行逻辑与','观察溢出标志'],
+ learn:'<span class="sv">ALU</span> 是 CPU 的运算核心。它根据操作码执行加减法和逻辑运算，同时产生<span class="sv">标志位</span>：零标志(Z)、进位(C)、溢出(V)，供后续指令判断使用。'},
+{name:'数据通路',icon:'🔀',desc:'寄存器文件、ALU、多路选择器、总线',
+ objs:['配置读寄存器','执行 ALU 运算','写回结果'],
+ learn:'<span class="sv">数据通路</span>连接寄存器文件、ALU 和存储器。<span class="sv">多路选择器</span>根据控制信号选择数据来源。数据沿总线流动，完成读取→运算→写回的循环。'},
+{name:'控制器',icon:'🎛️',desc:'指令解码、控制信号生成',
+ objs:['解码 R 型指令','解码 Load 指令','观察控制信号'],
+ learn:'<span class="sv">控制器</span>读取指令的操作码字段，生成一组控制信号驱动数据通路。<span class="sv">R 型指令</span>操作寄存器间运算，<span class="sv">Load 指令</span>从内存读数据到寄存器。'},
+{name:'完整 CPU',icon:'🖥️',desc:'取指→解码→执行→访存→写回，5 级流水线',
+ objs:['执行完整指令周期','观察流水线并行','识别数据冒险'],
+ learn:'现代 CPU 采用<span class="sv">5 级流水线</span>：IF(取指)→ID(解码)→EX(执行)→MEM(访存)→WB(写回)。流水线让多条指令重叠执行，但<span class="sv">数据冒险</span>需要转发或暂停来解决。'}
+];
+
+let levelObjs=levels.map(l=>l.objs.map(()=>false));
+// Level-specific state
+let gateType=0,gateA=0,gateB=0; // L0
+let addA=[0,0,0,0],addB=[0,0,0,0],addAnim=0; // L1
+let memCells=[0,0,0,0,0,0,0,0],memAddr=0,memVal=0,memClk=0,memMode=0; // L2
+let aluOp=0,aluA=0,aluB=0; // L3
+let dpSrcA=0,dpSrcB=1,dpOp=0,dpWE=false,dpRegs=[0,5,3,7,0,0,0,0]; // L4
+let ctrlInstr=0; // L5
+let cpuPC=0,cpuStep=0,cpuPipe=[[],[],[],[],[]],cpuRegs=[0,0,0,0,0,0,0,0],cpuMem=[0,0,0,0,0,0,0,0]; // L6
+const cpuProg=[
+{op:'ADD',rd:2,rs1:0,rs2:1,text:'ADD R2, R0, R1'},
+{op:'SUB',rd:3,rs1:2,rs2:1,text:'SUB R3, R2, R1'},
+{op:'LOAD',rd:4,rs1:0,imm:3,text:'LOAD R4, [R0+3]'},
+{op:'ADD',rd:5,rs1:4,rs2:3,text:'ADD R5, R4, R3'}
+];
+
+function completeObj(li,oi){
+if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel()}
+}
+function allDone(li){return levelObjs[li].every(v=>v)}
+
+// ===== Start =====
+function startGame(){
+document.getElementById('startScreen').classList.add('hidden');
+panel.style.display='block';
+resize();
+goLevel(0);
+loop();
+}
+
+function goLevel(i){
+curLevel=i;
+// reset level state
+if(i===1){addA=[0,1,1,0];addB=[0,0,1,1];addAnim=0}
+if(i===2){memCells=[0,0,0,0,0,0,0,0];memAddr=0;memVal=0;memClk=0;memMode=0}
+if(i===3){aluOp=0;aluA=5;aluB=3}
+if(i===4){dpSrcA=0;dpSrcB=1;dpOp=0;dpWE=false;dpRegs=[0,5,3,7,0,0,0,0]}
+if(i===5){ctrlInstr=0}
+if(i===6){cpuPC=0;cpuStep=0;cpuPipe=[[],[],[],[],[]];cpuRegs=[0,10,3,0,0,0,0,0];cpuMem=[0,0,0,5,0,0,0,0]}
+bar.textContent=`${levels[i].icon} ${levels[i].name} (${i+1}/7)`;
+renderPanel();
+}
+
+// ===== Panel rendering =====
+function renderPanel(){
+const L=levels[curLevel],obs=levelObjs[curLevel];
+let h='<div class="sec-title">关卡选择</div>';
+levels.forEach((l,i)=>{
+  let cls=i===curLevel?'active':'';
+  if(allDone(i))cls+=' done';
+  h+=`<button class="level-btn ${cls}" onclick="goLevel(${i})">${l.icon} ${i+1}. ${l.name}</button>`;
+});
+h+=`<div class="sec-title">概念说明</div><div class="concept-box">${L.desc}</div>`;
+h+=`<div class="sec-title">目标</div>`;
+obs.forEach((v,i)=>{
+  h+=`<div class="obj-row${v?' done':''}"><span class="oi">${v?'✅':'⬜'}</span><span class="ot">${L.objs[i]}</span></div>`;
+});
+let prog=obs.filter(v=>v).length;
+h+=`<div class="prog-bar"><div class="prog-fill" style="width:${prog/obs.length*100}%"></div></div>`;
+h+=`<div class="sec-title">交互控件</div>`;
+h+=renderControls();
+if(allDone(curLevel)){
+  h+=`<div class="learn-box">${L.learn}</div>`;
+  if(curLevel<6)h+=`<button class="act-btn" style="width:100%;margin-top:8px;background:#1a3a1a;border-color:#2a5a2a;color:#4ade80" onclick="goLevel(${curLevel+1})">▶ 下一关</button>`;
+  else h+=`<div class="learn-box" style="border-color:#3b82f6;background:#0a0a2a;color:#60a5fa">🎉 恭喜通关！你已经从逻辑门走到了完整 CPU！</div>`;
+}
+panel.innerHTML=h;
+}
+
+function renderControls(){
+let h='';
+switch(curLevel){
+case 0: // Logic Gates
+  h+=`<div style="margin-bottom:6px"><span style="font-size:12px;color:#888">门类型：</span>`;
+  ['AND','OR','NOT','XOR','NAND'].forEach((g,i)=>{
+    h+=`<button class="act-btn${gateType===i?' sel':''}" onclick="gateType=${i};gateA=0;gateB=0;renderPanel()">${g}</button>`;
+  });
+  h+=`</div>`;
+  h+=`<div class="toggle-row"><label>输入 A</label><button class="toggle-btn${gateA?' on':''}" onclick="gateA=1-gateA;checkGateObj();renderPanel()"></button><span style="font-size:12px;color:${gateA?'#4ade80':'#666'}">${gateA}</span></div>`;
+  if(gateType!==2)h+=`<div class="toggle-row"><label>输入 B</label><button class="toggle-btn${gateB?' on':''}" onclick="gateB=1-gateB;checkGateObj();renderPanel()"></button><span style="font-size:12px;color:${gateB?'#4ade80':'#666'}">${gateB}</span></div>`;
+  let out=calcGate(gateType,gateA,gateB);
+  h+=`<div class="hint-box">输出 = <span style="color:${out?'#4ade80':'#f66'};font-weight:600">${out}</span></div>`;
+  break;
+case 1: // Adder
+  h+=`<div style="font-size:12px;color:#888;margin-bottom:4px">输入 A（点击翻转）：</div><div>`;
+  for(let i=3;i>=0;i--)h+=`<button class="act-btn${addA[i]?' sel':''}" onclick="addA[${i}]=1-addA[${i}];addAnim=1;checkAddObj();renderPanel()">${addA[i]}</button>`;
+  h+=` = ${addA[3]*8+addA[2]*4+addA[1]*2+addA[0]}</div>`;
+  h+=`<div style="font-size:12px;color:#888;margin:4px 0">输入 B（点击翻转）：</div><div>`;
+  for(let i=3;i>=0;i--)h+=`<button class="act-btn${addB[i]?' sel':''}" onclick="addB[${i}]=1-addB[${i}];addAnim=1;checkAddObj();renderPanel()">${addB[i]}</button>`;
+  h+=` = ${addB[3]*8+addB[2]*4+addB[1]*2+addB[0]}</div>`;
+  let sum=addA[3]*8+addA[2]*4+addA[1]*2+addA[0]+addB[3]*8+addB[2]*4+addB[1]*2+addB[0];
+  h+=`<div class="hint-box">结果 = ${sum} (${(sum>>>0).toString(2).padStart(5,'0')})</div>`;
+  break;
+case 2: // Memory
+  h+=`<div style="font-size:12px;color:#888;margin-bottom:4px">存储单元（8 位）：</div>`;
+  h+=`<div style="display:flex;gap:4px;flex-wrap:wrap">`;
+  for(let i=0;i<8;i++)h+=`<div style="width:32px;height:28px;background:${i===memAddr?'#1a2a5a':'#111128'};border:1px solid ${i===memAddr?'#3b82f6':'#2a2a5a'};border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;color:${memCells[i]?'#4ade80':'#666'};cursor:pointer" onclick="memAddr=${i};renderPanel()">${memCells[i]}</div>`;
+  h+=`</div>`;
+  h+=`<div style="margin-top:8px"><span style="font-size:12px;color:#888">地址: ${memAddr} | 模式: </span>`;
+  h+=`<button class="act-btn${memMode===0?' sel':''}" onclick="memMode=0;renderPanel()">写入</button>`;
+  h+=`<button class="act-btn${memMode===1?' sel':''}" onclick="memMode=1;renderPanel()">读取</button></div>`;
+  if(memMode===0){
+    h+=`<div style="margin-top:6px"><span style="font-size:12px;color:#888">写入值: </span><input class="ctrl-inp" type="number" min="0" max="255" value="${memVal}" onchange="memVal=+this.value"><button class="act-btn" onclick="doMemWrite()">写入</button></div>`;
+  }else{
+    h+=`<div class="hint-box">地址 ${memAddr} 的值 = <span style="color:#4ade80;font-weight:600">${memCells[memAddr]}</span></div>`;
+  }
+  h+=`<button class="act-btn" onclick="memClk=1;checkMemObj();renderPanel()">⏱ 时钟脉冲</button>`;
+  break;
+case 3: // ALU
+  h+=`<div style="font-size:12px;color:#888">运算类型：</div>`;
+  ['加法(+)','减法(-)','与(AND)','或(OR)','异或(XOR)'].forEach((op,i)=>{
+    h+=`<button class="act-btn${aluOp===i?' sel':''}" onclick="aluOp=${i};checkAluObj();renderPanel()">${op}</button>`;
+  });
+  h+=`<div style="margin-top:8px"><span style="font-size:12px;color:#888">操作数 A: </span><input class="ctrl-inp" type="number" min="0" max="255" value="${aluA}" onchange="aluA=+this.value;checkAluObj();renderPanel()"></div>`;
+  h+=`<div style="margin-top:4px"><span style="font-size:12px;color:#888">操作数 B: </span><input class="ctrl-inp" type="number" min="0" max="255" value="${aluB}" onchange="aluB=+this.value;checkAluObj();renderPanel()"></div>`;
+  let ar=calcAlu();
+  h+=`<div class="hint-box">结果 = <span style="color:#60a5fa;font-weight:600">${ar.val}</span><br>标志: Z=${ar.z} C=${ar.c} V=${ar.v}</div>`;
+  break;
+case 4: // Datapath
+  h+=`<div style="font-size:12px;color:#888">源寄存器 A:</div><select class="ctrl-sel" onchange="dpSrcA=+this.value;renderPanel()">`;
+  for(let i=0;i<8;i++)h+=`<option value="${i}"${dpSrcA===i?' selected':''}>R${i} = ${dpRegs[i]}</option>`;
+  h+=`</select>`;
+  h+=`<div style="font-size:12px;color:#888;margin-top:6px">源寄存器 B:</div><select class="ctrl-sel" onchange="dpSrcB=+this.value;renderPanel()">`;
+  for(let i=0;i<8;i++)h+=`<option value="${i}"${dpSrcB===i?' selected':''}>R${i} = ${dpRegs[i]}</option>`;
+  h+=`</select>`;
+  h+=`<div style="font-size:12px;color:#888;margin-top:6px">ALU 操作:</div><select class="ctrl-sel" onchange="dpOp=+this.value;renderPanel()">`;
+  ['ADD','SUB','AND','OR'].forEach((op,i)=>h+=`<option value="${i}"${dpOp===i?' selected':''}>${op}</option>`);
+  h+=`</select>`;
+  h+=`<div class="toggle-row" style="margin-top:6px"><label>写使能 (WE)</label><button class="toggle-btn${dpWE?' on':''}" onclick="dpWE=!dpWE;renderPanel()"></button></div>`;
+  h+=`<button class="act-btn" style="width:100%;margin-top:6px" onclick="execDatapath()">执行</button>`;
+  let dpR=calcDpAlu();
+  h+=`<div class="hint-box">R${dpSrcA}(${dpRegs[dpSrcA]}) ${['ADD','SUB','AND','OR'][dpOp]} R${dpSrcB}(${dpRegs[dpSrcB]}) = ${dpR}</div>`;
+  break;
+case 5: // Control
+  h+=`<div style="font-size:12px;color:#888">选择指令：</div>`;
+  const instrs=[
+    {name:'ADD R1,R2,R3',type:'R',op:'0110011',funct:'000',desc:'R型：寄存器加法'},
+    {name:'LOAD R1,[R2+4]',type:'I',op:'0000011',funct:'010',desc:'I型：从内存加载'},
+    {name:'STORE R1,[R2+4]',type:'S',op:'0100011',funct:'010',desc:'S型：存储到内存'},
+    {name:'BEQ R1,R2,8',type:'B',op:'1100011',funct:'000',desc:'B型：相等则跳转'}
+  ];
+  instrs.forEach((ins,i)=>{
+    h+=`<button class="act-btn${ctrlInstr===i?' sel':''}" onclick="ctrlInstr=${i};checkCtrlObj();renderPanel()" style="display:block;width:100%;text-align:left;margin:3px 0">${ins.name}<br><span style="color:#666;font-size:10px">${ins.desc}</span></button>`;
+  });
+  let ci=instrs[ctrlInstr];
+  h+=`<div class="hint-box">指令类型: <span style="color:#60a5fa">${ci.type}型</span><br>操作码: ${ci.op}<br>功能码: ${ci.funct}</div>`;
+  break;
+case 6: // CPU
+  h+=`<div style="font-size:12px;color:#888">程序（${cpuProg.length} 条指令）：</div>`;
+  cpuProg.forEach((ins,i)=>{
+    h+=`<div style="padding:3px 6px;font-size:11px;background:${i===cpuPC?'#1a2a5a':'transparent'};border-radius:4px;color:${i===cpuPC?'#60a5fa':'#888'};font-family:monospace">${i}: ${ins.text}</div>`;
+  });
+  h+=`<div style="margin-top:8px"><button class="act-btn" onclick="cpuStepExec()">单步执行</button><button class="act-btn" onclick="cpuReset()">重置</button></div>`;
+  h+=`<div style="font-size:12px;color:#888;margin-top:6px">寄存器：</div><div style="display:flex;gap:4px;flex-wrap:wrap">`;
+  for(let i=0;i<8;i++)h+=`<div style="font-size:10px;color:#aaa;background:#111128;padding:2px 6px;border-radius:3px">R${i}=${cpuRegs[i]}</div>`;
+  h+=`</div>`;
+  h+=`<div style="font-size:12px;color:#888;margin-top:4px">PC = ${cpuPC} | 步骤 = ${cpuStep}</div>`;
+  break;
+}
+return h;
+}
+
+// ===== Game logic =====
+function calcGate(t,a,b){
+  if(t===0)return a&b;if(t===1)return a|b;if(t===2)return 1-a;if(t===3)return a^b;if(t===4)return 1-(a&b);return 0;
+}
+function checkGateObj(){
+  if(gateType===0&&gateA===1&&gateB===1)completeObj(0,0);
+  if(gateType===1&&(gateA===1||gateB===1))completeObj(0,1);
+  if(gateType===4)completeObj(0,2); // NAND as NOT builder
+}
+function checkAddObj(){
+  completeObj(1,0); // understood half adder by interacting
+  let va=addA[3]*8+addA[2]*4+addA[1]*2+addA[0];
+  let vb=addB[3]*8+addB[2]*4+addB[1]*2+addB[0];
+  if(va+vb>15)completeObj(1,1); // carry propagation
+  if(va>0&&vb>0)completeObj(1,2);
+}
+function doMemWrite(){
+  memCells[memAddr]=memVal&255;
+  memClk=1;
+  completeObj(2,0); // latch principle
+  completeObj(2,1); // wrote data
+  renderPanel();
+}
+function checkMemObj(){
+  if(memMode===1&&memCells[memAddr]>0)completeObj(2,2);
+}
+function calcAlu(){
+  let v=0,z=0,c=0,ov=0;
+  if(aluOp===0){v=aluA+aluB;c=v>255?1:0;v&=255;ov=(aluA<128&&aluB<128&&v>=128)?1:0}
+  else if(aluOp===1){v=aluA-aluB;c=v<0?1:0;v&=255}
+  else if(aluOp===2){v=aluA&aluB}
+  else if(aluOp===3){v=aluA|aluB}
+  else{v=aluA^aluB}
+  z=v===0?1:0;
+  return{val:v,z,c,v:ov};
+}
+function checkAluObj(){
+  if(aluOp===0)completeObj(3,0);
+  if(aluOp===2)completeObj(3,1);
+  let r=calcAlu();if(r.v||r.c)completeObj(3,2);
+}
+function calcDpAlu(){
+  let a=dpRegs[dpSrcA],b=dpRegs[dpSrcB];
+  if(dpOp===0)return a+b;if(dpOp===1)return a-b;if(dpOp===2)return a&b;return a|b;
+}
+function execDatapath(){
+  completeObj(4,0);completeObj(4,1);
+  if(dpWE){
+    let r=calcDpAlu();
+    dpRegs[dpSrcA]=r&255;
+    completeObj(4,2);
+  }
+  renderPanel();
+}
+function checkCtrlObj(){
+  if(ctrlInstr===0)completeObj(5,0);
+  if(ctrlInstr===1)completeObj(5,1);
+  if(ctrlInstr>=0)completeObj(5,2);
+}
+function cpuReset(){
+  cpuPC=0;cpuStep=0;cpuPipe=[[],[],[],[],[]];
+  cpuRegs=[0,10,3,0,0,0,0,0];cpuMem=[0,0,0,5,0,0,0,0];
+  renderPanel();
+}
+function cpuStepExec(){
+  if(cpuPC<cpuProg.length){
+    let ins=cpuProg[cpuPC];
+    // Simple execute
+    if(ins.op==='ADD')cpuRegs[ins.rd]=cpuRegs[ins.rs1]+cpuRegs[ins.rs2];
+    else if(ins.op==='SUB')cpuRegs[ins.rd]=cpuRegs[ins.rs1]-cpuRegs[ins.rs2];
+    else if(ins.op==='LOAD')cpuRegs[ins.rd]=cpuMem[(cpuRegs[ins.rs1]+ins.imm)&7];
+    // Pipeline visualization
+    for(let s=4;s>0;s--)cpuPipe[s]=cpuPipe[s-1];
+    cpuPipe[0]=[cpuPC,ins.text];
+    cpuPC++;cpuStep++;
+    completeObj(6,0);
+    if(cpuStep>=2)completeObj(6,1);
+    // Data hazard: R2 written then read
+    if(cpuStep>=2)completeObj(6,2);
+  }
+  renderPanel();
+}
+
+// ===== Canvas drawing =====
+function cw(){return cv.offsetWidth}
+function ch(){return cv.offsetHeight}
+
+function loop(){
+  time+=0.016;
+  draw();
+  animId=requestAnimationFrame(loop);
+}
+
+function draw(){
+  const w=cw(),h=ch();
+  ctx.clearRect(0,0,w,h);
+  ctx.save();
+  switch(curLevel){
+    case 0:drawGates(w,h);break;
+    case 1:drawAdder(w,h);break;
+    case 2:drawMemory(w,h);break;
+    case 3:drawALU(w,h);break;
+    case 4:drawDatapath(w,h);break;
+    case 5:drawControl(w,h);break;
+    case 6:drawCPU(w,h);break;
+  }
+  ctx.restore();
+}
+
+// Helper drawing functions
+function drawBox(x,y,w,h,label,color,filled){
+  ctx.strokeStyle=color;ctx.lineWidth=2;
+  ctx.fillStyle=filled||'rgba(10,10,30,0.8)';
+  ctx.beginPath();ctx.roundRect(x,y,w,h,6);ctx.fill();ctx.stroke();
+  if(label){ctx.fillStyle=color;ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(label,x+w/2,y+h/2+5)}
+}
+function drawWire(x1,y1,x2,y2,active){
+  ctx.strokeStyle=active?'#4ade80':'#333';ctx.lineWidth=active?2.5:1.5;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  if(active){
+    let p=(time*2)%1,px=x1+(x2-x1)*p,py=y1+(y2-y1)*p;
+    ctx.fillStyle='#4ade80';ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);ctx.fill();
+  }
+}
+function drawWireH(x1,y1,xm,x2,y2,active){
+  ctx.strokeStyle=active?'#4ade80':'#333';ctx.lineWidth=active?2.5:1.5;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(xm,y1);ctx.lineTo(xm,y2);ctx.lineTo(x2,y2);ctx.stroke();
+  if(active){
+    let totalLen=Math.abs(xm-x1)+Math.abs(y2-y1)+Math.abs(x2-xm);
+    let p=(time*80)%totalLen;
+    let px,py;
+    if(p<Math.abs(xm-x1)){px=x1+(xm>x1?1:-1)*p;py=y1}
+    else{p-=Math.abs(xm-x1);if(p<Math.abs(y2-y1)){px=xm;py=y1+(y2>y1?1:-1)*p}
+    else{p-=Math.abs(y2-y1);px=xm+(x2>xm?1:-1)*p;py=y2}}
+    ctx.fillStyle='#4ade80';ctx.beginPath();ctx.arc(px,py,3,0,Math.PI*2);ctx.fill();
+  }
+}
+function drawLabel(x,y,text,color,size){
+  ctx.fillStyle=color||'#888';ctx.font=(size||12)+'px system-ui';ctx.textAlign='center';ctx.fillText(text,x,y);
+}
+function drawBit(x,y,val,r){
+  r=r||16;
+  ctx.fillStyle=val?'#4ade80':'#333';ctx.strokeStyle=val?'#4ade80':'#555';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle=val?'#000':'#888';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(val,x,y+4);
+}
+
+// ===== Level 0: Logic Gates =====
+function drawGates(w,h){
+  let cx=w/2,cy=h/2;
+  let gw=120,gh=80;
+  // Gate body
+  let names=['AND','OR','NOT','XOR','NAND'];
+  let gx=cx-gw/2,gy=cy-gh/2;
+  drawBox(gx,gy,gw,gh,names[gateType],LBLUE);
+  // Draw gate symbol
+  ctx.save();ctx.translate(cx,cy);
+  ctx.strokeStyle=LBLUE;ctx.lineWidth=2;
+  if(gateType===0||gateType===4){// AND/NAND
+    ctx.beginPath();ctx.moveTo(-30,-25);ctx.lineTo(-30,25);ctx.lineTo(0,25);ctx.arc(0,0,25,Math.PI/2,-Math.PI/2,true);ctx.closePath();ctx.stroke();
+    if(gateType===4){ctx.beginPath();ctx.arc(28,0,4,0,Math.PI*2);ctx.stroke()}
+  }else if(gateType===1){// OR
+    ctx.beginPath();ctx.moveTo(-30,-25);ctx.quadraticCurveTo(-10,0,-30,25);ctx.quadraticCurveTo(10,25,30,0);ctx.quadraticCurveTo(10,-25,-30,-25);ctx.stroke();
+  }else if(gateType===2){// NOT
+    ctx.beginPath();ctx.moveTo(-25,-20);ctx.lineTo(-25,20);ctx.lineTo(20,0);ctx.closePath();ctx.stroke();
+    ctx.beginPath();ctx.arc(24,0,4,0,Math.PI*2);ctx.stroke();
+  }else if(gateType===3){// XOR
+    ctx.beginPath();ctx.moveTo(-30,-25);ctx.quadraticCurveTo(-10,0,-30,25);ctx.quadraticCurveTo(10,25,30,0);ctx.quadraticCurveTo(10,-25,-30,-25);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-36,-25);ctx.quadraticCurveTo(-16,0,-36,25);ctx.stroke();
+  }
+  ctx.restore();
+  // Input wires
+  let inY1=cy-15,inY2=cy+15;
+  if(gateType===2)inY2=cy; // NOT has 1 input
+  drawBit(gx-60,inY1,gateA);
+  drawWire(gx-44,inY1,gx,inY1,gateA);
+  if(gateType!==2){drawBit(gx-60,inY2,gateB);drawWire(gx-44,inY2,gx,inY2,gateB)}
+  // Output
+  let out=calcGate(gateType,gateA,gateB);
+  drawWire(gx+gw,cy,gx+gw+40,cy,out);
+  drawBit(gx+gw+60,cy,out);
+  // Truth table
+  let tx=cx+160,ty=cy-80;
+  ctx.fillStyle='#888';ctx.font='bold 12px monospace';ctx.textAlign='left';
+  if(gateType===2){
+    ctx.fillText('A | Y',tx,ty);
+    ctx.fillText('-----',tx,ty+16);
+    for(let a=0;a<2;a++){
+      let y=calcGate(2,a,0);
+      ctx.fillStyle=(a===gateA)?LBLUE:'#555';
+      ctx.fillText(`${a} | ${y}`,tx,ty+32+a*16);
+    }
+  }else{
+    ctx.fillStyle='#888';ctx.fillText('A B | Y',tx,ty);
+    ctx.fillText('--------',tx,ty+16);
+    for(let a=0;a<2;a++)for(let b=0;b<2;b++){
+      let y=calcGate(gateType,a,b);
+      ctx.fillStyle=(a===gateA&&b===gateB)?LBLUE:'#555';
+      ctx.fillText(`${a} ${b} | ${y}`,tx,ty+32+(a*2+b)*16);
+    }
+  }
+  drawLabel(cx,gy-30,`${names[gateType]} 门`,LBLUE,16);
+}
+
+// ===== Level 1: Adder =====
+function drawAdder(w,h){
+  let startX=w/2-200,baseY=h/2;
+  drawLabel(w/2,baseY-130,'4 位行波进位加法器',LBLUE,16);
+  let carry=0;
+  let carries=[0];
+  for(let i=0;i<4;i++){
+    let s=addA[i]^addB[i]^carry;
+    let c=(addA[i]&addB[i])|(addA[i]&carry)|(addB[i]&carry);
+    carries.push(c);
+    carry=c;
+  }
+  carry=0;
+  for(let i=0;i<4;i++){
+    let bx=startX+i*100,by=baseY-30;
+    // Full adder box
+    drawBox(bx,by,80,60,`FA${i}`,LBLUE);
+    drawLabel(bx+40,by-8,`全加器 ${i}`,LBLUE,11);
+    // Input A
+    drawBit(bx+20,by-40,addA[i],10);
+    drawWire(bx+20,by-30,bx+20,by,addA[i]);
+    drawLabel(bx+20,by-54,`A${i}`,addA[i]?'#4ade80':'#666',10);
+    // Input B
+    drawBit(bx+60,by-40,addB[i],10);
+    drawWire(bx+60,by-30,bx+60,by,addB[i]);
+    drawLabel(bx+60,by-54,`B${i}`,addB[i]?'#4ade80':'#666',10);
+    // Carry in
+    let cin=carries[i];
+    if(i>0){
+      drawWire(bx-20,by+30,bx,by+30,cin);
+    }else{
+      drawBit(bx-30,by+30,0,8);
+      drawWire(bx-22,by+30,bx,by+30,false);
+      drawLabel(bx-30,by+46,'Cin',`#666`,9);
+    }
+    // Sum output
+    let s=addA[i]^addB[i]^cin;
+    drawWire(bx+40,by+60,bx+40,by+90,s);
+    drawBit(bx+40,by+100,s,10);
+    drawLabel(bx+40,by+118,`S${i}`,s?'#4ade80':'#666',10);
+    // Carry out
+    let cout=carries[i+1];
+    if(i<3){
+      drawWire(bx+80,by+30,bx+100,by+30,cout);
+    }else{
+      drawWire(bx+80,by+30,bx+100,by+30,cout);
+      drawBit(bx+110,by+30,cout,10);
+      drawLabel(bx+110,by+46,'Cout',cout?'#4ade80':'#666',9);
+    }
+    carry=cout;
+  }
+  // Animated carry propagation
+  if(addAnim>0){
+    addAnim+=0.02;
+    let p=Math.min(addAnim,1);
+    let ax=startX+p*400;
+    ctx.fillStyle='rgba(59,130,246,0.3)';ctx.fillRect(startX,baseY-30,ax-startX,60);
+    if(addAnim>1.5)addAnim=0;
+  }
+}
+
+// ===== Level 2: Memory =====
+function drawMemory(w,h){
+  let cx=w/2,cy=h/2;
+  drawLabel(cx,cy-160,'存储器层次结构',LBLUE,16);
+  // SR Latch visualization
+  let lx=cx-180,ly=cy-100;
+  drawLabel(lx+60,ly-10,'SR 锁存器',LBLUE,13);
+  drawBox(lx,ly,50,30,'NOR','#f59e0b');
+  drawBox(lx,ly+60,50,30,'NOR','#f59e0b');
+  // Cross feedback
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(lx+50,ly+15);ctx.lineTo(lx+70,ly+15);ctx.lineTo(lx+70,ly+75);ctx.lineTo(lx,ly+75);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(lx+50,ly+75);ctx.lineTo(lx+80,ly+75);ctx.lineTo(lx+80,ly+15);ctx.lineTo(lx,ly+15);ctx.stroke();
+  ctx.setLineDash([]);
+  drawLabel(lx+90,ly+20,'Q',memCells[memAddr]?'#4ade80':'#666',14);
+  drawLabel(lx+90,ly+80,"Q'",memCells[memAddr]?'#666':'#4ade80',14);
+  // Register file
+  let rx=cx+20,ry=cy-120;
+  drawLabel(rx+80,ry-10,'寄存器文件 (8×8bit)',LBLUE,13);
+  for(let i=0;i<8;i++){
+    let y=ry+i*30;
+    let sel=i===memAddr;
+    drawBox(rx,y,160,24,null,sel?LBLUE:DIM);
+    ctx.fillStyle=sel?LBLUE:'#666';ctx.font='11px monospace';ctx.textAlign='left';
+    ctx.fillText(`Addr ${i}:`,rx+8,y+16);
+    ctx.fillStyle=memCells[i]?'#4ade80':'#555';ctx.textAlign='right';
+    ctx.fillText(`${memCells[i].toString(2).padStart(8,'0')} (${memCells[i]})`,rx+152,y+16);
+  }
+  // Clock pulse animation
+  if(memClk>0){
+    memClk+=0.03;
+    let pulse=Math.sin(memClk*10)*0.5+0.5;
+    ctx.fillStyle=`rgba(59,130,246,${pulse*0.3})`;
+    ctx.fillRect(rx,ry+memAddr*30,160,24);
+    if(memClk>2)memClk=0;
+  }
+  // Clock signal wave
+  let wx=cx-180,wy=cy+100;
+  drawLabel(wx+80,wy-10,'时钟信号',LBLUE,12);
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=1.5;ctx.beginPath();
+  for(let i=0;i<8;i++){
+    let x=wx+i*20;
+    ctx.lineTo(x,wy+(i%2?0:20));ctx.lineTo(x+20,wy+(i%2?0:20));
+  }
+  ctx.stroke();
+  // Animated clock edge
+  let cp=(time*2)%8;
+  let cpx=wx+cp*20;
+  ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(cpx,wy+10,4,0,Math.PI*2);ctx.fill();
+}
+
+// ===== Level 3: ALU =====
+function drawALU(w,h){
+  let cx=w/2,cy=h/2;
+  drawLabel(cx,cy-150,'算术逻辑单元 (ALU)',LBLUE,16);
+  // ALU trapezoid shape
+  ctx.beginPath();
+  ctx.moveTo(cx-60,cy-80);ctx.lineTo(cx+60,cy-80);ctx.lineTo(cx+80,cy+60);ctx.lineTo(cx-80,cy+60);ctx.closePath();
+  ctx.fillStyle='rgba(59,130,246,0.1)';ctx.fill();ctx.strokeStyle=LBLUE;ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle=LBLUE;ctx.font='bold 18px system-ui';ctx.textAlign='center';ctx.fillText('ALU',cx,cy);
+  let opNames=['+','-','AND','OR','XOR'];
+  ctx.fillStyle='#60a5fa';ctx.font='14px system-ui';ctx.fillText(opNames[aluOp],cx,cy+20);
+  // Input A
+  drawBox(cx-160,cy-60,60,30,`A=${aluA}`,'#f59e0b');
+  drawWire(cx-100,cy-45,cx-60,cy-45,true);
+  // Input B
+  drawBox(cx-160,cy+20,60,30,`B=${aluB}`,'#f59e0b');
+  drawWire(cx-100,cy+35,cx-60,cy+35,true);
+  // Op selector
+  drawBox(cx-30,cy-120,60,24,opNames[aluOp],'#a855f7');
+  drawWire(cx,cy-96,cx,cy-80,true);
+  drawLabel(cx,cy-130,'操作码','#a855f7',10);
+  // Output
+  let r=calcAlu();
+  drawWire(cx,cy+60,cx,cy+100,true);
+  drawBox(cx-40,cy+100,80,30,`${r.val}`,'#4ade80');
+  drawLabel(cx,cy+145,'结果','#4ade80',11);
+  // Flags
+  let fx=cx+120,fy=cy-40;
+  drawLabel(fx+30,fy-10,'标志位',LBLUE,12);
+  [{n:'Z (零)',v:r.z},{n:'C (进位)',v:r.c},{n:'V (溢出)',v:r.v}].forEach((f,i)=>{
+    let y=fy+i*30;
+    drawBox(fx,y,80,24,null,f.v?'#ef4444':'#333');
+    ctx.fillStyle=f.v?'#ef4444':'#555';ctx.font='11px system-ui';ctx.textAlign='center';
+    ctx.fillText(`${f.n}=${f.v}`,fx+40,y+16);
+  });
+  // Data flow animation
+  let p=(time*1.5)%3;
+  if(p<1){// A flowing in
+    let px=cx-160+p*100,py=cy-45;
+    ctx.fillStyle='rgba(245,158,11,0.6)';ctx.beginPath();ctx.arc(px,py,6,0,Math.PI*2);ctx.fill();
+  }else if(p<2){// Processing
+    let pulse=Math.sin((p-1)*Math.PI*4)*0.3+0.5;
+    ctx.fillStyle=`rgba(59,130,246,${pulse})`;ctx.beginPath();
+    ctx.moveTo(cx-60,cy-80);ctx.lineTo(cx+60,cy-80);ctx.lineTo(cx+80,cy+60);ctx.lineTo(cx-80,cy+60);ctx.closePath();ctx.fill();
+  }else{// Result flowing out
+    let px=cx,py=cy+60+(p-2)*40;
+    ctx.fillStyle='rgba(74,222,128,0.6)';ctx.beginPath();ctx.arc(px,py,6,0,Math.PI*2);ctx.fill();
+  }
+}
+
+// ===== Level 4: Datapath =====
+function drawDatapath(w,h){
+  let cx=w/2,cy=h/2;
+  drawLabel(cx,cy-170,'数据通路',LBLUE,16);
+  // Register file
+  let rfx=cx-220,rfy=cy-100;
+  drawBox(rfx,rfy,120,160,'寄存器文件',LBLUE);
+  for(let i=0;i<8;i++){
+    let y=rfy+8+i*18;
+    let sel=i===dpSrcA||i===dpSrcB;
+    ctx.fillStyle=sel?'#60a5fa':'#444';ctx.font='10px monospace';ctx.textAlign='left';
+    ctx.fillText(`R${i}=${dpRegs[i]}`,rfx+8,y+12);
+  }
+  // MUX A
+  let mx1=cx-70,my1=cy-70;
+  drawBox(mx1,my1,40,30,'MUX','#a855f7');
+  drawWire(rfx+120,rfy+40,mx1,my1+15,dpSrcA>=0);
+  drawLabel(mx1+20,my1-6,`R${dpSrcA}`,'#a855f7',10);
+  // MUX B
+  let mx2=cx-70,my2=cy+20;
+  drawBox(mx2,my2,40,30,'MUX','#a855f7');
+  drawWire(rfx+120,rfy+100,mx2,my2+15,dpSrcB>=0);
+  drawLabel(mx2+20,my2-6,`R${dpSrcB}`,'#a855f7',10);
+  // ALU
+  let ax=cx+10,ay=cy-50;
+  ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax+60,ay);ctx.lineTo(ax+70,ay+80);ctx.lineTo(ax-10,ay+80);ctx.closePath();
+  ctx.fillStyle='rgba(59,130,246,0.15)';ctx.fill();ctx.strokeStyle=LBLUE;ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle=LBLUE;ctx.font='bold 14px system-ui';ctx.textAlign='center';
+  ctx.fillText('ALU',ax+30,ay+45);
+  ctx.fillText(['ADD','SUB','AND','OR'][dpOp],ax+30,ay+62);
+  // Wires to ALU
+  drawWire(mx1+40,my1+15,ax,ay+20,true);
+  drawWire(mx2+40,my2+15,ax,ay+60,true);
+  // Result
+  let res=calcDpAlu();
+  drawWire(ax+70,ay+40,ax+130,ay+40,true);
+  drawBox(ax+130,ay+25,70,30,`${res}`,'#4ade80');
+  drawLabel(ax+165,ay+70,'结果','#4ade80',10);
+  // Write-back path
+  if(dpWE){
+    ctx.setLineDash([4,4]);ctx.strokeStyle='#4ade80';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(ax+165,ay+55);ctx.lineTo(ax+165,ay+120);ctx.lineTo(rfx+60,ay+120);ctx.lineTo(rfx+60,rfy+160);ctx.stroke();
+    ctx.setLineDash([]);
+    drawLabel(cx,ay+135,'写回路径','#4ade80',10);
+    // Animated write-back
+    let p=(time*1.5)%1;
+    let path=[{x:ax+165,y:ay+55},{x:ax+165,y:ay+120},{x:rfx+60,y:ay+120},{x:rfx+60,y:rfy+160}];
+    let totalLen=0;for(let i=1;i<path.length;i++)totalLen+=Math.abs(path[i].x-path[i-1].x)+Math.abs(path[i].y-path[i-1].y);
+    let d=p*totalLen,px=path[0].x,py=path[0].y;
+    for(let i=1;i<path.length;i++){
+      let segLen=Math.abs(path[i].x-path[i-1].x)+Math.abs(path[i].y-path[i-1].y);
+      if(d<=segLen){let t=d/segLen;px=path[i-1].x+(path[i].x-path[i-1].x)*t;py=path[i-1].y+(path[i].y-path[i-1].y)*t;break}
+      d-=segLen;
+    }
+    ctx.fillStyle='#4ade80';ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();
+  }
+  // Control signals
+  drawBox(cx-40,cy-160,80,24,'控制信号','#f59e0b');
+  ctx.setLineDash([3,3]);ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(cx,cy-136);ctx.lineTo(cx,cy-120);
+  ctx.moveTo(cx,cy-120);ctx.lineTo(mx1+20,my1);
+  ctx.moveTo(cx,cy-120);ctx.lineTo(ax+30,ay);ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// ===== Level 5: Control Unit =====
+function drawControl(w,h){
+  let cx=w/2,cy=h/2;
+  drawLabel(cx,cy-170,'控制器 — 指令解码',LBLUE,16);
+  const instrs=[
+    {name:'ADD R1,R2,R3',bits:'0110011|00011|00010|000|00001|0110011',fields:['opcode','rs2','rs1','funct3','rd','opcode'],
+     sigs:{RegWrite:1,ALUSrc:0,MemRead:0,MemWrite:0,Branch:0,ALUOp:'ADD'}},
+    {name:'LOAD R1,[R2+4]',bits:'0000011|00100|00010|010|00001|0000011',fields:['opcode','imm','rs1','funct3','rd','opcode'],
+     sigs:{RegWrite:1,ALUSrc:1,MemRead:1,MemWrite:0,Branch:0,ALUOp:'ADD'}},
+    {name:'STORE R1,[R2+4]',bits:'0100011|00100|00010|010|00001|0100011',fields:['opcode','imm','rs1','funct3','rs2','opcode'],
+     sigs:{RegWrite:0,ALUSrc:1,MemRead:0,MemWrite:1,Branch:0,ALUOp:'ADD'}},
+    {name:'BEQ R1,R2,8',bits:'1100011|01000|00010|000|00001|1100011',fields:['opcode','imm','rs2','funct3','rs1','opcode'],
+     sigs:{RegWrite:0,ALUSrc:0,MemRead:0,MemWrite:0,Branch:1,ALUOp:'SUB'}}
+  ];
+  let ins=instrs[ctrlInstr];
+  // Instruction register
+  let irx=cx-200,iry=cy-120;
+  drawBox(irx,iry,400,40,'指令寄存器 (IR)','#f59e0b');
+  // Bit fields
+  let parts=ins.bits.split('|');
+  let colors=['#ef4444','#3b82f6','#22c55e','#a855f7','#f59e0b','#ef4444'];
+  let bx=irx+10;
+  parts.forEach((p,i)=>{
+    let pw=p.length*5.5;
+    ctx.fillStyle=colors[i%colors.length]+'40';ctx.fillRect(bx,iry+4,pw,32);
+    ctx.fillStyle=colors[i%colors.length];ctx.font='10px monospace';ctx.textAlign='center';
+    ctx.fillText(p,bx+pw/2,iry+22);
+    ctx.font='9px system-ui';ctx.fillText(ins.fields[i],bx+pw/2,iry+52);
+    bx+=pw+4;
+  });
+  // Control unit box
+  let cux=cx-80,cuy=cy;
+  drawBox(cux,cuy,160,60,'控制单元','#3b82f6');
+  drawWire(cx,iry+40,cx,cuy,true);
+  // Control signals output
+  let sigs=ins.sigs;
+  let sx=cx-200,sy=cy+90;
+  let sigNames=Object.keys(sigs);
+  sigNames.forEach((s,i)=>{
+    let x=sx+i*70,y=sy;
+    let v=sigs[s];
+    let active=v===1||v==='ADD'||v==='SUB';
+    drawBox(x,y,64,36,null,active?'#4ade80':'#333');
+    ctx.fillStyle=active?'#4ade80':'#555';ctx.font='9px system-ui';ctx.textAlign='center';
+    ctx.fillText(s,x+32,y+15);ctx.font='bold 11px monospace';
+    ctx.fillText(String(v),x+32,y+30);
+    // Wire from control unit
+    drawWire(cux+i*26+13,cuy+60,x+32,y,active);
+  });
+  // Animated decode pulse
+  let pulse=Math.sin(time*3)*0.3+0.5;
+  ctx.fillStyle=`rgba(59,130,246,${pulse*0.2})`;
+  ctx.fillRect(cux,cuy,160,60);
+  drawLabel(cx,sy+50,`指令类型: ${['R','I','S','B'][ctrlInstr]}型`,'#60a5fa',13);
+}
+
+// ===== Level 6: Full CPU Pipeline =====
+function drawCPU(w,h){
+  let cx=w/2,cy=h/2;
+  drawLabel(cx,cy-180,'5 级流水线 CPU',LBLUE,16);
+  let stages=['IF\n取指','ID\n解码','EX\n执行','MEM\n访存','WB\n写回'];
+  let stageColors=['#3b82f6','#a855f7','#f59e0b','#22c55e','#ef4444'];
+  let sw=100,sh=120,gap=16;
+  let totalW=stages.length*(sw+gap)-gap;
+  let sx=cx-totalW/2,sy=cy-60;
+  // Draw pipeline stages
+  stages.forEach((s,i)=>{
+    let x=sx+i*(sw+gap),y=sy;
+    let hasInstr=cpuPipe[i]&&cpuPipe[i].length>0;
+    ctx.fillStyle=hasInstr?stageColors[i]+'30':'rgba(20,20,40,0.8)';
+    ctx.strokeStyle=hasInstr?stageColors[i]:DIM;ctx.lineWidth=2;
+    ctx.beginPath();ctx.roundRect(x,y,sw,sh,8);ctx.fill();ctx.stroke();
+    // Stage name
+    let lines=s.split('\n');
+    ctx.fillStyle=hasInstr?stageColors[i]:'#555';ctx.font='bold 14px system-ui';ctx.textAlign='center';
+    ctx.fillText(lines[0],x+sw/2,y+24);
+    ctx.font='11px system-ui';ctx.fillText(lines[1],x+sw/2,y+40);
+    // Instruction in stage
+    if(hasInstr){
+      ctx.fillStyle='#fff';ctx.font='10px monospace';ctx.textAlign='center';
+      let txt=cpuPipe[i][1];
+      if(txt.length>12)txt=txt.substring(0,12)+'…';
+      ctx.fillText(txt,x+sw/2,y+70);
+      ctx.fillStyle=stageColors[i];ctx.font='9px system-ui';
+      ctx.fillText(`PC=${cpuPipe[i][0]}`,x+sw/2,y+86);
+      // Animated processing indicator
+      let pulse=Math.sin(time*4+i)*0.4+0.6;
+      ctx.fillStyle=stageColors[i]+Math.floor(pulse*40).toString(16).padStart(2,'0');
+      ctx.beginPath();ctx.roundRect(x+4,y+sh-20,sw-8,14,4);ctx.fill();
+      ctx.fillStyle=stageColors[i];ctx.font='8px system-ui';
+      ctx.fillText('处理中...',x+sw/2,y+sh-9);
+    }
+    // Arrow between stages
+    if(i<4){
+      let ax=x+sw+2,ay=y+sh/2;
+      ctx.fillStyle=hasInstr?'#60a5fa':'#333';
+      ctx.beginPath();ctx.moveTo(ax,ay-6);ctx.lineTo(ax+gap-4,ay);ctx.lineTo(ax,ay+6);ctx.fill();
+    }
+  });
+  // Data hazard indicator
+  if(cpuStep>=2){
+    let hx=sx+2*(sw+gap),hy=sy+sh+20;
+    ctx.fillStyle='rgba(239,68,68,0.15)';ctx.fillRect(sx+(sw+gap),sy-4,sw*2+gap,sh+8);
+    ctx.strokeStyle='#ef4444';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    ctx.strokeRect(sx+(sw+gap),sy-4,sw*2+gap,sh+8);ctx.setLineDash([]);
+    drawLabel(sx+2*(sw+gap)+sw/2,hy+14,'⚠ 数据冒险: 需要转发','#ef4444',11);
+    // Forwarding path
+    ctx.strokeStyle='#ef4444';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
+    ctx.beginPath();
+    ctx.moveTo(sx+3*(sw+gap)+sw/2,sy+sh);
+    ctx.quadraticCurveTo(sx+2.5*(sw+gap),sy+sh+40,sx+2*(sw+gap)+sw/2,sy+sh);
+    ctx.stroke();ctx.setLineDash([]);
+    let fp=(time*2)%1;
+    let fpx=sx+3*(sw+gap)+sw/2+(sx+2*(sw+gap)+sw/2-sx-3*(sw+gap)-sw/2)*fp;
+    let fpy=sy+sh+Math.sin(fp*Math.PI)*40;
+    ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(fpx,fpy,4,0,Math.PI*2);ctx.fill();
+  }
+  // Pipeline timeline at bottom
+  let ty=sy+sh+60;
+  drawLabel(cx,ty-6,'流水线时序图','#888',11);
+  ctx.strokeStyle='#333';ctx.lineWidth=1;
+  for(let t=0;t<6;t++){
+    let x=sx+t*(sw+gap)/1.2;
+    ctx.beginPath();ctx.moveTo(x,ty);ctx.lineTo(x,ty+cpuProg.length*18+10);ctx.stroke();
+    drawLabel(x,ty-2,`T${t}`,'#555',9);
+  }
+  cpuProg.forEach((ins,i)=>{
+    let y=ty+6+i*18;
+    ctx.fillStyle='#555';ctx.font='9px monospace';ctx.textAlign='right';
+    ctx.fillText(ins.text,sx-8,y+10);
+    for(let s=0;s<5;s++){
+      let t=i+s;
+      if(t<6){
+        let x=sx+t*(sw+gap)/1.2;
+        let active=i<cpuStep;
+        ctx.fillStyle=active?stageColors[s]+'60':'#1a1a3a';
+        ctx.fillRect(x+2,y,((sw+gap)/1.2)-4,14);
+        ctx.fillStyle=active?stageColors[s]:'#444';ctx.font='8px system-ui';ctx.textAlign='center';
+        ctx.fillText(stages[s].split('\n')[0],x+(sw+gap)/2.4,y+10);
+      }
+    }
+  });
+  // Instruction memory
+  let imx=sx-10,imy=sy-50;
+  drawBox(imx,imy,totalW+20,30,'指令存储器 (PC='+cpuPC+')','#3b82f6');
+}
+
+// ===== Init =====
+resize();
+
+</script>
+</body>
+</html>

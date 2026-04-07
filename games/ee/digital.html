@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数字电路 实验室</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e0e0e0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+#overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,10,26,0.97);z-index:100;display:flex;align-items:center;justify-content:center;flex-direction:column}
+#overlay h1{font-size:48px;color:#22d3ee;margin-bottom:12px}
+#overlay .sub{font-size:18px;color:#94a3b8;margin-bottom:36px}
+#overlay .features{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-bottom:40px;max-width:600px}
+#overlay .feat{background:rgba(6,182,212,0.1);border:1px solid rgba(6,182,212,0.3);border-radius:10px;padding:12px 18px;font-size:14px;color:#67e8f9;min-width:140px;text-align:center}
+#startBtn{background:linear-gradient(135deg,#06b6d4,#0891b2);color:#fff;border:none;padding:16px 48px;font-size:20px;border-radius:12px;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s}
+#startBtn:hover{transform:scale(1.05);box-shadow:0 0 30px rgba(6,182,212,0.4)}
+#main{display:none;flex:1;flex-direction:row;overflow:hidden}
+#panel{width:320px;min-width:320px;background:#0f0f23;border-right:1px solid #1e293b;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+#panel h2{color:#22d3ee;font-size:18px;margin-bottom:4px}
+#panel h3{color:#06b6d4;font-size:14px;margin-top:8px}
+#panel .desc{font-size:13px;color:#94a3b8;line-height:1.6}
+#panel .objectives{list-style:none;padding:0}
+#panel .objectives li{font-size:13px;padding:4px 0;color:#64748b}
+#panel .objectives li.done{color:#22c55e}
+#panel .objectives li::before{content:'○ ';color:#475569}
+#panel .objectives li.done::before{content:'● ';color:#22c55e}
+.ctrl-group{background:rgba(6,182,212,0.05);border:1px solid #1e293b;border-radius:8px;padding:12px}
+.ctrl-group label{display:block;font-size:12px;color:#94a3b8;margin-bottom:4px}
+.ctrl-group input,.ctrl-group select{background:#1a1a2e;border:1px solid #334155;color:#e0e0e0;padding:6px 10px;border-radius:6px;width:100%;font-size:14px;margin-bottom:6px}
+.ctrl-group button,.btn{background:linear-gradient(135deg,#06b6d4,#0891b2);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;margin:2px}
+.ctrl-group button:hover,.btn:hover{opacity:0.9}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-outline{background:transparent;border:1px solid #06b6d4;color:#06b6d4}
+.btn-outline:hover{background:rgba(6,182,212,0.1)}
+#canvasWrap{flex:1;position:relative}
+#canvas{width:100%;height:100%;display:block}
+#bar{height:36px;background:#0f0f23;border-top:1px solid #1e293b;display:flex;align-items:center;padding:0 16px;font-size:13px;color:#64748b}
+#bar .level-nav{display:flex;gap:4px;margin-left:auto}
+#bar .level-nav button{background:#1a1a2e;border:1px solid #334155;color:#94a3b8;width:28px;height:28px;border-radius:4px;cursor:pointer;font-size:12px}
+#bar .level-nav button.active{background:#06b6d4;color:#fff;border-color:#06b6d4}
+#bar .level-nav button.completed{border-color:#22c55e;color:#22c55e}
+#learnOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,10,26,0.92);z-index:50;display:none;align-items:center;justify-content:center}
+#learnBox{background:#1a1a2e;border:1px solid #06b6d4;border-radius:12px;padding:32px;max-width:500px;text-align:center}
+#learnBox h3{color:#22d3ee;margin-bottom:16px;font-size:20px}
+#learnBox p{color:#94a3b8;line-height:1.8;margin-bottom:20px;font-size:14px}
+#learnBox button{background:linear-gradient(135deg,#06b6d4,#0891b2);color:#fff;border:none;padding:10px 32px;border-radius:8px;cursor:pointer;font-size:15px}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:#0a0a1a}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+</style>
+</head>
+<body>
+<div id="overlay">
+<h1>🔲 数字电路 实验室</h1>
+<p class="sub">7 个关卡，从逻辑门到状态机</p>
+<div class="features">
+<div class="feat">🔢 数制编码</div>
+<div class="feat">🧮 组合逻辑</div>
+<div class="feat">🔀 编码译码</div>
+<div class="feat">⏱ 触发器</div>
+<div class="feat">🔄 计数器</div>
+<div class="feat">📦 寄存器</div>
+<div class="feat">🤖 状态机</div>
+</div>
+<button id="startBtn">开始探索</button>
+</div>
+<div id="main">
+<div id="panel"></div>
+<div id="canvasWrap"><canvas id="canvas"></canvas></div>
+</div>
+<div id="bar">
+<span id="barText">关卡 1/7</span>
+<div class="level-nav" id="levelNav"></div>
+</div>
+<div id="learnOverlay">
+<div id="learnBox">
+<h3 id="learnTitle"></h3>
+<p id="learnContent"></p>
+<button onclick="closeLearn()">继续</button>
+</div>
+</div>
+<script>
+const $ = s => document.querySelector(s);
+const canvas = $('#canvas'), ctx = canvas.getContext('2d');
+const panel = $('#panel'), barText = $('#barText'), levelNav = $('#levelNav');
+let W, H, curLevel = 0, animId, time = 0;
+const levelObjs = Array.from({length:7}, () => [false,false,false]);
+const levelCompleted = Array(7).fill(false);
+
+// Level definitions
+const levels = [
+  {name:'数制与编码', objectives:['完成二进制转换','理解 BCD 编码','理解格雷码'],
+   learn:'数字系统中，二进制是基础。BCD 码用 4 位二进制表示一位十进制数（0-9），便于十进制显示。格雷码相邻码只差 1 位，常用于编码器避免毛刺。'},
+  {name:'组合逻辑', objectives:['填写真值表','卡诺图化简','生成最简电路'],
+   learn:'组合逻辑设计流程：真值表 → 卡诺图 → 最简表达式 → 门电路。卡诺图利用相邻格合并消去变量，是手工化简的核心方法。'},
+  {name:'编码器与译码器', objectives:['使用编码器','使用译码器','用 MUX 实现逻辑函数'],
+   learn:'编码器将 2^n 个输入压缩为 n 位编码；译码器反向展开。多路选择器（MUX）可实现任意逻辑函数，是 FPGA 查找表的基础。'},
+  {name:'触发器', objectives:['理解 D 触发器','理解 JK 触发器','画出时序图'],
+   learn:'触发器是时序逻辑的基本存储单元。D 触发器在时钟上升沿采样 D 输入；JK 触发器功能最全，J=K=1 时翻转。边沿触发避免了空翻问题。'},
+  {name:'计数器', objectives:['运行 4 位二进制计数器','设计模 6 计数器','理解环形计数器'],
+   learn:'计数器由多个触发器级联构成。同步计数器所有触发器共用时钟，速度快；异步计数器逐级传递，有延迟累积。模 N 计数器通过反馈清零实现。'},
+  {name:'寄存器与移位寄存器', objectives:['并行加载数据','串行移位','理解 LFSR'],
+   learn:'寄存器并行存储多位数据。移位寄存器可串行输入/输出，用于串并转换。LFSR（线性反馈移位寄存器）通过异或反馈产生伪随机序列，广泛用于通信和加密。'},
+  {name:'有限状态机', objectives:['设计状态图','输入正确硬币序列','完成购买'],
+   learn:'FSM 是数字系统的控制核心。Moore 机输出仅取决于当前状态；Mealy 机输出还取决于输入。自动售货机是经典 FSM 应用，状态随投币金额转移。'}
+];
+
+function resize(){
+  const wrap = $('#canvasWrap');
+  W = canvas.width = wrap.clientWidth;
+  H = canvas.height = wrap.clientHeight;
+}
+window.addEventListener('resize', resize);
+
+function completeObj(li, oi){
+  if(levelObjs[li][oi]) return;
+  levelObjs[li][oi] = true;
+  updatePanel();
+  if(levelObjs[li].every(v=>v)){
+    levelCompleted[li] = true;
+    updateNav();
+    showLearn(li);
+  }
+}
+
+function showLearn(li){
+  $('#learnTitle').textContent = '🎓 ' + levels[li].name + ' — 知识总结';
+  $('#learnContent').textContent = levels[li].learn;
+  $('#learnOverlay').style.display = 'flex';
+}
+function closeLearn(){
+  $('#learnOverlay').style.display = 'none';
+  if(curLevel < 6){ switchLevel(curLevel+1); }
+}
+
+function updateNav(){
+  levelNav.innerHTML = '';
+  for(let i=0;i<7;i++){
+    const b = document.createElement('button');
+    b.textContent = i+1;
+    if(i===curLevel) b.className='active';
+    if(levelCompleted[i]) b.classList.add('completed');
+    b.onclick = ()=> switchLevel(i);
+    levelNav.appendChild(b);
+  }
+  barText.textContent = `关卡 ${curLevel+1}/7 — ${levels[curLevel].name}`;
+}
+
+function switchLevel(i){
+  curLevel = i;
+  updateNav();
+  updatePanel();
+  if(animId) cancelAnimationFrame(animId);
+  time = 0;
+  initLevel(i);
+  animate();
+}
+
+function updatePanel(){
+  const L = levels[curLevel];
+  let html = `<h2>关卡 ${curLevel+1}: ${L.name}</h2>`;
+  html += `<ul class="objectives">`;
+  L.objectives.forEach((o,i)=>{
+    html += `<li class="${levelObjs[curLevel][i]?'done':''}">${o}</li>`;
+  });
+  html += `</ul>`;
+  html += `<div id="controls"></div>`;
+  panel.innerHTML = html;
+  buildControls(curLevel);
+}
+
+// ========== LEVEL STATE ==========
+let lvlState = {};
+
+// ========== LEVEL 0: Number Systems ==========
+function initLevel0(){
+  lvlState = {decVal:42, showBCD:false, showGray:false, animProgress:0};
+}
+function buildControls0(){
+  const c = $('#controls');
+  c.innerHTML = `
+    <div class="ctrl-group">
+      <label>输入十进制数 (0-255)</label>
+      <input type="number" id="decInput" value="${lvlState.decVal}" min="0" max="255">
+      <button onclick="convertNum()">转换</button>
+    </div>
+    <div class="ctrl-group">
+      <button onclick="showBCD()">显示 BCD 编码</button>
+      <button onclick="showGray()">显示格雷码</button>
+    </div>
+    <div class="desc">
+      <p>输入一个十进制数，观察它在不同数制下的表示。</p>
+      <p>二进制：逢二进一，每位权重为 2 的幂</p>
+      <p>十六进制：每 4 位二进制对应 1 位十六进制</p>
+    </div>`;
+}
+window.convertNum = function(){
+  const v = parseInt($('#decInput').value)||0;
+  lvlState.decVal = Math.max(0,Math.min(255,v));
+  lvlState.animProgress = 0;
+  completeObj(0,0);
+};
+window.showBCD = function(){
+  lvlState.showBCD = true;
+  completeObj(0,1);
+};
+window.showGray = function(){
+  lvlState.showGray = true;
+  completeObj(0,2);
+};
+
+function drawLevel0(){
+  const v = lvlState.decVal;
+  const bin = v.toString(2).padStart(8,'0');
+  const hex = v.toString(16).toUpperCase().padStart(2,'0');
+  const cx = W/2, cy = H*0.15;
+
+  // Title
+  ctx.fillStyle='#22d3ee'; ctx.font='bold 22px monospace'; ctx.textAlign='center';
+  ctx.fillText(`十进制: ${v}`, cx, cy);
+
+  // Binary with bit weights
+  const bw = 50, bx = cx - 4*bw;
+  ctx.font='bold 18px monospace';
+  for(let i=0;i<8;i++){
+    const x = bx + i*bw + 25;
+    const y = cy + 60;
+    const prog = Math.min(1, lvlState.animProgress*3 - i*0.2);
+    if(prog <= 0) continue;
+    const alpha = Math.min(1, prog);
+    ctx.globalAlpha = alpha;
+    // bit box
+    ctx.fillStyle = bin[i]==='1' ? '#06b6d4' : '#1e293b';
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 2;
+    roundRect(x-20, y-18, 40, 36, 6);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = bin[i]==='1' ? '#fff' : '#64748b';
+    ctx.fillText(bin[i], x, y+6);
+    // weight
+    ctx.fillStyle='#64748b'; ctx.font='11px monospace';
+    ctx.fillText(`2^${7-i}`, x, y+32);
+    ctx.fillText(`${Math.pow(2,7-i)}`, x, y+48);
+    ctx.font='bold 18px monospace';
+    ctx.globalAlpha = 1;
+  }
+
+  // Hex
+  ctx.fillStyle='#f59e0b'; ctx.font='bold 20px monospace';
+  ctx.fillText(`十六进制: 0x${hex}`, cx, cy+120);
+
+  // BCD
+  if(lvlState.showBCD){
+    const digits = v.toString().split('').map(Number);
+    ctx.fillStyle='#a78bfa'; ctx.font='bold 16px monospace';
+    ctx.fillText('BCD 编码:', cx, cy+170);
+    let bcdStr = digits.map(d=>d.toString(2).padStart(4,'0')).join(' ');
+    ctx.font='bold 20px monospace';
+    ctx.fillText(bcdStr, cx, cy+200);
+    ctx.font='12px monospace'; ctx.fillStyle='#64748b';
+    ctx.fillText('(每位十进制数用4位二进制表示)', cx, cy+225);
+  }
+
+  // Gray code
+  if(lvlState.showGray){
+    const gray = v ^ (v >> 1);
+    const grayBin = gray.toString(2).padStart(8,'0');
+    ctx.fillStyle='#34d399'; ctx.font='bold 16px monospace';
+    ctx.fillText('格雷码:', cx, cy+270);
+    ctx.font='bold 20px monospace';
+    ctx.fillText(grayBin, cx, cy+300);
+    // Show XOR relationship
+    ctx.font='12px monospace'; ctx.fillStyle='#64748b';
+    ctx.fillText('格雷码 = 二进制 XOR (二进制>>1)', cx, cy+325);
+    // Highlight differing bits
+    for(let i=0;i<8;i++){
+      if(i>0){
+        const x = bx + i*bw + 25;
+        const gx = x;
+        if(grayBin[i] !== grayBin[i-1]){
+          ctx.fillStyle='rgba(52,211,153,0.2)';
+          roundRect(gx-20, cy+280, 40, 30, 4);
+          ctx.fill();
+        }
+      }
+    }
+  }
+
+  lvlState.animProgress = Math.min(4, lvlState.animProgress + 0.02);
+}
+
+// ========== LEVEL 1: Combinational Logic ==========
+function initLevel1(){
+  // 2-variable truth table for simplification
+  lvlState = {
+    tt:[0,0,1,1], // F(A,B) initial
+    userTT:[null,null,null,null],
+    kmap:[[0,0],[0,0]], // [A][B] but arranged for Karnaugh
+    simplified:false, circuitGenerated:false, step:0
+  };
+}
+function buildControls1(){
+  const c=$('#controls');
+  const s = lvlState;
+  c.innerHTML=`
+    <div class="ctrl-group">
+      <label>填写 2 变量真值表 F(A,B)</label>
+      <p class="desc">目标函数: F = A (当 A=1 时输出 1)</p>
+      <table style="width:100%;text-align:center;font-size:13px;margin:8px 0">
+        <tr><th>A</th><th>B</th><th>F</th></tr>
+        <tr><td>0</td><td>0</td><td><select id="tt0" onchange="setTT(0,this.value)"><option value="">?</option><option value="0">0</option><option value="1">1</option></select></td></tr>
+        <tr><td>0</td><td>1</td><td><select id="tt1" onchange="setTT(1,this.value)"><option value="">?</option><option value="0">0</option><option value="1">1</option></select></td></tr>
+        <tr><td>1</td><td>0</td><td><select id="tt2" onchange="setTT(2,this.value)"><option value="">?</option><option value="0">0</option><option value="1">1</option></select></td></tr>
+        <tr><td>1</td><td>1</td><td><select id="tt3" onchange="setTT(3,this.value)"><option value="">?</option><option value="0">0</option><option value="1">1</option></select></td></tr>
+      </table>
+      <button onclick="checkTT()">验证真值表</button>
+    </div>
+    <div class="ctrl-group">
+      <button onclick="doKarnaugh()" ${s.step<1?'disabled':''}>卡诺图化简</button>
+      <button onclick="genCircuit()" ${s.step<2?'disabled':''}>生成电路</button>
+    </div>
+    <div class="desc"><p>步骤: 真值表 → 卡诺图 → 最简表达式 → 电路</p></div>`;
+}
+window.setTT = function(i,v){ lvlState.userTT[i] = v===''?null:parseInt(v); };
+window.checkTT = function(){
+  const correct = [0,0,1,1]; // F=A
+  if(lvlState.userTT.every((v,i)=>v===correct[i])){
+    lvlState.step = 1;
+    lvlState.tt = correct;
+    completeObj(1,0);
+    buildControls1();
+  }
+};
+window.doKarnaugh = function(){
+  lvlState.step = 2;
+  lvlState.simplified = true;
+  completeObj(1,1);
+  buildControls1();
+};
+window.genCircuit = function(){
+  lvlState.step = 3;
+  lvlState.circuitGenerated = true;
+  completeObj(1,2);
+  buildControls1();
+};
+
+function drawLevel1(){
+  const cx=W/2, s=lvlState;
+  ctx.textAlign='center';
+
+  // Karnaugh map
+  if(s.step >= 1){
+    ctx.fillStyle='#22d3ee'; ctx.font='bold 18px monospace';
+    ctx.fillText('卡诺图 (2变量)', cx, 40);
+    const kx=cx-80, ky=60, ksz=80;
+    // Headers
+    ctx.fillStyle='#94a3b8'; ctx.font='14px monospace';
+    ctx.fillText('B=0', kx+ksz/2, ky-5);
+    ctx.fillText('B=1', kx+ksz+ksz/2, ky-5);
+    ctx.textAlign='right';
+    ctx.fillText('A=0 ', kx-5, ky+ksz/2+5);
+    ctx.fillText('A=1 ', kx-5, ky+ksz+ksz/2+5);
+    ctx.textAlign='center';
+    // Cells
+    const vals = [[0,0],[1,1]]; // F=A: row0=[0,0], row1=[1,1]
+    for(let r=0;r<2;r++) for(let c2=0;c2<2;c2++){
+      const x=kx+c2*ksz, y=ky+r*ksz;
+      ctx.fillStyle = vals[r][c2] ? 'rgba(6,182,212,0.3)' : 'rgba(30,41,59,0.5)';
+      ctx.fillRect(x,y,ksz,ksz);
+      ctx.strokeStyle='#334155'; ctx.lineWidth=1;
+      ctx.strokeRect(x,y,ksz,ksz);
+      ctx.fillStyle = vals[r][c2] ? '#22d3ee' : '#64748b';
+      ctx.font='bold 24px monospace';
+      ctx.fillText(vals[r][c2], x+ksz/2, y+ksz/2+8);
+    }
+    // Simplification circle
+    if(s.simplified){
+      ctx.strokeStyle='#f59e0b'; ctx.lineWidth=3;
+      ctx.setLineDash([5,5]);
+      roundRect(kx-4, ky+ksz-4, ksz*2+8, ksz+8, 10);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#f59e0b'; ctx.font='bold 16px monospace';
+      ctx.fillText('F = A', cx, ky+ksz*2+30);
+      ctx.fillStyle='#64748b'; ctx.font='12px monospace';
+      ctx.fillText('A=1 的行全为 1，化简后 F=A', cx, ky+ksz*2+52);
+    }
+  }
+
+  // Circuit
+  if(s.circuitGenerated){
+    const gx=cx-100, gy=H*0.55;
+    ctx.fillStyle='#22d3ee'; ctx.font='bold 16px monospace';
+    ctx.fillText('最简电路: F = A (直连)', cx, gy-20);
+    // Draw wire from A to F
+    ctx.strokeStyle='#06b6d4'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(gx,gy+30); ctx.lineTo(gx+200,gy+30); ctx.stroke();
+    // Labels
+    ctx.fillStyle='#22d3ee'; ctx.font='bold 16px monospace';
+    ctx.textAlign='right'; ctx.fillText('A', gx-10, gy+35);
+    ctx.textAlign='left'; ctx.fillText('F', gx+210, gy+35);
+    ctx.textAlign='center';
+    // Pulse animation
+    const px = gx + ((time*80)%200);
+    ctx.fillStyle='#22d3ee';
+    ctx.beginPath(); ctx.arc(px, gy+30, 5, 0, Math.PI*2); ctx.fill();
+    // Note
+    ctx.fillStyle='#64748b'; ctx.font='12px monospace';
+    ctx.fillText('B 变量被消去，输出仅取决于 A', cx, gy+70);
+  }
+}
+
+// ========== LEVEL 2: Encoders & Decoders ==========
+function initLevel2(){
+  lvlState = {mode:'encoder', input:3, muxSel:0, muxInputs:[0,1,1,0], animPulse:0};
+}
+function buildControls2(){
+  const c=$('#controls'), s=lvlState;
+  c.innerHTML=`
+    <div class="ctrl-group">
+      <label>选择模块</label>
+      <select id="modeSel" onchange="setMode2(this.value)">
+        <option value="encoder" ${s.mode==='encoder'?'selected':''}>8-3 编码器</option>
+        <option value="decoder" ${s.mode==='decoder'?'selected':''}>3-8 译码器</option>
+        <option value="mux" ${s.mode==='mux'?'selected':''}>4-1 多路选择器</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      ${s.mode==='encoder'?`<label>选择有效输入线 (0-7)</label>
+        <input type="range" id="encIn" min="0" max="7" value="${s.input}" oninput="setEncIn(this.value)">
+        <span style="color:#22d3ee">输入: D${s.input}</span>`:''}
+      ${s.mode==='decoder'?`<label>输入编码 (0-7)</label>
+        <input type="range" id="decIn" min="0" max="7" value="${s.input}" oninput="setDecIn(this.value)">
+        <span style="color:#22d3ee">编码: ${s.input.toString(2).padStart(3,'0')}</span>`:''}
+      ${s.mode==='mux'?`<label>选择信号 S (0-3)</label>
+        <input type="range" id="muxSel" min="0" max="3" value="${s.muxSel}" oninput="setMuxSel(this.value)">
+        <span style="color:#22d3ee">S=${s.muxSel}, 输出=${s.muxInputs[s.muxSel]}</span>`:''}
+    </div>
+    <div class="desc"><p>${s.mode==='encoder'?'编码器: 将 2^n 个输入压缩为 n 位编码':s.mode==='decoder'?'译码器: 将 n 位编码展开为 2^n 个输出':'MUX: 根据选择信号选通一个输入到输出'}</p></div>`;
+}
+window.setMode2 = function(v){ lvlState.mode=v; buildControls2(); };
+window.setEncIn = function(v){ lvlState.input=parseInt(v); lvlState.animPulse=0; completeObj(2,0); buildControls2(); };
+window.setDecIn = function(v){ lvlState.input=parseInt(v); lvlState.animPulse=0; completeObj(2,1); buildControls2(); };
+window.setMuxSel = function(v){ lvlState.muxSel=parseInt(v); lvlState.animPulse=0; completeObj(2,2); buildControls2(); };
+
+function drawLevel2(){
+  const s=lvlState, cx=W/2, cy=H/2;
+  ctx.textAlign='center';
+  s.animPulse = Math.min(1, s.animPulse+0.03);
+
+  if(s.mode==='encoder'){
+    // 8-3 Encoder
+    ctx.fillStyle='#22d3ee'; ctx.font='bold 18px monospace';
+    ctx.fillText('8-3 优先编码器', cx, 35);
+    const bx=cx-40, by=cy-120, bw=80, bh=240;
+    ctx.fillStyle='#1a1a2e'; ctx.strokeStyle='#06b6d4'; ctx.lineWidth=2;
+    roundRect(bx,by,bw,bh,8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#06b6d4'; ctx.font='12px monospace';
+    ctx.fillText('ENC', cx, cy+5);
+    // Input lines
+    for(let i=0;i<8;i++){
+      const y = by+15+i*28;
+      const active = i===s.input;
+      ctx.strokeStyle = active?'#22d3ee':'#334155'; ctx.lineWidth = active?3:1;
+      ctx.beginPath(); ctx.moveTo(bx-80,y); ctx.lineTo(bx,y); ctx.stroke();
+      ctx.fillStyle = active?'#22d3ee':'#475569'; ctx.font='12px monospace';
+      ctx.textAlign='right'; ctx.fillText(`D${i}`, bx-85, y+4); ctx.textAlign='center';
+      if(active){
+        const px = bx-80+s.animPulse*80;
+        ctx.fillStyle='#22d3ee'; ctx.beginPath(); ctx.arc(px,y,4,0,Math.PI*2); ctx.fill();
+      }
+    }
+    // Output lines
+    const out = s.input.toString(2).padStart(3,'0');
+    for(let i=0;i<3;i++){
+      const y = cy-30+i*30;
+      const active = out[i]==='1';
+      ctx.strokeStyle = active?'#f59e0b':'#334155'; ctx.lineWidth = active?3:1;
+      ctx.beginPath(); ctx.moveTo(bx+bw,y); ctx.lineTo(bx+bw+80,y); ctx.stroke();
+      ctx.fillStyle = active?'#f59e0b':'#475569'; ctx.font='12px monospace';
+      ctx.textAlign='left'; ctx.fillText(`Y${i}=${out[i]}`, bx+bw+85, y+4); ctx.textAlign='center';
+    }
+    ctx.fillStyle='#94a3b8'; ctx.font='13px monospace';
+    ctx.fillText(`输入 D${s.input} → 编码 ${out}`, cx, by+bh+30);
+  } else if(s.mode==='decoder'){
+    // 3-8 Decoder
+    ctx.fillStyle='#22d3ee'; ctx.font='bold 18px monospace';
+    ctx.fillText('3-8 译码器', cx, 35);
+    const bx=cx-40, by=cy-120, bw=80, bh=240;
+    ctx.fillStyle='#1a1a2e'; ctx.strokeStyle='#a78bfa'; ctx.lineWidth=2;
+    roundRect(bx,by,bw,bh,8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#a78bfa'; ctx.font='12px monospace';
+    ctx.fillText('DEC', cx, cy+5);
+    const inp = s.input.toString(2).padStart(3,'0');
+    for(let i=0;i<3;i++){
+      const y=cy-30+i*30;
+      const active = inp[i]==='1';
+      ctx.strokeStyle = active?'#a78bfa':'#334155'; ctx.lineWidth = active?3:1;
+      ctx.beginPath(); ctx.moveTo(bx-80,y); ctx.lineTo(bx,y); ctx.stroke();
+      ctx.fillStyle = active?'#a78bfa':'#475569'; ctx.font='12px monospace';
+      ctx.textAlign='right'; ctx.fillText(`A${i}=${inp[i]}`, bx-85, y+4); ctx.textAlign='center';
+    }
+    for(let i=0;i<8;i++){
+      const y=by+15+i*28;
+      const active = i===s.input;
+      ctx.strokeStyle = active?'#22c55e':'#334155'; ctx.lineWidth = active?3:1;
+      ctx.beginPath(); ctx.moveTo(bx+bw,y); ctx.lineTo(bx+bw+80,y); ctx.stroke();
+      ctx.fillStyle = active?'#22c55e':'#475569'; ctx.font='12px monospace';
+      ctx.textAlign='left'; ctx.fillText(`Y${i}=${active?1:0}`, bx+bw+85, y+4); ctx.textAlign='center';
+    }
+  } else {
+    // MUX
+    ctx.fillStyle='#22d3ee'; ctx.font='bold 18px monospace';
+    ctx.fillText('4-1 多路选择器 (MUX)', cx, 35);
+    const bx=cx-50, by=cy-80, bw=100, bh=160;
+    ctx.fillStyle='#1a1a2e'; ctx.strokeStyle='#34d399'; ctx.lineWidth=2;
+    roundRect(bx,by,bw,bh,8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle='#34d399'; ctx.font='12px monospace';
+    ctx.fillText('MUX', cx, cy+5);
+    for(let i=0;i<4;i++){
+      const y=by+20+i*35;
+      const sel = i===s.muxSel;
+      ctx.strokeStyle = sel?'#34d399':'#334155'; ctx.lineWidth = sel?3:1;
+      ctx.beginPath(); ctx.moveTo(bx-80,y); ctx.lineTo(bx,y); ctx.stroke();
+      ctx.fillStyle = sel?'#34d399':'#475569'; ctx.font='12px monospace';
+      ctx.textAlign='right'; ctx.fillText(`D${i}=${s.muxInputs[i]}`, bx-85, y+4); ctx.textAlign='center';
+    }
+    // Output
+    const outVal = s.muxInputs[s.muxSel];
+    ctx.strokeStyle = outVal?'#f59e0b':'#334155'; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.moveTo(bx+bw,cy); ctx.lineTo(bx+bw+80,cy); ctx.stroke();
+    ctx.fillStyle='#f59e0b'; ctx.font='14px monospace';
+    ctx.textAlign='left'; ctx.fillText(`Y=${outVal}`, bx+bw+85, cy+5); ctx.textAlign='center';
+    // Select line
+    ctx.strokeStyle='#f59e0b'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(cx,by+bh); ctx.lineTo(cx,by+bh+30); ctx.stroke();
+    ctx.fillStyle='#f59e0b'; ctx.font='12px monospace';
+    ctx.fillText(`S=${s.muxSel}`, cx, by+bh+45);
+  }
+}
+
+// ========== LEVEL 3: Flip-Flops ==========
+function initLevel3(){
+  lvlState = {
+    ffType:'D', D:0, J:0, K:0, Q:0, clk:0,
+    history:[], // [{clk,D,J,K,Q}]
+    clkCount:0, timingWidth:0
+  };
+  for(let i=0;i<20;i++) lvlState.history.push({clk:0,D:0,J:0,K:0,Q:0});
+}
+function buildControls3(){
+  const c=$('#controls'), s=lvlState;
+  c.innerHTML=`
+    <div class="ctrl-group">
+      <label>触发器类型</label>
+      <select onchange="setFFType(this.value)">
+        <option value="D" ${s.ffType==='D'?'selected':''}>D 触发器</option>
+        <option value="JK" ${s.ffType==='JK'?'selected':''}>JK 触发器</option>
+        <option value="T" ${s.ffType==='T'?'selected':''}>T 触发器</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      ${s.ffType==='D'?`<label>D 输入</label>
+        <button class="btn ${s.D?'':'btn-outline'}" onclick="setFFInput('D',${s.D?0:1})">${s.D?'D=1':'D=0'}</button>`:''}
+      ${s.ffType==='JK'?`<label>J, K 输入</label>
+        <button class="btn ${s.J?'':'btn-outline'}" onclick="setFFInput('J',${s.J?0:1})">${s.J?'J=1':'J=0'}</button>
+        <button class="btn ${s.K?'':'btn-outline'}" onclick="setFFInput('K',${s.K?0:1})">${s.K?'K=1':'K=0'}</button>`:''}
+      ${s.ffType==='T'?`<label>T 输入</label>
+        <button class="btn ${s.D?'':'btn-outline'}" onclick="setFFInput('D',${s.D?0:1})">${s.D?'T=1':'T=0'}</button>`:''}
+    </div>
+    <div class="ctrl-group">
+      <button onclick="sendClock()">⏱ 发送时钟脉冲</button>
+      <button class="btn-outline btn" onclick="resetFF()">复位</button>
+    </div>
+    <div class="desc"><p>Q = ${s.Q} | 已发送 ${s.clkCount} 个时钟脉冲</p>
+    <p>${s.ffType==='D'?'D触发器: 上升沿时 Q←D':s.ffType==='JK'?'JK触发器: J=K=0保持, J=1置1, K=1置0, J=K=1翻转':'T触发器: T=1翻转, T=0保持'}</p></div>`;
+}
+window.setFFType = function(v){
+  lvlState.ffType=v;
+  if(v==='D') completeObj(3,0);
+  if(v==='JK') completeObj(3,1);
+  buildControls3();
+};
+window.setFFInput = function(name,v){
+  if(name==='D') lvlState.D=v;
+  if(name==='J') lvlState.J=v;
+  if(name==='K') lvlState.K=v;
+  buildControls3();
+};
+window.sendClock = function(){
+  const s=lvlState;
+  // Rising edge logic
+  if(s.ffType==='D') s.Q = s.D;
+  else if(s.ffType==='JK'){
+    if(s.J && s.K) s.Q = s.Q?0:1;
+    else if(s.J) s.Q = 1;
+    else if(s.K) s.Q = 0;
+  } else { // T
+    if(s.D) s.Q = s.Q?0:1;
+  }
+  s.clkCount++;
+  s.history.push({clk:1, D:s.D, J:s.J, K:s.K, Q:s.Q});
+  s.history.push({clk:0, D:s.D, J:s.J, K:s.K, Q:s.Q});
+  if(s.history.length>40) { s.history.shift(); s.history.shift(); }
+  if(s.clkCount>=3) completeObj(3,2);
+  buildControls3();
+};
+window.resetFF = function(){
+  lvlState.Q=0; lvlState.clkCount=0;
+  lvlState.history=[];
+  for(let i=0;i<20;i++) lvlState.history.push({clk:0,D:0,J:0,K:0,Q:0});
+  buildControls3();
+};
+
+function drawLevel3(){
+  const s=lvlState, cx=W/2, cy=H*0.25;
+  ctx.textAlign='center';
+
+  // FF symbol
+  const bx=cx-60, by=cy-50, bw=120, bh=100;
+  ctx.fillStyle='#1a1a2e'; ctx.strokeStyle='#06b6d4'; ctx.lineWidth=2;
+  roundRect(bx,by,bw,bh,8); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#22d3ee'; ctx.font='bold 16px monospace';
+  ctx.fillText(s.ffType==='T'?'T-FF':s.ffType+'-FF', cx, cy+5);
+
+  // Clock triangle
+  ctx.strokeStyle='#f59e0b'; ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(bx, by+bh-20); ctx.lineTo(bx+12, by+bh-10); ctx.lineTo(bx, by+bh);
+  ctx.stroke();
+  ctx.fillStyle='#f59e0b'; ctx.font='11px monospace';
+  ctx.textAlign='right'; ctx.fillText('CLK', bx-8, by+bh-7);
+
+  // Inputs
+  ctx.textAlign='right';
+  if(s.ffType==='D' || s.ffType==='T'){
+    ctx.strokeStyle = s.D?'#22d3ee':'#334155'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(bx-50,by+25); ctx.lineTo(bx,by+25); ctx.stroke();
+    ctx.fillStyle = s.D?'#22d3ee':'#64748b'; ctx.font='14px monospace';
+    ctx.fillText((s.ffType==='T'?'T':'D')+'='+s.D, bx-55, by+30);
+  } else {
+    ctx.strokeStyle = s.J?'#22d3ee':'#334155'; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.moveTo(bx-50,by+20); ctx.lineTo(bx,by+20); ctx.stroke();
+    ctx.fillStyle = s.J?'#22d3ee':'#64748b'; ctx.font='14px monospace';
+    ctx.fillText('J='+s.J, bx-55, by+25);
+    ctx.strokeStyle = s.K?'#a78bfa':'#334155';
+    ctx.beginPath(); ctx.moveTo(bx-50,by+50); ctx.lineTo(bx,by+50); ctx.stroke();
+    ctx.fillStyle = s.K?'#a78bfa':'#64748b';
+    ctx.fillText('K='+s.K, bx-55, by+55);
+  }
+
+  // Output Q
+  ctx.textAlign='left';
+  ctx.strokeStyle = s.Q?'#22c55e':'#334155'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(bx+bw,by+25); ctx.lineTo(bx+bw+50,by+25); ctx.stroke();
+  ctx.fillStyle = s.Q?'#22c55e':'#64748b'; ctx.font='bold 16px monospace';
+  ctx.fillText('Q='+s.Q, bx+bw+55, by+30);
+  ctx.textAlign='center';
+
+  // Timing diagram
+  const tx=40, ty=H*0.5, tw=W-80, th=H*0.45;
+  const rows = s.ffType==='JK' ? ['CLK','J','K','Q'] : ['CLK', s.ffType==='T'?'T':'D', 'Q'];
+  const rowH = Math.min(40, th/rows.length);
+  const hist = s.history;
+  const step = Math.max(8, (tw-60)/hist.length);
+
+  ctx.fillStyle='#94a3b8'; ctx.font='bold 13px monospace';
+  ctx.fillText('时序图', W/2, ty-10);
+
+  rows.forEach((label, ri)=>{
+    const y = ty + ri*rowH*1.3;
+    ctx.fillStyle='#64748b'; ctx.font='11px monospace'; ctx.textAlign='right';
+    ctx.fillText(label, tx+30, y+rowH/2+4); ctx.textAlign='center';
+    ctx.strokeStyle = ri===0?'#f59e0b':ri===rows.length-1?'#22c55e':'#06b6d4';
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    for(let i=0;i<hist.length;i++){
+      const x = tx+40+i*step;
+      let val;
+      if(label==='CLK') val=hist[i].clk;
+      else if(label==='D'||label==='T') val=hist[i].D;
+      else if(label==='J') val=hist[i].J;
+      else if(label==='K') val=hist[i].K;
+      else val=hist[i].Q;
+      const yy = val ? y : y+rowH-5;
+      if(i===0) ctx.moveTo(x,yy);
+      else { ctx.lineTo(x,yy); }
+    }
+    ctx.stroke();
+  });
+}
+
+// ========== LEVEL 4: Counters ==========
+function initLevel4(){
+  lvlState = {
+    type:'binary4', count:0, bits:[0,0,0,0], clkCount:0,
+    mod6Count:0, ringBits:[1,0,0,0], ringIdx:0
+  };
+}
+function buildControls4(){
+  const c=$('#controls'), s=lvlState;
+  c.innerHTML=`
+    <div class="ctrl-group">
+      <label>计数器类型</label>
+      <select onchange="setCntType(this.value)">
+        <option value="binary4" ${s.type==='binary4'?'selected':''}>4位二进制计数器</option>
+        <option value="mod6" ${s.type==='mod6'?'selected':''}>模6计数器</option>
+        <option value="ring" ${s.type==='ring'?'selected':''}>环形计数器</option>
+      </select>
+    </div>
+    <div class="ctrl-group">
+      <button onclick="cntClock()">⏱ 时钟脉冲</button>
+      <button onclick="cntClock5()">⏱×5 连续5个脉冲</button>
+      <button class="btn-outline btn" onclick="cntReset()">复位</button>
+    </div>
+    <div class="desc">
+      <p>当前计数: ${s.type==='binary4'?s.count:s.type==='mod6'?s.mod6Count:s.ringIdx}</p>
+      <p>${s.type==='binary4'?'同步4位二进制计数器，0-15循环':s.type==='mod6'?'模6计数器，0-5循环后清零':'环形计数器，1在4位间循环移动'}</p>
+    </div>`;
+}
+window.setCntType = function(v){
+  lvlState.type=v; cntReset();
+  if(v==='ring') completeObj(4,2);
+  buildControls4();
+};
+window.cntClock = function(){
+  const s=lvlState;
+  if(s.type==='binary4'){
+    s.count = (s.count+1)%16;
+    s.bits = s.count.toString(2).padStart(4,'0').split('').map(Number);
+    s.clkCount++;
+    if(s.clkCount>=4) completeObj(4,0);
+  } else if(s.type==='mod6'){
+    s.mod6Count = (s.mod6Count+1)%6;
+    s.bits = s.mod6Count.toString(2).padStart(4,'0').split('').map(Number);
+    s.clkCount++;
+    if(s.mod6Count===0 && s.clkCount>1) completeObj(4,1);
+  } else {
+    s.ringIdx = (s.ringIdx+1)%4;
+    s.ringBits = [0,0,0,0];
+    s.ringBits[s.ringIdx] = 1;
+    s.clkCount++;
+    completeObj(4,2);
+  }
+  buildControls4();
+};
+window.cntClock5 = function(){ for(let i=0;i<5;i++) cntClock(); };
+window.cntReset = function(){
+  lvlState.count=0; lvlState.mod6Count=0; lvlState.clkCount=0;
+  lvlState.bits=[0,0,0,0]; lvlState.ringBits=[1,0,0,0]; lvlState.ringIdx=0;
+  buildControls4();
+};
+
+function drawLevel4(){
+  const s=lvlState, cx=W/2;
+  ctx.textAlign='center';
+
+  // Title
+  ctx.fillStyle='#22d3ee'; ctx.font='bold 18px monospace';
+  const titles = {binary4:'4位同步二进制计数器',mod6:'模6计数器 (0→5→0)',ring:'环形计数器'};
+  ctx.fillText(titles[s.type], cx, 35);
+
+  // Draw 4 flip-flops
+  const ffW=80, ffH=60, gap=20, startX=cx-2*(ffW+gap)+gap;
+  const bits = s.type==='ring'?s.ringBits:s.bits;
+
+  for(let i=0;i<4;i++){
+    const x = startX+i*(ffW+gap), y=80;
+    ctx.fillStyle = bits[i]?'rgba(6,182,212,0.3)':'#1a1a2e';
+    ctx.strokeStyle = bits[i]?'#06b6d4':'#334155'; ctx.lineWidth=2;
+    roundRect(x,y,ffW,ffH,6); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = bits[i]?'#22d3ee':'#64748b'; ctx.font='bold 24px monospace';
+    ctx.fillText(bits[i], x+ffW/2, y+ffH/2+8);
+    ctx.fillStyle='#64748b'; ctx.font='11px monospace';
+    ctx.fillText(`Q${3-i}`, x+ffW/2, y-8);
+    // Connection lines
+    if(i<3){
+      ctx.strokeStyle='#334155'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(x+ffW,y+ffH/2); ctx.lineTo(x+ffW+gap,y+ffH/2); ctx.stroke();
+    }
+  }
+
+  // Clock line
+  ctx.strokeStyle='#f59e0b'; ctx.lineWidth=2;
+  const clkY = 80+ffH+20;
+  ctx.beginPath(); ctx.moveTo(startX,clkY); ctx.lineTo(startX+3*(ffW+gap)+ffW,clkY); ctx.stroke();
+  ctx.fillStyle='#f59e0b'; ctx.font='12px monospace';
+  ctx.fillText('CLK', startX-25, clkY+4);
+  // Clock ticks to each FF
+  for(let i=0;i<4;i++){
+    const x=startX+i*(ffW+gap)+ffW/2;
+    ctx.beginPath(); ctx.moveTo(x,clkY); ctx.lineTo(x,80+ffH); ctx.stroke();
+  }
+
+  // Count display
+  const countVal = s.type==='binary4'?s.count:s.type==='mod6'?s.mod6Count:s.ringIdx;
+  ctx.fillStyle='#22d3ee'; ctx.font='bold 36px monospace';
+  ctx.fillText(countVal, cx, clkY+70);
+  ctx.fillStyle='#64748b'; ctx.font='14px monospace';
+  ctx.fillText(`二进制: ${bits.join('')}`, cx, clkY+100);
+
+  // State transition diagram (circle)
+  const maxVal = s.type==='binary4'?16:s.type==='mod6'?6:4;
+  const diagCx=cx, diagCy=H*0.7, diagR=Math.min(100, H*0.2);
+  ctx.strokeStyle='#1e293b'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.arc(diagCx,diagCy,diagR,0,Math.PI*2); ctx.stroke();
+
+  for(let i=0;i<maxVal;i++){
+    const angle = -Math.PI/2 + (i/maxVal)*Math.PI*2;
+    const nx=diagCx+Math.cos(angle)*diagR, ny=diagCy+Math.sin(angle)*diagR;
+    const isCurrent = i===countVal;
+    ctx.fillStyle = isCurrent?'#06b6d4':'#1a1a2e';
+    ctx.strokeStyle = isCurrent?'#22d3ee':'#334155'; ctx.lineWidth = isCurrent?3:1;
+    ctx.beginPath(); ctx.arc(nx,ny,16,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = isCurrent?'#fff':'#64748b'; ctx.font='bold 12px monospace';
+    ctx.fillText(i, nx, ny+4);
+  }
+  ctx.fillStyle='#64748b'; ctx.font='12px monospace';
+  ctx.fillText('状态转换图', diagCx, diagCy+diagR+30);
+}
+
+// ========== LEVEL 5: Registers ==========
+function initLevel5(){
+  lvlState = {
+    bits:[0,0,0,0,0,0,0,0], serialIn:1, dir:'right',
+    mode:'parallel', lfsrTaps:[7,5,4,3], // x^8+x^6+x^5+x^4+1
+    lfsrBits:[1,0,1,0,1,1,0,1], shiftCount:0, loaded:false
+  };
+}
+function buildControls5(){
+  const c=$('#controls'), s=lvlState;
+  c.innerHTML=`
+    <div class="ctrl-group">
+      <label>操作模式</label>
+      <select onchange="setRegMode(this.value)">
+        <option value="parallel" ${s.mode==='parallel'?'selected':''}>并行加载</option>
+        <option value="shift" ${s.mode==='shift'?'selected':''}>串行移位</option>
+        <option value="lfsr" ${s.mode==='lfsr'?'selected':''}>LFSR</option>
+      </select>
+    </div>
+    ${s.mode==='parallel'?`
+    <div class="ctrl-group">
+      <label>输入数据 (8位二进制)</label>
+      <input type="text" id="parIn" value="10110100" maxlength="8" style="font-family:monospace">
+      <button onclick="parallelLoad()">并行加载</button>
+    </div>`:''}
+    ${s.mode==='shift'?`
+    <div class="ctrl-group">
+      <label>串行输入位</label>
+      <button class="btn ${s.serialIn?'':'btn-outline'}" onclick="setSerialIn(${s.serialIn?0:1})">${s.serialIn?'输入=1':'输入=0'}</button>
+      <label>移位方向</label>
+      <button class="btn btn-sm" onclick="setShiftDir('left')">← 左移</button>
+      <button class="btn btn-sm" onclick="setShiftDir('right')">右移 →</button>
+      <button onclick="doShift()">执行移位</button>
+    </div>`:''}
+    ${s.mode==='lfsr'?`
+    <div class="ctrl-group">
+      <label>LFSR (反馈多项式 x⁸+x⁶+x⁵+x⁴+1)</label>
+      <button onclick="lfsrStep()">⏱ 步进</button>
+      <button onclick="lfsrRun5()">⏱×5 连续5步</button>
+      <button class="btn-outline btn" onclick="lfsrReset()">复位</button>
+    </div>`:''}
+    <div class="desc"><p>当前: ${s.mode==='lfsr'?s.lfsrBits.join(''):s.bits.join('')} | 移位次数: ${s.shiftCount}</p></div>`;
+}
+window.setRegMode = function(v){ lvlState.mode=v; buildControls5(); };
+window.setSerialIn = function(v){ lvlState.serialIn=v; buildControls5(); };
+window.setShiftDir = function(v){ lvlState.dir=v; buildControls5(); };
+window.parallelLoad = function(){
+  const inp = ($('#parIn')||{}).value||'10110100';
+  lvlState.bits = inp.padEnd(8,'0').slice(0,8).split('').map(c=>c==='1'?1:0);
+  lvlState.loaded = true;
+  completeObj(5,0);
+  buildControls5();
+};
+window.doShift = function(){
+  const s=lvlState;
+  if(s.dir==='right'){
+    s.bits.pop();
+    s.bits.unshift(s.serialIn);
+  } else {
+    s.bits.shift();
+    s.bits.push(s.serialIn);
+  }
+  s.shiftCount++;
+  if(s.shiftCount>=2) completeObj(5,1);
+  buildControls5();
+};
+window.lfsrStep = function(){
+  const s=lvlState;
+  const fb = s.lfsrBits[7]^s.lfsrBits[5]^s.lfsrBits[4]^s.lfsrBits[3];
+  s.lfsrBits.pop();
+  s.lfsrBits.unshift(fb);
+  s.shiftCount++;
+  if(s.shiftCount>=3) completeObj(5,2);
+  buildControls5();
+};
+window.lfsrRun5 = function(){ for(let i=0;i<5;i++) lfsrStep(); };
+window.lfsrReset = function(){
+  lvlState.lfsrBits=[1,0,1,0,1,1,0,1]; lvlState.shiftCount=0;
+  buildControls5();
+};
+
+function drawLevel5(){
+  const s=lvlState, cx=W/2;
+  ctx.textAlign='center';
+  const bits = s.mode==='lfsr'?s.lfsrBits:s.bits;
+  const n = bits.length;
+
+  ctx.fillStyle='#22d3ee'; ctx.font='bold 18px monospace';
+  ctx.fillText(s.mode==='lfsr'?'LFSR (线性反馈移位寄存器)':s.mode==='parallel'?'8位并行寄存器':'8位移位寄存器', cx, 35);
+
+  // Register cells
+  const cellW=55, cellH=50, startX=cx-(n*cellW)/2;
+  for(let i=0;i<n;i++){
+    const x=startX+i*cellW, y=70;
+    const pulse = Math.sin(time*3+i*0.5)*0.15+0.85;
+    ctx.fillStyle = bits[i]?`rgba(6,182,212,${0.3*pulse})`:'#1a1a2e';
+    ctx.strokeStyle = bits[i]?'#06b6d4':'#334155'; ctx.lineWidth=2;
+    roundRect(x+2,y,cellW-4,cellH,6); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = bits[i]?'#22d3ee':'#64748b'; ctx.font='bold 22px monospace';
+    ctx.fillText(bits[i], x+cellW/2, y+cellH/2+8);
+    ctx.fillStyle='#475569'; ctx.font='10px monospace';
+    ctx.fillText(`Q${i}`, x+cellW/2, y-8);
+  }
+
+  // Shift arrows
+  if(s.mode==='shift' || s.mode==='lfsr'){
+    const arrowY = 70+cellH+15;
+    ctx.strokeStyle='#f59e0b'; ctx.lineWidth=2;
+    const dir = s.mode==='lfsr'?'right':s.dir;
+    for(let i=0;i<n-1;i++){
+      const x1=startX+i*cellW+cellW/2, x2=startX+(i+1)*cellW+cellW/2;
+      if(dir==='right'){
+        ctx.beginPath(); ctx.moveTo(x1+5,arrowY); ctx.lineTo(x2-5,arrowY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x2-10,arrowY-5); ctx.lineTo(x2-5,arrowY); ctx.lineTo(x2-10,arrowY+5); ctx.stroke();
+      } else {
+        ctx.beginPath(); ctx.moveTo(x2-5,arrowY); ctx.lineTo(x1+5,arrowY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x1+10,arrowY-5); ctx.lineTo(x1+5,arrowY); ctx.lineTo(x1+10,arrowY+5); ctx.stroke();
+      }
+    }
+  }
+
+  // LFSR feedback path
+  if(s.mode==='lfsr'){
+    const fbY = 70+cellH+50;
+    ctx.strokeStyle='#a78bfa'; ctx.lineWidth=2; ctx.setLineDash([4,4]);
+    // Feedback from bit 7 back to input
+    const x7=startX+7*cellW+cellW/2, x0=startX+cellW/2;
+    ctx.beginPath();
+    ctx.moveTo(x7, 70+cellH);
+    ctx.lineTo(x7, fbY+20);
+    ctx.lineTo(x0, fbY+20);
+    ctx.lineTo(x0, 70+cellH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // XOR symbol
+    ctx.fillStyle='#a78bfa'; ctx.font='12px monospace';
+    ctx.fillText('⊕ XOR 反馈 (位7⊕位5⊕位4⊕位3)', cx, fbY+40);
+    // Tap indicators
+    [7,5,4,3].forEach(t=>{
+      const tx=startX+t*cellW+cellW/2;
+      ctx.fillStyle='#a78bfa';
+      ctx.beginPath(); ctx.arc(tx, 70+cellH+5, 4, 0, Math.PI*2); ctx.fill();
+    });
+  }
+
+  // Data visualization - binary value
+  const val = parseInt(bits.join(''),2);
+  ctx.fillStyle='#94a3b8'; ctx.font='14px monospace';
+  ctx.fillText(`十进制值: ${val}  |  十六进制: 0x${val.toString(16).toUpperCase().padStart(2,'0')}`, cx, H*0.55);
+
+  // Waveform-like display of recent values
+  if(s.mode==='lfsr' && s.shiftCount>0){
+    ctx.fillStyle='#64748b'; ctx.font='12px monospace';
+    ctx.fillText('LFSR 产生伪随机序列，周期最长可达 2^n-1', cx, H*0.62);
+  }
+}
+
+// ========== LEVEL 6: FSM (Vending Machine) ==========
+function initLevel6(){
+  // Vending machine: item costs 15 cents, accepts 5c and 10c coins
+  // States: S0(0c), S5(5c), S10(10c), S15(dispense)
+  lvlState = {
+    state: 0, // 0=S0, 1=S5, 2=S10, 3=S15(dispense)
+    total: 0,
+    history: [],
+    dispensed: false,
+    stateDesigned: false,
+    coinSeqCorrect: false,
+    animPulse: 0
+  };
+}
+const fsmStates = [
+  {name:'S0', label:'0¢', x:0.25, y:0.3},
+  {name:'S5', label:'5¢', x:0.55, y:0.15},
+  {name:'S10', label:'10¢', x:0.75, y:0.4},
+  {name:'S15', label:'出货!', x:0.45, y:0.55}
+];
+const fsmTransitions = [
+  {from:0,to:1,label:'投5¢',cx:0.38,cy:0.17},
+  {from:0,to:2,label:'投10¢',cx:0.48,cy:0.42},
+  {from:1,to:2,label:'投5¢',cx:0.7,cy:0.22},
+  {from:1,to:3,label:'投10¢',cx:0.45,cy:0.35},
+  {from:2,to:3,label:'投5¢',cx:0.65,cy:0.52},
+  {from:3,to:0,label:'出货/找零',cx:0.28,cy:0.5}
+];
+
+function buildControls6(){
+  const c=$('#controls'), s=lvlState;
+  c.innerHTML=`
+    <div class="ctrl-group">
+      <label>自动售货机 (商品价格: 15¢)</label>
+      <p class="desc">当前状态: ${fsmStates[s.state].name} (已投 ${s.total}¢)</p>
+      <button onclick="insertCoin(5)" ${s.state===3?'disabled':''}>投入 5¢</button>
+      <button onclick="insertCoin(10)" ${s.state===3?'disabled':''}>投入 10¢</button>
+      ${s.state===3?'<button onclick="dispense()">取出商品</button>':''}
+    </div>
+    <div class="ctrl-group">
+      <button onclick="designFSM()">查看状态转换表</button>
+      <button class="btn-outline btn" onclick="resetFSM()">复位</button>
+    </div>
+    <div class="desc">
+      <p>投币历史: ${s.history.length?s.history.join(' → '):'(空)'}</p>
+      <p>Moore 型 FSM: 输出仅取决于当前状态</p>
+    </div>`;
+}
+window.insertCoin = function(val){
+  const s=lvlState;
+  if(s.state===3) return;
+  s.total += val;
+  s.history.push(val+'¢');
+  s.animPulse = 0;
+  if(s.total >= 15){
+    s.state = 3;
+    if(s.total===15) s.coinSeqCorrect = true;
+    completeObj(6,1);
+  } else if(s.total===5) s.state=1;
+  else if(s.total===10) s.state=2;
+  buildControls6();
+};
+window.dispense = function(){
+  const s=lvlState;
+  s.dispensed = true;
+  s.state = 0;
+  s.total = 0;
+  completeObj(6,2);
+  buildControls6();
+};
+window.designFSM = function(){
+  lvlState.stateDesigned = true;
+  completeObj(6,0);
+  buildControls6();
+};
+window.resetFSM = function(){
+  lvlState.state=0; lvlState.total=0; lvlState.history=[];
+  lvlState.animPulse=0;
+  buildControls6();
+};
+
+function drawLevel6(){
+  const s=lvlState, cx=W/2, cy=H/2;
+  ctx.textAlign='center';
+  s.animPulse = Math.min(1, s.animPulse+0.02);
+
+  ctx.fillStyle='#22d3ee'; ctx.font='bold 18px monospace';
+  ctx.fillText('自动售货机 FSM (Moore 型)', cx, 30);
+
+  // Draw states
+  const margin=40;
+  const areaW=W-margin*2, areaH=H*0.75;
+  fsmStates.forEach((st,i)=>{
+    const x=margin+st.x*areaW, y=40+st.y*areaH;
+    const isCurrent = i===s.state;
+    const r = isCurrent?35:28;
+    // Glow
+    if(isCurrent){
+      ctx.fillStyle='rgba(6,182,212,0.15)';
+      ctx.beginPath(); ctx.arc(x,y,r+10,0,Math.PI*2); ctx.fill();
+    }
+    ctx.fillStyle = isCurrent?'rgba(6,182,212,0.4)':'#1a1a2e';
+    ctx.strokeStyle = isCurrent?'#22d3ee':i===3?'#22c55e':'#334155';
+    ctx.lineWidth = isCurrent?3:2;
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    // Double circle for accepting state
+    if(i===3){
+      ctx.beginPath(); ctx.arc(x,y,r-5,0,Math.PI*2); ctx.stroke();
+    }
+    ctx.fillStyle = isCurrent?'#fff':'#94a3b8';
+    ctx.font = isCurrent?'bold 14px monospace':'13px monospace';
+    ctx.fillText(st.name, x, y-4);
+    ctx.font='11px monospace';
+    ctx.fillText(st.label, x, y+12);
+  });
+
+  // Draw transitions
+  fsmTransitions.forEach(tr=>{
+    const from=fsmStates[tr.from], to=fsmStates[tr.to];
+    const x1=margin+from.x*areaW, y1=40+from.y*areaH;
+    const x2=margin+to.x*areaW, y2=40+to.y*areaH;
+    const isActive = tr.from===s.state || (s.animPulse<1 && tr.to===s.state);
+    ctx.strokeStyle = isActive?'rgba(6,182,212,0.6)':'rgba(51,65,85,0.5)';
+    ctx.lineWidth = isActive?2:1;
+    // Curved arrow
+    const mcx=margin+tr.cx*areaW, mcy=40+tr.cy*areaH;
+    ctx.beginPath();
+    ctx.moveTo(x1,y1);
+    ctx.quadraticCurveTo(mcx,mcy,x2,y2);
+    ctx.stroke();
+    // Arrow head
+    const t=0.85;
+    const ax=(1-t)*(1-t)*x1+2*(1-t)*t*mcx+t*t*x2;
+    const ay=(1-t)*(1-t)*y1+2*(1-t)*t*mcy+t*t*y2;
+    const dx=x2-mcx, dy=y2-mcy;
+    const len=Math.sqrt(dx*dx+dy*dy)||1;
+    const nx=dx/len, ny=dy/len;
+    ctx.fillStyle = isActive?'rgba(6,182,212,0.6)':'rgba(51,65,85,0.5)';
+    ctx.beginPath();
+    ctx.moveTo(ax+nx*8, ay+ny*8);
+    ctx.lineTo(ax-ny*5-nx*2, ay+nx*5-ny*2);
+    ctx.lineTo(ax+ny*5-nx*2, ay-nx*5-ny*2);
+    ctx.fill();
+    // Label
+    ctx.fillStyle = isActive?'#22d3ee':'#64748b';
+    ctx.font='11px monospace';
+    ctx.fillText(tr.label, mcx, mcy-5);
+  });
+
+  // State transition table (if designed)
+  if(s.stateDesigned){
+    const tx=20, ty=H*0.78;
+    ctx.fillStyle='#94a3b8'; ctx.font='bold 12px monospace'; ctx.textAlign='left';
+    ctx.fillText('状态转换表:', tx, ty);
+    ctx.font='11px monospace'; ctx.fillStyle='#64748b';
+    const rows = ['S0 + 5¢ → S5', 'S0 + 10¢ → S10', 'S5 + 5¢ → S10',
+                  'S5 + 10¢ → S15', 'S10 + 5¢ → S15', 'S15 → S0 (出货)'];
+    rows.forEach((r,i)=> ctx.fillText(r, tx, ty+16+i*14));
+    ctx.textAlign='center';
+  }
+
+  // Dispensed animation
+  if(s.dispensed){
+    ctx.fillStyle='#22c55e'; ctx.font='bold 20px monospace';
+    ctx.fillText('🎉 商品已出货!', cx, H*0.85);
+  }
+}
+
+// ========== COMMON DRAWING UTILS ==========
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+
+// ========== LEVEL DISPATCH ==========
+const initFns = [initLevel0,initLevel1,initLevel2,initLevel3,initLevel4,initLevel5,initLevel6];
+const buildFns = [buildControls0,buildControls1,buildControls2,buildControls3,buildControls4,buildControls5,buildControls6];
+const drawFns = [drawLevel0,drawLevel1,drawLevel2,drawLevel3,drawLevel4,drawLevel5,drawLevel6];
+
+function initLevel(i){ initFns[i](); }
+function buildControls(i){ buildFns[i](); }
+
+function animate(){
+  time += 0.016;
+  ctx.clearRect(0,0,W,H);
+  // Grid background
+  ctx.strokeStyle='rgba(30,41,59,0.3)'; ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for(let y=0;y<H;y+=40){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  drawFns[curLevel]();
+  animId = requestAnimationFrame(animate);
+}
+
+// ========== INIT ==========
+$('#startBtn').onclick = ()=>{
+  $('#overlay').style.display='none';
+  $('#main').style.display='flex';
+  resize();
+  switchLevel(0);
+};
+
+updateNav();
+
+</script>
+</body>
+</html>

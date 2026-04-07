@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>原子结构与元素周期表 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e0e0e0;font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;width:100vw}
+#overlay{position:fixed;inset:0;background:radial-gradient(ellipse at center,#0a1628 0%,#0a0a1a 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+#overlay h1{font-size:36px;color:#14b8a6;text-shadow:0 0 30px rgba(20,184,166,0.5);margin-bottom:8px}
+#overlay h2{font-size:18px;color:#5eead4;margin-bottom:30px;font-weight:normal}
+.start-btn{padding:14px 48px;font-size:20px;background:linear-gradient(135deg,#14b8a6,#0d9488);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:all .3s;box-shadow:0 0 20px rgba(20,184,166,0.3)}
+.start-btn:hover{transform:scale(1.05);box-shadow:0 0 30px rgba(20,184,166,0.5)}
+.orbit-demo{position:relative;width:200px;height:200px;margin-bottom:30px}
+.orbit-demo .nucleus{position:absolute;width:30px;height:30px;background:radial-gradient(circle,#f59e0b,#d97706);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%);box-shadow:0 0 15px rgba(245,158,11,0.6)}
+.orbit-demo .ring{position:absolute;border:1px solid rgba(20,184,166,0.3);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%)}
+.orbit-demo .e{position:absolute;width:8px;height:8px;background:#14b8a6;border-radius:50%;box-shadow:0 0 6px #14b8a6;animation:orbitAnim 2s linear infinite}
+@keyframes orbitAnim{0%{transform:rotate(0deg) translateX(50px) rotate(0deg)}100%{transform:rotate(360deg) translateX(50px) rotate(-360deg)}}
+@keyframes orbitAnim2{0%{transform:rotate(120deg) translateX(80px) rotate(-120deg)}100%{transform:rotate(480deg) translateX(80px) rotate(-480deg)}}
+#wrap{display:none;width:100vw;height:100vh;position:relative}
+#panel{position:absolute;left:0;top:0;width:320px;height:calc(100% - 36px);background:rgba(10,10,30,0.95);border-right:1px solid rgba(20,184,166,0.2);overflow-y:auto;padding:16px;z-index:10;display:none}
+#panel h3{color:#14b8a6;font-size:16px;margin-bottom:8px}
+#panel .obj{display:flex;align-items:center;gap:6px;margin:4px 0;font-size:13px;color:#94a3b8}
+#panel .obj.done{color:#4ade80}
+#panel .obj::before{content:'○';color:#475569;font-size:14px}
+#panel .obj.done::before{content:'●';color:#4ade80}
+.act-btn{display:block;width:100%;padding:8px;margin:4px 0;background:rgba(20,184,166,0.15);color:#5eead4;border:1px solid rgba(20,184,166,0.3);border-radius:6px;cursor:pointer;font-size:13px;transition:all .2s;text-align:center}
+.act-btn:hover{background:rgba(20,184,166,0.3)}
+.learn-box{background:rgba(20,184,166,0.08);border:1px solid rgba(20,184,166,0.2);border-radius:8px;padding:10px;margin-top:10px;font-size:12px;line-height:1.6;color:#94a3b8}
+.learn-box b{color:#5eead4}
+#bar{position:absolute;left:0;bottom:0;width:100%;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid rgba(20,184,166,0.2);display:none;align-items:center;padding:0 12px;gap:8px;z-index:10}
+#bar .lv-btn{padding:3px 10px;font-size:12px;background:rgba(20,184,166,0.1);color:#5eead4;border:1px solid rgba(20,184,166,0.2);border-radius:4px;cursor:pointer;transition:all .2s}
+#bar .lv-btn:hover,#bar .lv-btn.active{background:rgba(20,184,166,0.3)}
+#bar .lv-btn.locked{opacity:0.4;cursor:not-allowed}
+#bar .prog{margin-left:auto;font-size:12px;color:#64748b}
+canvas{position:absolute;left:320px;top:0;background:#0a0a1a}
+.desc{font-size:12px;color:#94a3b8;line-height:1.6;margin:8px 0}
+.sub{font-size:13px;color:#cbd5e1;margin:6px 0 4px;font-weight:600}
+select.ctl{background:rgba(20,184,166,0.1);color:#5eead4;border:1px solid rgba(20,184,166,0.3);border-radius:4px;padding:4px 8px;font-size:12px;width:100%;margin:4px 0}
+input[type=range].ctl{width:100%;accent-color:#14b8a6;margin:4px 0}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;margin:2px;background:rgba(20,184,166,0.15);color:#5eead4}
+</style>
+</head>
+<body>
+<div id="overlay">
+<div class="orbit-demo">
+<div class="nucleus"></div>
+<div class="ring" style="width:100px;height:100px"></div>
+<div class="ring" style="width:160px;height:160px"></div>
+<div class="e" style="top:50%;left:50%;animation:orbitAnim 2s linear infinite"></div>
+<div class="e" style="top:50%;left:50%;animation:orbitAnim2 3s linear infinite"></div>
+</div>
+<h1>原子结构与元素周期表 探险</h1>
+<h2>从原子模型到分子结构，7 个关卡带你探索微观世界</h2>
+<button class="start-btn" onclick="startGame()">开始探索 🔬</button>
+</div>
+<div id="wrap">
+<div id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="bar"></div>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay'),wrap=document.getElementById('wrap');
+let W,H,curLevel=0,animId,time=0,unlocked=[true,false,false,false,false,false,false];
+let levelObjs=[[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false]];
+// Level states
+let l0model=0,l1n=1,l1l=0,l2element=1,l2filled=[],l3hover=-1,l3click=-1,l4prop=0,l5bondType=0,l6mol=0;
+let l0visited=[false,false,false,false,false],l1visited=[false,false,false,false],l2attempts=0;
+let l4explored=0,l5viewed=[false,false,false],l6built=[false,false,false];
+let electrons=[],dragIdx=-1,mouseX=0,mouseY=0;
+
+const COLORS={bg:'#0a0a1a',primary:'#14b8a6',primaryDark:'#0d9488',accent:'#5eead4',nucleus:'#f59e0b',nucleusDark:'#d97706',electron:'#14b8a6',proton:'#ef4444',neutron:'#6b7280',text:'#e0e0e0',dim:'#64748b',grid:'rgba(20,184,166,0.08)'};
+
+// Element data (first 36 elements)
+const ELEMENTS=[
+null,
+{s:'H',n:'氢',z:1,m:1.008,g:1,p:1,c:'1s¹',cat:'非金属',r:53,ie:13.6,en:2.2},
+{s:'He',n:'氦',z:2,m:4.003,g:18,p:1,c:'1s²',cat:'稀有气体',r:31,ie:24.6,en:0},
+{s:'Li',n:'锂',z:3,m:6.941,g:1,p:2,c:'[He]2s¹',cat:'碱金属',r:167,ie:5.4,en:1.0},
+{s:'Be',n:'铍',z:4,m:9.012,g:2,p:2,c:'[He]2s²',cat:'碱土金属',r:112,ie:9.3,en:1.6},
+{s:'B',n:'硼',z:5,m:10.81,g:13,p:2,c:'[He]2s²2p¹',cat:'类金属',r:87,ie:8.3,en:2.0},
+{s:'C',n:'碳',z:6,m:12.01,g:14,p:2,c:'[He]2s²2p²',cat:'非金属',r:77,ie:11.3,en:2.6},
+{s:'N',n:'氮',z:7,m:14.01,g:15,p:2,c:'[He]2s²2p³',cat:'非金属',r:75,ie:14.5,en:3.0},
+{s:'O',n:'氧',z:8,m:16.00,g:16,p:2,c:'[He]2s²2p⁴',cat:'非金属',r:73,ie:13.6,en:3.4},
+{s:'F',n:'氟',z:9,m:19.00,g:17,p:2,c:'[He]2s²2p⁵',cat:'卤素',r:71,ie:17.4,en:4.0},
+{s:'Ne',n:'氖',z:10,m:20.18,g:18,p:2,c:'[He]2s²2p⁶',cat:'稀有气体',r:69,ie:21.6,en:0},
+{s:'Na',n:'钠',z:11,m:22.99,g:1,p:3,c:'[Ne]3s¹',cat:'碱金属',r:190,ie:5.1,en:0.9},
+{s:'Mg',n:'镁',z:12,m:24.31,g:2,p:3,c:'[Ne]3s²',cat:'碱土金属',r:145,ie:7.6,en:1.3},
+{s:'Al',n:'铝',z:13,m:26.98,g:13,p:3,c:'[Ne]3s²3p¹',cat:'金属',r:118,ie:6.0,en:1.6},
+{s:'Si',n:'硅',z:14,m:28.09,g:14,p:3,c:'[Ne]3s²3p²',cat:'类金属',r:111,ie:8.2,en:1.9},
+{s:'P',n:'磷',z:15,m:30.97,g:15,p:3,c:'[Ne]3s²3p³',cat:'非金属',r:106,ie:10.5,en:2.2},
+{s:'S',n:'硫',z:16,m:32.07,g:16,p:3,c:'[Ne]3s²3p⁴',cat:'非金属',r:102,ie:10.4,en:2.6},
+{s:'Cl',n:'氯',z:17,m:35.45,g:17,p:3,c:'[Ne]3s²3p⁵',cat:'卤素',r:99,ie:13.0,en:3.2},
+{s:'Ar',n:'氩',z:18,m:39.95,g:18,p:3,c:'[Ne]3s²3p⁶',cat:'稀有气体',r:97,ie:15.8,en:0},
+{s:'K',n:'钾',z:19,m:39.10,g:1,p:4,c:'[Ar]4s¹',cat:'碱金属',r:243,ie:4.3,en:0.8},
+{s:'Ca',n:'钙',z:20,m:40.08,g:2,p:4,c:'[Ar]4s²',cat:'碱土金属',r:194,ie:6.1,en:1.0}
+];
+
+// Periodic table layout: [row,col] for z=1..20
+const PT_POS={1:[0,0],2:[0,17],3:[1,0],4:[1,1],5:[1,12],6:[1,13],7:[1,14],8:[1,15],9:[1,16],10:[1,17],
+11:[2,0],12:[2,1],13:[2,12],14:[2,13],15:[2,14],16:[2,15],17:[2,16],18:[2,17],
+19:[3,0],20:[3,1]};
+
+const MODEL_NAMES=['道尔顿模型','汤姆森模型','卢瑟福模型','玻尔模型','量子力学模型'];
+const MODEL_YEARS=[1803,1904,1911,1913,1926];
+const MODEL_DESC=[
+'原子是不可分割的实心球体，不同元素的原子质量和大小不同。',
+'原子是一个均匀带正电的球体，电子像葡萄干一样嵌在其中（"葡萄干布丁"模型）。',
+'原子中心有一个很小但很重的原子核，电子在核外空间运动（行星模型）。',
+'电子只能在特定的轨道上运动，每个轨道对应确定的能量（量子化轨道）。',
+'电子没有确定的轨道，只有出现的概率分布（电子云模型）。'
+];
+
+const ORBITAL_NAMES=['s','p','d','f'];
+const SUBSHELL_MAX=[2,6,10,14];
+
+// Energy level order for Aufbau
+const AUFBAU_ORDER=['1s','2s','2p','3s','3p','4s','3d','4p','5s','4d','5p','6s','4f','5d','6p','7s','5f','6d','7p'];
+const AUFBAU_MAX={'s':2,'p':6,'d':10,'f':14};
+
+const BOND_NAMES=['离子键','共价键','金属键'];
+const BOND_DESC=[
+'金属原子失去电子形成阳离子，非金属原子获得电子形成阴离子，正负离子间的静电引力形成离子键。',
+'两个原子共用电子对形成共价键，电子云发生重叠。',
+'金属原子的价电子形成"电子海"，在金属阳离子之间自由移动，形成金属键。'
+];
+
+const MOL_NAMES=['H₂O (水)','CO₂ (二氧化碳)','NH₃ (氨)'];
+const MOL_SHAPES=['V形','直线形','三角锥形'];
+const MOL_ANGLES=['104.5°','180°','107°'];
+
+function resize(){
+  W=window.innerWidth-320;H=window.innerHeight-36;
+  cv.width=W;cv.height=H;
+  cv.style.width=W+'px';cv.style.height=H+'px';
+}
+window.addEventListener('resize',()=>{resize();draw()});
+
+function startGame(){
+  overlay.style.display='none';
+  wrap.style.display='block';
+  panel.style.display='block';
+  bar.style.display='flex';
+  resize();
+  goLevel(0);
+  animate();
+}
+
+function goLevel(n){
+  if(n>6)return;
+  curLevel=n;
+  if(!unlocked[n])unlocked[n]=true;
+  dragIdx=-1;
+  if(n===2)initLevel2();
+  if(n===5)l5bondType=0;
+  if(n===6){l6mol=0;initMolecule();}
+  renderPanel();renderBar();draw();
+}
+
+function checkObj(li,oi){
+  if(!levelObjs[li][oi]){
+    levelObjs[li][oi]=true;
+    if(levelObjs[li].every(v=>v)&&li<6)unlocked[li+1]=true;
+    renderPanel();renderBar();
+  }
+}
+
+function renderBar(){
+  let h='';
+  for(let i=0;i<7;i++){
+    let cls='lv-btn';
+    if(i===curLevel)cls+=' active';
+    if(!unlocked[i])cls+=' locked';
+    let done=levelObjs[i].every(v=>v)?'✓ ':'';
+    h+=`<button class="${cls}" onclick="${unlocked[i]?'goLevel('+i+')':'void(0)'}">${done}关卡${i+1}</button>`;
+  }
+  let total=levelObjs.flat().filter(v=>v).length;
+  h+=`<span class="prog">总进度: ${total}/21</span>`;
+  bar.innerHTML=h;
+}
+
+function renderPanel(){
+  let h='',li=curLevel;
+  switch(li){
+    case 0: h=renderPanel0();break;
+    case 1: h=renderPanel1();break;
+    case 2: h=renderPanel2();break;
+    case 3: h=renderPanel3();break;
+    case 4: h=renderPanel4();break;
+    case 5: h=renderPanel5();break;
+    case 6: h=renderPanel6();break;
+  }
+  if(levelObjs[li].every(v=>v)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+  if(levelObjs[li].every(v=>v)&&li===6)h+=`<div style="text-align:center;margin-top:12px;color:#4ade80;font-size:14px">🎉 恭喜通关！全部 7 个关卡已完成！</div>`;
+  panel.innerHTML=h;
+}
+
+function renderPanel0(){
+  let h=`<h3>关卡1: 原子模型演化</h3>`;
+  h+=`<p class="desc">从道尔顿到量子力学，了解人类对原子认识的演变历程。点击下方按钮切换不同模型。</p>`;
+  h+=`<div class="obj ${levelObjs[0][0]?'done':''}">浏览至少3种模型</div>`;
+  h+=`<div class="obj ${levelObjs[0][1]?'done':''}">查看玻尔模型</div>`;
+  h+=`<div class="obj ${levelObjs[0][2]?'done':''}">查看量子力学模型</div>`;
+  h+=`<p class="sub">选择模型</p>`;
+  for(let i=0;i<5;i++){
+    let sel=i===l0model?'background:rgba(20,184,166,0.3);':'';
+    h+=`<button class="act-btn" style="${sel}" onclick="setModel(${i})">${MODEL_NAMES[i]} (${MODEL_YEARS[i]})</button>`;
+  }
+  h+=`<div class="learn-box"><b>${MODEL_NAMES[l0model]}</b><br>${MODEL_DESC[l0model]}</div>`;
+  if(levelObjs[0].every(v=>v)){
+    h+=`<div class="learn-box" style="margin-top:8px"><b>知识总结</b><br>原子模型经历了从"实心球"到"电子云"的演变。现代量子力学模型用概率描述电子的位置分布，是目前最准确的原子模型。</div>`;
+  }
+  return h;
+}
+
+function setModel(i){
+  l0model=i;l0visited[i]=true;
+  let cnt=l0visited.filter(v=>v).length;
+  if(cnt>=3)checkObj(0,0);
+  if(i===3)checkObj(0,1);
+  if(i===4)checkObj(0,2);
+  renderPanel();draw();
+}
+
+function renderPanel1(){
+  let h=`<h3>关卡2: 电子轨道</h3>`;
+  h+=`<p class="desc">调整量子数 n 和 l，观察不同轨道的形状。s 轨道是球形，p 轨道是哑铃形，d 轨道是花瓣形。</p>`;
+  h+=`<div class="obj ${levelObjs[1][0]?'done':''}">查看 s 轨道</div>`;
+  h+=`<div class="obj ${levelObjs[1][1]?'done':''}">查看 p 轨道</div>`;
+  h+=`<div class="obj ${levelObjs[1][2]?'done':''}">查看 d 或 f 轨道</div>`;
+  h+=`<p class="sub">主量子数 n = ${l1n}</p>`;
+  h+=`<input type="range" class="ctl" min="1" max="4" value="${l1n}" oninput="setQN(+this.value,l1l)">`;
+  h+=`<p class="sub">角量子数 l = ${l1l} (${ORBITAL_NAMES[l1l]}轨道)</p>`;
+  h+=`<input type="range" class="ctl" min="0" max="${l1n-1}" value="${Math.min(l1l,l1n-1)}" oninput="setQL(+this.value)">`;
+  h+=`<div class="learn-box"><b>${l1n}${ORBITAL_NAMES[l1l]} 轨道</b><br>主量子数 n=${l1n}，角量子数 l=${l1l}<br>最多容纳 ${2*(2*l1l+1)} 个电子<br>磁量子数 m: ${-l1l} 到 ${l1l} (共${2*l1l+1}个取向)</div>`;
+  if(levelObjs[1].every(v=>v)){
+    h+=`<div class="learn-box" style="margin-top:8px"><b>知识总结</b><br>量子数决定了电子轨道的形状和大小。n 越大轨道越远，l 决定形状（0=球形，1=哑铃形，2=花瓣形，3=复杂形状）。</div>`;
+  }
+  return h;
+}
+
+function setQN(n,l){l1n=n;l1l=Math.min(l,n-1);trackOrbital();renderPanel();draw();}
+function setQL(l){l1l=l;trackOrbital();renderPanel();draw();}
+function trackOrbital(){
+  if(l1l===0){l1visited[0]=true;checkObj(1,0);}
+  if(l1l===1){l1visited[1]=true;checkObj(1,1);}
+  if(l1l>=2){l1visited[l1l]=true;checkObj(1,2);}
+}
+
+// Level 2: Electron Configuration
+function initLevel2(){
+  l2element=1;l2filled=[];l2attempts=0;
+  buildAufbau(l2element);
+}
+function buildAufbau(z){
+  l2filled=[];
+  // correct filling for element z
+  let remain=z;
+  for(let orb of AUFBAU_ORDER){
+    if(remain<=0)break;
+    let type=orb[orb.length-1];
+    let max=AUFBAU_MAX[type];
+    let fill=Math.min(remain,max);
+    l2filled.push({orb,fill,max});
+    remain-=fill;
+  }
+}
+function renderPanel2(){
+  let h=`<h3>关卡3: 电子排布</h3>`;
+  h+=`<p class="desc">选择元素，观察电子按构造原理（Aufbau）填充能级的过程。</p>`;
+  h+=`<div class="obj ${levelObjs[2][0]?'done':''}">查看氢的电子排布</div>`;
+  h+=`<div class="obj ${levelObjs[2][1]?'done':''}">查看碳的电子排布</div>`;
+  h+=`<div class="obj ${levelObjs[2][2]?'done':''}">查看至少5种元素</div>`;
+  h+=`<p class="sub">选择元素 (Z=${l2element})</p>`;
+  h+=`<select class="ctl" onchange="setL2Element(+this.value)">`;
+  for(let i=1;i<=20;i++){
+    let sel=i===l2element?'selected':'';
+    h+=`<option value="${i}" ${sel}>${i}. ${ELEMENTS[i].s} ${ELEMENTS[i].n}</option>`;
+  }
+  h+=`</select>`;
+  h+=`<div class="learn-box"><b>${ELEMENTS[l2element].s} (${ELEMENTS[l2element].n})</b> 的电子构型:<br><b>${ELEMENTS[l2element].c}</b><br>共 ${l2element} 个电子</div>`;
+  if(levelObjs[2].every(v=>v)){
+    h+=`<div class="learn-box" style="margin-top:8px"><b>知识总结</b><br>电子按能量从低到高填充轨道（构造原理）。填充顺序: 1s→2s→2p→3s→3p→4s→3d→4p。每个轨道最多容纳的电子数由角量子数决定。</div>`;
+  }
+  return h;
+}
+let l2viewed=new Set();
+function setL2Element(z){
+  l2element=z;buildAufbau(z);
+  l2viewed.add(z);
+  if(z===1)checkObj(2,0);
+  if(z===6)checkObj(2,1);
+  if(l2viewed.size>=5)checkObj(2,2);
+  renderPanel();draw();
+}
+
+// Level 3: Periodic Table
+function renderPanel3(){
+  let h=`<h3>关卡4: 元素周期表</h3>`;
+  h+=`<p class="desc">点击周期表中的元素查看详细信息。悬停可预览。</p>`;
+  h+=`<div class="obj ${levelObjs[3][0]?'done':''}">点击查看5个元素</div>`;
+  h+=`<div class="obj ${levelObjs[3][1]?'done':''}">查看一种稀有气体</div>`;
+  h+=`<div class="obj ${levelObjs[3][2]?'done':''}">查看一种碱金属</div>`;
+  if(l3click>0){
+    let e=ELEMENTS[l3click];
+    h+=`<div class="learn-box"><b>${e.z}. ${e.s} ${e.n}</b><br>`;
+    h+=`原子量: ${e.m}<br>电子构型: ${e.c}<br>`;
+    h+=`分类: <span class="tag">${e.cat}</span><br>`;
+    h+=`原子半径: ${e.r} pm<br>`;
+    h+=`第一电离能: ${e.ie} eV<br>`;
+    h+=`电负性: ${e.en||'—'}</div>`;
+  }
+  if(levelObjs[3].every(v=>v)){
+    h+=`<div class="learn-box" style="margin-top:8px"><b>知识总结</b><br>元素周期表按原子序数排列，同族元素有相似的化学性质。周期表分为 s、p、d、f 四个区，对应不同的电子填充轨道。</div>`;
+  }
+  return h;
+}
+let l3clicked=new Set();
+function clickElement(z){
+  if(z<1||z>20)return;
+  l3click=z;l3clicked.add(z);
+  if(l3clicked.size>=5)checkObj(3,0);
+  if(ELEMENTS[z].cat==='稀有气体')checkObj(3,1);
+  if(ELEMENTS[z].cat==='碱金属')checkObj(3,2);
+  renderPanel();draw();
+}
+
+// Level 4: Periodic Trends
+function renderPanel4(){
+  let h=`<h3>关卡5: 元素周期律</h3>`;
+  h+=`<p class="desc">观察原子半径、电离能、电负性随原子序数的变化趋势。</p>`;
+  h+=`<div class="obj ${levelObjs[4][0]?'done':''}">查看原子半径趋势</div>`;
+  h+=`<div class="obj ${levelObjs[4][1]?'done':''}">查看电离能趋势</div>`;
+  h+=`<div class="obj ${levelObjs[4][2]?'done':''}">查看电负性趋势</div>`;
+  let props=['原子半径 (pm)','第一电离能 (eV)','电负性'];
+  for(let i=0;i<3;i++){
+    let sel=i===l4prop?'background:rgba(20,184,166,0.3);':'';
+    h+=`<button class="act-btn" style="${sel}" onclick="setL4Prop(${i})">${props[i]}</button>`;
+  }
+  let trendDesc=['同周期从左到右原子半径减小（核电荷增大，对电子吸引力增强）；同族从上到下原子半径增大（电子层数增多）。',
+    '同周期从左到右电离能总体增大（原子半径减小，电子更难移除）；稀有气体电离能最高。',
+    '同周期从左到右电负性增大（原子吸引电子能力增强）；氟的电负性最大(4.0)。'];
+  h+=`<div class="learn-box"><b>${props[l4prop]}</b><br>${trendDesc[l4prop]}</div>`;
+  if(levelObjs[4].every(v=>v)){
+    h+=`<div class="learn-box" style="margin-top:8px"><b>知识总结</b><br>元素性质呈周期性变化，这是元素周期律的核心。原子半径、电离能、电负性都有明确的周期性趋势，这些趋势源于电子结构的周期性变化。</div>`;
+  }
+  return h;
+}
+function setL4Prop(i){
+  l4prop=i;l5viewed[i]=true;
+  if(i===0)checkObj(4,0);
+  if(i===1)checkObj(4,1);
+  if(i===2)checkObj(4,2);
+  renderPanel();draw();
+}
+
+// Level 5: Chemical Bonds
+function renderPanel5(){
+  let h=`<h3>关卡6: 化学键</h3>`;
+  h+=`<p class="desc">了解三种基本化学键的形成过程和特点。</p>`;
+  h+=`<div class="obj ${levelObjs[5][0]?'done':''}">观察离子键形成</div>`;
+  h+=`<div class="obj ${levelObjs[5][1]?'done':''}">观察共价键形成</div>`;
+  h+=`<div class="obj ${levelObjs[5][2]?'done':''}">观察金属键</div>`;
+  for(let i=0;i<3;i++){
+    let sel=i===l5bondType?'background:rgba(20,184,166,0.3);':'';
+    h+=`<button class="act-btn" style="${sel}" onclick="setBond(${i})">${BOND_NAMES[i]}</button>`;
+  }
+  h+=`<div class="learn-box"><b>${BOND_NAMES[l5bondType]}</b><br>${BOND_DESC[l5bondType]}</div>`;
+  if(levelObjs[5].every(v=>v)){
+    h+=`<div class="learn-box" style="margin-top:8px"><b>知识总结</b><br>化学键是原子间的强相互作用力。离子键靠静电引力，共价键靠共用电子对，金属键靠自由电子与金属阳离子的作用。键的类型决定了物质的性质。</div>`;
+  }
+  return h;
+}
+function setBond(i){
+  l5bondType=i;
+  if(i===0)checkObj(5,0);
+  if(i===1)checkObj(5,1);
+  if(i===2)checkObj(5,2);
+  renderPanel();draw();
+}
+
+// Level 6: Molecular Structure
+let molAtoms=[];
+function initMolecule(){
+  molAtoms=[];
+  if(l6mol===0){// H2O
+    molAtoms=[{x:W/2,y:H/2,s:'O',r:24,c:'#ef4444',fixed:true},
+      {x:W/2-80,y:H/2+60,s:'H',r:16,c:'#14b8a6',fixed:false},
+      {x:W/2+80,y:H/2+60,s:'H',r:16,c:'#14b8a6',fixed:false}];
+  }else if(l6mol===1){// CO2
+    molAtoms=[{x:W/2,y:H/2,s:'C',r:22,c:'#6b7280',fixed:true},
+      {x:W/2-100,y:H/2,s:'O',r:24,c:'#ef4444',fixed:false},
+      {x:W/2+100,y:H/2,s:'O',r:24,c:'#ef4444',fixed:false}];
+  }else{// NH3
+    molAtoms=[{x:W/2,y:H/2-20,s:'N',r:22,c:'#3b82f6',fixed:true},
+      {x:W/2-70,y:H/2+60,s:'H',r:16,c:'#14b8a6',fixed:false},
+      {x:W/2+70,y:H/2+60,s:'H',r:16,c:'#14b8a6',fixed:false},
+      {x:W/2,y:H/2+90,s:'H',r:16,c:'#14b8a6',fixed:false}];
+  }
+}
+function renderPanel6(){
+  let h=`<h3>关卡7: 分子结构</h3>`;
+  h+=`<p class="desc">根据 VSEPR 理论，拖动原子观察分子的空间构型。中心原子固定，拖动配位原子。</p>`;
+  h+=`<div class="obj ${levelObjs[6][0]?'done':''}">构建 H₂O 分子</div>`;
+  h+=`<div class="obj ${levelObjs[6][1]?'done':''}">构建 CO₂ 分子</div>`;
+  h+=`<div class="obj ${levelObjs[6][2]?'done':''}">构建 NH₃ 分子</div>`;
+  for(let i=0;i<3;i++){
+    let sel=i===l6mol?'background:rgba(20,184,166,0.3);':'';
+    h+=`<button class="act-btn" style="${sel}" onclick="setMol(${i})">${MOL_NAMES[i]}</button>`;
+  }
+  h+=`<div class="learn-box"><b>${MOL_NAMES[l6mol]}</b><br>空间构型: ${MOL_SHAPES[l6mol]}<br>键角: ${MOL_ANGLES[l6mol]}<br><br>VSEPR理论: 价层电子对尽可能远离，使排斥力最小，从而决定分子的空间构型。</div>`;
+  if(levelObjs[6].every(v=>v)){
+    h+=`<div class="learn-box" style="margin-top:8px"><b>知识总结</b><br>VSEPR（价层电子对互斥）理论可以预测分子的空间构型。孤对电子也参与排斥，所以 H₂O 是V形而非直线形。分子的形状决定了它的极性和许多物理化学性质。</div>`;
+  }
+  return h;
+}
+function setMol(i){
+  l6mol=i;initMolecule();
+  checkObj(6,i);
+  renderPanel();draw();
+}
+
+// Canvas mouse events
+cv.addEventListener('mousemove',e=>{
+  let rect=cv.getBoundingClientRect();
+  mouseX=e.clientX-rect.left;mouseY=e.clientY-rect.top;
+  if(curLevel===3)handlePTHover();
+  if(curLevel===6&&dragIdx>=0){
+    molAtoms[dragIdx].x=mouseX;molAtoms[dragIdx].y=mouseY;
+  }
+});
+cv.addEventListener('mousedown',e=>{
+  let rect=cv.getBoundingClientRect();
+  let mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  if(curLevel===3)handlePTClick(mx,my);
+  if(curLevel===6){
+    for(let i=molAtoms.length-1;i>=0;i--){
+      let a=molAtoms[i];
+      if(!a.fixed&&Math.hypot(mx-a.x,my-a.y)<a.r+10){dragIdx=i;break;}
+    }
+  }
+});
+cv.addEventListener('mouseup',()=>{dragIdx=-1;});
+
+function handlePTHover(){/* hover handled in draw */}
+function handlePTClick(mx,my){
+  let cellW=Math.min((W-60)/18,40),cellH=Math.min((H-120)/7,40);
+  let ox=(W-cellW*18)/2,oy=60;
+  for(let z=1;z<=20;z++){
+    let pos=PT_POS[z];if(!pos)continue;
+    let x=ox+pos[1]*cellW,y=oy+pos[0]*cellH;
+    if(mx>=x&&mx<=x+cellW&&my>=y&&my<=y+cellH){clickElement(z);return;}
+  }
+}
+
+// ===== DRAWING =====
+function animate(){
+  time+=0.016;
+  draw();
+  animId=requestAnimationFrame(animate);
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  drawGrid();
+  switch(curLevel){
+    case 0:drawLevel0();break;
+    case 1:drawLevel1();break;
+    case 2:drawLevel2();break;
+    case 3:drawLevel3();break;
+    case 4:drawLevel4();break;
+    case 5:drawLevel5();break;
+    case 6:drawLevel6();break;
+  }
+}
+
+function drawGrid(){
+  ctx.strokeStyle=COLORS.grid;ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+}
+
+function drawNucleus(cx,cy,r,protons,neutrons){
+  // Draw nucleus as cluster of protons and neutrons
+  let total=Math.min(protons+neutrons,20);
+  for(let i=0;i<total;i++){
+    let angle=(i/total)*Math.PI*2+time*0.2;
+    let dist=r*0.4*(0.3+0.7*((i%3)/3));
+    let px=cx+Math.cos(angle)*dist;
+    let py=cy+Math.sin(angle)*dist;
+    let nr=r*0.2;
+    ctx.beginPath();ctx.arc(px,py,nr,0,Math.PI*2);
+    ctx.fillStyle=i<protons?COLORS.proton:COLORS.neutron;
+    ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.3)';ctx.lineWidth=1;ctx.stroke();
+  }
+  // Glow
+  let g=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+  g.addColorStop(0,'rgba(245,158,11,0.3)');g.addColorStop(1,'rgba(245,158,11,0)');
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+}
+
+function drawElectron(x,y,r){
+  ctx.beginPath();ctx.arc(x,y,r||5,0,Math.PI*2);
+  ctx.fillStyle=COLORS.electron;ctx.fill();
+  ctx.shadowColor=COLORS.electron;ctx.shadowBlur=8;
+  ctx.fill();ctx.shadowBlur=0;
+}
+
+// Level 0: Atomic Models
+function drawLevel0(){
+  let cx=W/2,cy=H/2;
+  ctx.fillStyle=COLORS.accent;ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+  ctx.fillText(MODEL_NAMES[l0model]+' ('+MODEL_YEARS[l0model]+')',cx,40);
+
+  switch(l0model){
+    case 0: // Dalton - solid sphere
+      let g0=ctx.createRadialGradient(cx,cy,0,cx,cy,80);
+      g0.addColorStop(0,'#a78bfa');g0.addColorStop(1,'#6d28d9');
+      ctx.beginPath();ctx.arc(cx,cy,80,0,Math.PI*2);ctx.fillStyle=g0;ctx.fill();
+      ctx.fillStyle='#fff';ctx.font='16px sans-serif';ctx.fillText('不可分割的实心球',cx,cy+120);
+      break;
+    case 1: // Thomson - plum pudding
+      let g1=ctx.createRadialGradient(cx,cy,0,cx,cy,100);
+      g1.addColorStop(0,'rgba(239,68,68,0.3)');g1.addColorStop(1,'rgba(239,68,68,0.1)');
+      ctx.beginPath();ctx.arc(cx,cy,100,0,Math.PI*2);ctx.fillStyle=g1;ctx.fill();
+      ctx.strokeStyle='rgba(239,68,68,0.4)';ctx.lineWidth=2;ctx.stroke();
+      ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.fillText('均匀正电荷球体',cx,cy+130);
+      for(let i=0;i<8;i++){
+        let a=i/8*Math.PI*2+time*0.3;
+        let d=40+30*Math.sin(i*1.5);
+        drawElectron(cx+Math.cos(a)*d,cy+Math.sin(a)*d,6);
+      }
+      break;
+    case 2: // Rutherford - planetary
+      drawNucleus(cx,cy,25,6,6);
+      for(let i=0;i<3;i++){
+        let r=60+i*35;
+        ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+        ctx.strokeStyle='rgba(20,184,166,0.2)';ctx.lineWidth=1;ctx.stroke();
+        let ne=i===0?2:i===1?4:2;
+        for(let j=0;j<ne;j++){
+          let a=time*(1.5-i*0.3)+j*(Math.PI*2/ne);
+          drawElectron(cx+Math.cos(a)*r,cy+Math.sin(a)*r);
+        }
+      }
+      ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.fillText('行星模型 — 电子绕核运动',cx,cy+160);
+      break;
+    case 3: // Bohr - quantized orbits
+      drawNucleus(cx,cy,20,6,6);
+      let shells=[2,4];
+      let colors=['#14b8a6','#f59e0b'];
+      for(let i=0;i<2;i++){
+        let r=55+i*40;
+        ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+        ctx.strokeStyle=colors[i];ctx.lineWidth=2;ctx.setLineDash([5,5]);ctx.stroke();ctx.setLineDash([]);
+        // Energy label
+        ctx.fillStyle=colors[i];ctx.font='11px sans-serif';ctx.textAlign='left';
+        ctx.fillText(`n=${i+1} (E${i+1})`,cx+r+8,cy);ctx.textAlign='center';
+        for(let j=0;j<shells[i];j++){
+          let a=time*(1.2-i*0.3)+j*(Math.PI*2/shells[i]);
+          drawElectron(cx+Math.cos(a)*r,cy+Math.sin(a)*r,5);
+        }
+      }
+      // Arrow showing quantized jump
+      let jumpY=cy-120;
+      ctx.fillStyle='#fbbf24';ctx.font='12px sans-serif';
+      ctx.fillText('能级跃迁 → 发射/吸收光子',cx,jumpY);
+      drawArrow(cx-30,jumpY+15,cx+30,jumpY+15,'#fbbf24');
+      break;
+    case 4: // Quantum mechanical - electron cloud
+      drawNucleus(cx,cy,15,6,6);
+      // Draw probability cloud
+      for(let i=0;i<300;i++){
+        let a=Math.random()*Math.PI*2;
+        let rr=Math.random();
+        let d=(20+rr*rr*100)*((Math.random()<0.7)?1:1.5);
+        let px=cx+Math.cos(a)*d;
+        let py=cy+Math.sin(a)*d;
+        let alpha=0.4*(1-d/160);
+        if(alpha>0){
+          ctx.beginPath();ctx.arc(px,py,1.5,0,Math.PI*2);
+          ctx.fillStyle=`rgba(20,184,166,${alpha})`;ctx.fill();
+        }
+      }
+      ctx.fillStyle='#fff';ctx.font='11px sans-serif';
+      ctx.fillText('电子云 — 概率密度分布',cx,cy+150);
+      break;
+  }
+}
+
+function drawArrow(x1,y1,x2,y2,color){
+  ctx.strokeStyle=color;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  let a=Math.atan2(y2-y1,x2-x1);
+  ctx.beginPath();ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-8*Math.cos(a-0.4),y2-8*Math.sin(a-0.4));
+  ctx.lineTo(x2-8*Math.cos(a+0.4),y2-8*Math.sin(a+0.4));
+  ctx.closePath();ctx.fillStyle=color;ctx.fill();
+}
+
+// Level 1: Orbital shapes
+function drawLevel1(){
+  let cx=W/2,cy=H/2;
+  ctx.fillStyle=COLORS.accent;ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`${l1n}${ORBITAL_NAMES[l1l]} 轨道`,cx,40);
+
+  drawNucleus(cx,cy,10,1,0);
+
+  if(l1l===0){ // s orbital - sphere
+    for(let shell=1;shell<=l1n;shell++){
+      let r=30*shell+20;
+      for(let i=0;i<200;i++){
+        let a=Math.random()*Math.PI*2;
+        let rr=r*(0.7+0.6*Math.random());
+        let alpha=0.5*Math.exp(-((rr-r)*(rr-r))/(r*r*0.3));
+        ctx.beginPath();ctx.arc(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr,1.5,0,Math.PI*2);
+        ctx.fillStyle=`rgba(20,184,166,${alpha})`;ctx.fill();
+      }
+      ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);
+      ctx.strokeStyle='rgba(20,184,166,0.15)';ctx.lineWidth=1;ctx.stroke();
+    }
+  }else if(l1l===1){ // p orbital - dumbbell
+    let scale=20+l1n*15;
+    for(let i=0;i<400;i++){
+      let t=Math.random()*Math.PI*2;
+      let r=Math.random()*scale;
+      let x=r*Math.cos(t)*Math.abs(Math.cos(t));
+      let y=r*Math.sin(t);
+      let alpha=0.4*Math.exp(-r*r/(scale*scale*0.5));
+      ctx.beginPath();ctx.arc(cx+x,cy+y,1.5,0,Math.PI*2);
+      ctx.fillStyle=`rgba(20,184,166,${alpha})`;ctx.fill();
+    }
+    // Nodal plane
+    ctx.strokeStyle='rgba(239,68,68,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(cx,cy-scale*1.5);ctx.lineTo(cx,cy+scale*1.5);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(239,68,68,0.5)';ctx.font='11px sans-serif';
+    ctx.fillText('节面',cx+15,cy-scale);
+  }else if(l1l===2){ // d orbital - cloverleaf
+    let scale=15+l1n*12;
+    for(let i=0;i<500;i++){
+      let a=Math.random()*Math.PI*2;
+      let r=Math.random()*scale;
+      let factor=Math.abs(Math.sin(2*a));
+      let px=cx+Math.cos(a)*r*factor*1.5;
+      let py=cy+Math.sin(a)*r*factor*1.5;
+      let alpha=0.4*factor*Math.exp(-r*r/(scale*scale*0.5));
+      ctx.beginPath();ctx.arc(px,py,1.5,0,Math.PI*2);
+      ctx.fillStyle=`rgba(20,184,166,${alpha})`;ctx.fill();
+    }
+    ctx.fillStyle=COLORS.dim;ctx.font='11px sans-serif';
+    ctx.fillText('四叶草形（d轨道）',cx,cy+scale*2);
+  }else{ // f orbital
+    let scale=15+l1n*10;
+    for(let i=0;i<600;i++){
+      let a=Math.random()*Math.PI*2;
+      let r=Math.random()*scale;
+      let factor=Math.abs(Math.sin(3*a));
+      let px=cx+Math.cos(a)*r*factor*1.5;
+      let py=cy+Math.sin(a)*r*factor*1.5;
+      let alpha=0.35*factor*Math.exp(-r*r/(scale*scale*0.5));
+      ctx.beginPath();ctx.arc(px,py,1.5,0,Math.PI*2);
+      ctx.fillStyle=`rgba(94,234,212,${alpha})`;ctx.fill();
+    }
+    ctx.fillStyle=COLORS.dim;ctx.font='11px sans-serif';
+    ctx.fillText('复杂花瓣形（f轨道）',cx,cy+scale*2);
+  }
+}
+
+// Level 2: Electron Configuration
+function drawLevel2(){
+  let cx=W/2,cy=H/2;
+  ctx.fillStyle=COLORS.accent;ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`${ELEMENTS[l2element].s} (${ELEMENTS[l2element].n}) 的电子排布`,cx,35);
+
+  // Draw energy level diagram
+  let startY=60,rowH=Math.min(40,(H-100)/l2filled.length);
+  let barW=Math.min(300,W-100);
+  let ox=(W-barW)/2;
+
+  for(let i=0;i<l2filled.length;i++){
+    let y=startY+i*rowH;
+    let f=l2filled[i];
+    // Level line
+    ctx.strokeStyle='rgba(20,184,166,0.3)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(ox,y+rowH/2);ctx.lineTo(ox+barW,y+rowH/2);ctx.stroke();
+    // Label
+    ctx.fillStyle=COLORS.accent;ctx.font='13px monospace';ctx.textAlign='left';
+    ctx.fillText(f.orb,ox-35,y+rowH/2+4);
+    // Electron boxes
+    let boxW=20,gap=4;
+    let totalBoxes=f.max;
+    let bx=ox+10;
+    for(let j=0;j<totalBoxes;j++){
+      let filled=j<f.fill;
+      ctx.fillStyle=filled?'rgba(20,184,166,0.2)':'rgba(255,255,255,0.03)';
+      ctx.strokeStyle=filled?COLORS.primary:'rgba(255,255,255,0.1)';
+      ctx.lineWidth=1;
+      ctx.fillRect(bx+j*(boxW+gap),y+rowH/2-10,boxW,20);
+      ctx.strokeRect(bx+j*(boxW+gap),y+rowH/2-10,boxW,20);
+      if(filled){
+        // Up arrow
+        let ax=bx+j*(boxW+gap)+boxW/2;
+        let ay=y+rowH/2;
+        ctx.fillStyle=COLORS.electron;ctx.font='14px sans-serif';ctx.textAlign='center';
+        if(j<f.fill){
+          ctx.fillText('↑',ax-(j%2===0?3:0),ay+4);
+          if(f.fill>totalBoxes/2||(j<f.fill-totalBoxes+f.fill)){
+            // paired electron
+          }
+        }
+      }
+    }
+    // Fill count
+    ctx.fillStyle=COLORS.dim;ctx.font='11px sans-serif';ctx.textAlign='left';
+    ctx.fillText(`${f.fill}/${f.max}`,ox+barW-40,y+rowH/2+4);
+  }
+
+  // Draw atom visualization below
+  let atomY=startY+l2filled.length*rowH+60;
+  if(atomY<H-80){
+    drawNucleus(cx,atomY,15,l2element,l2element);
+    let shellCounts=getShellCounts(l2element);
+    for(let i=0;i<shellCounts.length;i++){
+      let r=30+i*22;
+      ctx.beginPath();ctx.arc(cx,atomY,r,0,Math.PI*2);
+      ctx.strokeStyle='rgba(20,184,166,0.15)';ctx.lineWidth=1;ctx.stroke();
+      for(let j=0;j<shellCounts[i];j++){
+        let a=time*(1.2-i*0.2)+j*(Math.PI*2/shellCounts[i]);
+        drawElectron(cx+Math.cos(a)*r,atomY+Math.sin(a)*r,3);
+      }
+    }
+  }
+}
+
+function getShellCounts(z){
+  let shells=[];
+  let remain=z;
+  let maxPerShell=[2,8,8,2];
+  for(let i=0;i<4&&remain>0;i++){
+    let n=Math.min(remain,maxPerShell[i]);
+    shells.push(n);remain-=n;
+  }
+  return shells;
+}
+
+// Level 3: Periodic Table
+function drawLevel3(){
+  let cellW=Math.min((W-60)/18,42),cellH=Math.min((H-120)/7,42);
+  let ox=(W-cellW*18)/2,oy=50;
+
+  ctx.fillStyle=COLORS.accent;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  ctx.fillText('元素周期表（前20号元素）',W/2,30);
+
+  const catColors={'碱金属':'#ef4444','碱土金属':'#f59e0b','金属':'#a78bfa','类金属':'#8b5cf6',
+    '非金属':'#14b8a6','卤素':'#06b6d4','稀有气体':'#6366f1'};
+
+  for(let z=1;z<=20;z++){
+    let pos=PT_POS[z];if(!pos)continue;
+    let e=ELEMENTS[z];
+    let x=ox+pos[1]*cellW,y=oy+pos[0]*cellH;
+    let hover=mouseX>=x&&mouseX<=x+cellW&&mouseY>=y&&mouseY<=y+cellH;
+    let selected=z===l3click;
+
+    let bgColor=catColors[e.cat]||COLORS.primary;
+    ctx.fillStyle=selected?bgColor:hover?`${bgColor}88`:`${bgColor}33`;
+    ctx.fillRect(x+1,y+1,cellW-2,cellH-2);
+    ctx.strokeStyle=selected?bgColor:hover?`${bgColor}88`:`${bgColor}44`;
+    ctx.lineWidth=selected?2:1;
+    ctx.strokeRect(x+1,y+1,cellW-2,cellH-2);
+
+    ctx.fillStyle=selected||hover?'#fff':'#cbd5e1';
+    ctx.font=`bold ${Math.min(14,cellW*0.35)}px sans-serif`;ctx.textAlign='center';
+    ctx.fillText(e.s,x+cellW/2,y+cellH*0.55);
+    ctx.font=`${Math.min(9,cellW*0.2)}px sans-serif`;
+    ctx.fillStyle=selected||hover?'#fff':'#94a3b8';
+    ctx.fillText(z,x+cellW/2,y+cellH*0.2+6);
+  }
+
+  // Legend
+  let ly=oy+5*cellH+20;
+  ctx.font='11px sans-serif';ctx.textAlign='left';
+  let lx=ox;
+  for(let cat in catColors){
+    ctx.fillStyle=catColors[cat];
+    ctx.fillRect(lx,ly,10,10);
+    ctx.fillStyle='#94a3b8';
+    ctx.fillText(cat,lx+14,ly+9);
+    lx+=80;
+    if(lx>W-100){lx=ox;ly+=18;}
+  }
+
+  // Group/Period labels
+  ctx.fillStyle=COLORS.dim;ctx.font='10px sans-serif';ctx.textAlign='center';
+  for(let i=0;i<18;i++){
+    ctx.fillText(i+1,ox+i*cellW+cellW/2,oy-5);
+  }
+  ctx.textAlign='right';
+  for(let i=0;i<4;i++){
+    ctx.fillText(`${i+1}`,ox-5,oy+i*cellH+cellH/2+3);
+  }
+}
+
+// Level 4: Periodic Trends
+function drawLevel4(){
+  ctx.fillStyle=COLORS.accent;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  let propNames=['原子半径 (pm)','第一电离能 (eV)','电负性'];
+  ctx.fillText(propNames[l4prop]+' 随原子序数变化',W/2,30);
+
+  let margin=60,gw=W-margin*2,gh=H-140;
+  let ox=margin,oy=60;
+
+  // Axes
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(ox,oy+gh);ctx.lineTo(ox+gw,oy+gh);ctx.stroke();
+
+  // Get data
+  let vals=[];
+  for(let z=1;z<=20;z++){
+    let e=ELEMENTS[z];
+    if(l4prop===0)vals.push(e.r);
+    else if(l4prop===1)vals.push(e.ie);
+    else vals.push(e.en);
+  }
+  let maxV=Math.max(...vals)*1.1;
+  let minV=0;
+
+  // Grid lines
+  ctx.strokeStyle='rgba(255,255,255,0.05)';
+  for(let i=0;i<=5;i++){
+    let y=oy+gh-gh*(i/5);
+    ctx.beginPath();ctx.moveTo(ox,y);ctx.lineTo(ox+gw,y);ctx.stroke();
+    ctx.fillStyle=COLORS.dim;ctx.font='10px sans-serif';ctx.textAlign='right';
+    ctx.fillText((maxV*i/5).toFixed(1),ox-5,y+3);
+  }
+
+  // Data points and lines
+  let barW=gw/20;
+  ctx.strokeStyle=COLORS.primary;ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<20;i++){
+    let x=ox+i*barW+barW/2;
+    let y=oy+gh-gh*(vals[i]/maxV);
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  // Points
+  for(let i=0;i<20;i++){
+    let x=ox+i*barW+barW/2;
+    let y=oy+gh-gh*(vals[i]/maxV);
+    let e=ELEMENTS[i+1];
+    ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);
+    ctx.fillStyle=COLORS.primary;ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='9px sans-serif';ctx.textAlign='center';
+    ctx.fillText(e.s,x,y-10);
+  }
+
+  // X axis labels
+  ctx.fillStyle=COLORS.dim;ctx.font='10px sans-serif';ctx.textAlign='center';
+  for(let i=0;i<20;i++){
+    ctx.fillText(i+1,ox+i*barW+barW/2,oy+gh+15);
+  }
+  ctx.fillText('原子序数 (Z)',ox+gw/2,oy+gh+35);
+
+  // Period separators
+  let periods=[2,10,18];
+  ctx.strokeStyle='rgba(239,68,68,0.3)';ctx.setLineDash([4,4]);
+  for(let p of periods){
+    let x=ox+p*barW;
+    ctx.beginPath();ctx.moveTo(x,oy);ctx.lineTo(x,oy+gh);ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  // Period labels
+  ctx.fillStyle='rgba(239,68,68,0.5)';ctx.font='10px sans-serif';
+  ctx.fillText('第1周期',ox+1*barW,oy+gh+50);
+  ctx.fillText('第2周期',ox+6*barW,oy+gh+50);
+  ctx.fillText('第3周期',ox+14*barW,oy+gh+50);
+  ctx.fillText('第4周期',ox+19*barW,oy+gh+50);
+}
+
+// Level 5: Chemical Bonds
+function drawLevel5(){
+  let cx=W/2,cy=H/2;
+  ctx.fillStyle=COLORS.accent;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  ctx.fillText(BOND_NAMES[l5bondType],cx,30);
+
+  switch(l5bondType){
+    case 0: drawIonicBond(cx,cy);break;
+    case 1: drawCovalentBond(cx,cy);break;
+    case 2: drawMetallicBond(cx,cy);break;
+  }
+}
+
+function drawIonicBond(cx,cy){
+  // Na -> Na+ + e- -> Cl + e- -> Cl-
+  let sep=120+40*Math.sin(time*0.8);
+  let naX=cx-sep,clX=cx+sep;
+  let eTransfer=Math.max(0,Math.min(1,(Math.sin(time*0.8)+1)/2));
+
+  // Na atom/ion
+  ctx.beginPath();ctx.arc(naX,cy,35,0,Math.PI*2);
+  let g1=ctx.createRadialGradient(naX,cy,0,naX,cy,35);
+  g1.addColorStop(0,'rgba(239,68,68,0.6)');g1.addColorStop(1,'rgba(239,68,68,0.2)');
+  ctx.fillStyle=g1;ctx.fill();
+  ctx.strokeStyle='rgba(239,68,68,0.5)';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  ctx.fillText('Na⁺',naX,cy+5);
+
+  // Cl atom/ion
+  ctx.beginPath();ctx.arc(clX,cy,40,0,Math.PI*2);
+  let g2=ctx.createRadialGradient(clX,cy,0,clX,cy,40);
+  g2.addColorStop(0,'rgba(20,184,166,0.6)');g2.addColorStop(1,'rgba(20,184,166,0.2)');
+  ctx.fillStyle=g2;ctx.fill();
+  ctx.strokeStyle='rgba(20,184,166,0.5)';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#fff';ctx.fillText('Cl⁻',clX,cy+5);
+
+  // Electron transfer animation
+  let eX=naX+(clX-naX)*eTransfer;
+  let eY=cy-30*Math.sin(eTransfer*Math.PI);
+  drawElectron(eX,eY,5);
+
+  // Electrostatic attraction lines
+  ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(naX+35,cy);ctx.lineTo(clX-40,cy);ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Labels
+  ctx.fillStyle=COLORS.dim;ctx.font='12px sans-serif';
+  ctx.fillText('电子转移',cx,cy-60);
+  ctx.fillText('静电引力',cx,cy+70);
+  drawArrow(cx-30,cy+55,cx+30,cy+55,'rgba(255,255,255,0.3)');
+  drawArrow(cx+30,cy+55,cx-30,cy+55,'rgba(255,255,255,0.3)');
+}
+
+function drawCovalentBond(cx,cy){
+  // Two atoms sharing electrons
+  let sep=70;
+  let a1x=cx-sep/2,a2x=cx+sep/2;
+
+  // Electron clouds (overlapping)
+  for(let i=0;i<200;i++){
+    let a=Math.random()*Math.PI*2;
+    let r=Math.random()*60;
+    let px=a1x+Math.cos(a)*r;
+    let py=cy+Math.sin(a)*r;
+    let alpha=0.2*Math.exp(-r*r/1800);
+    ctx.beginPath();ctx.arc(px,py,2,0,Math.PI*2);
+    ctx.fillStyle=`rgba(59,130,246,${alpha})`;ctx.fill();
+  }
+  for(let i=0;i<200;i++){
+    let a=Math.random()*Math.PI*2;
+    let r=Math.random()*60;
+    let px=a2x+Math.cos(a)*r;
+    let py=cy+Math.sin(a)*r;
+    let alpha=0.2*Math.exp(-r*r/1800);
+    ctx.beginPath();ctx.arc(px,py,2,0,Math.PI*2);
+    ctx.fillStyle=`rgba(20,184,166,${alpha})`;ctx.fill();
+  }
+
+  // Overlap region highlight
+  let g=ctx.createRadialGradient(cx,cy,0,cx,cy,30);
+  g.addColorStop(0,'rgba(168,85,247,0.3)');g.addColorStop(1,'rgba(168,85,247,0)');
+  ctx.beginPath();ctx.arc(cx,cy,30,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+
+  // Nuclei
+  ctx.beginPath();ctx.arc(a1x,cy,12,0,Math.PI*2);
+  ctx.fillStyle='rgba(59,130,246,0.8)';ctx.fill();
+  ctx.beginPath();ctx.arc(a2x,cy,12,0,Math.PI*2);
+  ctx.fillStyle='rgba(20,184,166,0.8)';ctx.fill();
+
+  ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('H',a1x,cy+5);ctx.fillText('H',a2x,cy+5);
+
+  // Shared electrons
+  let e1a=time*1.5,e2a=time*1.5+Math.PI;
+  let er=15;
+  drawElectron(cx+Math.cos(e1a)*er,cy+Math.sin(e1a)*er,4);
+  drawElectron(cx+Math.cos(e2a)*er,cy+Math.sin(e2a)*er,4);
+
+  ctx.fillStyle=COLORS.dim;ctx.font='12px sans-serif';
+  ctx.fillText('共用电子对',cx,cy-80);
+  ctx.fillText('电子云重叠区',cx,cy+90);
+}
+
+function drawMetallicBond(cx,cy){
+  // Grid of metal cations with sea of electrons
+  let gridSize=4,spacing=60;
+  let startX=cx-spacing*(gridSize-1)/2;
+  let startY=cy-spacing*(gridSize-1)/2;
+
+  // Electron sea
+  for(let i=0;i<150;i++){
+    let ex=startX-30+Math.random()*(spacing*(gridSize-1)+60);
+    let ey=startY-30+Math.random()*(spacing*(gridSize-1)+60);
+    ex+=Math.sin(time*2+i*0.5)*8;
+    ey+=Math.cos(time*1.5+i*0.7)*8;
+    let alpha=0.3+0.2*Math.sin(time*3+i);
+    ctx.beginPath();ctx.arc(ex,ey,2,0,Math.PI*2);
+    ctx.fillStyle=`rgba(20,184,166,${alpha})`;ctx.fill();
+  }
+
+  // Metal cations
+  for(let r=0;r<gridSize;r++){
+    for(let c=0;c<gridSize;c++){
+      let x=startX+c*spacing;
+      let y=startY+r*spacing;
+      let g=ctx.createRadialGradient(x,y,0,x,y,18);
+      g.addColorStop(0,'rgba(168,85,247,0.6)');g.addColorStop(1,'rgba(168,85,247,0.2)');
+      ctx.beginPath();ctx.arc(x,y,18,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+      ctx.strokeStyle='rgba(168,85,247,0.4)';ctx.lineWidth=1;ctx.stroke();
+      ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.textAlign='center';
+      ctx.fillText('M⁺',x,y+4);
+    }
+  }
+
+  ctx.fillStyle=COLORS.dim;ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('金属阳离子晶格',cx,startY-40);
+  ctx.fillText('自由电子海（蓝绿色点）',cx,startY+spacing*(gridSize-1)+50);
+}
+
+// Level 6: Molecular Structure
+function drawLevel6(){
+  ctx.fillStyle=COLORS.accent;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`${MOL_NAMES[l6mol]} — ${MOL_SHAPES[l6mol]} (键角 ${MOL_ANGLES[l6mol]})`,W/2,30);
+
+  // Draw bonds
+  if(molAtoms.length>1){
+    ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=3;
+    for(let i=1;i<molAtoms.length;i++){
+      ctx.beginPath();
+      ctx.moveTo(molAtoms[0].x,molAtoms[0].y);
+      ctx.lineTo(molAtoms[i].x,molAtoms[i].y);
+      ctx.stroke();
+      // Shared electrons on bond
+      let mx=(molAtoms[0].x+molAtoms[i].x)/2;
+      let my=(molAtoms[0].y+molAtoms[i].y)/2;
+      drawElectron(mx+Math.cos(time*2)*6,my+Math.sin(time*2)*6,3);
+      drawElectron(mx+Math.cos(time*2+Math.PI)*6,my+Math.sin(time*2+Math.PI)*6,3);
+    }
+  }
+
+  // Draw atoms
+  for(let a of molAtoms){
+    let g=ctx.createRadialGradient(a.x,a.y,0,a.x,a.y,a.r);
+    g.addColorStop(0,a.c);g.addColorStop(1,a.c+'66');
+    ctx.beginPath();ctx.arc(a.x,a.y,a.r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+    ctx.strokeStyle=a.fixed?'rgba(255,255,255,0.5)':'rgba(255,255,255,0.3)';
+    ctx.lineWidth=a.fixed?2:1;ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font=`bold ${a.r*0.7}px sans-serif`;ctx.textAlign='center';
+    ctx.fillText(a.s,a.x,a.y+a.r*0.25);
+  }
+
+  // Bond angle indicator
+  if(molAtoms.length>=3){
+    let a1=Math.atan2(molAtoms[1].y-molAtoms[0].y,molAtoms[1].x-molAtoms[0].x);
+    let a2=Math.atan2(molAtoms[2].y-molAtoms[0].y,molAtoms[2].x-molAtoms[0].x);
+    ctx.beginPath();ctx.arc(molAtoms[0].x,molAtoms[0].y,35,Math.min(a1,a2),Math.max(a1,a2));
+    ctx.strokeStyle='rgba(250,204,21,0.5)';ctx.lineWidth=2;ctx.stroke();
+    let angleDeg=Math.abs(a2-a1)*180/Math.PI;
+    if(angleDeg>180)angleDeg=360-angleDeg;
+    let midA=(a1+a2)/2;
+    ctx.fillStyle='#fbbf24';ctx.font='12px sans-serif';
+    ctx.fillText(angleDeg.toFixed(1)+'°',molAtoms[0].x+Math.cos(midA)*50,molAtoms[0].y+Math.sin(midA)*50);
+  }
+
+  // Drag hint
+  ctx.fillStyle=COLORS.dim;ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('拖动非中心原子调整构型',W/2,H-20);
+}
+
+// Initialize
+window.startGame=startGame;
+
+</script>
+</body>
+</html>

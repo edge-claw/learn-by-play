@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>计算机网络 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e0e0e0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh}
+#wrap{display:flex;height:calc(100vh - 36px);position:relative}
+.panel{width:320px;min-width:320px;background:rgba(10,10,30,0.95);border-right:1px solid #06b6d422;padding:16px;overflow-y:auto;display:none;scrollbar-width:thin;scrollbar-color:#06b6d444 transparent}
+.panel::-webkit-scrollbar{width:5px}.panel::-webkit-scrollbar-thumb{background:#06b6d444;border-radius:3px}
+.panel h2{color:#06b6d4;font-size:18px;margin-bottom:8px;text-shadow:0 0 10px #06b6d466}
+.panel h3{color:#22d3ee;font-size:14px;margin:10px 0 6px}
+.panel p,.panel li{font-size:13px;line-height:1.6;color:#b0b8c8}
+.panel ul{padding-left:18px;margin-bottom:8px}
+.obj-item{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:13px}
+.obj-dot{width:16px;height:16px;border-radius:50%;border:2px solid #06b6d4;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+.obj-dot.done{background:#06b6d4;color:#0a0a1a}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:6px;background:#06b6d4;color:#0a0a1a;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.act-btn:hover{background:#22d3ee;transform:translateY(-1px)}
+.learn-box{background:rgba(6,182,212,0.1);border:1px solid #06b6d444;border-radius:8px;padding:10px;margin-top:10px;font-size:12px;line-height:1.7}
+.learn-box b{color:#06b6d4}
+canvas{flex:1;display:block;background:#0a0a1a}
+.bar{height:36px;background:rgba(10,10,30,0.95);border-top:1px solid #06b6d422;display:none;align-items:center;justify-content:space-between;padding:0 16px;font-size:13px}
+.bar-left{display:flex;gap:4px}
+.bar-btn{padding:4px 12px;border:1px solid #06b6d444;background:transparent;color:#8899aa;border-radius:4px;cursor:pointer;font-size:12px;transition:all .2s}
+.bar-btn:hover{border-color:#06b6d4;color:#06b6d4}
+.bar-btn.active{background:#06b6d4;color:#0a0a1a;border-color:#06b6d4}
+.bar-right{color:#06b6d4;font-size:12px}
+.overlay{position:fixed;inset:0;background:rgba(5,5,15,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+.overlay h1{font-size:42px;color:#06b6d4;text-shadow:0 0 30px #06b6d466,0 0 60px #06b6d433;margin-bottom:8px}
+.overlay .sub{color:#67e8f9;font-size:16px;margin-bottom:30px}
+.overlay .desc{max-width:500px;text-align:center;color:#8899aa;font-size:14px;line-height:1.8;margin-bottom:30px}
+.start-btn{padding:14px 48px;border:2px solid #06b6d4;background:transparent;color:#06b6d4;font-size:18px;border-radius:8px;cursor:pointer;transition:all .3s;letter-spacing:2px}
+.start-btn:hover{background:#06b6d4;color:#0a0a1a;box-shadow:0 0 30px #06b6d466}
+.net-node{position:absolute;pointer-events:none}
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay">
+<h1>🌐 计算机网络 探险</h1>
+<p class="sub">从物理信号到应用层协议，探索互联网的奥秘</p>
+<p class="desc">7 个关卡带你深入理解网络分层、IP路由、TCP连接、DNS解析、HTTP协议和网络安全。通过交互式动画，亲手操作数据包的封装与传输。</p>
+<button class="start-btn" onclick="startGame()">开始探索 →</button>
+</div>
+<div id="wrap">
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+</div>
+<div class="bar" id="bar"></div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay');
+let W,H,curLevel=0,animId,time=0,particles=[],packets=[];
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+let levelState={};
+
+function resize(){W=cv.width=cv.offsetWidth;H=cv.height=cv.offsetHeight;}
+window.addEventListener('resize',()=>{resize();draw();});
+
+const LEVELS=[
+{name:'网络分层模型',desc:'理解 OSI 七层模型和 TCP/IP 四层模型，观察数据封装与解封装过程。',
+ objs:['查看 OSI 七层模型结构','执行数据封装过程','执行数据解封装过程'],
+ learn:'<b>OSI 七层模型</b>：应用层、表示层、会话层、传输层、网络层、数据链路层、物理层。<br><b>TCP/IP 四层</b>：应用层、传输层、网络层、网络接口层。<br>数据从上到下逐层<b>封装</b>（加头部），从下到上逐层<b>解封装</b>（去头部）。'},
+{name:'物理层与数据链路层',desc:'了解信号编码方式、以太网帧结构和 MAC 地址的作用。',
+ objs:['观察数字信号编码波形','查看以太网帧结构','学习 MAC 地址寻址'],
+ learn:'<b>物理层</b>：将比特流转换为电信号/光信号传输。常见编码：曼彻斯特编码、NRZ。<br><b>数据链路层</b>：以太网帧包含目的MAC、源MAC、类型、数据、FCS。<br><b>MAC 地址</b>：48位硬件地址，如 AA:BB:CC:DD:EE:FF，用于局域网内寻址。'},
+{name:'IP 与路由',desc:'掌握 IP 地址分配、子网划分和路由器转发数据包的过程。',
+ objs:['理解 IP 地址与子网掩码','查看路由表转发过程','完成子网划分练习'],
+ learn:'<b>IP 地址</b>：32位（IPv4），分为网络号和主机号。<br><b>子网掩码</b>：如 255.255.255.0（/24），用于划分网络。<br><b>路由表</b>：路由器根据目的IP查找最长前缀匹配，决定下一跳转发。'},
+{name:'TCP 连接',desc:'观察 TCP 三次握手建立连接、四次挥手断开连接，理解滑动窗口机制。',
+ objs:['完成三次握手过程','观察滑动窗口传输','完成四次挥手过程'],
+ learn:'<b>三次握手</b>：SYN → SYN+ACK → ACK，建立可靠连接。<br><b>滑动窗口</b>：发送方在窗口范围内连续发送，收到ACK后窗口滑动。<br><b>四次挥手</b>：FIN → ACK → FIN → ACK，双方各自关闭连接。'},
+{name:'DNS 解析',desc:'探索域名系统的层次结构，观察递归查询和迭代查询的完整过程。',
+ objs:['浏览域名树层次结构','执行递归 DNS 查询','执行迭代 DNS 查询'],
+ learn:'<b>域名树</b>：根域 → 顶级域(.com/.cn) → 二级域(example) → 子域(www)。<br><b>递归查询</b>：客户端请求本地DNS，本地DNS代为查询并返回最终结果。<br><b>迭代查询</b>：DNS服务器返回下一级服务器地址，客户端逐级查询。'},
+{name:'HTTP 与 Web',desc:'理解 HTTP 请求/响应流程、常见状态码和 HTTPS 加密握手过程。',
+ objs:['发送 HTTP 请求并查看响应','学习 HTTP 状态码分类','观察 HTTPS/TLS 握手过程'],
+ learn:'<b>HTTP 方法</b>：GET（获取）、POST（提交）、PUT（更新）、DELETE（删除）。<br><b>状态码</b>：2xx成功、3xx重定向、4xx客户端错误、5xx服务器错误。<br><b>HTTPS</b>：TLS握手交换密钥，之后用对称加密传输数据。'},
+{name:'网络安全',desc:'了解常见网络攻击方式和防御手段：防火墙、ARP 欺骗、DDoS 防御。',
+ objs:['配置防火墙规则','识别并防御 ARP 欺骗','抵御 DDoS 攻击'],
+ learn:'<b>防火墙</b>：根据规则（IP/端口/协议）过滤数据包，分为包过滤和状态检测。<br><b>ARP 欺骗</b>：攻击者伪造ARP应答，劫持流量。防御：静态ARP绑定、DAI。<br><b>DDoS</b>：分布式拒绝服务攻击。防御：流量清洗、CDN分发、速率限制。'}
+];
+
+// --- Drawing helpers ---
+function drawGrid(){
+  ctx.strokeStyle='#06b6d408';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+}
+function drawNode(x,y,type,label,glow){
+  ctx.save();
+  if(glow){ctx.shadowColor='#06b6d4';ctx.shadowBlur=15;}
+  ctx.fillStyle='#0f172a';ctx.strokeStyle='#06b6d4';ctx.lineWidth=2;
+  if(type==='pc'){
+    ctx.beginPath();ctx.roundRect(x-22,y-18,44,28,4);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#22d3ee';ctx.fillRect(x-16,y-12,32,16);
+    ctx.fillStyle='#06b6d4';ctx.fillRect(x-10,y+12,20,4);
+  }else if(type==='router'){
+    ctx.beginPath();ctx.arc(x,y,18,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.strokeStyle='#22d3ee';ctx.lineWidth=1.5;
+    for(let a=0;a<4;a++){let ang=a*Math.PI/2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+Math.cos(ang)*10,y+Math.sin(ang)*10);ctx.stroke();
+      ctx.beginPath();ctx.arc(x+Math.cos(ang)*10,y+Math.sin(ang)*10,2,0,Math.PI*2);ctx.fill();}
+  }else if(type==='server'){
+    ctx.beginPath();ctx.roundRect(x-16,y-22,32,44,4);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#22d3ee';for(let i=0;i<3;i++){ctx.fillRect(x-10,y-16+i*14,20,8);ctx.fillStyle='#06b6d4';ctx.beginPath();ctx.arc(x+6,y-12+i*14,2,0,Math.PI*2);ctx.fill();ctx.fillStyle='#22d3ee';}
+  }else if(type==='firewall'){
+    ctx.beginPath();ctx.roundRect(x-20,y-20,40,40,4);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#ef4444';ctx.font='20px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('🛡',x,y);
+  }else if(type==='dns'){
+    ctx.beginPath();ctx.roundRect(x-20,y-20,40,40,6);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#06b6d4';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('DNS',x,y);
+  }else if(type==='cloud'){
+    ctx.beginPath();ctx.arc(x,y-4,16,0,Math.PI*2);ctx.arc(x-12,y+4,12,0,Math.PI*2);ctx.arc(x+12,y+4,12,0,Math.PI*2);ctx.fill();ctx.stroke();
+  }
+  ctx.restore();
+  if(label){ctx.fillStyle='#8899aa';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.textBaseline='top';ctx.fillText(label,x,y+26);}
+}
+function drawLink(x1,y1,x2,y2,active){
+  ctx.strokeStyle=active?'#06b6d4':'#06b6d433';ctx.lineWidth=active?2:1;
+  ctx.setLineDash(active?[]:[4,4]);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([]);
+}
+function drawPacket(x,y,color,label){
+  ctx.save();ctx.shadowColor=color||'#06b6d4';ctx.shadowBlur=12;
+  ctx.fillStyle=color||'#06b6d4';ctx.beginPath();ctx.arc(x,y,6,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+  if(label){ctx.fillStyle='#fff';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,x,y);}
+}
+function lerp(a,b,t){return a+(b-a)*t;}
+// --- Level 1: OSI Model ---
+function drawLevel0(){
+  let cx=W/2,cy=H/2;
+  const osi=['应用层','表示层','会话层','传输层','网络层','数据链路层','物理层'];
+  const tcpip=['应用层','','','传输层','网络层','网络接口层',''];
+  const colors=['#06b6d4','#0891b2','#0e7490','#155e75','#164e63','#134e4a','#115e59'];
+  const lh=38,tw=200,startY=cy-osi.length*lh/2;
+  // OSI
+  ctx.fillStyle='#22d3ee';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('OSI 七层模型',cx-140,startY-20);
+  for(let i=0;i<7;i++){
+    let y=startY+i*lh;
+    ctx.fillStyle=colors[i];ctx.globalAlpha=0.7;ctx.beginPath();ctx.roundRect(cx-240,y,tw,lh-4,4);ctx.fill();ctx.globalAlpha=1;
+    ctx.strokeStyle='#06b6d466';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(cx-240,y,tw,lh-4,4);ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText(osi[i],cx-140,y+lh/2-2);
+    ctx.fillStyle='#67e8f9';ctx.font='11px monospace';ctx.textAlign='left';ctx.fillText('L'+(7-i),cx-235,y+12);
+  }
+  // TCP/IP
+  ctx.fillStyle='#22d3ee';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('TCP/IP 四层模型',cx+140,startY-20);
+  const tcpLayers=[{name:'应用层',span:3},{name:'传输层',span:1},{name:'网络层',span:1},{name:'网络接口层',span:2}];
+  let ty=startY;
+  for(let t of tcpLayers){
+    let h=t.span*lh-4;
+    ctx.fillStyle='#0e7490';ctx.globalAlpha=0.5;ctx.beginPath();ctx.roundRect(cx+40,ty,tw,h,4);ctx.fill();ctx.globalAlpha=1;
+    ctx.strokeStyle='#06b6d466';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(cx+40,ty,tw,h,4);ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText(t.name,cx+140,ty+h/2+4);
+    ty+=t.span*lh;
+  }
+  // Encapsulation animation
+  let st=levelState;
+  if(st.encap||st.decap){
+    let prog=st.animProg||0;
+    let dir=st.encap?1:-1;
+    let layer=Math.min(6,Math.floor(prog*7));
+    let headers=['Data','TCP Hdr','IP Hdr','Frame Hdr','Bits'];
+    let encLabels=['应用数据','+ TCP头','+ IP头','+ 帧头帧尾','→ 比特流'];
+    for(let i=0;i<=Math.min(layer,4);i++){
+      let y=startY+(dir>0?i:6-i)*lh;
+      let w=120+i*20;
+      ctx.fillStyle=colors[dir>0?i:6-i];ctx.globalAlpha=0.8;
+      ctx.beginPath();ctx.roundRect(cx-w/2,y+2,w,lh-8,3);ctx.fill();ctx.globalAlpha=1;
+      ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.textAlign='center';
+      ctx.fillText(dir>0?encLabels[i]:encLabels[4-i],cx,y+lh/2-1);
+    }
+    // Arrow
+    let ay=startY+(dir>0?layer:6-layer)*lh+lh/2;
+    ctx.fillStyle='#4ade80';ctx.beginPath();
+    if(dir>0){ctx.moveTo(cx-8,ay+20);ctx.lineTo(cx+8,ay+20);ctx.lineTo(cx,ay+30);}
+    else{ctx.moveTo(cx-8,ay-20);ctx.lineTo(cx+8,ay-20);ctx.lineTo(cx,ay-30);}
+    ctx.fill();
+  }
+}
+
+// --- Level 2: Physical & Data Link ---
+function drawLevel1(){
+  let st=levelState;
+  // Signal encoding
+  ctx.fillStyle='#22d3ee';ctx.font='bold 13px sans-serif';ctx.textAlign='left';
+  ctx.fillText('数字信号编码（曼彻斯特编码）',40,40);
+  let bits=st.bits||[1,0,1,1,0,0,1,0];
+  let sx=60,sy=100,bw=50,bh=40;
+  ctx.strokeStyle='#06b6d4';ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<bits.length;i++){
+    let x=sx+i*bw;
+    if(bits[i]===1){ctx.moveTo(x,sy+bh);ctx.lineTo(x,sy);ctx.lineTo(x+bw/2,sy);ctx.moveTo(x+bw/2,sy);ctx.lineTo(x+bw/2,sy+bh);ctx.lineTo(x+bw,sy+bh);}
+    else{ctx.moveTo(x,sy);ctx.lineTo(x,sy+bh);ctx.lineTo(x+bw/2,sy+bh);ctx.moveTo(x+bw/2,sy+bh);ctx.lineTo(x+bw/2,sy);ctx.lineTo(x+bw,sy);}
+  }
+  ctx.stroke();
+  // Bit labels
+  ctx.fillStyle='#67e8f9';ctx.font='12px monospace';ctx.textAlign='center';
+  for(let i=0;i<bits.length;i++) ctx.fillText(bits[i],sx+i*bw+bw/2,sy+bh+20);
+  // Ethernet frame
+  ctx.fillStyle='#22d3ee';ctx.font='bold 13px sans-serif';ctx.textAlign='left';
+  ctx.fillText('以太网帧结构',40,sy+bh+60);
+  let fy=sy+bh+80,fw=W-80;
+  const fields=[{name:'前导码',w:0.1,c:'#164e63'},{name:'目的MAC',w:0.18,c:'#155e75'},{name:'源MAC',w:0.18,c:'#0e7490'},{name:'类型',w:0.08,c:'#0891b2'},{name:'数据（46-1500字节）',w:0.36,c:'#06b6d4'},{name:'FCS',w:0.1,c:'#22d3ee'}];
+  let fx=40;
+  for(let f of fields){
+    let w=fw*f.w;
+    ctx.fillStyle=f.c;ctx.globalAlpha=0.6;ctx.beginPath();ctx.roundRect(fx,fy,w-2,36,3);ctx.fill();ctx.globalAlpha=1;
+    ctx.strokeStyle='#06b6d466';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(fx,fy,w-2,36,3);ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText(f.name,fx+w/2-1,fy+22);
+    fx+=w;
+  }
+  // MAC address
+  if(st.showMac){
+    let my=fy+60;
+    ctx.fillStyle='#22d3ee';ctx.font='bold 13px sans-serif';ctx.textAlign='left';
+    ctx.fillText('MAC 地址寻址',40,my);
+    let nodes=[{x:120,y:my+60,mac:'AA:BB:CC:11:22:33',label:'PC-A'},{x:W/2,y:my+60,mac:'交换机',label:'Switch',type:'router'},{x:W-120,y:my+60,mac:'DD:EE:FF:44:55:66',label:'PC-B'}];
+    drawLink(nodes[0].x,nodes[0].y,nodes[1].x,nodes[1].y,true);
+    drawLink(nodes[1].x,nodes[1].y,nodes[2].x,nodes[2].y,true);
+    for(let n of nodes){drawNode(n.x,n.y,n.type||'pc',n.label,false);
+      if(n.mac!=='交换机'){ctx.fillStyle='#67e8f9';ctx.font='10px monospace';ctx.textAlign='center';ctx.fillText(n.mac,n.x,n.y+42);}}
+    if(st.macAnim){let t=(time%120)/120;let px=lerp(nodes[0].x,nodes[2].x,t);let py=nodes[0].y;drawPacket(px,py-15,'#4ade80','F');}
+  }
+}
+
+// --- Level 3: IP & Routing ---
+function drawLevel2(){
+  let st=levelState;
+  let cx=W/2,cy=H/2-20;
+  // Network topology
+  let nodes=[
+    {x:80,y:cy-60,type:'pc',label:'192.168.1.10',sub:'子网A'},
+    {x:80,y:cy+60,type:'pc',label:'192.168.1.20',sub:'子网A'},
+    {x:cx-60,y:cy,type:'router',label:'路由器R1'},
+    {x:cx+60,y:cy,type:'router',label:'路由器R2'},
+    {x:W-80,y:cy-60,type:'pc',label:'10.0.0.10',sub:'子网B'},
+    {x:W-80,y:cy+60,type:'server',label:'10.0.0.1',sub:'子网B'}
+  ];
+  let links=[[0,2],[1,2],[2,3],[3,4],[3,5]];
+  for(let l of links) drawLink(nodes[l[0]].x,nodes[l[0]].y,nodes[l[1]].x,nodes[l[1]].y,st.routeAnim);
+  for(let n of nodes){drawNode(n.x,n.y,n.type,n.label,false);
+    if(n.sub){ctx.fillStyle='#4ade80';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(n.sub,n.x,n.y+40);}}
+  // Routing table
+  if(st.showRoute){
+    let rx=cx-120,ry=30;
+    ctx.fillStyle='rgba(10,10,30,0.9)';ctx.beginPath();ctx.roundRect(rx,ry,240,100,6);ctx.fill();
+    ctx.strokeStyle='#06b6d444';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(rx,ry,240,100,6);ctx.stroke();
+    ctx.fillStyle='#22d3ee';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText('路由表 (R1)',cx,ry+18);
+    ctx.font='11px monospace';ctx.textAlign='left';ctx.fillStyle='#b0b8c8';
+    ctx.fillText('目的网络        下一跳      接口',rx+10,ry+38);
+    ctx.fillStyle='#67e8f9';
+    ctx.fillText('192.168.1.0/24  直连        eth0',rx+10,ry+55);
+    ctx.fillText('10.0.0.0/24     R2          eth1',rx+10,ry+72);
+    ctx.fillText('0.0.0.0/0       R2          eth1',rx+10,ry+89);
+  }
+  // Packet animation
+  if(st.routeAnim){
+    let path=[nodes[0],nodes[2],nodes[3],nodes[5]];
+    let t=(time%200)/200;
+    let seg=Math.min(path.length-2,Math.floor(t*(path.length-1)));
+    let st2=t*(path.length-1)-seg;
+    let px=lerp(path[seg].x,path[seg+1].x,st2);
+    let py=lerp(path[seg].y,path[seg+1].y,st2);
+    drawPacket(px,py,'#4ade80','IP');
+  }
+  // Subnet exercise
+  if(st.showSubnet){
+    let sy=H-100;
+    ctx.fillStyle='rgba(10,10,30,0.9)';ctx.beginPath();ctx.roundRect(40,sy,W-80,70,6);ctx.fill();
+    ctx.strokeStyle='#06b6d444';ctx.beginPath();ctx.roundRect(40,sy,W-80,70,6);ctx.stroke();
+    ctx.fillStyle='#22d3ee';ctx.font='bold 12px sans-serif';ctx.textAlign='left';
+    ctx.fillText('子网划分示例：192.168.1.0/24 → 划分为 4 个子网',60,sy+20);
+    ctx.fillStyle='#67e8f9';ctx.font='11px monospace';
+    let subs=['192.168.1.0/26 (0-63)','192.168.1.64/26 (64-127)','192.168.1.128/26 (128-191)','192.168.1.192/26 (192-255)'];
+    for(let i=0;i<4;i++) ctx.fillText(subs[i],60+i*((W-120)/4),sy+45);
+  }
+}
+// --- Level 4: TCP ---
+function drawLevel3(){
+  let st=levelState,cx=W/2,cy=H/2;
+  let clientX=120,serverX=W-120,topY=60;
+  drawNode(clientX,topY,  'pc','客户端',false);
+  drawNode(serverX,topY,'server','服务器',false);
+  ctx.strokeStyle='#06b6d433';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(clientX,topY+30);ctx.lineTo(clientX,H-40);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(serverX,topY+30);ctx.lineTo(serverX,H-40);ctx.stroke();ctx.setLineDash([]);
+  // Handshake
+  if(st.phase==='handshake'||st.phase==='done_hs'){
+    let msgs=[{from:'client',label:'SYN (seq=100)',color:'#06b6d4',y:120},
+              {from:'server',label:'SYN+ACK (seq=200,ack=101)',color:'#22d3ee',y:180},
+              {from:'client',label:'ACK (ack=201)',color:'#4ade80',y:240}];
+    let step=st.phase==='done_hs'?3:(st.hsStep||0);
+    for(let i=0;i<Math.min(step,3);i++){
+      let m=msgs[i],fx=m.from==='client'?clientX:serverX,tx=m.from==='client'?serverX:clientX;
+      ctx.strokeStyle=m.color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(fx,m.y);ctx.lineTo(tx,m.y);ctx.stroke();
+      // Arrow
+      let dir=m.from==='client'?1:-1;
+      ctx.fillStyle=m.color;ctx.beginPath();ctx.moveTo(tx,m.y);ctx.lineTo(tx-dir*10,m.y-5);ctx.lineTo(tx-dir*10,m.y+5);ctx.fill();
+      ctx.fillStyle=m.color;ctx.font='11px monospace';ctx.textAlign='center';ctx.fillText(m.label,cx,m.y-8);
+    }
+    if(step<3&&st.hsAnim){let m=msgs[step],fx=m.from==='client'?clientX:serverX,tx=m.from==='client'?serverX:clientX;
+      let t=(time%60)/60;let px=lerp(fx,tx,t);drawPacket(px,m.y,m.color,'');}
+  }
+  // Sliding window
+  if(st.phase==='window'){
+    let wy=300,ww=40,gap=4;
+    ctx.fillStyle='#22d3ee';ctx.font='bold 12px sans-serif';ctx.textAlign='left';ctx.fillText('滑动窗口 (窗口大小=4)',clientX-20,wy-15);
+    let winStart=st.winPos||0;
+    for(let i=0;i<10;i++){
+      let x=clientX-20+i*(ww+gap),y=wy;
+      let inWin=i>=winStart&&i<winStart+4;
+      ctx.fillStyle=i<winStart?'#134e4a':(inWin?'#06b6d4':'#1e293b');
+      ctx.globalAlpha=i<winStart?0.4:0.8;
+      ctx.beginPath();ctx.roundRect(x,y,ww,28,3);ctx.fill();ctx.globalAlpha=1;
+      ctx.strokeStyle=inWin?'#4ade80':'#06b6d433';ctx.lineWidth=inWin?2:1;
+      ctx.beginPath();ctx.roundRect(x,y,ww,28,3);ctx.stroke();
+      ctx.fillStyle='#fff';ctx.font='11px monospace';ctx.textAlign='center';ctx.fillText('Seg'+(i+1),x+ww/2,y+18);
+    }
+    // Window bracket
+    let wx1=clientX-20+winStart*(ww+gap)-2,wx2=wx1+4*(ww+gap);
+    ctx.strokeStyle='#4ade80';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(wx1,wy-4);ctx.lineTo(wx1,wy+34);ctx.lineTo(wx2,wy+34);ctx.lineTo(wx2,wy-4);ctx.stroke();
+  }
+  // Four-way close
+  if(st.phase==='close'||st.phase==='done_close'){
+    let msgs=[{from:'client',label:'FIN (seq=300)',color:'#f59e0b',y:120},
+              {from:'server',label:'ACK (ack=301)',color:'#22d3ee',y:170},
+              {from:'server',label:'FIN (seq=400)',color:'#f59e0b',y:220},
+              {from:'client',label:'ACK (ack=401)',color:'#4ade80',y:270}];
+    let step=st.phase==='done_close'?4:(st.clStep||0);
+    for(let i=0;i<Math.min(step,4);i++){
+      let m=msgs[i],fx=m.from==='client'?clientX:serverX,tx=m.from==='client'?serverX:clientX;
+      ctx.strokeStyle=m.color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(fx,m.y);ctx.lineTo(tx,m.y);ctx.stroke();
+      let dir=m.from==='client'?1:-1;
+      ctx.fillStyle=m.color;ctx.beginPath();ctx.moveTo(tx,m.y);ctx.lineTo(tx-dir*10,m.y-5);ctx.lineTo(tx-dir*10,m.y+5);ctx.fill();
+      ctx.fillStyle=m.color;ctx.font='11px monospace';ctx.textAlign='center';ctx.fillText(m.label,cx,m.y-8);
+    }
+    if(step<4&&st.clAnim){let m=msgs[step],fx=m.from==='client'?clientX:serverX,tx=m.from==='client'?serverX:clientX;
+      let t=(time%60)/60;let px=lerp(fx,tx,t);drawPacket(px,m.y,m.color,'');}
+  }
+}
+
+// --- Level 5: DNS ---
+function drawLevel4(){
+  let st=levelState,cx=W/2;
+  // Domain tree
+  if(!st.phase||st.phase==='tree'){
+    ctx.fillStyle='#22d3ee';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('域名树层次结构',cx,30);
+    let tree=[{label:'.(根域)',x:cx,y:60},
+      {label:'.com',x:cx-160,y:130},{label:'.cn',x:cx,y:130},{label:'.org',x:cx+160,y:130},
+      {label:'example',x:cx-220,y:200},{label:'google',x:cx-100,y:200},{label:'baidu',x:cx+20,y:200},
+      {label:'www',x:cx-220,y:270},{label:'mail',x:cx-140,y:270},{label:'www',x:cx+20,y:270}];
+    let tlinks=[[0,1],[0,2],[0,3],[1,4],[1,5],[2,6],[4,7],[4,8],[6,9]];
+    for(let l of tlinks){drawLink(tree[l[0]].x,tree[l[0]].y,tree[l[1]].x,tree[l[1]].y,false);}
+    for(let n of tree){
+      ctx.fillStyle='#0f172a';ctx.strokeStyle='#06b6d4';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.roundRect(n.x-30,n.y-12,60,24,12);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#22d3ee';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(n.label,n.x,n.y);
+    }
+    ctx.textBaseline='alphabetic';
+  }
+  // Recursive query
+  if(st.phase==='recursive'){
+    let nodes=[{x:80,y:80,type:'pc',label:'客户端'},{x:80,y:H/2,type:'dns',label:'本地DNS'},{x:cx,y:60,type:'dns',label:'根DNS'},{x:cx+120,y:140,type:'dns',label:'.com DNS'},{x:W-100,y:80,type:'dns',label:'权威DNS'},{x:W-100,y:H/2,type:'server',label:'目标服务器'}];
+    let qLinks=[[0,1],[1,2],[2,1],[1,3],[3,1],[1,4],[4,1],[1,0]];
+    let qLabels=['查询www.example.com','查询→根','返回.com NS','查询→.com','返回example NS','查询→权威','返回 93.184.216.34','返回结果'];
+    for(let n of nodes) drawNode(n.x,n.y,n.type,n.label,false);
+    let step=st.dnsStep||0;
+    for(let i=0;i<Math.min(step,qLinks.length);i++){
+      let f=nodes[qLinks[i][0]],t=nodes[qLinks[i][1]];
+      ctx.strokeStyle=i%2===0?'#06b6d4':'#4ade80';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(f.x,f.y);ctx.lineTo(t.x,t.y);ctx.stroke();
+      let mx=(f.x+t.x)/2,my=(f.y+t.y)/2;
+      ctx.fillStyle='#67e8f9';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(qLabels[i],mx,my-8);
+    }
+    if(step<qLinks.length&&st.dnsAnim){let f=nodes[qLinks[step][0]],t=nodes[qLinks[step][1]];
+      let tt=(time%80)/80;drawPacket(lerp(f.x,t.x,tt),lerp(f.y,t.y,tt),'#4ade80','?');}
+  }
+  // Iterative query
+  if(st.phase==='iterative'){
+    let nodes=[{x:80,y:H/2,type:'pc',label:'客户端'},{x:cx-80,y:60,type:'dns',label:'根DNS'},{x:cx+80,y:60,type:'dns',label:'.com DNS'},{x:W-100,y:60,type:'dns',label:'权威DNS'},{x:W-100,y:H/2,type:'server',label:'目标服务器'}];
+    for(let n of nodes) drawNode(n.x,n.y,n.type,n.label,false);
+    let iLinks=[[0,1],[1,0],[0,2],[2,0],[0,3],[3,0]];
+    let iLabels=['查询→根','返回.com NS地址','查询→.com','返回权威NS地址','查询→权威','返回 93.184.216.34'];
+    let step=st.dnsStep||0;
+    for(let i=0;i<Math.min(step,iLinks.length);i++){
+      let f=nodes[iLinks[i][0]],t=nodes[iLinks[i][1]];
+      ctx.strokeStyle=i%2===0?'#06b6d4':'#4ade80';ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.moveTo(f.x,f.y);ctx.lineTo(t.x,t.y);ctx.stroke();
+      let mx=(f.x+t.x)/2,my=(f.y+t.y)/2-i*3;
+      ctx.fillStyle='#67e8f9';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(iLabels[i],mx,my-8);
+    }
+    if(step<iLinks.length&&st.dnsAnim){let f=nodes[iLinks[step][0]],t=nodes[iLinks[step][1]];
+      let tt=(time%80)/80;drawPacket(lerp(f.x,t.x,tt),lerp(f.y,t.y,tt),'#22d3ee','?');}
+  }
+}
+// --- Level 6: HTTP & Web ---
+function drawLevel5(){
+  let st=levelState,cx=W/2,cy=H/2;
+  // HTTP request/response
+  if(!st.phase||st.phase==='http'){
+    let clientX=100,serverX=W-100;
+    drawNode(clientX,80,'pc','浏览器',false);
+    drawNode(serverX,80,'server','Web服务器',false);
+    if(st.httpStep>=1){
+      // Request
+      ctx.strokeStyle='#06b6d4';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(clientX+30,100);ctx.lineTo(serverX-30,100);ctx.stroke();
+      ctx.fillStyle='#06b6d4';ctx.beginPath();ctx.moveTo(serverX-30,100);ctx.lineTo(serverX-40,95);ctx.lineTo(serverX-40,105);ctx.fill();
+      let rx=cx-100,ry=120;
+      ctx.fillStyle='rgba(6,182,212,0.1)';ctx.beginPath();ctx.roundRect(rx,ry,200,80,6);ctx.fill();
+      ctx.strokeStyle='#06b6d444';ctx.beginPath();ctx.roundRect(rx,ry,200,80,6);ctx.stroke();
+      ctx.fillStyle='#22d3ee';ctx.font='bold 11px monospace';ctx.textAlign='left';
+      ctx.fillText('GET /index.html HTTP/1.1',rx+10,ry+18);
+      ctx.fillStyle='#8899aa';ctx.font='10px monospace';
+      ctx.fillText('Host: www.example.com',rx+10,ry+35);
+      ctx.fillText('Accept: text/html',rx+10,ry+50);
+      ctx.fillText('User-Agent: Mozilla/5.0',rx+10,ry+65);
+    }
+    if(st.httpStep>=2){
+      // Response
+      ctx.strokeStyle='#4ade80';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(serverX-30,220);ctx.lineTo(clientX+30,220);ctx.stroke();
+      ctx.fillStyle='#4ade80';ctx.beginPath();ctx.moveTo(clientX+30,220);ctx.lineTo(clientX+40,215);ctx.lineTo(clientX+40,225);ctx.fill();
+      let rx=cx-100,ry=240;
+      ctx.fillStyle='rgba(74,222,128,0.1)';ctx.beginPath();ctx.roundRect(rx,ry,200,80,6);ctx.fill();
+      ctx.strokeStyle='#4ade8044';ctx.beginPath();ctx.roundRect(rx,ry,200,80,6);ctx.stroke();
+      ctx.fillStyle='#4ade80';ctx.font='bold 11px monospace';ctx.textAlign='left';
+      ctx.fillText('HTTP/1.1 200 OK',rx+10,ry+18);
+      ctx.fillStyle='#8899aa';ctx.font='10px monospace';
+      ctx.fillText('Content-Type: text/html',rx+10,ry+35);
+      ctx.fillText('Content-Length: 1256',rx+10,ry+50);
+      ctx.fillText('<html>...</html>',rx+10,ry+65);
+    }
+  }
+  // Status codes
+  if(st.phase==='codes'){
+    ctx.fillStyle='#22d3ee';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('HTTP 状态码分类',cx,40);
+    let codes=[
+      {range:'1xx',name:'信息',desc:'100 Continue',color:'#8899aa',ex:'请求已接收，继续处理'},
+      {range:'2xx',name:'成功',desc:'200 OK / 201 Created',color:'#4ade80',ex:'请求成功处理'},
+      {range:'3xx',name:'重定向',desc:'301 / 302 / 304',color:'#f59e0b',ex:'资源已移动或缓存可用'},
+      {range:'4xx',name:'客户端错误',desc:'400 / 403 / 404',color:'#ef4444',ex:'请求有误或无权限'},
+      {range:'5xx',name:'服务器错误',desc:'500 / 502 / 503',color:'#dc2626',ex:'服务器内部错误'}
+    ];
+    for(let i=0;i<codes.length;i++){
+      let y=70+i*56,c=codes[i];
+      ctx.fillStyle=c.color;ctx.globalAlpha=0.15;ctx.beginPath();ctx.roundRect(40,y,W-80,48,6);ctx.fill();ctx.globalAlpha=1;
+      ctx.strokeStyle=c.color+'66';ctx.lineWidth=1;ctx.beginPath();ctx.roundRect(40,y,W-80,48,6);ctx.stroke();
+      ctx.fillStyle=c.color;ctx.font='bold 18px monospace';ctx.textAlign='left';ctx.fillText(c.range,60,y+22);
+      ctx.fillStyle='#e0e0e0';ctx.font='bold 13px sans-serif';ctx.fillText(c.name,120,y+18);
+      ctx.fillStyle='#8899aa';ctx.font='11px monospace';ctx.fillText(c.desc,120,y+36);
+      ctx.fillStyle='#67e8f9';ctx.font='11px sans-serif';ctx.textAlign='right';ctx.fillText(c.ex,W-60,y+28);
+    }
+  }
+  // HTTPS/TLS
+  if(st.phase==='tls'){
+    let clientX=100,serverX=W-100;
+    drawNode(clientX,50,'pc','客户端',false);
+    drawNode(serverX,50,'server','服务器',false);
+    let steps=[
+      {y:100,label:'ClientHello (支持的加密套件)',color:'#06b6d4',dir:1},
+      {y:150,label:'ServerHello + 证书 + 公钥',color:'#22d3ee',dir:-1},
+      {y:200,label:'验证证书 → 生成预主密钥 → 用公钥加密发送',color:'#f59e0b',dir:1},
+      {y:250,label:'双方计算会话密钥',color:'#4ade80',dir:0},
+      {y:290,label:'🔒 加密通信开始（对称加密）',color:'#4ade80',dir:0}
+    ];
+    let step=st.tlsStep||0;
+    for(let i=0;i<Math.min(step,steps.length);i++){
+      let s=steps[i];
+      if(s.dir!==0){
+        let fx=s.dir>0?clientX:serverX,tx=s.dir>0?serverX:clientX;
+        ctx.strokeStyle=s.color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(fx+30,s.y);ctx.lineTo(tx-30,s.y);ctx.stroke();
+        let d=s.dir;ctx.fillStyle=s.color;ctx.beginPath();ctx.moveTo(tx-d*30,s.y);ctx.lineTo(tx-d*40,s.y-5);ctx.lineTo(tx-d*40,s.y+5);ctx.fill();
+      }else{
+        ctx.strokeStyle=s.color;ctx.setLineDash([3,3]);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(clientX,s.y);ctx.lineTo(serverX,s.y);ctx.stroke();ctx.setLineDash([]);
+      }
+      ctx.fillStyle=s.color;ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText(s.label,cx,s.y-10);
+    }
+    if(step>=5){
+      ctx.fillStyle='rgba(74,222,128,0.1)';ctx.beginPath();ctx.roundRect(clientX-10,310,serverX-clientX+20,40,6);ctx.fill();
+      ctx.fillStyle='#4ade80';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('🔐 所有后续数据使用 AES-256-GCM 对称加密传输',cx,335);
+    }
+  }
+}
+
+// --- Level 7: Network Security ---
+function drawLevel6(){
+  let st=levelState,cx=W/2,cy=H/2;
+  // Firewall
+  if(!st.phase||st.phase==='firewall'){
+    drawNode(80,cy,'pc','外部主机',false);
+    drawNode(cx,cy,'firewall','防火墙',false);
+    drawNode(W-80,cy,'server','内部服务器',false);
+    drawLink(80,cy,cx-30,cy,true);drawLink(cx+30,cy,W-80,cy,true);
+    // Rules
+    let ry=40;
+    ctx.fillStyle='rgba(10,10,30,0.9)';ctx.beginPath();ctx.roundRect(cx-160,ry,320,130,6);ctx.fill();
+    ctx.strokeStyle='#06b6d444';ctx.beginPath();ctx.roundRect(cx-160,ry,320,130,6);ctx.stroke();
+    ctx.fillStyle='#22d3ee';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText('防火墙规则表',cx,ry+18);
+    let rules=st.rules||[
+      {src:'*',dst:'Server',port:'80',proto:'TCP',action:'ALLOW'},
+      {src:'*',dst:'Server',port:'443',proto:'TCP',action:'ALLOW'},
+      {src:'*',dst:'Server',port:'22',proto:'TCP',action:'DENY'},
+      {src:'*',dst:'*',port:'*',proto:'ICMP',action:'DENY'}
+    ];
+    ctx.font='10px monospace';ctx.textAlign='left';
+    ctx.fillStyle='#8899aa';ctx.fillText('源        目的      端口  协议  动作',cx-140,ry+38);
+    for(let i=0;i<rules.length;i++){
+      let r=rules[i],y=ry+52+i*18;
+      ctx.fillStyle=r.action==='ALLOW'?'#4ade80':'#ef4444';
+      ctx.fillText(`${r.src.padEnd(10)}${r.dst.padEnd(10)}${r.port.padEnd(6)}${r.proto.padEnd(6)}${r.action}`,cx-140,y);
+    }
+    // Packet test
+    if(st.fwTest){
+      let pkts=st.fwPkts||[];
+      for(let p of pkts){
+        let t=p.t||0;
+        let px=lerp(80,p.allowed?W-80:cx-30,Math.min(1,t));
+        let py=cy+(p.idx-1.5)*20;
+        drawPacket(px,py,p.allowed?'#4ade80':'#ef4444',p.port);
+        if(!p.allowed&&t>0.5){ctx.fillStyle='#ef4444';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('✕',cx,py-12);}
+      }
+    }
+  }
+  // ARP spoofing
+  if(st.phase==='arp'){
+    let nodes=[{x:80,y:cy-40,type:'pc',label:'受害者A'},{x:W-80,y:cy-40,type:'pc',label:'受害者B'},{x:cx,y:cy+60,type:'pc',label:'攻击者'}];
+    for(let n of nodes) drawNode(n.x,n.y,n.type,n.label,false);
+    if(st.arpStep>=1){
+      ctx.strokeStyle='#ef4444';ctx.lineWidth=2;ctx.setLineDash([4,4]);
+      ctx.beginPath();ctx.moveTo(nodes[2].x,nodes[2].y);ctx.lineTo(nodes[0].x,nodes[0].y);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(nodes[2].x,nodes[2].y);ctx.lineTo(nodes[1].x,nodes[1].y);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#ef4444';ctx.font='11px sans-serif';ctx.textAlign='center';
+      ctx.fillText('伪造ARP: "我是B的MAC"',(nodes[2].x+nodes[0].x)/2,(nodes[2].y+nodes[0].y)/2-10);
+      ctx.fillText('伪造ARP: "我是A的MAC"',(nodes[2].x+nodes[1].x)/2,(nodes[2].y+nodes[1].y)/2-10);
+    }
+    if(st.arpStep>=2){
+      ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(nodes[0].x,nodes[0].y);ctx.lineTo(nodes[2].x,nodes[2].y);ctx.lineTo(nodes[1].x,nodes[1].y);ctx.stroke();
+      ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';ctx.fillText('A→B 的流量被劫持到攻击者',cx,cy-80);
+    }
+    if(st.arpStep>=3){
+      ctx.fillStyle='rgba(74,222,128,0.15)';ctx.beginPath();ctx.roundRect(40,H-100,W-80,60,6);ctx.fill();
+      ctx.fillStyle='#4ade80';ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+      ctx.fillText('✅ 防御措施：静态ARP绑定 + 动态ARP检测(DAI) + 802.1X认证',cx,H-65);
+    }
+  }
+  // DDoS
+  if(st.phase==='ddos'){
+    let serverN={x:W-100,y:cy,type:'server',label:'目标服务器'};
+    drawNode(serverN.x,serverN.y,serverN.type,serverN.label,false);
+    let attackers=[];
+    for(let i=0;i<8;i++){
+      let ang=Math.PI*0.3+i*Math.PI*0.15;
+      let r=Math.min(W,H)*0.38;
+      attackers.push({x:serverN.x-Math.cos(ang)*r,y:serverN.y-Math.sin(ang)*r+Math.sin(ang)*20});
+    }
+    for(let a of attackers){drawNode(a.x,a.y,'pc','',false);drawLink(a.x,a.y,serverN.x,serverN.y,true);}
+    ctx.fillStyle='#ef4444';ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+    ctx.fillText('DDoS 攻击：大量僵尸主机同时发送请求',cx,40);
+    // Attack packets
+    if(st.ddosAnim){
+      for(let i=0;i<attackers.length;i++){
+        let t=((time+i*15)%60)/60;
+        let px=lerp(attackers[i].x,serverN.x,t);
+        let py=lerp(attackers[i].y,serverN.y,t);
+        drawPacket(px,py,'#ef4444','');
+      }
+    }
+    // Defense
+    if(st.ddosStep>=2){
+      drawNode(cx,cy,'firewall','流量清洗',true);
+      ctx.fillStyle='rgba(74,222,128,0.15)';ctx.beginPath();ctx.roundRect(40,H-80,W-80,50,6);ctx.fill();
+      ctx.fillStyle='#4ade80';ctx.font='12px sans-serif';ctx.textAlign='center';
+      ctx.fillText('✅ 防御：流量清洗中心 + CDN分发 + 速率限制 + 黑洞路由',cx,H-50);
+    }
+  }
+}
+// --- Main draw & animation ---
+const drawFns=[drawLevel0,drawLevel1,drawLevel2,drawLevel3,drawLevel4,drawLevel5,drawLevel6];
+function draw(){
+  ctx.clearRect(0,0,W,H);drawGrid();
+  if(drawFns[curLevel]) drawFns[curLevel]();
+  // Background particles
+  for(let p of particles){
+    p.x+=p.vx;p.y+=p.vy;p.life--;
+    if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;
+    if(p.life<=0){p.x=Math.random()*W;p.y=Math.random()*H;p.life=200+Math.random()*300;}
+    ctx.fillStyle=`rgba(6,182,212,${0.15*p.life/500})`;ctx.beginPath();ctx.arc(p.x,p.y,1.2,0,Math.PI*2);ctx.fill();
+  }
+}
+function animate(){time++;draw();animId=requestAnimationFrame(animate);}
+
+// Init particles
+for(let i=0;i<60;i++) particles.push({x:Math.random()*2000,y:Math.random()*1000,vx:(Math.random()-0.5)*0.5,vy:(Math.random()-0.5)*0.5,life:200+Math.random()*300});
+
+// --- Panel rendering ---
+function objHTML(li){
+  let h='<h3>🎯 目标</h3>';
+  LEVELS[li].objs.forEach((o,i)=>{
+    let done=levelObjs[li][i];
+    h+=`<div class="obj-item"><span class="obj-dot${done?' done':''}">${done?'✓':''}</span><span style="color:${done?'#4ade80':'#b0b8c8'}">${o}</span></div>`;
+  });
+  return h;
+}
+function learnHTML(li){
+  if(!levelObjs[li].every(v=>v)) return '';
+  return `<div class="learn-box">💡 <b>知识点总结</b><br>${LEVELS[li].learn}</div>`;
+}
+
+function renderPanel(){
+  let li=curLevel,L=LEVELS[li];
+  let h=`<h2>关卡 ${li+1}：${L.name}</h2><p>${L.desc}</p>`;
+  h+=objHTML(li);
+  // Action buttons per level
+  h+=levelActions(li);
+  h+=learnHTML(li);
+  if(levelObjs[li].every(v=>v)&&li<6) h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+  if(levelObjs[li].every(v=>v)&&li===6) h+=`<div style="text-align:center;margin-top:12px;color:#4ade80;font-size:14px">🎉 恭喜通关！全部 7 个关卡已完成！</div>`;
+  panel.innerHTML=h;
+}
+
+function levelActions(li){
+  let h='<h3>🔧 操作</h3>';
+  let st=levelState;
+  if(li===0){
+    h+=`<button class="act-btn" onclick="doL0('view')">查看分层模型</button>`;
+    h+=`<button class="act-btn" onclick="doL0('encap')">▶ 数据封装动画</button>`;
+    h+=`<button class="act-btn" onclick="doL0('decap')">▶ 数据解封装动画</button>`;
+  }else if(li===1){
+    h+=`<button class="act-btn" onclick="doL1('signal')">查看信号编码</button>`;
+    h+=`<button class="act-btn" onclick="doL1('frame')">查看帧结构</button>`;
+    h+=`<button class="act-btn" onclick="doL1('mac')">MAC 地址寻址</button>`;
+  }else if(li===2){
+    h+=`<button class="act-btn" onclick="doL2('ip')">查看 IP 与子网</button>`;
+    h+=`<button class="act-btn" onclick="doL2('route')">路由表转发</button>`;
+    h+=`<button class="act-btn" onclick="doL2('subnet')">子网划分练习</button>`;
+  }else if(li===3){
+    h+=`<button class="act-btn" onclick="doL3('handshake')">▶ 三次握手</button>`;
+    h+=`<button class="act-btn" onclick="doL3('window')">滑动窗口</button>`;
+    h+=`<button class="act-btn" onclick="doL3('close')">▶ 四次挥手</button>`;
+    if(st.phase==='window') h+=`<button class="act-btn" style="background:#155e75" onclick="doL3('winSlide')">滑动窗口 →</button>`;
+  }else if(li===4){
+    h+=`<button class="act-btn" onclick="doL4('tree')">域名树结构</button>`;
+    h+=`<button class="act-btn" onclick="doL4('recursive')">▶ 递归查询</button>`;
+    h+=`<button class="act-btn" onclick="doL4('iterative')">▶ 迭代查询</button>`;
+  }else if(li===5){
+    h+=`<button class="act-btn" onclick="doL5('http')">▶ HTTP 请求/响应</button>`;
+    h+=`<button class="act-btn" onclick="doL5('codes')">HTTP 状态码</button>`;
+    h+=`<button class="act-btn" onclick="doL5('tls')">▶ HTTPS/TLS 握手</button>`;
+  }else if(li===6){
+    h+=`<button class="act-btn" onclick="doL6('firewall')">配置防火墙</button>`;
+    h+=`<button class="act-btn" onclick="doL6('arp')">▶ ARP 欺骗演示</button>`;
+    h+=`<button class="act-btn" onclick="doL6('ddos')">▶ DDoS 防御</button>`;
+  }
+  return h;
+}
+// --- Level action handlers ---
+function doL0(act){
+  if(act==='view'){levelState={};levelObjs[0][0]=true;}
+  else if(act==='encap'){levelState={encap:true,animProg:0};runAnim(0,1,2000,()=>{levelObjs[0][1]=true;levelState.encap=false;renderPanel();});}
+  else if(act==='decap'){levelState={decap:true,animProg:0};runAnim(0,1,2000,()=>{levelObjs[0][2]=true;levelState.decap=false;renderPanel();});}
+  renderPanel();
+}
+function doL1(act){
+  if(act==='signal'){levelState={};levelObjs[1][0]=true;}
+  else if(act==='frame'){levelState={};levelObjs[1][1]=true;}
+  else if(act==='mac'){levelState.showMac=true;levelState.macAnim=true;levelObjs[1][2]=true;setTimeout(()=>{levelState.macAnim=false;},3000);}
+  renderPanel();
+}
+function doL2(act){
+  if(act==='ip'){levelState={};levelObjs[2][0]=true;}
+  else if(act==='route'){levelState.showRoute=true;levelState.routeAnim=true;levelObjs[2][1]=true;}
+  else if(act==='subnet'){levelState.showSubnet=true;levelObjs[2][2]=true;}
+  renderPanel();
+}
+function doL3(act){
+  if(act==='handshake'){
+    levelState={phase:'handshake',hsStep:0,hsAnim:true};
+    let iv=setInterval(()=>{
+      levelState.hsStep=(levelState.hsStep||0)+1;
+      if(levelState.hsStep>=3){clearInterval(iv);levelState.phase='done_hs';levelState.hsAnim=false;levelObjs[3][0]=true;renderPanel();}
+    },1200);
+  }else if(act==='window'){
+    levelState={phase:'window',winPos:0};levelObjs[3][1]=true;
+  }else if(act==='winSlide'){
+    if(levelState.winPos<6) levelState.winPos++;
+  }else if(act==='close'){
+    levelState={phase:'close',clStep:0,clAnim:true};
+    let iv=setInterval(()=>{
+      levelState.clStep=(levelState.clStep||0)+1;
+      if(levelState.clStep>=4){clearInterval(iv);levelState.phase='done_close';levelState.clAnim=false;levelObjs[3][2]=true;renderPanel();}
+    },1200);
+  }
+  renderPanel();
+}
+function doL4(act){
+  if(act==='tree'){levelState={phase:'tree'};levelObjs[4][0]=true;}
+  else if(act==='recursive'){
+    levelState={phase:'recursive',dnsStep:0,dnsAnim:true};
+    let iv=setInterval(()=>{levelState.dnsStep++;if(levelState.dnsStep>=8){clearInterval(iv);levelState.dnsAnim=false;levelObjs[4][1]=true;renderPanel();}},1000);
+  }else if(act==='iterative'){
+    levelState={phase:'iterative',dnsStep:0,dnsAnim:true};
+    let iv=setInterval(()=>{levelState.dnsStep++;if(levelState.dnsStep>=6){clearInterval(iv);levelState.dnsAnim=false;levelObjs[4][2]=true;renderPanel();}},1000);
+  }
+  renderPanel();
+}
+function doL5(act){
+  if(act==='http'){
+    levelState={phase:'http',httpStep:0};
+    setTimeout(()=>{levelState.httpStep=1;renderPanel();},500);
+    setTimeout(()=>{levelState.httpStep=2;levelObjs[5][0]=true;renderPanel();},1500);
+  }else if(act==='codes'){
+    levelState={phase:'codes'};levelObjs[5][1]=true;
+  }else if(act==='tls'){
+    levelState={phase:'tls',tlsStep:0};
+    let iv=setInterval(()=>{levelState.tlsStep=(levelState.tlsStep||0)+1;if(levelState.tlsStep>=5){clearInterval(iv);levelObjs[5][2]=true;renderPanel();}},1200);
+  }
+  renderPanel();
+}
+function doL6(act){
+  if(act==='firewall'){
+    levelState={phase:'firewall',fwTest:true,fwPkts:[
+      {port:'80',allowed:true,idx:0,t:0},{port:'443',allowed:true,idx:1,t:0},
+      {port:'22',allowed:false,idx:2,t:0},{port:'ICMP',allowed:false,idx:3,t:0}
+    ]};
+    let iv=setInterval(()=>{
+      let done=true;
+      for(let p of levelState.fwPkts){if(p.t<1){p.t+=0.02;done=false;}}
+      if(done){clearInterval(iv);levelObjs[6][0]=true;renderPanel();}
+    },30);
+  }else if(act==='arp'){
+    levelState={phase:'arp',arpStep:0};
+    let iv=setInterval(()=>{levelState.arpStep++;if(levelState.arpStep>=3){clearInterval(iv);levelObjs[6][1]=true;renderPanel();}},1500);
+  }else if(act==='ddos'){
+    levelState={phase:'ddos',ddosAnim:true,ddosStep:0};
+    setTimeout(()=>{levelState.ddosStep=1;},1500);
+    setTimeout(()=>{levelState.ddosStep=2;levelState.ddosAnim=false;levelObjs[6][2]=true;renderPanel();},3500);
+  }
+  renderPanel();
+}
+
+function runAnim(from,to,dur,cb){
+  let start=performance.now();
+  function tick(now){
+    let t=Math.min(1,(now-start)/dur);
+    levelState.animProg=lerp(from,to,t);
+    if(t<1) requestAnimationFrame(tick); else if(cb) cb();
+  }
+  requestAnimationFrame(tick);
+}
+
+// --- Bar rendering ---
+function renderBar(){
+  let bl='<div class="bar-left">';
+  for(let i=0;i<7;i++){
+    let done=levelObjs[i].every(v=>v);
+    bl+=`<button class="bar-btn${i===curLevel?' active':''}" onclick="goLevel(${i})">${i+1}</button>`;
+  }
+  bl+='</div>';
+  let completed=levelObjs.flat().filter(v=>v).length;
+  let br=`<div class="bar-right">进度：${completed}/21 目标</div>`;
+  bar.innerHTML=bl+br;
+}
+
+function goLevel(n){curLevel=n;levelState={};renderPanel();renderBar();}
+
+function startGame(){
+  overlay.style.display='none';
+  panel.style.display='block';
+  bar.style.display='flex';
+  resize();renderPanel();renderBar();animate();
+}
+
+</script>
+</body>
+</html>

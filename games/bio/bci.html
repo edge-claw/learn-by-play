@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>脑机接口 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e2e8f0;font-family:"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden;height:100vh}
+canvas{display:block}
+.overlay{position:fixed;inset:0;background:rgba(6,6,20,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;background:linear-gradient(135deg,#7c3aed,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.overlay .sub{color:#94a3b8;font-size:15px;margin-bottom:32px}
+.overlay .start-btn{padding:14px 48px;font-size:18px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:transform .2s}
+.overlay .start-btn:hover{transform:scale(1.05)}
+.overlay .feat{display:flex;gap:16px;margin-bottom:36px;flex-wrap:wrap;justify-content:center}
+.overlay .feat div{background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);border-radius:10px;padding:12px 16px;width:140px;font-size:13px;color:#c4b5fd}
+.panel{position:fixed;left:0;top:0;width:320px;height:calc(100% - 36px);background:rgba(10,10,30,0.95);border-right:1px solid rgba(124,58,237,0.25);overflow-y:auto;z-index:10;display:none;padding:16px;font-size:13px;line-height:1.7}
+.panel h2{font-size:17px;color:#c4b5fd;margin-bottom:6px}
+.panel h3{font-size:14px;color:#7c3aed;margin:10px 0 4px}
+.panel .obj{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.panel .obj .dot{width:14px;height:14px;border-radius:50%;border:2px solid #7c3aed;flex-shrink:0}
+.panel .obj .dot.done{background:#7c3aed}
+.panel .learn-box{background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.3);border-radius:8px;padding:10px;margin-top:10px;font-size:12px;color:#a5b4fc;line-height:1.8}
+.act-btn{display:block;width:100%;padding:8px;margin-top:6px;border:none;border-radius:8px;background:#7c3aed;color:#fff;font-size:13px;cursor:pointer;transition:background .2s}
+.act-btn:hover{background:#6d28d9}
+.bar{position:fixed;left:0;bottom:0;width:100%;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid rgba(124,58,237,0.25);display:none;z-index:10;padding:0 16px;font-size:12px;align-items:center;justify-content:space-between}
+.bar .levels{display:flex;gap:4px;align-items:center}
+.bar .lbtn{width:28px;height:24px;border:1px solid rgba(124,58,237,0.4);background:transparent;color:#94a3b8;border-radius:4px;cursor:pointer;font-size:11px}
+.bar .lbtn.cur{background:#7c3aed;color:#fff;border-color:#7c3aed}
+.bar .lbtn.done{background:rgba(124,58,237,0.3);color:#c4b5fd}
+.bar .info{color:#64748b}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:rgba(124,58,237,0.3);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="overlay" id="ov">
+<h1>🧠 脑机接口 探险</h1>
+<p class="sub">Brain-Computer Interface — 从神经元到意念控制</p>
+<div class="feat">
+<div>🔬 神经元基础</div><div>📡 脑电采集</div><div>📊 信号处理</div>
+<div>🎯 运动解码</div><div>🔧 侵入式BCI</div><div>🦾 脑控应用</div><div>🔄 双向BCI</div>
+</div>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"></div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),ov=document.getElementById('ov');
+let W,H,curLevel=0,tick=0,mouse={x:0,y:0,down:false,clicked:false};
+const PL=320;
+const levelNames=['神经元基础','脑电信号采集','信号处理','运动意图解码','侵入式BCI','脑控应用','双向BCI'];
+const levelDescs=[
+'探索神经元的微观世界：树突接收信号，胞体整合处理，轴突传导电位。点击离子通道观察动作电位的产生与传导。',
+'学习EEG脑电图的10-20电极放置系统。观察不同脑区产生的α、β、θ、δ波形，理解信噪比的重要性。',
+'对原始脑电信号进行滤波去噪，观察频谱分析结果，提取功率谱密度和事件相关电位(ERP)特征。',
+'通过想象左手/右手运动产生不同脑电模式，训练分类器解码运动意图，控制光标移动到目标位置。',
+'了解Neuralink等侵入式BCI技术：柔性电极植入大脑皮层，记录单个神经元活动，高密度微电极阵列。',
+'体验脑机接口的实际应用：P300拼写器脑控打字、脑控轮椅路径规划、脑控机械臂抓取物体。',
+'探索双向脑机接口前沿：电刺激产生触觉反馈、脑脑接口通信、记忆增强技术，以及BCI伦理讨论。'
+];
+const levelObjTexts=[
+['点击离子通道触发动作电位','观察电位沿轴突传导3次','识别神经元3个主要结构'],
+['放置至少5个EEG电极','观察4种脑电波形(α/β/θ/δ)','调节信噪比到可接受水平'],
+['应用带通滤波器去噪','完成频谱分析','提取ERP特征波形'],
+['完成左手想象运动解码','完成右手想象运动解码','光标命中3个目标'],
+['完成柔性电极植入动画','记录3个单神经元信号','观察高密度阵列覆盖'],
+['用P300拼写器打出3个字','规划轮椅到达目标','控制机械臂抓取物体'],
+['体验触觉电刺激反馈','完成脑脑接口传输','回答伦理讨论问题']
+];
+const learnTexts=[
+'💡 神经元是大脑的基本计算单元。树突接收来自其他神经元的信号，胞体(soma)整合这些信号，当膜电位超过阈值(-55mV)时，轴突产生全或无的动作电位(~100mV)，以100m/s的速度传导。人脑约有860亿个神经元，每个可与数千个其他神经元形成突触连接。',
+'💡 EEG(脑电图)是最常用的非侵入式BCI信号源。10-20系统是国际标准电极放置方案，用头部标志点的10%和20%间距确定电极位置。α波(8-13Hz)出现在放松闭眼时，β波(13-30Hz)与专注思考相关，θ波(4-8Hz)与记忆和创造力有关，δ波(0.5-4Hz)出现在深度睡眠中。',
+'💡 原始EEG信号混杂着肌电、眼电等伪迹噪声。带通滤波(0.5-50Hz)去除高频噪声和直流漂移。FFT将时域信号转换为频域，显示各频段的功率分布。ERP是对特定事件(如看到目标字母)的脑电响应，通过多次叠加平均提取，P300成分在刺激后300ms出现正波。',
+'💡 运动想象(Motor Imagery)是BCI的核心范式之一。想象左手运动时，右侧运动皮层的μ节律(8-12Hz)出现事件相关去同步(ERD)；想象右手则左侧ERD。CSP(共空间模式)算法提取最具区分力的空间滤波器，分类准确率可达70-90%。这是截瘫患者恢复运动控制的希望。',
+'💡 侵入式BCI将电极直接植入大脑皮层，信号质量远超EEG。Neuralink的N1芯片包含1024个柔性电极，每根比头发丝还细(5μm)，由手术机器人精确植入避开血管。Utah阵列是经典的硅基微电极阵列(10×10)。单神经元记录可解码精细运动意图，已帮助瘫痪患者控制电脑光标。',
+'💡 P300拼写器利用"奇异刺激"效应：6×6字母矩阵中，目标字母所在行/列闪烁时诱发P300，系统识别后输出字母，速度约5-8字/分钟。脑控轮椅结合SSVEP(稳态视觉诱发电位)实现方向控制。脑控机械臂(如BrainGate)已实现瘫痪患者自主进食，解码精度持续提升。',
+'💡 双向BCI不仅读取大脑信号，还能向大脑写入信息。微电刺激可产生人工触觉，让假肢使用者"感受"物体。脑脑接口(BBI)已在动物实验中实现：一只大鼠的运动意图通过互联网传递给另一只。记忆增强通过海马体电刺激改善记忆编码。伦理问题包括：隐私(思维读取)、公平(认知增强)、身份认同等。'
+];
+let levelObjs=levelObjTexts.map(a=>a.map(()=>false));
+// Level state
+let L={};
+function resetLevel(li){
+  L={};
+  levelObjs[li]=levelObjs[li].map(()=>false);
+  if(li===0){L.channels=[];L.apCount=0;L.identified=new Set();L.apPhase=0;L.apPos=0;L.apActive=false;L.pulses=[];}
+  if(li===1){L.electrodes=[];L.waveType=0;L.waveSeen=new Set();L.snr=30;L.snrAdjusted=false;}
+  if(li===2){L.filtered=false;L.spectrum=false;L.erpDone=false;L.filterAnim=0;L.specAnim=0;L.erpAnim=0;L.rawSignal=[];L.filtSignal=[];for(let i=0;i<200;i++){L.rawSignal.push(Math.sin(i*0.1)*30+Math.sin(i*0.5)*15+(Math.random()-0.5)*40);L.filtSignal.push(Math.sin(i*0.1)*30+Math.sin(i*0.5)*15);}}
+  if(li===3){L.cursorX=0.5;L.cursorY=0.5;L.targets=[];L.hits=0;L.decodeL=false;L.decodeR=false;L.imagining=null;L.imgTimer=0;L.accuracy=0;genTarget3();}
+  if(li===4){L.implantPhase=0;L.implantDone=false;L.neurons=[];L.neuronRec=0;L.arrayShown=false;for(let i=0;i<8;i++)L.neurons.push({x:0.3+Math.random()*0.4,y:0.2+Math.random()*0.5,rate:2+Math.random()*8,phase:Math.random()*Math.PI*2});}
+  if(li===5){L.p300Grid=[];L.p300Target='';L.p300Typed='';L.p300Flash=-1;L.p300Timer=0;L.p300Word='脑机';L.wheelchairX=0.15;L.wheelchairY=0.5;L.wcTarget={x:0.85,y:0.5};L.wcDone=false;L.armPhase=0;L.armGrab=false;initP300();}
+  if(li===6){L.stimPhase=0;L.stimDone=false;L.bbiPhase=0;L.bbiDone=false;L.ethicsQ=0;L.ethicsDone=false;L.ethicsAnswered=false;}
+}
+function genTarget3(){let t={x:0.2+Math.random()*0.6,y:0.15+Math.random()*0.6};L.targets.push(t);}
+function initP300(){L.p300Grid=[];const chars='ABCDEF脑机接口控制GHIJKL思维读取MNOPQR神经元素STUVWX信号处理YZ1234';for(let i=0;i<36;i++)L.p300Grid.push(chars[i]||String.fromCharCode(65+i%26));L.p300Target=L.p300Word[L.p300Typed.length]||'脑';}
+// CHUNK2_PLACEHOLDER
+function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight-36;}
+window.onresize=resize;resize();
+cv.onmousemove=e=>{const r=cv.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;};
+cv.onmousedown=e=>{mouse.down=true;mouse.clicked=true;};
+cv.onmouseup=()=>{mouse.down=false;};
+function startGame(){ov.style.display='none';panel.style.display='block';bar.style.display='flex';resetLevel(0);renderPanel();renderBar();}
+function goLevel(li){if(li<0||li>6)return;curLevel=li;resetLevel(li);renderPanel();renderBar();}
+window.goLevel=goLevel;
+function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel();renderBar();}}
+function renderBar(){
+  let h='<div class="levels">';
+  for(let i=0;i<7;i++){let cls=i===curLevel?'cur':levelObjs[i].every(v=>v)?'done':'';h+=`<button class="lbtn ${cls}" onclick="goLevel(${i})">${i+1}</button>`;}
+  h+='</div>';
+  let done=levelObjs.flat().filter(v=>v).length,total=21;
+  h+=`<div class="info">进度 ${done}/${total} | 关卡 ${curLevel+1}/7</div>`;
+  bar.innerHTML=h;
+}
+function renderPanel(){
+  let li=curLevel;
+  let h=`<h2>关卡${li+1}: ${levelNames[li]}</h2>`;
+  h+=`<p style="color:#94a3b8;font-size:12px;margin:6px 0 10px">${levelDescs[li]}</p>`;
+  h+=`<h3>🎯 目标</h3>`;
+  for(let i=0;i<3;i++){let d=levelObjs[li][i]?'done':'';h+=`<div class="obj"><div class="dot ${d}"></div>${levelObjTexts[li][i]}</div>`;}
+  // Level-specific buttons
+  if(li===0){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="L.apActive=true;L.apPhase=0;L.apPos=0">⚡ 触发动作电位</button>`;
+    h+=`<button class="act-btn" onclick="identifyPart('dendrite')">标记: 树突</button>`;
+    h+=`<button class="act-btn" onclick="identifyPart('soma')">标记: 胞体</button>`;
+    h+=`<button class="act-btn" onclick="identifyPart('axon')">标记: 轴突</button>`;
+  }
+  if(li===1){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="placeElectrode()">📍 放置电极</button>`;
+    h+=`<button class="act-btn" onclick="switchWave(0)">α波 (8-13Hz)</button>`;
+    h+=`<button class="act-btn" onclick="switchWave(1)">β波 (13-30Hz)</button>`;
+    h+=`<button class="act-btn" onclick="switchWave(2)">θ波 (4-8Hz)</button>`;
+    h+=`<button class="act-btn" onclick="switchWave(3)">δ波 (0.5-4Hz)</button>`;
+    h+=`<button class="act-btn" onclick="adjustSNR()">🔧 优化信噪比</button>`;
+  }
+  if(li===2){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="applyFilter()">🔽 应用带通滤波</button>`;
+    h+=`<button class="act-btn" onclick="runSpectrum()">📊 频谱分析(FFT)</button>`;
+    h+=`<button class="act-btn" onclick="extractERP()">📈 提取ERP特征</button>`;
+  }
+  if(li===3){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="imagineMotor('left')">🤚 想象左手运动</button>`;
+    h+=`<button class="act-btn" onclick="imagineMotor('right')">✋ 想象右手运动</button>`;
+    h+=`<p style="color:#94a3b8;font-size:11px;margin-top:6px">准确率: ${L.accuracy||0}%</p>`;
+  }
+  if(li===4){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="startImplant()">🔧 开始电极植入</button>`;
+    h+=`<button class="act-btn" onclick="recordNeuron()">🎙️ 记录神经元</button>`;
+    h+=`<button class="act-btn" onclick="showArray()">📐 显示高密度阵列</button>`;
+  }
+  if(li===5){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="flashP300()">💡 P300闪烁(打字:${L.p300Target||''})</button>`;
+    h+=`<p style="color:#94a3b8;font-size:11px">已打: ${L.p300Typed||''}</p>`;
+    h+=`<button class="act-btn" onclick="moveWheelchair()">🦽 移动轮椅</button>`;
+    h+=`<button class="act-btn" onclick="grabArm()">🦾 机械臂抓取</button>`;
+  }
+  if(li===6){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="stimulate()">⚡ 电刺激触觉反馈</button>`;
+    h+=`<button class="act-btn" onclick="startBBI()">🔗 脑脑接口传输</button>`;
+    h+=`<button class="act-btn" onclick="answerEthics()">💬 伦理讨论</button>`;
+  }
+  if(levelObjs[li].every(v=>v)){
+    h+=`<div class="learn-box">${learnTexts[li]}</div>`;
+    if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+    if(li===6)h+=`<div style="text-align:center;margin-top:12px;color:#4ade80;font-size:14px">🎉 恭喜通关！全部 7 个关卡已完成！</div>`;
+  }
+  panel.innerHTML=h;
+}
+// CHUNK3_PLACEHOLDER
+// Level action handlers
+window.identifyPart=function(part){L.identified.add(part);if(L.identified.size>=3)completeObj(2);};
+window.placeElectrode=function(){if(L.electrodes.length<21){let a=Math.random()*Math.PI*2,r=30+Math.random()*80;L.electrodes.push({x:0.5+Math.cos(a)*r/300,y:0.4+Math.sin(a)*r/300});if(L.electrodes.length>=5)completeObj(0);}};
+window.switchWave=function(w){L.waveType=w;L.waveSeen.add(w);if(L.waveSeen.size>=4)completeObj(1);};
+window.adjustSNR=function(){L.snr=Math.min(L.snr+15,90);if(L.snr>=60){L.snrAdjusted=true;completeObj(2);}renderPanel();};
+window.applyFilter=function(){L.filtered=true;L.filterAnim=1;completeObj(0);renderPanel();};
+window.runSpectrum=function(){L.spectrum=true;L.specAnim=1;completeObj(1);renderPanel();};
+window.extractERP=function(){L.erpDone=true;L.erpAnim=1;completeObj(2);renderPanel();};
+window.imagineMotor=function(side){L.imagining=side;L.imgTimer=120;if(side==='left'){L.cursorX=Math.max(0.05,L.cursorX-0.15);L.decodeL=true;completeObj(0);L.accuracy=Math.min(95,L.accuracy+15);}else{L.cursorX=Math.min(0.95,L.cursorX+0.15);L.decodeR=true;completeObj(1);L.accuracy=Math.min(95,L.accuracy+15);}
+  if(L.targets.length>0){let t=L.targets[L.targets.length-1];let dx=L.cursorX-t.x,dy=L.cursorY-t.y;if(Math.sqrt(dx*dx+dy*dy)<0.08){L.hits++;L.targets.pop();if(L.hits>=3)completeObj(2);else genTarget3();}}renderPanel();};
+window.startImplant=function(){if(!L.implantDone){L.implantPhase=1;setTimeout(()=>{L.implantPhase=2;setTimeout(()=>{L.implantPhase=3;L.implantDone=true;completeObj(0);renderPanel();},1500);},1500);}};
+window.recordNeuron=function(){if(L.implantDone&&L.neuronRec<3){L.neuronRec++;if(L.neuronRec>=3)completeObj(1);}renderPanel();};
+window.showArray=function(){L.arrayShown=true;completeObj(2);renderPanel();};
+window.flashP300=function(){L.p300Flash=Math.floor(Math.random()*6);L.p300Timer=60;setTimeout(()=>{if(L.p300Typed.length<L.p300Word.length){L.p300Typed+=L.p300Word[L.p300Typed.length];if(L.p300Typed.length>=2)completeObj(0);L.p300Target=L.p300Word[L.p300Typed.length]||'✓';initP300();}renderPanel();},800);};
+window.moveWheelchair=function(){L.wheelchairX+=0.12;if(L.wheelchairX>=0.8){L.wcDone=true;completeObj(1);}renderPanel();};
+window.grabArm=function(){L.armPhase++;if(L.armPhase>=3){L.armGrab=true;completeObj(2);}renderPanel();};
+window.stimulate=function(){L.stimPhase++;if(L.stimPhase>=2){L.stimDone=true;completeObj(0);}renderPanel();};
+window.startBBI=function(){L.bbiPhase++;if(L.bbiPhase>=2){L.bbiDone=true;completeObj(1);}renderPanel();};
+window.answerEthics=function(){L.ethicsAnswered=true;L.ethicsDone=true;completeObj(2);renderPanel();};
+// CHUNK4_PLACEHOLDER
+// Drawing helpers
+function cx(r){return PL+(W-PL)*r;}
+function cy(r){return H*r;}
+function drawBrain(x,y,s,highlight){
+  ctx.save();ctx.translate(x,y);
+  ctx.beginPath();ctx.ellipse(0,0,s*1.1,s*0.9,0,0,Math.PI*2);ctx.fillStyle='rgba(124,58,237,0.08)';ctx.fill();ctx.strokeStyle='rgba(124,58,237,0.4)';ctx.lineWidth=2;ctx.stroke();
+  // Brain folds
+  for(let i=0;i<6;i++){let a=-0.8+i*0.3;ctx.beginPath();ctx.moveTo(Math.cos(a)*s*0.3,-s*0.7+i*s*0.22);ctx.quadraticCurveTo(Math.cos(a+0.5)*s*0.8,-s*0.6+i*s*0.22,Math.cos(a+1)*s*0.4,-s*0.5+i*s*0.22);ctx.strokeStyle='rgba(124,58,237,0.25)';ctx.lineWidth=1;ctx.stroke();}
+  // Regions
+  const regions=[{x:-s*0.4,y:-s*0.2,l:'额叶',c:'rgba(147,51,234,0.2)'},{x:s*0.3,y:-s*0.3,l:'顶叶',c:'rgba(59,130,246,0.2)'},{x:-s*0.5,y:s*0.2,l:'颞叶',c:'rgba(16,185,129,0.2)'},{x:s*0.3,y:s*0.25,l:'枕叶',c:'rgba(245,158,11,0.2)'}];
+  regions.forEach((r,i)=>{ctx.beginPath();ctx.arc(r.x,r.y,s*0.25,0,Math.PI*2);ctx.fillStyle=highlight===i?r.c.replace('0.2','0.5'):r.c;ctx.fill();ctx.fillStyle='rgba(255,255,255,0.5)';ctx.font=`${s*0.12}px sans-serif`;ctx.textAlign='center';ctx.fillText(r.l,r.x,r.y+4);});
+  ctx.restore();
+}
+function drawNeuron(x,y,s,apPos){
+  ctx.save();ctx.translate(x,y);
+  // Dendrites
+  for(let i=0;i<5;i++){let a=-Math.PI/2+(-0.6+i*0.3);ctx.beginPath();ctx.moveTo(0,0);let ex=Math.cos(a)*s*0.8,ey=Math.sin(a)*s*0.8;ctx.quadraticCurveTo(Math.cos(a)*s*0.4+Math.sin(i)*s*0.2,Math.sin(a)*s*0.4,ex,ey);ctx.strokeStyle='#a78bfa';ctx.lineWidth=2;ctx.stroke();
+    // Branch tips
+    for(let j=0;j<2;j++){let ba=a+(-0.3+j*0.6);ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex+Math.cos(ba)*s*0.25,ey+Math.sin(ba)*s*0.25);ctx.stroke();}
+  }
+  // Soma
+  ctx.beginPath();ctx.arc(0,0,s*0.2,0,Math.PI*2);let sg=ctx.createRadialGradient(0,0,0,0,0,s*0.2);sg.addColorStop(0,'#c4b5fd');sg.addColorStop(1,'#7c3aed');ctx.fillStyle=sg;ctx.fill();ctx.strokeStyle='#a78bfa';ctx.lineWidth=2;ctx.stroke();
+  // Nucleus
+  ctx.beginPath();ctx.arc(0,0,s*0.07,0,Math.PI*2);ctx.fillStyle='#4c1d95';ctx.fill();
+  // Axon
+  ctx.beginPath();ctx.moveTo(s*0.15,s*0.1);
+  let axLen=s*1.2;ctx.lineTo(s*0.15+axLen,s*0.1);ctx.strokeStyle='#8b5cf6';ctx.lineWidth=3;ctx.stroke();
+  // Myelin sheaths
+  for(let i=0;i<5;i++){let mx=s*0.25+i*axLen/5;ctx.beginPath();ctx.ellipse(mx,s*0.1,axLen/12,s*0.06,0,0,Math.PI*2);ctx.fillStyle='rgba(167,139,250,0.3)';ctx.fill();ctx.strokeStyle='#a78bfa';ctx.lineWidth=1;ctx.stroke();}
+  // Axon terminals
+  for(let i=0;i<3;i++){let tx=s*0.15+axLen+Math.cos(-0.5+i*0.5)*s*0.2,ty=s*0.1+Math.sin(-0.5+i*0.5)*s*0.2;ctx.beginPath();ctx.moveTo(s*0.15+axLen,s*0.1);ctx.lineTo(tx,ty);ctx.stroke();ctx.beginPath();ctx.arc(tx,ty,s*0.04,0,Math.PI*2);ctx.fillStyle='#c084fc';ctx.fill();}
+  // Action potential pulse
+  if(typeof apPos==='number'&&apPos>0&&apPos<1){let px=s*0.15+apPos*axLen;ctx.beginPath();ctx.arc(px,s*0.1,s*0.08,0,Math.PI*2);let pg=ctx.createRadialGradient(px,s*0.1,0,px,s*0.1,s*0.08);pg.addColorStop(0,'rgba(250,204,21,0.9)');pg.addColorStop(1,'rgba(250,204,21,0)');ctx.fillStyle=pg;ctx.fill();}
+  // Labels
+  ctx.font='11px sans-serif';ctx.fillStyle='#c4b5fd';ctx.textAlign='center';
+  ctx.fillText('树突',0,-s*0.55);ctx.fillText('胞体',0,s*0.35);ctx.fillText('轴突',s*0.15+axLen*0.5,s*0.3);ctx.fillText('突触末梢',s*0.15+axLen+s*0.1,s*0.35);
+  ctx.restore();
+}
+function drawWave(x,y,w,h,freq,amp,color,noise,label){
+  ctx.save();
+  ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=1;
+  ctx.strokeRect(x,y,w,h);
+  ctx.beginPath();
+  for(let i=0;i<w;i++){let t=(tick+i)*0.02*freq;let v=Math.sin(t)*amp+(noise?((Math.random()-0.5)*noise):0);ctx.lineTo(x+i,y+h/2-v*h/2);}
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.stroke();
+  if(label){ctx.fillStyle=color;ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText(label,x+4,y+14);}
+  ctx.restore();
+}
+// CHUNK5_PLACEHOLDER
+// Level draw functions
+function drawLevel0(){
+  let cw=W-PL,ch=H-36;
+  // Background grid
+  ctx.strokeStyle='rgba(124,58,237,0.06)';ctx.lineWidth=1;
+  for(let i=0;i<cw;i+=40){ctx.beginPath();ctx.moveTo(PL+i,0);ctx.lineTo(PL+i,ch);ctx.stroke();}
+  for(let i=0;i<ch;i+=40){ctx.beginPath();ctx.moveTo(PL,i);ctx.lineTo(W,i);ctx.stroke();}
+  // Draw neuron
+  let nx=PL+cw*0.35,ny=ch*0.45;
+  drawNeuron(nx,ny,cw*0.22,L.apActive?L.apPos:0);
+  // Ion channels along axon
+  if(L.channels.length===0){for(let i=0;i<6;i++)L.channels.push({x:nx+cw*0.22*0.15+i*cw*0.22*1.2/6,y:ny+cw*0.22*0.1,open:false});}
+  L.channels.forEach((ch,i)=>{ctx.beginPath();ctx.rect(ch.x-6,ch.y-10,12,20);ctx.fillStyle=ch.open?'rgba(250,204,21,0.5)':'rgba(124,58,237,0.3)';ctx.fill();ctx.strokeStyle=ch.open?'#facc15':'#7c3aed';ctx.lineWidth=1;ctx.stroke();ctx.fillStyle='#94a3b8';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText(ch.open?'开':'关',ch.x,ch.y+28);});
+  // Membrane potential graph
+  let gx=PL+cw*0.05,gy=ch*0.78,gw=cw*0.9,gh=ch*0.18;
+  ctx.fillStyle='rgba(10,10,30,0.7)';ctx.fillRect(gx,gy,gw,gh);ctx.strokeStyle='rgba(124,58,237,0.3)';ctx.strokeRect(gx,gy,gw,gh);
+  ctx.fillStyle='#94a3b8';ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillText('膜电位 (mV)',gx+4,gy+12);
+  ctx.fillText('-70mV (静息)',gx+4,gy+gh-4);ctx.fillText('+40mV',gx+4,gy+18);
+  // Draw AP waveform
+  ctx.beginPath();
+  for(let i=0;i<gw;i++){let t=i/gw;let v=-70;if(L.apActive){let d=t-L.apPos;if(d>-0.05&&d<0.15){let p=(d+0.05)/0.2;if(p<0.3)v=-70+110*(p/0.3);else if(p<0.5)v=40-110*((p-0.3)/0.2);else if(p<0.8)v=-70-10*Math.sin((p-0.5)/0.3*Math.PI);else v=-70;}}ctx.lineTo(gx+i,gy+gh/2-(v+15)*gh/130);}
+  ctx.strokeStyle='#facc15';ctx.lineWidth=1.5;ctx.stroke();
+  // Update AP
+  if(L.apActive){L.apPos+=0.005;if(L.apPos>1.1){L.apActive=false;L.apCount++;L.channels.forEach(c=>c.open=false);if(L.apCount>=3)completeObj(1);completeObj(0);}}
+  if(L.apActive){L.channels.forEach(c=>{let d=Math.abs((c.x-nx)/(cw*0.22*1.2)-L.apPos);c.open=d<0.1;});}
+}
+function drawLevel1(){
+  let cw=W-PL,ch=H-36;
+  // Draw head outline
+  let hx=PL+cw*0.5,hy=ch*0.38,hr=Math.min(cw,ch)*0.28;
+  ctx.beginPath();ctx.ellipse(hx,hy,hr,hr*1.1,0,0,Math.PI*2);ctx.fillStyle='rgba(124,58,237,0.06)';ctx.fill();ctx.strokeStyle='rgba(124,58,237,0.4)';ctx.lineWidth=2;ctx.stroke();
+  // Nose
+  ctx.beginPath();ctx.moveTo(hx,hy-hr*1.1);ctx.lineTo(hx-8,hy-hr*1.1-15);ctx.lineTo(hx+8,hy-hr*1.1-15);ctx.closePath();ctx.fillStyle='rgba(124,58,237,0.3)';ctx.fill();
+  // 10-20 system labels
+  const pos10_20=[{n:'Fp1',x:-0.2,y:-0.8},{n:'Fp2',x:0.2,y:-0.8},{n:'F3',x:-0.35,y:-0.4},{n:'Fz',x:0,y:-0.4},{n:'F4',x:0.35,y:-0.4},{n:'T3',x:-0.7,y:0},{n:'C3',x:-0.35,y:0},{n:'Cz',x:0,y:0},{n:'C4',x:0.35,y:0},{n:'T4',x:0.7,y:0},{n:'P3',x:-0.35,y:0.4},{n:'Pz',x:0,y:0.4},{n:'P4',x:0.35,y:0.4},{n:'O1',x:-0.2,y:0.75},{n:'O2',x:0.2,y:0.75}];
+  pos10_20.forEach(p=>{let ex=hx+p.x*hr,ey=hy+p.y*hr*1.1;ctx.beginPath();ctx.arc(ex,ey,4,0,Math.PI*2);ctx.fillStyle='rgba(124,58,237,0.3)';ctx.fill();ctx.fillStyle='#64748b';ctx.font='8px sans-serif';ctx.textAlign='center';ctx.fillText(p.n,ex,ey-7);});
+  // Placed electrodes
+  L.electrodes.forEach((e,i)=>{let ex=hx+(e.x-0.5)*hr*2,ey=hy+(e.y-0.4)*hr*2.2;ctx.beginPath();ctx.arc(ex,ey,6,0,Math.PI*2);ctx.fillStyle='#22c55e';ctx.fill();ctx.strokeStyle='#4ade80';ctx.lineWidth=1;ctx.stroke();
+    // Glow
+    ctx.beginPath();ctx.arc(ex,ey,10,0,Math.PI*2);let g=ctx.createRadialGradient(ex,ey,3,ex,ey,10);g.addColorStop(0,'rgba(34,197,94,0.3)');g.addColorStop(1,'rgba(34,197,94,0)');ctx.fillStyle=g;ctx.fill();
+  });
+  // Wave display
+  let wy=ch*0.72,wh=ch*0.06;
+  const waveInfo=[{f:0.8,a:0.6,c:'#facc15',l:'α波 8-13Hz'},{f:2,a:0.4,c:'#f97316',l:'β波 13-30Hz'},{f:0.4,a:0.8,c:'#06b6d4',l:'θ波 4-8Hz'},{f:0.15,a:1,c:'#8b5cf6',l:'δ波 0.5-4Hz'}];
+  let wi=waveInfo[L.waveType];
+  let noiseAmt=L.snr<60?0.4:0.1;
+  drawWave(PL+cw*0.05,wy,cw*0.9,wh*2,wi.f,wi.a,wi.c,noiseAmt,wi.l);
+  // SNR bar
+  ctx.fillStyle='#94a3b8';ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillText(`信噪比: ${L.snr}%`,PL+cw*0.05,wy+wh*2+18);
+  ctx.fillStyle='rgba(124,58,237,0.2)';ctx.fillRect(PL+cw*0.3,wy+wh*2+8,cw*0.4,8);ctx.fillStyle=L.snr>=60?'#22c55e':'#f97316';ctx.fillRect(PL+cw*0.3,wy+wh*2+8,cw*0.4*L.snr/100,8);
+}
+// CHUNK6_PLACEHOLDER
+function drawLevel2(){
+  let cw=W-PL,ch=H-36,ox=PL+cw*0.05,ow=cw*0.9;
+  // Raw signal
+  ctx.fillStyle='#94a3b8';ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText('原始EEG信号',ox,25);
+  ctx.beginPath();
+  for(let i=0;i<Math.min(ow,L.rawSignal.length);i++){ctx.lineTo(ox+i*(ow/200),ch*0.12+L.rawSignal[i]*0.5);}
+  ctx.strokeStyle='rgba(248,113,113,0.7)';ctx.lineWidth=1;ctx.stroke();
+  // Filtered signal
+  if(L.filtered){
+    ctx.fillText('滤波后信号 (0.5-50Hz带通)',ox,ch*0.28);
+    ctx.beginPath();
+    for(let i=0;i<Math.min(ow,L.filtSignal.length);i++){ctx.lineTo(ox+i*(ow/200),ch*0.35+L.filtSignal[i]*0.5);}
+    ctx.strokeStyle='rgba(74,222,128,0.8)';ctx.lineWidth=1.5;ctx.stroke();
+    // Filter animation
+    if(L.filterAnim>0&&L.filterAnim<1){L.filterAnim+=0.02;ctx.fillStyle=`rgba(74,222,128,${1-L.filterAnim})`;ctx.fillRect(ox,ch*0.28,ow*L.filterAnim,ch*0.12);}else if(L.filterAnim>=1)L.filterAnim=0;
+  }
+  // Spectrum
+  if(L.spectrum){
+    ctx.fillText('功率谱密度 (PSD)',ox,ch*0.52);
+    let bands=[{l:'δ',f:2,p:0.8,c:'#8b5cf6'},{l:'θ',f:6,p:0.6,c:'#06b6d4'},{l:'α',f:10,p:0.9,c:'#facc15'},{l:'β',f:20,p:0.4,c:'#f97316'},{l:'γ',f:40,p:0.2,c:'#ef4444'}];
+    let bw=ow/5*0.7,bg=ow/5*0.3;
+    bands.forEach((b,i)=>{let bx=ox+i*(bw+bg),by=ch*0.7,bh=b.p*ch*0.15;ctx.fillStyle=b.c;ctx.fillRect(bx,by-bh,bw,bh);ctx.fillStyle='#e2e8f0';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(b.l+' '+b.f+'Hz',bx+bw/2,by+14);});
+  }
+  // ERP
+  if(L.erpDone){
+    ctx.fillStyle='#94a3b8';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText('事件相关电位 (ERP) — P300成分',ox,ch*0.78);
+    ctx.beginPath();
+    for(let i=0;i<ow;i++){let t=i/ow;let v=0;if(t>0.1&&t<0.2)v=-Math.sin((t-0.1)/0.1*Math.PI)*0.3;if(t>0.25&&t<0.45)v=Math.sin((t-0.25)/0.2*Math.PI)*0.8;if(t>0.5&&t<0.65)v=-Math.sin((t-0.5)/0.15*Math.PI)*0.2;ctx.lineTo(ox+i,ch*0.88-v*ch*0.08);}
+    ctx.strokeStyle='#c084fc';ctx.lineWidth=2;ctx.stroke();
+    // P300 label
+    ctx.fillStyle='#c084fc';ctx.font='10px sans-serif';ctx.fillText('P300',ox+ow*0.35,ch*0.82);
+    ctx.beginPath();ctx.moveTo(ox+ow*0.35,ch*0.83);ctx.lineTo(ox+ow*0.35,ch*0.88-0.8*ch*0.08);ctx.strokeStyle='rgba(192,132,252,0.5)';ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.stroke();ctx.setLineDash([]);
+  }
+}
+function drawLevel3(){
+  let cw=W-PL,ch=H-36;
+  // Brain top view
+  drawBrain(PL+cw*0.5,ch*0.3,Math.min(cw,ch)*0.22,L.imagining==='left'?1:L.imagining==='right'?0:-1);
+  // Motor cortex highlight
+  if(L.imagining){
+    let side=L.imagining==='left'?1:-1;
+    let bx=PL+cw*0.5+side*Math.min(cw,ch)*0.22*0.35,by=ch*0.3-Math.min(cw,ch)*0.22*0.1;
+    ctx.beginPath();ctx.arc(bx,by,15,0,Math.PI*2);let g=ctx.createRadialGradient(bx,by,0,bx,by,15);g.addColorStop(0,'rgba(250,204,21,0.6)');g.addColorStop(1,'rgba(250,204,21,0)');ctx.fillStyle=g;ctx.fill();
+    ctx.fillStyle='#facc15';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(L.imagining==='left'?'右侧ERD':'左侧ERD',bx,by-20);
+  }
+  // Cursor and targets
+  let curX=cx(L.cursorX),curY=cy(L.cursorY*0.5+0.35);
+  ctx.beginPath();ctx.arc(curX,curY,8,0,Math.PI*2);ctx.fillStyle='#22c55e';ctx.fill();
+  ctx.beginPath();ctx.arc(curX,curY,12,0,Math.PI*2);let cg=ctx.createRadialGradient(curX,curY,4,curX,curY,12);cg.addColorStop(0,'rgba(34,197,94,0.4)');cg.addColorStop(1,'rgba(34,197,94,0)');ctx.fillStyle=cg;ctx.fill();
+  L.targets.forEach(t=>{let tx=cx(t.x),ty=cy(t.y*0.5+0.35);ctx.beginPath();ctx.arc(tx,ty,12,0,Math.PI*2);ctx.strokeStyle='#f97316';ctx.lineWidth=2;ctx.stroke();ctx.beginPath();ctx.arc(tx,ty,4,0,Math.PI*2);ctx.fillStyle='#f97316';ctx.fill();});
+  // Accuracy bar
+  ctx.fillStyle='#94a3b8';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText(`分类准确率: ${L.accuracy}%`,PL+cw*0.05,ch*0.92);
+  ctx.fillStyle='rgba(124,58,237,0.2)';ctx.fillRect(PL+cw*0.35,ch*0.9,cw*0.4,10);ctx.fillStyle=L.accuracy>=70?'#22c55e':'#f97316';ctx.fillRect(PL+cw*0.35,ch*0.9,cw*0.4*L.accuracy/100,10);
+  // Wave indicators
+  if(L.imgTimer>0){L.imgTimer--;let wy=ch*0.7,ww=cw*0.4;
+    drawWave(PL+cw*0.05,wy,ww,ch*0.08,0.8,0.5*(L.imagining==='left'?0.3:1),'#06b6d4',0.05,'C3 (左运动皮层)');
+    drawWave(PL+cw*0.55,wy,ww,ch*0.08,0.8,0.5*(L.imagining==='right'?0.3:1),'#f97316',0.05,'C4 (右运动皮层)');
+  }
+}
+// CHUNK7_PLACEHOLDER
+function drawLevel4(){
+  let cw=W-PL,ch=H-36;
+  // Brain cross-section
+  let bx=PL+cw*0.5,by=ch*0.35,br=Math.min(cw,ch)*0.25;
+  ctx.beginPath();ctx.ellipse(bx,by,br*1.1,br,0,0,Math.PI*2);ctx.fillStyle='rgba(124,58,237,0.06)';ctx.fill();ctx.strokeStyle='rgba(124,58,237,0.4)';ctx.lineWidth=2;ctx.stroke();
+  // Cortex layers
+  for(let i=0;i<3;i++){ctx.beginPath();ctx.ellipse(bx,by,br*(1-i*0.15),br*(0.85-i*0.15),0,0,Math.PI*2);ctx.strokeStyle=`rgba(124,58,237,${0.15+i*0.1})`;ctx.lineWidth=1;ctx.stroke();}
+  ctx.fillStyle='#94a3b8';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('大脑皮层',bx,by-br-10);
+  // Implant animation
+  if(L.implantPhase>=1){
+    // Electrode threads
+    let numE=L.implantPhase>=3?8:L.implantPhase>=2?4:1;
+    for(let i=0;i<numE;i++){
+      let a=-Math.PI/2+(-0.4+i*0.8/Math.max(numE-1,1));
+      let depth=L.implantPhase>=3?0.7:L.implantPhase>=2?0.4:0.15;
+      let ex=bx+Math.cos(a)*br*0.3,ey=by+Math.sin(a)*br*0.3;
+      let dx=bx+Math.cos(a)*br*depth,dy=by+Math.sin(a)*br*depth;
+      ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(dx,dy);ctx.strokeStyle='#06b6d4';ctx.lineWidth=1;ctx.stroke();
+      // Electrode tip
+      ctx.beginPath();ctx.arc(dx,dy,2,0,Math.PI*2);ctx.fillStyle='#22d3ee';ctx.fill();
+    }
+    if(L.implantPhase<3){ctx.fillStyle='#facc15';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText(L.implantPhase===1?'正在定位...':'正在植入...',bx,by+br+25);}
+    else{ctx.fillStyle='#4ade80';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('✓ 电极植入完成',bx,by+br+25);}
+  }
+  // Neuron recordings
+  if(L.neuronRec>0){
+    let ry=ch*0.72;
+    for(let n=0;n<L.neuronRec;n++){
+      let rx=PL+cw*0.05+n*cw*0.32,rw=cw*0.28,rh=ch*0.08;
+      ctx.fillStyle='rgba(10,10,30,0.7)';ctx.fillRect(rx,ry,rw,rh);ctx.strokeStyle='rgba(6,182,212,0.3)';ctx.strokeRect(rx,ry,rw,rh);
+      ctx.fillStyle='#06b6d4';ctx.font='9px sans-serif';ctx.textAlign='left';ctx.fillText(`神经元 #${n+1}`,rx+4,ry+12);
+      // Spike train
+      ctx.beginPath();
+      for(let i=0;i<rw;i++){let t=(tick+i+n*50)*0.05;let spike=Math.sin(t*L.neurons[n].rate)>0.9?1:0;ctx.lineTo(rx+i,ry+rh/2-spike*rh*0.35);}
+      ctx.strokeStyle='#22d3ee';ctx.lineWidth=1;ctx.stroke();
+    }
+  }
+  // High density array
+  if(L.arrayShown){
+    let ax=PL+cw*0.7,ay=ch*0.15,as=8;
+    ctx.fillStyle='#94a3b8';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('Utah阵列 (10×10)',ax+as*5,ay-8);
+    for(let r=0;r<10;r++)for(let c=0;c<10;c++){
+      let active=Math.sin(tick*0.05+r+c)>0.3;
+      ctx.beginPath();ctx.arc(ax+c*as*1.2,ay+r*as*1.2,2.5,0,Math.PI*2);ctx.fillStyle=active?'#22d3ee':'rgba(6,182,212,0.2)';ctx.fill();
+    }
+  }
+}
+function drawLevel5(){
+  let cw=W-PL,ch=H-36;
+  // P300 Speller grid
+  let gx=PL+cw*0.05,gy=ch*0.05,gs=Math.min(cw*0.12,ch*0.1);
+  ctx.fillStyle='#94a3b8';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText('P300 拼写器',gx,gy-5);
+  for(let r=0;r<6;r++)for(let c=0;c<6;c++){
+    let idx=r*6+c;let ch2=L.p300Grid[idx]||'';
+    let flash=L.p300Timer>0&&(Math.floor(L.p300Flash)===r||L.p300Flash===c+6);
+    let isTarget=ch2===L.p300Target;
+    ctx.fillStyle=flash?'rgba(250,204,21,0.3)':isTarget?'rgba(124,58,237,0.2)':'rgba(30,30,60,0.5)';
+    ctx.fillRect(gx+c*(gs+2),gy+r*(gs+2),gs,gs);
+    ctx.strokeStyle=isTarget?'#7c3aed':'rgba(124,58,237,0.2)';ctx.lineWidth=1;ctx.strokeRect(gx+c*(gs+2),gy+r*(gs+2),gs,gs);
+    ctx.fillStyle=flash?'#facc15':'#c4b5fd';ctx.font=`${gs*0.45}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(ch2,gx+c*(gs+2)+gs/2,gy+r*(gs+2)+gs/2);
+  }
+  ctx.textBaseline='alphabetic';
+  if(L.p300Timer>0)L.p300Timer--;
+  // Wheelchair
+  let wcArea={x:PL+cw*0.55,y:ch*0.05,w:cw*0.42,h:ch*0.4};
+  ctx.fillStyle='rgba(10,10,30,0.5)';ctx.fillRect(wcArea.x,wcArea.y,wcArea.w,wcArea.h);ctx.strokeStyle='rgba(124,58,237,0.2)';ctx.strokeRect(wcArea.x,wcArea.y,wcArea.w,wcArea.h);
+  ctx.fillStyle='#94a3b8';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText('脑控轮椅',wcArea.x+5,wcArea.y+15);
+  // Path
+  ctx.beginPath();ctx.setLineDash([4,4]);ctx.moveTo(wcArea.x+wcArea.w*0.15,wcArea.y+wcArea.h*0.5);ctx.lineTo(wcArea.x+wcArea.w*0.85,wcArea.y+wcArea.h*0.5);ctx.strokeStyle='rgba(124,58,237,0.3)';ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([]);
+  // Target
+  ctx.beginPath();ctx.arc(wcArea.x+wcArea.w*0.85,wcArea.y+wcArea.h*0.5,8,0,Math.PI*2);ctx.fillStyle='rgba(34,197,94,0.3)';ctx.fill();ctx.strokeStyle='#22c55e';ctx.lineWidth=1;ctx.stroke();
+  // Wheelchair icon
+  let wx=wcArea.x+wcArea.w*L.wheelchairX,wy=wcArea.y+wcArea.h*0.5;
+  ctx.beginPath();ctx.arc(wx,wy,10,0,Math.PI*2);ctx.fillStyle='#7c3aed';ctx.fill();ctx.fillStyle='#fff';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('♿',wx,wy+4);
+  // Robotic arm
+  let armArea={x:PL+cw*0.05,y:ch*0.68,w:cw*0.9,h:ch*0.28};
+  ctx.fillStyle='rgba(10,10,30,0.5)';ctx.fillRect(armArea.x,armArea.y,armArea.w,armArea.h);ctx.strokeStyle='rgba(124,58,237,0.2)';ctx.strokeRect(armArea.x,armArea.y,armArea.w,armArea.h);
+  ctx.fillStyle='#94a3b8';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText('脑控机械臂',armArea.x+5,armArea.y+15);
+  // Arm segments
+  let ax=armArea.x+armArea.w*0.2,ay=armArea.y+armArea.h*0.8;
+  let angle1=-Math.PI/4-L.armPhase*0.3,angle2=-Math.PI/3-L.armPhase*0.2;
+  let seg1=armArea.h*0.5,seg2=armArea.h*0.4;
+  let jx=ax+Math.cos(angle1)*seg1,jy=ay+Math.sin(angle1)*seg1;
+  let ex=jx+Math.cos(angle2)*seg2,ey=jy+Math.sin(angle2)*seg2;
+  ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(jx,jy);ctx.lineTo(ex,ey);ctx.strokeStyle='#06b6d4';ctx.lineWidth=4;ctx.stroke();
+  ctx.beginPath();ctx.arc(ax,ay,5,0,Math.PI*2);ctx.fillStyle='#0891b2';ctx.fill();
+  ctx.beginPath();ctx.arc(jx,jy,4,0,Math.PI*2);ctx.fill();
+  // Gripper
+  let gOpen=L.armGrab?5:15;
+  ctx.beginPath();ctx.moveTo(ex,ey);ctx.lineTo(ex-gOpen,ey-12);ctx.moveTo(ex,ey);ctx.lineTo(ex+gOpen,ey-12);ctx.strokeStyle='#06b6d4';ctx.lineWidth=3;ctx.stroke();
+  // Object
+  let objX=armArea.x+armArea.w*0.7,objY=armArea.y+armArea.h*0.65;
+  if(L.armGrab){objX=ex;objY=ey-15;}
+  ctx.fillStyle='#f97316';ctx.fillRect(objX-10,objY-10,20,20);ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('📦',objX,objY+4);
+}
+// CHUNK8_PLACEHOLDER
+function drawLevel6(){
+  let cw=W-PL,ch=H-36;
+  // Three sections
+  // 1. Tactile feedback
+  let s1y=ch*0.02,s1h=ch*0.3;
+  ctx.fillStyle='rgba(10,10,30,0.5)';ctx.fillRect(PL+cw*0.03,s1y,cw*0.94,s1h);
+  ctx.strokeStyle='rgba(124,58,237,0.2)';ctx.strokeRect(PL+cw*0.03,s1y,cw*0.94,s1h);
+  ctx.fillStyle='#c4b5fd';ctx.font='12px sans-serif';ctx.textAlign='left';ctx.fillText('⚡ 感觉反馈 — 电刺激→触觉',PL+cw*0.06,s1y+18);
+  // Hand outline
+  let hx=PL+cw*0.3,hy=s1y+s1h*0.55,hs=s1h*0.3;
+  ctx.beginPath();ctx.ellipse(hx,hy,hs*0.6,hs,0,0,Math.PI*2);ctx.strokeStyle='rgba(124,58,237,0.4)';ctx.lineWidth=1.5;ctx.stroke();
+  // Fingers
+  for(let i=0;i<5;i++){let a=-Math.PI/2+(-0.5+i*0.25);let fx=hx+Math.cos(a)*hs*1.2,fy=hy+Math.sin(a)*hs*1.2;ctx.beginPath();ctx.ellipse(fx,fy,hs*0.12,hs*0.3,a+Math.PI/2,0,Math.PI*2);ctx.stroke();}
+  ctx.fillStyle='#94a3b8';ctx.font='10px sans-serif';ctx.fillText('假肢手',hx-15,hy+hs+15);
+  // Stimulation pulses
+  if(L.stimDone){
+    for(let i=0;i<3;i++){let px=hx+Math.cos(tick*0.1+i*2)*hs*0.4,py=hy+Math.sin(tick*0.1+i*2)*hs*0.4;
+      ctx.beginPath();ctx.arc(px,py,4+Math.sin(tick*0.15+i)*2,0,Math.PI*2);let sg=ctx.createRadialGradient(px,py,0,px,py,6);sg.addColorStop(0,'rgba(250,204,21,0.7)');sg.addColorStop(1,'rgba(250,204,21,0)');ctx.fillStyle=sg;ctx.fill();}
+    ctx.fillStyle='#4ade80';ctx.font='10px sans-serif';ctx.fillText('✓ 触觉信号传入体感皮层',PL+cw*0.55,s1y+s1h*0.5);
+  }
+  // Brain→electrode→cortex arrow
+  let arrowX=PL+cw*0.6;
+  ctx.beginPath();ctx.moveTo(arrowX,s1y+s1h*0.3);ctx.lineTo(arrowX+cw*0.15,s1y+s1h*0.3);ctx.strokeStyle='#facc15';ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.stroke();ctx.setLineDash([]);
+  drawBrain(arrowX+cw*0.25,s1y+s1h*0.5,s1h*0.35,3);
+
+  // 2. Brain-Brain Interface
+  let s2y=s1y+s1h+ch*0.03,s2h=ch*0.3;
+  ctx.fillStyle='rgba(10,10,30,0.5)';ctx.fillRect(PL+cw*0.03,s2y,cw*0.94,s2h);
+  ctx.strokeStyle='rgba(124,58,237,0.2)';ctx.strokeRect(PL+cw*0.03,s2y,cw*0.94,s2h);
+  ctx.fillStyle='#c4b5fd';ctx.font='12px sans-serif';ctx.textAlign='left';ctx.fillText('🔗 脑脑接口 (BBI)',PL+cw*0.06,s2y+18);
+  // Two brains
+  let b1x=PL+cw*0.22,b2x=PL+cw*0.78,bby=s2y+s2h*0.55,bbs=s2h*0.3;
+  drawBrain(b1x,bby,bbs,0);drawBrain(b2x,bby,bbs,1);
+  ctx.fillStyle='#94a3b8';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('发送者',b1x,bby+bbs+15);ctx.fillText('接收者',b2x,bby+bbs+15);
+  // Connection
+  if(L.bbiDone){
+    ctx.beginPath();ctx.moveTo(b1x+bbs,bby);ctx.lineTo(b2x-bbs,bby);
+    ctx.strokeStyle='#22d3ee';ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.stroke();ctx.setLineDash([]);
+    // Data packets
+    for(let i=0;i<3;i++){let t=((tick*0.02+i*0.33)%1);let px=b1x+bbs+(b2x-bbs-b1x-bbs)*t;ctx.beginPath();ctx.arc(px,bby,4,0,Math.PI*2);ctx.fillStyle='#22d3ee';ctx.fill();}
+    ctx.fillStyle='#4ade80';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('✓ 运动意图传输中',PL+cw*0.5,bby-bbs-5);
+  }
+
+  // 3. Ethics
+  let s3y=s2y+s2h+ch*0.03,s3h=ch*0.28;
+  ctx.fillStyle='rgba(10,10,30,0.5)';ctx.fillRect(PL+cw*0.03,s3y,cw*0.94,s3h);
+  ctx.strokeStyle='rgba(124,58,237,0.2)';ctx.strokeRect(PL+cw*0.03,s3y,cw*0.94,s3h);
+  ctx.fillStyle='#c4b5fd';ctx.font='12px sans-serif';ctx.textAlign='left';ctx.fillText('💬 BCI伦理讨论',PL+cw*0.06,s3y+18);
+  const ethics=['🔒 思维隐私：谁能读取你的想法？','⚖️ 认知公平：增强大脑是否制造不平等？','🧬 身份认同：脑机融合后"我"还是"我"吗？','🏥 医疗伦理：侵入式手术的风险与收益'];
+  ethics.forEach((e,i)=>{ctx.fillStyle=L.ethicsDone?'#4ade80':'#94a3b8';ctx.font='11px sans-serif';ctx.fillText(e,PL+cw*0.08,s3y+38+i*20);});
+  if(L.ethicsDone){ctx.fillStyle='#4ade80';ctx.font='11px sans-serif';ctx.fillText('✓ 伦理思考完成 — 技术发展需要伦理护航',PL+cw*0.08,s3y+38+ethics.length*20+8);}
+}
+// Main draw
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  tick++;
+  const drawFns=[drawLevel0,drawLevel1,drawLevel2,drawLevel3,drawLevel4,drawLevel5,drawLevel6];
+  if(drawFns[curLevel])drawFns[curLevel]();
+  mouse.clicked=false;
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+</body>
+</html>

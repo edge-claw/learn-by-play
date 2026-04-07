@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>模拟电路实验室 - 交互式教育游戏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#c0c0d0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+canvas{display:block;position:absolute;top:0;left:320px}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(10,10,30,0.95);border-right:1px solid #1a1a3a;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box}
+.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#111;color:#888;transition:all .3s}
+.level-btn.active{background:#2a1a00;color:#eab308;border-color:#eab308}
+.level-btn.done{color:#4ade80;border-color:#22c55e}
+.concept-box{background:#0d0d24;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #eab308;background:#1a1a00;color:#eab308;font-size:13px;cursor:pointer;text-align:center;transition:all .3s}
+.act-btn:hover{background:#2a2a10}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.act-btn.red{border-color:#ef4444;background:#2a0a0a;color:#f87171}
+.learn-box{background:#1a1a00;border:1px solid #eab308;border-radius:10px;padding:12px;margin:10px 0;font-size:12px;line-height:1.7;color:#fbbf24}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#eab308}
+.sv{color:#eab308;font-weight:bold}
+#infoBar{position:absolute;bottom:0;left:320px;right:0;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid #1a1a3a;display:flex;align-items:center;padding:0 16px;font-size:12px;color:#888;z-index:10}
+.panel h3{color:#eab308;font-size:14px;margin:8px 0 4px}
+.panel h4{color:#fbbf24;font-size:12px;margin:6px 0 2px}
+.obj-item{font-size:12px;margin:2px 0;color:#a0a0c0}
+.obj-item.done{color:#4ade80}
+.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
+#overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,10,26,0.97);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+#overlay h1{font-size:42px;color:#eab308;margin-bottom:8px;text-shadow:0 0 30px rgba(234,179,8,0.3)}
+#overlay .sub{font-size:16px;color:#888;margin-bottom:30px}
+#overlay .features{display:flex;flex-wrap:wrap;justify-content:center;gap:16px;margin-bottom:36px;max-width:600px}
+#overlay .feat{background:#111;border:1px solid #222;border-radius:12px;padding:12px 16px;font-size:13px;color:#aaa;min-width:120px}
+#overlay .feat .icon{font-size:24px;display:block;margin-bottom:6px}
+#startBtn{padding:16px 48px;font-size:18px;background:linear-gradient(135deg,#eab308,#f59e0b);color:#000;border:none;border-radius:12px;cursor:pointer;font-weight:bold;transition:all .3s}
+#startBtn:hover{transform:scale(1.05);box-shadow:0 0 30px rgba(234,179,8,0.4)}
+.select-wrap{margin:8px 0}.select-wrap label{font-size:11px;color:#888}
+.select-wrap select{width:100%;margin-top:4px;padding:6px;background:#111;color:#ccc;border:1px solid #333;border-radius:6px;font-size:12px}
+</style>
+</head>
+<body>
+<div id="overlay">
+<h1>⚡ 模拟电路 实验室</h1>
+<p class="sub">7 个关卡，从电阻到运放的模拟世界</p>
+<div class="features">
+<div class="feat"><span class="icon">Ω</span>欧姆定律</div>
+<div class="feat"><span class="icon">⏱</span>RC/RL/RLC</div>
+<div class="feat"><span class="icon">◗</span>二极管整流</div>
+<div class="feat"><span class="icon">▷</span>三极管放大</div>
+<div class="feat"><span class="icon">△</span>运算放大器</div>
+<div class="feat"><span class="icon">〰</span>滤波器</div>
+<div class="feat"><span class="icon">∿</span>振荡器</div>
+</div>
+<button id="startBtn" onclick="startGame()">开始探索</button>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="infoBar">模拟电路实验室 | 共7关</div>
+<script>
+// ===== 音效 =====
+const AudioCtx=window.AudioContext||window.webkitAudioContext;
+let audioCtx=null;
+function ensureAudio(){if(!audioCtx)audioCtx=new AudioCtx()}
+function playSound(t){
+ ensureAudio();const now=audioCtx.currentTime;
+ if(t==='click'){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.setValueAtTime(800,now);o.frequency.exponentialRampToValueAtTime(1200,now+0.05);g.gain.setValueAtTime(0.15,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.08);o.start(now);o.stop(now+0.08)}
+ else if(t==='success'){[523,659,784].forEach((f,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.setValueAtTime(f,now+i*0.12);g.gain.setValueAtTime(0.15,now+i*0.12);g.gain.exponentialRampToValueAtTime(0.001,now+i*0.12+0.3);o.start(now+i*0.12);o.stop(now+i*0.12+0.3)})}
+}
+
+// ===== 全局状态 =====
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+let W,H,curLevel=0,time=0,particles=[];
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+let started=false;
+
+// 关卡状态
+let L1={V:12,R1:1000,R2:2000,mode:'series',verified:[false,false,false]};
+let L2={R:1000,C:0.000001,L:0.01,mode:'rc',sw:false,t0:0,waveData:[],freq:1000};
+let L3={mode:'forward',rectMode:'none',angle:0};
+let L4={Ib:10,Rb:100000,Rc:2200,Vcc:12,beta:100,wavePhase:0};
+let L5={topo:'inv',Rf:10000,Ri:1000,R1:1000,R2:1000,wavePhase:0};
+let L6={type:'lp',R:1000,C:0.0000001,freq:100,bodeData:[]};
+let L7={mode:'rc_osc',feedback:0.5,freq:1000,running:false,phase:0,duty:50};
+
+function resize(){
+ W=window.innerWidth-320;H=window.innerHeight-36;
+ cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';
+}
+window.addEventListener('resize',resize);resize();
+
+function startGame(){
+ document.getElementById('overlay').style.display='none';
+ started=true;loadLevel(0);
+}
+
+// ===== 粒子系统 =====
+function spawnParticles(x,y,n,color){
+ for(let i=0;i<n;i++){
+  const a=Math.random()*Math.PI*2,v=Math.random()*2+1;
+  particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:40+Math.random()*20,maxLife:60,color,size:Math.random()*2+1});
+ }
+}
+
+// ===== 关卡定义 =====
+const levels=[
+{name:'欧姆定律与基尔霍夫定律',concept:'V=IR 是电路分析的基石。\nKVL：回路中电压之和为零。\nKCL：节点处电流之和为零。',
+ objs:['验证欧姆定律 V=IR','验证 KVL（回路电压和=0）','验证 KCL（节点电流和=0）'],
+ learn:'欧姆定律 V=IR 描述了电压、电流、电阻的线性关系。<span class="sv">基尔霍夫电压定律(KVL)</span>：任意闭合回路中电压代数和为零。<span class="sv">基尔霍夫电流定律(KCL)</span>：任意节点流入电流等于流出电流。'},
+{name:'RC/RL/RLC 电路',concept:'电容储存电场能量，充放电有时间常数 τ=RC。\n电感储存磁场能量，时间常数 τ=L/R。\nRLC 电路在谐振频率 f₀=1/(2π√LC) 处阻抗最小。',
+ objs:['观察 RC 充电曲线','观察 RL 响应','找到 RLC 谐振频率'],
+ learn:'RC 电路时间常数 <span class="sv">τ=RC</span>，充电到 63.2% 需要 1τ。RL 电路时间常数 <span class="sv">τ=L/R</span>。RLC 谐振频率 <span class="sv">f₀=1/(2π√LC)</span>，此时电路呈纯电阻性。'},
+{name:'二极管与整流',concept:'PN 结正向偏置时导通（约0.7V），反向偏置时截止。\n半波整流只通过正半周。\n全波整流利用桥式电路将负半周翻转。',
+ objs:['理解正向导通','搭建半波整流','搭建全波整流'],
+ learn:'二极管正向导通压降约 <span class="sv">0.7V</span>（硅管）。半波整流效率低，输出有大量纹波。<span class="sv">桥式全波整流</span>利用4个二极管，正负半周都有输出，纹波频率是输入的2倍。'},
+{name:'三极管放大器',concept:'BJT 三极管：基极小电流控制集电极大电流。\n电流放大倍数 β=Ic/Ib。\n共射放大器：输出与输入反相，电压增益 Av=-β×Rc/Rb。',
+ objs:['观察电流放大','设置合适偏置点','测量电压增益'],
+ learn:'BJT 工作在放大区时 <span class="sv">Ic=β×Ib</span>。共射放大器电压增益 <span class="sv">Av≈-Rc/re</span>，输出与输入反相。偏置点决定了静态工作点，影响信号不失真的最大幅度。'},
+{name:'运算放大器',concept:'理想运放：无穷大增益、无穷大输入阻抗、零输出阻抗。\n反相放大器：Av=-Rf/Ri\n同相放大器：Av=1+Rf/Ri\n加法器：Vo=-(V1×Rf/R1+V2×Rf/R2)',
+ objs:['搭建反相放大器','搭建同相放大器','实现加法运算'],
+ learn:'运放通过负反馈实现精确增益控制。<span class="sv">反相放大器 Av=-Rf/Ri</span>，输出反相。<span class="sv">同相放大器 Av=1+Rf/Ri</span>，输出同相。虚短虚断是分析运放电路的核心方法。'},
+{name:'滤波器设计',concept:'低通滤波器：通过低频，衰减高频。\n高通滤波器：通过高频，衰减低频。\n截止频率 fc=1/(2πRC)，-3dB 点。\n波特图显示幅频和相频特性。',
+ objs:['设计低通滤波器','设计高通滤波器','读懂波特图'],
+ learn:'一阶 RC 滤波器截止频率 <span class="sv">fc=1/(2πRC)</span>。低通滤波器在截止频率以上以 <span class="sv">-20dB/dec</span> 衰减。波特图横轴为对数频率，纵轴为增益(dB)和相位(°)。'},
+{name:'振荡器与信号发生',concept:'正反馈使电路自激振荡。\n巴克豪森准则：环路增益≥1，相移=360°。\nRC 振荡器频率由 RC 网络决定。\n555 定时器可产生方波，频率由 R/C 决定。',
+ objs:['使电路起振','调节振荡频率','用 555 产生方波'],
+ learn:'振荡器需满足<span class="sv">巴克豪森准则</span>：环路增益≥1且总相移为360°。RC 振荡器频率 <span class="sv">f=1/(2πRC)</span>。555 定时器方波频率 <span class="sv">f=1.44/((R1+2R2)C)</span>，占空比由 R1、R2 决定。'}
+];
+
+// ===== 面板渲染 =====
+function loadLevel(idx){
+ curLevel=idx;time=0;particles=[];
+ // 重置关卡状态
+ if(idx===0){L1.verified=[false,false,false];L1.mode='series'}
+ if(idx===1){L2.sw=false;L2.waveData=[];L2.mode='rc'}
+ if(idx===2){L3.mode='forward';L3.rectMode='none';L3.angle=0}
+ if(idx===3)L4.wavePhase=0;
+ if(idx===4)L5.wavePhase=0;
+ if(idx===5)L6.bodeData=[];
+ if(idx===6){L7.running=false;L7.phase=0}
+ renderPanel();
+}
+
+function renderPanel(){
+ const p=document.getElementById('panel');
+ const lv=levels[curLevel];
+ let h='<h3>⚡ 模拟电路实验室</h3><div style="margin:6px 0">';
+ for(let i=0;i<7;i++){
+  const done=levelObjs[i].every(v=>v);
+  const cls=i===curLevel?'active':(done?'done':'');
+  h+=`<span class="level-btn ${cls}" onclick="loadLevel(${i})">${i+1}</span>`;
+ }
+ h+='</div>';
+ h+=`<h3>关卡${curLevel+1}: ${lv.name}</h3>`;
+ h+=`<div class="concept-box">${lv.concept.replace(/\n/g,'<br>')}</div>`;
+ h+='<h4>🎯 目标</h4>';
+ for(let i=0;i<3;i++){
+  const done=levelObjs[curLevel][i];
+  h+=`<div class="obj-item ${done?'done':''}">${done?'✅':'⬜'} ${lv.objs[i]}</div>`;
+ }
+ // 关卡特定控件
+ h+=renderControls();
+ // 通关知识
+ if(levelObjs[curLevel].every(v=>v)){
+  h+=`<div class="learn-box">💡 ${lv.learn}</div>`;
+ }
+ p.innerHTML=h;
+ document.getElementById('infoBar').textContent=`模拟电路实验室 | 关卡 ${curLevel+1}/7: ${lv.name}`;
+}
+
+function renderControls(){
+ let h='';
+ if(curLevel===0){
+  h+=`<h4>⚙ 电路参数</h4>`;
+  h+=`<div class="select-wrap"><label>电路模式</label><select onchange="L1.mode=this.value;renderPanel()">
+   <option value="series" ${L1.mode==='series'?'selected':''}>串联电路</option>
+   <option value="parallel" ${L1.mode==='parallel'?'selected':''}>并联电路</option></select></div>`;
+  h+=`<div class="slider-wrap"><label>电源电压 V = ${L1.V}V</label><input type="range" min="1" max="24" value="${L1.V}" oninput="L1.V=+this.value;renderPanel()"></div>`;
+  h+=`<div class="slider-wrap"><label>电阻 R1 = ${L1.R1}Ω</label><input type="range" min="100" max="10000" step="100" value="${L1.R1}" oninput="L1.R1=+this.value;renderPanel()"></div>`;
+  h+=`<div class="slider-wrap"><label>电阻 R2 = ${L1.R2}Ω</label><input type="range" min="100" max="10000" step="100" value="${L1.R2}" oninput="L1.R2=+this.value;renderPanel()"></div>`;
+  const Rt=L1.mode==='series'?L1.R1+L1.R2:(L1.R1*L1.R2)/(L1.R1+L1.R2);
+  const I=L1.V/Rt;
+  h+=`<div class="hint-box">总电阻: ${Rt.toFixed(1)}Ω | 总电流: ${(I*1000).toFixed(2)}mA</div>`;
+  h+=`<button class="act-btn" onclick="verifyOhm()">验证欧姆定律</button>`;
+  h+=`<button class="act-btn" onclick="verifyKVL()">验证 KVL</button>`;
+  h+=`<button class="act-btn" onclick="verifyKCL()">验证 KCL</button>`;
+ }
+ else if(curLevel===1){
+  h+=`<h4>⚙ 电路类型</h4>`;
+  h+=`<div class="select-wrap"><label>电路</label><select onchange="L2.mode=this.value;L2.sw=false;L2.waveData=[];renderPanel()">
+   <option value="rc" ${L2.mode==='rc'?'selected':''}>RC 电路</option>
+   <option value="rl" ${L2.mode==='rl'?'selected':''}>RL 电路</option>
+   <option value="rlc" ${L2.mode==='rlc'?'selected':''}>RLC 电路</option></select></div>`;
+  h+=`<div class="slider-wrap"><label>R = ${L2.R}Ω</label><input type="range" min="100" max="10000" step="100" value="${L2.R}" oninput="L2.R=+this.value;renderPanel()"></div>`;
+  if(L2.mode==='rc'||L2.mode==='rlc')h+=`<div class="slider-wrap"><label>C = ${(L2.C*1e6).toFixed(1)}μF</label><input type="range" min="1" max="100" value="${L2.C*1e6}" oninput="L2.C=+this.value/1e6;renderPanel()"></div>`;
+  if(L2.mode==='rl'||L2.mode==='rlc')h+=`<div class="slider-wrap"><label>L = ${(L2.L*1000).toFixed(1)}mH</label><input type="range" min="1" max="100" value="${L2.L*1000}" oninput="L2.L=+this.value/1000;renderPanel()"></div>`;
+  if(L2.mode==='rlc')h+=`<div class="slider-wrap"><label>驱动频率 = ${L2.freq}Hz</label><input type="range" min="100" max="10000" step="100" value="${L2.freq}" oninput="L2.freq=+this.value;renderPanel()"></div>`;
+  const tau=L2.mode==='rc'?L2.R*L2.C:(L2.mode==='rl'?L2.L/L2.R:0);
+  if(tau>0)h+=`<div class="hint-box">时间常数 τ = ${(tau*1000).toFixed(2)}ms</div>`;
+  if(L2.mode==='rlc'){const f0=1/(2*Math.PI*Math.sqrt(L2.L*L2.C));h+=`<div class="hint-box">谐振频率 f₀ = ${f0.toFixed(1)}Hz | 当前 ${L2.freq}Hz</div>`}
+  h+=`<button class="act-btn" onclick="toggleSwitch()">${L2.sw?'断开开关':'闭合开关'}</button>`;
+  if(L2.mode==='rlc')h+=`<button class="act-btn" onclick="findResonance()">检测谐振</button>`;
+ }
+ else if(curLevel===2){
+  h+=`<h4>⚙ 二极管模式</h4>`;
+  h+=`<div class="select-wrap"><label>偏置方向</label><select onchange="L3.mode=this.value;renderPanel()">
+   <option value="forward" ${L3.mode==='forward'?'selected':''}>正向偏置</option>
+   <option value="reverse" ${L3.mode==='reverse'?'selected':''}>反向偏置</option></select></div>`;
+  h+=`<div class="select-wrap"><label>整流电路</label><select onchange="L3.rectMode=this.value;renderPanel()">
+   <option value="none" ${L3.rectMode==='none'?'selected':''}>无（单二极管）</option>
+   <option value="half" ${L3.rectMode==='half'?'selected':''}>半波整流</option>
+   <option value="full" ${L3.rectMode==='full'?'selected':''}>全波桥式整流</option></select></div>`;
+  h+=`<button class="act-btn" onclick="checkDiode()">检测导通状态</button>`;
+  if(L3.rectMode!=='none')h+=`<button class="act-btn" onclick="checkRect()">验证整流输出</button>`;
+ }
+ else if(curLevel===3){
+  h+=`<h4>⚙ BJT 参数</h4>`;
+  h+=`<div class="slider-wrap"><label>β (放大倍数) = ${L4.beta}</label><input type="range" min="20" max="300" value="${L4.beta}" oninput="L4.beta=+this.value;renderPanel()"></div>`;
+  h+=`<div class="slider-wrap"><label>Rb = ${(L4.Rb/1000).toFixed(0)}kΩ</label><input type="range" min="10000" max="500000" step="10000" value="${L4.Rb}" oninput="L4.Rb=+this.value;renderPanel()"></div>`;
+  h+=`<div class="slider-wrap"><label>Rc = ${(L4.Rc/1000).toFixed(1)}kΩ</label><input type="range" min="100" max="10000" step="100" value="${L4.Rc}" oninput="L4.Rc=+this.value;renderPanel()"></div>`;
+  h+=`<div class="slider-wrap"><label>Vcc = ${L4.Vcc}V</label><input type="range" min="3" max="24" value="${L4.Vcc}" oninput="L4.Vcc=+this.value;renderPanel()"></div>`;
+  const Ib=(L4.Vcc-0.7)/L4.Rb,Ic=Math.min(L4.beta*Ib,L4.Vcc/L4.Rc),Vce=L4.Vcc-Ic*L4.Rc;
+  h+=`<div class="hint-box">Ib=${(Ib*1e6).toFixed(1)}μA | Ic=${(Ic*1000).toFixed(2)}mA | Vce=${Vce.toFixed(2)}V</div>`;
+  h+=`<button class="act-btn" onclick="checkAmplify()">观察电流放大</button>`;
+  h+=`<button class="act-btn" onclick="checkBias()">检查偏置点</button>`;
+  h+=`<button class="act-btn" onclick="checkGain()">测量电压增益</button>`;
+ }
+ else if(curLevel===4){
+  h+=`<h4>⚙ 运放电路</h4>`;
+  h+=`<div class="select-wrap"><label>拓扑结构</label><select onchange="L5.topo=this.value;renderPanel()">
+   <option value="inv" ${L5.topo==='inv'?'selected':''}>反相放大器</option>
+   <option value="non" ${L5.topo==='non'?'selected':''}>同相放大器</option>
+   <option value="add" ${L5.topo==='add'?'selected':''}>加法器</option></select></div>`;
+  h+=`<div class="slider-wrap"><label>Rf = ${(L5.Rf/1000).toFixed(1)}kΩ</label><input type="range" min="1000" max="100000" step="1000" value="${L5.Rf}" oninput="L5.Rf=+this.value;renderPanel()"></div>`;
+  h+=`<div class="slider-wrap"><label>Ri = ${(L5.Ri/1000).toFixed(1)}kΩ</label><input type="range" min="1000" max="100000" step="1000" value="${L5.Ri}" oninput="L5.Ri=+this.value;renderPanel()"></div>`;
+  let gain=0;
+  if(L5.topo==='inv')gain=-L5.Rf/L5.Ri;
+  else if(L5.topo==='non')gain=1+L5.Rf/L5.Ri;
+  else gain=L5.Rf/L5.R1;
+  h+=`<div class="hint-box">增益 Av = ${gain.toFixed(2)}</div>`;
+  h+=`<button class="act-btn" onclick="checkOpamp()">验证增益</button>`;
+ }
+ else if(curLevel===5){
+  h+=`<h4>⚙ 滤波器参数</h4>`;
+  h+=`<div class="select-wrap"><label>滤波器类型</label><select onchange="L6.type=this.value;L6.bodeData=[];renderPanel()">
+   <option value="lp" ${L6.type==='lp'?'selected':''}>低通滤波器</option>
+   <option value="hp" ${L6.type==='hp'?'selected':''}>高通滤波器</option></select></div>`;
+  h+=`<div class="slider-wrap"><label>R = ${L6.R}Ω</label><input type="range" min="100" max="10000" step="100" value="${L6.R}" oninput="L6.R=+this.value;renderPanel()"></div>`;
+  h+=`<div class="slider-wrap"><label>C = ${(L6.C*1e9).toFixed(0)}nF</label><input type="range" min="1" max="1000" value="${L6.C*1e9}" oninput="L6.C=+this.value/1e9;renderPanel()"></div>`;
+  h+=`<div class="slider-wrap"><label>信号频率 = ${L6.freq}Hz</label><input type="range" min="10" max="100000" step="10" value="${L6.freq}" oninput="L6.freq=+this.value;renderPanel()"></div>`;
+  const fc=1/(2*Math.PI*L6.R*L6.C);
+  h+=`<div class="hint-box">截止频率 fc = ${fc.toFixed(1)}Hz</div>`;
+  h+=`<button class="act-btn" onclick="scanBode()">扫描波特图</button>`;
+  h+=`<button class="act-btn" onclick="checkFilter()">验证滤波效果</button>`;
+ }
+ else if(curLevel===6){
+  h+=`<h4>⚙ 振荡器参数</h4>`;
+  h+=`<div class="select-wrap"><label>振荡器类型</label><select onchange="L7.mode=this.value;L7.running=false;renderPanel()">
+   <option value="rc_osc" ${L7.mode==='rc_osc'?'selected':''}>RC 振荡器</option>
+   <option value="lc_osc" ${L7.mode==='lc_osc'?'selected':''}>LC 振荡器</option>
+   <option value="555" ${L7.mode==='555'?'selected':''}>555 定时器</option></select></div>`;
+  h+=`<div class="slider-wrap"><label>反馈系数 = ${L7.feedback.toFixed(2)}</label><input type="range" min="0" max="150" value="${L7.feedback*100}" oninput="L7.feedback=+this.value/100;renderPanel()"></div>`;
+  h+=`<div class="slider-wrap"><label>频率 = ${L7.freq}Hz</label><input type="range" min="100" max="10000" step="100" value="${L7.freq}" oninput="L7.freq=+this.value;renderPanel()"></div>`;
+  if(L7.mode==='555')h+=`<div class="slider-wrap"><label>占空比 = ${L7.duty}%</label><input type="range" min="10" max="90" value="${L7.duty}" oninput="L7.duty=+this.value;renderPanel()"></div>`;
+  h+=`<div class="hint-box">${L7.running?'🟢 振荡中':'🔴 未起振'} | 环路增益: ${(L7.feedback*3.3).toFixed(2)}</div>`;
+  h+=`<button class="act-btn" onclick="tryOscillate()">尝试起振</button>`;
+  h+=`<button class="act-btn" onclick="check555()">验证输出</button>`;
+ }
+ return h;
+}
+
+function completeObj(li,oi){
+ if(!levelObjs[li][oi]){levelObjs[li][oi]=true;playSound('success');spawnParticles(W/2,H/2,30,'#eab308');renderPanel()}
+}
+
+// === 关卡1 动作 ===
+function verifyOhm(){
+ const Rt=L1.mode==='series'?L1.R1+L1.R2:(L1.R1*L1.R2)/(L1.R1+L1.R2);
+ const I=L1.V/Rt;
+ spawnParticles(W/2,H/2,15,'#eab308');
+ completeObj(0,0);
+}
+function verifyKVL(){
+ if(L1.mode==='series'){completeObj(0,1);spawnParticles(W/2,H/3,15,'#4ade80')}
+ else{renderPanel()}
+}
+function verifyKCL(){
+ if(L1.mode==='parallel'){completeObj(0,2);spawnParticles(W/2,H*2/3,15,'#60a5fa')}
+ else{L1.mode='parallel';renderPanel()}
+}
+
+// === 关卡2 动作 ===
+function toggleSwitch(){
+ L2.sw=!L2.sw;L2.t0=time;L2.waveData=[];
+ if(L2.sw&&L2.mode==='rc')completeObj(1,0);
+ if(L2.sw&&L2.mode==='rl')completeObj(1,1);
+ renderPanel();
+}
+function findResonance(){
+ if(L2.mode!=='rlc')return;
+ const f0=1/(2*Math.PI*Math.sqrt(L2.L*L2.C));
+ if(Math.abs(L2.freq-f0)/f0<0.15){completeObj(1,2);spawnParticles(W/2,H/2,25,'#f59e0b')}
+ renderPanel();
+}
+
+// === 关卡3 动作 ===
+function checkDiode(){
+ if(L3.mode==='forward'){completeObj(2,0);spawnParticles(W/2,H/2,15,'#eab308')}
+ renderPanel();
+}
+function checkRect(){
+ if(L3.rectMode==='half'){completeObj(2,1);spawnParticles(W/2,H/2,15,'#4ade80')}
+ if(L3.rectMode==='full'){completeObj(2,2);spawnParticles(W/2,H/2,20,'#60a5fa')}
+ renderPanel();
+}
+
+// === 关卡4 动作 ===
+function checkAmplify(){
+ const Ib=(L4.Vcc-0.7)/L4.Rb,Ic=L4.beta*Ib;
+ if(Ic>Ib*10){completeObj(3,0);spawnParticles(W/2,H/2,15,'#eab308')}
+ renderPanel();
+}
+function checkBias(){
+ const Ib=(L4.Vcc-0.7)/L4.Rb,Ic=Math.min(L4.beta*Ib,L4.Vcc/L4.Rc),Vce=L4.Vcc-Ic*L4.Rc;
+ if(Vce>1&&Vce<L4.Vcc-1){completeObj(3,1);spawnParticles(W/2,H/3,15,'#4ade80')}
+ renderPanel();
+}
+function checkGain(){
+ const Ib=(L4.Vcc-0.7)/L4.Rb,Ic=Math.min(L4.beta*Ib,L4.Vcc/L4.Rc),Vce=L4.Vcc-Ic*L4.Rc;
+ if(Vce>1&&Vce<L4.Vcc-1){completeObj(3,2);spawnParticles(W/2,H*2/3,15,'#60a5fa')}
+ renderPanel();
+}
+
+// === 关卡5 动作 ===
+function checkOpamp(){
+ if(L5.topo==='inv'){completeObj(4,0);spawnParticles(W/2,H/2,15,'#eab308')}
+ else if(L5.topo==='non'){completeObj(4,1);spawnParticles(W/2,H/2,15,'#4ade80')}
+ else if(L5.topo==='add'){completeObj(4,2);spawnParticles(W/2,H/2,15,'#60a5fa')}
+ renderPanel();
+}
+
+// === 关卡6 动作 ===
+function scanBode(){
+ L6.bodeData=[];
+ for(let f=10;f<=100000;f*=1.2){
+  const fc=1/(2*Math.PI*L6.R*L6.C);
+  let gain;
+  if(L6.type==='lp')gain=1/Math.sqrt(1+Math.pow(f/fc,2));
+  else gain=1/Math.sqrt(1+Math.pow(fc/f,2));
+  L6.bodeData.push({f,gain:20*Math.log10(gain)});
+ }
+ completeObj(5,2);renderPanel();
+}
+function checkFilter(){
+ const fc=1/(2*Math.PI*L6.R*L6.C);
+ if(L6.type==='lp'&&fc>100){completeObj(5,0);spawnParticles(W/2,H/2,15,'#eab308')}
+ if(L6.type==='hp'&&fc>100){completeObj(5,1);spawnParticles(W/2,H/2,15,'#4ade80')}
+ renderPanel();
+}
+
+// === 关卡7 动作 ===
+function tryOscillate(){
+ if(L7.feedback>=0.3){L7.running=true;completeObj(6,0);spawnParticles(W/2,H/2,20,'#eab308')}
+ else{L7.running=false}
+ renderPanel();
+}
+function check555(){
+ if(L7.mode==='555'&&L7.running){completeObj(6,2);spawnParticles(W/2,H/2,20,'#60a5fa')}
+ if(L7.running&&L7.freq!==1000){completeObj(6,1);spawnParticles(W/2,H/3,15,'#4ade80')}
+ renderPanel();
+}
+
+// ===== 绘图辅助 =====
+function drawWire(x1,y1,x2,y2,color='#555',w=2){ctx.strokeStyle=color;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}
+function drawResistor(x,y,w,h,label,val){
+ ctx.fillStyle='#1a1a3a';ctx.strokeStyle='#eab308';ctx.lineWidth=2;
+ ctx.beginPath();ctx.roundRect(x,y,w,h,4);ctx.fill();ctx.stroke();
+ ctx.fillStyle='#eab308';ctx.font='11px monospace';ctx.textAlign='center';
+ ctx.fillText(label,x+w/2,y+h/2-2);ctx.fillStyle='#888';ctx.font='10px sans-serif';
+ ctx.fillText(val,x+w/2,y+h/2+12);
+}
+function drawCapacitor(x,y,size){
+ ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;
+ ctx.beginPath();ctx.moveTo(x-size/2,y-size/3);ctx.lineTo(x-size/2,y+size/3);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(x+size/2,y-size/3);ctx.lineTo(x+size/2,y+size/3);ctx.stroke();
+ ctx.fillStyle='#60a5fa';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('C',x,y+size/2+10);
+}
+function drawInductor(x,y,w){
+ ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.beginPath();
+ for(let i=0;i<4;i++){const cx=x+i*w/4+w/8;ctx.arc(cx,y,w/8,Math.PI,0)}
+ ctx.stroke();ctx.fillStyle='#f59e0b';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('L',x+w/2,y+20);
+}
+function drawBattery(x,y,h){
+ ctx.strokeStyle='#ef4444';ctx.lineWidth=2;
+ ctx.beginPath();ctx.moveTo(x-8,y-h/2);ctx.lineTo(x-8,y+h/2);ctx.stroke();
+ ctx.beginPath();ctx.moveTo(x+8,y-h/4);ctx.lineTo(x+8,y+h/4);ctx.stroke();
+ ctx.fillStyle='#ef4444';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('+',x-8,y-h/2-5);
+}
+function drawDiode(x,y,size,fwd=true){
+ ctx.strokeStyle='#4ade80';ctx.fillStyle='#4ade8060';ctx.lineWidth=2;
+ ctx.beginPath();
+ if(fwd){ctx.moveTo(x-size/2,y-size/3);ctx.lineTo(x+size/2,y);ctx.lineTo(x-size/2,y+size/3);ctx.closePath()}
+ else{ctx.moveTo(x+size/2,y-size/3);ctx.lineTo(x-size/2,y);ctx.lineTo(x+size/2,y+size/3);ctx.closePath()}
+ ctx.fill();ctx.stroke();
+ ctx.beginPath();ctx.moveTo(fwd?x+size/2:x-size/2,y-size/3);ctx.lineTo(fwd?x+size/2:x-size/2,y+size/3);ctx.stroke();
+}
+function drawOpamp(x,y,size){
+ ctx.strokeStyle='#eab308';ctx.fillStyle='#0d0d24';ctx.lineWidth=2;
+ ctx.beginPath();ctx.moveTo(x-size/2,y-size/2);ctx.lineTo(x+size/2,y);ctx.lineTo(x-size/2,y+size/2);ctx.closePath();ctx.fill();ctx.stroke();
+ ctx.fillStyle='#888';ctx.font='12px sans-serif';ctx.textAlign='center';
+ ctx.fillText('−',x-size/3,y-size/5+4);ctx.fillText('+',x-size/3,y+size/5+4);
+}
+function drawGround(x,y){
+ ctx.strokeStyle='#555';ctx.lineWidth=2;
+ ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+8);ctx.stroke();
+ for(let i=0;i<3;i++){const w=12-i*4;ctx.beginPath();ctx.moveTo(x-w,y+8+i*4);ctx.lineTo(x+w,y+8+i*4);ctx.stroke()}
+}
+
+// ===== 电流粒子 =====
+let currentParticles=[];
+function updateCurrentParticles(path,current,color='#eab308'){
+ if(Math.random()<Math.abs(current)*50){
+  const idx=Math.floor(Math.random()*(path.length-1));
+  const p1=path[idx],p2=path[idx+1];
+  const t=Math.random();
+  currentParticles.push({x:p1[0]+(p2[0]-p1[0])*t,y:p1[1]+(p2[1]-p1[1])*t,
+   pathIdx:idx,pathT:t,path,speed:0.01+Math.abs(current)*0.05,life:80,color,size:2+Math.abs(current)*3});
+ }
+ for(let i=currentParticles.length-1;i>=0;i--){
+  const p=currentParticles[i];
+  if(p.path!==path)continue;
+  p.pathT+=p.speed;
+  if(p.pathT>=1){p.pathT=0;p.pathIdx++;if(p.pathIdx>=p.path.length-1){currentParticles.splice(i,1);continue}}
+  const p1=p.path[p.pathIdx],p2=p.path[p.pathIdx+1];
+  p.x=p1[0]+(p2[0]-p1[0])*p.pathT;p.y=p1[1]+(p2[1]-p1[1])*p.pathT;
+  p.life--;if(p.life<=0)currentParticles.splice(i,1);
+ }
+}
+function drawCurrentParticles(){
+ for(const p of currentParticles){
+  ctx.globalAlpha=p.life/80;ctx.fillStyle=p.color;
+  ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();
+ }
+ ctx.globalAlpha=1;
+}
+
+// ===== 关卡1绘制: 欧姆定律 =====
+function drawLevel1(){
+ const cx=W/2,cy=H/2-20;
+ // 标题
+ ctx.fillStyle='#eab308';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+ ctx.fillText('欧姆定律与基尔霍夫定律',cx,30);
+ if(L1.mode==='series'){
+  // 串联电路
+  const x0=cx-180,y0=cy-80,x1=cx+180,y1=cy+80;
+  // 电池
+  drawBattery(x0,cy,40);
+  drawWire(x0,y0,x1,y0,'#555');drawWire(x0,y1,x1,y1,'#555');
+  drawWire(x0,y0,x0,cy-20,'#555');drawWire(x0,cy+20,x0,y1,'#555');
+  drawWire(x1,y0,x1,y1,'#555');
+  // 电阻
+  drawResistor(cx-80,y0-15,70,30,'R1',L1.R1+'Ω');
+  drawResistor(cx+20,y0-15,70,30,'R2',L1.R2+'Ω');
+  // 电流方向箭头
+  const I=L1.V/(L1.R1+L1.R2);
+  ctx.fillStyle='#eab308';ctx.font='12px sans-serif';
+  ctx.fillText(`V=${L1.V}V`,x0-30,cy);
+  ctx.fillText(`I=${(I*1000).toFixed(2)}mA`,cx,y0-25);
+  // 电压标注
+  const V1=I*L1.R1,V2=I*L1.R2;
+  ctx.fillStyle='#60a5fa';ctx.font='11px sans-serif';
+  ctx.fillText(`V₁=${V1.toFixed(2)}V`,cx-45,y0+35);
+  ctx.fillText(`V₂=${V2.toFixed(2)}V`,cx+55,y0+35);
+  // KVL 验证
+  ctx.fillStyle='#4ade80';ctx.font='12px sans-serif';
+  ctx.fillText(`KVL: ${L1.V}V - ${V1.toFixed(2)}V - ${V2.toFixed(2)}V = ${(L1.V-V1-V2).toFixed(4)}V ≈ 0`,cx,y1+30);
+  // 电流粒子
+  const path=[[x0,cy+20],[x0,y1],[x1,y1],[x1,y0],[cx+90,y0],[cx+20,y0],[cx-10,y0],[cx-80,y0],[x0,y0],[x0,cy-20]];
+  updateCurrentParticles(path,I);
+ } else {
+  // 并联电路
+  const x0=cx-180,y0=cy-100,x1=cx+180,y1=cy+100;
+  drawBattery(x0,cy,40);
+  drawWire(x0,y0,x1,y0,'#555');drawWire(x0,y1,x1,y1,'#555');
+  drawWire(x0,y0,x0,cy-20,'#555');drawWire(x0,cy+20,x0,y1,'#555');
+  drawWire(x1,y0,x1,y1,'#555');
+  // 分支
+  const mx=cx;
+  drawWire(mx,y0,mx,cy-40,'#555');drawWire(mx,cy+40,mx,y1,'#555');
+  drawResistor(cx-60,cy-55,70,30,'R1',L1.R1+'Ω');
+  drawResistor(cx+30,cy-55,70,30,'R2',L1.R2+'Ω');
+  drawWire(cx-60,cy-40,cx-60,cy-55+30,'#555');drawWire(cx-60,cy-55,cx-60,y0,'#555');
+  drawWire(cx+100,cy-40,cx+100,cy-55+30,'#555');drawWire(cx+100,cy-55,cx+100,y0,'#555');
+  // 并联分支连线
+  drawWire(cx-60,y0,cx-60,cy-55,'#555');drawWire(cx-60,cy-25,cx-60,y1,'#555');
+  drawWire(cx+100,y0,cx+100,cy-55,'#555');drawWire(cx+100,cy-25,cx+100,y1,'#555');
+  const I1=L1.V/L1.R1,I2=L1.V/L1.R2,It=I1+I2;
+  ctx.fillStyle='#eab308';ctx.font='12px sans-serif';
+  ctx.fillText(`V=${L1.V}V`,x0-30,cy);
+  ctx.fillStyle='#60a5fa';ctx.font='11px sans-serif';
+  ctx.fillText(`I₁=${(I1*1000).toFixed(2)}mA`,cx-60,cy+10);
+  ctx.fillText(`I₂=${(I2*1000).toFixed(2)}mA`,cx+100,cy+10);
+  ctx.fillStyle='#eab308';ctx.fillText(`I总=${(It*1000).toFixed(2)}mA`,cx,y0-10);
+  ctx.fillStyle='#4ade80';ctx.font='12px sans-serif';
+  ctx.fillText(`KCL: I总(${(It*1000).toFixed(2)}mA) = I₁(${(I1*1000).toFixed(2)}mA) + I₂(${(I2*1000).toFixed(2)}mA)`,cx,y1+30);
+  const path=[[x0,cy+20],[x0,y1],[x1,y1],[x1,y0],[x0,y0],[x0,cy-20]];
+  updateCurrentParticles(path,It);
+ }
+ drawCurrentParticles();
+}
+
+// ===== 关卡2绘制: RC/RL/RLC =====
+function drawLevel2(){
+ const cx=W/2,cy=H/3;
+ ctx.fillStyle='#eab308';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+ ctx.fillText('RC/RL/RLC 电路',cx,30);
+ // 电路图
+ const x0=cx-160,x1=cx+160,y0=cy-40,y1=cy+40;
+ drawBattery(x0-20,cy,30);
+ drawWire(x0-20,y0,x1,y0,'#555');drawWire(x0-20,y1,x1,y1,'#555');
+ drawWire(x0-20,y0,x0-20,cy-15,'#555');drawWire(x0-20,cy+15,x0-20,y1,'#555');
+ drawWire(x1,y0,x1,y1,'#555');
+ // 开关
+ ctx.fillStyle=L2.sw?'#4ade80':'#ef4444';
+ ctx.fillRect(x0+20,y0-3,30,6);
+ ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.fillText(L2.sw?'ON':'OFF',x0+35,y0-8);
+ // 元件
+ drawResistor(cx-40,y0-15,60,30,'R',L2.R+'Ω');
+ if(L2.mode==='rc'||L2.mode==='rlc')drawCapacitor(cx+60,cy,24);
+ if(L2.mode==='rl'||L2.mode==='rlc')drawInductor(cx+100,y0,50);
+ // 波形图
+ const wY=H*0.6,wH=H*0.3,wX=60,wW=W-120;
+ ctx.strokeStyle='#333';ctx.lineWidth=1;
+ ctx.strokeRect(wX,wY,wW,wH);
+ // 坐标轴
+ ctx.strokeStyle='#444';ctx.beginPath();ctx.moveTo(wX,wY+wH/2);ctx.lineTo(wX+wW,wY+wH/2);ctx.stroke();
+ ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='left';
+ ctx.fillText('电压',wX+5,wY+12);ctx.fillText('时间→',wX+wW-30,wY+wH-5);
+ if(L2.sw){
+  const elapsed=(time-L2.t0)/60;// 秒
+  ctx.strokeStyle='#eab308';ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<wW;i++){
+   const t=i/wW*5;// 5秒窗口
+   let v=0;
+   if(L2.mode==='rc'){const tau=L2.R*L2.C;v=12*(1-Math.exp(-t/(tau*1000)))}
+   else if(L2.mode==='rl'){const tau=L2.L/L2.R;v=12*(1-Math.exp(-t/(tau*1000)))}
+   else{
+    const w0=1/Math.sqrt(L2.L*L2.C),wd=L2.freq*2*Math.PI;
+    const ratio=wd/w0;
+    v=12*Math.sin(wd*t/1000)/(Math.sqrt(Math.pow(1-ratio*ratio,2)+Math.pow(2*0.1*ratio,2)));
+   }
+   const py=wY+wH/2-v/15*wH/2;
+   i===0?ctx.moveTo(wX+i,py):ctx.lineTo(wX+i,py);
+  }
+  ctx.stroke();
+  // 时间常数标记
+  if(L2.mode==='rc'||L2.mode==='rl'){
+   const tau=L2.mode==='rc'?L2.R*L2.C*1000:L2.L/L2.R*1000;
+   const tauX=wX+(tau/5)*wW;
+   if(tauX<wX+wW){
+    ctx.strokeStyle='#ef444480';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(tauX,wY);ctx.lineTo(tauX,wY+wH);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#ef4444';ctx.font='10px sans-serif';ctx.fillText('τ',tauX+3,wY+12);
+   }
+  }
+ }
+ // 电流粒子
+ if(L2.sw){
+  const tau=L2.mode==='rc'?L2.R*L2.C:L2.L/L2.R;
+  const elapsed=(time-L2.t0)/60;
+  const I=0.012*Math.exp(-elapsed/tau)*0.1;
+  const path=[[x0-20,cy+15],[x0-20,y1],[x1,y1],[x1,y0],[cx+100,y0],[cx+20,y0],[x0+50,y0],[x0-20,y0],[x0-20,cy-15]];
+  updateCurrentParticles(path,Math.max(I,0.001));
+ }
+ drawCurrentParticles();
+}
+
+// ===== 关卡3绘制: 二极管 =====
+function drawLevel3(){
+ const cx=W/2,cy=H/3;
+ ctx.fillStyle='#eab308';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+ ctx.fillText('二极管与整流',cx,30);
+ L3.angle+=0.03;
+ if(L3.rectMode==='none'){
+  // 单二极管电路
+  const x0=cx-150,x1=cx+150,y0=cy-30,y1=cy+60;
+  drawBattery(x0,cy+15,30);
+  drawWire(x0,y0,x1,y0,'#555');drawWire(x0,y1,x1,y1,'#555');
+  drawWire(x0,y0,x0,cy,'#555');drawWire(x0,cy+30,x0,y1,'#555');
+  drawWire(x1,y0,x1,y1,'#555');
+  drawDiode(cx,y0,30,L3.mode==='forward');
+  drawResistor(cx+40,y0-15,60,30,'R','1kΩ');
+  // PN结动画
+  const pnX=cx,pnY=cy+100,pnW=200,pnH=80;
+  ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.strokeRect(pnX-pnW/2,pnY-pnH/2,pnW,pnH);
+  // P区
+  ctx.fillStyle='#ef444430';ctx.fillRect(pnX-pnW/2,pnY-pnH/2,pnW/2,pnH);
+  ctx.fillStyle='#ef4444';ctx.font='14px bold sans-serif';ctx.fillText('P',pnX-pnW/4,pnY+5);
+  // N区
+  ctx.fillStyle='#3b82f630';ctx.fillRect(pnX,pnY-pnH/2,pnW/2,pnH);
+  ctx.fillStyle='#3b82f6';ctx.fillText('N',pnX+pnW/4,pnY+5);
+  // 耗尽层
+  ctx.fillStyle='#ffffff10';ctx.fillRect(pnX-10,pnY-pnH/2,20,pnH);
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.fillText('耗尽层',pnX,pnY-pnH/2-5);
+  // 载流子运动
+  if(L3.mode==='forward'){
+   for(let i=0;i<8;i++){
+    const t=(time*0.02+i*0.125)%1;
+    // 空穴从P到N
+    const hx=pnX-pnW/2+t*pnW;
+    ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(hx,pnY-15+Math.sin(t*6+i)*10,3,0,Math.PI*2);ctx.fill();
+    // 电子从N到P
+    const ex=pnX+pnW/2-t*pnW;
+    ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(ex,pnY+15+Math.cos(t*6+i)*10,3,0,Math.PI*2);ctx.fill();
+   }
+   ctx.fillStyle='#4ade80';ctx.font='13px sans-serif';ctx.fillText('✓ 正向导通 (Vf≈0.7V)',cx,pnY+pnH/2+20);
+  } else {
+   ctx.fillStyle='#ef4444';ctx.font='13px sans-serif';ctx.fillText('✗ 反向截止 (无电流)',cx,pnY+pnH/2+20);
+   // 耗尽层变宽
+   ctx.fillStyle='#ffffff15';ctx.fillRect(pnX-25,pnY-pnH/2,50,pnH);
+  }
+ } else {
+  // 整流电路 + 波形
+  const wY=H*0.1,wH=H*0.35,wX=40,wW=W-80;
+  // 输入波形
+  ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.strokeRect(wX,wY,wW,wH);
+  ctx.strokeStyle='#444';ctx.beginPath();ctx.moveTo(wX,wY+wH/2);ctx.lineTo(wX+wW,wY+wH/2);ctx.stroke();
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillText('输入 AC',wX+5,wY+12);
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<wW;i++){
+   const v=Math.sin(i/wW*Math.PI*6+L3.angle);
+   const py=wY+wH/2-v*wH*0.4;
+   i===0?ctx.moveTo(wX+i,py):ctx.lineTo(wX+i,py);
+  }
+  ctx.stroke();
+  // 输出波形
+  const oY=H*0.55,oH=H*0.35;
+  ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.strokeRect(wX,oY,wW,oH);
+  ctx.strokeStyle='#444';ctx.beginPath();ctx.moveTo(wX,oY+oH/2);ctx.lineTo(wX+wW,oY+oH/2);ctx.stroke();
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.fillText('输出 DC',wX+5,oY+12);
+  ctx.strokeStyle='#4ade80';ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<wW;i++){
+   const v=Math.sin(i/wW*Math.PI*6+L3.angle);
+   let out=0;
+   if(L3.rectMode==='half')out=Math.max(0,v);
+   else out=Math.abs(v);
+   const py=oY+oH/2-out*oH*0.4;
+   i===0?ctx.moveTo(wX+i,py):ctx.lineTo(wX+i,py);
+  }
+  ctx.stroke();
+  // 电路图小图
+  ctx.fillStyle='#eab308';ctx.font='12px sans-serif';ctx.textAlign='center';
+  if(L3.rectMode==='half')ctx.fillText('半波整流：仅正半周通过',cx,oY-8);
+  else ctx.fillText('全波桥式整流：正负半周都输出正电压',cx,oY-8);
+ }
+}
+
+// ===== 关卡4绘制: 三极管 =====
+function drawLevel4(){
+ const cx=W/2,cy=H/3;
+ ctx.fillStyle='#eab308';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+ ctx.fillText('三极管放大器',cx,30);
+ L4.wavePhase+=0.04;
+ // BJT 符号
+ const bx=cx,by=cy;
+ ctx.strokeStyle='#eab308';ctx.lineWidth=2;
+ // 基极线
+ ctx.beginPath();ctx.moveTo(bx-60,by);ctx.lineTo(bx-20,by);ctx.stroke();
+ // 发射极竖线
+ ctx.beginPath();ctx.moveTo(bx-20,by-25);ctx.lineTo(bx-20,by+25);ctx.stroke();
+ // 集电极
+ ctx.beginPath();ctx.moveTo(bx-20,by-15);ctx.lineTo(bx+20,by-35);ctx.stroke();
+ // 发射极（带箭头）
+ ctx.beginPath();ctx.moveTo(bx-20,by+15);ctx.lineTo(bx+20,by+35);ctx.stroke();
+ // 箭头
+ ctx.beginPath();ctx.moveTo(bx+20,by+35);ctx.lineTo(bx+10,by+25);ctx.moveTo(bx+20,by+35);ctx.lineTo(bx+8,by+33);ctx.stroke();
+ // 标注
+ ctx.fillStyle='#888';ctx.font='11px sans-serif';
+ ctx.fillText('B',bx-65,by+4);ctx.fillText('C',bx+25,by-35);ctx.fillText('E',bx+25,by+40);
+ // Vcc
+ drawWire(bx+20,by-35,bx+20,by-70,'#ef4444');
+ ctx.fillStyle='#ef4444';ctx.font='12px sans-serif';ctx.fillText(`Vcc=${L4.Vcc}V`,bx+20,by-75);
+ // Rc
+ drawResistor(bx+5,by-70,30,20,'Rc',(L4.Rc/1000).toFixed(1)+'kΩ');
+ // Rb
+ drawResistor(bx-100,by-15,30,20,'Rb',(L4.Rb/1000).toFixed(0)+'kΩ');
+ drawWire(bx-100,by,bx-60,by,'#555');
+ // GND
+ drawWire(bx+20,by+35,bx+20,by+55,'#555');drawGround(bx+20,by+55);
+ // 计算
+ const Ib=(L4.Vcc-0.7)/L4.Rb,Ic=Math.min(L4.beta*Ib,L4.Vcc/L4.Rc),Vce=L4.Vcc-Ic*L4.Rc;
+ ctx.fillStyle='#60a5fa';ctx.font='12px sans-serif';
+ ctx.fillText(`Ib=${(Ib*1e6).toFixed(1)}μA`,bx-80,by-30);
+ ctx.fillText(`Ic=${(Ic*1000).toFixed(2)}mA`,bx+60,by-20);
+ ctx.fillText(`β=${L4.beta}`,bx,by+60);
+ ctx.fillText(`Vce=${Vce.toFixed(2)}V`,bx+60,by+10);
+ // 工作区判断
+ let region='放大区';
+ if(Vce<0.3)region='饱和区';
+ if(Ib<=0)region='截止区';
+ ctx.fillStyle=region==='放大区'?'#4ade80':'#ef4444';ctx.font='bold 13px sans-serif';
+ ctx.fillText(`工作区: ${region}`,cx,by+80);
+ // 输入输出波形
+ const wY=H*0.6,wH=H*0.3,wX=40,wW=(W-100)/2;
+ // 输入
+ ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.strokeRect(wX,wY,wW,wH);
+ ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillText('输入信号',wX+5,wY+12);
+ ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;ctx.beginPath();
+ for(let i=0;i<wW;i++){const v=Math.sin(i/wW*Math.PI*4+L4.wavePhase);const py=wY+wH/2-v*wH*0.3;i===0?ctx.moveTo(wX+i,py):ctx.lineTo(wX+i,py)}
+ ctx.stroke();
+ // 输出
+ const oX=wX+wW+20;
+ ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.strokeRect(oX,wY,wW,wH);
+ ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.fillText('输出信号',oX+5,wY+12);
+ const gain=region==='放大区'?-L4.Rc/(26/Ic/1000):0;
+ ctx.strokeStyle='#eab308';ctx.lineWidth=2;ctx.beginPath();
+ for(let i=0;i<wW;i++){
+  let v=Math.sin(i/wW*Math.PI*4+L4.wavePhase)*Math.min(Math.abs(gain)*0.01,0.8);
+  if(region==='放大区')v=-v;// 反相
+  v=Math.max(-0.9,Math.min(0.9,v));
+  const py=wY+wH/2-v*wH*0.4;i===0?ctx.moveTo(oX+i,py):ctx.lineTo(oX+i,py);
+ }
+ ctx.stroke();
+ ctx.fillStyle='#fbbf24';ctx.font='11px sans-serif';ctx.textAlign='center';
+ ctx.fillText(`电压增益 Av ≈ ${gain.toFixed(1)}`,oX+wW/2,wY-5);
+}
+
+// ===== 关卡5绘制: 运放 =====
+function drawLevel5(){
+ const cx=W/2,cy=H/3;
+ ctx.fillStyle='#eab308';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+ ctx.fillText('运算放大器',cx,30);
+ L5.wavePhase+=0.04;
+ // 运放符号
+ drawOpamp(cx,cy,100);
+ // 根据拓扑画电路
+ let gain=0;
+ if(L5.topo==='inv'){
+  gain=-L5.Rf/L5.Ri;
+  // Ri 输入到反相端
+  drawWire(cx-120,cy-25,cx-50,cy-25,'#555');
+  drawResistor(cx-160,cy-40,60,30,'Ri',(L5.Ri/1000).toFixed(1)+'kΩ');
+  // Rf 反馈
+  drawWire(cx-50,cy-25,cx-50,cy-80,'#555');drawWire(cx-50,cy-80,cx+80,cy-80,'#555');
+  drawWire(cx+80,cy-80,cx+80,cy,'#555');drawWire(cx+50,cy,cx+80,cy,'#555');
+  drawResistor(cx-10,cy-95,80,30,'Rf',(L5.Rf/1000).toFixed(1)+'kΩ');
+  // 同相端接地
+  drawWire(cx-50,cy+25,cx-80,cy+25,'#555');drawGround(cx-80,cy+25);
+  // 输入标注
+  ctx.fillStyle='#60a5fa';ctx.font='11px sans-serif';ctx.fillText('Vin',cx-180,cy-30);
+  ctx.fillText('Vout',cx+100,cy);
+  ctx.fillStyle='#fbbf24';ctx.font='bold 13px sans-serif';
+  ctx.fillText(`Av = -Rf/Ri = ${gain.toFixed(1)}`,cx,cy+80);
+ } else if(L5.topo==='non'){
+  gain=1+L5.Rf/L5.Ri;
+  // 输入到同相端
+  drawWire(cx-120,cy+25,cx-50,cy+25,'#555');
+  // Ri 接地
+  drawWire(cx-50,cy-25,cx-80,cy-25,'#555');drawWire(cx-80,cy-25,cx-80,cy+10,'#555');
+  drawResistor(cx-95,cy+10,30,25,'Ri',(L5.Ri/1000).toFixed(1)+'kΩ');
+  drawWire(cx-80,cy+35,cx-80,cy+50,'#555');drawGround(cx-80,cy+50);
+  // Rf 反馈
+  drawWire(cx-50,cy-25,cx-50,cy-80,'#555');drawWire(cx-50,cy-80,cx+80,cy-80,'#555');
+  drawWire(cx+80,cy-80,cx+80,cy,'#555');drawWire(cx+50,cy,cx+80,cy,'#555');
+  drawResistor(cx-10,cy-95,80,30,'Rf',(L5.Rf/1000).toFixed(1)+'kΩ');
+  ctx.fillStyle='#60a5fa';ctx.font='11px sans-serif';ctx.fillText('Vin',cx-140,cy+30);
+  ctx.fillText('Vout',cx+100,cy);
+  ctx.fillStyle='#fbbf24';ctx.font='bold 13px sans-serif';
+  ctx.fillText(`Av = 1+Rf/Ri = ${gain.toFixed(1)}`,cx,cy+80);
+ } else {
+  gain=-L5.Rf/L5.R1;
+  // 加法器
+  drawWire(cx-120,cy-45,cx-50,cy-25,'#555');
+  drawWire(cx-120,cy-5,cx-50,cy-25,'#555');
+  drawResistor(cx-170,cy-60,60,30,'R1',(L5.R1/1000).toFixed(1)+'kΩ');
+  drawResistor(cx-170,cy-20,60,30,'R2',(L5.R2/1000).toFixed(1)+'kΩ');
+  drawWire(cx-50,cy-25,cx-50,cy-80,'#555');drawWire(cx-50,cy-80,cx+80,cy-80,'#555');
+  drawWire(cx+80,cy-80,cx+80,cy,'#555');drawWire(cx+50,cy,cx+80,cy,'#555');
+  drawResistor(cx-10,cy-95,80,30,'Rf',(L5.Rf/1000).toFixed(1)+'kΩ');
+  drawWire(cx-50,cy+25,cx-80,cy+25,'#555');drawGround(cx-80,cy+25);
+  ctx.fillStyle='#60a5fa';ctx.font='11px sans-serif';
+  ctx.fillText('V1',cx-190,cy-45);ctx.fillText('V2',cx-190,cy-5);ctx.fillText('Vout',cx+100,cy);
+  ctx.fillStyle='#fbbf24';ctx.font='bold 13px sans-serif';
+  ctx.fillText(`Vo = -(V1×Rf/R1 + V2×Rf/R2)`,cx,cy+80);
+ }
+ // 波形
+ const wY=H*0.6,wH=H*0.3,wX=40,wW=(W-100)/2;
+ ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.strokeRect(wX,wY,wW,wH);
+ ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillText('输入',wX+5,wY+12);
+ ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;ctx.beginPath();
+ for(let i=0;i<wW;i++){const v=Math.sin(i/wW*Math.PI*4+L5.wavePhase);const py=wY+wH/2-v*wH*0.3;i===0?ctx.moveTo(wX+i,py):ctx.lineTo(wX+i,py)}
+ ctx.stroke();
+ const oX=wX+wW+20;
+ ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.strokeRect(oX,wY,wW,wH);
+ ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.fillText('输出',oX+5,wY+12);
+ ctx.strokeStyle='#eab308';ctx.lineWidth=2;ctx.beginPath();
+ for(let i=0;i<wW;i++){
+  let v=Math.sin(i/wW*Math.PI*4+L5.wavePhase)*Math.min(Math.abs(gain),10)/10;
+  if(gain<0)v=-v;
+  v=Math.max(-0.95,Math.min(0.95,v));
+  const py=wY+wH/2-v*wH*0.4;i===0?ctx.moveTo(oX+i,py):ctx.lineTo(oX+i,py);
+ }
+ ctx.stroke();
+}
+
+// ===== 关卡6绘制: 滤波器 =====
+function drawLevel6(){
+ const cx=W/2,cy=H/4;
+ ctx.fillStyle='#eab308';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+ ctx.fillText('滤波器设计',cx,30);
+ // 电路图
+ const fc=1/(2*Math.PI*L6.R*L6.C);
+ if(L6.type==='lp'){
+  drawWire(cx-120,cy,cx+120,cy,'#555');
+  drawResistor(cx-80,cy-15,60,30,'R',L6.R+'Ω');
+  drawCapacitor(cx+60,cy+20,20);
+  drawWire(cx+60,cy,cx+60,cy+10,'#555');drawWire(cx+60,cy+30,cx+60,cy+45,'#555');drawGround(cx+60,cy+45);
+  ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.fillText('低通滤波器',cx,cy-25);
+ } else {
+  drawWire(cx-120,cy,cx+120,cy,'#555');
+  drawCapacitor(cx-40,cy,20);
+  drawResistor(cx+30,cy-15,60,30,'R',L6.R+'Ω');
+  drawWire(cx+90,cy,cx+90,cy+20,'#555');drawGround(cx+90,cy+20);
+  ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.fillText('高通滤波器',cx,cy-25);
+ }
+ ctx.fillStyle='#fbbf24';ctx.font='12px sans-serif';
+ ctx.fillText(`fc = ${fc.toFixed(1)} Hz`,cx,cy+70);
+ // 波特图
+ if(L6.bodeData.length>0){
+  const bY=H*0.4,bH=H*0.45,bX=60,bW=W-120;
+  ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.strokeRect(bX,bY,bW,bH);
+  // 网格
+  ctx.strokeStyle='#1a1a3a';ctx.setLineDash([2,4]);
+  for(let db=-40;db<=0;db+=10){
+   const y=bY+bH*(1-((db+40)/40));
+   ctx.beginPath();ctx.moveTo(bX,y);ctx.lineTo(bX+bW,y);ctx.stroke();
+   ctx.fillStyle='#555';ctx.font='9px monospace';ctx.textAlign='right';ctx.fillText(db+'dB',bX-5,y+3);
+  }
+  ctx.setLineDash([]);
+  // 频率标注
+  const fMin=10,fMax=100000;
+  [10,100,1000,10000,100000].forEach(f=>{
+   const x=bX+(Math.log10(f)-Math.log10(fMin))/(Math.log10(fMax)-Math.log10(fMin))*bW;
+   ctx.fillStyle='#555';ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText(f>=1000?(f/1000)+'k':f+'',x,bY+bH+12);
+  });
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('频率 (Hz)',bX+bW/2,bY+bH+25);
+  ctx.textAlign='right';ctx.fillText('增益',bX-5,bY-5);
+  // 曲线
+  ctx.strokeStyle='#eab308';ctx.lineWidth=2;ctx.beginPath();
+  L6.bodeData.forEach((d,i)=>{
+   const x=bX+(Math.log10(d.f)-Math.log10(fMin))/(Math.log10(fMax)-Math.log10(fMin))*bW;
+   const y=bY+bH*(1-((d.gain+40)/40));
+   i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  // 截止频率标记
+  const fcX=bX+(Math.log10(fc)-Math.log10(fMin))/(Math.log10(fMax)-Math.log10(fMin))*bW;
+  ctx.strokeStyle='#ef444480';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(fcX,bY);ctx.lineTo(fcX,bY+bH);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#ef4444';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('fc',fcX,bY-5);
+  // -3dB 线
+  const db3Y=bY+bH*(1-((-3+40)/40));
+  ctx.strokeStyle='#4ade8040';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(bX,db3Y);ctx.lineTo(bX+bW,db3Y);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#4ade80';ctx.textAlign='right';ctx.fillText('-3dB',bX-5,db3Y+3);
+ } else {
+  // 信号对比
+  const wY=H*0.45,wH=H*0.2,wX=40,wW=W-80;
+  ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.strokeRect(wX,wY,wW,wH);
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillText('信号对比',wX+5,wY+12);
+  // 输入
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=1.5;ctx.beginPath();
+  for(let i=0;i<wW;i++){const v=Math.sin(i/wW*Math.PI*8+time*0.05);const py=wY+wH/2-v*wH*0.35;i===0?ctx.moveTo(wX+i,py):ctx.lineTo(wX+i,py)}
+  ctx.stroke();
+  // 输出
+  const ratio=L6.freq/fc;
+  let atten;
+  if(L6.type==='lp')atten=1/Math.sqrt(1+ratio*ratio);
+  else atten=1/Math.sqrt(1+1/(ratio*ratio));
+  ctx.strokeStyle='#eab308';ctx.lineWidth=1.5;ctx.beginPath();
+  for(let i=0;i<wW;i++){const v=Math.sin(i/wW*Math.PI*8+time*0.05)*atten;const py=wY+wH/2-v*wH*0.35;i===0?ctx.moveTo(wX+i,py):ctx.lineTo(wX+i,py)}
+  ctx.stroke();
+  ctx.fillStyle='#fbbf24';ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`衰减: ${(20*Math.log10(atten)).toFixed(1)}dB (f=${L6.freq}Hz, fc=${fc.toFixed(0)}Hz)`,cx,wY+wH+15);
+ }
+}
+
+// ===== 关卡7绘制: 振荡器 =====
+function drawLevel7(){
+ const cx=W/2,cy=H/3;
+ ctx.fillStyle='#eab308';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+ ctx.fillText('振荡器与信号发生',cx,30);
+ if(L7.running)L7.phase+=L7.freq*0.0001;
+ if(L7.mode==='rc_osc'){
+  // RC 振荡器电路
+  drawOpamp(cx,cy,80);
+  // RC 网络
+  drawWire(cx-100,cy-20,cx-40,cy-20,'#555');
+  drawResistor(cx-140,cy-35,50,30,'R','10kΩ');
+  drawCapacitor(cx-100,cy+20,16);
+  drawWire(cx-40,cy+20,cx-80,cy+20,'#555');
+  // 反馈
+  drawWire(cx+40,cy,cx+80,cy,'#555');drawWire(cx+80,cy,cx+80,cy-80,'#555');
+  drawWire(cx+80,cy-80,cx-40,cy-80,'#555');drawWire(cx-40,cy-80,cx-40,cy-20,'#555');
+  drawResistor(cx,cy-95,60,30,'Rf','反馈');
+  ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.fillText('RC 振荡器',cx,cy+70);
+ } else if(L7.mode==='lc_osc'){
+  // LC 振荡器
+  drawOpamp(cx,cy,80);
+  drawInductor(cx-120,cy-10,40);
+  drawCapacitor(cx-120,cy+30,16);
+  drawWire(cx-100,cy+30,cx-100,cy+50,'#555');drawGround(cx-100,cy+50);
+  drawWire(cx+40,cy,cx+80,cy,'#555');drawWire(cx+80,cy,cx+80,cy-80,'#555');
+  drawWire(cx+80,cy-80,cx-40,cy-80,'#555');drawWire(cx-40,cy-80,cx-40,cy-20,'#555');
+  ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.fillText('LC 振荡器',cx,cy+70);
+ } else {
+  // 555 定时器
+  const bx=cx,by=cy;
+  ctx.fillStyle='#1a1a3a';ctx.strokeStyle='#eab308';ctx.lineWidth=2;
+  ctx.beginPath();ctx.roundRect(bx-50,by-40,100,80,8);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#eab308';ctx.font='bold 14px monospace';ctx.fillText('555',bx,by+5);
+  // 引脚
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';
+  ctx.textAlign='right';ctx.fillText('VCC',bx-55,by-30);ctx.fillText('DIS',bx-55,by-10);
+  ctx.fillText('THR',bx-55,by+10);ctx.fillText('TRG',bx-55,by+30);
+  ctx.textAlign='left';ctx.fillText('OUT',bx+55,by);ctx.fillText('GND',bx+55,by+30);
+  // 外部 RC
+  drawResistor(bx-120,by-50,40,20,'R1','');
+  drawResistor(bx-120,by-20,40,20,'R2','');
+  drawCapacitor(bx-100,by+40,14);
+  drawWire(bx-100,by+50,bx-100,by+60,'#555');drawGround(bx-100,by+60);
+  ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('555 定时器',cx,cy+80);
+ }
+ // 输出波形
+ const wY=H*0.55,wH=H*0.35,wX=40,wW=W-80;
+ ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.strokeRect(wX,wY,wW,wH);
+ ctx.strokeStyle='#444';ctx.beginPath();ctx.moveTo(wX,wY+wH/2);ctx.lineTo(wX+wW,wY+wH/2);ctx.stroke();
+ ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='left';ctx.fillText('输出波形',wX+5,wY+12);
+ if(L7.running){
+  ctx.strokeStyle='#4ade80';ctx.lineWidth=2;ctx.beginPath();
+  for(let i=0;i<wW;i++){
+   let v;
+   if(L7.mode==='555'){
+    // 方波
+    const period=wW/(L7.freq/200);
+    const pos=(i+L7.phase*100)%period;
+    v=pos<period*L7.duty/100?0.8:-0.8;
+   } else {
+    // 正弦
+    v=Math.sin(i/wW*Math.PI*8+L7.phase)*0.8;
+    // 起振过程
+    const amp=Math.min(1,L7.feedback);
+    v*=amp;
+   }
+   const py=wY+wH/2-v*wH*0.4;
+   i===0?ctx.moveTo(wX+i,py):ctx.lineTo(wX+i,py);
+  }
+  ctx.stroke();
+  // 频率标注
+  ctx.fillStyle='#fbbf24';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`f = ${L7.freq} Hz`,cx,wY-8);
+  if(L7.mode==='555')ctx.fillText(`占空比 = ${L7.duty}%`,cx+120,wY-8);
+  // 频谱（简化）
+  const sX=wX,sY=wY-60,sW=wW,sH=40;
+  ctx.strokeStyle='#222';ctx.lineWidth=1;ctx.strokeRect(sX,sY,sW,sH);
+  ctx.fillStyle='#555';ctx.font='9px sans-serif';ctx.textAlign='left';ctx.fillText('频谱',sX+5,sY+10);
+  // 基频
+  const fPos=sX+(L7.freq/10000)*sW*0.8;
+  ctx.fillStyle='#eab308';ctx.fillRect(fPos-2,sY+sH-30,4,28);
+  ctx.fillStyle='#eab30880';
+  if(L7.mode==='555'){// 方波有奇次谐波
+   for(let h=3;h<=9;h+=2){const hPos=sX+(L7.freq*h/10000)*sW*0.8;if(hPos<sX+sW)ctx.fillRect(hPos-1,sY+sH-28/h,3,26/h)}
+  }
+ } else {
+  ctx.fillStyle='#ef4444';ctx.font='14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('未起振 — 调节反馈系数使环路增益 ≥ 1',cx,wY+wH/2);
+  ctx.fillStyle='#888';ctx.font='11px sans-serif';
+  ctx.fillText(`当前环路增益: ${(L7.feedback*3.3).toFixed(2)} (需要 ≥ 1.0)`,cx,wY+wH/2+20);
+ }
+}
+
+// ===== 主循环 =====
+function draw(){
+ if(!started){requestAnimationFrame(draw);return}
+ ctx.clearRect(0,0,W,H);
+ // 背景网格
+ ctx.strokeStyle='#0f0f2a';ctx.lineWidth=1;
+ for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+ for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ time++;
+ // 绘制当前关卡
+ switch(curLevel){
+  case 0:drawLevel1();break;
+  case 1:drawLevel2();break;
+  case 2:drawLevel3();break;
+  case 3:drawLevel4();break;
+  case 4:drawLevel5();break;
+  case 5:drawLevel6();break;
+  case 6:drawLevel7();break;
+ }
+ // 粒子
+ for(let i=particles.length-1;i>=0;i--){
+  const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life--;
+  if(p.life<=0){particles.splice(i,1);continue}
+  ctx.globalAlpha=p.life/p.maxLife;ctx.fillStyle=p.color;
+  ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();
+ }
+ ctx.globalAlpha=1;
+ requestAnimationFrame(draw);
+}
+draw();
+</script>
+</body>
+</html>

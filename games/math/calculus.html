@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>微积分可视化 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e0e0f0;font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh}
+#overlay{position:fixed;inset:0;background:radial-gradient(ellipse at center,#0d1033 0%,#0a0a1a 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+#overlay h1{font-size:42px;background:linear-gradient(135deg,#3b82f6,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+#overlay p{color:#94a3b8;font-size:16px;margin-bottom:32px}
+#overlay .sub{font-size:13px;color:#64748b;margin-bottom:24px;max-width:500px;text-align:center;line-height:1.6}
+.start-btn{padding:14px 48px;font-size:18px;border:none;border-radius:12px;background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;cursor:pointer;transition:transform .2s,box-shadow .2s}
+.start-btn:hover{transform:scale(1.05);box-shadow:0 0 24px rgba(59,130,246,.4)}
+#game{display:none;height:100vh;width:100vw}
+.panel{position:fixed;left:0;top:0;bottom:36px;width:320px;background:rgba(10,10,30,.95);border-right:1px solid #2a2a4a;padding:16px;overflow-y:auto;z-index:10;display:none}
+.panel h2{font-size:18px;color:#60a5fa;margin-bottom:4px}
+.panel .level-title{font-size:14px;color:#94a3b8;margin-bottom:12px}
+.panel .desc{font-size:13px;color:#cbd5e1;line-height:1.6;margin-bottom:12px}
+.panel .obj{font-size:13px;padding:6px 10px;margin:4px 0;border-radius:6px;background:#111128;border:1px solid #2a2a4a}
+.obj.done{border-color:#22c55e;color:#4ade80}
+.obj .check{margin-right:6px}
+.learn-box{margin-top:12px;padding:10px;border-radius:8px;background:rgba(59,130,246,.1);border:1px solid #3b82f6;font-size:12px;color:#93c5fd;line-height:1.6}
+.act-btn{display:block;width:100%;padding:10px;margin-top:8px;border:none;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;font-size:14px;cursor:pointer;transition:transform .15s}
+.act-btn:hover{transform:scale(1.02)}
+.ctrl-row{display:flex;gap:6px;margin-top:8px}
+.ctrl-row button{flex:1;padding:8px;border:1px solid #3b82f6;border-radius:6px;background:transparent;color:#60a5fa;font-size:12px;cursor:pointer}
+.ctrl-row button:hover{background:rgba(59,130,246,.15)}
+.slider-row{margin-top:8px;font-size:12px;color:#94a3b8}
+.slider-row input[type=range]{width:100%;accent-color:#3b82f6;margin-top:4px}
+canvas{position:fixed;left:320px;top:0;right:0;bottom:36px;background:#0a0a1a}
+.bar{position:fixed;left:0;right:0;bottom:0;height:36px;background:rgba(10,10,30,.95);border-top:1px solid #2a2a4a;display:none;align-items:center;padding:0 16px;font-size:13px;z-index:10}
+.bar .progress{color:#94a3b8;flex:1}
+.bar .nav-btns{display:flex;gap:8px}
+.bar .nav-btns button{padding:4px 14px;border:1px solid #3b82f6;border-radius:6px;background:transparent;color:#60a5fa;font-size:12px;cursor:pointer}
+.bar .nav-btns button:hover{background:rgba(59,130,246,.15)}
+.bar .nav-btns button.active{background:#3b82f6;color:#fff}
+</style>
+</head>
+<body>
+<div id="overlay">
+<h1>微积分可视化 探险</h1>
+<p>7 个关卡，从极限到微分方程</p>
+<div class="sub">通过交互式可视化理解微积分核心概念：极限、导数、积分、泰勒展开、微分方程。拖动、点击、调整参数，亲手感受数学之美。</div>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+</div>
+<div id="game">
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"></div>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar');
+let W,H,li=0,animId,mouse={x:0,y:0,down:false,px:0,py:0};
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+let levelState={};
+
+function resize(){
+  const r=devicePixelRatio||1;
+  W=window.innerWidth-320;H=window.innerHeight-36;
+  cv.width=W*r;cv.height=H*r;cv.style.width=W+'px';cv.style.height=H+'px';
+  ctx.setTransform(r,0,0,r,0,0);
+}
+window.addEventListener('resize',()=>{resize();draw()});
+
+function startGame(){
+  document.getElementById('overlay').style.display='none';
+  document.getElementById('game').style.display='block';
+  panel.style.display='block';bar.style.display='flex';
+  resize();initLevel();renderPanel();renderBar();loop();
+}
+
+function goLevel(n){li=n;initLevel();renderPanel();renderBar();draw()}
+function completeObj(i){if(!levelObjs[li][i]){levelObjs[li][i]=true;renderPanel();renderBar()}}
+
+// ===== LEVEL DATA =====
+const levels=[
+  {title:'关卡 1：极限与逼近',desc:'可视化 ε-δ 定义。拖动 x₀ 观察函数值如何趋近极限值 L。调整 ε 和 δ 观察它们的关系。',
+   objs:['拖动 x₀ 到 3 个不同位置','将 ε 调到 < 0.3 并找到合适的 δ','观察 |f(x)-L| < ε 的区间变绿']},
+  {title:'关卡 2：导数与切线',desc:'在曲线 f(x)=x³-3x 上移动点，实时显示切线和斜率。理解导数就是切线斜率。',
+   objs:['将点移到斜率为 0 的极值点','找到斜率 > 5 的陡峭区域','观察割线逼近切线的过程']},
+  {title:'关卡 3：求导法则',desc:'交互式可视化链式法则和乘法法则。选择不同的复合函数，观察求导过程的分解。',
+   objs:['完成链式法则的 3 个示例','完成乘法法则的 2 个示例','对比原函数与导函数图像']},
+  {title:'关卡 4：积分与面积',desc:'用黎曼和逼近曲线下面积。调整矩形数量，观察近似值如何收敛到精确积分值。',
+   objs:['将矩形数增加到 50 以上','切换左/右/中点三种方式','误差降到 < 1%']},
+  {title:'关卡 5：微积分基本定理',desc:'导数和积分互为逆运算。观察 F(x)=∫f(t)dt 的累积面积函数，其导数恰好是 f(x)。',
+   objs:['观察累积面积函数 F(x) 的生成','验证 F\'(x) = f(x) 在 3 个点','切换不同的 f(x) 观察']},
+  {title:'关卡 6：泰勒展开',desc:'逐项添加泰勒级数项，观察多项式如何逼近原函数。项数越多，逼近范围越大。',
+   objs:['添加到第 5 阶观察逼近','切换 sin/cos/eˣ 三个函数','找到逼近失效的边界区域']},
+  {title:'关卡 7：微分方程',desc:'方向场可视化。每个点的小箭头表示解曲线的方向。拖动初始条件，观察解曲线如何沿方向场流动。',
+   objs:['拖动初始点到 3 个不同位置','切换不同的微分方程','观察解曲线的长期行为']}
+];
+const learnTexts=[
+  '极限是微积分的基石。ε-δ 定义说：对任意 ε>0，存在 δ>0，使得 0<|x-a|<δ 时 |f(x)-L|<ε。直觉上就是"x 足够接近 a 时，f(x) 任意接近 L"。',
+  '导数 f\'(x) = lim[h→0] (f(x+h)-f(x))/h，几何意义是曲线在该点的切线斜率。斜率为 0 的点是极值点（极大或极小）。',
+  '链式法则：(f∘g)\'(x) = f\'(g(x))·g\'(x)，像剥洋葱一样逐层求导。乘法法则：(fg)\' = f\'g + fg\'，两个函数各求一次导再交叉相乘。',
+  '定积分 ∫[a,b]f(x)dx 是曲线下面积的精确值。黎曼和用有限个矩形逼近，矩形越多越精确。左端点、右端点、中点是三种常见取样方式。',
+  '微积分基本定理：若 F(x)=∫[a,x]f(t)dt，则 F\'(x)=f(x)。这揭示了微分和积分是互逆运算，是微积分最深刻的结论。',
+  '泰勒展开：f(x) ≈ Σ f⁽ⁿ⁾(a)/n! · (x-a)ⁿ。用多项式逼近复杂函数，项数越多逼近越好，但都有收敛半径的限制。',
+  '微分方程 dy/dx=F(x,y) 描述变化率。方向场在每点画出斜率，解曲线沿方向场流动。不同初始条件给出不同的解，但它们永不相交。'
+];
+
+// ===== LEVEL STATE INIT =====
+function initLevel(){
+  const s={};
+  if(li===0){s.x0=2;s.eps=0.5;s.delta=0.3;s.positions=new Set();s.greenSeen=false;s.smallEps=false}
+  if(li===1){s.t=0.5;s.showSecant=false;s.secH=1;s.foundZero=false;s.foundSteep=false;s.secantSeen=false}
+  if(li===2){s.mode='chain';s.chainIdx=0;s.chainDone=0;s.prodIdx=0;s.prodDone=0;s.showCompare=false}
+  if(li===3){s.n=10;s.method=0;s.methodsSeen=new Set([0]);s.highN=false;s.lowErr=false}
+  if(li===4){s.func=0;s.animX=0;s.playing=false;s.verified=0;s.funcsSeen=new Set([0])}
+  if(li===5){s.func=0;s.terms=1;s.highTerms=false;s.funcsSeen=new Set([0]);s.boundaryFound=false}
+  if(li===6){s.eq=0;s.ix=0;s.iy=1;s.dragging=false;s.positions=new Set();s.eqsSeen=new Set([0]);s.longTerm=false}
+  levelState=s;
+}
+
+// ===== RENDER PANEL =====
+function renderPanel(){
+  const lv=levels[li],ob=levelObjs[li];
+  let h=`<h2>${lv.title}</h2><div class="desc">${lv.desc}</div>`;
+  h+=`<div style="font-size:13px;color:#60a5fa;margin-bottom:6px">目标：</div>`;
+  for(let i=0;i<3;i++){
+    h+=`<div class="obj${ob[i]?' done':''}"><span class="check">${ob[i]?'✅':'⬜'}</span>${lv.objs[i]}</div>`;
+  }
+  // Level-specific controls
+  if(li===0){
+    h+=`<div class="slider-row">x₀ = ${levelState.x0.toFixed(2)}<input type="range" min="-2" max="4" step="0.01" value="${levelState.x0}" oninput="levelState.x0=+this.value;this.previousSibling.textContent='x₀ = '+levelState.x0.toFixed(2);checkL0();renderPanel()"></div>`;
+    h+=`<div class="slider-row">ε = ${levelState.eps.toFixed(2)}<input type="range" min="0.05" max="1" step="0.01" value="${levelState.eps}" oninput="levelState.eps=+this.value;this.previousSibling.textContent='ε = '+levelState.eps.toFixed(2);checkL0();renderPanel()"></div>`;
+    h+=`<div class="slider-row">δ = ${levelState.delta.toFixed(2)}<input type="range" min="0.05" max="1" step="0.01" value="${levelState.delta}" oninput="levelState.delta=+this.value;this.previousSibling.textContent='δ = '+levelState.delta.toFixed(2);checkL0();renderPanel()"></div>`;
+  }
+  if(li===1){
+    h+=`<div class="slider-row">x 位置 = ${(-2+4*levelState.t).toFixed(2)}<input type="range" min="0" max="1" step="0.005" value="${levelState.t}" oninput="levelState.t=+this.value;checkL1();renderPanel()"></div>`;
+    h+=`<button class="act-btn" onclick="levelState.showSecant=!levelState.showSecant;if(levelState.showSecant)levelState.secantSeen=true;checkL1();renderPanel()">${levelState.showSecant?'隐藏割线':'显示割线逼近'}</button>`;
+    if(levelState.showSecant)h+=`<div class="slider-row">h = ${levelState.secH.toFixed(2)}<input type="range" min="0.01" max="2" step="0.01" value="${levelState.secH}" oninput="levelState.secH=+this.value;renderPanel()"></div>`;
+  }
+  if(li===2){
+    h+=`<div class="ctrl-row"><button onclick="levelState.mode='chain';renderPanel()" style="${levelState.mode==='chain'?'background:#3b82f6;color:#fff':''}">链式法则</button><button onclick="levelState.mode='product';renderPanel()" style="${levelState.mode==='product'?'background:#3b82f6;color:#fff':''}">乘法法则</button></div>`;
+    if(levelState.mode==='chain'){
+      const examples=['sin(x²)','eˣ²','cos(3x)'];
+      h+=`<div style="margin-top:8px;font-size:13px;color:#94a3b8">示例 ${levelState.chainIdx+1}/3: f(x) = ${examples[levelState.chainIdx]}</div>`;
+      h+=`<button class="act-btn" onclick="nextChain()">完成此示例 ✓</button>`;
+    }else{
+      const examples=['x²·sin(x)','eˣ·cos(x)'];
+      h+=`<div style="margin-top:8px;font-size:13px;color:#94a3b8">示例 ${levelState.prodIdx+1}/2: f(x) = ${examples[levelState.prodIdx]}</div>`;
+      h+=`<button class="act-btn" onclick="nextProd()">完成此示例 ✓</button>`;
+    }
+    h+=`<button class="act-btn" style="background:${levelState.showCompare?'#7c3aed':'linear-gradient(135deg,#3b82f6,#60a5fa)'}" onclick="levelState.showCompare=!levelState.showCompare;if(levelState.showCompare)completeObj(2);renderPanel()">${levelState.showCompare?'隐藏对比':'对比原函数与导函数'}</button>`;
+  }
+  if(li===3){
+    h+=`<div class="slider-row">矩形数 n = ${levelState.n}<input type="range" min="1" max="100" step="1" value="${levelState.n}" oninput="levelState.n=+this.value;checkL3();renderPanel()"></div>`;
+    const mnames=['左端点','右端点','中点'];
+    h+=`<div class="ctrl-row">${mnames.map((m,i)=>`<button onclick="levelState.method=${i};levelState.methodsSeen.add(${i});checkL3();renderPanel()" style="${levelState.method===i?'background:#3b82f6;color:#fff':''}">${m}</button>`).join('')}</div>`;
+    const exact=2;const approx=riemannSumRaw(levelState.n,levelState.method);const err=Math.abs(approx-exact)/exact*100;
+    h+=`<div style="margin-top:8px;font-size:12px;color:#94a3b8">近似值: ${approx.toFixed(4)} | 精确值: 2.0000 | 误差: ${err.toFixed(2)}%</div>`;
+  }
+  if(li===4){
+    const fnames=['sin(x)','x²','cos(x)'];
+    h+=`<div class="ctrl-row">${fnames.map((f,i)=>`<button onclick="levelState.func=${i};levelState.funcsSeen.add(${i});levelState.animX=0;checkL4();renderPanel()" style="${levelState.func===i?'background:#3b82f6;color:#fff':''}">${f}</button>`).join('')}</div>`;
+    h+=`<button class="act-btn" onclick="levelState.playing=!levelState.playing;renderPanel()">${levelState.playing?'⏸ 暂停':'▶ 播放累积动画'}</button>`;
+    h+=`<button class="act-btn" onclick="verifyFTC()" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">验证 F\'(x)=f(x)</button>`;
+    h+=`<div style="margin-top:6px;font-size:12px;color:#94a3b8">已验证 ${levelState.verified}/3 个点</div>`;
+  }
+  if(li===5){
+    const fnames=['sin(x)','cos(x)','eˣ'];
+    h+=`<div class="ctrl-row">${fnames.map((f,i)=>`<button onclick="levelState.func=${i};levelState.funcsSeen.add(${i});checkL5();renderPanel()" style="${levelState.func===i?'background:#3b82f6;color:#fff':''}">${f}</button>`).join('')}</div>`;
+    h+=`<div class="slider-row">泰勒项数: ${levelState.terms}<input type="range" min="1" max="15" step="1" value="${levelState.terms}" oninput="levelState.terms=+this.value;checkL5();renderPanel()"></div>`;
+  }
+  if(li===6){
+    const eqnames=["y'=x-y","y'=sin(x)·y","y'=y(1-y)"];
+    h+=`<div class="ctrl-row">${eqnames.map((e,i)=>`<button onclick="levelState.eq=${i};levelState.eqsSeen.add(${i});checkL6();renderPanel()" style="${levelState.eq===i?'background:#3b82f6;color:#fff':''}">${e}</button>`).join('')}</div>`;
+    h+=`<div style="margin-top:8px;font-size:12px;color:#94a3b8">拖动画布上的红点设置初始条件<br>初始点: (${levelState.ix.toFixed(1)}, ${levelState.iy.toFixed(1)})</div>`;
+    h+=`<button class="act-btn" onclick="levelState.longTerm=true;checkL6();renderPanel()">观察长期行为</button>`;
+  }
+  // Learn box
+  if(ob.every(v=>v)){
+    h+=`<div class="learn-box">💡 <b>知识点</b><br>${learnTexts[li]}</div>`;
+  }
+  if(ob.every(v=>v)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+  if(ob.every(v=>v)&&li===6)h+=`<div style="text-align:center;margin-top:12px;color:#4ade80;font-size:14px">🎉 恭喜通关！全部 7 个关卡已完成！</div>`;
+  panel.innerHTML=h;
+}
+
+// ===== RENDER BAR =====
+function renderBar(){
+  const done=levelObjs.flat().filter(v=>v).length;
+  let h=`<div class="progress">进度: ${done}/21 目标完成</div><div class="nav-btns">`;
+  for(let i=0;i<7;i++){
+    const cls=i===li?' active':'';
+    h+=`<button class="${cls}" onclick="goLevel(${i})">${i+1}</button>`;
+  }
+  h+=`</div>`;bar.innerHTML=h;
+}
+
+// ===== CHECK OBJECTIVES =====
+function checkL0(){
+  const s=levelState;
+  s.positions.add(Math.round(s.x0*10));
+  if(s.positions.size>=3)completeObj(0);
+  if(s.eps<0.3)s.smallEps=true;
+  if(s.smallEps&&s.delta<=s.eps*0.8)completeObj(1);
+  // Check green zone
+  const a=2,L=f0(a);
+  const inRange=Math.abs(f0(s.x0)-L)<s.eps&&Math.abs(s.x0-a)<s.delta&&s.x0!==a;
+  if(inRange)completeObj(2);
+}
+function checkL1(){
+  const s=levelState,x=-2+4*s.t;
+  const slope=3*x*x-3;
+  if(Math.abs(slope)<0.3)completeObj(0);
+  if(Math.abs(slope)>5){s.foundSteep=true;completeObj(1)}
+  if(s.secantSeen)completeObj(2);
+}
+function nextChain(){
+  const s=levelState;s.chainDone++;s.chainIdx=Math.min(s.chainIdx+1,2);
+  if(s.chainDone>=3)completeObj(0);renderPanel();
+}
+function nextProd(){
+  const s=levelState;s.prodDone++;s.prodIdx=Math.min(s.prodIdx+1,1);
+  if(s.prodDone>=2)completeObj(1);renderPanel();
+}
+function checkL3(){
+  const s=levelState;
+  if(s.n>=50)completeObj(0);
+  if(s.methodsSeen.size>=3)completeObj(1);
+  const exact=2;const approx=riemannSumRaw(s.n,s.method);
+  if(Math.abs(approx-exact)/exact<0.01)completeObj(2);
+}
+function checkL4(){
+  const s=levelState;
+  if(s.funcsSeen.size>=3)completeObj(2);
+}
+function verifyFTC(){
+  const s=levelState;s.verified++;
+  if(s.verified>=3)completeObj(1);
+  renderPanel();
+}
+function checkL5(){
+  const s=levelState;
+  if(s.terms>=5)completeObj(0);
+  if(s.funcsSeen.size>=3)completeObj(1);
+  // Check boundary
+  if(s.terms>=3){
+    const x=4;const orig=targetFunc5(s.func,x);const tay=taylorApprox(s.func,s.terms,x);
+    if(Math.abs(orig-tay)>1)completeObj(2);
+  }
+}
+function checkL6(){
+  const s=levelState;
+  if(s.positions.size>=3)completeObj(0);
+  if(s.eqsSeen.size>=2)completeObj(1);
+  if(s.longTerm)completeObj(2);
+}
+
+// ===== MATH FUNCTIONS =====
+function f0(x){return (x*x-4)/(x-2)} // limit at x=2 is 4
+function f1(x){return x*x*x-3*x}
+function f1d(x){return 3*x*x-3}
+
+function riemannSumRaw(n,method){
+  let sum=0;const a=0,b=Math.PI,dx=(b-a)/n;
+  for(let i=0;i<n;i++){
+    let x;
+    if(method===0)x=a+i*dx;else if(method===1)x=a+(i+1)*dx;else x=a+(i+0.5)*dx;
+    sum+=Math.sin(x)*dx;
+  }
+  return sum;
+}
+
+function ftcFunc(fi,x){
+  if(fi===0)return Math.sin(x);
+  if(fi===1)return x*x;
+  return Math.cos(x);
+}
+function ftcIntegral(fi,x){
+  // Numerical integral from 0 to x
+  const n=100;let sum=0;const dx=x/n;
+  for(let i=0;i<n;i++){sum+=ftcFunc(fi,i*dx+dx/2)*dx}
+  return sum;
+}
+
+function targetFunc5(fi,x){
+  if(fi===0)return Math.sin(x);
+  if(fi===1)return Math.cos(x);
+  return Math.exp(x);
+}
+function taylorApprox(fi,terms,x){
+  let sum=0;
+  for(let n=0;n<terms;n++){
+    if(fi===0)sum+=(n%2===0?1:-1)*Math.pow(x,2*n+1)/factorial(2*n+1); // sin
+    if(fi===1)sum+=(n%2===0?1:-1)*Math.pow(x,2*n)/factorial(2*n); // cos
+    if(fi===2)sum+=Math.pow(x,n)/factorial(n); // exp
+  }
+  return sum;
+}
+function factorial(n){let r=1;for(let i=2;i<=n;i++)r*=i;return r}
+
+function deField(eq,x,y){
+  if(eq===0)return x-y;
+  if(eq===1)return Math.sin(x)*y;
+  return y*(1-y);
+}
+
+// ===== COORDINATE HELPERS =====
+function toSX(x,ox,sx){return ox+x*sx}
+function toSY(y,oy,sy){return oy-y*sy}
+function drawGrid(ox,oy,sx,sy,xr,yr){
+  ctx.strokeStyle='#1a1a3a';ctx.lineWidth=1;
+  for(let x=Math.ceil(xr[0]);x<=xr[1];x++){
+    const px=toSX(x,ox,sx);ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,H);ctx.stroke();
+  }
+  for(let y=Math.ceil(yr[0]);y<=yr[1];y++){
+    const py=toSY(y,oy,sy);ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(W,py);ctx.stroke();
+  }
+  ctx.strokeStyle='#2a2a5a';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(0,oy);ctx.lineTo(W,oy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(ox,0);ctx.lineTo(ox,H);ctx.stroke();
+  ctx.fillStyle='#64748b';ctx.font='11px sans-serif';
+  for(let x=Math.ceil(xr[0]);x<=xr[1];x++){
+    if(x===0)continue;ctx.fillText(x,toSX(x,ox,sx)-4,oy+14);
+  }
+  for(let y=Math.ceil(yr[0]);y<=yr[1];y++){
+    if(y===0)continue;ctx.fillText(y,ox+4,toSY(y,oy,sy)+4);
+  }
+}
+function drawCurve(fn,ox,oy,sx,sy,xr,color,lw){
+  ctx.strokeStyle=color;ctx.lineWidth=lw||2;ctx.beginPath();
+  let first=true;
+  for(let px=0;px<W;px++){
+    const x=(px-ox)/sx;if(x<xr[0]||x>xr[1])continue;
+    const y=fn(x);if(!isFinite(y)||Math.abs(y)>100)continue;
+    const py=toSY(y,oy,sy);
+    if(first){ctx.moveTo(px,py);first=false}else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+}
+
+// ===== DRAW LEVELS =====
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  if(li===0)drawL0();
+  else if(li===1)drawL1();
+  else if(li===2)drawL2();
+  else if(li===3)drawL3();
+  else if(li===4)drawL4();
+  else if(li===5)drawL5();
+  else if(li===6)drawL6();
+}
+
+function drawL0(){
+  const s=levelState;
+  const ox=W/2-40,oy=H/2+60,sx=80,sy=50;
+  drawGrid(ox,oy,sx,sy,[-3,6],[-2,8]);
+  // Draw f(x) = (x²-4)/(x-2) with hole at x=2
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.beginPath();
+  let first=true;
+  for(let px=0;px<W;px++){
+    const x=(px-ox)/sx;
+    if(Math.abs(x-2)<0.02)continue;
+    const y=f0(x);if(!isFinite(y)||Math.abs(y)>20)continue;
+    const py=toSY(y,oy,sy);
+    if(first){ctx.moveTo(px,py);first=false}else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+  // Hole at x=2
+  const hx=toSX(2,ox,sx),hy=toSY(4,oy,sy);
+  ctx.beginPath();ctx.arc(hx,hy,5,0,Math.PI*2);ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.stroke();
+  // Epsilon band
+  const L=4;
+  ctx.fillStyle='rgba(34,197,94,0.1)';
+  ctx.fillRect(0,toSY(L+s.eps,oy,sy),W,s.eps*2*sy);
+  ctx.strokeStyle='#22c55e';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(0,toSY(L+s.eps,oy,sy));ctx.lineTo(W,toSY(L+s.eps,oy,sy));ctx.stroke();
+  ctx.beginPath();ctx.moveTo(0,toSY(L-s.eps,oy,sy));ctx.lineTo(W,toSY(L-s.eps,oy,sy));ctx.stroke();
+  ctx.setLineDash([]);
+  // Delta band
+  const a=2;
+  ctx.fillStyle='rgba(59,130,246,0.1)';
+  ctx.fillRect(toSX(a-s.delta,ox,sx),0,s.delta*2*sx,H);
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(toSX(a-s.delta,ox,sx),0);ctx.lineTo(toSX(a-s.delta,ox,sx),H);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(toSX(a+s.delta,ox,sx),0);ctx.lineTo(toSX(a+s.delta,ox,sx),H);ctx.stroke();
+  ctx.setLineDash([]);
+  // Current point
+  if(Math.abs(s.x0-2)>0.02){
+    const px=toSX(s.x0,ox,sx),py=toSY(f0(s.x0),oy,sy);
+    ctx.beginPath();ctx.arc(px,py,6,0,Math.PI*2);ctx.fillStyle='#f59e0b';ctx.fill();
+    // Dashed lines to axes
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px,oy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(ox,py);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // Labels
+  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
+  ctx.fillText('f(x) = (x²-4)/(x-2)',20,24);
+  ctx.fillText('极限点: x→2, L=4',20,42);
+  ctx.fillStyle='#22c55e';ctx.fillText(`ε = ${s.eps.toFixed(2)}`,W-120,24);
+  ctx.fillStyle='#60a5fa';ctx.fillText(`δ = ${s.delta.toFixed(2)}`,W-120,42);
+}
+
+function drawL1(){
+  const s=levelState;
+  const ox=W/2,oy=H/2,sx=60,sy=30;
+  drawGrid(ox,oy,sx,sy,[-3,3],[-5,5]);
+  drawCurve(f1,ox,oy,sx,sy,[-3,3],'#3b82f6',2);
+  const x=-2+4*s.t,y=f1(x),slope=f1d(x);
+  const px=toSX(x,ox,sx),py=toSY(y,oy,sy);
+  // Tangent line
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.beginPath();
+  const dx=2;
+  ctx.moveTo(toSX(x-dx,ox,sx),toSY(y-slope*dx,oy,sy));
+  ctx.lineTo(toSX(x+dx,ox,sx),toSY(y+slope*dx,oy,sy));
+  ctx.stroke();
+  // Secant line
+  if(s.showSecant){
+    const h=s.secH,x2=x+h,y2=f1(x2);
+    const secSlope=(y2-y)/h;
+    ctx.strokeStyle='rgba(168,85,247,0.7)';ctx.lineWidth=1.5;ctx.setLineDash([5,5]);ctx.beginPath();
+    ctx.moveTo(toSX(x-dx,ox,sx),toSY(y-secSlope*dx,oy,sy));
+    ctx.lineTo(toSX(x+dx,ox,sx),toSY(y+secSlope*dx,oy,sy));
+    ctx.stroke();ctx.setLineDash([]);
+    // Second point
+    ctx.beginPath();ctx.arc(toSX(x2,ox,sx),toSY(y2,oy,sy),4,0,Math.PI*2);ctx.fillStyle='#a855f7';ctx.fill();
+    ctx.fillStyle='#a855f7';ctx.font='12px sans-serif';
+    ctx.fillText(`割线斜率: ${secSlope.toFixed(2)}`,20,78);
+  }
+  // Point
+  ctx.beginPath();ctx.arc(px,py,7,0,Math.PI*2);ctx.fillStyle='#ef4444';ctx.fill();
+  ctx.beginPath();ctx.arc(px,py,7,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  // Info
+  ctx.fillStyle='#94a3b8';ctx.font='13px sans-serif';
+  ctx.fillText(`f(x) = x³ - 3x`,20,24);
+  ctx.fillText(`x = ${x.toFixed(2)}, f(x) = ${y.toFixed(2)}`,20,42);
+  ctx.fillStyle='#f59e0b';ctx.fillText(`切线斜率 f'(x) = ${slope.toFixed(2)}`,20,60);
+}
+
+function drawL2(){
+  const s=levelState;
+  const ox=W/2,oy=H/2,sx=50,sy=40;
+  drawGrid(ox,oy,sx,sy,[-4,4],[-4,4]);
+  if(s.mode==='chain'){
+    const funcs=[
+      {f:x=>Math.sin(x*x),d:x=>2*x*Math.cos(x*x),label:'sin(x²)',dl:"2x·cos(x²)"},
+      {f:x=>Math.exp(x*x),d:x=>2*x*Math.exp(x*x),label:'e^(x²)',dl:"2x·e^(x²)"},
+      {f:x=>Math.cos(3*x),d:x=>-3*Math.sin(3*x),label:'cos(3x)',dl:"-3sin(3x)"}
+    ];
+    const fn=funcs[s.chainIdx];
+    drawCurve(fn.f,ox,oy,sx,sy,[-4,4],'#3b82f6',2);
+    if(s.showCompare)drawCurve(fn.d,ox,oy,sx,sy,[-4,4],'#f59e0b',1.5);
+    // Chain rule visualization
+    ctx.fillStyle='#e0e0f0';ctx.font='14px sans-serif';
+    ctx.fillText(`f(x) = ${fn.label}`,20,24);
+    ctx.fillText(`外层' · 内层' = ${fn.dl}`,20,44);
+    // Arrows showing chain
+    const cx=W/2,cy=H-80;
+    ctx.fillStyle='#111128';ctx.strokeStyle='#2a2a4a';ctx.lineWidth=1;
+    roundRect(cx-160,cy-25,120,40,8);roundRect(cx+40,cy-25,120,40,8);
+    ctx.fillStyle='#60a5fa';ctx.font='13px sans-serif';
+    ctx.fillText('外层求导',cx-140,cy+2);ctx.fillText('内层求导',cx+60,cy+2);
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;drawArrow(cx-30,cy,cx+30,cy);
+    ctx.fillStyle='#f59e0b';ctx.font='16px sans-serif';ctx.fillText('×',cx-8,cy+5);
+  }else{
+    const funcs=[
+      {f:x=>x*x*Math.sin(x),d:x=>2*x*Math.sin(x)+x*x*Math.cos(x),label:'x²·sin(x)',dl:"2x·sin(x)+x²·cos(x)"},
+      {f:x=>Math.exp(x)*Math.cos(x),d:x=>Math.exp(x)*Math.cos(x)-Math.exp(x)*Math.sin(x),label:'eˣ·cos(x)',dl:"eˣcos(x)-eˣsin(x)"}
+    ];
+    const fn=funcs[s.prodIdx];
+    drawCurve(fn.f,ox,oy,sx,sy,[-4,4],'#3b82f6',2);
+    if(s.showCompare)drawCurve(fn.d,ox,oy,sx,sy,[-4,4],'#f59e0b',1.5);
+    ctx.fillStyle='#e0e0f0';ctx.font='14px sans-serif';
+    ctx.fillText(`f(x) = ${fn.label}`,20,24);
+    ctx.fillText(`f'g + fg' = ${fn.dl}`,20,44);
+    // Product rule boxes
+    const cx=W/2,cy=H-80;
+    ctx.fillStyle='#111128';ctx.strokeStyle='#2a2a4a';ctx.lineWidth=1;
+    roundRect(cx-200,cy-25,100,40,8);roundRect(cx-80,cy-25,60,40,8);
+    roundRect(cx+20,cy-25,60,40,8);roundRect(cx+100,cy-25,100,40,8);
+    ctx.fillStyle='#ef4444';ctx.font='13px sans-serif';ctx.fillText("f'",cx-165,cy+2);
+    ctx.fillStyle='#60a5fa';ctx.fillText('g',cx-58,cy+2);
+    ctx.fillStyle='#3b82f6';ctx.fillText('f',cx+38,cy+2);
+    ctx.fillStyle='#ef4444';ctx.fillText("g'",cx+135,cy+2);
+    ctx.fillStyle='#f59e0b';ctx.font='18px sans-serif';ctx.fillText('+',cx-10,cy+5);
+  }
+}
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();ctx.fill();ctx.stroke();
+}
+function drawArrow(x1,y1,x2,y2){
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  const a=Math.atan2(y2-y1,x2-x1);
+  ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-10*Math.cos(a-0.4),y2-10*Math.sin(a-0.4));
+  ctx.lineTo(x2-10*Math.cos(a+0.4),y2-10*Math.sin(a+0.4));ctx.closePath();ctx.fillStyle='#f59e0b';ctx.fill();
+}
+
+function drawL3(){
+  const s=levelState;
+  const ox=W*0.15,oy=H*0.7,sx=W*0.7/Math.PI,sy=H*0.5;
+  drawGrid(ox,oy,sx,sy,[-1,4],[-0.5,1.5]);
+  // Draw sin(x)
+  drawCurve(Math.sin,ox,oy,sx,sy,[0,Math.PI],'#3b82f6',2);
+  // Riemann rectangles
+  const n=s.n,a=0,b=Math.PI,dx=(b-a)/n;
+  for(let i=0;i<n;i++){
+    let x;
+    if(s.method===0)x=a+i*dx;else if(s.method===1)x=a+(i+1)*dx;else x=a+(i+0.5)*dx;
+    const h=Math.sin(x);
+    const rx=toSX(a+i*dx,ox,sx),ry=toSY(h,oy,sy);
+    const rw=dx*sx,rh=h*sy;
+    ctx.fillStyle='rgba(59,130,246,0.25)';ctx.fillRect(rx,ry,rw,rh);
+    ctx.strokeStyle='rgba(59,130,246,0.6)';ctx.lineWidth=1;ctx.strokeRect(rx,ry,rw,rh);
+  }
+  const approx=riemannSumRaw(n,s.method);
+  ctx.fillStyle='#e0e0f0';ctx.font='14px sans-serif';
+  ctx.fillText(`∫₀π sin(x)dx — 黎曼和`,20,24);
+  ctx.fillText(`n = ${n}, 近似 = ${approx.toFixed(4)}, 精确 = 2.0000`,20,44);
+  const err=Math.abs(approx-2)/2*100;
+  ctx.fillStyle=err<1?'#4ade80':'#f59e0b';
+  ctx.fillText(`误差: ${err.toFixed(2)}%`,20,64);
+}
+
+function drawL4(){
+  const s=levelState;
+  const ox=W*0.12,oy=H*0.55,sx=W*0.7/6,sy=H*0.35;
+  drawGrid(ox,oy,sx,sy,[-1,7],[-2,3]);
+  const fnames=['sin(x)','x²','cos(x)'];
+  // Draw f(x)
+  drawCurve(x=>ftcFunc(s.func,x),ox,oy,sx,sy,[-1,7],'#3b82f6',2);
+  // Draw F(x) = integral
+  drawCurve(x=>ftcIntegral(s.func,x),ox,oy,sx,sy,[0,6],'#22c55e',2);
+  // Animated fill
+  if(s.playing&&s.animX<6)s.animX+=0.03;
+  if(s.animX>0){
+    ctx.fillStyle='rgba(59,130,246,0.2)';ctx.beginPath();
+    ctx.moveTo(toSX(0,ox,sx),oy);
+    for(let x=0;x<=s.animX;x+=0.05){
+      ctx.lineTo(toSX(x,ox,sx),toSY(ftcFunc(s.func,x),oy,sy));
+    }
+    ctx.lineTo(toSX(s.animX,ox,sx),oy);ctx.closePath();ctx.fill();
+    if(s.animX>0.5)completeObj(0);
+  }
+  ctx.fillStyle='#e0e0f0';ctx.font='14px sans-serif';
+  ctx.fillText(`f(x) = ${fnames[s.func]}`,20,24);
+  ctx.fillStyle='#3b82f6';ctx.fillText('f(x)',20,44);
+  ctx.fillStyle='#22c55e';ctx.fillText('F(x) = ∫₀ˣ f(t)dt',100,44);
+}
+
+function drawL5(){
+  const s=levelState;
+  const ox=W/2,oy=H/2,sx=40,sy=40;
+  drawGrid(ox,oy,sx,sy,[-7,7],[-4,4]);
+  const fnames=['sin(x)','cos(x)','eˣ'];
+  // Original function
+  drawCurve(x=>targetFunc5(s.func,x),ox,oy,sx,sy,[-7,7],'#3b82f6',2);
+  // Taylor approximation
+  drawCurve(x=>taylorApprox(s.func,s.terms,x),ox,oy,sx,sy,[-7,7],'#f59e0b',2);
+  // Show terms
+  ctx.fillStyle='#e0e0f0';ctx.font='14px sans-serif';
+  ctx.fillText(`f(x) = ${fnames[s.func]}`,20,24);
+  ctx.fillStyle='#3b82f6';ctx.fillText('原函数',20,44);
+  ctx.fillStyle='#f59e0b';ctx.fillText(`泰勒展开 (${s.terms} 项)`,120,44);
+  // Show polynomial terms
+  let poly='T(x) = ';
+  for(let n=0;n<Math.min(s.terms,6);n++){
+    if(s.func===0){poly+=(n>0?'+':'')+`${n%2===0?'':'-'}x^${2*n+1}/${factorial(2*n+1)}`}
+    if(s.func===1){poly+=(n>0?'+':'')+`${n%2===0?'':'-'}x^${2*n}/${factorial(2*n)}`}
+    if(s.func===2){poly+=(n>0?'+':'')+`x^${n}/${factorial(n)}`}
+  }
+  if(s.terms>6)poly+=' + ...';
+  ctx.fillStyle='#94a3b8';ctx.font='12px sans-serif';
+  ctx.fillText(poly,20,H-20);
+  // Convergence boundary indicator
+  if(s.func===2&&s.terms<8){
+    const bx=toSX(s.terms*0.8,ox,sx);
+    ctx.strokeStyle='rgba(239,68,68,0.5)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(bx,0);ctx.lineTo(bx,H);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#ef4444';ctx.font='11px sans-serif';ctx.fillText('逼近边界',bx+4,20);
+  }
+}
+
+function drawL6(){
+  const s=levelState;
+  const ox=W/2,oy=H/2,sx=40,sy=40;
+  drawGrid(ox,oy,sx,sy,[-6,6],[-4,4]);
+  // Direction field
+  const step=0.6;
+  for(let x=-6;x<=6;x+=step){
+    for(let y=-4;y<=4;y+=step){
+      const slope=deField(s.eq,x,y);
+      const len=12;const angle=Math.atan(slope);
+      const dx=len*Math.cos(angle)/2,dy=len*Math.sin(angle)/2;
+      const px=toSX(x,ox,sx),py=toSY(y,oy,sy);
+      const mag=Math.min(Math.abs(slope),3)/3;
+      ctx.strokeStyle=`rgba(${100+155*mag},${130-50*mag},${246-100*mag},0.6)`;
+      ctx.lineWidth=1;ctx.beginPath();
+      ctx.moveTo(px-dx,py+dy);ctx.lineTo(px+dx,py-dy);ctx.stroke();
+    }
+  }
+  // Solution curve via Euler's method
+  const dt=0.05;let cx=s.ix,cy=s.iy;
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=2.5;ctx.beginPath();
+  ctx.moveTo(toSX(cx,ox,sx),toSY(cy,oy,sy));
+  const maxSteps=s.longTerm?400:200;
+  for(let i=0;i<maxSteps;i++){
+    const slope=deField(s.eq,cx,cy);
+    cy+=slope*dt;cx+=dt;
+    if(cx>6||cy>5||cy<-5)break;
+    ctx.lineTo(toSX(cx,ox,sx),toSY(cy,oy,sy));
+  }
+  ctx.stroke();
+  // Backward
+  cx=s.ix;cy=s.iy;
+  ctx.beginPath();ctx.moveTo(toSX(cx,ox,sx),toSY(cy,oy,sy));
+  for(let i=0;i<maxSteps;i++){
+    const slope=deField(s.eq,cx,cy);
+    cy-=slope*dt;cx-=dt;
+    if(cx<-6||cy>5||cy<-5)break;
+    ctx.lineTo(toSX(cx,ox,sx),toSY(cy,oy,sy));
+  }
+  ctx.stroke();
+  // Initial point
+  const ipx=toSX(s.ix,ox,sx),ipy=toSY(s.iy,oy,sy);
+  ctx.beginPath();ctx.arc(ipx,ipy,8,0,Math.PI*2);ctx.fillStyle='#ef4444';ctx.fill();
+  ctx.beginPath();ctx.arc(ipx,ipy,8,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+  // Labels
+  const eqnames=["y'=x-y","y'=sin(x)·y","y'=y(1-y)"];
+  ctx.fillStyle='#e0e0f0';ctx.font='14px sans-serif';
+  ctx.fillText(`微分方程: ${eqnames[s.eq]}`,20,24);
+  ctx.fillStyle='#ef4444';ctx.fillText(`初始条件: (${s.ix.toFixed(1)}, ${s.iy.toFixed(1)})`,20,44);
+}
+
+// ===== MOUSE EVENTS =====
+cv.addEventListener('mousedown',e=>{
+  mouse.down=true;
+  const rect=cv.getBoundingClientRect();
+  mouse.px=e.clientX-rect.left;mouse.py=e.clientY-rect.top;
+  if(li===6){
+    const s=levelState;
+    const ox=W/2,oy=H/2,sx=40,sy=40;
+    const ipx=toSX(s.ix,ox,sx),ipy=toSY(s.iy,oy,sy);
+    if(Math.hypot(mouse.px-ipx,mouse.py-ipy)<20)s.dragging=true;
+  }
+});
+cv.addEventListener('mousemove',e=>{
+  const rect=cv.getBoundingClientRect();
+  mouse.x=e.clientX-rect.left;mouse.y=e.clientY-rect.top;
+  if(li===6&&levelState.dragging){
+    const ox=W/2,oy=H/2,sx=40,sy=40;
+    levelState.ix=(mouse.x-ox)/sx;
+    levelState.iy=-(mouse.y-oy)/sy;
+    levelState.ix=Math.max(-5,Math.min(5,levelState.ix));
+    levelState.iy=Math.max(-3,Math.min(3,levelState.iy));
+    levelState.positions.add(Math.round(levelState.ix*10)+'_'+Math.round(levelState.iy*10));
+    checkL6();renderPanel();
+  }
+});
+cv.addEventListener('mouseup',()=>{mouse.down=false;if(li===6)levelState.dragging=false});
+cv.addEventListener('mouseleave',()=>{mouse.down=false;if(li===6)levelState.dragging=false});
+
+// ===== ANIMATION LOOP =====
+function loop(){draw();animId=requestAnimationFrame(loop)}
+</script>
+</body>
+</html>

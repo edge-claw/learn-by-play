@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SpaceX 与可回收火箭 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e2e8f0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh;width:100vw}
+#overlay{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 40%,#1a1040 0%,#0a0a1a 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+#overlay h1{font-size:36px;color:#ef4444;text-shadow:0 0 30px rgba(239,68,68,0.5);margin-bottom:8px}
+#overlay h2{font-size:18px;color:#f97316;margin-bottom:30px;font-weight:normal}
+#overlay .desc{max-width:500px;text-align:center;color:#94a3b8;font-size:14px;line-height:1.8;margin-bottom:30px}
+#overlay button{padding:14px 48px;font-size:18px;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;border:none;border-radius:8px;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s}
+#overlay button:hover{transform:scale(1.05);box-shadow:0 0 25px rgba(239,68,68,0.5)}
+.stars{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.star{position:absolute;background:#fff;border-radius:50%;animation:twinkle 3s infinite alternate}
+@keyframes twinkle{0%{opacity:0.2}100%{opacity:1}}
+#wrap{display:none;width:100vw;height:100vh;position:relative}
+#panel{position:absolute;left:0;top:0;width:320px;height:calc(100% - 36px);background:rgba(10,10,30,0.95);border-right:1px solid #1e293b;overflow-y:auto;padding:16px;z-index:10}
+#panel h3{color:#ef4444;font-size:16px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+#panel .obj{font-size:13px;padding:4px 0;display:flex;align-items:center;gap:6px}
+#panel .obj .dot{width:10px;height:10px;border-radius:50%;border:2px solid #475569;flex-shrink:0}
+#panel .obj .dot.done{background:#4ade80;border-color:#4ade80}
+#panel .learn-box{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:10px;margin-top:10px;font-size:12px;line-height:1.7;color:#cbd5e1}
+#panel .learn-box b{color:#f97316}
+.ctrl-group{margin-top:10px;background:rgba(30,41,59,0.5);border-radius:6px;padding:10px}
+.ctrl-group label{font-size:12px;color:#94a3b8;display:block;margin-bottom:4px}
+.ctrl-group input[type=range]{width:100%;accent-color:#ef4444}
+.ctrl-group .val{font-size:11px;color:#f97316;text-align:right}
+.act-btn{display:block;width:100%;padding:8px;margin-top:6px;border:none;border-radius:4px;font-size:13px;cursor:pointer;background:#ef4444;color:#fff;transition:background 0.2s}
+.act-btn:hover{background:#dc2626}
+.act-btn:disabled{background:#374151;color:#6b7280;cursor:not-allowed}
+canvas{position:absolute;left:320px;top:0;background:#0a0a1a}
+#bar{display:flex;position:absolute;bottom:0;left:0;width:100%;height:36px;background:rgba(10,10,30,0.95);border-top:1px solid #1e293b;align-items:center;padding:0 16px;z-index:10;gap:8px}
+#bar .lv-btn{padding:3px 10px;font-size:12px;border:1px solid #334155;background:transparent;color:#94a3b8;border-radius:4px;cursor:pointer;transition:all 0.2s}
+#bar .lv-btn:hover{border-color:#ef4444;color:#ef4444}
+#bar .lv-btn.cur{background:#ef4444;color:#fff;border-color:#ef4444}
+#bar .lv-btn.done{border-color:#4ade80;color:#4ade80}
+#bar .lv-btn.done.cur{background:#4ade80;color:#fff}
+#bar .prog{margin-left:auto;font-size:12px;color:#64748b}
+</style>
+</head>
+<body>
+<div id="overlay">
+<div class="stars" id="starsContainer"></div>
+<h1>🚀 SpaceX 与可回收火箭 探险</h1>
+<h2>从着陆到火星 — 7 关探索可回收火箭革命</h2>
+<div class="desc">
+体验 SpaceX 的技术革命：从一级火箭垂直着陆到星链组网，从星舰设计到火星殖民。<br>
+7 个关卡带你了解可回收火箭如何改变太空探索的经济学。
+</div>
+<button onclick="startGame()">开始探索</button>
+</div>
+<div id="wrap">
+<div id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="bar"></div>
+</div>
+<script>
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay');
+var W,H,curLevel=0,animId=0,t=0;
+var levelObjs=[[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false]];
+const levelNames=['可回收着陆基础','栅格翼与着陆腿','猎鹰9号任务','星链组网','星舰设计','火星任务','太空经济'];
+const levelDescs=[
+'控制推力矢量让一级火箭垂直着陆在海上平台。调整推力大小和角度，克服风力干扰，安全降落。',
+'管理大气层再入过程：在正确时机展开栅格翼稳定姿态，部署着陆腿，控制再入角度。',
+'执行完整的猎鹰9号发射任务：从点火升空到Max-Q节流，一二级分离，一级返回着陆，二级入轨。',
+'规划星链卫星星座：选择轨道面，部署卫星，建立星间激光链路，实现全球覆盖。',
+'设计星舰系统：安装热防护瓦片，执行在轨加注对接，用机械臂（筷子）回收超重助推器。',
+'规划火星任务：计算霍曼转移窗口，执行火星大气制动，选择着陆点，建立ISRU燃料工厂。',
+'分析太空经济：对比发射成本，评估星链商业模式，规划火星殖民经济体系。'
+];
+const levelObjTexts=[
+['调整推力使下降速度<2m/s','保持水平偏移<5m','成功着陆在平台上'],
+['正确时机展开栅格翼','再入角度保持在15-25°','成功部署着陆腿并着陆'],
+['安全通过Max-Q(节流至65%)','完成一二级分离','一级返回着陆+二级入轨'],
+['部署至少3个轨道面','建立星间激光链路','全球覆盖率达到80%'],
+['安装热防护瓦片覆盖>90%','完成在轨加注对接','筷子成功夹住助推器'],
+['在转移窗口内发射','火星大气制动减速成功','着陆并启动ISRU生产'],
+['可回收成本降低>60%','星链年收入>50亿','火星基地自给率>70%']
+];
+const learnTexts=[
+['<b>可回收着陆原理：</b>SpaceX 的一级火箭通过单台梅林发动机的"自杀式燃烧"（hoverslam）着陆——因为单台发动机的最低推力仍大于火箭空重，所以不能悬停，必须精确计算点火时机，在速度归零的瞬间触地。<br><b>推力矢量控制(TVC)：</b>通过液压万向节改变发动机喷口方向，实现姿态控制。着陆精度可达1-2米。'],
+['<b>栅格翼：</b>折叠式钛合金栅格翼在再入时展开，提供气动控制力。它们像"华夫饼"一样的格栅结构在超音速下比传统翼面更稳定。<br><b>着陆腿：</b>4条碳纤维/铝合金着陆腿在着陆前几秒展开，采用液压缓冲吸收冲击。猎鹰9号着陆腿展开跨度约18米。'],
+['<b>Max-Q：</b>最大动压点，火箭承受最大气动载荷的时刻（约发射后60-80秒）。此时需节流至约65%推力以减轻结构负荷。<br><b>级间分离：</b>一级9台梅林发动机关机后，气动分离系统将两级推开。一级翻转180°，用3台发动机执行"回推燃烧"返回。'],
+['<b>星链星座：</b>由约12000颗卫星组成（已获批可扩展至42000颗），分布在多个轨道面（550km和340km高度）。<br><b>星间激光链路：</b>V2版星链卫星配备激光终端，卫星间直接通信，数据传输速度接近光速，比海底光缆路径更短，延迟更低。'],
+['<b>不锈钢星舰：</b>采用304L不锈钢而非碳纤维，因为不锈钢在低温（液氧-183°C）和高温（再入1500°C）下都保持强度，且成本仅为碳纤维的1/50。<br><b>筷子回收：</b>发射塔机械臂（Mechazilla）直接在空中夹住返回的助推器，省去着陆腿重量（约2吨），提高有效载荷。'],
+['<b>霍曼转移：</b>最省燃料的行星际轨道，地球到火星约需7-9个月。发射窗口每26个月出现一次。<br><b>ISRU：</b>原位资源利用——用火星大气中的CO₂和地下水冰，通过萨巴蒂尔反应生产甲烷(CH₄)和氧气(O₂)作为返程燃料，这是星舰选择甲烷发动机的关键原因。'],
+['<b>可回收经济学：</b>猎鹰9号一级火箭已实现20+次复用，将每公斤入轨成本从约$20000降至约$2700。星舰目标是$10/kg。<br><b>星链商业模式：</b>2024年收入约66亿美元，用户超400万。低轨卫星互联网填补了全球30亿无网络人口的市场空白。<br><b>火星殖民：</b>SpaceX目标2030年代建立永久基地，需要约1000艘星舰运送100万人和物资。']
+];
+
+// === Level state variables ===
+// L1: Landing
+var l1={vy:0,vx:0,y:0,x:0,thrust:50,angle:0,wind:0,fuel:100,landed:false,crashed:false,groundY:0,platX:0,platW:80,running:false};
+// L2: Grid fins & legs
+var l2={y:0,vy:0,angle:0,va:0,alt:100,gridFins:false,legs:false,phase:'reentry',running:false,finTime:-1,legTime:-1,crashed:false,landed:false};
+// L3: Falcon 9 mission
+var l3={phase:'prelaunch',alt:0,vy:0,throttle:100,maxQ:false,separated:false,s1alt:0,s1vy:0,s2alt:0,s2vy:0,s1landed:false,s2orbit:false,t:0,running:false};
+// L4: Starlink
+var l4={orbits:[],sats:[],links:[],coverage:0,selectedOrbit:-1,deploying:false,phase:'plan'};
+// L5: Starship
+var l5={tiles:[],tileCount:0,docked:false,caught:false,phase:'tiles',dockX:0,dockY:0,dockVx:0,armX:0,armOpen:true,boosterY:0,boosterVy:0};
+// L6: Mars
+var l6={phase:'window',earthAngle:0,marsAngle:0,launched:false,shipAngle:0,shipR:0,aerobrake:false,landed:false,isru:0,t:0,running:false,landingSite:-1,sites:[]};
+// L7: Economy
+var l7={reusePct:0,starlinkRev:0,marsSupply:0,phase:'cost',simRunning:false,launches:0,savings:0};
+
+// === PLACEHOLDER_GAME_LOGIC ===
+
+function resize(){
+  W=window.innerWidth-320;H=window.innerHeight-36;
+  cv.width=W;cv.height=H;
+}
+window.addEventListener('resize',()=>{resize();});
+
+// Stars for overlay
+(function(){
+  const c=document.getElementById('starsContainer');
+  for(let i=0;i<80;i++){
+    const s=document.createElement('div');s.className='star';
+    s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;width:${1+Math.random()*2}px;height:${1+Math.random()*2}px;animation-delay:${Math.random()*3}s;animation-duration:${2+Math.random()*3}s`;
+    c.appendChild(s);
+  }
+})();
+
+function startGame(){
+  overlay.style.display='none';
+  document.getElementById('wrap').style.display='block';
+  bar.style.display='flex';
+  resize();
+  goLevel(0);
+}
+
+function goLevel(n){
+  curLevel=n;
+  cancelAnimationFrame(animId);
+  initLevel(n);
+  renderPanel();
+  renderBar();
+  runLevel(n);
+}
+
+function renderBar(){
+  let h='';
+  for(let i=0;i<7;i++){
+    let cls='lv-btn';
+    if(i===curLevel)cls+=' cur';
+    if(levelObjs[i].every(v=>v))cls+=' done';
+    h+=`<button class="${cls}" onclick="goLevel(${i})">${i+1}</button>`;
+  }
+  let done=levelObjs.filter(l=>l.every(v=>v)).length;
+  h+=`<span class="prog">进度: ${done}/7 关卡完成</span>`;
+  bar.innerHTML=h;
+}
+
+function renderPanel(){
+  let li=curLevel;
+  let h=`<h3>🚀 关卡${li+1}: ${levelNames[li]}</h3>`;
+  h+=`<p style="font-size:12px;color:#94a3b8;margin-bottom:10px;line-height:1.6">${levelDescs[li]}</p>`;
+  h+=`<div style="margin-bottom:8px">`;
+  for(let i=0;i<3;i++){
+    h+=`<div class="obj"><span class="dot${levelObjs[li][i]?' done':''}"></span><span style="font-size:12px">${levelObjTexts[li][i]}</span></div>`;
+  }
+  h+=`</div>`;
+  // Level-specific controls
+  h+=getLevelControls(li);
+  // Learn box
+  if(levelObjs[li].every(v=>v)){
+    h+=`<div class="learn-box">${learnTexts[li][0]}</div>`;
+  }
+  if(levelObjs[li].every(v=>v)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+  if(levelObjs[li].every(v=>v)&&li===6)h+=`<div style="text-align:center;margin-top:12px;color:#4ade80;font-size:14px">🎉 恭喜通关！全部 7 个关卡已完成！</div>`;
+  panel.innerHTML=h;
+}
+
+// === PLACEHOLDER_CONTROLS ===
+
+function getLevelControls(li){
+  let h='';
+  if(li===0){
+    h+=`<div class="ctrl-group"><label>推力 (${l1.thrust}%)</label><input type="range" min="0" max="100" value="${l1.thrust}" oninput="l1.thrust=+this.value;renderPanel()"><div class="val">${l1.thrust}%</div></div>`;
+    h+=`<div class="ctrl-group"><label>角度 (${l1.angle}°)</label><input type="range" min="-30" max="30" value="${l1.angle}" oninput="l1.angle=+this.value;renderPanel()"><div class="val">${l1.angle}°</div></div>`;
+    h+=`<div class="ctrl-group" style="font-size:12px;color:#94a3b8">风力: ${l1.wind>0?'→':'←'} ${Math.abs(l1.wind).toFixed(1)} m/s | 燃料: ${l1.fuel.toFixed(0)}%</div>`;
+    h+=`<div class="ctrl-group" style="font-size:12px;color:#f97316">下降速度: ${Math.abs(l1.vy).toFixed(1)} m/s | 水平偏移: ${Math.abs(l1.x).toFixed(1)} m</div>`;
+    if(l1.landed)h+=`<div style="text-align:center;color:#4ade80;margin-top:8px;font-size:14px">✅ 着陆成功！</div>`;
+    if(l1.crashed)h+=`<div style="text-align:center;color:#ef4444;margin-top:8px;font-size:14px">💥 着陆失败</div>`;
+    if(l1.landed||l1.crashed)h+=`<button class="act-btn" onclick="initLevel(0);runLevel(0);renderPanel()">重试</button>`;
+    if(!l1.running&&!l1.landed&&!l1.crashed)h+=`<button class="act-btn" onclick="l1.running=true;renderPanel()">开始着陆</button>`;
+  }else if(li===1){
+    h+=`<div class="ctrl-group" style="font-size:12px;color:#94a3b8">高度: ${l2.alt.toFixed(0)} km | 速度: ${Math.abs(l2.vy).toFixed(0)} m/s<br>再入角度: ${(l2.angle*180/Math.PI).toFixed(1)}° | 阶段: ${l2.phase==='reentry'?'再入':l2.phase==='descent'?'下降':'着陆'}</div>`;
+    h+=`<button class="act-btn" ${l2.gridFins?'disabled':''} onclick="deployGridFins()">展开栅格翼 ${l2.gridFins?'✅':''}</button>`;
+    h+=`<button class="act-btn" ${l2.legs?'disabled':''} onclick="deployLegs()">部署着陆腿 ${l2.legs?'✅':''}</button>`;
+    if(l2.crashed)h+=`<div style="text-align:center;color:#ef4444;margin-top:8px;font-size:14px">💥 着陆失败</div>`;
+    if(l2.landed)h+=`<div style="text-align:center;color:#4ade80;margin-top:8px;font-size:14px">✅ 着陆成功！</div>`;
+    if(l2.crashed||l2.landed)h+=`<button class="act-btn" onclick="initLevel(1);runLevel(1);renderPanel()">重试</button>`;
+    if(!l2.running&&!l2.landed&&!l2.crashed)h+=`<button class="act-btn" onclick="l2.running=true;renderPanel()">开始再入</button>`;
+  }else if(li===2){
+    h+=`<div class="ctrl-group" style="font-size:12px;color:#94a3b8">阶段: ${getL3PhaseName()}<br>高度: ${l3.alt.toFixed(0)} km | 推力: ${l3.throttle}%</div>`;
+    h+=`<div class="ctrl-group"><label>推力 (${l3.throttle}%)</label><input type="range" min="0" max="100" value="${l3.throttle}" oninput="l3.throttle=+this.value;renderPanel()"></div>`;
+    if(l3.phase==='prelaunch')h+=`<button class="act-btn" onclick="l3Launch()">点火发射 🔥</button>`;
+    if(l3.phase==='ascent'&&!l3.separated)h+=`<button class="act-btn" onclick="l3Separate()">一二级分离</button>`;
+    if(l3.crashed)h+=`<button class="act-btn" onclick="initLevel(2);runLevel(2);renderPanel()">重试</button>`;
+  }else if(li===3){
+    h+=`<div class="ctrl-group" style="font-size:12px;color:#94a3b8">已部署轨道面: ${l4.orbits.length}/5 | 卫星: ${l4.sats.length}<br>激光链路: ${l4.links.length} | 覆盖率: ${l4.coverage.toFixed(0)}%</div>`;
+    h+=`<button class="act-btn" ${l4.orbits.length>=5?'disabled':''} onclick="l4AddOrbit()">添加轨道面 (${l4.orbits.length}/5)</button>`;
+    h+=`<button class="act-btn" ${l4.orbits.length===0?'disabled':''} onclick="l4DeploySats()">部署卫星</button>`;
+    h+=`<button class="act-btn" ${l4.sats.length<10?'disabled':''} onclick="l4BuildLinks()">建立激光链路</button>`;
+  }else if(li===4){
+    h+=`<div class="ctrl-group" style="font-size:12px;color:#94a3b8">阶段: ${l5.phase==='tiles'?'安装瓦片':l5.phase==='dock'?'在轨加注':'筷子回收'}<br>瓦片覆盖: ${l5.tileCount}% | 对接: ${l5.docked?'✅':'❌'} | 回收: ${l5.caught?'✅':'❌'}</div>`;
+    if(l5.phase==='tiles')h+=`<button class="act-btn" onclick="l5InstallTile()">安装瓦片区域</button>`;
+    if(l5.phase==='dock'){
+      h+=`<div class="ctrl-group"><label>对接横向速度</label><input type="range" min="-5" max="5" value="${l5.dockVx}" oninput="l5.dockVx=+this.value;renderPanel()"><div class="val">${l5.dockVx}</div></div>`;
+      h+=`<button class="act-btn" onclick="l5Dock()">执行对接</button>`;
+    }
+    if(l5.phase==='catch'){
+      h+=`<button class="act-btn" onclick="l5Catch()">关闭机械臂夹住!</button>`;
+    }
+  }else if(li===5){
+    h+=`<div class="ctrl-group" style="font-size:12px;color:#94a3b8">阶段: ${getL6PhaseName()}<br>ISRU进度: ${l6.isru.toFixed(0)}%</div>`;
+    if(l6.phase==='window')h+=`<button class="act-btn" onclick="l6Launch()">发射! (等待窗口对齐)</button>`;
+    if(l6.phase==='transfer')h+=`<div style="font-size:12px;color:#f97316;margin-top:6px">飞行中...等待到达火星</div>`;
+    if(l6.phase==='aerobrake')h+=`<button class="act-btn" onclick="l6Brake()">执行大气制动</button>`;
+    if(l6.phase==='landing'){
+      h+=`<div style="font-size:12px;color:#94a3b8;margin-top:4px">选择着陆点（点击火星表面）</div>`;
+    }
+    if(l6.phase==='isru')h+=`<button class="act-btn" onclick="l6RunISRU()">运行ISRU工厂</button>`;
+  }else if(li===6){
+    h+=`<div class="ctrl-group" style="font-size:12px;color:#94a3b8">阶段: ${l7.phase==='cost'?'成本对比':l7.phase==='starlink'?'星链商业':'火星殖民'}<br>发射次数: ${l7.launches} | 节省: $${(l7.savings/1e6).toFixed(0)}M</div>`;
+    if(l7.phase==='cost'){
+      h+=`<button class="act-btn" onclick="l7SimLaunch()">模拟发射 (可回收 vs 一次性)</button>`;
+      if(l7.launches>=5)h+=`<button class="act-btn" style="background:#f97316" onclick="l7.phase='starlink';renderPanel()">进入星链商业 →</button>`;
+    }
+    if(l7.phase==='starlink'){
+      h+=`<div class="ctrl-group"><label>用户数(百万): ${(l7.starlinkRev/10).toFixed(0)}</label><input type="range" min="0" max="100" value="${l7.starlinkRev}" oninput="l7.starlinkRev=+this.value;checkL7();renderPanel()"><div class="val">年收入: $${(l7.starlinkRev*1).toFixed(0)}亿</div></div>`;
+      if(l7.starlinkRev>=50)h+=`<button class="act-btn" style="background:#f97316" onclick="l7.phase='mars';renderPanel()">进入火星殖民 →</button>`;
+    }
+    if(l7.phase==='mars'){
+      h+=`<div class="ctrl-group"><label>火星基地自给率: ${l7.marsSupply}%</label><input type="range" min="0" max="100" value="${l7.marsSupply}" oninput="l7.marsSupply=+this.value;checkL7();renderPanel()"><div class="val">${l7.marsSupply}%</div></div>`;
+      h+=`<button class="act-btn" onclick="l7Plan()">制定殖民计划</button>`;
+    }
+  }
+  return h;
+}
+
+// === PLACEHOLDER_LEVEL_INIT ===
+
+function initLevel(n){
+  cancelAnimationFrame(animId);t=0;
+  if(n===0){
+    l1={vy:0,vx:0,y:50,x:0,thrust:50,angle:0,wind:(Math.random()-0.5)*6,fuel:100,landed:false,crashed:false,groundY:H-60,platX:0,platW:80,running:false};
+  }else if(n===1){
+    l2={y:0,vy:200,angle:0.35,va:0,alt:100,gridFins:false,legs:false,phase:'reentry',running:false,finTime:-1,legTime:-1,crashed:false,landed:false};
+  }else if(n===2){
+    l3={phase:'prelaunch',alt:0,vy:0,throttle:100,maxQ:false,separated:false,s1alt:0,s1vy:0,s2alt:0,s2vy:0,s1landed:false,s2orbit:false,t:0,running:false,crashed:false};
+  }else if(n===3){
+    l4={orbits:[],sats:[],links:[],coverage:0,selectedOrbit:-1,deploying:false,phase:'plan'};
+  }else if(n===4){
+    l5={tiles:new Array(20).fill(false),tileCount:0,docked:false,caught:false,phase:'tiles',dockX:W/2-60,dockY:H/2,dockVx:0,armX:W/2,armOpen:true,boosterY:-50,boosterVy:2};
+  }else if(n===5){
+    let sites=[{name:'杰泽罗陨石坑',x:0.3,y:0.45,score:90},{name:'赫拉斯盆地',x:0.6,y:0.65,score:70},{name:'奥林帕斯山脚',x:0.45,y:0.3,score:50}];
+    l6={phase:'window',earthAngle:0,marsAngle:Math.PI*0.8,launched:false,shipAngle:0,shipR:0,aerobrake:false,landed:false,isru:0,t:0,running:true,landingSite:-1,sites:sites};
+  }else if(n===6){
+    l7={reusePct:0,starlinkRev:0,marsSupply:0,phase:'cost',simRunning:false,launches:0,savings:0};
+  }
+}
+
+function getL3PhaseName(){
+  const m={'prelaunch':'发射前','ascent':'上升','maxq':'Max-Q','separation':'分离中','s1return':'一级返回','s2orbit':'二级入轨','complete':'任务完成'};
+  return m[l3.phase]||l3.phase;
+}
+function getL6PhaseName(){
+  const m={'window':'等待窗口','transfer':'霍曼转移','aerobrake':'大气制动','landing':'选择着陆点','isru':'ISRU生产','complete':'任务完成'};
+  return m[l6.phase]||l6.phase;
+}
+
+// === Level actions ===
+function deployGridFins(){
+  if(l2.alt>60&&l2.alt<85){l2.gridFins=true;l2.finTime=t;levelObjs[1][0]=true;}
+  else{l2.gridFins=true;l2.finTime=t;}
+  renderPanel();
+}
+function deployLegs(){
+  if(l2.alt<10){l2.legs=true;l2.legTime=t;levelObjs[1][2]=true;}
+  else{l2.legs=true;l2.legTime=t;}
+  renderPanel();
+}
+
+function l3Launch(){l3.phase='ascent';l3.running=true;l3.t=0;renderPanel();}
+function l3Separate(){
+  if(l3.alt>60){
+    l3.separated=true;l3.phase='s1return';
+    l3.s1alt=l3.alt;l3.s1vy=-2;l3.s2alt=l3.alt;l3.s2vy=l3.vy*0.5;
+    levelObjs[2][1]=true;renderPanel();renderBar();
+  }
+}
+
+function l4AddOrbit(){
+  let angle=l4.orbits.length*36;
+  l4.orbits.push({angle:angle,sats:[]});
+  if(l4.orbits.length>=3){levelObjs[3][0]=true;renderBar();}
+  renderPanel();
+}
+function l4DeploySats(){
+  l4.orbits.forEach((o,i)=>{
+    for(let j=0;j<8;j++){
+      let a=o.angle*Math.PI/180+j*Math.PI/4;
+      l4.sats.push({orbit:i,angle:a,r:120+i*25});
+    }
+  });
+  l4.coverage=Math.min(100,l4.sats.length*2);
+  if(l4.coverage>=80){levelObjs[3][2]=true;renderBar();}
+  renderPanel();
+}
+function l4BuildLinks(){
+  l4.links=[];
+  for(let i=0;i<l4.sats.length-1;i++){
+    if(Math.random()>0.5)l4.links.push([i,i+1]);
+  }
+  if(l4.links.length>5){levelObjs[3][1]=true;renderBar();}
+  renderPanel();
+}
+
+function l5InstallTile(){
+  let empty=l5.tiles.findIndex(t=>!t);
+  if(empty>=0){l5.tiles[empty]=true;l5.tileCount=l5.tiles.filter(t=>t).length*5;}
+  if(l5.tileCount>=90){levelObjs[4][0]=true;l5.phase='dock';renderBar();}
+  renderPanel();
+}
+function l5Dock(){
+  let dist=Math.abs(l5.dockVx);
+  if(dist<=1){l5.docked=true;levelObjs[4][1]=true;l5.phase='catch';renderBar();}
+  renderPanel();
+}
+function l5Catch(){
+  let by=l5.boosterY;
+  if(by>H*0.3&&by<H*0.6){l5.caught=true;l5.armOpen=false;levelObjs[4][2]=true;renderBar();}
+  renderPanel();
+}
+
+function l6Launch(){
+  let diff=Math.abs(l6.marsAngle-l6.earthAngle-0.38*Math.PI);
+  if(diff<0.3){l6.phase='transfer';l6.launched=true;l6.shipAngle=l6.earthAngle;l6.shipR=100;levelObjs[5][0]=true;renderBar();}
+  renderPanel();
+}
+function l6Brake(){
+  l6.aerobrake=true;l6.phase='landing';levelObjs[5][1]=true;renderBar();renderPanel();
+}
+function l6RunISRU(){
+  l6.isru=Math.min(100,l6.isru+25);
+  if(l6.isru>=100){levelObjs[5][2]=true;l6.phase='complete';renderBar();}
+  renderPanel();
+}
+
+function l7SimLaunch(){
+  l7.launches++;
+  let reuseSave=65000000;let disposable=95000000;
+  l7.savings+=disposable-disposable*(1-0.6);
+  l7.reusePct=((disposable-disposable*0.4)/disposable*100);
+  if(l7.launches>=5&&l7.reusePct>=60){levelObjs[6][0]=true;renderBar();}
+  renderPanel();
+}
+function checkL7(){
+  if(l7.starlinkRev>=50){levelObjs[6][1]=true;renderBar();}
+  if(l7.marsSupply>=70){levelObjs[6][2]=true;renderBar();}
+}
+function l7Plan(){
+  l7.marsSupply=Math.max(l7.marsSupply,75);
+  checkL7();renderPanel();
+}
+
+// === PLACEHOLDER_DRAW ===
+
+// Drawing helpers
+function drawStars(){
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(0,0,W,H);
+  for(let i=0;i<60;i++){
+    let sx=(i*137.5)%W,sy=(i*97.3)%H;
+    ctx.fillStyle=`rgba(255,255,255,${0.3+Math.sin(t*0.02+i)*0.3})`;
+    ctx.fillRect(sx,sy,1.5,1.5);
+  }
+}
+
+function drawRocket(x,y,angle,scale,flame,gridFins,legs){
+  ctx.save();ctx.translate(x,y);ctx.rotate(angle||0);
+  let s=scale||1;
+  // Body
+  ctx.fillStyle='#e2e8f0';
+  ctx.beginPath();ctx.moveTo(0,-30*s);ctx.lineTo(-8*s,20*s);ctx.lineTo(8*s,20*s);ctx.closePath();ctx.fill();
+  // Nose
+  ctx.fillStyle='#ef4444';
+  ctx.beginPath();ctx.moveTo(0,-30*s);ctx.lineTo(-5*s,-20*s);ctx.lineTo(5*s,-20*s);ctx.closePath();ctx.fill();
+  // Window
+  ctx.fillStyle='#60a5fa';ctx.beginPath();ctx.arc(0,-15*s,3*s,0,Math.PI*2);ctx.fill();
+  // Grid fins
+  if(gridFins){
+    ctx.fillStyle='#94a3b8';
+    ctx.fillRect(-14*s,-5*s,6*s,3*s);ctx.fillRect(8*s,-5*s,6*s,3*s);
+    // Grid pattern
+    ctx.strokeStyle='#64748b';ctx.lineWidth=0.5;
+    for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(-14*s+i*2*s,-5*s);ctx.lineTo(-14*s+i*2*s,-2*s);ctx.stroke();}
+    for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(8*s+i*2*s,-5*s);ctx.lineTo(8*s+i*2*s,-2*s);ctx.stroke();}
+  }
+  // Landing legs
+  if(legs){
+    ctx.strokeStyle='#94a3b8';ctx.lineWidth=2*s;
+    ctx.beginPath();ctx.moveTo(-6*s,18*s);ctx.lineTo(-14*s,30*s);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(6*s,18*s);ctx.lineTo(14*s,30*s);ctx.stroke();
+  }
+  // Flame
+  if(flame){
+    let fl=10+Math.random()*8;
+    ctx.fillStyle='#f97316';
+    ctx.beginPath();ctx.moveTo(-5*s,20*s);ctx.lineTo(0,(20+fl)*s);ctx.lineTo(5*s,20*s);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#fbbf24';
+    ctx.beginPath();ctx.moveTo(-3*s,20*s);ctx.lineTo(0,(20+fl*0.6)*s);ctx.lineTo(3*s,20*s);ctx.closePath();ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawPlatform(x,y,w){
+  ctx.fillStyle='#334155';ctx.fillRect(x-w/2,y,w,12);
+  ctx.fillStyle='#475569';ctx.fillRect(x-w/2+4,y+2,w-8,2);
+  // H mark
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(x-8,y+3);ctx.lineTo(x-8,y+9);ctx.moveTo(x-8,y+6);ctx.lineTo(x+8,y+6);ctx.moveTo(x+8,y+3);ctx.lineTo(x+8,y+9);ctx.stroke();
+}
+
+function drawGround(y){
+  ctx.fillStyle='#1e3a5f';ctx.fillRect(0,y,W,H-y);
+  ctx.fillStyle='#0f2847';
+  for(let i=0;i<W;i+=40){ctx.fillRect(i,y,20,3);}
+}
+
+function drawOcean(y){
+  ctx.fillStyle='#0c2d48';ctx.fillRect(0,y,W,H-y);
+  ctx.strokeStyle='rgba(59,130,246,0.2)';ctx.lineWidth=1;
+  for(let i=0;i<5;i++){
+    ctx.beginPath();
+    for(let x=0;x<W;x+=5){ctx.lineTo(x,y+5+i*8+Math.sin(t*0.03+x*0.02+i)*3);}
+    ctx.stroke();
+  }
+}
+
+// === PLACEHOLDER_RENDER_LEVELS ===
+
+// Level 1: Landing
+function updateL1(){
+  if(!l1.running||l1.landed||l1.crashed)return;
+  let g=1.62*0.3;
+  let thrustForce=l1.thrust*0.04;
+  let ax=thrustForce*Math.sin(l1.angle*Math.PI/180)+l1.wind*0.02;
+  let ay=g-thrustForce*Math.cos(l1.angle*Math.PI/180);
+  l1.vx+=ax*0.16;l1.vy+=ay*0.16;
+  l1.x+=l1.vx*0.5;l1.y+=l1.vy*0.5;
+  if(l1.thrust>0)l1.fuel=Math.max(0,l1.fuel-l1.thrust*0.005);
+  if(l1.fuel<=0)l1.thrust=0;
+  // Check landing
+  let rocketY=H*0.15+l1.y*(H*0.7)/200;
+  let platCX=W/2;
+  if(rocketY>=H-90){
+    if(Math.abs(l1.vy)<2)levelObjs[0][0]=true;
+    if(Math.abs(l1.x)<5)levelObjs[0][1]=true;
+    if(Math.abs(l1.vy)<3&&Math.abs(l1.x)<20){
+      l1.landed=true;levelObjs[0][2]=true;renderBar();
+    }else{l1.crashed=true;}
+    renderPanel();
+  }
+}
+
+function drawL1(){
+  drawStars();drawOcean(H-60);
+  let platCX=W/2;
+  drawPlatform(platCX,H-72,l1.platW);
+  // Wind indicator
+  ctx.strokeStyle='rgba(96,165,250,0.5)';ctx.lineWidth=1;
+  for(let i=0;i<8;i++){
+    let wx=50+i*60+Math.sin(t*0.05+i)*10+l1.wind*t*0.1;
+    wx=((wx%W)+W)%W;
+    ctx.beginPath();ctx.moveTo(wx,H*0.3+i*20);ctx.lineTo(wx+l1.wind*5,H*0.3+i*20);ctx.stroke();
+  }
+  // Rocket
+  let rx=platCX+l1.x*2;let ry=H*0.15+l1.y*(H*0.55)/200;
+  if(l1.crashed){
+    ctx.fillStyle='#ef4444';ctx.font='30px sans-serif';ctx.textAlign='center';ctx.fillText('💥',rx,ry);
+  }else{
+    drawRocket(rx,ry,l1.angle*Math.PI/180*0.3,1.2,l1.thrust>10&&l1.running&&l1.fuel>0,false,true);
+  }
+  // HUD
+  ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(W-160,10,150,60);
+  ctx.fillStyle='#e2e8f0';ctx.font='11px monospace';ctx.textAlign='left';
+  ctx.fillText(`下降: ${l1.vy.toFixed(1)} m/s`,W-150,28);
+  ctx.fillText(`偏移: ${l1.x.toFixed(1)} m`,W-150,42);
+  ctx.fillText(`燃料: ${l1.fuel.toFixed(0)}%`,W-150,56);
+}
+
+// Level 2: Grid fins & legs
+function updateL2(){
+  if(!l2.running||l2.landed||l2.crashed)return;
+  l2.alt-=l2.vy*0.003;
+  if(l2.gridFins){
+    l2.va+=(0-l2.angle)*0.002;l2.va*=0.95;
+  }else{
+    l2.va+=0.0005;
+  }
+  l2.angle+=l2.va;
+  if(l2.alt<50)l2.phase='descent';
+  if(l2.alt<5)l2.phase='landing';
+  // Check angle for obj
+  let deg=l2.angle*180/Math.PI;
+  if(l2.gridFins&&deg>15&&deg<25)levelObjs[1][0]=true;
+  if(deg>=15&&deg<=25)levelObjs[1][1]=true;
+  if(l2.alt<=0){
+    if(l2.legs&&Math.abs(deg)<30&&l2.vy<300){
+      l2.landed=true;if(!levelObjs[1][2])levelObjs[1][2]=true;
+      renderBar();
+    }else{l2.crashed=true;}
+    l2.alt=0;renderPanel();
+  }
+  l2.vy=Math.max(50,l2.vy-(l2.gridFins?0.3:0.05));
+}
+
+function drawL2(){
+  drawStars();
+  // Atmosphere gradient
+  let atmH=H*0.7;
+  let grd=ctx.createLinearGradient(0,0,0,atmH);
+  grd.addColorStop(0,'rgba(0,0,0,0)');grd.addColorStop(0.5,'rgba(239,68,68,0.1)');grd.addColorStop(1,'rgba(59,130,246,0.15)');
+  ctx.fillStyle=grd;ctx.fillRect(0,0,W,atmH);
+  drawOcean(H-50);drawPlatform(W/2,H-62,80);
+  // Rocket position based on altitude
+  let ry=20+(100-l2.alt)*(H-100)/100;
+  drawRocket(W/2,ry,l2.angle,1.2,l2.alt<30,l2.gridFins,l2.legs);
+  // Re-entry heat effect
+  if(l2.alt>40&&l2.alt<90){
+    ctx.strokeStyle=`rgba(239,68,68,${0.3+Math.random()*0.3})`;ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(W/2,ry,25,0,Math.PI*2);ctx.stroke();
+  }
+  // HUD
+  ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(W-160,10,150,60);
+  ctx.fillStyle='#e2e8f0';ctx.font='11px monospace';ctx.textAlign='left';
+  ctx.fillText(`高度: ${l2.alt.toFixed(0)} km`,W-150,28);
+  ctx.fillText(`角度: ${(l2.angle*180/Math.PI).toFixed(1)}°`,W-150,42);
+  ctx.fillText(`速度: ${l2.vy.toFixed(0)} m/s`,W-150,56);
+}
+
+// === PLACEHOLDER_RENDER_L3_L4 ===
+
+// Level 3: Falcon 9 mission
+function updateL3(){
+  if(!l3.running)return;
+  l3.t++;
+  if(l3.phase==='ascent'){
+    l3.vy+=l3.throttle*0.008;l3.alt+=l3.vy*0.02;
+    if(l3.alt>30&&l3.alt<50&&l3.throttle<=65&&!l3.maxQ){
+      l3.maxQ=true;levelObjs[2][0]=true;renderBar();renderPanel();
+    }
+  }
+  if(l3.phase==='s1return'){
+    l3.s1vy+=0.15;l3.s1alt-=l3.s1vy*0.02;
+    l3.s2vy+=0.05;l3.s2alt+=l3.s2vy*0.01;
+    if(l3.s1alt<=0){l3.s1alt=0;l3.s1landed=true;l3.phase='complete';
+      levelObjs[2][2]=true;renderBar();renderPanel();}
+    if(l3.s2alt>200){l3.s2orbit=true;}
+  }
+}
+
+function drawL3(){
+  drawStars();
+  // Earth curve at bottom
+  ctx.fillStyle='#1e3a5f';
+  ctx.beginPath();ctx.arc(W/2,H+W*0.8,W,0,Math.PI*2);ctx.fill();
+  // Atmosphere
+  let grd=ctx.createLinearGradient(0,H-100,0,H);
+  grd.addColorStop(0,'rgba(59,130,246,0)');grd.addColorStop(1,'rgba(59,130,246,0.2)');
+  ctx.fillStyle=grd;ctx.fillRect(0,H-100,W,100);
+
+  if(l3.phase==='prelaunch'||l3.phase==='ascent'){
+    let ry=H-80-l3.alt*2;
+    drawRocket(W/2,Math.max(40,ry),0,1.5,l3.phase==='ascent',false,false);
+    // Max-Q zone
+    if(l3.alt>20&&l3.alt<60){
+      ctx.strokeStyle='rgba(239,68,68,0.3)';ctx.setLineDash([5,5]);
+      ctx.strokeRect(W/2-40,H-80-50*2-20,80,60);
+      ctx.setLineDash([]);
+      ctx.fillStyle='#ef4444';ctx.font='10px sans-serif';ctx.textAlign='center';
+      ctx.fillText('Max-Q 区域',W/2,H-80-50*2-25);
+    }
+    // Launch pad
+    ctx.fillStyle='#475569';ctx.fillRect(W/2-20,H-70,40,10);
+  }
+  if(l3.phase==='s1return'||l3.phase==='complete'){
+    // Stage 1
+    let s1y=H-80-l3.s1alt*2;
+    if(l3.s1landed){
+      drawRocket(W*0.3,H-90,0,1,false,true,true);
+      drawPlatform(W*0.3,H-62,80);
+      ctx.fillStyle='#4ade80';ctx.font='12px sans-serif';ctx.textAlign='center';
+      ctx.fillText('一级着陆成功!',W*0.3,H-110);
+    }else{
+      drawRocket(W*0.3,Math.min(H-90,s1y),Math.PI,1,true,true,true);
+      drawPlatform(W*0.3,H-62,80);
+    }
+    // Stage 2
+    let s2y=Math.max(30,H-80-l3.s2alt*1.5);
+    drawRocket(W*0.7,s2y,0,0.8,true,false,false);
+    ctx.fillStyle='#60a5fa';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`二级 ${l3.s2alt.toFixed(0)}km`,W*0.7,s2y-30);
+  }
+  drawOcean(H-50);
+  // HUD
+  ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(W-160,10,150,50);
+  ctx.fillStyle='#e2e8f0';ctx.font='11px monospace';ctx.textAlign='left';
+  ctx.fillText(`高度: ${l3.alt.toFixed(0)} km`,W-150,28);
+  ctx.fillText(`推力: ${l3.throttle}%`,W-150,42);
+}
+
+// Level 4: Starlink
+function drawL4(){
+  drawStars();
+  // Earth
+  ctx.fillStyle='#1e3a5f';ctx.beginPath();ctx.arc(W/2,H/2,60,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#22c55e';
+  for(let i=0;i<8;i++){
+    let a=i*0.8;ctx.beginPath();ctx.arc(W/2+Math.cos(a)*30,H/2+Math.sin(a)*20,12,0,Math.PI*2);ctx.fill();
+  }
+  // Orbits
+  ctx.strokeStyle='rgba(100,116,139,0.3)';ctx.lineWidth=1;
+  l4.orbits.forEach((o,i)=>{
+    let r=120+i*25;
+    ctx.save();ctx.translate(W/2,H/2);ctx.rotate(o.angle*Math.PI/180);
+    ctx.beginPath();ctx.ellipse(0,0,r,r*0.3,0,0,Math.PI*2);ctx.stroke();
+    ctx.restore();
+  });
+  // Satellites
+  l4.sats.forEach((s,i)=>{
+    let a=s.angle+t*0.005;
+    let ox=l4.orbits[s.orbit]?l4.orbits[s.orbit].angle*Math.PI/180:0;
+    let sx=W/2+Math.cos(a)*s.r;
+    let sy=H/2+Math.sin(a)*s.r*0.3;
+    ctx.fillStyle='#fbbf24';ctx.fillRect(sx-2,sy-2,4,4);
+    // Solar panels
+    ctx.fillStyle='#3b82f6';ctx.fillRect(sx-6,sy-1,3,2);ctx.fillRect(sx+3,sy-1,3,2);
+  });
+  // Links
+  ctx.strokeStyle='rgba(239,68,68,0.2)';ctx.lineWidth=0.5;
+  l4.links.forEach(([a,b])=>{
+    if(l4.sats[a]&&l4.sats[b]){
+      let aa=l4.sats[a].angle+t*0.005,ba=l4.sats[b].angle+t*0.005;
+      let ax=W/2+Math.cos(aa)*l4.sats[a].r,ay=H/2+Math.sin(aa)*l4.sats[a].r*0.3;
+      let bx=W/2+Math.cos(ba)*l4.sats[b].r,by=H/2+Math.sin(ba)*l4.sats[b].r*0.3;
+      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();
+    }
+  });
+  // Coverage indicator
+  ctx.fillStyle='rgba(74,222,128,0.1)';
+  if(l4.coverage>0){
+    ctx.beginPath();ctx.arc(W/2,H/2,60+l4.coverage*0.8,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle='#e2e8f0';ctx.font='14px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`全球覆盖率: ${l4.coverage.toFixed(0)}%`,W/2,H-30);
+}
+
+// === PLACEHOLDER_RENDER_L5_L6_L7 ===
+
+// Level 5: Starship
+function updateL5(){
+  if(l5.phase==='catch'&&!l5.caught){
+    l5.boosterY+=l5.boosterVy;
+    if(l5.boosterY>H)l5.boosterY=-50;
+  }
+}
+
+function drawL5(){
+  drawStars();
+  if(l5.phase==='tiles'){
+    // Starship body
+    ctx.fillStyle='#94a3b8';
+    ctx.beginPath();ctx.moveTo(W/2,60);ctx.lineTo(W/2-40,H-100);ctx.lineTo(W/2+40,H-100);ctx.closePath();ctx.fill();
+    // Nose
+    ctx.fillStyle='#e2e8f0';
+    ctx.beginPath();ctx.arc(W/2,80,40,Math.PI,0);ctx.fill();
+    // Tile grid
+    let cols=4,rows=5;
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        let idx=r*cols+c;
+        let tx=W/2-30+c*16;let ty=120+r*((H-240)/rows);
+        ctx.fillStyle=l5.tiles[idx]?'rgba(239,68,68,0.6)':'rgba(51,65,85,0.4)';
+        ctx.fillRect(tx,ty,14,((H-240)/rows)-2);
+        if(l5.tiles[idx]){
+          ctx.strokeStyle='#ef4444';ctx.lineWidth=0.5;ctx.strokeRect(tx,ty,14,((H-240)/rows)-2);
+        }
+      }
+    }
+    ctx.fillStyle='#e2e8f0';ctx.font='12px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`热防护瓦片: ${l5.tileCount}%`,W/2,H-60);
+  }
+  if(l5.phase==='dock'){
+    // Tanker
+    drawRocket(W/2+50,H/2,0,1.5,false,false,false);
+    ctx.fillStyle='#f97316';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText('加注船',W/2+50,H/2-50);
+    // Starship approaching
+    let dx=l5.dockX+l5.dockVx*Math.sin(t*0.05)*5;
+    drawRocket(dx,H/2,0,1.5,true,false,false);
+    ctx.fillStyle='#60a5fa';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText('星舰',dx,H/2-50);
+    // Docking port indicator
+    ctx.strokeStyle=Math.abs(l5.dockVx)<=1?'#4ade80':'#ef4444';
+    ctx.lineWidth=2;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(W/2+50,H/2-30);ctx.lineTo(dx,H/2-30);ctx.stroke();
+    ctx.setLineDash([]);
+    if(l5.docked){
+      ctx.fillStyle='#4ade80';ctx.font='14px sans-serif';
+      ctx.fillText('✅ 对接成功!',W/2,H/2-70);
+    }
+  }
+  if(l5.phase==='catch'){
+    // Launch tower
+    ctx.fillStyle='#475569';ctx.fillRect(W/2-8,50,16,H-100);
+    // Mechanical arms (chopsticks)
+    let armW=l5.armOpen?80:20;
+    ctx.fillStyle='#ef4444';ctx.lineWidth=4;
+    ctx.fillRect(W/2-armW,H*0.4-3,armW-5,6);
+    ctx.fillRect(W/2+5,H*0.4-3,armW-5,6);
+    // Booster falling
+    if(!l5.caught){
+      drawRocket(W/2,l5.boosterY,Math.PI,2,true,true,false);
+    }else{
+      drawRocket(W/2,H*0.4,Math.PI,2,false,true,false);
+      ctx.fillStyle='#4ade80';ctx.font='16px sans-serif';ctx.textAlign='center';
+      ctx.fillText('🎯 筷子夹住了!',W/2,H*0.4-60);
+    }
+  }
+}
+
+// Level 6: Mars mission
+function updateL6(){
+  if(!l6.running)return;
+  l6.t++;
+  l6.earthAngle+=0.008;l6.marsAngle+=0.004;
+  if(l6.phase==='transfer'){
+    l6.shipR+=0.3;l6.shipAngle+=0.006;
+    if(l6.shipR>=180){l6.phase='aerobrake';renderPanel();}
+  }
+}
+
+function drawL6(){
+  drawStars();
+  let cx=W/2,cy=H/2;
+  // Sun
+  ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(cx,cy,15,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(251,191,36,0.1)';ctx.beginPath();ctx.arc(cx,cy,25,0,Math.PI*2);ctx.fill();
+  // Earth orbit
+  ctx.strokeStyle='rgba(59,130,246,0.2)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.arc(cx,cy,100,0,Math.PI*2);ctx.stroke();
+  // Mars orbit
+  ctx.strokeStyle='rgba(239,68,68,0.2)';
+  ctx.beginPath();ctx.arc(cx,cy,180,0,Math.PI*2);ctx.stroke();
+  // Earth
+  let ex=cx+Math.cos(l6.earthAngle)*100,ey=cy+Math.sin(l6.earthAngle)*100;
+  ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(ex,ey,8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#e2e8f0';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('地球',ex,ey-12);
+  // Mars
+  let mx=cx+Math.cos(l6.marsAngle)*180,my=cy+Math.sin(l6.marsAngle)*180;
+  ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(mx,my,7,0,Math.PI*2);ctx.fill();
+  ctx.fillText('火星',mx,my-12);
+
+  if(l6.phase==='transfer'||l6.phase==='aerobrake'){
+    // Ship trajectory
+    let sx=cx+Math.cos(l6.shipAngle)*l6.shipR;
+    let sy=cy+Math.sin(l6.shipAngle)*l6.shipR;
+    ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(sx,sy,4,0,Math.PI*2);ctx.fill();
+    // Trail
+    ctx.strokeStyle='rgba(251,191,36,0.3)';ctx.lineWidth=1;ctx.beginPath();
+    for(let i=0;i<20;i++){
+      let ta=l6.shipAngle-i*0.006;let tr=l6.shipR-i*0.3;
+      ctx.lineTo(cx+Math.cos(ta)*tr,cy+Math.sin(ta)*tr);
+    }
+    ctx.stroke();
+  }
+  if(l6.phase==='landing'){
+    // Mars surface view
+    ctx.fillStyle='rgba(180,60,30,0.8)';ctx.fillRect(0,H*0.6,W,H*0.4);
+    l6.sites.forEach((s,i)=>{
+      let sx=s.x*W,sy=H*0.6+s.y*H*0.35;
+      ctx.fillStyle=l6.landingSite===i?'#4ade80':'#fbbf24';
+      ctx.beginPath();ctx.arc(sx,sy,8,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#e2e8f0';ctx.font='10px sans-serif';ctx.fillText(s.name,sx,sy-12);
+      ctx.fillText(`评分:${s.score}`,sx,sy+18);
+    });
+  }
+  if(l6.phase==='isru'||l6.phase==='complete'){
+    ctx.fillStyle='rgba(180,60,30,0.8)';ctx.fillRect(0,H*0.6,W,H*0.4);
+    // ISRU factory
+    ctx.fillStyle='#475569';ctx.fillRect(W/2-30,H*0.7,60,30);
+    ctx.fillStyle='#94a3b8';ctx.fillRect(W/2-25,H*0.7+5,50,8);
+    // Progress bar
+    ctx.fillStyle='#334155';ctx.fillRect(W/2-40,H*0.7+40,80,10);
+    ctx.fillStyle='#4ade80';ctx.fillRect(W/2-40,H*0.7+40,80*l6.isru/100,10);
+    ctx.fillStyle='#e2e8f0';ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`ISRU: CH₄+O₂ 生产 ${l6.isru.toFixed(0)}%`,W/2,H*0.7+65);
+    // Hab
+    ctx.fillStyle='#64748b';ctx.beginPath();ctx.arc(W/2-60,H*0.75,15,Math.PI,0);ctx.fill();
+    ctx.fillRect(W/2-75,H*0.75,30,10);
+  }
+  // Window indicator
+  if(l6.phase==='window'){
+    let diff=Math.abs(l6.marsAngle-l6.earthAngle-0.38*Math.PI);
+    let good=diff<0.3;
+    ctx.fillStyle=good?'#4ade80':'#f97316';ctx.font='12px sans-serif';ctx.textAlign='center';
+    ctx.fillText(good?'✅ 发射窗口开启!':'⏳ 等待转移窗口...',W/2,30);
+    ctx.fillText(`窗口偏差: ${(diff*180/Math.PI).toFixed(1)}°`,W/2,48);
+  }
+}
+
+// Mars click handler
+cv.addEventListener('click',(e)=>{
+  if(curLevel!==5||l6.phase!=='landing')return;
+  let rect=cv.getBoundingClientRect();
+  let mx=(e.clientX-rect.left),my=(e.clientY-rect.top);
+  l6.sites.forEach((s,i)=>{
+    let sx=s.x*W,sy=H*0.6+s.y*H*0.35;
+    if(Math.hypot(mx-sx,my-sy)<15){
+      l6.landingSite=i;l6.landed=true;l6.phase='isru';
+      renderPanel();
+    }
+  });
+});
+
+// Level 7: Economy
+function drawL7(){
+  drawStars();
+  if(l7.phase==='cost'){
+    // Bar chart: reusable vs disposable
+    let bw=60,gap=40;
+    let x1=W/2-bw-gap/2,x2=W/2+gap/2;
+    let maxH=H*0.6;
+    // Disposable
+    let dh=maxH;
+    ctx.fillStyle='#ef4444';ctx.fillRect(x1,H-80-dh,bw,dh);
+    ctx.fillStyle='#e2e8f0';ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText('一次性',x1+bw/2,H-60);
+    ctx.fillText('$9500万',x1+bw/2,H-80-dh-10);
+    // Reusable
+    let rh=maxH*(1-l7.reusePct/100*0.6);
+    ctx.fillStyle='#4ade80';ctx.fillRect(x2,H-80-rh,bw,rh);
+    ctx.fillText('可回收',x2+bw/2,H-60);
+    ctx.fillText(`$${(95*(1-l7.reusePct/100*0.6)).toFixed(0)}00万`,x2+bw/2,H-80-rh-10);
+    // Launch count
+    ctx.fillStyle='#f97316';ctx.font='14px sans-serif';
+    ctx.fillText(`已模拟 ${l7.launches} 次发射`,W/2,40);
+    ctx.fillText(`累计节省: $${(l7.savings/1e6).toFixed(0)}M`,W/2,60);
+    // Savings arrow
+    if(l7.launches>0){
+      ctx.strokeStyle='#fbbf24';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(x1+bw+5,H-80-maxH/2);ctx.lineTo(x2-5,H-80-rh/2);ctx.stroke();
+      ctx.fillStyle='#fbbf24';ctx.fillText(`节省${(l7.reusePct*0.6).toFixed(0)}%`,W/2,H-80-maxH/2-10);
+    }
+  }
+  if(l7.phase==='starlink'){
+    // Revenue chart
+    let users=l7.starlinkRev/10;
+    let rev=l7.starlinkRev;
+    ctx.fillStyle='#e2e8f0';ctx.font='14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('星链商业模式',W/2,40);
+    // Satellite constellation visual
+    for(let i=0;i<Math.min(40,users*2);i++){
+      let a=i*0.16+t*0.003;let r=80+Math.sin(i)*20;
+      ctx.fillStyle='#fbbf24';ctx.fillRect(W/2+Math.cos(a)*r-1,H/2+Math.sin(a)*r*0.4-1,3,3);
+    }
+    ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(W/2,H/2,30,0,Math.PI*2);ctx.fill();
+    // Revenue bar
+    ctx.fillStyle='#334155';ctx.fillRect(W/2-100,H-100,200,20);
+    ctx.fillStyle='#4ade80';ctx.fillRect(W/2-100,H-100,200*rev/100,20);
+    ctx.fillStyle='#e2e8f0';ctx.font='12px sans-serif';
+    ctx.fillText(`年收入: $${rev}亿 | 用户: ${users.toFixed(0)}百万`,W/2,H-70);
+    ctx.fillText(rev>=50?'✅ 商业可持续!':'目标: $50亿+',W/2,H-50);
+  }
+  if(l7.phase==='mars'){
+    // Mars colony
+    ctx.fillStyle='rgba(180,60,30,0.6)';ctx.fillRect(0,H*0.5,W,H*0.5);
+    // Domes
+    for(let i=0;i<3;i++){
+      ctx.fillStyle='rgba(148,163,184,0.5)';
+      ctx.beginPath();ctx.arc(W*0.3+i*W*0.2,H*0.65,20+l7.marsSupply*0.2,Math.PI,0);ctx.fill();
+      ctx.fillRect(W*0.3+i*W*0.2-20-l7.marsSupply*0.2,H*0.65,40+l7.marsSupply*0.4,5);
+    }
+    // Supply bar
+    ctx.fillStyle='#334155';ctx.fillRect(W/2-100,H-80,200,20);
+    ctx.fillStyle=l7.marsSupply>=70?'#4ade80':'#f97316';
+    ctx.fillRect(W/2-100,H-80,200*l7.marsSupply/100,20);
+    ctx.fillStyle='#e2e8f0';ctx.font='12px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`自给率: ${l7.marsSupply}% ${l7.marsSupply>=70?'✅':''}`,W/2,H-55);
+    ctx.fillText('火星殖民基地',W/2,40);
+    // Resources
+    ctx.font='11px sans-serif';ctx.textAlign='left';
+    ctx.fillText(`🏭 ISRU工厂: ${Math.floor(l7.marsSupply/20)+1}座`,20,H*0.55);
+    ctx.fillText(`🏠 居住舱: ${Math.floor(l7.marsSupply/15)+1}个`,20,H*0.55+18);
+    ctx.fillText(`🌱 温室: ${Math.floor(l7.marsSupply/25)+1}座`,20,H*0.55+36);
+  }
+}
+
+// === Main loop ===
+function runLevel(n){
+  function loop(){
+    t++;
+    if(n===0){updateL1();drawL1();}
+    else if(n===1){updateL2();drawL2();}
+    else if(n===2){updateL3();drawL3();}
+    else if(n===3){drawL4();}
+    else if(n===4){updateL5();drawL5();}
+    else if(n===5){updateL6();drawL6();}
+    else if(n===6){drawL7();}
+    animId=requestAnimationFrame(loop);
+  }
+  loop();
+}
+</script>
+</body>
+</html>

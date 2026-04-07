@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📡 微波与天线 实验室</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a1a;color:#e0e0e0;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+#overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(10,10,26,0.97);z-index:100;display:flex;align-items:center;justify-content:center;flex-direction:column}
+#overlay h1{font-size:2.8em;color:#f97316;margin-bottom:8px;text-shadow:0 0 30px rgba(249,115,22,0.4)}
+#overlay .sub{font-size:1.1em;color:#aaa;margin-bottom:30px}
+#overlay .features{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;margin-bottom:36px;max-width:600px}
+#overlay .feat{background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.3);border-radius:10px;padding:12px 18px;font-size:0.95em;color:#fb923c}
+#startBtn{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;border:none;padding:16px 48px;font-size:1.2em;border-radius:12px;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s}
+#startBtn:hover{transform:scale(1.05);box-shadow:0 0 30px rgba(249,115,22,0.5)}
+#main{display:none;flex:1;flex-direction:row;overflow:hidden}
+#panel{width:320px;min-width:320px;background:#111;border-right:1px solid #222;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+#panel h2{color:#f97316;font-size:1.15em;margin-bottom:4px}
+#panel .desc{font-size:0.88em;color:#999;line-height:1.5}
+.obj-list{list-style:none;padding:0}
+.obj-list li{padding:4px 0;font-size:0.9em;color:#888}
+.obj-list li.done{color:#22c55e}
+.obj-list li::before{content:'○ ';color:#555}
+.obj-list li.done::before{content:'● ';color:#22c55e}
+.ctrl-group{background:#1a1a2e;border-radius:8px;padding:12px}
+.ctrl-group label{display:block;font-size:0.82em;color:#aaa;margin-bottom:4px}
+.ctrl-group input[type=range]{width:100%;accent-color:#f97316}
+.ctrl-group .val{text-align:right;font-size:0.85em;color:#f97316;font-family:monospace}
+.ctrl-group select{width:100%;background:#222;color:#ddd;border:1px solid #444;padding:6px;border-radius:4px}
+.ctrl-group button{background:#f97316;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:0.9em;margin-top:4px}
+.ctrl-group button:hover{background:#ea580c}
+.learn-box{background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:12px;font-size:0.85em;color:#86efac;line-height:1.6;display:none}
+#canvasWrap{flex:1;position:relative;background:#0a0a1a}
+#canvas{display:block;width:100%;height:100%}
+#bar{height:36px;background:#111;border-top:1px solid #222;display:flex;align-items:center;padding:0 16px;font-size:0.85em;color:#888}
+#bar .level-nav{display:flex;gap:4px;margin-left:auto}
+#bar .level-nav button{background:#222;color:#aaa;border:1px solid #333;width:28px;height:28px;border-radius:4px;cursor:pointer;font-size:0.8em}
+#bar .level-nav button.active{background:#f97316;color:#fff;border-color:#f97316}
+#bar .level-nav button.completed{background:#1a472a;color:#22c55e;border-color:#22c55e}
+</style>
+</head>
+<body>
+<div id="overlay">
+<h1>📡 微波与天线 实验室</h1>
+<p class="sub">7 个关卡，从电磁波到天线阵列</p>
+<div class="features">
+<div class="feat">🌊 电磁波传播</div>
+<div class="feat">📏 传输线与驻波</div>
+<div class="feat">🎯 史密斯圆图</div>
+<div class="feat">📦 波导模式</div>
+<div class="feat">📡 偶极子天线</div>
+<div class="feat">🔢 天线阵列</div>
+<div class="feat">📊 雷达方程</div>
+</div>
+<button id="startBtn" onclick="startGame()">开始探索</button>
+</div>
+<div id="main">
+<div id="panel"></div>
+<div id="canvasWrap"><canvas id="canvas"></canvas></div>
+</div>
+<div id="bar">
+<span id="barText">关卡 1/7: 电磁波传播</span>
+<div class="level-nav" id="levelNav"></div>
+</div>
+<script>
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+const panel=document.getElementById('panel');
+let W,H,animId,curLevel=0,time=0;
+const C=3e8;
+
+// Level objectives tracking
+const levelObjs=[
+  [false,false,false],[false,false,false],[false,false,false],
+  [false,false,false],[false,false,false],[false,false,false],[false,false,false]
+];
+const levelCompleted=[false,false,false,false,false,false,false];
+
+// Level state variables
+let lv1={freq:3e9,showE:true,showB:true};
+let lv2={zLoad:50,z0:50};
+let lv3={clickR:1,clickX:0,dragPt:null,matchStep:0};
+let lv4={freq:10e9,wgA:0.02286,wgB:0.01016,mode:'TE10'};
+let lv5={length:0.5,freqD:3e8};
+let lv6={nElem:4,spacing:0.5,phaseDiff:0};
+let lv7={ptx:10,gtx:10,grx:10,dist:1000,freq:10e9,rcs:1};
+
+const levelNames=['电磁波传播','传输线','史密斯圆图','波导','偶极子天线','天线阵列','雷达方程'];
+const levelDescs=[
+  '麦克斯韦方程揭示：变化的电场产生磁场，变化的磁场产生电场。电场(E)与磁场(B)相互正交振荡，以光速传播。核心关系：c = λ × f',
+  '传输线将信号从源传到负载。当负载阻抗≠特性阻抗时产生反射，入射波与反射波叠加形成驻波。VSWR 衡量匹配程度。',
+  '史密斯圆图是射频工程师的核心工具，将复阻抗映射到单位圆内。等电阻圆和等电抗圆帮助直观设计阻抗匹配网络。',
+  '波导是空心金属管，通过全反射约束电磁波传播。每种模式有截止频率，低于截止频率的信号无法传播。',
+  '偶极子天线是最基本的天线形式。天线长度决定辐射方向图形状，半波偶极子(L=λ/2)是最常用的基本天线。',
+  '多个天线阵元按特定排列组成阵列，通过调节各阵元的相位差实现波束扫描和赋形，这就是相控阵原理。',
+  'Friis方程描述自由空间传播损耗，雷达方程描述目标回波功率。链路预算是通信系统设计的基础。'
+];
+const levelObjTexts=[
+  ['调节频率观察波长变化','切换查看E场和B场','将频率调到微波频段(>1GHz)'],
+  ['调节负载使 VSWR=1(完美匹配)','观察全反射(负载=0Ω)','使 VSWR>3 观察明显驻波'],
+  ['点击圆图找到纯电阻点(X=0)','找到短路点(圆图左端)','找到开路点(圆图右端)'],
+  ['找到 TE10 截止频率','将频率调到截止以下观察衰减','切换到 TE20 模式'],
+  ['设置天线长度为半波长','观察全波长天线方向图','调节长度观察方向图变化'],
+  ['构建4元阵列','调节相位差实现波束偏转','增加阵元数观察波束变窄'],
+  ['计算1km处自由空间损耗','调节距离观察信号衰减','使接收功率>-80dBm']
+];
+const levelLearn=[
+  '电磁波以光速(3×10⁸ m/s)传播，频率越高波长越短。微波频段(300MHz~300GHz)广泛用于通信、雷达和加热。',
+  '阻抗匹配是射频设计的核心。VSWR=1表示完美匹配，所有功率传递到负载。实际工程中VSWR<2即可接受。',
+  '史密斯圆图将无穷大的阻抗平面映射到有限圆内。圆心是归一化阻抗1+j0(匹配点)，左端是短路，右端是开路。',
+  '矩形波导TE10模式截止频率fc=c/(2a)，a为宽边尺寸。工作频率必须高于截止频率，通常选1.25fc~1.9fc。',
+  '半波偶极子增益2.15dBi，方向图呈"甜甜圈"形。天线长度偏离半波长时，方向图出现旁瓣甚至零点。',
+  '阵列天线通过相位控制实现电子扫描，无需机械转动。阵元越多波束越窄，间距影响栅瓣位置。',
+  '自由空间损耗FSPL=20lg(d)+20lg(f)+20lg(4π/c)。距离翻倍损耗增加6dB，频率翻倍也增加6dB。'
+];
+
+function resize(){
+  const wrap=document.getElementById('canvasWrap');
+  W=canvas.width=wrap.clientWidth;
+  H=canvas.height=wrap.clientHeight;
+}
+window.addEventListener('resize',resize);
+
+function startGame(){
+  document.getElementById('overlay').style.display='none';
+  document.getElementById('main').style.display='flex';
+  resize();
+  buildNav();
+  loadLevel(0);
+  animate();
+}
+
+function buildNav(){
+  const nav=document.getElementById('levelNav');
+  nav.innerHTML='';
+  for(let i=0;i<7;i++){
+    const b=document.createElement('button');
+    b.textContent=i+1;
+    b.onclick=()=>loadLevel(i);
+    if(i===curLevel)b.className='active';
+    if(levelCompleted[i])b.classList.add('completed');
+    nav.appendChild(b);
+  }
+}
+
+function updateNav(){
+  const btns=document.querySelectorAll('#levelNav button');
+  btns.forEach((b,i)=>{
+    b.className='';
+    if(i===curLevel)b.classList.add('active');
+    if(levelCompleted[i])b.classList.add('completed');
+  });
+  document.getElementById('barText').textContent=`关卡 ${curLevel+1}/7: ${levelNames[curLevel]}`;
+}
+
+function completeObj(li,oi){
+  if(levelObjs[li][oi])return;
+  levelObjs[li][oi]=true;
+  updatePanel();
+  if(levelObjs[li].every(v=>v)){
+    levelCompleted[li]=true;
+    updateNav();
+    const lb=panel.querySelector('.learn-box');
+    if(lb)lb.style.display='block';
+  }
+}
+
+function updatePanel(){loadLevel(curLevel,true);}
+
+function loadLevel(idx,keepState){
+  curLevel=idx;
+  if(!keepState)time=0;
+  updateNav();
+  let html=`<h2>关卡 ${idx+1}: ${levelNames[idx]}</h2>`;
+  html+=`<p class="desc">${levelDescs[idx]}</p>`;
+  html+=`<ul class="obj-list">`;
+  for(let i=0;i<3;i++){
+    html+=`<li class="${levelObjs[idx][i]?'done':''}">${levelObjTexts[idx][i]}</li>`;
+  }
+  html+=`</ul>`;
+  html+=buildControls(idx);
+  html+=`<div class="learn-box" style="display:${levelCompleted[idx]?'block':'none'}">💡 ${levelLearn[idx]}</div>`;
+  panel.innerHTML=html;
+  bindControls(idx);
+  canvas.onmousedown=null;canvas.onmousemove=null;canvas.onmouseup=null;
+  if(idx===2)bindSmithChart();
+}
+
+function buildControls(idx){
+  let h='';
+  if(idx===0){
+    const fMHz=(lv1.freq/1e6).toFixed(0);
+    const wl=(C/lv1.freq*100).toFixed(1);
+    h+=`<div class="ctrl-group"><label>频率</label>
+      <input type="range" id="sl0" min="100" max="30000" value="${fMHz}" step="100">
+      <div class="val" id="v0">${fMHz} MHz (λ=${wl} cm)</div></div>`;
+    h+=`<div class="ctrl-group">
+      <label><input type="checkbox" id="chkE" ${lv1.showE?'checked':''}> 显示电场 (E)</label>
+      <label><input type="checkbox" id="chkB" ${lv1.showB?'checked':''}> 显示磁场 (B)</label></div>`;
+  }else if(idx===1){
+    h+=`<div class="ctrl-group"><label>负载阻抗 ZL (Ω)</label>
+      <input type="range" id="sl1" min="0" max="200" value="${lv2.zLoad}" step="1">
+      <div class="val" id="v1">ZL = ${lv2.zLoad} Ω</div></div>`;
+    h+=`<div class="ctrl-group"><label>特性阻抗 Z0 = ${lv2.z0} Ω</label>
+      <div class="val" id="v1b">Γ = ${((lv2.zLoad-lv2.z0)/(lv2.zLoad+lv2.z0)).toFixed(3)}, VSWR = ${calcVSWR().toFixed(2)}</div></div>`;
+  }else if(idx===2){
+    h+=`<div class="ctrl-group"><label>点击圆图选择阻抗点</label>
+      <div class="val" id="v2">Z = ${lv3.clickR.toFixed(2)} + j${lv3.clickX.toFixed(2)}</div></div>`;
+    h+=`<div class="ctrl-group"><button id="btnReset2">重置</button></div>`;
+  }else if(idx===3){
+    const fGHz=(lv4.freq/1e9).toFixed(1);
+    const fc=C/(2*lv4.wgA)/1e9;
+    h+=`<div class="ctrl-group"><label>频率 (GHz)</label>
+      <input type="range" id="sl3" min="1" max="30" value="${fGHz}" step="0.1">
+      <div class="val" id="v3">${fGHz} GHz (fc=${fc.toFixed(2)} GHz)</div></div>`;
+    h+=`<div class="ctrl-group"><label>波导宽边 a (mm)</label>
+      <input type="range" id="sl3b" min="5" max="50" value="${(lv4.wgA*1000).toFixed(1)}" step="0.1">
+      <div class="val" id="v3b">${(lv4.wgA*1000).toFixed(1)} mm</div></div>`;
+    h+=`<div class="ctrl-group"><label>模式</label>
+      <select id="sel3"><option value="TE10" ${lv4.mode==='TE10'?'selected':''}>TE10</option>
+      <option value="TE20" ${lv4.mode==='TE20'?'selected':''}>TE20</option>
+      <option value="TE01" ${lv4.mode==='TE01'?'selected':''}>TE01</option></select></div>`;
+  }else if(idx===4){
+    const wl=C/lv5.freqD;
+    const ratio=lv5.length/wl;
+    h+=`<div class="ctrl-group"><label>天线长度 (λ 倍数)</label>
+      <input type="range" id="sl4" min="0.1" max="3" value="${ratio.toFixed(2)}" step="0.01">
+      <div class="val" id="v4">L = ${ratio.toFixed(2)}λ</div></div>`;
+  }else if(idx===5){
+    h+=`<div class="ctrl-group"><label>阵元数量</label>
+      <input type="range" id="sl5a" min="2" max="16" value="${lv6.nElem}" step="1">
+      <div class="val" id="v5a">N = ${lv6.nElem}</div></div>`;
+    h+=`<div class="ctrl-group"><label>阵元间距 (λ)</label>
+      <input type="range" id="sl5b" min="0.1" max="2" value="${lv6.spacing}" step="0.05">
+      <div class="val" id="v5b">d = ${lv6.spacing}λ</div></div>`;
+    h+=`<div class="ctrl-group"><label>相位差 (°)</label>
+      <input type="range" id="sl5c" min="-180" max="180" value="${lv6.phaseDiff}" step="1">
+      <div class="val" id="v5c">Δφ = ${lv6.phaseDiff}°</div></div>`;
+  }else if(idx===6){
+    h+=`<div class="ctrl-group"><label>发射功率 (dBm)</label>
+      <input type="range" id="sl6a" min="0" max="50" value="${lv7.ptx}" step="1">
+      <div class="val" id="v6a">Ptx = ${lv7.ptx} dBm</div></div>`;
+    h+=`<div class="ctrl-group"><label>发射天线增益 (dBi)</label>
+      <input type="range" id="sl6b" min="0" max="40" value="${lv7.gtx}" step="1">
+      <div class="val" id="v6b">Gtx = ${lv7.gtx} dBi</div></div>`;
+    h+=`<div class="ctrl-group"><label>接收天线增益 (dBi)</label>
+      <input type="range" id="sl6c" min="0" max="40" value="${lv7.grx}" step="1">
+      <div class="val" id="v6c">Grx = ${lv7.grx} dBi</div></div>`;
+    h+=`<div class="ctrl-group"><label>距离 (km)</label>
+      <input type="range" id="sl6d" min="0.1" max="100" value="${(lv7.dist/1000).toFixed(1)}" step="0.1">
+      <div class="val" id="v6d">d = ${(lv7.dist/1000).toFixed(1)} km</div></div>`;
+    h+=`<div class="ctrl-group"><label>频率 (GHz)</label>
+      <input type="range" id="sl6e" min="1" max="40" value="${(lv7.freq/1e9).toFixed(0)}" step="1">
+      <div class="val" id="v6e">${(lv7.freq/1e9).toFixed(0)} GHz</div></div>`;
+    const fspl=calcFSPL();const prx=lv7.ptx+lv7.gtx+lv7.grx-fspl;
+    h+=`<div class="ctrl-group"><div class="val">FSPL = ${fspl.toFixed(1)} dB</div>
+      <div class="val">Prx = ${prx.toFixed(1)} dBm</div></div>`;
+  }
+  return h;
+}
+
+function calcVSWR(){
+  const g=Math.abs((lv2.zLoad-lv2.z0)/(lv2.zLoad+lv2.z0));
+  if(g>=1)return 999;
+  return (1+g)/(1-g);
+}
+function calcFSPL(){
+  return 20*Math.log10(lv7.dist)+20*Math.log10(lv7.freq)+20*Math.log10(4*Math.PI/C);
+}
+
+function bindControls(idx){
+  if(idx===0){
+    const sl=document.getElementById('sl0');
+    if(sl)sl.oninput=()=>{
+      const f=parseFloat(sl.value)*1e6;lv1.freq=f;
+      const wl=(C/f*100).toFixed(1);
+      document.getElementById('v0').textContent=`${(f/1e6).toFixed(0)} MHz (λ=${wl} cm)`;
+      if(f>=1e9)completeObj(0,2);
+      completeObj(0,0);
+    };
+    const ce=document.getElementById('chkE'),cb=document.getElementById('chkB');
+    if(ce)ce.onchange=()=>{lv1.showE=ce.checked;completeObj(0,1);};
+    if(cb)cb.onchange=()=>{lv1.showB=cb.checked;completeObj(0,1);};
+  }else if(idx===1){
+    const sl=document.getElementById('sl1');
+    if(sl)sl.oninput=()=>{
+      lv2.zLoad=parseFloat(sl.value);
+      const g=((lv2.zLoad-lv2.z0)/(lv2.zLoad+lv2.z0));
+      const vswr=calcVSWR();
+      document.getElementById('v1').textContent=`ZL = ${lv2.zLoad} Ω`;
+      document.getElementById('v1b').textContent=`Γ = ${g.toFixed(3)}, VSWR = ${vswr.toFixed(2)}`;
+      if(Math.abs(lv2.zLoad-50)<2)completeObj(1,0);
+      if(lv2.zLoad<2)completeObj(1,1);
+      if(vswr>3)completeObj(1,2);
+    };
+  }else if(idx===2){
+    const btn=document.getElementById('btnReset2');
+    if(btn)btn.onclick=()=>{lv3.clickR=1;lv3.clickX=0;lv3.matchStep=0;updatePanel();};
+  }else if(idx===3){
+    const sl=document.getElementById('sl3'),slb=document.getElementById('sl3b'),sel=document.getElementById('sel3');
+    const upd3=()=>{
+      const fGHz=parseFloat(sl.value);lv4.freq=fGHz*1e9;
+      lv4.wgA=parseFloat(slb.value)/1000;
+      lv4.mode=sel.value;
+      const m=parseInt(lv4.mode[2])||0,n=parseInt(lv4.mode[3])||0;
+      const fc=C/2*Math.sqrt((m/lv4.wgA)**2+(n/lv4.wgB)**2)/1e9;
+      document.getElementById('v3').textContent=`${fGHz} GHz (fc=${fc.toFixed(2)} GHz)`;
+      document.getElementById('v3b').textContent=`${(lv4.wgA*1000).toFixed(1)} mm`;
+      if(lv4.mode==='TE10'){
+        const fc10=C/(2*lv4.wgA)/1e9;
+        if(Math.abs(fGHz-fc10)<0.5)completeObj(3,0);
+        if(fGHz<fc10)completeObj(3,1);
+      }
+      if(lv4.mode==='TE20')completeObj(3,2);
+    };
+    if(sl)sl.oninput=upd3;if(slb)slb.oninput=upd3;if(sel)sel.onchange=upd3;
+  }else if(idx===4){
+    const sl=document.getElementById('sl4');
+    if(sl){sl.oninput=()=>{
+      const ratio=parseFloat(sl.value);
+      lv5.length=ratio*(C/lv5.freqD);
+      document.getElementById('v4').textContent=`L = ${ratio.toFixed(2)}λ`;
+      if(Math.abs(ratio-0.5)<0.03)completeObj(4,0);
+      if(Math.abs(ratio-1.0)<0.05)completeObj(4,1);
+      completeObj(4,2);
+    };}
+  }else if(idx===5){
+    const sa=document.getElementById('sl5a'),sb=document.getElementById('sl5b'),sc=document.getElementById('sl5c');
+    const upd5=()=>{
+      lv6.nElem=parseInt(sa.value);lv6.spacing=parseFloat(sb.value);lv6.phaseDiff=parseFloat(sc.value);
+      document.getElementById('v5a').textContent=`N = ${lv6.nElem}`;
+      document.getElementById('v5b').textContent=`d = ${lv6.spacing}λ`;
+      document.getElementById('v5c').textContent=`Δφ = ${lv6.phaseDiff}°`;
+      if(lv6.nElem>=4)completeObj(5,0);
+      if(Math.abs(lv6.phaseDiff)>20)completeObj(5,1);
+      if(lv6.nElem>=8)completeObj(5,2);
+    };
+    if(sa)sa.oninput=upd5;if(sb)sb.oninput=upd5;if(sc)sc.oninput=upd5;
+  }else if(idx===6){
+    const ids=['sl6a','sl6b','sl6c','sl6d','sl6e'];
+    const upd6=()=>{
+      lv7.ptx=parseFloat(document.getElementById('sl6a').value);
+      lv7.gtx=parseFloat(document.getElementById('sl6b').value);
+      lv7.grx=parseFloat(document.getElementById('sl6c').value);
+      lv7.dist=parseFloat(document.getElementById('sl6d').value)*1000;
+      lv7.freq=parseFloat(document.getElementById('sl6e').value)*1e9;
+      document.getElementById('v6a').textContent=`Ptx = ${lv7.ptx} dBm`;
+      document.getElementById('v6b').textContent=`Gtx = ${lv7.gtx} dBi`;
+      document.getElementById('v6c').textContent=`Grx = ${lv7.grx} dBi`;
+      document.getElementById('v6d').textContent=`d = ${(lv7.dist/1000).toFixed(1)} km`;
+      document.getElementById('v6e').textContent=`${(lv7.freq/1e9).toFixed(0)} GHz`;
+      const fspl=calcFSPL();const prx=lv7.ptx+lv7.gtx+lv7.grx-fspl;
+      const cg=panel.querySelectorAll('.ctrl-group');
+      const last=cg[cg.length-1];
+      if(last)last.innerHTML=`<div class="val">FSPL = ${fspl.toFixed(1)} dB</div><div class="val">Prx = ${prx.toFixed(1)} dBm</div>`;
+      if(Math.abs(lv7.dist-1000)<100)completeObj(6,0);
+      completeObj(6,1);
+      if(prx>-80)completeObj(6,2);
+    };
+    ids.forEach(id=>{const el=document.getElementById(id);if(el)el.oninput=upd6;});
+  }
+}
+
+function bindSmithChart(){
+  canvas.onmousedown=(e)=>{
+    const rect=canvas.getBoundingClientRect();
+    const mx=e.clientX-rect.left,my=e.clientY-rect.top;
+    const cx=W/2,cy=H/2,rad=Math.min(W,H)*0.4;
+    const dx=(mx-cx)/rad,dy=(my-cy)/rad;
+    if(dx*dx+dy*dy>1)return;
+    // Convert from reflection coefficient to impedance
+    const gr=dx,gi=-dy;
+    const denom=(1-gr)*(1-gr)+gi*gi;
+    if(denom<0.001)return;
+    const r=((1-gr*gr-gi*gi))/denom;
+    const x=(2*gi)/denom;
+    lv3.clickR=Math.max(0,r);lv3.clickX=x;
+    const v2=document.getElementById('v2');
+    if(v2)v2.textContent=`Z = ${r.toFixed(2)} + j${x.toFixed(2)}`;
+    // Check objectives
+    if(Math.abs(x)<0.15&&r>0.1)completeObj(2,0);
+    if(r<0.1&&Math.abs(x)<0.2)completeObj(2,1);
+    if(dx>0.85)completeObj(2,2);
+  };
+}
+
+// ============ DRAWING FUNCTIONS ============
+function animate(){
+  time+=0.016;
+  ctx.clearRect(0,0,W,H);
+  switch(curLevel){
+    case 0:drawLevel1();break;
+    case 1:drawLevel2();break;
+    case 2:drawLevel3();break;
+    case 3:drawLevel4();break;
+    case 4:drawLevel5();break;
+    case 5:drawLevel6();break;
+    case 6:drawLevel7();break;
+  }
+  animId=requestAnimationFrame(animate);
+}
+
+// Level 1: EM Wave Propagation
+function drawLevel1(){
+  const cx=W/2,cy=H/2;
+  const wl=C/lv1.freq;
+  const pixPerWl=W*0.25;
+  const k=2*Math.PI/pixPerWl;
+  const omega=2*Math.PI*2;
+  // Draw propagation axis
+  ctx.strokeStyle='#333';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(40,cy);ctx.lineTo(W-40,cy);ctx.stroke();
+  // Arrow
+  ctx.fillStyle='#666';ctx.font='13px sans-serif';
+  ctx.fillText('传播方向 →',W-120,cy-10);
+  ctx.fillText('z',W-50,cy+20);
+  // Draw E field (vertical)
+  if(lv1.showE){
+    ctx.strokeStyle='#f97316';ctx.lineWidth=2.5;
+    ctx.beginPath();
+    for(let x=40;x<W-40;x++){
+      const val=Math.sin(k*x-omega*time)*80;
+      if(x===40)ctx.moveTo(x,cy-val);
+      else ctx.lineTo(x,cy-val);
+    }
+    ctx.stroke();
+    // Label
+    ctx.fillStyle='#f97316';ctx.font='bold 14px sans-serif';
+    ctx.fillText('E (电场)',50,cy-90);
+    // Arrows along wave
+    for(let x=80;x<W-60;x+=pixPerWl/4){
+      const val=Math.sin(k*x-omega*time)*80;
+      if(Math.abs(val)>10){
+        ctx.strokeStyle='rgba(249,115,22,0.4)';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(x,cy);ctx.lineTo(x,cy-val);ctx.stroke();
+        // arrowhead
+        const dir=val>0?-1:1;
+        ctx.beginPath();ctx.moveTo(x,cy-val);ctx.lineTo(x-3,cy-val+dir*8);ctx.lineTo(x+3,cy-val+dir*8);ctx.fill();
+      }
+    }
+  }
+  // Draw B field (into/out of screen, shown as depth perspective)
+  if(lv1.showB){
+    ctx.strokeStyle='#38bdf8';ctx.lineWidth=2.5;
+    ctx.beginPath();
+    for(let x=40;x<W-40;x++){
+      const val=Math.sin(k*x-omega*time+Math.PI/2)*50;
+      const py=cy+val*0.6;
+      if(x===40)ctx.moveTo(x,py);
+      else ctx.lineTo(x,py);
+    }
+    ctx.stroke();
+    ctx.fillStyle='#38bdf8';ctx.font='bold 14px sans-serif';
+    ctx.fillText('B (磁场)',50,cy+80);
+  }
+  // Wavelength indicator
+  const startX=W*0.3;
+  ctx.strokeStyle='#f97316';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(startX,cy+110);ctx.lineTo(startX+pixPerWl,cy+110);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#f97316';ctx.font='12px monospace';
+  const wlStr=wl>=0.01?`λ = ${(wl*100).toFixed(1)} cm`:`λ = ${(wl*1000).toFixed(2)} mm`;
+  ctx.fillText(wlStr,(startX+startX+pixPerWl)/2-30,cy+128);
+  ctx.fillText(`f = ${(lv1.freq/1e9).toFixed(2)} GHz`,startX,cy+148);
+  ctx.fillText(`c = λf = 3×10⁸ m/s`,startX,cy+165);
+  // Arrows for wavelength
+  ctx.beginPath();ctx.moveTo(startX,cy+105);ctx.lineTo(startX,cy+115);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(startX+pixPerWl,cy+105);ctx.lineTo(startX+pixPerWl,cy+115);ctx.stroke();
+}
+
+// Level 2: Transmission Line
+function drawLevel2(){
+  const cx=W/2,cy=H/2;
+  const lineY1=cy-60,lineY2=cy+60;
+  const x1=60,x2=W-60;
+  const len=x2-x1;
+  // Draw transmission line
+  ctx.strokeStyle='#555';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(x1,lineY1);ctx.lineTo(x2,lineY1);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x1,lineY2);ctx.lineTo(x2,lineY2);ctx.stroke();
+  // Source
+  ctx.fillStyle='#22c55e';ctx.fillRect(x1-20,lineY1,10,lineY2-lineY1);
+  ctx.fillStyle='#aaa';ctx.font='12px sans-serif';ctx.fillText('源',x1-25,lineY2+20);
+  // Load
+  ctx.fillStyle='#f97316';ctx.fillRect(x2+10,lineY1,10,lineY2-lineY1);
+  ctx.fillText(`ZL=${lv2.zLoad}Ω`,x2-10,lineY2+20);
+  // Calculate reflection
+  const gamma=(lv2.zLoad-lv2.z0)/(lv2.zLoad+lv2.z0);
+  const absGamma=Math.abs(gamma);
+  // Incident wave
+  const k=2*Math.PI/(len*0.3);
+  const omega=4;
+  ctx.strokeStyle='#38bdf8';ctx.lineWidth=2;
+  ctx.beginPath();
+  for(let x=x1;x<=x2;x++){
+    const dx=x-x1;
+    const v=Math.sin(k*dx-omega*time)*30;
+    if(x===x1)ctx.moveTo(x,lineY1-40+v);
+    else ctx.lineTo(x,lineY1-40+v);
+  }
+  ctx.stroke();
+  ctx.fillStyle='#38bdf8';ctx.font='11px sans-serif';ctx.fillText('入射波',x1+10,lineY1-80);
+  // Reflected wave
+  if(absGamma>0.01){
+    ctx.strokeStyle='#ef4444';ctx.lineWidth=2;
+    ctx.beginPath();
+    for(let x=x1;x<=x2;x++){
+      const dx=x2-x;
+      const v=Math.sin(k*dx-omega*time)*30*absGamma*(gamma>0?1:-1);
+      if(x===x1)ctx.moveTo(x,lineY2+40+v);
+      else ctx.lineTo(x,lineY2+40+v);
+    }
+    ctx.stroke();
+    ctx.fillStyle='#ef4444';ctx.fillText('反射波',x1+10,lineY2+80);
+  }
+  // Standing wave pattern (voltage magnitude)
+  ctx.strokeStyle='#f97316';ctx.lineWidth=2.5;
+  ctx.beginPath();
+  const swY=cy+140;
+  for(let x=x1;x<=x2;x++){
+    const dx=(x2-x);
+    const inc=1;
+    const ref=absGamma;
+    const phase=2*k*dx;
+    const mag=Math.sqrt(inc*inc+ref*ref+2*inc*ref*Math.cos(phase));
+    const v=mag*25;
+    if(x===x1)ctx.moveTo(x,swY-v);
+    else ctx.lineTo(x,swY-v);
+  }
+  ctx.stroke();
+  ctx.strokeStyle='#555';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(x1,swY);ctx.lineTo(x2,swY);ctx.stroke();
+  ctx.fillStyle='#f97316';ctx.font='12px sans-serif';
+  ctx.fillText('驻波包络 |V(z)|',x1,swY-70);
+  // VSWR display
+  const vswr=calcVSWR();
+  ctx.fillStyle='#fff';ctx.font='bold 16px monospace';
+  ctx.fillText(`VSWR = ${vswr>100?'∞':vswr.toFixed(2)}`,cx-60,lineY1-100);
+  ctx.fillText(`Γ = ${gamma.toFixed(3)}`,cx-60,lineY1-80);
+  // Match indicator
+  if(absGamma<0.05){
+    ctx.fillStyle='#22c55e';ctx.font='bold 14px sans-serif';
+    ctx.fillText('✓ 完美匹配！无反射',cx-70,lineY1-120);
+  }
+}
+
+// Level 3: Smith Chart
+function drawLevel3(){
+  const cx=W/2,cy=H/2;
+  const rad=Math.min(W,H)*0.4;
+  // Draw outer circle
+  ctx.strokeStyle='#444';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);ctx.stroke();
+  // Constant resistance circles
+  const rVals=[0,0.2,0.5,1,2,5];
+  ctx.strokeStyle='#333';ctx.lineWidth=0.8;
+  rVals.forEach(r=>{
+    const cr=rad/(1+r);
+    const ccx=cx+rad*r/(1+r);
+    ctx.beginPath();ctx.arc(ccx,cy,cr,0,Math.PI*2);ctx.stroke();
+  });
+  // Constant reactance arcs
+  const xVals=[0.2,0.5,1,2,5];
+  ctx.strokeStyle='#2a2a3a';ctx.lineWidth=0.8;
+  xVals.forEach(x=>{
+    const rx=rad/x;
+    // Upper half (positive reactance)
+    ctx.beginPath();
+    for(let a=0;a<=Math.PI;a+=0.02){
+      const px=cx+rad+rx*Math.cos(Math.PI+a);
+      const py=cy-rx+rx*Math.sin(Math.PI+a);
+      const dx=px-cx,dy=py-cy;
+      if(dx*dx+dy*dy<=rad*rad+10){
+        if(a<0.02)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+      }
+    }
+    ctx.stroke();
+    // Lower half (negative reactance)
+    ctx.beginPath();
+    for(let a=0;a<=Math.PI;a+=0.02){
+      const px=cx+rad+rx*Math.cos(a);
+      const py=cy+rx-rx*Math.sin(a);
+      const dx=px-cx,dy=py-cy;
+      if(dx*dx+dy*dy<=rad*rad+10){
+        if(a<0.02)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+      }
+    }
+    ctx.stroke();
+  });
+  // Real axis
+  ctx.strokeStyle='#555';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(cx-rad,cy);ctx.lineTo(cx+rad,cy);ctx.stroke();
+  // Labels
+  ctx.fillStyle='#666';ctx.font='11px sans-serif';
+  ctx.fillText('短路',cx-rad-30,cy+4);
+  ctx.fillText('开路',cx+rad+5,cy+4);
+  ctx.fillText('匹配',cx-5,cy-rad-8);
+  // R labels on real axis
+  rVals.forEach(r=>{
+    const px=cx+rad*((r-1)/(r+1));
+    ctx.fillStyle='#555';ctx.font='9px monospace';
+    ctx.fillText(r.toString(),px-4,cy+14);
+  });
+  // Current impedance point
+  const r=lv3.clickR,x=lv3.clickX;
+  const denom=(1+r)*(1+r)+x*x;
+  const gr=((r*r+x*x-1))/denom;
+  const gi=(2*x)/denom;
+  const px=cx+gr*rad,py=cy-gi*rad;
+  // Point
+  ctx.fillStyle='#f97316';
+  ctx.beginPath();ctx.arc(px,py,8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 12px monospace';
+  ctx.fillText(`Z = ${r.toFixed(2)}+j${x.toFixed(2)}`,px+12,py-8);
+  // Pulsing ring
+  const pulse=Math.sin(time*3)*3+10;
+  ctx.strokeStyle='rgba(249,115,22,0.5)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(px,py,pulse,0,Math.PI*2);ctx.stroke();
+  // Center marker
+  ctx.fillStyle='rgba(34,197,94,0.5)';
+  ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);ctx.fill();
+}
+
+// Level 4: Waveguide
+function drawLevel4(){
+  const cx=W/2,cy=H/2;
+  const m=parseInt(lv4.mode[2])||0,n=parseInt(lv4.mode[3])||0;
+  const fc=C/2*Math.sqrt((m/lv4.wgA)**2+(n/lv4.wgB)**2);
+  const isPropagating=lv4.freq>fc;
+  // Draw waveguide 3D perspective
+  const wgW=240,wgH=100,depth=300;
+  const x0=cx-depth/2,y0=cy-wgH/2;
+  // Back face
+  ctx.strokeStyle='#444';ctx.lineWidth=1;
+  ctx.fillStyle='rgba(30,30,60,0.5)';
+  ctx.fillRect(x0+depth*0.3,y0-depth*0.15,wgW,wgH);
+  ctx.strokeRect(x0+depth*0.3,y0-depth*0.15,wgW,wgH);
+  // Side faces
+  ctx.beginPath();
+  ctx.moveTo(x0,y0+wgH*0.5);ctx.lineTo(x0+depth*0.3,y0-depth*0.15);
+  ctx.lineTo(x0+depth*0.3,y0-depth*0.15+wgH);ctx.lineTo(x0,y0+wgH*1.5);ctx.closePath();
+  ctx.fillStyle='rgba(40,40,70,0.4)';ctx.fill();ctx.stroke();
+  // Top face
+  ctx.beginPath();
+  ctx.moveTo(x0,y0+wgH*0.5);ctx.lineTo(x0+depth*0.3,y0-depth*0.15);
+  ctx.lineTo(x0+depth*0.3+wgW,y0-depth*0.15);ctx.lineTo(x0+wgW,y0+wgH*0.5);ctx.closePath();
+  ctx.fillStyle='rgba(50,50,80,0.3)';ctx.fill();ctx.stroke();
+  // Front face (open)
+  ctx.strokeStyle='#f97316';ctx.lineWidth=2;
+  ctx.strokeRect(x0,y0+wgH*0.5,wgW,wgH);
+  // Field distribution in cross-section
+  const faceX=x0,faceY=y0+wgH*0.5,faceW=wgW,faceH=wgH;
+  const gridX=30,gridY=20;
+  for(let i=0;i<gridX;i++){
+    for(let j=0;j<gridY;j++){
+      const xn=(i+0.5)/gridX;
+      const yn=(j+0.5)/gridY;
+      let intensity=0;
+      if(lv4.mode==='TE10')intensity=Math.sin(Math.PI*xn);
+      else if(lv4.mode==='TE20')intensity=Math.sin(2*Math.PI*xn);
+      else if(lv4.mode==='TE01')intensity=Math.sin(Math.PI*yn);
+      intensity=Math.abs(intensity);
+      const phase=isPropagating?Math.sin(time*4):Math.exp(-time*0.5)*Math.sin(time*4);
+      const alpha=intensity*Math.abs(phase)*0.6;
+      if(alpha>0.02){
+        const px=faceX+xn*faceW;
+        const py=faceY+yn*faceH;
+        ctx.fillStyle=isPropagating?`rgba(249,115,22,${alpha})`:`rgba(239,68,68,${alpha})`;
+        ctx.fillRect(px-faceW/gridX/2,py-faceH/gridY/2,faceW/gridX,faceH/gridY);
+      }
+    }
+  }
+  // Propagation animation inside waveguide
+  if(isPropagating){
+    for(let d=0;d<8;d++){
+      const phase=(time*3+d*0.8)%6;
+      if(phase>5)continue;
+      const t=phase/5;
+      const px=x0+t*(depth*0.3);
+      const py=y0+wgH*0.5+t*(-depth*0.15-wgH*0.5+wgH*0.5);
+      const alpha=1-t;
+      ctx.fillStyle=`rgba(249,115,22,${alpha*0.5})`;
+      ctx.beginPath();ctx.arc(x0+wgW/2+t*depth*0.3/2,faceY+faceH/2-t*depth*0.15/2,4,0,Math.PI*2);ctx.fill();
+    }
+  }
+  // Status text
+  ctx.fillStyle=isPropagating?'#22c55e':'#ef4444';
+  ctx.font='bold 18px sans-serif';
+  ctx.fillText(isPropagating?'传播模式':'截止（衰减）',cx-60,y0-30);
+  ctx.fillStyle='#aaa';ctx.font='13px monospace';
+  ctx.fillText(`模式: ${lv4.mode}`,cx-60,y0+wgH*2+30);
+  ctx.fillText(`fc = ${(fc/1e9).toFixed(2)} GHz`,cx-60,y0+wgH*2+50);
+  ctx.fillText(`f = ${(lv4.freq/1e9).toFixed(1)} GHz`,cx-60,y0+wgH*2+70);
+  if(isPropagating){
+    const beta=2*Math.PI*lv4.freq/C*Math.sqrt(1-(fc/lv4.freq)**2);
+    const lambdaG=2*Math.PI/beta;
+    ctx.fillText(`λg = ${(lambdaG*1000).toFixed(1)} mm`,cx-60,y0+wgH*2+90);
+  }
+  // Cross-section label
+  ctx.fillStyle='#f97316';ctx.font='12px sans-serif';
+  ctx.fillText('截面场分布',faceX,faceY-8);
+  ctx.fillText(`a=${(lv4.wgA*1000).toFixed(1)}mm`,faceX+faceW+8,faceY+faceH/2);
+}
+
+// Level 5: Dipole Antenna
+function drawLevel5(){
+  const cx=W/2,cy=H/2;
+  const wl=C/lv5.freqD;
+  const ratio=lv5.length/wl;
+  // Draw antenna
+  const antLen=120;
+  ctx.strokeStyle='#f97316';ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(cx,cy-antLen);ctx.lineTo(cx,cy+antLen);ctx.stroke();
+  // Feed point
+  ctx.fillStyle='#22c55e';
+  ctx.beginPath();ctx.arc(cx,cy,6,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#aaa';ctx.font='11px sans-serif';
+  ctx.fillText('馈电点',cx+10,cy+4);
+  // Current distribution
+  ctx.strokeStyle='rgba(56,189,248,0.7)';ctx.lineWidth=2;
+  const nSeg=40;
+  for(let i=0;i<nSeg;i++){
+    const t=(i/nSeg)*2-1; // -1 to 1
+    const y=cy+t*antLen;
+    const pos=Math.abs(t);
+    // Current: sin(k*(L/2 - |z|))
+    const kl=Math.PI*ratio;
+    let current=Math.sin(kl*(1-pos));
+    current*=Math.cos(time*5);
+    const barW=Math.abs(current)*40;
+    if(barW>1){
+      ctx.fillStyle=current>0?'rgba(56,189,248,0.4)':'rgba(248,56,56,0.4)';
+      ctx.fillRect(cx-barW,y-antLen/nSeg/2,barW*2,antLen/nSeg);
+    }
+  }
+  ctx.fillStyle='#38bdf8';ctx.font='11px sans-serif';
+  ctx.fillText('电流分布',cx+50,cy);
+  // Radiation pattern (polar plot)
+  const rpCx=cx,rpCy=cy;
+  const rpRad=Math.min(W,H)*0.32;
+  // Grid circles
+  ctx.strokeStyle='#222';ctx.lineWidth=0.5;
+  for(let r=0.25;r<=1;r+=0.25){
+    ctx.beginPath();ctx.arc(rpCx,rpCy,rpRad*r,0,Math.PI*2);ctx.stroke();
+  }
+  // Grid lines
+  for(let a=0;a<360;a+=30){
+    const rad=a*Math.PI/180;
+    ctx.beginPath();ctx.moveTo(rpCx,rpCy);
+    ctx.lineTo(rpCx+Math.cos(rad)*rpRad,rpCy+Math.sin(rad)*rpRad);ctx.stroke();
+  }
+  // Calculate and draw pattern
+  ctx.strokeStyle='#f97316';ctx.lineWidth=2.5;
+  ctx.beginPath();
+  let maxGain=0;
+  const gains=[];
+  for(let a=0;a<360;a++){
+    const theta=a*Math.PI/180;
+    const sinT=Math.sin(theta);
+    const cosT=Math.cos(theta);
+    let gain;
+    if(Math.abs(sinT)<0.001){
+      gain=0;
+    }else{
+      const kl=Math.PI*ratio;
+      const num=Math.cos(kl*cosT)-Math.cos(kl);
+      gain=Math.abs(num/sinT);
+    }
+    gains.push(gain);
+    if(gain>maxGain)maxGain=gain;
+  }
+  if(maxGain<0.001)maxGain=1;
+  for(let a=0;a<360;a++){
+    const theta=a*Math.PI/180;
+    const r=gains[a]/maxGain*rpRad;
+    const px=rpCx+Math.cos(theta-Math.PI/2)*r;
+    const py=rpCy+Math.sin(theta-Math.PI/2)*r;
+    if(a===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+  }
+  ctx.closePath();ctx.stroke();
+  // Fill pattern
+  ctx.fillStyle='rgba(249,115,22,0.1)';ctx.fill();
+  // Labels
+  ctx.fillStyle='#aaa';ctx.font='12px sans-serif';
+  ctx.fillText('0°',rpCx-6,rpCy-rpRad-8);
+  ctx.fillText('90°',rpCx+rpRad+4,rpCy+4);
+  ctx.fillText('180°',rpCx-12,rpCy+rpRad+16);
+  ctx.fillText('270°',rpCx-rpRad-32,rpCy+4);
+  // Info
+  ctx.fillStyle='#fff';ctx.font='bold 14px monospace';
+  ctx.fillText(`L = ${ratio.toFixed(2)}λ`,20,30);
+  const gainDB=ratio>0.4&&ratio<0.6?2.15:ratio>0.9&&ratio<1.1?3.82:0;
+  if(gainDB>0)ctx.fillText(`增益 ≈ ${gainDB.toFixed(2)} dBi`,20,50);
+}
+
+// Level 6: Antenna Array
+function drawLevel6(){
+  const cx=W/2,cy=H/2;
+  const N=lv6.nElem;
+  const d=lv6.spacing;
+  const deltaPhi=lv6.phaseDiff*Math.PI/180;
+  // Draw array elements
+  const elemSpacing=Math.min(40,W*0.6/N);
+  const arrW=elemSpacing*(N-1);
+  const arrX0=cx-arrW/2;
+  const arrY=cy+H*0.3;
+  for(let i=0;i<N;i++){
+    const ex=arrX0+i*elemSpacing;
+    // Antenna element
+    ctx.strokeStyle='#f97316';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(ex,arrY-20);ctx.lineTo(ex,arrY+20);ctx.stroke();
+    // Phase indicator
+    const phase=(i*deltaPhi)%(2*Math.PI);
+    const pulse=Math.sin(time*4+phase);
+    const alpha=0.3+pulse*0.3;
+    ctx.fillStyle=`rgba(249,115,22,${Math.max(0.05,alpha)})`;
+    ctx.beginPath();ctx.arc(ex,arrY,12+pulse*4,0,Math.PI*2);ctx.fill();
+    // Element number
+    ctx.fillStyle='#888';ctx.font='10px sans-serif';
+    ctx.fillText(`#${i+1}`,ex-6,arrY+36);
+  }
+  // Array factor radiation pattern (polar)
+  const rpCx=cx,rpCy=cy-H*0.1;
+  const rpRad=Math.min(W,H)*0.28;
+  // Grid
+  ctx.strokeStyle='#222';ctx.lineWidth=0.5;
+  for(let r=0.25;r<=1;r+=0.25){
+    ctx.beginPath();ctx.arc(rpCx,rpCy,rpRad*r,0,Math.PI*2);ctx.stroke();
+  }
+  for(let a=0;a<360;a+=30){
+    const rad=a*Math.PI/180;
+    ctx.beginPath();ctx.moveTo(rpCx,rpCy);
+    ctx.lineTo(rpCx+Math.cos(rad)*rpRad,rpCy+Math.sin(rad)*rpRad);ctx.stroke();
+  }
+  // Calculate array factor
+  ctx.strokeStyle='#f97316';ctx.lineWidth=2.5;
+  ctx.beginPath();
+  let maxAF=0;
+  const afs=[];
+  for(let a=0;a<360;a++){
+    const theta=a*Math.PI/180;
+    const psi=2*Math.PI*d*Math.cos(theta)+deltaPhi;
+    let af;
+    if(Math.abs(Math.sin(psi/2))<0.0001){
+      af=N;
+    }else{
+      af=Math.abs(Math.sin(N*psi/2)/Math.sin(psi/2));
+    }
+    afs.push(af);
+    if(af>maxAF)maxAF=af;
+  }
+  if(maxAF<0.01)maxAF=1;
+  for(let a=0;a<360;a++){
+    const theta=a*Math.PI/180;
+    const r=afs[a]/maxAF*rpRad;
+    const px=rpCx+Math.cos(theta-Math.PI/2)*r;
+    const py=rpCy+Math.sin(theta-Math.PI/2)*r;
+    if(a===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+  }
+  ctx.closePath();ctx.stroke();
+  ctx.fillStyle='rgba(249,115,22,0.08)';ctx.fill();
+  // Beam direction indicator
+  let maxAngle=0,maxVal=0;
+  for(let a=0;a<360;a++){
+    if(afs[a]>maxVal){maxVal=afs[a];maxAngle=a;}
+  }
+  const beamRad=(maxAngle-90)*Math.PI/180;
+  ctx.strokeStyle='rgba(34,197,94,0.6)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(rpCx,rpCy);
+  ctx.lineTo(rpCx+Math.cos(beamRad)*rpRad*1.1,rpCy+Math.sin(beamRad)*rpRad*1.1);ctx.stroke();
+  ctx.setLineDash([]);
+  // Labels
+  ctx.fillStyle='#aaa';ctx.font='12px sans-serif';
+  ctx.fillText('0°(法线方向)',rpCx-30,rpCy-rpRad-8);
+  ctx.fillText('阵列方向图',20,24);
+  ctx.fillStyle='#22c55e';ctx.font='12px monospace';
+  ctx.fillText(`主瓣方向: ${(maxAngle-90).toFixed(0)}°`,20,44);
+  // 3dB beamwidth estimate
+  const bw3dB=Math.round(51/(N*d));
+  ctx.fillText(`3dB波束宽度 ≈ ${bw3dB}°`,20,64);
+}
+
+// Level 7: Radar Equation & Link Budget
+function drawLevel7(){
+  const cx=W/2,cy=H/2;
+  const fspl=calcFSPL();
+  const prx=lv7.ptx+lv7.gtx+lv7.grx-fspl;
+  // Draw link diagram
+  const txX=80,rxX=W-80,midY=cy-40;
+  // TX antenna
+  ctx.fillStyle='#f97316';
+  ctx.beginPath();ctx.moveTo(txX,midY-30);ctx.lineTo(txX+25,midY);ctx.lineTo(txX,midY+30);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#aaa';ctx.font='12px sans-serif';
+  ctx.fillText('发射端',txX-10,midY+50);
+  ctx.fillStyle='#f97316';ctx.font='11px monospace';
+  ctx.fillText(`Ptx=${lv7.ptx}dBm`,txX-15,midY+68);
+  ctx.fillText(`Gtx=${lv7.gtx}dBi`,txX-15,midY+84);
+  // RX antenna
+  ctx.fillStyle='#38bdf8';
+  ctx.beginPath();ctx.moveTo(rxX,midY-30);ctx.lineTo(rxX-25,midY);ctx.lineTo(rxX,midY+30);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#aaa';ctx.font='12px sans-serif';
+  ctx.fillText('接收端',rxX-15,midY+50);
+  ctx.fillStyle='#38bdf8';ctx.font='11px monospace';
+  ctx.fillText(`Grx=${lv7.grx}dBi`,rxX-15,midY+68);
+  ctx.fillText(`Prx=${prx.toFixed(1)}dBm`,rxX-20,midY+84);
+  // Signal propagation animation
+  const sigSpeed=2;
+  for(let i=0;i<5;i++){
+    const phase=(time*sigSpeed+i*1.2)%6;
+    const t=phase/6;
+    const sx=txX+25+t*(rxX-25-txX-25);
+    const alpha=1-t;
+    const size=3+t*8;
+    ctx.strokeStyle=`rgba(249,115,22,${alpha*0.6})`;ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(sx,midY,size,0,Math.PI*2);ctx.stroke();
+  }
+  // Path line
+  ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.setLineDash([6,4]);
+  ctx.beginPath();ctx.moveTo(txX+25,midY);ctx.lineTo(rxX-25,midY);ctx.stroke();
+  ctx.setLineDash([]);
+  // Distance label
+  ctx.fillStyle='#888';ctx.font='12px monospace';
+  const distKm=(lv7.dist/1000).toFixed(1);
+  ctx.fillText(`d = ${distKm} km`,cx-30,midY-10);
+  // FSPL arrow
+  ctx.fillStyle='#ef4444';ctx.font='bold 14px monospace';
+  ctx.fillText(`FSPL = ${fspl.toFixed(1)} dB`,cx-60,midY+20);
+  // Link budget bar chart
+  const barY=cy+80,barH=30,barMaxW=W-200;
+  // TX power bar
+  const ptxW=Math.max(10,(lv7.ptx/50)*barMaxW*0.3);
+  ctx.fillStyle='#f97316';ctx.fillRect(100,barY,ptxW,barH);
+  ctx.fillStyle='#fff';ctx.font='11px sans-serif';
+  ctx.fillText(`Ptx ${lv7.ptx}dBm`,105,barY+20);
+  // TX gain bar
+  const gtxW=Math.max(5,(lv7.gtx/40)*barMaxW*0.2);
+  ctx.fillStyle='#fb923c';ctx.fillRect(100+ptxW,barY,gtxW,barH);
+  ctx.fillText(`+Gtx`,105+ptxW,barY+20);
+  // FSPL loss bar
+  const fsplW=Math.max(10,(fspl/200)*barMaxW*0.4);
+  ctx.fillStyle='#ef4444';ctx.fillRect(100+ptxW+gtxW,barY,fsplW,barH);
+  ctx.fillText(`-FSPL ${fspl.toFixed(0)}dB`,105+ptxW+gtxW,barY+20);
+  // RX gain bar
+  const grxW=Math.max(5,(lv7.grx/40)*barMaxW*0.15);
+  ctx.fillStyle='#38bdf8';ctx.fillRect(100+ptxW+gtxW+fsplW,barY,grxW,barH);
+  ctx.fillText(`+Grx`,105+ptxW+gtxW+fsplW,barY+20);
+  // Result
+  ctx.fillStyle=prx>-80?'#22c55e':'#ef4444';
+  ctx.font='bold 16px monospace';
+  ctx.fillText(`接收功率: ${prx.toFixed(1)} dBm`,100,barY+barH+30);
+  ctx.fillStyle='#888';ctx.font='12px sans-serif';
+  ctx.fillText(prx>-80?'✓ 信号足够强':'✗ 信号太弱',100,barY+barH+50);
+  // Friis equation
+  ctx.fillStyle='#666';ctx.font='12px monospace';
+  ctx.fillText('Friis: Prx = Ptx + Gtx + Grx - FSPL',100,barY+barH+80);
+  ctx.fillText('FSPL = 20lg(d) + 20lg(f) + 20lg(4π/c)',100,barY+barH+98);
+  // Frequency
+  ctx.fillStyle='#aaa';ctx.font='11px monospace';
+  ctx.fillText(`f = ${(lv7.freq/1e9).toFixed(0)} GHz`,cx-30,midY-28);
+}
+
+// Start
+
+</script>
+</body>
+</html>
