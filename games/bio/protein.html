@@ -374,20 +374,21 @@ function update(){
    const targetX=0.5,targetY=0.82;
    const dx=targetX-b.x,dy=targetY-b.y;
    const dist=Math.sqrt(dx*dx+dy*dy);
-   if(dist<0.05){
+   if(dist<0.06){
     b.arrived=true;b.x=targetX;b.y=targetY;
     lState.arrived++;
     if(lState.arrived>=1&&!lState.objDone[1]){lState.objDone[1]=true;panelDirty=true;}
     if(lState.arrived>=3&&!lState.objDone[2]){lState.objDone[2]=true;panelDirty=true;}
     return;
    }
-   // Funnel physics: gravity + slope toward center
-   b.vy+=0.0003;
-   const pull=dist<0.15?0.001:0.0002;
-   b.vx+=(dx)*pull;
-   b.vy+=(dy)*pull*0.5;
-   b.vx+=(Math.random()-0.5)*0.0003;
-   b.vx*=0.98;b.vy*=0.98;
+   // Funnel physics: strong gravity + center attraction
+   b.vy+=0.001;
+   b.vx+=(dx)*0.002;
+   b.vy+=(dy)*0.001;
+   // Less random near bottom
+   const noise=Math.max(0.00005,0.0003*(1-(b.y-0.15)/0.67));
+   b.vx+=(Math.random()-0.5)*noise;
+   b.vx*=0.96;b.vy*=0.96;
    b.x+=b.vx;b.y+=b.vy;
    // Constrain to funnel shape
    const funnelProgress=(b.y-0.15)/0.67;
