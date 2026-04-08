@@ -215,7 +215,7 @@ function drawParticles(){particles.forEach(p=>{ctx.globalAlpha=p.life;ctx.fillSt
 
 // Level objectives tracking
 const levelObjs=Array.from({length:7},()=>[false,false,false]);
-function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;updateObjDisplay();spawnParticles(160,200,ACCENT,20);if(levelObjs[li].every(v=>v))setTimeout(()=>showResult(li),600)}}
+function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;updateObjDisplay();spawnParticles(160,200,ACCENT,20);if(levelObjs[li].every(v=>v)){completedLevels.add(li);setTimeout(()=>buildPanel(li),600)}}}
 function updateObjDisplay(){const el=document.getElementById('objList');if(!el)return;const items=el.querySelectorAll('.obj-item');items.forEach((it,i)=>{if(levelObjs[currentLevel][i])it.classList.add('done')})}
 
 // Level definitions
@@ -275,9 +275,14 @@ function buildPanel(idx){
   h+='<div class="m-desc">'+L.desc+'</div>';
   h+='<div class="m-concept">'+L.concept+'</div></div>';
   h+='<div class="obj-list" id="objList">';
-  L.objs.forEach((o,i)=>{h+='<div class="obj-item" id="obj'+i+'"><span class="oi">'+(levelObjs[idx][i]?'✓':'')+'</span>'+o+'</div>'});
+  L.objs.forEach((o,i)=>{h+='<div class="obj-item'+(levelObjs[idx][i]?' done':'')+'"><span class="oi">'+(levelObjs[idx][i]?'✓':'')+'</span>'+o+'</div>'});
   h+='</div>';
   h+='<div id="controls"></div>';
+  if(levelObjs[idx].every(v=>v)){
+    h+='<div class="learn-box">'+learnTexts[idx]+'</div>';
+    if(idx<6)h+='<div class="act-section"><button class="act-btn" onclick="loadLevel('+(idx+1)+')">下一关 →</button></div>';
+    else h+='<div class="act-section"><button class="act-btn" onclick="showFinal()">查看总结 🏆</button></div>';
+  }
   $('lp-body').innerHTML=h;
   buildControls(idx);
 }
