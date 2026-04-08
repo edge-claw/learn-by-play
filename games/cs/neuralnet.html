@@ -6,47 +6,141 @@
 <title>神经网络从零构建 - 交互式教育游戏</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#f0f2f5;color:#2a2a3e;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+
+/* === 暗色系（默认） === */
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --result-learn-bg:#0e0e20;--result-learn-text:#93c5fd;
+  --retry-bg:#2a2a5a;--retry-text:#ccc;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --event-bg:#2a0a0a;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --roadmap-text:#a0a0c0;--roadmap-num-bg:#1a1a4a;--roadmap-num-text:#60a5fa;
+  --slider-label:#888;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+/* === 亮色系 === */
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --result-learn-bg:#f0f4ff;--result-learn-text:#1e40af;
+  --retry-bg:#e2e8f0;--retry-text:#475569;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --event-bg:#fef2f2;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --roadmap-text:#475569;--roadmap-num-bg:#e0e7ff;--roadmap-num-text:#4f46e5;
+  --slider-label:#888;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+
+
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
 canvas{display:block;position:absolute;top:0;left:320px}
-.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:rgba(255,255,255,0.98);border-right:1px solid #e0e0e8;overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box}
-.level-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#ffffff;color:#888;transition:all .3s}
-.level-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
-.level-btn.done{color:#4ade80;border-color:#22c55e}
-.concept-box{background:#f0f2f5;border:1px solid #1a1a3a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6;color:#a0a0c0}
-.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid #3b82f6;background:#1a1a4a;color:#60a5fa;font-size:15px;cursor:pointer;text-align:center;transition:all .3s}
-.act-btn:hover{background:#2a2a6a}.act-btn:disabled{opacity:.4;cursor:not-allowed}
-.act-btn.green{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;padding-bottom:24px}
+.level-btn{display:none!important}
+.level-btn.active{display:none!important}
+.level-btn.done{display:none!important}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:15px;cursor:pointer;text-align:center;transition:all .3s}
+.act-btn:hover{background:var(--btn-hover)}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
 .act-btn.red{border-color:#ef4444;background:#2a0a0a;color:#f87171}
-.hint-box{background:#1a1a10;border:1px solid #444;border-radius:8px;padding:8px;margin:8px 0;font-size:11px;color:#cca}
-.learn-box{background:#f0f4ff;border:1px solid #93c5fd;border-radius:10px;padding:12px;margin:10px 0;font-size:14px;line-height:1.8;color:#1e40af}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--hint-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:14px;line-height:1.8;color:var(--learn-text)}
 .slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:#888}
-.slider-wrap input[type=range]{width:100%;margin-top:4px}.sv{color:#60a5fa;font-weight:bold}
-#infoBar{position:absolute;bottom:0;left:320px;right:0;height:36px;background:rgba(255,255,255,0.98);border-top:1px solid #e0e0e8;display:flex;align-items:center;padding:0 16px;font-size:12px;color:#888;z-index:10}
-.panel h3{color:#60a5fa;font-size:16px;margin:8px 0 4px}
+.slider-wrap input[type=range]{width:100%;margin-top:4px}.sv{color:var(--sv);font-weight:bold}
+#infoBar{position:absolute;bottom:0;left:320px;right:0;height:36px;background:var(--bar-bg);border-top:1px solid var(--panel-border);display:flex;align-items:center;padding:0 16px;font-size:12px;color:#888;z-index:10}
+.panel h3{color:var(--title-color);font-size:16px;margin:8px 0 4px}
 .panel h4{color:#93c5fd;font-size:14px;margin:6px 0 2px}
 .obj-item{font-size:12px;margin:2px 0;color:#a0a0c0}
 .obj-item.done{color:#4ade80}
 .kern-grid{display:inline-grid;grid-template-columns:repeat(3,36px);gap:2px;margin:4px 0}
-.kern-cell{width:36px;height:28px;background:#ffffff;border:1px solid #333;color:#60a5fa;text-align:center;font-size:12px;border-radius:4px}
-.func-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:#ffffff;color:#888;transition:all .3s}
-.func-btn.active{background:#1a1a4a;color:#60a5fa;border-color:#3b82f6}
-.quiz-box{background:#0d0d2a;border:1px solid #6366f1;border-radius:10px;padding:12px;margin:10px 0}
+.kern-cell{width:36px;height:28px;background:var(--concept-bg);border:1px solid #333;color:var(--sv);text-align:center;font-size:12px;border-radius:4px}
+.func-btn{display:inline-block;padding:4px 10px;margin:2px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #333;background:var(--btn-bg);color:#888;transition:all .3s}
+.func-btn.active{background:#1a1a4a;color:var(--sv);border-color:#3b82f6}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:10px;padding:12px;margin:10px 0}
 .quiz-box h4{color:#a5b4fc;margin-bottom:8px;font-size:13px}
-.quiz-opt{display:block;width:100%;padding:8px 12px;margin:4px 0;border-radius:6px;border:1px solid #333;background:#ffffff;color:#a0a0c0;font-size:12px;cursor:pointer;text-align:left;transition:all .3s}
-.quiz-opt:hover{border-color:#6366f1;background:#ffffff}
-.quiz-opt.correct{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
-.quiz-opt.wrong{border-color:#ef4444;background:#2a0a0a;color:#f87171}
+.quiz-opt{display:block;width:100%;padding:8px 12px;margin:4px 0;border-radius:6px;border:1px solid #333;background:var(--quiz-opt-bg);color:#a0a0c0;font-size:12px;cursor:pointer;text-align:left;transition:all .3s}
+.quiz-opt:hover{border-color:var(--quiz-border);background:var(--quiz-opt-hover)}
+.quiz-opt.correct{border-color:var(--quiz-correct-text);background:var(--quiz-correct-bg);color:#4ade80}
+.quiz-opt.wrong{border-color:var(--quiz-wrong-text);background:var(--quiz-wrong-bg);color:#f87171}
 .quiz-opt:disabled{cursor:not-allowed;opacity:.7}
 .quiz-result{padding:8px;margin-top:8px;border-radius:6px;font-size:12px}
-.quiz-result.pass{background:#0a2a1a;border:1px solid #22c55e;color:#4ade80}
-.quiz-result.fail{background:#2a0a0a;border:1px solid #ef4444;color:#f87171}
+.quiz-result.pass{background:#ecfdf5;border:1px solid #22c55e;color:#059669}
+.quiz-result.fail{background:#fef2f2;border:1px solid #ef4444;color:#dc2626}
+
+.roadmap{margin:20px auto;max-width:500px;text-align:left}
+.roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
+.roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
+.roadmap-num{width:24px;height:24px;border-radius:50%;background:var(--roadmap-num-bg);color:var(--roadmap-num-text);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;flex-shrink:0}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
 </style>
 </head>
-<body>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
 <div class="panel" id="panel"></div>
 <canvas id="cv"></canvas>
 <div id="infoBar">神经网络从零构建 交互式教育游戏 | 共7关</div>
 <script>
+
+// === 主题系统 ===
+let isDark=true;
+const TH={
+  dark:{bg1:'#0a0a2e',bg2:'#0d0d1a',bg3:'#0a0a1a',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)',label:'#f0f2f5',electron:'#fff',electronGlow:'rgba(255,255,255,0.3)',shell:'rgba(100,100,200,0.15)',barBg:'#1a1a3a',showStars:true},
+  light:{bg1:'#e8edf5',bg2:'#f0f2f5',bg3:'#e0e7f0',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',label:'#334155',electron:'#334155',electronGlow:'rgba(51,65,85,0.3)',shell:'rgba(100,100,200,0.15)',barBg:'#c7d2fe',showStars:false}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
+
 // ===== 音效系统 (Web Audio API) =====
 const AudioCtx=window.AudioContext||window.webkitAudioContext;
 let audioCtx=null;
@@ -282,7 +376,7 @@ function renderPanel(){
    if(curLevel<levels.length-1){
     h+=`<button class="act-btn green" onclick="playSound('click');switchLevel(${curLevel+1})">进入第${curLevel+2}关 →</button>`;
    }else{
-    h+='<div class="learn-box" style="border-color:#f59e0b;color:#fbbf24">🎉 恭喜通关！你已从零构建了神经网络的核心概念。从感知器到CNN图像识别，这些知识构成了现代深度学习的基石。</div>';
+    h+=''+_summaryHTML()+'';
    }
   }
  }
@@ -855,7 +949,7 @@ function drawGradientFlow(x1,y1,x2,y2){
 function render(){
  globalTime++;
  ctx.clearRect(0,0,W,H);
- ctx.fillStyle='#f0f2f5';ctx.fillRect(0,0,W,H);
+ ctx.fillStyle=t().bg1;ctx.fillRect(0,0,W,H);
  // 网格
  ctx.strokeStyle='#111122';ctx.lineWidth=0.5;
  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
@@ -972,7 +1066,7 @@ function renderActivation(){
  const pulse=0.5+0.5*Math.sin(globalTime*0.08);
  ctx.beginPath();ctx.arc(sx,sy,8+pulse*3,0,Math.PI*2);
  ctx.fillStyle=colors[lState.activeFunc];ctx.fill();
- ctx.fillStyle='#f0f2f5';ctx.font='12px monospace';ctx.textAlign='left';
+ ctx.fillStyle=t().label;ctx.font='12px monospace';ctx.textAlign='left';
  ctx.fillText(`(${ix.toFixed(2)}, ${iy.toFixed(4)})`,sx+12,sy-8);
  const names={sigmoid:'σ(x) = 1/(1+e⁻ˣ)',relu:'ReLU(x) = max(0,x)',tanh:'tanh(x) = (eˣ-e⁻ˣ)/(eˣ+e⁻ˣ)'};
  ctx.fillStyle=colors[lState.activeFunc];ctx.font='16px monospace';ctx.textAlign='center';
@@ -1062,7 +1156,7 @@ function renderXOR(){
   ctx.beginPath();ctx.arc(sx,sy,12,0,Math.PI*2);
   ctx.fillStyle=label?'#3b82f6':'#ef4444';ctx.fill();
   ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
-  ctx.fillStyle='#f0f2f5';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle=t().label;ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText(label,sx,sy);
  });
  // 网络图
@@ -1155,7 +1249,7 @@ function renderConvolution(){
   ctx.fillStyle=v>0?`rgba(59,130,246,${Math.min(1,Math.abs(v)/5)})`:v<0?`rgba(239,68,68,${Math.min(1,Math.abs(v)/5)})`:'#111';
   ctx.fillRect(x,y,cellSize-2,cellSize-2);
   ctx.strokeStyle='#3b82f6';ctx.lineWidth=1;ctx.strokeRect(x,y,cellSize-2,cellSize-2);
-  ctx.fillStyle='#f0f2f5';ctx.font='11px monospace';ctx.textAlign='center';
+  ctx.fillStyle=t().label;ctx.font='11px monospace';ctx.textAlign='center';
   ctx.fillText(Number.isInteger(v)?v:v.toFixed(1),x+cellSize/2-1,y+cellSize/2+3);
  }
  drawArrow(kx+cellSize*3+10,ky+cellSize*1.5,kx+cellSize*3+40,ky+cellSize*1.5,'#fbbf24');
@@ -1171,7 +1265,7 @@ function renderConvolution(){
    ctx.fillStyle=v>128?'#000':'#fff';ctx.font='10px monospace';ctx.textAlign='center';
    ctx.fillText(Math.round(v),x+cellSize/2-1,y+cellSize/2+3);
   }else{
-   ctx.fillStyle='#f0f2f5';ctx.fillRect(x,y,cellSize-2,cellSize-2);
+   ctx.fillStyle=t().bg1;ctx.fillRect(x,y,cellSize-2,cellSize-2);
   }
   ctx.strokeStyle='#333';ctx.strokeRect(x,y,cellSize-2,cellSize-2);
  }
@@ -1379,6 +1473,124 @@ resize();
 resetLevelState();
 checkPerceptron();
 render();
+
+function goLevel(i){switchLevel(i);}
+// === 总分总认知结构增强 ===
+// 延迟重新渲染确保增强生效
+(function(){
+  // 自动检测关卡名称
+  function _getNames(){
+    if(typeof levelNames!=='undefined')return levelNames.slice();
+    if(typeof LN!=='undefined')return LN.slice();
+    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
+    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
+    return [];
+  }
+  function _getTotal(){return _getNames().length||7;}
+  function _getCur(){
+    if(typeof currentLevel!=='undefined')return currentLevel;
+    if(typeof curLevel!=='undefined')return curLevel;
+    if(typeof curLv!=='undefined')return curLv;
+    return 0;
+  }
+  function _getObjs(){
+    if(typeof levelObjs!=='undefined')return levelObjs;
+    return null;
+  }
+  function _isDone(i){
+    var o=_getObjs();
+    if(o&&o[i])return o[i].every(function(v){return v;});
+    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
+    return false;
+  }
+  function _countDone(){
+    var o=_getObjs(),d=0,t=0;
+    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
+    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
+    return{done:d,total:t};
+  }
+
+  // 1. 开头路线图
+  window._buildRoadmap=function(){
+    var c=document.getElementById('roadmap-container');
+    if(!c)return;
+    var names=_getNames();
+    if(!names.length)return;
+    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
+    for(var i=0;i<names.length;i++){
+      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
+    }
+    h+='</div>';
+    c.innerHTML=h;
+  };
+  try{window._buildRoadmap();}catch(e){}
+
+  // 2. 阶段导航
+  window._stageNavHTML=function(){
+    var names=_getNames(),total=names.length;
+    if(!total)return '';
+    var cur=_getCur(),s=_countDone();
+    var pct=s.total>0?Math.round(s.done/s.total*100):0;
+    var h='<div class="stage-nav"><div class="sn-bar">';
+    for(var i=0;i<total;i++){
+      var cls=_isDone(i)?'done':i===cur?'cur':'';
+      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+    }
+    h+='</div>';
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
+    if(cur<total){
+      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
+    }
+    h+='</div>';
+    return h;
+  };
+
+  // 3. 通关总结
+  window._summaryHTML=function(){
+    var names=_getNames(),total=names.length;
+    var s=_countDone();
+    var pct=s.total>0?Math.round(s.done/s.total*100):100;
+    var h='<div class="summary-box">';
+    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
+    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
+    h+='<div class="summary-stats">';
+    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
+    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
+    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
+    h+='</div>';
+    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
+    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
+    h+='</div></div>';
+    return h;
+  };
+
+  // 4. 增强 renderPanel - monkey-patch
+  if(typeof window.renderPanel==='function'){
+    var _origRP=window.renderPanel;
+    window.renderPanel=function(){
+      _origRP.apply(this,arguments);
+      // 在 panel 顶部插入阶段导航
+      var p=document.getElementById('panel')||document.querySelector('.panel');
+      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
+        p.innerHTML=window._stageNavHTML()+p.innerHTML;
+      }
+    };
+  }
+  // 也处理全局 renderPanel
+  if(typeof renderPanel==='function'&&!window._rpPatched){
+    window._rpPatched=true;
+    var _origRP2=renderPanel;
+    renderPanel=function(){
+      _origRP2.apply(this,arguments);
+      var p=document.getElementById('panel')||document.querySelector('.panel');
+      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
+        p.innerHTML=window._stageNavHTML()+p.innerHTML;
+      }
+    };
+  }
+})();
+try{renderPanel();}catch(e){}
+
 </script>
 </body>
 </html>

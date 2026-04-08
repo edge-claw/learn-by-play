@@ -6,34 +6,93 @@
 <title>操作系统原理 探险</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#f0f2f5;color:#2a2a3e;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh}
+
+/* === 暗色系（默认） === */
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --result-learn-bg:#0e0e20;--result-learn-text:#93c5fd;
+  --retry-bg:#2a2a5a;--retry-text:#ccc;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --event-bg:#2a0a0a;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --roadmap-text:#a0a0c0;--roadmap-num-bg:#1a1a4a;--roadmap-num-text:#60a5fa;
+  --slider-label:#888;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+/* === 亮色系 === */
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --result-learn-bg:#f0f4ff;--result-learn-text:#1e40af;
+  --retry-bg:#e2e8f0;--retry-text:#475569;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --event-bg:#fef2f2;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --roadmap-text:#475569;--roadmap-num-bg:#e0e7ff;--roadmap-num-text:#4f46e5;
+  --slider-label:#888;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+
+
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh}
 canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(100vh - 36px)}
-.panel{position:absolute;top:0;left:0;width:320px;height:calc(100vh - 36px);background:rgba(255,255,255,0.98);border-right:1px solid #e0e0e8;overflow-y:auto;z-index:10;padding:12px;display:none}
-.panel h3{color:#a78bfa;font-size:15px;margin:8px 0 6px}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100vh - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;display:none;padding-bottom:24px}
+.panel h3{color:var(--title-color);font-size:15px;margin:8px 0 6px}
 .panel p,.panel li{font-size:12px;line-height:1.6;color:#999}
 .panel ul{padding-left:16px;margin-bottom:8px}
-.bar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:#f0f2f5;border-top:1px solid #e0e0e8;display:flex;align-items:center;padding:0 16px;font-size:13px;color:#666;z-index:20;display:none}
+.bar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:var(--bg);border-top:1px solid var(--panel-border);display:flex;align-items:center;padding:0 16px;font-size:13px;color:#666;z-index:20;display:none}
 .bar .level-btns{display:flex;gap:4px;margin-left:auto}
-.level-btn{background:#ffffff;border:1px solid #2a2a5a;color:#888;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:12px}
-.level-btn:hover,.level-btn.active{background:#8b5cf6;color:#fff;border-color:#a78bfa}
-.concept-box{background:#1e1e38;border:1px solid #2a2a4a;border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6}
+.level-btn{display:none!important}
+.level-btn:hover,.level-btn.active{display:none!important}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6}
 .concept-box b{color:#a78bfa}
 .act-btn{background:linear-gradient(135deg,#8b5cf6,#a78bfa);color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:600;margin:4px 2px;transition:transform .15s}
 .act-btn:hover{transform:scale(1.04)}
 .act-btn.sm{padding:5px 10px;font-size:11px}
 .act-btn.outline{background:none;border:1px solid #8b5cf6;color:#a78bfa}
 .act-btn.outline:hover{background:#8b5cf620}
-.hint-box{background:#1a1a38;border-left:3px solid #8b5cf6;border-radius:0 8px 8px 0;padding:8px 10px;margin:8px 0;font-size:11px;color:#8ab4ff;line-height:1.5}
-.learn-box{background:#0f2a1a;border:1px solid #1a4a2a;border-radius:8px;padding:10px;margin:8px 0;font-size:14px;color:#6dca88;line-height:1.8;display:none}
-.learn-box .sv{color:#a78bfa;font-weight:700}
+.hint-box{background:var(--hint-bg);border-left:3px solid #8b5cf6;border-radius:0 8px 8px 0;padding:8px 10px;margin:8px 0;font-size:11px;color:var(--hint-text);line-height:1.5}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin:8px 0;font-size:14px;color:var(--learn-text);line-height:1.8;display:none}
+.learn-box .sv{color:var(--sv);font-weight:700}
 .obj-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px}
 .obj-row .dot{width:14px;height:14px;border-radius:50%;border:2px solid #444;display:flex;align-items:center;justify-content:center;font-size:9px}
 .obj-row .dot.done{border-color:#2aaa5a;background:#2aaa5a;color:#fff}
 .obj-row .dot.done::after{content:'✓'}
 .obj-row span{color:#aaa}
-select,.num-input{background:#ffffff;border:1px solid #2a2a5a;color:#c0c0d0;padding:4px 8px;border-radius:4px;font-size:12px;margin:2px}
+select,.num-input{background:var(--concept-bg);border:1px solid #2a2a5a;color:#c0c0d0;padding:4px 8px;border-radius:4px;font-size:12px;margin:2px}
 .num-input{width:60px}
-.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.97);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
 .overlay.hidden{display:none}
 .start-box{text-align:center;max-width:520px}
 .start-box h1{font-size:36px;color:#a78bfa;margin-bottom:8px;letter-spacing:2px}
@@ -46,13 +105,41 @@ select,.num-input{background:#ffffff;border:1px solid #2a2a5a;color:#c0c0d0;padd
 .ctrl-row{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin:4px 0}
 .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:13px;margin:2px}
 .tag.r{background:#ff444430;color:#ff6666}.tag.g{background:#2aaa5a30;color:#6dca88}.tag.b{background:#4d96ff30;color:#8ab4ff}.tag.y{background:#f0a03030;color:#f0c060}.tag.p{background:#8b5cf630;color:#a78bfa}
+
+#roadmap-container{display:none}
+.roadmap{margin:20px auto;max-width:500px;text-align:left}
+.roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
+.roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
+.roadmap-num{width:24px;height:24px;border-radius:50%;background:var(--roadmap-num-bg);color:var(--roadmap-num-text);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;flex-shrink:0}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
 </style>
 </head>
-<body>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
 <div class="overlay" id="startScreen">
 <div class="start-box">
 <h1>⚙️ 操作系统原理 探险</h1>
 <p class="subtitle">7 个关卡，从进程管理到文件系统</p>
+<div id="roadmap-container"></div>
+<button class="start-btn" onclick="startGame()">开始探索</button>
 <div class="features">
 <div class="feat"><div class="fi">🔄</div>进程管理</div>
 <div class="feat"><div class="fi">📊</div>CPU调度</div>
@@ -62,13 +149,22 @@ select,.num-input{background:#ffffff;border:1px solid #2a2a5a;color:#c0c0d0;padd
 <div class="feat"><div class="fi">📁</div>文件系统</div>
 <div class="feat"><div class="fi">💿</div>磁盘调度</div>
 </div>
-<button class="start-btn" onclick="startGame()">开始探索</button>
 </div>
 </div>
 <canvas id="cv"></canvas>
 <div class="panel" id="panel"></div>
 <div class="bar" id="bar"><span id="barText"></span><div class="level-btns" id="levelBtns"></div></div>
 <script>
+
+// === 主题系统 ===
+let isDark=true;
+const TH={
+  dark:{bg1:'#0a0a2e',bg2:'#0d0d1a',bg3:'#0a0a1a',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)',label:'#f0f2f5',electron:'#fff',electronGlow:'rgba(255,255,255,0.3)',shell:'rgba(100,100,200,0.15)',barBg:'#1a1a3a',showStars:true},
+  light:{bg1:'#e8edf5',bg2:'#f0f2f5',bg3:'#e0e7f0',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',label:'#334155',electron:'#334155',electronGlow:'rgba(51,65,85,0.3)',shell:'rgba(100,100,200,0.15)',barBg:'#c7d2fe',showStars:false}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
+
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),barText=document.getElementById('barText'),levelBtns=document.getElementById('levelBtns');
 let W,H,curLevel=-1,animId,mouse={x:0,y:0};
 const COLORS={bg:'#0a0a1a',purple:'#a78bfa',dpurple:'#8b5cf6',green:'#2aaa5a',red:'#ff4444',blue:'#4d96ff',yellow:'#f0c060',grid:'#1a1a3a',text:'#c0c0d0',dim:'#666'};
@@ -82,7 +178,7 @@ function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;render
 function checkAllDone(li){if(levelObjs[li].every(v=>v)){document.querySelectorAll('.learn-box').forEach(e=>e.style.display='block')}}
 function startGame(){document.getElementById('startScreen').classList.add('hidden');panel.style.display='block';bar.style.display='flex';buildLevelBtns();goLevel(0)}
 function buildLevelBtns(){levelBtns.innerHTML='';for(let i=0;i<7;i++){const b=document.createElement('button');b.className='level-btn';b.textContent=(i+1);b.onclick=()=>goLevel(i);levelBtns.appendChild(b)}}
-function goLevel(i){curLevel=i;document.querySelectorAll('.level-btn').forEach((b,j)=>b.classList.toggle('active',j===i));barText.textContent=`关卡 ${i+1}/7: ${levelIcons[i]} ${levelNames[i]}`;initLevel(i);renderPanel()}
+function goLevel(i){curLevel=i;document.querySelectorAll('.level-btn').forEach((b,j)=>b.classList.toggle('active',j===i));barText.textContent=levelIcons[i]+' '+levelNames[i];initLevel(i);renderPanel()}
 function objHTML(li){return levelObjs[li].map((v,i)=>`<div class="obj-row"><div class="dot${v?' done':''}"></div><span>${objTexts[li][i]}</span></div>`).join('')}
 const objTexts=[
 ['创建一个进程','触发状态转换到等待','观察上下文切换'],
@@ -110,7 +206,7 @@ ctx.strokeStyle='#333';ctx.lineWidth=1.5;const arrows=[[0,1],[1,2],[2,3],[3,1],[
 arrows.forEach(([a,b])=>{const ax=stateX[a]+50,ay=stateY[a],bx=stateX[b]-50,by=stateY[b];ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(bx,by);ctx.stroke();const ang=Math.atan2(by-ay,bx-ax);ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx-8*Math.cos(ang-0.4),by-8*Math.sin(ang-0.4));ctx.lineTo(bx-8*Math.cos(ang+0.4),by-8*Math.sin(ang+0.4));ctx.fill()});
 // Draw processes
 procs.forEach((p,i)=>{const si=p.state;const cnt=procs.filter((q,j)=>j<=i&&q.state===si).length-1;p.tx=stateX[si]-30+cnt*35;p.ty=stateY[si]+35;p.x+=(p.tx-p.x)*0.1;p.y+=(p.ty-p.y)*0.1;
-ctx.fillStyle=PCOLORS[si]+'80';ctx.fillRect(p.x,p.y,30,24);ctx.fillStyle='#f0f2f5';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText('P'+p.id,p.x+15,p.y+16)});
+ctx.fillStyle=PCOLORS[si]+'80';ctx.fillRect(p.x,p.y,30,24);ctx.fillStyle=t().label;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText('P'+p.id,p.x+15,p.y+16)});
 // Info
 ctx.fillStyle='#444';ctx.font='18px sans-serif';ctx.textAlign='left';ctx.fillText(`进程数: ${procs.length}  上下文切换: ${ctxSwitchCount}`,10,H-20)}
 // ===== LEVEL 2: CPU Scheduling =====
@@ -126,7 +222,7 @@ function drawL2(){ctx.clearRect(0,0,W,H);if(!schedResult.length){ctx.fillStyle='
 const bw=Math.min(40,W/(schedResult.length+2)),bh=30,ox=40,oy=60;
 const colors={'P1':'#4d96ff','P2':'#f0c060','P3':'#2aaa5a','P4':'#ff6666','P5':'#a78bfa','P6':'#ff8844','idle':'#333'};
 const maxT=Math.min(schedTime,schedResult.length);
-for(let i=0;i<maxT;i++){const r=schedResult[i];ctx.fillStyle=colors[r.proc]||'#888';ctx.fillRect(ox+i*bw,oy,bw-2,bh);ctx.fillStyle='#f0f2f5';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(r.proc,ox+i*bw+bw/2,oy+bh/2+4)}
+for(let i=0;i<maxT;i++){const r=schedResult[i];ctx.fillStyle=colors[r.proc]||'#888';ctx.fillRect(ox+i*bw,oy,bw-2,bh);ctx.fillStyle=t().label;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(r.proc,ox+i*bw+bw/2,oy+bh/2+4)}
 // Time axis
 ctx.fillStyle='#444';ctx.font='16px sans-serif';for(let i=0;i<=schedResult.length;i++){ctx.textAlign='center';ctx.fillText(i,ox+i*bw,oy+bh+14)}
 // Process info table
@@ -213,7 +309,7 @@ for(let i=0;i<5;i++){const ang=-Math.PI/2+i*Math.PI*2/5;const px=cx+Math.cos(ang
 const fang=ang+Math.PI/5;const fx=cx+Math.cos(fang)*r*0.55,fy=cy+Math.sin(fang)*r*0.55;ctx.fillStyle=forks[i].taken?'#ff6666':'#f0c060';ctx.beginPath();ctx.arc(fx,fy,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#000';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText('🍴',fx,fy+3);
 // Philosopher
 const col=phils[i].state==='eating'?'#2aaa5a':phils[i].state==='thinking'?'#4d96ff':deadlocked?'#ff4444':'#f0c060';
-ctx.beginPath();ctx.arc(px,py,22,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();ctx.fillStyle='#f0f2f5';ctx.font='bold 13px sans-serif';ctx.fillText('P'+i,px,py+5);
+ctx.beginPath();ctx.arc(px,py,22,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();ctx.fillStyle=t().label;ctx.font='bold 13px sans-serif';ctx.fillText('P'+i,px,py+5);
 // State label
 ctx.fillStyle='#999';ctx.font='16px sans-serif';const stateNames={'thinking':'思考','hasLeft':'持左叉','hasRight':'持右叉','eating':'进餐'};ctx.fillText(stateNames[phils[i].state],px,py+38)}
 if(deadlocked){ctx.fillStyle='#ff4444';ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillText('💀 死锁发生！所有哲学家都持有左叉等待右叉',cx,H-40)}
@@ -259,7 +355,7 @@ ctx.strokeStyle='#333';ctx.lineWidth=1;for(let t=0;t<=DISK_MAX;t+=20){const x=ox
 ctx.strokeStyle='#a78bfa';ctx.lineWidth=2;ctx.beginPath();
 for(let i=0;i<maxStep;i++){const x=ox+(diskResult[i]/DISK_MAX)*trackW;const y=oy+(i/(diskResult.length-1||1))*trackH;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();
 // Draw points
-for(let i=0;i<maxStep;i++){const x=ox+(diskResult[i]/DISK_MAX)*trackW;const y=oy+(i/(diskResult.length-1||1))*trackH;ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle=i===0?'#f0c060':i===maxStep-1?'#2aaa5a':'#a78bfa';ctx.fill();ctx.fillStyle='#f0f2f5';ctx.font='16px sans-serif';ctx.textAlign='left';ctx.fillText(diskResult[i],x+8,y+4)}
+for(let i=0;i<maxStep;i++){const x=ox+(diskResult[i]/DISK_MAX)*trackW;const y=oy+(i/(diskResult.length-1||1))*trackH;ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle=i===0?'#f0c060':i===maxStep-1?'#2aaa5a':'#a78bfa';ctx.fill();ctx.fillStyle=t().label;ctx.font='16px sans-serif';ctx.textAlign='left';ctx.fillText(diskResult[i],x+8,y+4)}
 // Stats
 let total=0;for(let i=1;i<diskResult.length;i++)total+=Math.abs(diskResult[i]-diskResult[i-1]);
 ctx.fillStyle='#a78bfa';ctx.font='bold 13px sans-serif';ctx.textAlign='left';let st=`${diskAlgo}: 总寻道距离 ${total}`;
@@ -278,7 +374,7 @@ else if(li===1){h+=`<h3>📊 关卡2: CPU 调度</h3>
 <div class="concept-box"><b>CPU调度</b>决定哪个就绪进程获得CPU。<br>• <b>FCFS</b>: 先来先服务<br>• <b>SJF</b>: 最短作业优先<br>• <b>RR</b>: 时间片轮转(量子=2)</div>
 <div class="ctrl-row"><select onchange="schedAlgo=this.value"><option value="FCFS">FCFS</option><option value="SJF">SJF</option><option value="RR">Round Robin</option></select>
 <button class="act-btn" onclick="runSchedule()">运行调度</button><button class="act-btn sm outline" onclick="addSchedProc()">+进程</button></div>
-<div style="font-size:11px;color:#888;margin:4px 0">进程队列:</div>`;
+<div style="font-size:11px;color:var(--text-muted);margin:4px 0">进程队列:</div>`;
 schedProcs.forEach(p=>{h+=`<div style="font-size:11px;color:#aaa">  ${p.name}: 到达=${p.arrive} 执行=${p.burst}</div>`});
 h+=`<div class="hint-box">💡 尝试不同算法观察甘特图变化。RR 用时间片=2 轮转执行。</div>
 <h3>目标</h3>${objHTML(1)}
@@ -296,7 +392,7 @@ else if(li===3){h+=`<h3>📄 关卡4: 页面置换</h3>
 <div class="ctrl-row"><select onchange="prAlgo=this.value"><option value="FIFO">FIFO</option><option value="LRU">LRU</option><option value="OPT">OPT(最优)</option></select>
 帧数: <input class="num-input" type="number" value="3" min="2" max="5" onchange="prFrameCount=+this.value">
 <button class="act-btn" onclick="runPageReplace()">运行</button></div>
-<div style="font-size:11px;color:#888;margin:4px 0">访问序列: ${prSeq.join(', ')}</div>
+<div style="font-size:11px;color:var(--text-muted);margin:4px 0">访问序列: ${prSeq.join(', ')}</div>
 <div class="hint-box">💡 分别运行 FIFO 和 LRU，比较缺页率。OPT 是理论下界。</div>
 <h3>目标</h3>${objHTML(3)}`;
 if(Object.keys(prHistory).length>0){h+=`<div style="font-size:11px;color:#aaa;margin:4px 0">`;Object.entries(prHistory).forEach(([k,v])=>{h+=`<span class="tag p">${k}: ${v}次缺页</span> `});h+=`</div>`}
@@ -320,13 +416,13 @@ else if(li===6){h+=`<h3>💿 关卡7: 磁盘调度</h3>
 <div class="concept-box"><b>磁盘调度</b>优化磁头移动顺序，减少寻道时间。<br>• <b>FCFS</b>: 按请求顺序服务<br>• <b>SSTF</b>: 最短寻道时间优先<br>• <b>SCAN</b>: 电梯算法，单向扫描</div>
 <div class="ctrl-row"><select onchange="diskAlgo=this.value"><option value="FCFS">FCFS</option><option value="SSTF">SSTF</option><option value="SCAN">SCAN</option></select>
 <button class="act-btn" onclick="runDiskSched()">运行</button><button class="act-btn sm outline" onclick="addDiskReq()">+请求</button></div>
-<div style="font-size:11px;color:#888;margin:4px 0">磁头位置: ${diskHead} | 请求队列: ${diskReqs.join(', ')}</div>
+<div style="font-size:11px;color:var(--text-muted);margin:4px 0">磁头位置: ${diskHead} | 请求队列: ${diskReqs.join(', ')}</div>
 <div class="hint-box">💡 分别运行 FCFS 和 SCAN，比较总寻道距离。SCAN 像电梯一样单向移动。</div>
 <h3>目标</h3>${objHTML(6)}`;
 if(Object.keys(diskHistory).length>0){h+=`<div style="font-size:11px;color:#aaa;margin:4px 0">`;Object.entries(diskHistory).forEach(([k,v])=>{h+=`<span class="tag p">${k}: ${v}</span> `});h+=`</div>`}
 h+=`<div class="learn-box">✅ <span class="sv">SCAN</span>避免了SSTF的饥饿问题。现代SSD无机械寻道，调度算法影响小。HDD仍需优化，<span class="sv">NCQ</span>在硬件层做调度。</div>`}
 if(levelObjs[li].every(v=>v)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-if(levelObjs[li].every(v=>v)&&li===6)h+=`<div style="text-align:center;margin-top:12px;color:#4ade80;font-size:14px">🎉 恭喜通关！全部 7 个关卡已完成！</div>`;
+if(levelObjs[li].every(v=>v)&&li===6)h+=`${_summaryHTML()}`;
 panel.innerHTML=h}
 function initLevel(i){if(animId)cancelAnimationFrame(animId);resize();
 if(i===0)initL1();else if(i===1)initL2();else if(i===2)initL3();else if(i===3)initL4();else if(i===4)initL5();else if(i===5)initL6();else if(i===6)initL7();
@@ -341,6 +437,123 @@ else if(curLevel===5)drawL6();
 else if(curLevel===6)drawL7()}
 cv.addEventListener('mousemove',e=>{const r=cv.getBoundingClientRect();mouse.x=(e.clientX-r.left)*(cv.width/r.width);mouse.y=(e.clientY-r.top)*(cv.height/r.height)});
 resize();
+
+// === 总分总认知结构增强 ===
+// 延迟重新渲染确保增强生效
+(function(){
+  // 自动检测关卡名称
+  function _getNames(){
+    if(typeof levelNames!=='undefined')return levelNames.slice();
+    if(typeof LN!=='undefined')return LN.slice();
+    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
+    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
+    return [];
+  }
+  function _getTotal(){return _getNames().length||7;}
+  function _getCur(){
+    if(typeof currentLevel!=='undefined')return currentLevel;
+    if(typeof curLevel!=='undefined')return curLevel;
+    if(typeof curLv!=='undefined')return curLv;
+    return 0;
+  }
+  function _getObjs(){
+    if(typeof levelObjs!=='undefined')return levelObjs;
+    return null;
+  }
+  function _isDone(i){
+    var o=_getObjs();
+    if(o&&o[i])return o[i].every(function(v){return v;});
+    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
+    return false;
+  }
+  function _countDone(){
+    var o=_getObjs(),d=0,t=0;
+    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
+    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
+    return{done:d,total:t};
+  }
+
+  // 1. 开头路线图
+  window._buildRoadmap=function(){
+    var c=document.getElementById('roadmap-container');
+    if(!c)return;
+    var names=_getNames();
+    if(!names.length)return;
+    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
+    for(var i=0;i<names.length;i++){
+      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
+    }
+    h+='</div>';
+    c.innerHTML=h;
+  };
+  try{window._buildRoadmap();}catch(e){}
+
+  // 2. 阶段导航
+  window._stageNavHTML=function(){
+    var names=_getNames(),total=names.length;
+    if(!total)return '';
+    var cur=_getCur(),s=_countDone();
+    var pct=s.total>0?Math.round(s.done/s.total*100):0;
+    var h='<div class="stage-nav"><div class="sn-bar">';
+    for(var i=0;i<total;i++){
+      var cls=_isDone(i)?'done':i===cur?'cur':'';
+      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+    }
+    h+='</div>';
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
+    if(cur<total){
+      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
+    }
+    h+='</div>';
+    return h;
+  };
+
+  // 3. 通关总结
+  window._summaryHTML=function(){
+    var names=_getNames(),total=names.length;
+    var s=_countDone();
+    var pct=s.total>0?Math.round(s.done/s.total*100):100;
+    var h='<div class="summary-box">';
+    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
+    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
+    h+='<div class="summary-stats">';
+    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
+    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
+    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
+    h+='</div>';
+    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
+    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
+    h+='</div></div>';
+    return h;
+  };
+
+  // 4. 增强 renderPanel - monkey-patch
+  if(typeof window.renderPanel==='function'){
+    var _origRP=window.renderPanel;
+    window.renderPanel=function(){
+      _origRP.apply(this,arguments);
+      // 在 panel 顶部插入阶段导航
+      var p=document.getElementById('panel')||document.querySelector('.panel');
+      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
+        p.innerHTML=window._stageNavHTML()+p.innerHTML;
+      }
+    };
+  }
+  // 也处理全局 renderPanel
+  if(typeof renderPanel==='function'&&!window._rpPatched){
+    window._rpPatched=true;
+    var _origRP2=renderPanel;
+    renderPanel=function(){
+      _origRP2.apply(this,arguments);
+      var p=document.getElementById('panel')||document.querySelector('.panel');
+      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
+        p.innerHTML=window._stageNavHTML()+p.innerHTML;
+      }
+    };
+  }
+})();
+try{renderPanel();}catch(e){}
+
 </script>
 </body>
 </html>
