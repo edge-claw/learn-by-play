@@ -279,11 +279,15 @@ function renderLevelControls(){
   break;
  }
  case 6:{
-  h+='<h4>输入氨基酸序列</h4>';
-  h+=`<input class="seq-input" id="seqInput" placeholder="例如: MVLSPADKTN" value="${lState.seq}" oninput="lState.seq=this.value.toUpperCase()">`;
-  h+=`<div class="concept-box">阶段：<span class="sv">${['等待输入','序列扫描中','结构预测中','3D构建中','完成'][lState.phase]}</span></div>`;
-  if(lState.phase===0)h+=`<button class="act-btn" onclick="startAlphaFold()">开始AlphaFold预测</button>`;
-  h+='<div class="hint-box">💡 输入任意氨基酸单字母序列（至少5个），观察AI如何预测蛋白质结构</div>';
+  h+='<h4>选择蛋白质序列</h4>';
+  h+='<div class="hint-box">💡 选择一条蛋白质序列，观察 AlphaFold AI 如何预测其 3D 结构</div>';
+  h+='<div style="display:flex;flex-direction:column;gap:6px;margin:8px 0">';
+  h+='<button class="act-btn" style="font-size:12px;padding:8px" onclick="pickSeq(\'MVLSPADKTN\',\'血红蛋白片段\')">🩸 血红蛋白片段 (MVLSPADKTN)</button>';
+  h+='<button class="act-btn" style="font-size:12px;padding:8px;background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff" onclick="pickSeq(\'GIVEQCCTSICSLYQ\',\'胰岛素B链\')">💉 胰岛素 B 链 (GIVEQCCTSIC...)</button>';
+  h+='<button class="act-btn" style="font-size:12px;padding:8px;background:linear-gradient(135deg,#a855f7,#c084fc);color:#fff" onclick="pickSeq(\'DAEFRHDSGYEVHHQ\',\'淀粉样蛋白\')">🧠 淀粉样蛋白 Aβ (DAEFRHDSGY...)</button>';
+  h+='</div>';
+  h+=`<div class="concept-box">当前序列：<code>${lState.seq||'未选择'}</code><br>阶段：<span class="sv">${['等待选择','序列扫描中','结构预测中','3D构建中','完成'][lState.phase]}</span></div>`;
+  if(lState.seq&&lState.phase===0)h+=`<button class="act-btn" onclick="startAlphaFold()">🧬 开始 AlphaFold 预测</button>`;
   break;
  }
  }
@@ -322,6 +326,7 @@ function startRelease(){lState.phase=3;lState.releaseT=0;panelDirty=true;}
 // Level 5 actions
 function startPrionSpread(){lState.phase=1;lState.objDone[0]=true;panelDirty=true;}
 // Level 6 actions
+function pickSeq(seq,name){lState.seq=seq;lState.seqName=name;panelDirty=true;}
 function startAlphaFold(){
  const s=lState.seq.trim();
  if(s.length<5){alert('请输入至少5个氨基酸（单字母代码）');return;}
