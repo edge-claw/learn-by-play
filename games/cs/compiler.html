@@ -341,12 +341,20 @@ const typeNames={keyword:'关键字',identifier:'标识符',number:'数字',oper
 function buildLexerControls(c){
   levelState.selectedToken=null;levelState.classified=new Array(lexTokens.length).fill(null);
   levelState.scanX=0;levelState.scannedTokens=[];
-  let h='<div class="hint-b">点击下方的 Token，然后选择它的类型进行分类</div>';
-  h+='<div class="act-section"><div class="as-label">源代码 Token</div><div id="tokenList">';
-  lexTokens.forEach((t,i)=>{h+='<span class="token-btn" style="background:'+t.color+'22;color:'+t.color+';border-color:'+t.color+'44" onclick="selectToken('+i+')" id="tk'+i+'">'+t.text+'</span>'});
-  h+='</div></div>';
-  h+='<div class="act-section"><div class="as-label">Token 类型</div><div id="typeList" style="display:flex;flex-wrap:wrap;gap:2px">';
-  Object.keys(typeNames).forEach(k=>{h+='<span class="token-type-btn" onclick="classifyToken(\''+k+'\')" id="tt_'+k+'">'+typeNames[k]+'</span>'});
+  let h='<div class="hint-b">为每个 Token 选择正确的类型（关键字、标识符、数字、运算符、标点）</div>';
+  h+='<div class="act-section"><div class="as-label">源代码: <code style="color:#00ff88">'+lexCode+'</code></div>';
+  h+='<div style="margin-top:8px">';
+  lexTokens.forEach((t,i)=>{
+    h+='<div style="display:flex;align-items:center;gap:8px;margin:6px 0" id="tkrow'+i+'">';
+    h+='<span class="token-btn" style="background:'+t.color+'22;color:'+t.color+';border-color:'+t.color+'44;min-width:40px;text-align:center" id="tk'+i+'">'+t.text+'</span>';
+    h+='<span style="color:#666">→</span>';
+    h+='<select onchange="classifyDirect('+i+',this.value)" style="background:var(--btn-bg);color:#ccc;border:1px solid #444;border-radius:6px;padding:4px 8px;font-size:12px;cursor:pointer">';
+    h+='<option value="">选择类型</option>';
+    Object.keys(typeNames).forEach(k=>{h+='<option value="'+k+'">'+typeNames[k]+'</option>'});
+    h+='</select>';
+    h+='<span id="tkresult'+i+'" style="font-size:14px"></span>';
+    h+='</div>';
+  });
   h+='</div></div>';
   h+='<div class="act-section"><button class="act-btn" onclick="startLexScan()">▶ 启动扫描器</button></div>';
   c.innerHTML=h;
@@ -356,17 +364,21 @@ function selectToken(i){
   document.querySelectorAll('.token-btn').forEach(e=>e.classList.remove('selected'));
   $('tk'+i).classList.add('selected');
 }
-function classifyToken(type){
-  const i=levelState.selectedToken;if(i===null)return;
+function classifyDirect(i,type){
+  if(!type)return;
   levelState.classified[i]=type;
   const t=lexTokens[i];
-  $('tk'+i).style.borderColor=typeColors[type];
-  $('tk'+i).style.boxShadow='0 0 8px '+typeColors[type]+'44';
+  const row=$('tkrow'+i);
+  const res=$('tkresult'+i);
   if(type===t.type){
     $('tk'+i).style.background=typeColors[type]+'44';
-    spawnParticles(160,300,typeColors[type],8);
+    $('tk'+i).style.borderColor=typeColors[type];
+    res.textContent='✅';
+    spawnParticles(160,200+i*30,typeColors[type],6);
   }else{
     $('tk'+i).style.background='#ff000033';
+    $('tk'+i).style.borderColor='#ff4444';
+    res.textContent='❌';
   }
   // Check objectives
   const kw=lexTokens.filter((t,j)=>['keyword','identifier'].includes(t.type)&&levelState.classified[j]===t.type);
@@ -374,6 +386,10 @@ function classifyToken(type){
   const no=lexTokens.filter((t,j)=>['number','operator','punctuation'].includes(t.type)&&levelState.classified[j]===t.type);
   if(no.length>=3)completeObj(0,1);
   if(lexTokens.every((t,j)=>levelState.classified[j]===t.type))completeObj(0,2);
+}
+function classifyToken(type){
+  const i=levelState.selectedToken;if(i===null)return;
+  classifyDirect(i,type);
 }
 function startLexScan(){levelState.scanning=true;levelState.scanX=0;levelState.scannedTokens=[]}
 
