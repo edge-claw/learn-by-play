@@ -361,7 +361,7 @@ function buildLexerControls(c){
     h+='</div>';
   });
   h+='</div></div>';
-  h+='<div class="act-section"><button class="act-btn" onclick="startLexScan()">▶ 启动扫描器</button></div>';
+  h+='<div class="act-section"><button class="act-btn" id="scanBtn" onclick="startLexScan()" disabled>▶ 启动扫描器（先完成分类）</button></div>';
   c.innerHTML=h;
 }
 function selectToken(i){
@@ -390,13 +390,16 @@ function classifyDirect(i,type){
   if(kw.length>=3)completeObj(0,0);
   const no=lexTokens.filter((t,j)=>['number','operator','punctuation'].includes(t.type)&&levelState.classified[j]===t.type);
   if(no.length>=3)completeObj(0,1);
-  if(lexTokens.every((t,j)=>levelState.classified[j]===t.type))completeObj(0,2);
+  if(lexTokens.every((t,j)=>levelState.classified[j]===t.type)){completeObj(0,2);var sb=$('scanBtn');if(sb){sb.disabled=false;sb.textContent='▶ 启动扫描器';}}
 }
 function classifyToken(type){
   const i=levelState.selectedToken;if(i===null)return;
   classifyDirect(i,type);
 }
-function startLexScan(){levelState.scanning=true;levelState.scanX=0;levelState.scannedTokens=[]}
+function startLexScan(){
+  if(!lexTokens.every((t,j)=>levelState.classified[j]===t.type))return;
+  levelState.scanning=true;levelState.scanX=0;levelState.scannedTokens=[];
+}
 
 // ========== LEVEL 2: PARSER ==========
 // Expression: 3 + 4 * 2 -> AST
