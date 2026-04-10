@@ -98,7 +98,6 @@ canvas{position:fixed;left:320px;top:0;background:var(--bg);display:none}
 .bar .nav-btns button.cur{background:rgba(245,158,11,0.3);font-weight:700}
 .hint{position:fixed;top:12px;right:12px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#fbbf24;padding:8px 14px;border-radius:8px;font-size:12px;z-index:20;display:none;max-width:300px;pointer-events:none}
 
-#roadmap-container{display:none}
 .roadmap{margin:20px auto;max-width:500px;text-align:left}
 .roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
 .roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
@@ -108,7 +107,7 @@ canvas{position:fixed;left:320px;top:0;background:var(--bg);display:none}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -129,7 +128,6 @@ canvas{position:fixed;left:320px;top:0;background:var(--bg);display:none}
 <div id="overlay">
 <h1>🔗 图论与算法 探险</h1>
 <p class="sub">从节点与边开始，探索图的奥秘世界</p>
-<div id="roadmap-container"></div>
 <button class="start-btn" onclick="startGame()">开始探索</button>
 <div class="features">
 <div class="feat"><div class="icon">🔵</div><div class="ft">图的基础</div><div class="fd">节点、边、度数</div></div>
@@ -169,13 +167,13 @@ function startGame(){overlay.style.display='none';panel.style.display='block';cv
 window.addEventListener('resize',resize);
 
 const levelInfo=[
-{title:'图的基础',sub:'关卡 1/7',desc:'图由<b>节点</b>（顶点）和<b>边</b>组成。点击空白创建节点，依次点击两个节点创建边。右键切换有向/无向模式。',objs:['创建至少 5 个节点','创建至少 6 条边','让某个节点度数 ≥ 3'],learn:'<b>图的基本概念：</b>图 G=(V,E) 由顶点集 V 和边集 E 组成。无向图的边没有方向，有向图的边有方向（箭头）。节点的<b>度数</b>是与它相连的边数。在有向图中分为入度和出度。'},
-{title:'图的遍历',sub:'关卡 2/7',desc:'选择一个起始节点，观察 <b>BFS</b>（广度优先）和 <b>DFS</b>（深度优先）的遍历顺序。BFS 像水波扩散，DFS 像走迷宫一条路走到底。',objs:['选择起点并运行 BFS','选择起点并运行 DFS','观察两种遍历的不同顺序'],learn:'<b>BFS</b> 使用队列，逐层访问邻居，适合找最短路径。<b>DFS</b> 使用栈（或递归），沿一条路径深入到底再回溯，适合检测环和拓扑排序。时间复杂度均为 O(V+E)。'},
-{title:'最短路径',sub:'关卡 3/7',desc:'点击选择<b>起点</b>（绿色）和<b>终点</b>（红色），然后运行 <b>Dijkstra</b> 算法。观察算法如何逐步松弛边，找到最短路径。',objs:['设置起点和终点','运行 Dijkstra 算法','找到最短路径（金色高亮）'],learn:'<b>Dijkstra 算法</b>维护一个距离表，每次选取未访问的最近节点，更新其邻居的距离（松弛操作）。使用优先队列时复杂度为 O((V+E)logV)。不能处理负权边。'},
-{title:'最小生成树',sub:'关卡 4/7',desc:'观察 <b>Kruskal</b> 和 <b>Prim</b> 算法如何从带权图中选出权值最小的边集，连接所有节点且不形成环。',objs:['运行 Kruskal 算法','运行 Prim 算法','观察两种算法选边顺序的差异'],learn:'<b>最小生成树</b>连接所有顶点，边权之和最小。<b>Kruskal</b> 按边权排序逐条加入（不成环则加），用并查集判环。<b>Prim</b> 从一个点出发，每次加入最近的新顶点。'},
-{title:'图着色',sub:'关卡 5/7',desc:'给图的每个节点着色，要求<b>相邻节点颜色不同</b>。点击节点切换颜色。试试能否只用 4 种颜色完成！',objs:['给所有节点着色','没有相邻节点同色','使用不超过 4 种颜色'],learn:'<b>四色定理</b>：任何平面图都可以用不超过 4 种颜色着色，使相邻区域颜色不同。这是1976年首个由计算机辅助证明的重要定理。图着色问题在编译器寄存器分配、地图绘制等领域有广泛应用。'},
-{title:'网络流',sub:'关卡 6/7',desc:'在网络中找从<b>源点 S</b> 到<b>汇点 T</b> 的最大流。观察 <b>Ford-Fulkerson</b> 算法如何沿增广路径逐步增加流量。',objs:['观察第一条增广路径','运行至最大流','理解最大流 = 最小割'],learn:'<b>最大流最小割定理</b>：网络的最大流等于最小割的容量。<b>Ford-Fulkerson</b> 反复寻找增广路径（残余网络中 S→T 的路径），沿路径增加流量，直到无增广路径。应用于交通规划、网络带宽分配等。'},
-{title:'欧拉与哈密顿',sub:'关卡 7/7',desc:'<b>欧拉路径</b>经过每条边恰好一次（七桥问题）。<b>哈密顿路径</b>经过每个节点恰好一次（旅行商问题）。点击边/节点来尝试构造路径。',objs:['找到欧拉路径（经过每条边一次）','找到哈密顿路径（经过每个节点一次）','理解两者的判定条件'],learn:'<b>欧拉路径</b>存在条件：连通图中奇数度节点为 0 或 2 个。<b>哈密顿路径</b>没有简单的充要条件，判定是 NP 完全问题。七桥问题（1736年欧拉）是图论的起源。旅行商问题（TSP）是经典 NP-hard 问题。'}
+{title:'图的基础',sub:'关卡 1/7',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>概念：</b>图 G = (V, E)，顶点集 V + 边集 E</div>图由<b>节点</b>（顶点）和<b>边</b>组成。点击空白创建节点，依次点击两个节点创建边。右键切换有向/无向模式。',objs:['创建至少 5 个节点','创建至少 6 条边','让某个节点度数 ≥ 3'],learn:'<b>图的基本概念：</b>图 G=(V,E) 由顶点集 V 和边集 E 组成。无向图的边没有方向，有向图的边有方向（箭头）。节点的<b>度数</b>是与它相连的边数。在有向图中分为入度和出度。'},
+{title:'图的遍历',sub:'关卡 2/7',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>算法：</b>BFS（队列，逐层扩散）/ DFS（栈，一路到底）</div>选择一个起始节点，观察 <b>BFS</b>（广度优先）和 <b>DFS</b>（深度优先）的遍历顺序。BFS 像水波扩散，DFS 像走迷宫一条路走到底。',objs:['选择起点并运行 BFS','选择起点并运行 DFS','观察两种遍历的不同顺序'],learn:'<b>BFS</b> 使用队列，逐层访问邻居，适合找最短路径。<b>DFS</b> 使用栈（或递归），沿一条路径深入到底再回溯，适合检测环和拓扑排序。时间复杂度均为 O(V+E)。'},
+{title:'最短路径',sub:'关卡 3/7',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>算法：</b>Dijkstra — 贪心松弛，O((V+E)logV)</div>点击选择<b>起点</b>（绿色）和<b>终点</b>（红色），然后运行 <b>Dijkstra</b> 算法。观察算法如何逐步松弛边，找到最短路径。',objs:['设置起点和终点','运行 Dijkstra 算法','找到最短路径（金色高亮）'],learn:'<b>Dijkstra 算法</b>维护一个距离表，每次选取未访问的最近节点，更新其邻居的距离（松弛操作）。使用优先队列时复杂度为 O((V+E)logV)。不能处理负权边。'},
+{title:'最小生成树',sub:'关卡 4/7',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>算法：</b>Kruskal（按边权排序）/ Prim（从点扩展）</div>观察 <b>Kruskal</b> 和 <b>Prim</b> 算法如何从带权图中选出权值最小的边集，连接所有节点且不形成环。',objs:['运行 Kruskal 算法','运行 Prim 算法','观察两种算法选边顺序的差异'],learn:'<b>最小生成树</b>连接所有顶点，边权之和最小。<b>Kruskal</b> 按边权排序逐条加入（不成环则加），用并查集判环。<b>Prim</b> 从一个点出发，每次加入最近的新顶点。'},
+{title:'图着色',sub:'关卡 5/7',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>定理：</b>四色定理 — 任何平面图 ≤ 4 色可着色</div>给图的每个节点着色，要求<b>相邻节点颜色不同</b>。点击节点切换颜色。试试能否只用 4 种颜色完成！',objs:['给所有节点着色','没有相邻节点同色','使用不超过 4 种颜色'],learn:'<b>四色定理</b>：任何平面图都可以用不超过 4 种颜色着色，使相邻区域颜色不同。这是1976年首个由计算机辅助证明的重要定理。图着色问题在编译器寄存器分配、地图绘制等领域有广泛应用。'},
+{title:'网络流',sub:'关卡 6/7',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>定理：</b>最大流 = 最小割（Ford-Fulkerson）</div>在网络中找从<b>源点 S</b> 到<b>汇点 T</b> 的最大流。观察 <b>Ford-Fulkerson</b> 算法如何沿增广路径逐步增加流量。',objs:['观察第一条增广路径','运行至最大流','理解最大流 = 最小割'],learn:'<b>最大流最小割定理</b>：网络的最大流等于最小割的容量。<b>Ford-Fulkerson</b> 反复寻找增广路径（残余网络中 S→T 的路径），沿路径增加流量，直到无增广路径。应用于交通规划、网络带宽分配等。'},
+{title:'欧拉与哈密顿',sub:'关卡 7/7',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>问题：</b>欧拉路径（每边一次）/ 哈密顿路径（每点一次）</div><b>欧拉路径</b>经过每条边恰好一次（七桥问题）。<b>哈密顿路径</b>经过每个节点恰好一次（旅行商问题）。点击边/节点来尝试构造路径。',objs:['找到欧拉路径（经过每条边一次）','找到哈密顿路径（经过每个节点一次）','理解两者的判定条件'],learn:'<b>欧拉路径</b>存在条件：连通图中奇数度节点为 0 或 2 个。<b>哈密顿路径</b>没有简单的充要条件，判定是 NP 完全问题。七桥问题（1736年欧拉）是图论的起源。旅行商问题（TSP）是经典 NP-hard 问题。'}
 ];
 
 /* ===== GRAPH UTILITIES ===== */
@@ -902,20 +900,6 @@ resize();
     return{done:d,total:t};
   }
 
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
 
   // 2. 阶段导航
   window._stageNavHTML=function(){
@@ -929,10 +913,8 @@ resize();
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };

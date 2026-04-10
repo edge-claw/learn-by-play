@@ -109,7 +109,7 @@ canvas{display:block;position:absolute;top:0;left:320px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -123,10 +123,32 @@ canvas{display:block;position:absolute;top:0;left:320px}
 #themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
 [data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
 [data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;background:linear-gradient(135deg,#7c3aed,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.overlay .sub{color:var(--text-sub);font-size:17px;margin-bottom:32px}
+.overlay .start-btn{padding:14px 48px;font-size:18px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:transform .2s}
+.overlay .start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.features .feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px}
+.features .feat .fi{font-size:26px;margin-bottom:4px}
 </style>
 </head>
 <body data-theme="dark">
 <button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="ov">
+<h1>🧠 神经网络从零构建</h1>
+<p class="sub">7 个交互关卡 — 从感知器到图像识别</p>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="fi">⚡</div>感知器</div>
+<div class="feat"><div class="fi">📈</div>激活函数</div>
+<div class="feat"><div class="fi">🔄</div>反向传播</div>
+<div class="feat"><div class="fi">🔀</div>XOR问题</div>
+<div class="feat"><div class="fi">🔍</div>卷积</div>
+<div class="feat"><div class="fi">📊</div>过拟合</div>
+<div class="feat"><div class="fi">🖼️</div>图像识别</div>
+</div>
+</div>
 <div class="panel" id="panel"></div>
 <canvas id="cv"></canvas>
 <div id="infoBar">神经网络从零构建 交互式教育游戏 | 共7关</div>
@@ -140,6 +162,7 @@ const TH={
 };
 function t(){return isDark?TH.dark:TH.light}
 function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
+function startGame(){document.getElementById('ov').style.display='none';}
 
 // ===== 音效系统 (Web Audio API) =====
 const AudioCtx=window.AudioContext||window.webkitAudioContext;
@@ -261,31 +284,31 @@ let W,H,curLevel=0,animId,globalTime=0;
 const completedLevels=new Set();
 let quizState={answered:false,selected:-1,correct:false};
 const levels=[
-{name:'感知器 — 线性分类',concept:'感知器是最简单的神经网络：输出 = w1·x1 + w2·x2 + bias。调整权重和偏置，画出一条直线将红蓝点分开。',
+{name:'感知器 — 线性分类',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>感知器、权重、偏置、线性决策边界</div>感知器是最简单的神经网络：输出 = w1·x1 + w2·x2 + bias。调整权重和偏置，画出一条直线将红蓝点分开。',
  objs:['调整权重画出分类线','挑战模式：准确率>90%','理解线性决策边界'],
  learn:'感知器是1957年Frank Rosenblatt发明的，它只能解决线性可分问题。这个限制直接导致了第一次AI寒冬。',
  quiz:{q:'感知器能解决什么类型的问题？',opts:['A. 任意分类','B. 线性可分问题','C. 图像识别'],ans:1}},
-{name:'激活函数 — 非线性变换',concept:'激活函数为神经网络引入非线性。没有它，多层网络等价于单层。常见的有Sigmoid、ReLU和Tanh。',
+{name:'激活函数 — 非线性变换',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>激活函数、Sigmoid、ReLU、Tanh、非线性</div>激活函数为神经网络引入非线性。没有它，多层网络等价于单层。常见的有Sigmoid、ReLU和Tanh。',
  objs:['观察Sigmoid函数曲线','观察ReLU函数曲线','观察Tanh函数曲线'],
  learn:'ReLU因计算简单、梯度不易消失，成为深度学习的默认激活函数。但它有"死亡ReLU"问题——负值区域梯度为零。',
  quiz:{q:'激活函数的作用是？',opts:['A. 加速计算','B. 引入非线性，让网络能学习复杂模式','C. 减少参数'],ans:1}},
-{name:'反向传播 — 链式法则',concept:'反向传播是训练神经网络的核心算法：前向计算输出，计算损失，然后从输出层逐层回传梯度更新权重。',
+{name:'反向传播 — 链式法则',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>反向传播、链式法则、梯度、损失函数</div>反向传播是训练神经网络的核心算法：前向计算输出，计算损失，然后从输出层逐层回传梯度更新权重。',
  objs:['完成前向传播','计算输出层梯度','完成反向传播到隐藏层'],
  learn:'反向传播本质是微积分的链式法则。1986年Hinton等人的论文让它广为人知，开启了神经网络的复兴。',
  quiz:{q:'反向传播的核心数学工具是？',opts:['A. 矩阵乘法','B. 链式法则（求导）','C. 傅里叶变换'],ans:1}},
-{name:'多层网络 — XOR问题',concept:'XOR问题：对角同色，相邻异色。单层感知器无法解决，因为XOR不是线性可分的。添加隐藏层才能解决。',
+{name:'多层网络 — XOR问题',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>XOR 问题、隐藏层、多层感知器（MLP）</div>XOR问题：对角同色，相邻异色。单层感知器无法解决，因为XOR不是线性可分的。添加隐藏层才能解决。',
  objs:['尝试单层网络→必然失败','添加隐藏层神经元','成功分类XOR问题'],
  learn:'1969年Minsky证明感知器无法解决XOR，引发AI寒冬。多层网络（MLP）通过隐藏层组合非线性变换，可以逼近任意函数。',
  quiz:{q:'为什么深度网络能解决XOR而单层不能？',opts:['A. 参数更多','B. 隐藏层创造了新的特征空间','C. 训练更久'],ans:1}},
-{name:'卷积 — 特征提取',concept:'卷积神经网络用小的卷积核在图像上滑动，提取局部特征。不同的核可以检测边缘、模糊或锐化图像。',
+{name:'卷积 — 特征提取',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>卷积核、特征提取、边缘检测、CNN</div>卷积神经网络用小的卷积核在图像上滑动，提取局部特征。不同的核可以检测边缘、模糊或锐化图像。',
  objs:['使用边缘检测核','使用模糊核','使用锐化核'],
  learn:'CNN的灵感来自猫的视觉皮层实验。局部连接+权重共享大幅减少参数量，使深度学习在图像领域取得突破。',
  quiz:{q:'卷积神经网络的核心操作是？',opts:['A. 全连接','B. 卷积核在图像上滑动提取特征','C. 池化'],ans:1}},
-{name:'过拟合 — 泛化能力',concept:'训练损失持续下降但验证损失上升=过拟合。模型记住了训练数据的噪声，而非学到真正的规律。',
+{name:'过拟合 — 泛化能力',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>过拟合、Dropout、正则化、泛化</div>训练损失持续下降但验证损失上升=过拟合。模型记住了训练数据的噪声，而非学到真正的规律。',
  objs:['观察过拟合现象','用Dropout缓解过拟合','通过测试集考试'],
  learn:'Dropout（随机丢弃神经元）相当于训练了指数级多个子网络的集成。L2正则化惩罚大权重，鼓励模型学习简单的模式。',
  quiz:{q:'防止过拟合的方法不包括？',opts:['A. Dropout','B. 增加训练数据','C. 增加网络层数'],ans:2}},
-{name:'图像识别 — 端到端',concept:'手写数字识别是深度学习的"Hello World"。输入图像经过卷积→池化→全连接，输出10个类别的概率。',
+{name:'图像识别 — 端到端',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>手写数字识别、卷积→池化→全连接、端到端</div>手写数字识别是深度学习的"Hello World"。输入图像经过卷积→池化→全连接，输出10个类别的概率。',
  objs:['手写一个数字','观察CNN处理过程','获得识别结果'],
  learn:'1998年LeCun的LeNet-5在手写数字识别上取得突破。如今CNN已发展出ResNet、EfficientNet等架构，在ImageNet上超越人类水平。',
  quiz:{q:'CNN识别图像的过程是？',opts:['A. 逐像素比对','B. 卷积提取特征→池化降维→全连接分类','C. 模板匹配'],ans:1}}
@@ -1537,10 +1560,8 @@ function goLevel(i){switchLevel(i);}
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };

@@ -107,7 +107,6 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .result-box .btn-next{background:#3b82f6;color:#fff}
 .result-box .btn-retry{background:var(--stage-bar);color:var(--text-sub)}
 
-#roadmap-container{display:none}
 .roadmap{margin:20px auto;max-width:500px;text-align:left}
 .roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
 .roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
@@ -117,7 +116,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -140,7 +139,6 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 <div class="start-box">
   <h1>🛰️ <span class="gold">空间站</span>生存工程</h1>
   <div class="sub">7 个关卡，从轨道组装到再补给</div>
-  <div id="roadmap-container"></div>
 <button class="start-btn" onclick="startGame()">开始任务</button>
   <div class="features">
     <div class="feat"><div class="fi">🔧</div>轨道组装</div>
@@ -808,6 +806,31 @@ h+=`<div class="goal-row"><span class="g-icon">${goals[i]?'✅':'⬜'}</span><sp
 }
 
 /* ========== RENDER PANEL ========== */
+// Lightweight DOM patcher: preserves focused range inputs during panel updates
+function _patchPanel(el,html){
+  var ae=document.activeElement;
+  if(!ae||ae.type!=='range'||!el.contains(ae)){el.innerHTML=html;return;}
+  var tmp=document.createElement('div');tmp.innerHTML=html;
+  _diffNodes(el,tmp);
+}
+function _diffNodes(o,n){
+  var oc=Array.from(o.childNodes),nc=Array.from(n.childNodes);
+  var i=0;
+  while(i<oc.length&&i<nc.length){
+    var a=oc[i],b=nc[i];
+    if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName){o.replaceChild(b.cloneNode(true),a);i++;continue;}
+    if(a.nodeType===3){if(a.textContent!==b.textContent)a.textContent=b.textContent;i++;continue;}
+    if(a.nodeType===1){
+      if(a.tagName==='INPUT'&&a.type==='range'&&a===document.activeElement){i++;continue;}
+      for(var j=0;j<b.attributes.length;j++){var at=b.attributes[j];if(a.getAttribute(at.name)!==at.value)a.setAttribute(at.name,at.value);}
+      _diffNodes(a,b);
+    }
+    i++;
+  }
+  while(oc.length>nc.length)o.removeChild(o.lastChild);
+  for(;i<nc.length;i++)o.appendChild(nc[i].cloneNode(true));
+}
+
 function renderPanel(){
 const L=levels[currentLevel],s=levelState;
 let h='<div style="margin-bottom:8px">';
@@ -818,11 +841,11 @@ h+=`<span class="${cls}" onclick="initLevel(${i})">${l.icon}${i+1}</span>`;
 h+='</div>';
 h+=`<div class="m-title">${L.icon} ${L.name}</div><div class="m-sub">${L.sub}</div>`;
 if(currentLevel===0){
-h+=`<div class="concept-box">将模块拖拽到对接口，完成空间站组装。交会对接需要精确的轨道匹配。</div>`;
+h+=`<div class="concept-box"><div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>交会对接，轨道匹配，模块化组装</div>将模块拖拽到对接口，完成空间站组装。交会对接需要精确的轨道匹配。</div>`;
 h+=goalHTML(['对接第1个模块','对接3个模块','完成全部4个模块对接'],s.goals||[]);
 h+=`<div class="hint-box">💡 拖拽下方模块到虚线框位置完成对接</div>`;
 }else if(currentLevel===1){
-h+=`<div class="concept-box">调节O₂发生器、CO₂清除器和水回收系统，维持安全环境30秒。</div>`;
+h+=`<div class="concept-box"><div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>ECLSS 生命支持，O₂/CO₂ 平衡，水回收 93%</div>调节O₂发生器、CO₂清除器和水回收系统，维持安全环境30秒。</div>`;
 h+=`<div class="slider-wrap"><label>O₂发生器: <span class="sv">${s.o2Gen}%</span></label><input type="range" min="0" max="100" value="${s.o2Gen}" oninput="levelState.o2Gen=+this.value;renderPanel()"></div>`;
 h+=`<div class="slider-wrap"><label>CO₂清除器: <span class="sv">${s.co2Remove}%</span></label><input type="range" min="0" max="100" value="${s.co2Remove}" oninput="levelState.co2Remove=+this.value;renderPanel()"></div>`;
 h+=`<div class="slider-wrap"><label>水回收: <span class="sv">${s.waterRecycle}%</span></label><input type="range" min="0" max="100" value="${s.waterRecycle}" oninput="levelState.waterRecycle=+this.value;renderPanel()"></div>`;
@@ -830,19 +853,19 @@ if(!s.running)h+=`<button class="act-btn" onclick="levelState.running=true;rende
 if(s.failed)h+=`<div class="hint-box" style="border-color:#ef4444;color:#f87171">⚠️ 系统失败！参数超出安全范围</div><button class="act-btn" onclick="initLevel(1)">🔄 重试</button>`;
 h+=goalHTML(['维持安全环境10秒','维持安全环境20秒','维持安全环境30秒'],s.goals||[]);
 }else if(currentLevel===2){
-h+=`<div class="concept-box">使用CMG（控制力矩陀螺）调整空间站姿态，保持三轴对准10秒。</div>`;
+h+=`<div class="concept-box"><div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>CMG 控制力矩陀螺，角动量守恒，三轴姿态</div>使用CMG（控制力矩陀螺）调整空间站姿态，保持三轴对准10秒。</div>`;
 h+=`<button class="act-btn" onclick="cmgAdjust('pitch',-1)">俯仰 −</button><button class="act-btn" onclick="cmgAdjust('pitch',1)">俯仰 +</button>`;
 h+=`<button class="act-btn" onclick="cmgAdjust('yaw',-1)">偏航 −</button><button class="act-btn" onclick="cmgAdjust('yaw',1)">偏航 +</button>`;
 h+=`<button class="act-btn" onclick="cmgAdjust('roll',-1)">滚转 −</button><button class="act-btn" onclick="cmgAdjust('roll',1)">滚转 +</button>`;
 h+=goalHTML(['对准保持3秒','对准保持6秒','对准保持10秒'],s.goals||[]);
 h+=`<div class="hint-box">💡 三轴角度都在±5°以内算对准。注意随机扰动！</div>`;
 }else if(currentLevel===3){
-h+=`<div class="concept-box">选择微重力实验，观察太空中独特的物理现象。</div>`;
+h+=`<div class="concept-box"><div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>微重力实验，表面张力球形流体，球形火焰</div>选择微重力实验，观察太空中独特的物理现象。</div>`;
 if(s.experiment<0){h+=`<div class="hint-box">点击画面中的实验卡片选择实验</div>`;}
 else{h+=`<div style="font-size:12px;color:var(--sv);margin:4px 0">当前实验: ${['流体行为','火焰形态','晶体生长'][s.experiment]}</div>`;}
 h+=goalHTML(['观察流体行为','观察火焰形态','观察晶体生长'],s.goals||[]);
 }else if(currentLevel===4){
-h+=`<div class="concept-box">选择防护材料和厚度，抵御太阳粒子事件的辐射。</div>`;
+h+=`<div class="concept-box"><div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>太阳粒子事件 SPE，辐射防护，聚乙烯屏蔽</div>选择防护材料和厚度，抵御太阳粒子事件的辐射。</div>`;
 h+=`<div class="slider-wrap"><label>防护厚度: <span class="sv">${s.thickness} cm</span></label><input type="range" min="1" max="30" value="${s.thickness}" oninput="levelState.thickness=+this.value;renderPanel()"></div>`;
 h+=`<button class="act-btn${s.material==='aluminum'?' green':''}" onclick="levelState.material='aluminum';renderPanel()">铝</button>`;
 h+=`<button class="act-btn${s.material==='polyethylene'?' green':''}" onclick="levelState.material='polyethylene';renderPanel()">聚乙烯</button>`;
@@ -850,17 +873,17 @@ h+=`<button class="act-btn${s.material==='water'?' green':''}" onclick="levelSta
 if(!s.eventActive)h+=`<button class="act-btn" onclick="startRadEvent()">☢️ 触发太阳粒子事件</button>`;
 h+=goalHTML(['存活5秒且剂量<30','防护效率>50%','存活15秒且剂量<20'],s.goals||[]);
 }else if(currentLevel===5){
-h+=`<div class="concept-box">控制宇航员进行舱外活动，修复空间站外部设备。注意氧气和燃料！</div>`;
+h+=`<div class="concept-box"><div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>舱外活动 EVA，EMU 航天服，减压病预防</div>控制宇航员进行舱外活动，修复空间站外部设备。注意氧气和燃料！</div>`;
 if(s.failed)h+=`<div class="hint-box" style="border-color:#ef4444;color:#f87171">⚠️ 氧气或燃料耗尽！</div><button class="act-btn" onclick="initLevel(5)">🔄 重试</button>`;
 h+=goalHTML(['修复1个设备','修复3个设备','完成全部修复并返回气闸'],s.goals||[]);
 h+=`<div class="hint-box">💡 移动鼠标靠近红色损坏点并按住修复，修完后回到气闸舱</div>`;
 }else if(currentLevel===6){
-h+=`<div class="concept-box">计算霍曼转移轨道，发射补给飞船对接空间站。</div>`;
+h+=`<div class="concept-box"><div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>霍曼转移轨道，最省燃料路径，补给对接</div>计算霍曼转移轨道，发射补给飞船对接空间站。</div>`;
 if(!s.shipLaunched)h+=`<button class="act-btn" onclick="launchShip()">🚀 发射补给飞船</button>`;
 h+=goalHTML(['发射补给飞船','在最佳窗口发射','成功对接并卸载补给'],s.goals||[]);
 h+=`<div class="hint-box">💡 霍曼转移是最省燃料的轨道转移方式</div>`;
 }
-panelEl.innerHTML=h;
+_patchPanel(panelEl,h);
 bbLeft.textContent=`关卡 ${currentLevel+1}/7: ${L.name}`;
 bbRight.textContent=`已完成: ${completedLevels.size}/7`;
 }
@@ -969,20 +992,6 @@ function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeo
     return{done:d,total:t};
   }
 
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
 
   // 2. 阶段导航
   window._stageNavHTML=function(){
@@ -996,10 +1005,8 @@ function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeo
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };
@@ -1049,6 +1056,7 @@ function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeo
   }
 })();
 try{renderPanel();}catch(e){}
+
 
 </script>
 </body>

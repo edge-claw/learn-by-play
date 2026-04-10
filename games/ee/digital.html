@@ -107,7 +107,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 ::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:#c7d2fe;border-radius:3px}
 
-#roadmap-container{display:none}
 .roadmap{margin:20px auto;max-width:500px;text-align:left}
 .roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
 .roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
@@ -117,7 +116,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -138,6 +137,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 <div id="overlay">
 <h1>🔲 数字电路 实验室</h1>
 <p class="sub">7 个关卡，从逻辑门到状态机</p>
+<button id="startBtn">开始探索</button>
 <div class="features">
 <div class="feat">🔢 数制编码</div>
 <div class="feat">🧮 组合逻辑</div>
@@ -147,7 +147,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 <div class="feat">📦 寄存器</div>
 <div class="feat">🤖 状态机</div>
 </div>
-<button id="startBtn">开始探索</button>
 </div>
 <div id="main">
 <div id="panel"></div>
@@ -184,19 +183,19 @@ const levelCompleted = Array(7).fill(false);
 
 // Level definitions
 const levels = [
-  {name:'数制与编码', objectives:['完成二进制转换','理解 BCD 编码','理解格雷码'],
+  {name:'数制与编码', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>数制转换：</b>二进制 ↔ 十进制 ↔ 十六进制 &nbsp;|&nbsp; BCD 码 &nbsp;|&nbsp; 格雷码</div>', objectives:['完成二进制转换','理解 BCD 编码','理解格雷码'],
    learn:'数字系统中，二进制是基础。BCD 码用 4 位二进制表示一位十进制数（0-9），便于十进制显示。格雷码相邻码只差 1 位，常用于编码器避免毛刺。'},
-  {name:'组合逻辑', objectives:['填写真值表','卡诺图化简','生成最简电路'],
+  {name:'组合逻辑', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>设计流程：</b>真值表 → 卡诺图 → 最简表达式 → 门电路</div>', objectives:['填写真值表','卡诺图化简','生成最简电路'],
    learn:'组合逻辑设计流程：真值表 → 卡诺图 → 最简表达式 → 门电路。卡诺图利用相邻格合并消去变量，是手工化简的核心方法。'},
-  {name:'编码器与译码器', objectives:['使用编码器','使用译码器','用 MUX 实现逻辑函数'],
+  {name:'编码器与译码器', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>编码/译码：</b>编码器 2ⁿ→n &nbsp;|&nbsp; 译码器 n→2ⁿ &nbsp;|&nbsp; MUX 多路选择</div>', objectives:['使用编码器','使用译码器','用 MUX 实现逻辑函数'],
    learn:'编码器将 2^n 个输入压缩为 n 位编码；译码器反向展开。多路选择器（MUX）可实现任意逻辑函数，是 FPGA 查找表的基础。'},
-  {name:'触发器', objectives:['理解 D 触发器','理解 JK 触发器','画出时序图'],
+  {name:'触发器', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>触发器：</b>D 触发器（采样）| JK 触发器（翻转）| 边沿触发</div>', objectives:['理解 D 触发器','理解 JK 触发器','画出时序图'],
    learn:'触发器是时序逻辑的基本存储单元。D 触发器在时钟上升沿采样 D 输入；JK 触发器功能最全，J=K=1 时翻转。边沿触发避免了空翻问题。'},
-  {name:'计数器', objectives:['运行 4 位二进制计数器','设计模 6 计数器','理解环形计数器'],
+  {name:'计数器', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>计数器：</b>同步/异步 &nbsp;|&nbsp; 模 N 计数 &nbsp;|&nbsp; 环形计数器</div>', objectives:['运行 4 位二进制计数器','设计模 6 计数器','理解环形计数器'],
    learn:'计数器由多个触发器级联构成。同步计数器所有触发器共用时钟，速度快；异步计数器逐级传递，有延迟累积。模 N 计数器通过反馈清零实现。'},
-  {name:'寄存器与移位寄存器', objectives:['并行加载数据','串行移位','理解 LFSR'],
+  {name:'寄存器与移位寄存器', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>移位寄存器：</b>并行加载 | 串行移位 | LFSR 伪随机序列</div>', objectives:['并行加载数据','串行移位','理解 LFSR'],
    learn:'寄存器并行存储多位数据。移位寄存器可串行输入/输出，用于串并转换。LFSR（线性反馈移位寄存器）通过异或反馈产生伪随机序列，广泛用于通信和加密。'},
-  {name:'有限状态机', objectives:['设计状态图','输入正确硬币序列','完成购买'],
+  {name:'有限状态机', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>FSM：</b>Moore 机（输出=f(状态)）| Mealy 机（输出=f(状态,输入)）</div>', objectives:['设计状态图','输入正确硬币序列','完成购买'],
    learn:'FSM 是数字系统的控制核心。Moore 机输出仅取决于当前状态；Mealy 机输出还取决于输入。自动售货机是经典 FSM 应用，状态随投币金额转移。'}
 ];
 
@@ -246,6 +245,7 @@ function switchLevel(i){
 function updatePanel(){
   const L = levels[curLevel];
   let html = `<h2>关卡 ${curLevel+1}: ${L.name}</h2>`;
+  if(L.desc) html += L.desc;
   html += `<ul class="objectives">`;
   L.objectives.forEach((o,i)=>{
     html += `<li class="${levelObjs[curLevel][i]?'done':''}">${o}</li>`;
@@ -1308,20 +1308,6 @@ function goLevel(i){switchLevel(i);}
     return{done:d,total:t};
   }
 
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
 
   // 2. 阶段导航
   window._stageNavHTML=function(){
@@ -1335,10 +1321,8 @@ function goLevel(i){switchLevel(i);}
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };

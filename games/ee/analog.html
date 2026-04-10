@@ -97,7 +97,6 @@ canvas{display:block;position:absolute;top:0;left:320px}
 .select-wrap{margin:8px 0}.select-wrap label{font-size:11px;color:#888}
 .select-wrap select{width:100%;margin-top:4px;padding:6px;background:var(--concept-bg);color:#ccc;border:1px solid #333;border-radius:6px;font-size:12px}
 
-#roadmap-container{display:none}
 .roadmap{margin:20px auto;max-width:500px;text-align:left}
 .roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
 .roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
@@ -107,7 +106,7 @@ canvas{display:block;position:absolute;top:0;left:320px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -128,6 +127,7 @@ canvas{display:block;position:absolute;top:0;left:320px}
 <div id="overlay">
 <h1>⚡ 模拟电路 实验室</h1>
 <p class="sub">7 个关卡，从电阻到运放的模拟世界</p>
+<button id="startBtn" onclick="startGame()">开始探索</button>
 <div class="features">
 <div class="feat"><span class="icon">Ω</span>欧姆定律</div>
 <div class="feat"><span class="icon">⏱</span>RC/RL/RLC</div>
@@ -137,7 +137,6 @@ canvas{display:block;position:absolute;top:0;left:320px}
 <div class="feat"><span class="icon">〰</span>滤波器</div>
 <div class="feat"><span class="icon">∿</span>振荡器</div>
 </div>
-<button id="startBtn" onclick="startGame()">开始探索</button>
 </div>
 <div class="panel" id="panel"></div>
 <canvas id="cv"></canvas>
@@ -199,25 +198,25 @@ function spawnParticles(x,y,n,color){
 
 // ===== 关卡定义 =====
 const levels=[
-{name:'欧姆定律与基尔霍夫定律',concept:'V=IR 是电路分析的基石。\nKVL：回路中电压之和为零。\nKCL：节点处电流之和为零。',
+{name:'欧姆定律与基尔霍夫定律',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心公式：</b>V=IR &nbsp;|&nbsp; KVL：ΣV=0 &nbsp;|&nbsp; KCL：ΣI=0</div>V=IR 是电路分析的基石。\nKVL：回路中电压之和为零。\nKCL：节点处电流之和为零。',
  objs:['验证欧姆定律 V=IR','验证 KVL（回路电压和=0）','验证 KCL（节点电流和=0）'],
  learn:'欧姆定律 V=IR 描述了电压、电流、电阻的线性关系。<span class="sv">基尔霍夫电压定律(KVL)</span>：任意闭合回路中电压代数和为零。<span class="sv">基尔霍夫电流定律(KCL)</span>：任意节点流入电流等于流出电流。'},
-{name:'RC/RL/RLC 电路',concept:'电容储存电场能量，充放电有时间常数 τ=RC。\n电感储存磁场能量，时间常数 τ=L/R。\nRLC 电路在谐振频率 f₀=1/(2π√LC) 处阻抗最小。',
+{name:'RC/RL/RLC 电路',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>时间常数：</b>τ=RC &nbsp;|&nbsp; τ=L/R &nbsp;|&nbsp; f₀=1/(2π√LC)</div>电容储存电场能量，充放电有时间常数 τ=RC。\n电感储存磁场能量，时间常数 τ=L/R。\nRLC 电路在谐振频率 f₀=1/(2π√LC) 处阻抗最小。',
  objs:['观察 RC 充电曲线','观察 RL 响应','找到 RLC 谐振频率'],
  learn:'RC 电路时间常数 <span class="sv">τ=RC</span>，充电到 63.2% 需要 1τ。RL 电路时间常数 <span class="sv">τ=L/R</span>。RLC 谐振频率 <span class="sv">f₀=1/(2π√LC)</span>，此时电路呈纯电阻性。'},
-{name:'二极管与整流',concept:'PN 结正向偏置时导通（约0.7V），反向偏置时截止。\n半波整流只通过正半周。\n全波整流利用桥式电路将负半周翻转。',
+{name:'二极管与整流',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>二极管：</b>正向导通 ≈ 0.7V &nbsp;|&nbsp; 反向截止</div>PN 结正向偏置时导通（约0.7V），反向偏置时截止。\n半波整流只通过正半周。\n全波整流利用桥式电路将负半周翻转。',
  objs:['理解正向导通','搭建半波整流','搭建全波整流'],
  learn:'二极管正向导通压降约 <span class="sv">0.7V</span>（硅管）。半波整流效率低，输出有大量纹波。<span class="sv">桥式全波整流</span>利用4个二极管，正负半周都有输出，纹波频率是输入的2倍。'},
-{name:'三极管放大器',concept:'BJT 三极管：基极小电流控制集电极大电流。\n电流放大倍数 β=Ic/Ib。\n共射放大器：输出与输入反相，电压增益 Av=-β×Rc/Rb。',
+{name:'三极管放大器',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>BJT：</b>β=Ic/Ib &nbsp;|&nbsp; Av=-β×Rc/Rb</div>BJT 三极管：基极小电流控制集电极大电流。\n电流放大倍数 β=Ic/Ib。\n共射放大器：输出与输入反相，电压增益 Av=-β×Rc/Rb。',
  objs:['观察电流放大','设置合适偏置点','测量电压增益'],
  learn:'BJT 工作在放大区时 <span class="sv">Ic=β×Ib</span>。共射放大器电压增益 <span class="sv">Av≈-Rc/re</span>，输出与输入反相。偏置点决定了静态工作点，影响信号不失真的最大幅度。'},
-{name:'运算放大器',concept:'理想运放：无穷大增益、无穷大输入阻抗、零输出阻抗。\n反相放大器：Av=-Rf/Ri\n同相放大器：Av=1+Rf/Ri\n加法器：Vo=-(V1×Rf/R1+V2×Rf/R2)',
+{name:'运算放大器',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>运放：</b>反相 Av=-Rf/Ri &nbsp;|&nbsp; 同相 Av=1+Rf/Ri</div>理想运放：无穷大增益、无穷大输入阻抗、零输出阻抗。\n反相放大器：Av=-Rf/Ri\n同相放大器：Av=1+Rf/Ri\n加法器：Vo=-(V1×Rf/R1+V2×Rf/R2)',
  objs:['搭建反相放大器','搭建同相放大器','实现加法运算'],
  learn:'运放通过负反馈实现精确增益控制。<span class="sv">反相放大器 Av=-Rf/Ri</span>，输出反相。<span class="sv">同相放大器 Av=1+Rf/Ri</span>，输出同相。虚短虚断是分析运放电路的核心方法。'},
-{name:'滤波器设计',concept:'低通滤波器：通过低频，衰减高频。\n高通滤波器：通过高频，衰减低频。\n截止频率 fc=1/(2πRC)，-3dB 点。\n波特图显示幅频和相频特性。',
+{name:'滤波器设计',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>滤波器：</b>fc=1/(2πRC) &nbsp;|&nbsp; -3dB 截止点</div>低通滤波器：通过低频，衰减高频。\n高通滤波器：通过高频，衰减低频。\n截止频率 fc=1/(2πRC)，-3dB 点。\n波特图显示幅频和相频特性。',
  objs:['设计低通滤波器','设计高通滤波器','读懂波特图'],
  learn:'一阶 RC 滤波器截止频率 <span class="sv">fc=1/(2πRC)</span>。低通滤波器在截止频率以上以 <span class="sv">-20dB/dec</span> 衰减。波特图横轴为对数频率，纵轴为增益(dB)和相位(°)。'},
-{name:'振荡器与信号发生',concept:'正反馈使电路自激振荡。\n巴克豪森准则：环路增益≥1，相移=360°。\nRC 振荡器频率由 RC 网络决定。\n555 定时器可产生方波，频率由 R/C 决定。',
+{name:'振荡器与信号发生',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>巴克豪森准则：</b>环路增益≥1 &nbsp;|&nbsp; 总相移=360°</div>正反馈使电路自激振荡。\n巴克豪森准则：环路增益≥1，相移=360°。\nRC 振荡器频率由 RC 网络决定。\n555 定时器可产生方波，频率由 R/C 决定。',
  objs:['使电路起振','调节振荡频率','用 555 产生方波'],
  learn:'振荡器需满足<span class="sv">巴克豪森准则</span>：环路增益≥1且总相移为360°。RC 振荡器频率 <span class="sv">f=1/(2πRC)</span>。555 定时器方波频率 <span class="sv">f=1.44/((R1+2R2)C)</span>，占空比由 R1、R2 决定。'}
 ];
@@ -234,6 +233,31 @@ function loadLevel(idx){
  if(idx===5)L6.bodeData=[];
  if(idx===6){L7.running=false;L7.phase=0}
  renderPanel();
+}
+
+// Lightweight DOM patcher: preserves focused range inputs during panel updates
+function _patchPanel(el,html){
+  var ae=document.activeElement;
+  if(!ae||ae.type!=='range'||!el.contains(ae)){el.innerHTML=html;return;}
+  var tmp=document.createElement('div');tmp.innerHTML=html;
+  _diffNodes(el,tmp);
+}
+function _diffNodes(o,n){
+  var oc=Array.from(o.childNodes),nc=Array.from(n.childNodes);
+  var i=0;
+  while(i<oc.length&&i<nc.length){
+    var a=oc[i],b=nc[i];
+    if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName){o.replaceChild(b.cloneNode(true),a);i++;continue;}
+    if(a.nodeType===3){if(a.textContent!==b.textContent)a.textContent=b.textContent;i++;continue;}
+    if(a.nodeType===1){
+      if(a.tagName==='INPUT'&&a.type==='range'&&a===document.activeElement){i++;continue;}
+      for(var j=0;j<b.attributes.length;j++){var at=b.attributes[j];if(a.getAttribute(at.name)!==at.value)a.setAttribute(at.name,at.value);}
+      _diffNodes(a,b);
+    }
+    i++;
+  }
+  while(oc.length>nc.length)o.removeChild(o.lastChild);
+  for(;i<nc.length;i++)o.appendChild(nc[i].cloneNode(true));
 }
 
 function renderPanel(){
@@ -259,7 +283,7 @@ function renderPanel(){
  if(levelObjs[curLevel].every(v=>v)){
   h+=`<div class="learn-box">💡 ${lv.learn}</div>`;
  }
- p.innerHTML=h;
+ _patchPanel(p,h);
  document.getElementById('infoBar').textContent=`模拟电路实验室 | 关卡 ${curLevel+1}/7: ${lv.name}`;
 }
 
@@ -1137,20 +1161,6 @@ draw();
     return{done:d,total:t};
   }
 
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
 
   // 2. 阶段导航
   window._stageNavHTML=function(){
@@ -1164,10 +1174,8 @@ draw();
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };
@@ -1217,6 +1225,7 @@ draw();
   }
 })();
 try{renderPanel();}catch(e){}
+
 
 </script>
 </body>

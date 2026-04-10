@@ -109,7 +109,6 @@ button.active{background:#34d399;color:#0a0a1a}
 #complete-overlay h2{color:#34d399;font-size:28px;margin-bottom:12px}
 #complete-overlay p{color:var(--text-muted);margin-bottom:20px;font-size:15px}
 
-#roadmap-container{display:none}
 .roadmap{margin:20px auto;max-width:500px;text-align:left}
 .roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
 .roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
@@ -119,7 +118,7 @@ button.active{background:#34d399;color:#0a0a1a}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -141,6 +140,7 @@ button.active{background:#34d399;color:#0a0a1a}
 <div id="overlay">
 <h1>🔊 超声原理 探险</h1>
 <div class="sub">7 个关卡，从压电效应到医学成像</div>
+<button id="start-btn">开始探索</button>
 <div class="features">
 <div class="feat"><div class="icon">〰️</div><div class="txt">声波基础</div></div>
 <div class="feat"><div class="icon">⚡</div><div class="txt">压电效应</div></div>
@@ -150,7 +150,6 @@ button.active{background:#34d399;color:#0a0a1a}
 <div class="feat"><div class="icon">🩸</div><div class="txt">多普勒</div></div>
 <div class="feat"><div class="icon">🔬</div><div class="txt">高级成像</div></div>
 </div>
-<button id="start-btn">开始探索</button>
 </div>
 <!-- Level Complete Overlay -->
 <div id="complete-overlay">
@@ -194,19 +193,19 @@ const levelComplete=Array(7).fill(false);
 
 // === LEVELS DATA ===
 const levels=[
-{name:'声波基础',desc:'纵波传播、声速、频率与波长、声阻抗',objs:['观察纵波在不同介质中传播','比较不同介质的声速','理解声阻抗概念'],
+{name:'声波基础',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>声阻抗：</b>Z = ρ×c &nbsp;|&nbsp; 声速 v = √(K/ρ)</div>纵波传播、声速、频率与波长、声阻抗',objs:['观察纵波在不同介质中传播','比较不同介质的声速','理解声阻抗概念'],
  learn:'声波是纵波，粒子沿传播方向振动形成疏密相间的波。声速取决于介质密度和弹性模量。声阻抗 Z=ρ×c，是超声成像的物理基础。'},
-{name:'压电效应',desc:'正压电效应（机械→电）、逆压电效应（电→机械）',objs:['观察逆压电效应（发射超声）','观察正压电效应（接收回波）','理解换能器工作原理'],
+{name:'压电效应',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>压电效应：</b>逆压电（电→机械，发射）| 正压电（机械→电，接收）</div>PZT 陶瓷换能器的工作原理',objs:['观察逆压电效应（发射超声）','观察正压电效应（接收回波）','理解换能器工作原理'],
  learn:'压电晶体在电场作用下发生形变（逆压电效应），用于发射超声波。受到机械压力时产生电信号（正压电效应），用于接收回波。PZT 陶瓷是最常用的压电材料。'},
-{name:'超声探头',desc:'线阵/凸阵/相控阵探头、聚焦、近场远场',objs:['比较三种探头的声束形状','调节焦距观察聚焦效果','理解近场和远场分界'],
+{name:'超声探头',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>探头类型：</b>线阵（矩形）| 凸阵（扇形）| 相控阵（电子偏转）</div>聚焦、近场（菲涅尔区）与远场（夫琅禾费区）',objs:['比较三种探头的声束形状','调节焦距观察聚焦效果','理解近场和远场分界'],
  learn:'线阵探头产生矩形视野，适合浅表检查；凸阵探头扇形视野，适合腹部；相控阵探头可电子偏转声束。近场（菲涅尔区）声束汇聚，远场（夫琅禾费区）声束发散。'},
-{name:'反射与衰减',desc:'声阻抗失配→反射、反射系数、TGC补偿',objs:['观察不同界面的反射强度','理解超声衰减规律','调节TGC补偿深度衰减'],
+{name:'反射与衰减',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>反射系数：</b>R = (Z₂-Z₁)²/(Z₂+Z₁)² &nbsp;|&nbsp; 衰减 ≈ 0.5-1 dB/MHz/cm</div>声阻抗失配→反射，TGC 补偿深度衰减',objs:['观察不同界面的反射强度','理解超声衰减规律','调节TGC补偿深度衰减'],
  learn:'两种介质声阻抗差异越大，反射越强。反射系数 R=(Z2-Z1)²/(Z2+Z1)²。超声在组织中每厘米衰减约 0.5-1 dB/MHz。TGC（时间增益补偿）对深层回波增益更大。'},
-{name:'B模式成像',desc:'A扫描→B扫描→2D图像、灰度映射',objs:['完成A扫描观察回波信号','构建B模式二维图像','识别不同组织结构'],
+{name:'B模式成像',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>成像流程：</b>A扫描（幅度-深度）→ B扫描（灰度映射）→ 2D图像</div>回波幅度映射为灰度亮度，实时帧率 30-60 fps',objs:['完成A扫描观察回波信号','构建B模式二维图像','识别不同组织结构'],
  learn:'A模式显示回波幅度随深度变化。B模式将回波幅度映射为灰度亮度，多条扫描线组合成二维图像。实时B超帧率通常 30-60 fps。'},
-{name:'多普勒超声',desc:'血流速度测量、彩色多普勒、角度校正',objs:['测量血流速度','理解多普勒角度校正','区分动脉和静脉血流'],
+{name:'多普勒超声',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>多普勒频移：</b>Δf = 2f₀v·cosθ/c &nbsp;|&nbsp; θ &lt; 60° 为佳</div>血流速度测量、彩色多普勒、角度校正',objs:['测量血流速度','理解多普勒角度校正','区分动脉和静脉血流'],
  learn:'多普勒频移 Δf=2f₀v·cosθ/c。角度θ越小，测量越准确（θ<60°）。彩色多普勒用红色表示朝向探头的血流，蓝色表示远离探头的血流。频谱多普勒显示速度随时间变化。'},
-{name:'高级成像',desc:'谐波成像、弹性成像、造影超声、3D超声',objs:['对比基波与谐波成像','观察组织弹性成像','理解造影增强效果'],
+{name:'高级成像',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>高级模式：</b>谐波成像 | 弹性成像 | 造影超声 | 3D/4D 超声</div>利用非线性传播、组织硬度、微泡增强等技术提升诊断能力',objs:['对比基波与谐波成像','观察组织弹性成像','理解造影增强效果'],
  learn:'谐波成像利用组织非线性传播产生的二次谐波，减少伪影。弹性成像通过测量组织硬度辅助诊断肿瘤。造影超声使用微泡增强血流信号。3D/4D超声重建立体图像。'}
 ];
 
@@ -252,7 +251,7 @@ function showComplete(li){
 function updatePanel(){
   const L=levels[curLevel];
   document.getElementById('p-title').textContent='关卡'+(curLevel+1)+'：'+L.name;
-  document.getElementById('p-desc').textContent=L.desc;
+  document.getElementById('p-desc').innerHTML=L.desc;
   const ul=document.getElementById('p-objs');
   ul.innerHTML='';
   L.objs.forEach((o,i)=>{
@@ -1329,20 +1328,6 @@ resize();
     return{done:d,total:t};
   }
 
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
 
   // 2. 阶段导航
   window._stageNavHTML=function(){
@@ -1356,10 +1341,8 @@ resize();
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };

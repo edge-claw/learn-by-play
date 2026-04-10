@@ -105,7 +105,6 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .feat{text-align:center;color:#aaa;font-size:12px;width:80px}
 .feat .fi{font-size:26px;margin-bottom:4px}
 
-#roadmap-container{display:none}
 .roadmap{margin:20px auto;max-width:500px;text-align:left}
 .roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
 .roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
@@ -115,7 +114,7 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -145,7 +144,6 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 <div class="start-box">
   <h1>🌡️ <span class="hl">气候系统</span>模拟器</h1>
   <div class="sub">7 个关卡，从能量平衡到未来情景预测</div>
-  <div id="roadmap-container"></div>
 <button class="start-btn" onclick="startGame()">开始探索</button>
   <div class="features">
     <div class="feat"><div class="fi">☀️</div>能量平衡</div>
@@ -182,25 +180,25 @@ let mouseX=0,mouseY=0,mouseDown=false,clicked=false;
 let dragItem=null,dragOffX=0,dragOffY=0;
 
 const levels=[
-{name:'能量平衡',sub:'调节辐射收支使温度稳定',concept:'地球接收太阳短波辐射，同时向太空发射长波辐射。当收入=支出时，温度稳定。调节太阳辐射和反照率使天平平衡。',
+{name:'能量平衡',sub:'调节辐射收支使温度稳定',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>太阳常数 1361 W/m²，反照率，辐射收支平衡</div>地球接收太阳短波辐射，同时向太空发射长波辐射。当收入=支出时，温度稳定。调节太阳辐射和反照率使天平平衡。',
  objs:['调节太阳辐射强度','调节地球反照率','使能量收支平衡'],
  learn:'地球能量平衡：太阳辐射到达地球约<span class="sv">1361 W/m²</span>（太阳常数），地球平均反照率约<span class="sv">0.30</span>，即30%的太阳辐射被反射回太空。吸收的能量加热地球，地球以红外辐射形式散热。当收入=支出时，无温室效应的平衡温度约<span class="sv">-18°C</span>。实际地球约15°C，差值由温室效应贡献（下一关）。'},
-{name:'温室效应',sub:'CO₂如何加热地球',concept:'地面发出的红外辐射被大气中CO₂分子截留并反射回地面，导致温度升高。调节CO₂浓度观察温度变化。',
+{name:'温室效应',sub:'CO₂如何加热地球',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>CO₂ 红外截留，温室气体，280→420 ppm</div>地面发出的红外辐射被大气中CO₂分子截留并反射回地面，导致温度升高。调节CO₂浓度观察温度变化。',
  objs:['将CO₂升至400ppm','观察红外辐射被截留','对比有无温室气体温差'],
  learn:'没有温室效应，地球平均温度将是<span class="sv">-18°C</span>而非15°C。CO₂从工业革命前的<span class="sv">280ppm</span>升至如今超过<span class="sv">420ppm</span>。CO₂分子吸收特定波长（<span class="sv">15μm</span>）的红外辐射，振动后重新发射，部分返回地面——这就是温室效应的分子机制。'},
-{name:'大气环流',sub:'三圈环流驱动全球风系',concept:'赤道受热空气上升→高空向极地流动→极地冷却下沉→地面回流。形成哈德利环流、费雷尔环流和极地环流三个环流圈。',
+{name:'大气环流',sub:'三圈环流驱动全球风系',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>哈德利/费雷尔/极地三圈环流，科里奥利力</div>赤道受热空气上升→高空向极地流动→极地冷却下沉→地面回流。形成哈德利环流、费雷尔环流和极地环流三个环流圈。',
  objs:['启动赤道加热','观察哈德利环流形成','完成三圈环流'],
  learn:'赤道接收最多太阳辐射，空气受热膨胀上升，在高空向两极流动。受<span class="sv">科里奥利力</span>偏转，在纬度30°附近下沉形成<span class="sv">哈德利环流</span>。中纬度的<span class="sv">费雷尔环流</span>和高纬度的<span class="sv">极地环流</span>共同构成三圈环流，驱动全球风带和天气系统。'},
-{name:'海洋传送带',sub:'温盐环流驱动深海循环',concept:'高盐度冷水密度大→下沉到深海→缓慢流向赤道→上升流带回表面。调节盐度和温度观察传送带运转。',
+{name:'海洋传送带',sub:'温盐环流驱动深海循环',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>温盐环流 AMOC，密度驱动，1000 年周期</div>高盐度冷水密度大→下沉到深海→缓慢流向赤道→上升流带回表面。调节盐度和温度观察传送带运转。',
  objs:['调节盐度使海水下沉','形成完整传送带环流','观察传送带断裂效应'],
  learn:'全球温盐环流（<span class="sv">大西洋经向翻转环流 AMOC</span>）周期约<span class="sv">1000年</span>。北大西洋高盐冷水下沉是驱动力。若格陵兰冰盖融化注入大量淡水，盐度降低→下沉减弱→传送带可能<span class="sv">断裂</span>→欧洲失去暖流加热，可能骤冷5-10°C。'},
-{name:'冰反馈',sub:'正反馈加速全球变暖',concept:'升温→冰融化→白色冰面减少→反照率降低→吸收更多热量→更多融化。这是一个危险的正反馈循环。',
+{name:'冰反馈',sub:'正反馈加速全球变暖',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>冰-反照率正反馈，北极放大效应</div>升温→冰融化→白色冰面减少→反照率降低→吸收更多热量→更多融化。这是一个危险的正反馈循环。',
  objs:['设置初始温度','观察冰盖开始融化','见证正反馈加速'],
  learn:'冰雪反照率约<span class="sv">0.8-0.9</span>（反射80-90%阳光），海水仅<span class="sv">0.06</span>。北极海冰自1979年以来减少了<span class="sv">40%</span>。这种<span class="sv">冰-反照率正反馈</span>是气候系统中最强的放大机制之一，使北极变暖速度是全球平均的<span class="sv">2-3倍</span>（北极放大效应）。'},
-{name:'碳循环',sub:'碳在四大储库间流动',concept:'碳在大气、海洋、植被和岩石四个储库间循环。拖拽碳球在储库间移动，观察碳量变化。砍伐森林会释放碳到大气。',
+{name:'碳循环',sub:'碳在四大储库间流动',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>碳储库（大气/海洋/植被/岩石），年排放 10 GtC</div>碳在大气、海洋、植被和岩石四个储库间循环。拖拽碳球在储库间移动，观察碳量变化。砍伐森林会释放碳到大气。',
  objs:['将碳从植被移到大气','将碳从大气移到海洋','使大气碳量低于800GtC'],
  learn:'地球碳储量：岩石圈<span class="sv">6600万GtC</span>、海洋<span class="sv">38000GtC</span>、土壤<span class="sv">1500GtC</span>、大气<span class="sv">870GtC</span>、植被<span class="sv">450GtC</span>。人类每年排放约<span class="sv">10GtC</span>，海洋和陆地各吸收约25%，剩余50%留在大气中。碳循环的平衡被打破是全球变暖的根本原因。'},
-{name:'情景预测',sub:'不同排放路径下的未来',concept:'选择不同的排放路径(RCP2.6/4.5/8.5)，运行百年模拟，观察温度和海平面变化曲线。',
+{name:'情景预测',sub:'不同排放路径下的未来',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>RCP 排放路径（2.6/4.5/8.5），升温 1.5-4.5°C</div>选择不同的排放路径(RCP2.6/4.5/8.5)，运行百年模拟，观察温度和海平面变化曲线。',
  objs:['选择一个排放路径','运行百年模拟','对比不同情景结果'],
  learn:'IPCC代表性浓度路径：<span class="sv">RCP2.6</span>（强力减排）升温约1.5°C；<span class="sv">RCP4.5</span>（中等减排）升温约2.5°C；<span class="sv">RCP8.5</span>（无控制排放）升温约4.5°C。海平面上升：RCP2.6约<span class="sv">0.4m</span>，RCP8.5可达<span class="sv">1.0m+</span>。每0.5°C升温都意味着更多极端天气、物种灭绝和粮食危机。'}
 ];
@@ -1004,20 +1002,6 @@ function startGame(){document.getElementById('startScreen').classList.add('hidde
     return{done:d,total:t};
   }
 
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
 
   // 2. 阶段导航
   window._stageNavHTML=function(){
@@ -1031,10 +1015,8 @@ function startGame(){document.getElementById('startScreen').classList.add('hidde
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };

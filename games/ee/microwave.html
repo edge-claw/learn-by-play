@@ -98,7 +98,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 #bar .level-nav button.active{background:#f97316;color:#fff;border-color:#f97316}
 #bar .level-nav button.completed{background:#1a472a;color:#22c55e;border-color:#22c55e}
 
-#roadmap-container{display:none}
 .roadmap{margin:20px auto;max-width:500px;text-align:left}
 .roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
 .roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
@@ -108,7 +107,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -129,6 +128,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 <div id="overlay">
 <h1>📡 微波与天线 实验室</h1>
 <p class="sub">7 个关卡，从电磁波到天线阵列</p>
+<button id="startBtn" onclick="startGame()">开始探索</button>
 <div class="features">
 <div class="feat">🌊 电磁波传播</div>
 <div class="feat">📏 传输线与驻波</div>
@@ -138,7 +138,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 <div class="feat">🔢 天线阵列</div>
 <div class="feat">📊 雷达方程</div>
 </div>
-<button id="startBtn" onclick="startGame()">开始探索</button>
 </div>
 <div id="main">
 <div id="panel"></div>
@@ -183,13 +182,13 @@ let lv7={ptx:10,gtx:10,grx:10,dist:1000,freq:10e9,rcs:1};
 
 const levelNames=['电磁波传播','传输线','史密斯圆图','波导','偶极子天线','天线阵列','雷达方程'];
 const levelDescs=[
-  '麦克斯韦方程揭示：变化的电场产生磁场，变化的磁场产生电场。电场(E)与磁场(B)相互正交振荡，以光速传播。核心关系：c = λ × f',
-  '传输线将信号从源传到负载。当负载阻抗≠特性阻抗时产生反射，入射波与反射波叠加形成驻波。VSWR 衡量匹配程度。',
-  '史密斯圆图是射频工程师的核心工具，将复阻抗映射到单位圆内。等电阻圆和等电抗圆帮助直观设计阻抗匹配网络。',
-  '波导是空心金属管，通过全反射约束电磁波传播。每种模式有截止频率，低于截止频率的信号无法传播。',
-  '偶极子天线是最基本的天线形式。天线长度决定辐射方向图形状，半波偶极子(L=λ/2)是最常用的基本天线。',
-  '多个天线阵元按特定排列组成阵列，通过调节各阵元的相位差实现波束扫描和赋形，这就是相控阵原理。',
-  'Friis方程描述自由空间传播损耗，雷达方程描述目标回波功率。链路预算是通信系统设计的基础。'
+  '<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>电磁波：</b>c = λ × f &nbsp;|&nbsp; E ⊥ B ⊥ 传播方向</div>麦克斯韦方程揭示电场与磁场相互正交振荡，以光速传播。',
+  '<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>传输线：</b>VSWR = (1+|Γ|)/(1-|Γ|) &nbsp;|&nbsp; Γ = (ZL-Z0)/(ZL+Z0)</div>负载阻抗≠特性阻抗时产生反射，入射波与反射波叠加形成驻波。',
+  '<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>史密斯圆图：</b>归一化阻抗 z = r + jx 映射到单位圆</div>射频工程师的核心工具，等电阻圆和等电抗圆帮助直观设计阻抗匹配。',
+  '<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>波导截止：</b>fc(TE10) = c/(2a)，f &gt; fc 才能传播</div>空心金属管通过全反射约束电磁波，每种模式有截止频率。',
+  '<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>偶极子天线：</b>半波偶极子 L = λ/2，增益 2.15 dBi</div>天线长度决定辐射方向图形状，是最基本的天线形式。',
+  '<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>相控阵：</b>Δφ = 2πd·sinθ/λ，阵元越多波束越窄</div>多个阵元按特定排列，通过调节相位差实现波束扫描和赋形。',
+  '<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>Friis 方程：</b>FSPL = 20lg(d) + 20lg(f) + 20lg(4π/c)</div>自由空间传播损耗，距离翻倍损耗增加 6dB。'
 ];
 const levelObjTexts=[
   ['调节频率观察波长变化','切换查看E场和B场','将频率调到微波频段(>1GHz)'],
@@ -1078,20 +1077,6 @@ function drawLevel7(){
     return{done:d,total:t};
   }
 
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
 
   // 2. 阶段导航
   window._stageNavHTML=function(){
@@ -1105,10 +1090,8 @@ function drawLevel7(){
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };

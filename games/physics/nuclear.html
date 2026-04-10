@@ -124,7 +124,6 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 #themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
 [data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
 [data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
-#roadmap-container{display:none}
 .roadmap{margin:20px auto;max-width:500px;text-align:left}
 .roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
 .roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
@@ -134,7 +133,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -154,7 +153,6 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 <div class="start-box">
   <h1>☢️ <span class="gold">核物理</span>原理探险</h1>
   <div class="sub">7 个关卡，亲手体验核能的奥秘</div>
-  <div id="roadmap-container"></div>
 <button class="start-btn" onclick="startGame()">开始探险</button>
   <div class="features">
     <div class="feat"><div class="fi">⚛️</div>原子结构</div>
@@ -269,13 +267,13 @@ const ELEMENTS = {1:'氢',2:'氦',3:'锂',4:'铍',5:'硼',6:'碳',7:'氮',8:'氧
 function getElement(p){return ELEMENTS[p]||(p+'号元素')}
 
 const levels = [
-  {title:'原子结构',sub:'认识原子核',concept:'原子由质子、中子、电子组成。质子带正电（红色），中子不带电（蓝色），电子带负电绕核运动。不同元素 = 不同质子数。',goals:['添加质子和中子构建原子','构建出铀-235（92质子+143中子）'],learn:'铀-235是自然界中最重要的可裂变材料。它的原子核有92个质子和143个中子，非常不稳定——就像一个塞满了弹珠的碗，轻轻一碰就会散架。'},
-  {title:'核裂变',sub:'原子核的分裂',concept:'一个中子撞击铀-235，原子核分裂成两个较小的原子核（如钡-141和氪-92），同时释放2-3个新中子和巨大能量（约200 MeV）。',goals:['发射中子击中铀核','观察裂变产物','理解一次裂变释放多个中子'],learn:'一次裂变释放的能量是化学反应（如燃烧）的数百万倍。更关键的是，裂变释放的2-3个新中子可以继续撞击其他铀核——这就是链式反应的基础。'},
-  {title:'链式反应',sub:'指数级爆发',concept:'每次裂变释放2-3个中子，每个中子又能引发新的裂变。1→3→9→27→81...指数增长。这就是核弹的原理。',goals:['启动链式反应','观察指数增长','所有铀核完成裂变'],learn:'在核弹中，链式反应在微秒级内完成——几十代裂变在不到百万分之一秒内释放所有能量。1公斤铀-235完全裂变释放的能量，相当于20000吨TNT。'},
-  {title:'临界质量',sub:'多少才够',concept:'铀块太小→中子飞出去了，反应停止（亚临界）。铀块够大→中子在飞出前就撞到其他铀核，链式反应持续（超临界）。临界质量约52kg。',goals:['测试亚临界状态','测试超临界状态','找到临界质量（约50-52kg）'],learn:'这就是为什么核弹需要精确的铀量。铀-235的临界质量约52公斤（一个棒球大小的球）。核弹的设计就是在引爆瞬间，用炸药把两块亚临界的铀猛地挤到一起，形成超临界质量。'},
-  {title:'核聚变',sub:'太阳的能量',concept:'轻核（氢的同位素氘和氚）在极高温下融合成氦，释放更多能量。这是太阳的能量来源。需要1亿度以上的温度来克服库仑势垒。',goals:['理解聚变需要极高温','成功实现氘氚聚变','观察聚变产物'],learn:'聚变释放的能量比裂变还多，而且燃料（氢）几乎无穷无尽。太阳核心温度1500万度，靠巨大引力压缩实现聚变。在地球上，我们需要1亿度以上——比太阳核心还热！这就是可控核聚变如此困难的原因。'},
-  {title:'核电站',sub:'控制链式反应',concept:'核电站 = 受控的链式反应。用控制棒吸收多余中子，让反应速率恰好维持稳定（临界状态）。太快→熔毁，太慢→停堆。',goals:['让反应堆稳定运行400-650MW','维持稳定运行30秒','不触发熔毁警报'],learn:'核电站和核弹用的是同一个原理——链式反应。区别在于核电站用控制棒精确调节反应速率，让能量缓慢、稳定地释放。切尔诺贝利事故就是因为控制棒操作失误，反应堆在4秒内功率暴增到额定值的100倍。'},
-  {title:'方舟反应堆',sub:'钢铁侠的心脏',concept:'钢铁侠胸前的方舟反应堆（Arc Reactor）是一个微型聚变装置。现实中，托卡马克用超强磁场约束上亿度的等离子体实现聚变。方舟反应堆 = 微型托卡马克 + 钯元素催化 + 环形磁约束。\n\n你的任务：调节磁场强度和等离子体温度，让聚变反应稳定输出 3GJ 能量，驱动钢铁侠战甲！',goals:['点燃等离子体（温度>1亿度）','磁约束成功（等离子体不逃逸）','稳定输出能量驱动战甲'],learn:'方舟反应堆在现实中最接近的技术是<b>托卡马克</b>（如ITER）和<b>仿星器</b>。核心挑战：用磁场把1亿度的等离子体悬浮在真空中，不能碰到任何容器壁。2025年人类已实现聚变点火（NIF），但持续稳定输出仍是终极难题。钢铁侠的方舟反应堆，本质上是一个拳头大小的完美托卡马克——这是人类核聚变的终极梦想。'}
+  {title:'原子结构',sub:'认识原子核',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心对象：</b>质子（红）+ 中子（蓝）+ 电子 → 原子</div>原子由质子、中子、电子组成。质子带正电，中子不带电，电子带负电绕核运动。不同元素 = 不同质子数。',goals:['添加质子和中子构建原子','构建出铀-235（92质子+143中子）'],learn:'铀-235是自然界中最重要的可裂变材料。它的原子核有92个质子和143个中子，非常不稳定——就像一个塞满了弹珠的碗，轻轻一碰就会散架。'},
+  {title:'核裂变',sub:'原子核的分裂',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>反应：</b>n + U-235 → Ba-141 + Kr-92 + 2~3n + 200 MeV</div>一个中子撞击铀-235，原子核分裂成两个较小的原子核，同时释放2-3个新中子和巨大能量。',goals:['发射中子击中铀核','观察裂变产物','理解一次裂变释放多个中子'],learn:'一次裂变释放的能量是化学反应（如燃烧）的数百万倍。更关键的是，裂变释放的2-3个新中子可以继续撞击其他铀核——这就是链式反应的基础。'},
+  {title:'链式反应',sub:'指数级爆发',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>增长模式：</b>1 → 3 → 9 → 27 → 81 … 指数爆发</div>每次裂变释放2-3个中子，每个中子又能引发新的裂变。这就是核弹的原理。',goals:['启动链式反应','观察指数增长','所有铀核完成裂变'],learn:'在核弹中，链式反应在微秒级内完成——几十代裂变在不到百万分之一秒内释放所有能量。1公斤铀-235完全裂变释放的能量，相当于20000吨TNT。'},
+  {title:'临界质量',sub:'多少才够',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键参数：</b>U-235 临界质量 ≈ 52 kg</div>铀块太小→中子飞出去了，反应停止（亚临界）。铀块够大→中子在飞出前就撞到其他铀核，链式反应持续（超临界）。',goals:['测试亚临界状态','测试超临界状态','找到临界质量（约50-52kg）'],learn:'这就是为什么核弹需要精确的铀量。铀-235的临界质量约52公斤（一个棒球大小的球）。核弹的设计就是在引爆瞬间，用炸药把两块亚临界的铀猛地挤到一起，形成超临界质量。'},
+  {title:'核聚变',sub:'太阳的能量',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>反应：</b>D + T → He-4 + n + 17.6 MeV（需 &gt; 1亿°C）</div>轻核（氢的同位素氘和氚）在极高温下融合成氦，释放更多能量。这是太阳的能量来源。',goals:['理解聚变需要极高温','成功实现氘氚聚变','观察聚变产物'],learn:'聚变释放的能量比裂变还多，而且燃料（氢）几乎无穷无尽。太阳核心温度1500万度，靠巨大引力压缩实现聚变。在地球上，我们需要1亿度以上——比太阳核心还热！这就是可控核聚变如此困难的原因。'},
+  {title:'核电站',sub:'控制链式反应',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>控制原理：</b>控制棒吸收中子 → 维持临界状态</div>核电站 = 受控的链式反应。太快→熔毁，太慢→停堆。',goals:['让反应堆稳定运行400-650MW','维持稳定运行30秒','不触发熔毁警报'],learn:'核电站和核弹用的是同一个原理——链式反应。区别在于核电站用控制棒精确调节反应速率，让能量缓慢、稳定地释放。切尔诺贝利事故就是因为控制棒操作失误，反应堆在4秒内功率暴增到额定值的100倍。'},
+  {title:'方舟反应堆',sub:'钢铁侠的心脏',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>装置：</b>微型托卡马克 + 钯元素催化 + 环形磁约束</div>钢铁侠胸前的方舟反应堆（Arc Reactor）是一个微型聚变装置。现实中，托卡马克用超强磁场约束上亿度的等离子体实现聚变。\n\n你的任务：调节磁场强度和等离子体温度，让聚变反应稳定输出 3GJ 能量，驱动钢铁侠战甲！',goals:['点燃等离子体（温度>1亿度）','磁约束成功（等离子体不逃逸）','稳定输出能量驱动战甲'],learn:'方舟反应堆在现实中最接近的技术是<b>托卡马克</b>（如ITER）和<b>仿星器</b>。核心挑战：用磁场把1亿度的等离子体悬浮在真空中，不能碰到任何容器壁。2025年人类已实现聚变点火（NIF），但持续稳定输出仍是终极难题。钢铁侠的方舟反应堆，本质上是一个拳头大小的完美托卡马克——这是人类核聚变的终极梦想。'}
 ];
 
 function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
@@ -1409,20 +1407,6 @@ function goLevel(i){switchLevel(i);}
     return{done:d,total:t};
   }
 
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
 
   // 2. 阶段导航
   window._stageNavHTML=function(){
@@ -1436,10 +1420,8 @@ function goLevel(i){switchLevel(i);}
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };

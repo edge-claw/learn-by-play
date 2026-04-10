@@ -107,7 +107,7 @@ canvas{display:block;position:absolute;top:0;left:320px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -121,10 +121,32 @@ canvas{display:block;position:absolute;top:0;left:320px}
 #themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
 [data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
 [data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;background:linear-gradient(135deg,#7c3aed,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.overlay .sub{color:var(--text-sub);font-size:17px;margin-bottom:32px}
+.overlay .start-btn{padding:14px 48px;font-size:18px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:transform .2s}
+.overlay .start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.features .feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px}
+.features .feat .fi{font-size:26px;margin-bottom:4px}
 </style>
 </head>
 <body data-theme="dark">
 <button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="ov">
+<h1>⚛️ 量子计算原理</h1>
+<p class="sub">7 个交互关卡 — 从叠加态到量子计算机</p>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="fi">🔮</div>叠加态</div>
+<div class="feat"><div class="fi">🚪</div>量子门</div>
+<div class="feat"><div class="fi">🔗</div>量子纠缠</div>
+<div class="feat"><div class="fi">📡</div>隐形传态</div>
+<div class="feat"><div class="fi">⚡</div>量子并行</div>
+<div class="feat"><div class="fi">🛡️</div>量子纠错</div>
+<div class="feat"><div class="fi">❄️</div>量子计算机</div>
+</div>
+</div>
 <div class="panel" id="panel"></div>
 <canvas id="cv"></canvas>
 <div id="infoBar">量子计算原理交互式教育游戏 | 共7关</div>
@@ -138,6 +160,7 @@ const TH={
 };
 function t(){return isDark?TH.dark:TH.light}
 function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
+function startGame(){document.getElementById('ov').style.display='none';}
 
 // ===== 音效系统 (Web Audio API) =====
 const AudioCtx=window.AudioContext||window.webkitAudioContext;
@@ -244,31 +267,31 @@ let W,H,curLevel=0,animId,animTime=0;
 const completedLevels=new Set();
 // PLACEHOLDER_LEVELS
 const levels=[
-{name:'量子比特 — 叠加态',concept:'经典比特只能是0或1，量子比特可同时处于0和1的叠加态。布洛赫球可以直观表示量子态。',
+{name:'量子比特 — 叠加态',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>|&#968;&#10217; = &#945;|0&#10217; + &#946;|1&#10217;（叠加态）</div>经典比特只能是0或1，量子比特可同时处于0和1的叠加态。布洛赫球可以直观表示量子态。',
  objs:['拖动箭头到赤道（叠加态）','执行测量观察坍缩','理解概率性（重复测量）'],
  learn:'量子比特的叠加态是量子计算的基础。就像旋转中的硬币——只有"看"它时才选择正反面。',
  quiz:{q:'量子比特和经典比特的最大区别是？',opts:['A. 更快','B. 可以同时处于0和1的叠加态','C. 更安全'],ans:1}},
-{name:'量子门 — 操控量子态',concept:'H门创建叠加态，X门翻转比特，Z门改变相位。量子门是酉变换，可逆。',
+{name:'量子门 — 操控量子态',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>基本门：</b>H门（叠加）、X门（翻转）、Z门（相位）</div>量子门是酉变换，可逆。通过精心安排门序列操控量子态。',
  objs:['用H门创建叠加态','用X门翻转量子比特','挑战：用门序列将|0⟩变为|1⟩'],
  learn:'量子计算的本质是精心安排量子门序列，让正确答案的概率被放大，错误答案的概率被抑制。',
  quiz:{q:'H门（Hadamard门）的作用是？',opts:['A. 翻转量子态','B. 创建叠加态','C. 测量量子态'],ans:1}},
-{name:'量子纠缠 — 超距关联',concept:'两个量子比特纠缠后，测量一个立刻知道另一个的状态，无论相距多远。',
+{name:'量子纠缠 — 超距关联',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>贝尔态：</b>|&#936;&#10217; = (|00&#10217; + |11&#10217;) / &#8730;2</div>两个量子比特纠缠后，测量一个立刻知道另一个的状态，无论相距多远。',
  objs:['制备贝尔纠缠态','测量左比特观察右比特坍缩','验证100%关联'],
  learn:'量子纠缠不能用来传递信息（不违反相对论），但它是量子计算和量子通信的核心资源。',
  quiz:{q:'量子纠缠能用来超光速传信息吗？',opts:['A. 能','B. 不能，还需要经典信道','C. 只能传一次'],ans:1}},
-{name:'量子隐形传态',concept:'利用预共享的纠缠对+经典通信，可以传送未知量子态。原始态在传送后被销毁。',
+{name:'量子隐形传态',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>协议：</b>预共享纠缠对 + Bell测量 + 经典通信</div>利用预共享的纠缠对+经典通信，可以传送未知量子态。原始态在传送后被销毁（不可克隆定理）。',
  objs:['设定要传送的量子态','完成Bell测量','Bob恢复量子态'],
  learn:'2017年，墨子号卫星实现了1200公里的量子隐形传态实验，创造世界纪录。',
  quiz:{q:'量子隐形传态后，原始量子态会怎样？',opts:['A. 被复制','B. 被销毁（不可克隆定理）','C. 不变'],ans:1}},
-{name:'量子并行 — Deutsch算法',concept:'经典计算需查询2次才能判断函数是常数还是平衡的，量子计算只需1次。',
+{name:'量子并行 — Deutsch算法',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>加速：</b>经典 2 次查询 → 量子 1 次查询</div>经典计算需查询2次才能判断函数是常数还是平衡的，量子计算只需1次。',
  objs:['用经典方式判断函数（2次查询）','正确组装量子电路（H-Oracle-H-测量）','理解量子并行优势'],
  learn:'Shor算法能在多项式时间内分解大数（破解RSA），Grover算法能将搜索加速到平方根级别。',
  quiz:{q:'量子计算机比经典计算机快的根本原因是？',opts:['A. CPU更快','B. 量子并行（叠加态同时计算）','C. 内存更大'],ans:1}},
-{name:'量子纠错 — 对抗噪声',concept:'3比特重复码：将1个逻辑比特编码为3个物理比特，通过多数表决检测和修复单比特翻转错误。',
+{name:'量子纠错 — 对抗噪声',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>编码：</b>3比特重复码 — 1个逻辑比特 → 3个物理比特</div>通过多数表决检测和修复单比特翻转错误。',
  objs:['检测到错误比特位置','成功修复错误','30秒内修复5个错误'],
  learn:'实用的量子计算机可能需要数百万个物理量子比特来编码几千个逻辑量子比特，纠错开销巨大。',
  quiz:{q:'为什么量子纠错很难？',opts:['A. 量子态不能直接测量（会坍缩）','B. 量子比特太贵','C. 算法太复杂'],ans:0}},
-{name:'量子计算机 — 完整系统',concept:'超导量子比特工作在15mK（接近绝对零度），需要稀释制冷机、微波控制线和读出电路。',
+{name:'量子计算机 — 完整系统',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>工作条件：</b>超导量子比特 @ 15 mK（接近绝对零度）</div>需要稀释制冷机、微波控制线和读出电路。',
  objs:['正确组装量子计算机组件','冷却到15mK工作温度','运行量子算法观察加速'],
  learn:'IBM、Google、中国的祖冲之号都在竞争量子霸权。量子计算在密码破解、药物设计、材料模拟等领域有望提供指数级加速。',
  quiz:{q:'当前超导量子计算机需要冷却到多低？',opts:['A. -100°C','B. -200°C','C. 15毫开尔文（接近绝对零度）'],ans:2}}
@@ -306,6 +329,31 @@ function resetLevelState(){
 // PLACEHOLDER_PANEL
 // ===== 面板渲染 =====
 function showError(msg){errMsg=msg;errTimer=Date.now();playSound('fail');renderPanel();}
+// Lightweight DOM patcher: preserves focused range inputs during panel updates
+function _patchPanel(el,html){
+  var ae=document.activeElement;
+  if(!ae||ae.type!=='range'||!el.contains(ae)){el.innerHTML=html;return;}
+  var tmp=document.createElement('div');tmp.innerHTML=html;
+  _diffNodes(el,tmp);
+}
+function _diffNodes(o,n){
+  var oc=Array.from(o.childNodes),nc=Array.from(n.childNodes);
+  var i=0;
+  while(i<oc.length&&i<nc.length){
+    var a=oc[i],b=nc[i];
+    if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName){o.replaceChild(b.cloneNode(true),a);i++;continue;}
+    if(a.nodeType===3){if(a.textContent!==b.textContent)a.textContent=b.textContent;i++;continue;}
+    if(a.nodeType===1){
+      if(a.tagName==='INPUT'&&a.type==='range'&&a===document.activeElement){i++;continue;}
+      for(var j=0;j<b.attributes.length;j++){var at=b.attributes[j];if(a.getAttribute(at.name)!==at.value)a.setAttribute(at.name,at.value);}
+      _diffNodes(a,b);
+    }
+    i++;
+  }
+  while(oc.length>nc.length)o.removeChild(o.lastChild);
+  for(;i<nc.length;i++)o.appendChild(nc[i].cloneNode(true));
+}
+
 function renderPanel(){
  let h='<h3 style="margin-bottom:8px">🔬 量子计算原理</h3><div style="margin-bottom:8px">';
  levels.forEach((l,i)=>{
@@ -350,7 +398,7 @@ function renderPanel(){
    }
   }
  }
- panel.innerHTML=h;
+ _patchPanel(panel,h);
 }
 function renderQuiz(){
  const L=levels[curLevel];
@@ -1277,10 +1325,8 @@ function goLevel(i){switchLevel(i);}
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };
@@ -1330,6 +1376,7 @@ function goLevel(i){switchLevel(i);}
   }
 })();
 try{renderPanel();}catch(e){}
+
 
 </script>
 </body>

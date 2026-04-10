@@ -6,8 +6,6 @@
 <title>微积分可视化 探险</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-
-/* === 暗色系（默认） === */
 :root,[data-theme="dark"]{
   --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
   --overlay-bg:rgba(0,0,0,.88);
@@ -31,11 +29,9 @@
   --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
   --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
   --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
-  --roadmap-text:#a0a0c0;--roadmap-num-bg:#1a1a4a;--roadmap-num-text:#60a5fa;
   --slider-label:#888;
   --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
 }
-/* === 亮色系 === */
 [data-theme="light"]{
   --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
   --overlay-bg:rgba(255,255,255,0.97);
@@ -59,23 +55,22 @@
   --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
   --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
   --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
-  --roadmap-text:#475569;--roadmap-num-bg:#e0e7ff;--roadmap-num-text:#4f46e5;
   --slider-label:#888;
   --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
 }
-
-
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh}
 #overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
 #overlay h1{font-size:42px;background:linear-gradient(135deg,#3b82f6,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
 #overlay p{color:var(--text-muted);font-size:16px;margin-bottom:32px}
 #overlay .sub{font-size:13px;color:var(--sub-color);margin-bottom:24px;max-width:500px;text-align:center;line-height:1.6}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
 .start-btn{padding:14px 48px;font-size:18px;border:none;border-radius:12px;background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;cursor:pointer;transition:transform .2s,box-shadow .2s}
 .start-btn:hover{transform:scale(1.05);box-shadow:0 0 24px rgba(59,130,246,.4)}
 #game{display:none;height:100vh;width:100vw}
 .panel{position:fixed;left:0;top:0;bottom:36px;width:320px;background:var(--panel-bg);border-right:1px solid var(--panel-border);padding:16px;overflow-y:auto;z-index:10;display:none;padding-bottom:24px}
 .panel h2{font-size:18px;color:var(--title-color);margin-bottom:4px}
-.panel .level-title{font-size:14px;color:var(--text-muted);margin-bottom:12px}
 .panel .desc{font-size:13px;color:#cbd5e1;line-height:1.6;margin-bottom:12px}
 .panel .obj{font-size:14px;padding:6px 10px;margin:4px 0;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border)}
 .obj.done{border-color:#22c55e;color:#4ade80}
@@ -86,27 +81,16 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC'
 .ctrl-row{display:flex;gap:6px;margin-top:8px}
 .ctrl-row button{flex:1;padding:8px;border:1px solid #3b82f6;border-radius:6px;background:transparent;color:var(--sv);font-size:12px;cursor:pointer}
 .ctrl-row button:hover{background:rgba(59,130,246,.15)}
-.slider-row{margin-top:8px;font-size:12px;color:var(--text-muted)}
+.slider-row{margin-top:8px;font-size:12px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+.slider-row .sl{display:inline-block;min-width:120px;font-variant-numeric:tabular-nums;font-family:'Menlo','Consolas',monospace}
 .slider-row input[type=range]{width:100%;accent-color:#3b82f6;margin-top:4px}
-canvas{position:fixed;left:320px;top:0;right:0;bottom:36px;background:var(--bg)}
+canvas{position:fixed;left:320px;top:0;width:calc(100vw - 320px);height:calc(100vh - 36px);background:var(--bg)}
 .bar{position:fixed;left:0;right:0;bottom:0;height:36px;background:var(--bar-bg);border-top:1px solid var(--panel-border);display:none;align-items:center;padding:0 16px;font-size:13px;z-index:10}
-.bar .progress{color:var(--text-muted);flex:1}
-.bar .nav-btns{display:flex;gap:8px}
-.bar .nav-btns button{padding:4px 14px;border:1px solid #3b82f6;border-radius:6px;background:transparent;color:var(--sv);font-size:12px;cursor:pointer}
-.bar .nav-btns button:hover{background:rgba(59,130,246,.15)}
-.bar .nav-btns button.active{background:#3b82f6;color:#fff}
-
-.roadmap{margin:20px auto;max-width:500px;text-align:left}
-.roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
-.roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
-.roadmap-num{width:24px;height:24px;border-radius:50%;background:var(--roadmap-num-bg);color:var(--roadmap-num-text);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;flex-shrink:0}
 .stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
-.sn-d.done{background:#22c55e}
-.sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
-.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -125,10 +109,20 @@ canvas{position:fixed;left:320px;top:0;right:0;bottom:36px;background:var(--bg)}
 <button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
 <div id="overlay">
 <h1>微积分可视化 探险</h1>
-<p>7 个关卡，从极限到微分方程</p>
-<div class="sub">通过交互式可视化理解微积分核心概念：极限、导数、积分、泰勒展开、微分方程。拖动、点击、调整参数，亲手感受数学之美。</div>
-<div id="roadmap-container"></div>
+<p>拖一拖、试一试，用直觉理解微积分</p>
+<div class="sub">9 个交互关卡，从极限逼近到微分方程方向场，每一步都让你先动手发现，再揭示原理。</div>
 <button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="fi">📐</div>极限与逼近</div>
+<div class="feat"><div class="fi">🔗</div>连续性</div>
+<div class="feat"><div class="fi">📈</div>导数与切线</div>
+<div class="feat"><div class="fi">⛓️</div>求导法则</div>
+<div class="feat"><div class="fi">🎯</div>极值与优化</div>
+<div class="feat"><div class="fi">📊</div>积分与面积</div>
+<div class="feat"><div class="fi">🔄</div>基本定理</div>
+<div class="feat"><div class="fi">🌀</div>泰勒展开</div>
+<div class="feat"><div class="fi">💫</div>微分方程</div>
+</div>
 </div>
 <div id="game">
 <div class="panel" id="panel"></div>
@@ -136,296 +130,952 @@ canvas{position:fixed;left:320px;top:0;right:0;bottom:36px;background:var(--bg)}
 <div class="bar" id="bar"></div>
 </div>
 <script>
-
-// === 主题系统 ===
+// ===== THEME =====
 let isDark=true;
-const TH={
-  dark:{bg1:'#0a0a2e',bg2:'#0d0d1a',bg3:'#0a0a1a',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)',label:'#f0f2f5',electron:'#fff',electronGlow:'rgba(255,255,255,0.3)',shell:'rgba(100,100,200,0.15)',barBg:'#1a1a3a',showStars:true},
-  light:{bg1:'#e8edf5',bg2:'#f0f2f5',bg3:'#e0e7f0',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',label:'#334155',electron:'#334155',electronGlow:'rgba(51,65,85,0.3)',shell:'rgba(100,100,200,0.15)',barBg:'#c7d2fe',showStars:false}
-};
-function t(){return isDark?TH.dark:TH.light}
-function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
+const TH={dark:{grid:'rgba(255,255,255,0.06)',axis:'rgba(255,255,255,0.35)',label:'#555',text:'#e2e8f0',sub:'#94a3b8'},light:{grid:'rgba(0,0,0,0.06)',axis:'rgba(0,0,0,0.35)',label:'#999',text:'#334155',sub:'#64748b'}};
+function t(k){return isDark?TH.dark[k]:TH.light[k]}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';draw()}
 
+// ===== CANVAS & STATE =====
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar');
 let W,H,li=0,animId,mouse={x:0,y:0,down:false,px:0,py:0};
-let levelObjs=Array.from({length:7},()=>[false,false,false]);
+let levelObjs=Array.from({length:9},()=>[false,false,false]);
 let levelState={};
 
-function resize(){
-  const r=devicePixelRatio||1;
-  W=window.innerWidth-320;H=window.innerHeight-36;
-  cv.width=W*r;cv.height=H*r;cv.style.width=W+'px';cv.style.height=H+'px';
-  ctx.setTransform(r,0,0,r,0,0);
-}
-window.addEventListener('resize',()=>{resize();draw()});
-
-function startGame(){
-  document.getElementById('overlay').style.display='none';
-  document.getElementById('game').style.display='block';
-  panel.style.display='block';bar.style.display='flex';
-  resize();initLevel();renderPanel();renderBar();loop();
-}
-
+function resize(){const dpr=devicePixelRatio||1;const r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);draw()}
+window.addEventListener('resize',resize);
+function startGame(){document.getElementById('overlay').style.display='none';document.getElementById('game').style.display='block';panel.style.display='block';bar.style.display='flex';li=0;initLevel();renderPanel();renderBar();requestAnimationFrame(function(){resize();loop()})}
 function goLevel(n){li=n;initLevel();renderPanel();renderBar();draw()}
 function completeObj(i){if(!levelObjs[li][i]){levelObjs[li][i]=true;renderPanel();renderBar()}}
 
-// ===== LEVEL DATA =====
+// ===== SLIDER DRAG (lightweight update during drag) =====
+function sliderDrag(id,val){
+  val=parseFloat(val);levelState[id]=val;
+  // Update label
+  const lbl=document.getElementById('lbl-'+id);
+  if(lbl){
+    const fmt={x0:'x\u2006=\u2006'+val.toFixed(4),eps:'ε\u2006=\u2006'+val.toFixed(2),delta:'δ\u2006=\u2006'+val.toFixed(3),
+      contX:'x\u2006=\u2006'+val.toFixed(2),contK:'k\u2006=\u2006'+val.toFixed(2),contDelta:'δ\u2006=\u2006'+val.toFixed(3),
+      t:'x位置\u2006=\u2006'+(-2+4*val).toFixed(2),h:'两点间距\u2006=\u2006'+val.toFixed(2),
+      ruleX:'x\u2006=\u2006'+val.toFixed(2),ruleOuter:'外层变化\u2006=\u2006'+val.toFixed(2),ruleInner:'内层变化\u2006=\u2006'+val.toFixed(2),ruleAns:'你的答案\u2006=\u2006'+val.toFixed(2),
+      optX:'x\u2006=\u2006'+val.toFixed(2),boxX:'切割\u2006=\u2006'+val.toFixed(2),
+      n:'矩形数 n\u2006=\u2006'+Math.round(val),predVal:'预测值\u2006=\u2006'+val.toFixed(2),
+      ftcX:'x\u2006=\u2006'+val.toFixed(2),ftcPred:'预测\u2006=\u2006'+val.toFixed(2),
+      terms:'多项式项数:\u2006'+Math.round(val),termsPred:'预测项数:\u2006'+Math.round(val),
+      deIy:'y₀\u2006=\u2006'+val.toFixed(1)};
+    if(fmt[id])lbl.textContent=fmt[id];
+  }
+  // Update live displays
+  if(id==='x0'){
+    const d=document.getElementById('fv-display');
+    if(d){const fv=Math.abs(val)<1e-6?'未定义 (0÷0)':f0(val).toFixed(6);d.textContent='f('+val.toFixed(4)+') = '+fv;}
+  }
+  if(id==='n'||id==='contK'||id==='optX'||id==='boxX'){
+    const d=document.getElementById('live-display');
+    if(d&&id==='n'){const a=riemannSum(Math.round(val),levelState.method||0,levelState.intFunc||0);d.textContent='近似值: '+a.toFixed(4);}
+  }
+  // Check objectives
+  if(id==='x0'||id==='delta')checkL0();
+  if(id==='contX'||id==='contK'||id==='contDelta')checkL1();
+  if(id==='t'||id==='h')checkL2();
+  if(id==='ruleOuter'||id==='ruleInner'||id==='ruleX'||id==='ruleAns')checkL3();
+  if(id==='optX'||id==='boxX')checkL4();
+  if(id==='n')checkL5();
+  if(id==='ftcX'||id==='ftcPred')checkL6();
+  if(id==='terms'||id==='termsPred')checkL7();
+  draw();
+}
+
+// ===== LEVELS DATA =====
 const levels=[
-  {title:'关卡 1：极限与逼近',desc:'可视化 ε-δ 定义。拖动 x₀ 观察函数值如何趋近极限值 L。调整 ε 和 δ 观察它们的关系。',
-   objs:['拖动 x₀ 到 3 个不同位置','将 ε 调到 < 0.3 并找到合适的 δ','观察 |f(x)-L| < ε 的区间变绿']},
-  {title:'关卡 2：导数与切线',desc:'在曲线 f(x)=x³-3x 上移动点，实时显示切线和斜率。理解导数就是切线斜率。',
-   objs:['将点移到斜率为 0 的极值点','找到斜率 > 5 的陡峭区域','观察割线逼近切线的过程']},
-  {title:'关卡 3：求导法则',desc:'交互式可视化链式法则和乘法法则。选择不同的复合函数，观察求导过程的分解。',
-   objs:['完成链式法则的 3 个示例','完成乘法法则的 2 个示例','对比原函数与导函数图像']},
-  {title:'关卡 4：积分与面积',desc:'用黎曼和逼近曲线下面积。调整矩形数量，观察近似值如何收敛到精确积分值。',
-   objs:['将矩形数增加到 50 以上','切换左/右/中点三种方式','误差降到 < 1%']},
-  {title:'关卡 5：微积分基本定理',desc:'导数和积分互为逆运算。观察 F(x)=∫f(t)dt 的累积面积函数，其导数恰好是 f(x)。',
-   objs:['观察累积面积函数 F(x) 的生成','验证 F\'(x) = f(x) 在 3 个点','切换不同的 f(x) 观察']},
-  {title:'关卡 6：泰勒展开',desc:'逐项添加泰勒级数项，观察多项式如何逼近原函数。项数越多，逼近范围越大。',
-   objs:['添加到第 5 阶观察逼近','切换 sin/cos/eˣ 三个函数','找到逼近失效的边界区域']},
-  {title:'关卡 7：微分方程',desc:'方向场可视化。每个点的小箭头表示解曲线的方向。拖动初始条件，观察解曲线如何沿方向场流动。',
-   objs:['拖动初始点到 3 个不同位置','切换不同的微分方程','观察解曲线的长期行为']}
+  {title:'极限 — 逼近未知',desc:'函数 f(x) = sin(x)/x，当 x=0 时分子分母都是 0，直接算不了。<br><br>但如果 x 不等于 0，只是非常<b>接近</b> 0 呢？f(x) 会接近什么值？<br><br>👇 拖动滑块，把 x 一步步逼近 0，观察 f(x) 的变化。',
+   objs:['把 x 逼近 0，发现 f(x) 趋向的那个数','揭秘：用单位圆看穿 sin(x)/x','挑战 ε-δ：用精确语言描述"逼近"']},
+  {title:'连续性 — 一笔画的秘密',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>分段函数：</b><br>x &lt; 1 时，f(x) = x²<br>x = 1 时，f(x) = <span style="color:#f59e0b;font-weight:bold">k</span>　← 你控制<br>x &gt; 1 时，f(x) = 2x−1</div>右边画布中 <b style="color:#ef4444">x = 1</b> 处有个断口。<br>👇 拖动 <span style="color:#f59e0b;font-weight:bold">k</span>，把断口填上！',
+   objs:['调整 k 修复断裂点','揭秘：连续性的三个条件','挑战 ε-δ 连续性验证']},
+  {title:'导数与切线 — 割线的极限',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>函数：</b>f(x) = x³ − 3x</div>画布上 <b style="color:#3b82f6">蓝色曲线</b> 上有两个点，一条 <b style="color:#a78bfa">紫色直线</b> 穿过它们。<br>👇 缩小两点间距 h，看这条线会变成什么。',
+   objs:['缩小 h 让两点连线逼近切线','揭秘：导数就是切线斜率','斜率匹配挑战']},
+  {title:'求导法则 — 拆解变化率',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>函数：</b>f(x) = sin(x²)<br><span style="font-size:12px;opacity:0.8">外层 sin(·) 包着内层 x²</span></div>这个函数的斜率能不能拆成两层的变化率相乘？<br>👇 分别调整两层的变化率，让 <span style="color:#f59e0b">预测</span> 匹配 <span style="color:#3b82f6">实际斜率</span>。',
+   objs:['分解匹配实际斜率','揭秘：链式法则与乘法法则','识别法则并计算']},
+  {title:'极值与优化 — 最优解猎手',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>函数：</b>f(x) = x³ − 6x² + 9x + 1</div>这条 <b style="color:#3b82f6">蓝色曲线</b> 有山峰和山谷。<br>👇 拖动点沿曲线移动，注意切线什么时候变成水平的。',
+   objs:['找到所有极值点','揭秘：二阶导判别法','开放盒子优化挑战']},
+  {title:'积分与面积 — 矩形堆叠术',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>函数：</b>f(x) = sin(x)，区间 [0, π]</div><b style="color:#3b82f6">蓝色曲线</b> 和 x 轴之间围成一块面积。<br>👇 只有 2 个矩形，差得远！增加矩形数量试试。',
+   objs:['增加矩形数逼近精确值','揭秘：三种方法对比','预测新函数的积分值']},
+  {title:'微积分基本定理 — 微分积分的桥',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>函数：</b>f(t) = sin(t)</div>从 0 到 <span style="color:#f59e0b;font-weight:bold">x</span> 的 <b style="color:#22c55e">阴影面积</b> 随 x 变化，形成一条新曲线。<br>👇 拖动 <span style="color:#f59e0b;font-weight:bold">x</span>，观察面积增长最快在哪？开始减少是什么时候？',
+   objs:['观察面积函数 F(x) 的形成','发现 F\'(x) = f(x) 的关系','验证基本定理']},
+  {title:'泰勒展开 — 多项式模仿秀',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>原函数：</b><span style="color:#3b82f6">sin(x)</span>（蓝色）<br><b>模仿者：</b><span style="color:#f59e0b">多项式</span>（橙色）</div>1 项多项式只是一条直线，和原函数差得远。<br>👇 逐项添加，看 <span style="color:#f59e0b">橙色多项式</span> 如何学会模仿 <span style="color:#3b82f6">蓝色曲线</span>。',
+   objs:['添加到第 5 阶观察逼近','发现收敛半径的边界','预测所需项数']},
+  {title:'微分方程 — 方向场导航',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>方程：</b>y&#39; = x − y<br><span style="font-size:12px;opacity:0.8">每个点的变化率由位置决定</span></div>画布上每个 <b style="color:#22c55e">小箭头</b> 指示曲线应该往哪走。<br>👇 你能猜出从某个点出发，曲线会怎么走吗？',
+   objs:['预测 2 次轨迹方向','探索不同方程与平衡点','反推正确的初始条件']}
 ];
 const learnTexts=[
-  '极限是微积分的基石。ε-δ 定义说：对任意 ε>0，存在 δ>0，使得 0<|x-a|<δ 时 |f(x)-L|<ε。直觉上就是"x 足够接近 a 时，f(x) 任意接近 L"。',
-  '导数 f\'(x) = lim[h→0] (f(x+h)-f(x))/h，几何意义是曲线在该点的切线斜率。斜率为 0 的点是极值点（极大或极小）。',
-  '链式法则：(f∘g)\'(x) = f\'(g(x))·g\'(x)，像剥洋葱一样逐层求导。乘法法则：(fg)\' = f\'g + fg\'，两个函数各求一次导再交叉相乘。',
-  '定积分 ∫[a,b]f(x)dx 是曲线下面积的精确值。黎曼和用有限个矩形逼近，矩形越多越精确。左端点、右端点、中点是三种常见取样方式。',
-  '微积分基本定理：若 F(x)=∫[a,x]f(t)dt，则 F\'(x)=f(x)。这揭示了微分和积分是互逆运算，是微积分最深刻的结论。',
-  '泰勒展开：f(x) ≈ Σ f⁽ⁿ⁾(a)/n! · (x-a)ⁿ。用多项式逼近复杂函数，项数越多逼近越好，但都有收敛半径的限制。',
-  '微分方程 dy/dx=F(x,y) 描述变化率。方向场在每点画出斜率，解曲线沿方向场流动。不同初始条件给出不同的解，但它们永不相交。'
+  '你刚刚亲手发现了：f(x)=sin(x)/x 在 x=0 时是 0÷0，但 x 越接近 0，f(x) 越接近 1。在单位圆上，当角度 θ 很小时，sin(θ) ≈ θ（弧长 ≈ 弦长），所以 sin(θ)/θ → 1。这个极限不能用代数化简，必须用几何直觉——夹逼定理告诉我们 cos(θ) ≤ sin(θ)/θ ≤ 1，两边都趋向 1，中间也必须趋向 1。',
+  '连续性的直觉：函数图像可以"一笔画完"，不用抬笔。严格定义需要三个条件同时满足：f(a) 有定义、极限存在、两者相等。缺任何一个都不连续。ε-δ 语言把"不抬笔"翻译成了精确数学：无论你要求多接近（ε），我都能找到足够小的邻域（δ）。',
+  '导数 f\'(x) = lim[h→0] (f(x+h)-f(x))/h，几何意义是曲线在该点的切线斜率。割线是两点连线，当两点无限接近时，割线变成切线。斜率为 0 的点是极值点（极大或极小），这是微积分最实用的应用之一。',
+  '链式法则：(f∘g)\'(x) = f\'(g(x))·g\'(x)，像剥洋葱一样逐层求导，每层的变化率相乘。乘法法则：(fg)\' = f\'g + fg\'，两个函数各求一次导再交叉相乘相加。掌握这两个法则，就能对几乎所有初等函数求导。',
+  '极值点是 f\'(x)=0 的点。二阶导数判别法：f\'\'(x)<0 是极大值（山顶，向下凹），f\'\'(x)>0 是极小值（谷底，向上凹）。优化问题的核心：建立目标函数，求导令其为零，找到最优解。从开放盒子到火箭轨道，这个方法无处不在。',
+  '定积分 ∫[a,b]f(x)dx 是曲线下面积的精确值。黎曼和用有限个矩形逼近——矩形越多越精确。左端点倾向低估递增函数，右端点倾向高估，中点法最均衡。从"有限个矩形"到"无穷多个无穷窄的矩形"，就是积分的本质。',
+  '微积分基本定理：若 F(x)=∫[a,x]f(t)dt，则 F\'(x)=f(x)。面积函数的变化率就是原函数的值——微分和积分互为逆运算。这是微积分最深刻的结论，把切线斜率和曲线下面积统一起来。',
+  '泰勒展开：f(x) ≈ Σ f⁽ⁿ⁾(a)/n! · (x-a)ⁿ。用多项式逼近复杂函数，项数越多逼近越好。但每个展开都有收敛半径——超出范围，加再多项也没用。1/(1-x) 在 |x|>1 时发散就是最好的例子。',
+  '微分方程 dy/dx=F(x,y) 描述变化率。方向场在每点画出斜率，解曲线沿方向场流动。不同初始条件给出不同的解，但它们永不相交。平衡点是 F=0 的地方，稳定平衡点会"吸引"附近的解曲线。'
 ];
 
 // ===== LEVEL STATE INIT =====
 function initLevel(){
   const s={};
-  if(li===0){s.x0=2;s.eps=0.5;s.delta=0.3;s.positions=new Set();s.greenSeen=false;s.smallEps=false}
-  if(li===1){s.t=0.5;s.showSecant=false;s.secH=1;s.foundZero=false;s.foundSteep=false;s.secantSeen=false}
-  if(li===2){s.mode='chain';s.chainIdx=0;s.chainDone=0;s.prodIdx=0;s.prodDone=0;s.showCompare=false}
-  if(li===3){s.n=10;s.method=0;s.methodsSeen=new Set([0]);s.highN=false;s.lowErr=false}
-  if(li===4){s.func=0;s.animX=0;s.playing=false;s.verified=0;s.funcsSeen=new Set([0])}
-  if(li===5){s.func=0;s.terms=1;s.highTerms=false;s.funcsSeen=new Set([0]);s.boundaryFound=false}
-  if(li===6){s.eq=0;s.ix=0;s.iy=1;s.dragging=false;s.positions=new Set();s.eqsSeen=new Set([0]);s.longTerm=false}
+  if(li===0){s.x0=2;s.phase=0;s.trail=[];s.revealed=false;s.eps=0.5;s.delta=1.0;s.epsOk=false;s.epsRound=0}
+  if(li===1){s.contK=3;s.phase=0;s.funcIdx=0;s.contDelta=0.5;s.epsRound=0}
+  if(li===2){s.t=0.0;s.h=2.0;s.phase=0;s.trail=[];s.revealed=false;s.matchRound=0}
+  if(li===3){s.ruleX=1.0;s.ruleOuter=0.5;s.ruleInner=0.5;s.phase=0;s.matchCount=0;s.lastMatchX=-999;s.chainIdx=0;s.prodIdx=0;s.examplesSeen=0;s.matchRound=0;s.ruleAns=0;s.chainFuncs=[
+    {label:'sin(x²)',f:function(x){return Math.sin(x*x)},fd:function(x){return Math.cos(x*x)*2*x},outer:'sin(·)',inner:'x²',outerD:"cos(·)",innerD:'2x'},
+    {label:'cos(3x)',f:function(x){return Math.cos(3*x)},fd:function(x){return -3*Math.sin(3*x)},outer:'cos(·)',inner:'3x',outerD:"-sin(·)",innerD:'3'},
+    {label:'e^(2x)',f:function(x){return Math.exp(2*x)},fd:function(x){return 2*Math.exp(2*x)},outer:'e^(·)',inner:'2x',outerD:"e^(·)",innerD:'2'}
+  ];s.prodFuncs=[
+    {label:'x·sin(x)',f:function(x){return x*Math.sin(x)},fd:function(x){return Math.sin(x)+x*Math.cos(x)},fA:'x',fB:'sin(x)',fAd:'1',fBd:'cos(x)'},
+    {label:'x·eˣ',f:function(x){return x*Math.exp(x)},fd:function(x){return Math.exp(x)+x*Math.exp(x)},fA:'x',fB:'eˣ',fAd:'1',fBd:'eˣ'}
+  ]}
+  if(li===4){s.optX=0.0;s.phase=0;s.foundMax=false;s.foundMin=false;s.funcIdx=0;s.classified=0;s.boxX=1.0;s.boxRound=0;s.boxL=12}
+  if(li===5){s.n=2;s.method=0;s.methodsSeen=new Set([0]);s.phase=0;s.intFunc=0;s.predVal=1.0;s.hasPredicted=false;s.matchRound=0}
+  if(li===6){s.ftcX=0.5;s.phase=0;s.trail=[];s.func=0;s.funcsSeen=new Set([0]);s.ftcPred=0.5;s.verifyRound=0}
+  if(li===7){s.func=0;s.terms=1;s.phase=0;s.funcsSeen=new Set([0]);s.boundaryFound=false;s.termsPred=3;s.predRound=0}
+  if(li===8){s.eq=0;s.ix=0;s.iy=3;s.phase=0;s.dragging=false;s.positions=new Set();s.eqsSeen=new Set([0]);s.predictions=0;s.showSolution=false;s.guessPath=[];s.guessing=false;s.reverseRound=0;s.reverseTarget=null}
   levelState=s;
+}
+
+// ===== DOM PATCHER =====
+function _patchPanel(el,html){
+  var ae=document.activeElement;
+  if(ae&&ae.type==='range'&&el.contains(ae)){draw();return;}
+  el.innerHTML=html;
 }
 
 // ===== RENDER PANEL =====
 function renderPanel(){
-  const lv=levels[li],ob=levelObjs[li];
-  let h=`<h2>${lv.title}</h2><div class="desc">${lv.desc}</div>`;
-  h+=`<div style="font-size:13px;color:var(--sv);margin-bottom:6px">目标：</div>`;
+  const s=levelState,lv=levels[li],obs=levelObjs[li];
+  // Stage nav
+  let nav='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<9;i++){
+    const cls=levelObjs[i].every(Boolean)?'done':i===li?'cur':'';
+    nav+='<div class="sn-d '+cls+'" onclick="goLevel('+i+')"></div>';
+  }
+  nav+='</div><div class="sn-info">第 '+(li+1)+' / 9 关</div></div>';
+  // Objectives
+  let objH='';
   for(let i=0;i<3;i++){
-    h+=`<div class="obj${ob[i]?' done':''}"><span class="check">${ob[i]?'✅':'⬜'}</span>${lv.objs[i]}</div>`;
+    objH+='<div class="obj'+(obs[i]?' done':'')+'"><span class="check">'+(obs[i]?'✅':'⬜')+'</span>'+lv.objs[i]+'</div>';
   }
-  // Level-specific controls
+  // Level-specific panel
+  let c='';
+  // ---- L0: 极限 ----
   if(li===0){
-    h+=`<div class="slider-row">x₀ = ${levelState.x0.toFixed(2)}<input type="range" min="-2" max="4" step="0.01" value="${levelState.x0}" oninput="levelState.x0=+this.value;this.previousSibling.textContent='x₀ = '+levelState.x0.toFixed(2);checkL0();renderPanel()"></div>`;
-    h+=`<div class="slider-row">ε = ${levelState.eps.toFixed(2)}<input type="range" min="0.05" max="1" step="0.01" value="${levelState.eps}" oninput="levelState.eps=+this.value;this.previousSibling.textContent='ε = '+levelState.eps.toFixed(2);checkL0();renderPanel()"></div>`;
-    h+=`<div class="slider-row">δ = ${levelState.delta.toFixed(2)}<input type="range" min="0.05" max="1" step="0.01" value="${levelState.delta}" oninput="levelState.delta=+this.value;this.previousSibling.textContent='δ = '+levelState.delta.toFixed(2);checkL0();renderPanel()"></div>`;
-  }
-  if(li===1){
-    h+=`<div class="slider-row">x 位置 = ${(-2+4*levelState.t).toFixed(2)}<input type="range" min="0" max="1" step="0.005" value="${levelState.t}" oninput="levelState.t=+this.value;checkL1();renderPanel()"></div>`;
-    h+=`<button class="act-btn" onclick="levelState.showSecant=!levelState.showSecant;if(levelState.showSecant)levelState.secantSeen=true;checkL1();renderPanel()">${levelState.showSecant?'隐藏割线':'显示割线逼近'}</button>`;
-    if(levelState.showSecant)h+=`<div class="slider-row">h = ${levelState.secH.toFixed(2)}<input type="range" min="0.01" max="2" step="0.01" value="${levelState.secH}" oninput="levelState.secH=+this.value;renderPanel()"></div>`;
-  }
-  if(li===2){
-    h+=`<div class="ctrl-row"><button onclick="levelState.mode='chain';renderPanel()" style="${levelState.mode==='chain'?'background:#3b82f6;color:#fff':''}">链式法则</button><button onclick="levelState.mode='product';renderPanel()" style="${levelState.mode==='product'?'background:#3b82f6;color:#fff':''}">乘法法则</button></div>`;
-    if(levelState.mode==='chain'){
-      const examples=['sin(x²)','eˣ²','cos(3x)'];
-      h+=`<div style="margin-top:8px;font-size:13px;color:#94a3b8">示例 ${levelState.chainIdx+1}/3: f(x) = ${examples[levelState.chainIdx]}</div>`;
-      h+=`<button class="act-btn" onclick="nextChain()">完成此示例 ✓</button>`;
-    }else{
-      const examples=['x²·sin(x)','eˣ·cos(x)'];
-      h+=`<div style="margin-top:8px;font-size:13px;color:#94a3b8">示例 ${levelState.prodIdx+1}/2: f(x) = ${examples[levelState.prodIdx]}</div>`;
-      h+=`<button class="act-btn" onclick="nextProd()">完成此示例 ✓</button>`;
+    // x slider + f(x) display (all phases)
+    c+='<div class="slider-row"><span class="sl" id="lbl-x0">x\u2006=\u2006'+s.x0.toFixed(4)+'</span><input type=range min=-4 max=4 step=0.001 value="'+s.x0+'" oninput="sliderDrag(\'x0\',this.value)" onchange="this.blur();renderPanel()"></div>';
+    const fv=Math.abs(s.x0)<1e-6?'未定义 (0÷0)':f0(s.x0).toFixed(6);
+    c+='<div id="fv-display" style="margin:8px 0;padding:8px 10px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-family:monospace;font-size:14px">f('+s.x0.toFixed(4)+') = '+fv+'</div>';
+    // Trail table
+    if(s.trail.length>0){
+      c+='<div style="font-size:12px;color:var(--text-muted);margin:6px 0">逼近记录：</div>';
+      c+='<div style="max-height:120px;overflow-y:auto;font-family:monospace;font-size:12px;line-height:1.8">';
+      for(const tr of s.trail){
+        const tc=Math.abs(tr.x)<0.1?'#f59e0b':'var(--text-muted)';
+        c+='<div style="color:'+tc+'">x='+tr.x.toFixed(4)+' → f(x)='+tr.fx.toFixed(6)+'</div>';
+      }
+      c+='</div>';
     }
-    h+=`<button class="act-btn" style="background:${levelState.showCompare?'#7c3aed':'linear-gradient(135deg,#3b82f6,#60a5fa)'}" onclick="levelState.showCompare=!levelState.showCompare;if(levelState.showCompare)completeObj(2);renderPanel()">${levelState.showCompare?'隐藏对比':'对比原函数与导函数'}</button>`;
+    if(s.phase===0){
+      c+='<button class="act-btn" style="margin-top:6px;background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#000" onclick="recordTrail()">📌 记录当前点</button>';
+      c+='<div style="margin-top:10px;font-size:13px;color:#f59e0b">💡 试试把 x 移到 0.1、0.01、-0.1、-0.01…… 每次点"记录"，看看 f(x) 在逼近什么？</div>';
+    }
+    if(s.phase>=1&&s.phase<2){
+      c+='<button class="act-btn" style="margin-top:6px;background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#000" onclick="recordTrail()">📌 记录当前点</button>';
+    }
+    // Phase 1: reveal — unit circle squeeze
+    if(s.phase>=1&&!s.revealed){
+      c+='<button class="act-btn" style="margin-top:10px;background:linear-gradient(135deg,#7c3aed,#a78bfa)" onclick="levelState.revealed=true;completeObj(1);renderPanel();draw()">🔍 揭秘：为什么是这个数？</button>';
+    }
+    if(s.revealed){
+      c+='<div class="learn-box" style="margin-top:10px">🔑 <b>单位圆夹逼揭秘</b><br><br>';
+      c+='在单位圆上，角度 θ 对应：<br>';
+      c+='• <b style="color:#3b82f6">弦长</b> sin(θ) &lt; <b style="color:#f59e0b">弧长</b> θ &lt; <b style="color:#ef4444">切线</b> tan(θ)<br><br>';
+      c+='三边同除以 sin(θ)：<br>';
+      c+='1 &lt; θ/sin(θ) &lt; 1/cos(θ)<br><br>';
+      c+='取倒数（不等号翻转）：<br>';
+      c+='cos(θ) &lt; <b>sin(θ)/θ</b> &lt; 1<br><br>';
+      c+='当 θ→0 时，cos(θ)→1，右边也是 1。<br>';
+      c+='被夹在中间的 sin(θ)/θ 只能 → <b style="color:#22c55e;font-size:18px">1</b><br><br>';
+      c+='这就是<b>夹逼定理</b>：代数化简不了的极限，用几何"夹"出来！</div>';
+      if(s.phase<2){
+        c+='<button class="act-btn" style="margin-top:8px;background:linear-gradient(135deg,#3b82f6,#60a5fa)" onclick="startEpsDelta()">🎯 进入 ε-δ 挑战</button>';
+      }
+    }
+    // Phase 2: ε-δ challenge (3 rounds with decreasing ε)
+    if(s.phase>=2){
+      const epsRounds=[0.05,0.02,0.005];
+      const maxDeltas=[1.00,0.60,0.30];
+      const round=s.epsRound||0;
+      const targetEps=epsRounds[Math.min(round,2)];
+      const sliderMax=maxDeltas[Math.min(round,2)];
+      c+='<div style="margin-top:12px;padding:10px;border-radius:8px;background:var(--concept-bg);border:1px solid var(--concept-border)">';
+      c+='<div style="font-size:13px;color:var(--sv);margin-bottom:6px">⚡ ε-δ 挑战 — 第 '+(round+1)+'/3 轮</div>';
+      c+='<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">';
+      c+='给定 <b style="color:#f59e0b">ε = '+targetEps+'</b>，拖动 δ 使 |x|<δ 时 |f(x)−1| < ε</div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-delta">δ\u2006=\u2006'+s.delta.toFixed(3)+'</span><input type=range min=0.01 max="'+sliderMax.toFixed(2)+'" step=0.005 value="'+s.delta+'" oninput="sliderDrag(\'delta\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      s.eps=targetEps;
+      const boundaryErr=Math.max(Math.abs(f0(s.delta)-1),Math.abs(f0(-s.delta)-1));
+      const dOk=s.delta>0.005&&boundaryErr<targetEps;
+      const errColor=dOk?'#22c55e':'#ef4444';
+      c+='<div style="margin-top:4px;font-size:12px">|f(±δ)−1| = <span style="color:'+errColor+'">'+boundaryErr.toFixed(6)+'</span> '+(dOk?'<':'≥')+' ε = '+targetEps+'</div>';
+      if(dOk){
+        c+='<div style="margin-top:6px;font-size:13px;color:#22c55e">✅ 第 '+(round+1)+' 轮通过！</div>';
+        if(round<2){
+          c+='<button class="act-btn" style="margin-top:4px" onclick="levelState.epsRound='+(round+1)+';levelState.delta='+maxDeltas[round+1]+';renderPanel()">下一轮 → ε = '+epsRounds[round+1]+'</button>';
+        }else{
+          c+='<div style="margin-top:6px;font-size:12px;color:#22c55e">🎉 三轮全过！无论 ε 多小，总能找到 δ — 这就是极限存在的含义</div>';
+        }
+      }else{
+        c+='<div style="margin-top:4px;font-size:11px;color:var(--text-muted)">💡 把 δ 往左拉，缩小范围让 f(x) 更接近 1</div>';
+      }
+      c+='</div>';
+    }
   }
+  // ---- L1: 连续性 ----
+  if(li===1){
+    if(s.phase===0){
+      c+='<div class="slider-row"><span class="sl" id="lbl-contK">k\u2006=\u2006'+s.contK.toFixed(2)+'</span><input type=range min=-2 max=5 step=0.01 value="'+s.contK+'" oninput="sliderDrag(\'contK\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      c+='<div style="margin-top:6px;font-size:13px;font-variant-numeric:tabular-nums">';
+      c+='x→1 时两段都趋向: <b>1.00</b><br>';
+      c+='f(1) = k = <b>'+(Math.abs(s.contK-1)<0.1?'<span style="color:#22c55e">'+s.contK.toFixed(2)+' ✓ 接上了!</span>':'<span style="color:#ef4444">'+s.contK.toFixed(2)+' ✗ 还没接上</span>')+'</b></div>';
+      if(!obs[0])c+='<div style="margin-top:8px;padding:8px;border-radius:6px;background:var(--hint-bg);border:1px solid var(--hint-border);font-size:12px;color:var(--hint-text)">🔧 x² 在 x=1 时等于 1，2x−1 在 x=1 时也等于 1。<br>把 k 也调到 1，三段就能接上！</div>';
+    }
+    if(s.phase>=1){
+      c+='<div style="margin-top:8px;padding:10px;border-radius:8px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;color:var(--concept-text);line-height:1.8">';
+      c+='🔗 <b>揭秘：连续性三条件</b><br>';
+      c+='① f(a) 有定义<br>';
+      c+='② lim f(x) 存在（左右极限相等）<br>';
+      c+='③ f(a) = 极限值<br>';
+      c+='<span style="font-size:12px;opacity:0.8">三个全满足 → 连续；缺任何一个 → 间断</span></div>';
+      if(s.funcIdx===0){
+        c+='<div style="margin-top:10px;padding:8px 10px;border-radius:6px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);font-size:12px;line-height:1.6">';
+        c+='<b style="color:#22c55e">✓ 函数①（刚才修好的）</b><br>';
+        c+='左右极限都 = 1，只是 f(1) 定义错了。<br>改了 k=1 就连续了——这叫<b>"可修复间断"</b>。</div>';
+        if(!obs[1]){
+          c+='<div style="margin-top:8px;font-size:12px;color:var(--text-sub)">但如果左右极限<b>本身就不等</b>呢？👇</div>';
+          c+='<button class="act-btn" onclick="switchContFunc(1)">🔍 切换到函数② 看看</button>';
+        }
+      }
+      if(s.funcIdx===1){
+        c+='<div style="margin-top:10px;padding:8px 10px;border-radius:6px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);font-size:12px;line-height:1.6">';
+        c+='<b style="color:#ef4444">✗ 函数② f(x) = |x|/x</b><br>';
+        c+='左极限 = −1，右极限 = +1，两边"跳"了。<br>';
+        c+='条件②就不满足——无论 f(0) 定义成什么都没用。<br>';
+        c+='这叫<b>"跳跃间断"</b>，无法修复。</div>';
+        if(!obs[1])c+='<button class="act-btn" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)" onclick="completeObj(1);renderPanel()">我懂了：左右极限不等 → 不可修复</button>';
+      }
+      if(obs[1]&&s.phase<2)c+='<button class="act-btn" style="margin-top:8px;background:linear-gradient(135deg,#3b82f6,#60a5fa)" onclick="levelState.phase=2;levelState.funcIdx=0;levelState.contK=1;renderPanel();draw()">🎯 进入 ε-δ 精确验证</button>';
+    }
+    if(s.phase>=2){
+      var epsList=[0.5,0.1,0.02];
+      var eps=epsList[s.epsRound]||0.02;
+      c+='<div style="margin-top:12px;padding:10px;border-radius:8px;background:var(--quiz-bg);border:1px solid var(--quiz-border);font-size:13px;line-height:1.8">';
+      c+='🎯 <b>ε-δ 验证</b> (第 '+(s.epsRound+1)+'/3 轮)<br>';
+      c+='在 x=1 处验证连续性：<br>';
+      c+='给定 ε = '+eps+'（紫色带）<br>';
+      c+='找 δ 使 |x−1|<δ ⟹ |f(x)−1|<ε</div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-contDelta">δ\u2006=\u2006'+s.contDelta.toFixed(3)+'</span><input type=range min=0.001 max=1 step=0.001 value="'+s.contDelta+'" oninput="sliderDrag(\'contDelta\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      var maxE=contL1Err(s.contDelta);
+      c+='<div style="margin-top:4px;font-size:12px;font-variant-numeric:tabular-nums">δ 内最大偏差: '+maxE.toFixed(4)+(maxE<eps?' <span style="color:#22c55e">✅ < ε</span>':' <span style="color:#ef4444">❌ ≥ ε</span>')+'</div>';
+      c+='</div>';
+    }
+  }
+  // ---- L2: 导数与切线 ----
+  if(li===2){
+    const x=-2+4*s.t;
+    const slope=(f1(x+s.h)-f1(x))/s.h;
+    const tangentSlope=f1d(x);
+    if(s.phase===0){
+      // desc already covers scene description
+      c+='<div class="slider-row"><span class="sl" id="lbl-t">x位置\u2006=\u2006'+x.toFixed(2)+'</span><input type=range min=0 max=1 step=0.001 value="'+s.t+'" oninput="sliderDrag(\'t\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-h">两点间距\u2006=\u2006'+s.h.toFixed(2)+'</span><input type=range min=0.01 max=2 step=0.01 value="'+s.h+'" oninput="sliderDrag(\'h\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      c+='<div style="margin-top:8px;font-size:13px;font-variant-numeric:tabular-nums">';
+      c+='<span style="color:#a78bfa">紫线斜率</span>: '+slope.toFixed(4)+'<br><span style="color:#f59e0b">真实斜率</span>: '+tangentSlope.toFixed(4)+'<br>差距: '+Math.abs(slope-tangentSlope).toFixed(4)+'</div>';
+      if(s.trail.length>0){
+        c+='<div style="margin-top:8px;font-size:11px;color:var(--text-sub)">';
+        s.trail.slice(-4).forEach(function(r){c+='<div>h='+r.h.toFixed(3)+' 两点='+r.sec.toFixed(4)+' 真实='+r.tan.toFixed(4)+'</div>';});
+        c+='</div>';
+      }
+      c+='<button class="act-btn" onclick="recordSecant()">📝 记录</button>';
+      if(!obs[0])c+='<div style="margin-top:8px;padding:8px;border-radius:6px;background:var(--hint-bg);border:1px solid var(--hint-border);font-size:12px;color:var(--hint-text)">🔧 缩小「两点间距」到最小，看紫色线会变成什么</div>';
+    }
+    if(s.phase>=1){
+      c+='<div style="margin-top:8px;padding:10px;border-radius:8px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;color:var(--concept-text);line-height:1.8">';
+      c+='📈 <b>揭秘</b>：f\'(x) = lim<sub>h→0</sub> [f(x+h)−f(x)]/h<br>';
+      c+='f(x)=x³−3x 的导函数 f\'(x)=3x²−3<br>';
+      c+='斜率=0 的点是极值点！</div>';
+      if(!obs[1]){
+        var atExtremum=Math.abs(tangentSlope)<0.3;
+        c+='<div style="margin-top:4px;font-size:12px;color:var(--text-sub)">当前斜率: '+tangentSlope.toFixed(2)+(atExtremum?' ← 接近 0！':'')+'</div>';
+        c+='<button class="act-btn" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)" onclick="findExtremum()">确认：这是极值点！</button>';
+      }
+      c+='<div class="slider-row"><span class="sl" id="lbl-t">x位置\u2006=\u2006'+x.toFixed(2)+'</span><input type=range min=0 max=1 step=0.001 value="'+s.t+'" oninput="sliderDrag(\'t\',this.value)" onchange="this.blur();renderPanel()"></div>';
+    }
+    if(s.phase>=2){
+      const targets=[{slope:0,tol:0.5,desc:'斜率=0（极值点）'},{slope:9,tol:0.3,desc:'斜率=9'},{slope:-3,tol:0.2,desc:'斜率=−3'}];
+      const tgt=targets[s.matchRound]||targets[2];
+      c+='<div style="margin-top:12px;padding:10px;border-radius:8px;background:var(--quiz-bg);border:1px solid var(--quiz-border);font-size:13px;line-height:1.8">';
+      c+='🎯 <b>斜率匹配</b> (第 '+(s.matchRound+1)+'/3 轮)<br>';
+      c+='找 x 使 f\'(x) ≈ '+tgt.slope+'（容差 ±'+tgt.tol+'）<br>';
+      c+='当前 f\'(x) = '+tangentSlope.toFixed(4);
+      const hit=Math.abs(tangentSlope-tgt.slope)<tgt.tol;
+      c+=' '+(hit?'✅':'❌');
+      c+='<div class="slider-row"><span class="sl" id="lbl-t">x位置\u2006=\u2006'+x.toFixed(2)+'</span><input type=range min=0 max=1 step=0.001 value="'+s.t+'" oninput="sliderDrag(\'t\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      c+='</div>';
+    }
+  }
+  // ---- L3: 求导法则 ----
   if(li===3){
-    h+=`<div class="slider-row">矩形数 n = ${levelState.n}<input type="range" min="1" max="100" step="1" value="${levelState.n}" oninput="levelState.n=+this.value;checkL3();renderPanel()"></div>`;
-    const mnames=['左端点','右端点','中点'];
-    h+=`<div class="ctrl-row">${mnames.map((m,i)=>`<button onclick="levelState.method=${i};levelState.methodsSeen.add(${i});checkL3();renderPanel()" style="${levelState.method===i?'background:#3b82f6;color:#fff':''}">${m}</button>`).join('')}</div>`;
-    const exact=2;const approx=riemannSumRaw(levelState.n,levelState.method);const err=Math.abs(approx-exact)/exact*100;
-    h+=`<div style="margin-top:8px;font-size:12px;color:#94a3b8">近似值: ${approx.toFixed(4)} | 精确值: 2.0000 | 误差: ${err.toFixed(2)}%</div>`;
+    const x=s.ruleX;
+    const actual=Math.cos(x*x)*2*x; // d/dx sin(x²)
+    const predicted=s.ruleOuter*s.ruleInner;
+    if(s.phase===0){
+      c+='<div style="margin-bottom:8px;font-size:13px;line-height:1.6">试试把斜率拆成"<span style="color:#f59e0b">外层变化</span> × <span style="color:#22c55e">内层变化</span>"来预测！<br>在 <b>2 个不同的 x</b> 处匹配成功即可过关。</div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-ruleX">x\u2006=\u2006'+x.toFixed(2)+'</span><input type=range min=0.5 max=3 step=0.01 value="'+x+'" oninput="sliderDrag(\'ruleX\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-ruleOuter" style="color:#f59e0b">外层变化\u2006=\u2006'+s.ruleOuter.toFixed(2)+'</span><input type=range min=-3 max=3 step=0.01 value="'+s.ruleOuter+'" oninput="sliderDrag(\'ruleOuter\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-ruleInner" style="color:#22c55e">内层变化\u2006=\u2006'+s.ruleInner.toFixed(2)+'</span><input type=range min=0 max=6 step=0.01 value="'+s.ruleInner+'" oninput="sliderDrag(\'ruleInner\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      c+='<div style="margin-top:8px;font-size:13px;font-variant-numeric:tabular-nums">';
+      c+='<span style="color:#3b82f6">实际斜率</span>: '+actual.toFixed(4)+'<br>';
+      c+='<span style="color:#f59e0b">你的预测</span> (<span style="color:#f59e0b">外</span>×<span style="color:#22c55e">内</span>): '+predicted.toFixed(4)+'<br>';
+      const gap=Math.abs(actual-predicted);
+      c+='差距: <span style="color:'+(gap<0.1?'#22c55e':'#ef4444')+'">'+gap.toFixed(4)+'</span></div>';
+      c+='<div style="margin-top:4px;font-size:12px;color:var(--text-sub)">已匹配: '+s.matchCount+'/2</div>';
+      if(!obs[0])c+='<div style="margin-top:8px;padding:8px;border-radius:6px;background:var(--hint-bg);border:1px solid var(--hint-border);font-size:12px;color:var(--hint-text)">提示：这个函数有两层嵌套。外面那层的变化率和内层的变化率分别是多少？试试不同的 x 位置。</div>';
+    }
+    if(s.phase>=1){
+      c+='<div style="margin-top:8px;padding:10px;border-radius:8px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;color:var(--concept-text);line-height:1.8">';
+      c+='<b style="color:#7c3aed">揭秘</b>：你刚才做的就是<b>链式法则</b>！<br>';
+      c+='⛓️ <b>链式法则</b>: (f∘g)\' = f\'(g(x)) · g\'(x)<br>';
+      c+='✖️ <b>乘法法则</b>: (fg)\' = f\'g + fg\'</div>';
+      const cfs=s.chainFuncs,pfs=s.prodFuncs;
+      c+='<div style="margin-top:8px;font-size:13px">';
+      c+='<b>链式</b>: '+cfs.map(function(e,i){return '<span style="cursor:pointer;padding:2px 6px;border-radius:4px;'+(i===s.chainIdx?'background:#3b82f6;color:#fff':'color:var(--text-sub)')+'" onclick="showChain('+i+')">'+e.label+'</span>';}).join(' ')+'<br>';
+      c+='<b>乘法</b>: '+pfs.map(function(e,i){return '<span style="cursor:pointer;padding:2px 6px;border-radius:4px;'+(i===s.prodIdx?'background:#3b82f6;color:#fff':'color:var(--text-sub)')+'" onclick="showProd('+i+')">'+e.label+'</span>';}).join(' ');
+      c+='</div>';
+      // 当前选中的例子详情
+      var cf=cfs[s.chainIdx];
+      c+='<div style="margin-top:6px;padding:8px;border-radius:6px;background:var(--hint-bg);border:1px solid var(--hint-border);font-size:12px;line-height:1.8">';
+      c+='<b>'+cf.label+'</b> → 外层 '+cf.outer+'，内层 '+cf.inner+'<br>';
+      c+='外层导数 = '+cf.outerD+'，内层导数 = '+cf.innerD+'<br>';
+      c+='结果 = '+cf.outerD+' × '+cf.innerD+'</div>';
+      if(!obs[1]&&s.examplesSeen>=3)c+='<button class="act-btn" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)" onclick="completeObj(1);levelState.phase=2;levelState.ruleAns=0;renderPanel()">我理解了两大法则！</button>';
+    }
+    if(s.phase>=2){
+      const rounds=[{fn:'cos(3x)',x:Math.PI/6,ans:-3,tol:0.5,label:'cos(3x), x=π/6',rule:'链式'},
+        {fn:'x·eˣ',x:0,ans:1,tol:0.3,label:'x·eˣ, x=0',rule:'乘法'},
+        {fn:'sin(x)·cos(x)',x:Math.PI/4,ans:0,tol:0.2,label:'sin(x)·cos(x), x=π/4',rule:'乘法'}];
+      const ri=Math.min(s.matchRound,2);
+      const rd=rounds[ri];
+      c+='<div style="margin-top:12px;padding:10px;border-radius:8px;background:var(--quiz-bg);border:1px solid var(--quiz-border);font-size:13px;line-height:1.8">';
+      c+='🎯 <b>计算导数</b> (第 '+(ri+1)+'/3 轮) — 用<b>'+rd.rule+'法则</b><br>';
+      c+='f(x) = '+rd.label+'<br>f\'(x) = ？';
+      c+='<div class="slider-row"><span class="sl" id="lbl-ruleAns">你的答案\u2006=\u2006'+s.ruleAns.toFixed(2)+'</span><input type=range min=-5 max=5 step=0.01 value="'+s.ruleAns+'" oninput="sliderDrag(\'ruleAns\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      const hit=Math.abs(s.ruleAns-rd.ans)<rd.tol;
+      c+='<div style="font-size:12px;margin-top:4px">'+(hit?'✅ 正确！(容差 ±'+rd.tol+')':'差距: '+Math.abs(s.ruleAns-rd.ans).toFixed(2)+' (需 <'+rd.tol+')')+'</div>';
+      c+='</div>';
+    }
   }
+  // ---- L4: 极值与优化 ----
   if(li===4){
-    const fnames=['sin(x)','x²','cos(x)'];
-    h+=`<div class="ctrl-row">${fnames.map((f,i)=>`<button onclick="levelState.func=${i};levelState.funcsSeen.add(${i});levelState.animX=0;checkL4();renderPanel()" style="${levelState.func===i?'background:#3b82f6;color:#fff':''}">${f}</button>`).join('')}</div>`;
-    h+=`<button class="act-btn" onclick="levelState.playing=!levelState.playing;renderPanel()">${levelState.playing?'⏸ 暂停':'▶ 播放累积动画'}</button>`;
-    h+=`<button class="act-btn" onclick="verifyFTC()" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">验证 F\'(x)=f(x)</button>`;
-    h+=`<div style="margin-top:6px;font-size:12px;color:#94a3b8">已验证 ${levelState.verified}/3 个点</div>`;
+    const x=s.optX;
+    const fx=x*x*x-6*x*x+9*x+1;
+    const fdx=3*x*x-12*x+9;
+    const fddx=6*x-12;
+    if(s.phase===0){
+      c+='<div style="margin-bottom:8px;font-size:13px;line-height:1.6">这条曲线有<b>高点</b>和<b>低点</b>。<br>拖动红点，找到曲线"最高"和"最低"的位置。</div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-optX">x\u2006=\u2006'+x.toFixed(2)+'</span><input type=range min=-1 max=5 step=0.01 value="'+x+'" oninput="sliderDrag(\'optX\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      c+='<div style="margin-top:8px;font-size:13px;font-variant-numeric:tabular-nums">';
+      c+='f(x) = '+fx.toFixed(2)+'<br>';
+      c+='切线斜率 = '+(Math.abs(fdx)<0.3?'<span style="color:#22c55e">≈0 🎯 切线水平了!</span>':fdx.toFixed(2))+'</div>';
+      if(s.foundMax)c+='<div style="color:#22c55e;font-size:12px;margin-top:4px">✅ 找到极大值点 x≈1</div>';
+      if(s.foundMin)c+='<div style="color:#22c55e;font-size:12px;margin-top:4px">✅ 找到极小值点 x≈3</div>';
+      if(!obs[0])c+='<div style="margin-top:8px;padding:8px;border-radius:6px;background:var(--hint-bg);border:1px solid var(--hint-border);font-size:12px;color:var(--hint-text)">🔧 高点和低点的特征：切线变成水平（斜率≈0）</div>';
+    }
+    if(s.phase>=1){
+      c+='<div style="margin-top:8px;padding:10px;border-radius:8px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;color:var(--concept-text);line-height:1.8">';
+      c+='🎯 <b>二阶导判别</b>：<br>f\'\'(x)<0 → 极大值 (∩)<br>f\'\'(x)>0 → 极小值 (∪)</div>';
+      c+='<div style="margin-top:8px;font-size:13px;font-variant-numeric:tabular-nums">f\'\'(x) = '+fddx.toFixed(2)+' → '+(fddx<-0.5?'极大 ∩':fddx>0.5?'极小 ∪':'拐点')+'</div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-optX">x\u2006=\u2006'+x.toFixed(2)+'</span><input type=range min=-1 max=5 step=0.01 value="'+x+'" oninput="sliderDrag(\'optX\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      if(!obs[1]&&s.classified>=3)c+='<button class="act-btn" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)" onclick="completeObj(1);levelState.phase=2;levelState.boxX=1.0;renderPanel();draw()">我理解了二阶导判别！</button>';
+    }
+    if(s.phase>=2){
+      const Ls=[12,10,8];
+      const L=Ls[s.boxRound]||8;
+      s.boxL=L;
+      const optimalX=L/6;
+      const vol=s.boxX*(L-2*s.boxX)*(L-2*s.boxX);
+      const maxVol=optimalX*(L-2*optimalX)*(L-2*optimalX);
+      c+='<div style="margin-top:12px;padding:10px;border-radius:8px;background:var(--quiz-bg);border:1px solid var(--quiz-border);font-size:13px;line-height:1.8">';
+      c+='🎯 <b>开放盒子</b> (第 '+(s.boxRound+1)+'/3 轮)<br>';
+      c+='正方形边长 L='+L+'，切角 x 折成无盖盒子<br>V(x)=x(L−2x)²';
+      c+='<div class="slider-row"><span class="sl" id="lbl-boxX">切割\u2006=\u2006'+s.boxX.toFixed(2)+'</span><input type=range min=0.1 max="'+(L/2-0.1).toFixed(1)+'" step=0.01 value="'+s.boxX+'" oninput="sliderDrag(\'boxX\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      const tol=[0.3,0.2,0.15][s.boxRound]||0.15;
+      const hit=Math.abs(s.boxX-optimalX)<tol;
+      c+='<div style="font-size:12px;font-variant-numeric:tabular-nums;margin-top:4px">体积: '+vol.toFixed(2)+' / 最大: '+maxVol.toFixed(2)+' '+(hit?'✅':'')+'</div>';
+      c+='</div>';
+    }
   }
+  // ---- L5: 积分与面积 ----
   if(li===5){
-    const fnames=['sin(x)','cos(x)','eˣ'];
-    h+=`<div class="ctrl-row">${fnames.map((f,i)=>`<button onclick="levelState.func=${i};levelState.funcsSeen.add(${i});checkL5();renderPanel()" style="${levelState.func===i?'background:#3b82f6;color:#fff':''}">${f}</button>`).join('')}</div>`;
-    h+=`<div class="slider-row">泰勒项数: ${levelState.terms}<input type="range" min="1" max="15" step="1" value="${levelState.terms}" oninput="levelState.terms=+this.value;checkL5();renderPanel()"></div>`;
+    const n=Math.round(s.n);
+    const area=riemannSum(n,s.method,s.intFunc);
+    const exact=[2,1/3,Math.E*Math.E-1,Math.PI/2][s.intFunc]||2;
+    if(s.phase===0){
+      c+='<div style="margin-bottom:8px;font-size:13px;line-height:1.6">曲线下方的<b style="color:#3b82f6">蓝色矩形</b>在估算面积。<br>矩形越多，估算越准确——但精确值是多少？</div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-n">矩形数 n\u2006=\u2006'+n+'</span><input type=range min=1 max=100 step=1 value="'+n+'" oninput="sliderDrag(\'n\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      c+='<div style="margin-top:8px;font-size:13px;font-variant-numeric:tabular-nums" id="live-display">';
+      c+='近似值: '+area.toFixed(4)+'<br>';
+      c+='精确值: '+(s.phase===0&&Math.abs(area-exact)/exact>0.05?'???':exact.toFixed(4))+'<br>';
+      c+='误差: '+(Math.abs(area-exact)/exact*100).toFixed(1)+'%</div>';
+      if(!obs[0])c+='<div style="margin-top:8px;padding:8px;border-radius:6px;background:var(--hint-bg);border:1px solid var(--hint-border);font-size:12px;color:var(--hint-text)">🔧 拖到 n=50 以上，精确值就会揭晓</div>';
+    }
+    if(s.phase>=1){
+      c+='<div style="margin-top:8px;padding:10px;border-radius:8px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;color:var(--concept-text);line-height:1.8">';
+      c+='📊 <b>三种方法对比</b></div>';
+      c+='<div class="ctrl-row">';
+      ['左端点','右端点','中点'].forEach(function(name,i){
+        c+='<button style="'+(s.method===i?'background:rgba(59,130,246,.2);font-weight:bold':'')+'" onclick="setMethod('+i+')">'+name+'</button>';
+      });
+      c+='</div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-n">矩形数 n\u2006=\u2006'+n+'</span><input type=range min=1 max=100 step=1 value="'+n+'" oninput="sliderDrag(\'n\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      const areas=[riemannSum(n,0,0),riemannSum(n,1,0),riemannSum(n,2,0)];
+      c+='<div style="font-size:12px;margin-top:4px;font-variant-numeric:tabular-nums">左:'+areas[0].toFixed(4)+' 右:'+areas[1].toFixed(4)+' 中:'+areas[2].toFixed(4)+'</div>';
+      if(!obs[1]&&s.methodsSeen.size>=3)c+='<button class="act-btn" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)" onclick="completeObj(1);levelState.phase=2;levelState.intFunc=1;levelState.predVal=0.5;levelState.hasPredicted=false;renderPanel();draw()">中点法最准！</button>';
+    }
+    if(s.phase>=2){
+      const funcs=[{name:'∫₀¹ x² dx',exact:1/3,tol:0.05,fi:1},{name:'∫₀² eˣ dx',exact:Math.E*Math.E-1,tol:0.1,fi:2},{name:'∫₋₁¹ √(1−x²) dx',exact:Math.PI/2,tol:0.05,fi:3}];
+      const ri=Math.min(s.matchRound,2);
+      const rd=funcs[ri];
+      c+='<div style="margin-top:12px;padding:10px;border-radius:8px;background:var(--quiz-bg);border:1px solid var(--quiz-border);font-size:13px;line-height:1.8">';
+      c+='🎯 <b>预测积分值</b> (第 '+(ri+1)+'/3 轮)<br>';
+      c+=rd.name+' = ?';
+      c+='<div class="slider-row"><span class="sl" id="lbl-predVal">预测值\u2006=\u2006'+s.predVal.toFixed(2)+'</span><input type=range min=0 max=8 step=0.01 value="'+s.predVal+'" oninput="sliderDrag(\'predVal\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-n">矩形数 n\u2006=\u2006'+Math.round(s.n)+'</span><input type=range min=1 max=100 step=1 value="'+s.n+'" oninput="sliderDrag(\'n\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      var curArea=riemannSum(Math.round(s.n),s.method,rd.fi);
+      c+='<div style="font-size:12px;margin-top:4px;color:var(--text-sub)">当前近似值: '+curArea.toFixed(4)+'</div>';
+      if(!s.hasPredicted)c+='<button class="act-btn" onclick="submitPrediction()">提交预测</button>';
+      if(s.hasPredicted){
+        const hit=Math.abs(s.predVal-rd.exact)<rd.tol;
+        c+='<div style="font-size:12px;margin-top:4px">精确值: '+rd.exact.toFixed(4)+' '+(hit?'✅ 预测准确！':'❌ 差距: '+Math.abs(s.predVal-rd.exact).toFixed(4)+' (需 <'+rd.tol+')')+'</div>';
+        if(s.matchRound<3)c+='<button class="act-btn" onclick="nextPredRound()">下一轮</button>';
+      }
+      c+='</div>';
+    }
   }
+  // ---- L6: 微积分基本定理 ----
   if(li===6){
-    const eqnames=["y'=x-y","y'=sin(x)·y","y'=y(1-y)"];
-    h+=`<div class="ctrl-row">${eqnames.map((e,i)=>`<button onclick="levelState.eq=${i};levelState.eqsSeen.add(${i});checkL6();renderPanel()" style="${levelState.eq===i?'background:#3b82f6;color:#fff':''}">${e}</button>`).join('')}</div>`;
-    h+=`<div style="margin-top:8px;font-size:12px;color:#94a3b8">拖动画布上的红点设置初始条件<br>初始点: (${levelState.ix.toFixed(1)}, ${levelState.iy.toFixed(1)})</div>`;
-    h+=`<button class="act-btn" onclick="levelState.longTerm=true;checkL6();renderPanel()">观察长期行为</button>`;
+    const x=s.ftcX;
+    const fVal=ftcFunc(x,s.func);
+    const FVal=ftcIntegral(x,s.func);
+    if(s.phase===0){
+      c+='<div style="margin-bottom:8px;font-size:13px;line-height:1.6"><span style="color:#3b82f6">蓝色曲线</span> f(x) 的值在变化。<br><span style="color:#22c55e">绿色曲线</span> F(x) 是从 0 到 x 的面积累积。<br>拖动 x，观察：<b>f(x) 大</b>时 F(x) 涨得快？</div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-ftcX">x\u2006=\u2006'+x.toFixed(2)+'</span><input type=range min=0 max=6.28 step=0.01 value="'+x+'" oninput="sliderDrag(\'ftcX\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      c+='<div style="margin-top:8px;font-size:13px;font-variant-numeric:tabular-nums">';
+      c+='f(x) = '+fVal.toFixed(4)+' <span style="font-size:11px;opacity:0.6">（当前高度）</span><br>';
+      c+='F(x) = '+FVal.toFixed(4)+' <span style="font-size:11px;opacity:0.6">（累积面积）</span></div>';
+      if(s.trail.length>0){
+        c+='<div style="margin-top:8px;font-size:11px;color:var(--text-sub)">';
+        s.trail.slice(-5).forEach(function(r){c+='<div>x='+r.x.toFixed(2)+' F='+r.F.toFixed(4)+' f='+r.f.toFixed(4)+'</div>';});
+        c+='</div>';
+      }
+      c+='<button class="act-btn" onclick="recordFTC()">📝 记录当前值</button>';
+      if(!obs[0])c+='<div style="margin-top:8px;padding:8px;border-radius:6px;background:var(--hint-bg);border:1px solid var(--hint-border);font-size:12px;color:var(--hint-text)">🔧 f(x) 最大时，F(x) 涨最快；f(x)=0 时，F(x) 停止增长</div>';
+    }
+    if(s.phase>=1){
+      c+='<div style="margin-top:8px;padding:10px;border-radius:8px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;color:var(--concept-text);line-height:1.8">';
+      c+='🔄 <b>F\'(x) = f(x)</b><br>面积函数的变化率 = 原函数的值</div>';
+      const funcNames=['sin(t)','t²','cos(t)'];
+      c+='<div class="ctrl-row">';
+      funcNames.forEach(function(name,i){
+        c+='<button style="'+(s.func===i?'background:rgba(59,130,246,.2);font-weight:bold':'')+'" onclick="switchFTCFunc('+i+')">'+name+'</button>';
+      });
+      c+='</div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-ftcX">x\u2006=\u2006'+x.toFixed(2)+'</span><input type=range min=0 max=6.28 step=0.01 value="'+x+'" oninput="sliderDrag(\'ftcX\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      c+='<div style="font-size:13px;margin-top:4px;font-variant-numeric:tabular-nums">F\'(x) ≈ '+numDeriv(x,s.func).toFixed(4)+' | f(x) = '+fVal.toFixed(4)+'</div>';
+      if(!obs[1]&&s.funcsSeen.size>=2)c+='<button class="act-btn" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)" onclick="completeObj(1);levelState.phase=2;levelState.ftcPred=0.5;renderPanel();draw()">我发现了：F\'(x) = f(x)！</button>';
+    }
+    if(s.phase>=2){
+      const rounds=[{func:0,x:Math.PI/2,ans:1,tol:0.15,label:'sin(t), x=π/2'},
+        {func:1,x:1.5,ans:2.25,tol:0.1,label:'t², x=1.5'},
+        {func:2,x:Math.PI/3,ans:0.5,tol:0.08,label:'cos(t), x=π/3'}];
+      const rd=rounds[s.verifyRound]||rounds[2];
+      c+='<div style="margin-top:12px;padding:10px;border-radius:8px;background:var(--quiz-bg);border:1px solid var(--quiz-border);font-size:13px;line-height:1.8">';
+      c+='🎯 <b>验证 FTC</b> (第 '+(s.verifyRound+1)+'/3 轮)<br>';
+      c+='f(t)='+rd.label+'<br>F\'(x) = ?';
+      c+='<div class="slider-row"><span class="sl" id="lbl-ftcPred">预测\u2006=\u2006'+s.ftcPred.toFixed(2)+'</span><input type=range min=-2 max=3 step=0.01 value="'+s.ftcPred+'" oninput="sliderDrag(\'ftcPred\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      const hit=Math.abs(s.ftcPred-rd.ans)<rd.tol;
+      c+='<div style="font-size:12px;margin-top:4px">'+(hit?'✅ 正确！F\'(x)=f(x)':'❌ 继续调整')+'</div>';
+      c+='</div>';
+    }
   }
-  // Learn box
-  if(ob.every(v=>v)){
-    h+=`<div class="learn-box">💡 <b>知识点</b><br>${learnTexts[li]}</div>`;
+  // ---- L7: 泰勒展开 ----
+  if(li===7){
+    const nTerms=Math.round(s.terms);
+    if(s.phase===0){
+      c+='<div style="margin-bottom:8px;font-size:13px;line-height:1.6"><span style="color:#3b82f6">蓝色</span>是 sin(x)，<span style="color:#ef4444">红色</span>是用多项式模仿它。<br>增加项数，让红线尽量贴合蓝线！</div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-terms">多项式项数:\u2006'+nTerms+'</span><input type=range min=1 max=15 step=1 value="'+nTerms+'" oninput="sliderDrag(\'terms\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      const x=2;
+      const err=Math.abs(Math.sin(x)-taylorApprox(x,nTerms,0));
+      c+='<div style="margin-top:8px;font-size:13px;font-variant-numeric:tabular-nums">';
+      c+='sin(2) = '+Math.sin(2).toFixed(6)+'<br>';
+      c+='多项式('+nTerms+'项) = '+taylorApprox(2,nTerms,0).toFixed(6)+'<br>';
+      c+='差距: '+err.toExponential(2)+'</div>';
+      if(!obs[0])c+='<div style="margin-top:8px;padding:8px;border-radius:6px;background:var(--hint-bg);border:1px solid var(--hint-border);font-size:12px;color:var(--hint-text)">🔧 1 项只是一条直线，加到 5 项以上看变化</div>';
+    }
+    if(s.phase>=1){
+      c+='<div style="margin-top:8px;padding:10px;border-radius:8px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;color:var(--concept-text);line-height:1.8">';
+      c+='🌀 <b>收敛半径</b>：有些展开只在有限范围内有效！<br>1/(1−x) 在 |x|>1 时发散</div>';
+      const funcNames=['sin(x)','cos(x)','eˣ','1/(1−x)'];
+      c+='<div class="ctrl-row" style="flex-wrap:wrap">';
+      funcNames.forEach(function(name,i){
+        c+='<button style="'+(s.func===i?'background:rgba(59,130,246,.2);font-weight:bold':'')+'" onclick="switchTaylorFunc('+i+')">'+name+'</button>';
+      });
+      c+='</div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-terms">泰勒项数:\u2006'+nTerms+'</span><input type=range min=1 max=15 step=1 value="'+nTerms+'" oninput="sliderDrag(\'terms\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      if(s.func===3&&nTerms>=5)c+='<div style="color:#ef4444;font-size:12px;margin-top:4px">⚠️ 在 x>1 处，项数越多误差反而越大！</div>';
+      if(!obs[1]&&s.boundaryFound)c+='<button class="act-btn" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)" onclick="completeObj(1);levelState.phase=2;levelState.termsPred=3;levelState.predRound=0;renderPanel();draw()">发现：逼近有边界！</button>';
+    }
+    if(s.phase>=2){
+      const rounds=[{func:0,x:2,target:0.1,ans:5,tol:2,label:'sin(2), 误差<0.1'},
+        {func:2,x:3,target:0.5,ans:8,tol:2,label:'e³, 误差<0.5'},
+        {func:1,x:Math.PI,target:0.01,ans:8,tol:2,label:'cos(π), 误差<0.01'}];
+      const rd=rounds[s.predRound]||rounds[2];
+      c+='<div style="margin-top:12px;padding:10px;border-radius:8px;background:var(--quiz-bg);border:1px solid var(--quiz-border);font-size:13px;line-height:1.8">';
+      c+='🎯 <b>预测项数</b> (第 '+(s.predRound+1)+'/3 轮)<br>';
+      c+=rd.label+'，需要几项？';
+      c+='<div class="slider-row"><span class="sl" id="lbl-termsPred">预测项数:\u2006'+Math.round(s.termsPred)+'</span><input type=range min=1 max=15 step=1 value="'+s.termsPred+'" oninput="sliderDrag(\'termsPred\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      const hit=Math.abs(Math.round(s.termsPred)-rd.ans)<=rd.tol;
+      c+='<div style="font-size:12px;margin-top:4px">'+(hit?'✅ 正确！':'❌ 继续调整')+'</div>';
+      c+='</div>';
+    }
   }
-  if(ob.every(v=>v)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-  if(ob.every(v=>v)&&li===6)h+=`${_summaryHTML()}`;
-  panel.innerHTML=h;
+  // ---- L8: 微分方程 ----
+  if(li===8){
+    if(s.phase===0){
+      c+='<div style="margin-bottom:8px;font-size:13px;line-height:1.6">画布上的<b>小箭头</b>是"方向场"——它们指示了曲线应该往哪个方向走。<br>你能顺着箭头画出轨迹吗？</div>';
+      c+='<div style="margin-top:4px;font-size:12px;color:var(--text-sub);font-variant-numeric:tabular-nums">起点: ('+s.ix.toFixed(1)+', '+s.iy.toFixed(1)+')</div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-deIy">y₀\u2006=\u2006'+s.iy.toFixed(1)+'</span><input type=range min=-2 max=5 step=0.1 value="'+s.iy+'" oninput="sliderDrag(\'deIy\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      if(s.guessing)c+='<div style="color:#f59e0b;font-size:12px;margin-top:4px">🖱️ 在画布上点击画出你预测的轨迹</div>';
+      else c+='<button class="act-btn" onclick="startGuess()">🎯 开始预测轨迹</button>';
+      if(s.showSolution)c+='<div style="color:#22c55e;font-size:12px;margin-top:4px">绿色曲线是真实解。对比你的预测！</div>';
+      else if(s.guessPath.length>3)c+='<button class="act-btn" style="background:linear-gradient(135deg,#22c55e,#4ade80)" onclick="revealDE()">揭示真实轨迹</button>';
+      c+='<div style="font-size:12px;margin-top:4px;color:var(--text-sub)">已预测: '+s.predictions+'/2 次</div>';
+      if(!obs[0])c+='<div style="margin-top:8px;padding:8px;border-radius:6px;background:var(--hint-bg);border:1px solid var(--hint-border);font-size:12px;color:var(--hint-text)">🔧 点"开始预测"，然后在画布上点击画出你猜的路径，再看看真实答案</div>';
+    }
+    if(s.phase>=1){
+      c+='<div style="margin-top:8px;padding:10px;border-radius:8px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;color:var(--concept-text);line-height:1.8">';
+      c+='💫 <b>方向场与平衡点</b>：<br>y\'=0 处是平衡点，稳定/不稳定取决于附近箭头方向</div>';
+      const eqNames=["y'=x−y","y'=sin(x)·y","y'=y(1−y)"];
+      c+='<div class="ctrl-row" style="flex-wrap:wrap">';
+      eqNames.forEach(function(name,i){
+        c+='<button style="'+(s.eq===i?'background:rgba(59,130,246,.2);font-weight:bold':'')+'" onclick="switchDE('+i+')">'+name+'</button>';
+      });
+      c+='</div>';
+      c+='<div class="slider-row"><span class="sl" id="lbl-deIy">y₀\u2006=\u2006'+s.iy.toFixed(1)+'</span><input type=range min=-2 max=5 step=0.1 value="'+s.iy+'" oninput="sliderDrag(\'deIy\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      c+='<div style="font-size:12px;margin-top:4px;color:var(--text-sub)">拖动 y₀ 观察不同初始条件的解</div>';
+      if(!obs[1]&&s.eqsSeen.size>=2&&s.positions.size>=4)c+='<button class="act-btn" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)" onclick="completeObj(1);levelState.phase=2;levelState.reverseRound=0;renderPanel();draw()">我理解了平衡点！</button>';
+    }
+    if(s.phase>=2){
+      const rounds=[{eq:0,desc:'y\'=x−y, t=5 时 y≈4',targetY:4,tol:0.5},
+        {eq:2,desc:'y\'=y(1−y), t=3 时 y>0.9',targetY:0.9,tol:0.3},
+        {eq:1,desc:'y\'=sin(x)·y, 解经过(2,1)',targetY:1,tol:0.3}];
+      const rd=rounds[s.reverseRound]||rounds[2];
+      c+='<div style="margin-top:12px;padding:10px;border-radius:8px;background:var(--quiz-bg);border:1px solid var(--quiz-border);font-size:13px;line-height:1.8">';
+      c+='🎯 <b>反推初始条件</b> (第 '+(s.reverseRound+1)+'/3 轮)<br>';
+      c+=rd.desc;
+      c+='<div class="slider-row"><span class="sl" id="lbl-deIy">y₀\u2006=\u2006'+s.iy.toFixed(1)+'</span><input type=range min=-2 max=5 step=0.1 value="'+s.iy+'" oninput="sliderDrag(\'deIy\',this.value)" onchange="this.blur();renderPanel()"></div>';
+      c+='<button class="act-btn" onclick="checkReverse()">检查结果</button>';
+      c+='</div>';
+    }
+  }
+  // Learn box (shown when all objectives complete)
+  if(obs.every(Boolean)){
+    c+='<div class="learn-box">'+learnTexts[li]+'</div>';
+    if(li<8)c+='<button class="act-btn" style="margin-top:8px" onclick="goLevel('+(li+1)+')">下一关 →</button>';
+    else c+='<button class="act-btn" style="margin-top:8px;background:linear-gradient(135deg,#22c55e,#4ade80)" onclick="showResult()">查看总结 🎉</button>';
+  }
+  let html=nav+'<h2>'+lv.title+'</h2><div class="desc">'+lv.desc+'</div>'+objH+c;
+  _patchPanel(panel,html);
 }
 
 // ===== RENDER BAR =====
 function renderBar(){
-  bar.innerHTML='<span style="color:var(--text-muted)">📐 '+levels[li].title+'</span>';
-}
-
-// ===== CHECK OBJECTIVES =====
-function checkL0(){
-  const s=levelState;
-  s.positions.add(Math.round(s.x0*10));
-  if(s.positions.size>=3)completeObj(0);
-  if(s.eps<0.3)s.smallEps=true;
-  if(s.smallEps&&s.delta<=s.eps*0.8)completeObj(1);
-  // Check green zone
-  const a=2,L=f0(a);
-  const inRange=Math.abs(f0(s.x0)-L)<s.eps&&Math.abs(s.x0-a)<s.delta&&s.x0!==a;
-  if(inRange)completeObj(2);
-}
-function checkL1(){
-  const s=levelState,x=-2+4*s.t;
-  const slope=3*x*x-3;
-  if(Math.abs(slope)<0.3)completeObj(0);
-  if(Math.abs(slope)>5){s.foundSteep=true;completeObj(1)}
-  if(s.secantSeen)completeObj(2);
-}
-function nextChain(){
-  const s=levelState;s.chainDone++;s.chainIdx=Math.min(s.chainIdx+1,2);
-  if(s.chainDone>=3)completeObj(0);renderPanel();
-}
-function nextProd(){
-  const s=levelState;s.prodDone++;s.prodIdx=Math.min(s.prodIdx+1,1);
-  if(s.prodDone>=2)completeObj(1);renderPanel();
-}
-function checkL3(){
-  const s=levelState;
-  if(s.n>=50)completeObj(0);
-  if(s.methodsSeen.size>=3)completeObj(1);
-  const exact=2;const approx=riemannSumRaw(s.n,s.method);
-  if(Math.abs(approx-exact)/exact<0.01)completeObj(2);
-}
-function checkL4(){
-  const s=levelState;
-  if(s.funcsSeen.size>=3)completeObj(2);
-}
-function verifyFTC(){
-  const s=levelState;s.verified++;
-  if(s.verified>=3)completeObj(1);
-  renderPanel();
-}
-function checkL5(){
-  const s=levelState;
-  if(s.terms>=5)completeObj(0);
-  if(s.funcsSeen.size>=3)completeObj(1);
-  // Check boundary
-  if(s.terms>=3){
-    const x=4;const orig=targetFunc5(s.func,x);const tay=taylorApprox(s.func,s.terms,x);
-    if(Math.abs(orig-tay)>1)completeObj(2);
-  }
-}
-function checkL6(){
-  const s=levelState;
-  if(s.positions.size>=3)completeObj(0);
-  if(s.eqsSeen.size>=2)completeObj(1);
-  if(s.longTerm)completeObj(2);
+  const done=levelObjs.flat().filter(Boolean).length;
+  const total=27;
+  bar.innerHTML='<span style="color:var(--text-sub)">进度: '+done+'/'+total+'</span><span style="flex:1"></span><span style="color:var(--stage-info);cursor:pointer" onclick="goLevel(Math.max(0,li-1))">◀</span> <span style="margin:0 12px;font-variant-numeric:tabular-nums">'+(li+1)+'/9</span> <span style="color:var(--stage-info);cursor:pointer" onclick="goLevel(Math.min(8,li+1))">▶</span>';
 }
 
 // ===== MATH FUNCTIONS =====
-function f0(x){return (x*x-4)/(x-2)} // limit at x=2 is 4
+function f0(x){return Math.abs(x)<1e-12?NaN:Math.sin(x)/x}
 function f1(x){return x*x*x-3*x}
 function f1d(x){return 3*x*x-3}
-
-function riemannSumRaw(n,method){
-  let sum=0;const a=0,b=Math.PI,dx=(b-a)/n;
+function f4(x){return x*x*x-6*x*x+9*x+1}
+function f4d(x){return 3*x*x-12*x+9}
+function f4dd(x){return 6*x-12}
+function factorial(n){let r=1;for(let i=2;i<=n;i++)r*=i;return r}
+function maxErrInDelta(d){
+  // max |sin(x)/x - 1| for |x|<d
+  let mx=0;for(let i=1;i<=100;i++){const x=d*i/100;const e=Math.abs(f0(x)-1);if(e>mx)mx=e;const x2=-d*i/100;const e2=Math.abs(f0(x2)-1);if(e2>mx)mx=e2;}return mx;
+}
+function contMaxErr(d){
+  // max |x²-4| for |x-2|<d, i.e. x in (2-d, 2+d)
+  let mx=0;for(let i=0;i<=100;i++){const x=2-d+2*d*i/100;const e=Math.abs(x*x-4);if(e>mx)mx=e;}return mx;
+}
+function contL1Err(d){
+  // max |f(x)-1| for |x-1|<d on piecewise: x²(x<1), 2x-1(x>1), limit=1
+  let mx=0;for(let i=0;i<=100;i++){const x=1-d+2*d*i/100;const fx=x<1?x*x:2*x-1;const e=Math.abs(fx-1);if(e>mx)mx=e;}return mx;
+}
+function riemannSum(n,method,funcIdx){
+  const funcs=[
+    {f:Math.sin,a:0,b:Math.PI},
+    {f:function(x){return x*x},a:0,b:1},
+    {f:Math.exp,a:0,b:2},
+    {f:function(x){return Math.sqrt(Math.max(0,1-x*x))},a:-1,b:1}
+  ];
+  const fn=funcs[funcIdx]||funcs[0];
+  const dx=(fn.b-fn.a)/n;
+  let sum=0;
   for(let i=0;i<n;i++){
     let x;
-    if(method===0)x=a+i*dx;else if(method===1)x=a+(i+1)*dx;else x=a+(i+0.5)*dx;
-    sum+=Math.sin(x)*dx;
+    if(method===0)x=fn.a+i*dx; // left
+    else if(method===1)x=fn.a+(i+1)*dx; // right
+    else x=fn.a+(i+0.5)*dx; // mid
+    sum+=fn.f(x)*dx;
   }
   return sum;
 }
-
-function ftcFunc(fi,x){
-  if(fi===0)return Math.sin(x);
-  if(fi===1)return x*x;
+function ftcFunc(x,idx){
+  if(idx===0)return Math.sin(x);
+  if(idx===1)return x*x;
   return Math.cos(x);
 }
-function ftcIntegral(fi,x){
-  // Numerical integral from 0 to x
-  const n=100;let sum=0;const dx=x/n;
-  for(let i=0;i<n;i++){sum+=ftcFunc(fi,i*dx+dx/2)*dx}
-  return sum;
+function ftcIntegral(x,idx){
+  // numerical integral from 0 to x
+  const n=200;const dx=x/n;let s=0;
+  for(let i=0;i<n;i++){s+=ftcFunc(i*dx+dx/2,idx)*dx;}
+  return s;
 }
-
-function targetFunc5(fi,x){
-  if(fi===0)return Math.sin(x);
-  if(fi===1)return Math.cos(x);
-  return Math.exp(x);
+function numDeriv(x,idx){
+  const h=0.001;
+  return (ftcIntegral(x+h,idx)-ftcIntegral(x-h,idx))/(2*h);
 }
-function taylorApprox(fi,terms,x){
-  let sum=0;
-  for(let n=0;n<terms;n++){
-    if(fi===0)sum+=(n%2===0?1:-1)*Math.pow(x,2*n+1)/factorial(2*n+1); // sin
-    if(fi===1)sum+=(n%2===0?1:-1)*Math.pow(x,2*n)/factorial(2*n); // cos
-    if(fi===2)sum+=Math.pow(x,n)/factorial(n); // exp
+function taylorApprox(x,nTerms,funcIdx){
+  let s=0;
+  if(funcIdx===0){// sin(x)
+    for(let k=0;k<nTerms;k++){s+=Math.pow(-1,k)*Math.pow(x,2*k+1)/factorial(2*k+1);}
+  }else if(funcIdx===1){// cos(x)
+    for(let k=0;k<nTerms;k++){s+=Math.pow(-1,k)*Math.pow(x,2*k)/factorial(2*k);}
+  }else if(funcIdx===2){// e^x
+    for(let k=0;k<nTerms;k++){s+=Math.pow(x,k)/factorial(k);}
+  }else{// 1/(1-x)
+    for(let k=0;k<nTerms;k++){s+=Math.pow(x,k);}
   }
-  return sum;
+  return s;
 }
-function factorial(n){let r=1;for(let i=2;i<=n;i++)r*=i;return r}
-
-function deField(eq,x,y){
+function targetFunc(x,idx){
+  if(idx===0)return Math.sin(x);
+  if(idx===1)return Math.cos(x);
+  if(idx===2)return Math.exp(x);
+  return 1/(1-x);
+}
+function deField(x,y,eq){
   if(eq===0)return x-y;
   if(eq===1)return Math.sin(x)*y;
   return y*(1-y);
 }
+function solvDE(x0,y0,eq,steps,dt){
+  const pts=[{x:x0,y:y0}];
+  let x=x0,y=y0;
+  for(let i=0;i<steps;i++){
+    const dy=deField(x,y,eq);
+    y+=dy*dt;x+=dt;
+    pts.push({x:x,y:y});
+  }
+  return pts;
+}
 
-// ===== COORDINATE HELPERS =====
-function toSX(x,ox,sx){return ox+x*sx}
-function toSY(y,oy,sy){return oy-y*sy}
-function drawGrid(ox,oy,sx,sy,xr,yr){
-  ctx.strokeStyle='#d1d5db';ctx.lineWidth=1;
-  for(let x=Math.ceil(xr[0]);x<=xr[1];x++){
-    const px=toSX(x,ox,sx);ctx.beginPath();ctx.moveTo(px,0);ctx.lineTo(px,H);ctx.stroke();
+// ===== CHECK FUNCTIONS =====
+function checkL0(){
+  const s=levelState;
+  // Phase 0: trail中有≥2个|x|<0.1的点 → 发现极限
+  if(s.phase===0){
+    const close=s.trail.filter(function(t){return Math.abs(t.x)<0.1});
+    if(close.length>=2){completeObj(0);s.phase=1;renderPanel()}
   }
-  for(let y=Math.ceil(yr[0]);y<=yr[1];y++){
-    const py=toSY(y,oy,sy);ctx.beginPath();ctx.moveTo(0,py);ctx.lineTo(W,py);ctx.stroke();
-  }
-  ctx.strokeStyle='#c7d2fe';ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.moveTo(0,oy);ctx.lineTo(W,oy);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(ox,0);ctx.lineTo(ox,H);ctx.stroke();
-  ctx.fillStyle='#475569';ctx.font='17px sans-serif';
-  for(let x=Math.ceil(xr[0]);x<=xr[1];x++){
-    if(x===0)continue;ctx.fillText(x,toSX(x,ox,sx)-4,oy+14);
-  }
-  for(let y=Math.ceil(yr[0]);y<=yr[1];y++){
-    if(y===0)continue;ctx.fillText(y,ox+4,toSY(y,oy,sy)+4);
+  // Phase 2: ε-δ (3 rounds)
+  if(s.phase>=2){
+    const epsRounds=[0.05,0.02,0.005];
+    const round=s.epsRound||0;
+    const targetEps=epsRounds[Math.min(round,2)];
+    const boundaryErr=Math.max(Math.abs(f0(s.delta)-1),Math.abs(f0(-s.delta)-1));
+    const dOk=s.delta>0.005&&boundaryErr<targetEps;
+    if(dOk&&round>=2){s.epsOk=true;completeObj(2)}
   }
 }
-function drawCurve(fn,ox,oy,sx,sy,xr,color,lw){
+function checkL1(){
+  const s=levelState;
+  if(s.phase===0&&Math.abs(s.contK-1)<0.1&&!levelObjs[li][0]){
+    completeObj(0);s.phase=1;
+    setTimeout(function(){renderPanel();draw();},100);
+  }
+  if(s.phase>=2){
+    const epsList=[0.5,0.1,0.02];
+    const eps=epsList[s.epsRound]||0.02;
+    if(contL1Err(s.contDelta)<eps){
+      s.epsRound++;
+      if(s.epsRound>=3&&!levelObjs[li][2]){completeObj(2);}
+      else{renderPanel();}
+    }
+  }
+}
+function checkL2(){
+  const s=levelState;
+  if(s.phase===0&&s.h<0.05&&!levelObjs[li][0]){
+    completeObj(0);s.phase=1;renderPanel();
+  }
+  // Phase 1→2 由 findExtremum() 按钮触发，不在此自动跳转
+  if(s.phase>=2){
+    const x=-2+4*s.t;
+    const targets=[{slope:0,tol:0.5},{slope:9,tol:0.3},{slope:-3,tol:0.2}];
+    const tgt=targets[s.matchRound];
+    if(tgt&&Math.abs(f1d(x)-tgt.slope)<tgt.tol){
+      s.matchRound++;
+      if(s.matchRound>=3&&!levelObjs[li][2]){completeObj(2);}
+      else{renderPanel();}
+    }
+  }
+}
+function checkL3(){
+  const s=levelState;
+  if(s.phase===0){
+    const x=s.ruleX;
+    const actual=Math.cos(x*x)*2*x;
+    const predicted=s.ruleOuter*s.ruleInner;
+    // 相对误差<5%，且 x 与上次匹配位置距离>0.3
+    if(Math.abs(actual)>0.1&&Math.abs(actual-predicted)/Math.abs(actual)<0.05){
+      if(Math.abs(x-s.lastMatchX)>0.3){
+        s.lastMatchX=x;s.matchCount++;
+        if(s.matchCount>=2&&!levelObjs[li][0]){completeObj(0);s.phase=1;setTimeout(function(){renderPanel();draw()},100);}
+      }
+    }
+  }
+  if(s.phase>=2){
+    const rounds=[{ans:-3,tol:0.5},{ans:1,tol:0.3},{ans:0,tol:0.2}];
+    const rd=rounds[Math.min(s.matchRound,2)];
+    if(rd&&Math.abs(s.ruleAns-rd.ans)<rd.tol){
+      s.matchRound++;
+      if(s.matchRound>=3&&!levelObjs[li][2]){completeObj(2);}
+      else{s.ruleAns=0;renderPanel();}
+    }
+  }
+}
+function checkL4(){
+  const s=levelState;
+  if(s.phase===0){
+    const fdx=f4d(s.optX);
+    if(Math.abs(fdx)<0.3){
+      if(Math.abs(s.optX-1)<0.5)s.foundMax=true;
+      if(Math.abs(s.optX-3)<0.5)s.foundMin=true;
+      if(s.foundMax&&s.foundMin&&!levelObjs[li][0]){completeObj(0);s.phase=1;renderPanel();}
+    }
+  }
+  if(s.phase>=1){
+    const fdx=f4d(s.optX);
+    const fddx=f4dd(s.optX);
+    if(Math.abs(fdx)<0.5&&Math.abs(fddx)>1){
+      s.classified++;
+      if(s.classified>=3&&!levelObjs[li][1]){/* wait for button click */}
+    }
+  }
+  if(s.phase>=2){
+    const L=s.boxL;
+    const optX=L/6;
+    const tol=[0.3,0.2,0.15][s.boxRound]||0.15;
+    if(Math.abs(s.boxX-optX)<tol){
+      s.boxRound++;
+      if(s.boxRound>=3&&!levelObjs[li][2]){completeObj(2);}
+      else{if(s.boxRound<3){s.boxL=[12,10,8][s.boxRound];s.boxX=1.0;}renderPanel();}
+    }
+  }
+}
+function checkL5(){
+  const s=levelState;
+  if(s.phase===0){
+    const n=Math.round(s.n);
+    const area=riemannSum(n,0,0);
+    if(n>=30&&Math.abs(area-2)/2<0.03&&!levelObjs[li][0]){
+      completeObj(0);s.phase=1;renderPanel();
+    }
+  }
+}
+function checkL6(){
+  const s=levelState;
+  if(s.phase===0){
+    if(s.trail.length>=4&&s.ftcX>Math.PI&&!levelObjs[li][0]){
+      completeObj(0);s.phase=1;renderPanel();
+    }
+  }
+  if(s.phase>=2){
+    const rounds=[{ans:1,tol:0.15},{ans:2.25,tol:0.1},{ans:0.5,tol:0.08}];
+    const rd=rounds[s.verifyRound];
+    if(rd&&Math.abs(s.ftcPred-rd.ans)<rd.tol){
+      s.verifyRound++;
+      if(s.verifyRound>=3&&!levelObjs[li][2]){completeObj(2);}
+      else{s.ftcPred=0.5;renderPanel();}
+    }
+  }
+}
+function checkL7(){
+  const s=levelState;
+  if(s.phase===0){
+    const nTerms=Math.round(s.terms);
+    if(nTerms>=5){
+      const err=Math.abs(Math.sin(2)-taylorApprox(2,nTerms,0));
+      if(err<0.1&&!levelObjs[li][0]){completeObj(0);s.phase=1;renderPanel();}
+    }
+  }
+  if(s.phase>=2){
+    const rounds=[{func:0,x:2,target:0.1,ans:5,tol:2},
+      {func:2,x:3,target:0.5,ans:8,tol:2},
+      {func:1,x:Math.PI,target:0.01,ans:8,tol:2}];
+    const rd=rounds[Math.min(s.predRound,2)];
+    if(rd&&Math.abs(Math.round(s.termsPred)-rd.ans)<=rd.tol){
+      s.predRound++;
+      if(s.predRound>=3&&!levelObjs[li][2]){completeObj(2);}
+      else{s.termsPred=3;renderPanel();}
+    }
+  }
+}
+
+// ===== ACTION FUNCTIONS =====
+function recordTrail(){
+  const s=levelState;
+  if(Math.abs(s.x0)<1e-6)return; // can't record undefined point
+  s.trail.push({x:s.x0,fx:f0(s.x0)});
+  checkL0();renderPanel();draw();
+}
+function startEpsDelta(){
+  levelState.phase=2;renderPanel();draw();
+}
+function recordSecant(){
+  const s=levelState;
+  const x=-2+4*s.t;
+  s.trail.push({h:s.h,sec:((f1(x+s.h)-f1(x))/s.h),tan:f1d(x)});
+  renderPanel();
+}
+function recordFTC(){
+  const s=levelState;
+  s.trail.push({x:s.ftcX,F:ftcIntegral(s.ftcX,s.func),f:ftcFunc(s.ftcX,s.func)});
+  renderPanel();
+}
+function switchContFunc(idx){levelState.funcIdx=idx;if(idx===1)levelState.jumpFound=true;renderPanel();draw();}
+function setMethod(m){
+  levelState.method=m;
+  levelState.methodsSeen.add(m);
+  renderPanel();draw();
+}
+function switchFTCFunc(i){
+  levelState.func=i;levelState.funcsSeen.add(i);renderPanel();draw();
+}
+function switchTaylorFunc(i){
+  const s=levelState;s.func=i;s.funcsSeen.add(i);
+  if(i===3&&Math.round(s.terms)>=5)s.boundaryFound=true;
+  renderPanel();draw();
+}
+function switchDE(i){
+  const s=levelState;s.eq=i;s.eqsSeen.add(i);s.showSolution=false;s.guessPath=[];s.guessing=false;
+  renderPanel();draw();
+}
+function findExtremum(){
+  const x=-2+4*levelState.t;
+  if(Math.abs(f1d(x))<0.3){completeObj(1);levelState.phase=2;renderPanel();}
+}
+function showChain(i){levelState.chainIdx=i;levelState.examplesSeen++;renderPanel();draw();}
+function showProd(i){levelState.prodIdx=i;levelState.examplesSeen++;renderPanel();draw();}
+function submitPrediction(){
+  levelState.hasPredicted=true;
+  // 切换 drawL5 显示的函数
+  var funcs=[{fi:1},{fi:2},{fi:3}];
+  var ri=Math.min(levelState.matchRound,2);
+  levelState.intFunc=funcs[ri].fi;
+  renderPanel();draw();
+}
+function nextPredRound(){
+  var s=levelState;
+  s.matchRound++;
+  if(s.matchRound>=3&&!levelObjs[li][2]){completeObj(2);}
+  else{s.hasPredicted=false;s.predVal=0.5;s.n=2;var funcs=[1,2,3];s.intFunc=funcs[Math.min(s.matchRound,2)];renderPanel();draw();}
+}
+function startGuess(){levelState.guessing=true;levelState.guessPath=[];levelState.showSolution=false;renderPanel();}
+function revealDE(){
+  const s=levelState;s.showSolution=true;s.guessing=false;s.predictions++;
+  if(s.predictions>=2&&!levelObjs[li][0]){completeObj(0);s.phase=1;}
+  s.positions.add(s.iy.toFixed(1));
+  renderPanel();draw();
+}
+function checkReverse(){
+  const s=levelState;
+  const rounds=[{eq:0,check:function(){const pts=solvDE(0,s.iy,0,500,0.01);const last=pts[pts.length-1];return Math.abs(last.y-4)<0.5;}},
+    {eq:2,check:function(){const pts=solvDE(0,s.iy,2,300,0.01);const last=pts[pts.length-1];return last.y>0.9;}},
+    {eq:1,check:function(){const pts=solvDE(0,s.iy,1,200,0.01);return pts.some(function(p){return Math.abs(p.x-2)<0.2&&Math.abs(p.y-1)<0.3;});}}];
+  const rd=rounds[s.reverseRound];
+  if(rd&&rd.check()){
+    s.reverseRound++;
+    if(s.reverseRound>=3&&!levelObjs[li][2]){completeObj(2);}
+    else{renderPanel();}
+  }
+  draw();
+}
+function showResult(){
+  const overlay=document.getElementById('overlay');
+  overlay.style.display='flex';
+  const done=levelObjs.flat().filter(Boolean).length;
+  overlay.innerHTML='<h1>🎉 微积分探险完成！</h1><p>你完成了 '+done+'/27 个目标</p><div class="sub">从极限到微分方程，你已经用交互方式体验了微积分的核心概念。继续探索更深的数学世界！</div><button class="start-btn" onclick="location.reload()">重新挑战</button>';
+}
+
+// ===== COORDINATE HELPERS =====
+const PAD={left:40,right:40,top:30,bottom:30};
+function plotW(){return W-PAD.left-PAD.right}
+function plotH(){return H-PAD.top-PAD.bottom}
+function toSX(x,xMin,xMax){return PAD.left+(x-xMin)/(xMax-xMin)*plotW()}
+function toSY(y,yMin,yMax){return PAD.top+plotH()-(y-yMin)/(yMax-yMin)*plotH()}
+function drawGrid(xMin,xMax,yMin,yMax){
+  ctx.strokeStyle=t('grid');ctx.lineWidth=0.5;
+  for(let x=Math.ceil(xMin);x<=xMax;x++){const sx=toSX(x,xMin,xMax);ctx.beginPath();ctx.moveTo(sx,PAD.top);ctx.lineTo(sx,H-PAD.bottom);ctx.stroke();}
+  for(let y=Math.ceil(yMin);y<=yMax;y++){const sy=toSY(y,yMin,yMax);ctx.beginPath();ctx.moveTo(PAD.left,sy);ctx.lineTo(W-PAD.right,sy);ctx.stroke();}
+  // Axes
+  ctx.strokeStyle=t('axis');ctx.lineWidth=1.5;
+  if(xMin<=0&&xMax>=0){const ax=toSX(0,xMin,xMax);ctx.beginPath();ctx.moveTo(ax,PAD.top);ctx.lineTo(ax,H-PAD.bottom);ctx.stroke();}
+  if(yMin<=0&&yMax>=0){const ay=toSY(0,yMin,yMax);ctx.beginPath();ctx.moveTo(PAD.left,ay);ctx.lineTo(W-PAD.right,ay);ctx.stroke();}
+  // Labels
+  ctx.font='11px monospace';ctx.fillStyle=t('label');
+  for(let x=Math.ceil(xMin);x<=xMax;x++){if(x===0)continue;ctx.fillText(x,toSX(x,xMin,xMax)+2,toSY(0,yMin,yMax)+14);}
+  for(let y=Math.ceil(yMin);y<=yMax;y++){if(y===0)continue;ctx.fillText(y,toSX(0,xMin,xMax)-24,toSY(y,yMin,yMax)+4);}
+}
+function drawCurve(fn,xMin,xMax,yMin,yMax,color,lw){
   ctx.strokeStyle=color;ctx.lineWidth=lw||2;ctx.beginPath();
-  let first=true;
-  for(let px=0;px<W;px++){
-    const x=(px-ox)/sx;if(x<xr[0]||x>xr[1])continue;
-    const y=fn(x);if(!isFinite(y)||Math.abs(y)>100)continue;
-    const py=toSY(y,oy,sy);
-    if(first){ctx.moveTo(px,py);first=false}else ctx.lineTo(px,py);
+  let started=false;
+  const pxStart=PAD.left,pxEnd=W-PAD.right;
+  for(let px=pxStart;px<=pxEnd;px+=1){
+    const x=xMin+(xMax-xMin)*(px-pxStart)/(pxEnd-pxStart);
+    const y=fn(x);
+    if(!isFinite(y)||Math.abs(y)>100){started=false;continue;}
+    const sy=toSY(y,yMin,yMax);
+    if(!started){ctx.moveTo(px,sy);started=true;}else ctx.lineTo(px,sy);
   }
   ctx.stroke();
 }
 
-// ===== DRAW LEVELS =====
+// ===== DRAW FUNCTIONS =====
 function draw(){
   ctx.clearRect(0,0,W,H);
+  if(!levelState)return;
   if(li===0)drawL0();
   else if(li===1)drawL1();
   else if(li===2)drawL2();
@@ -433,440 +1083,602 @@ function draw(){
   else if(li===4)drawL4();
   else if(li===5)drawL5();
   else if(li===6)drawL6();
+  else if(li===7)drawL7();
+  else if(li===8)drawL8();
 }
 
 function drawL0(){
   const s=levelState;
-  const ox=W/2-40,oy=H/2+60,sx=80,sy=50;
-  drawGrid(ox,oy,sx,sy,[-3,6],[-2,8]);
-  // Draw f(x) = (x²-4)/(x-2) with hole at x=2
+  const xMin=-7,xMax=7,yMin=-0.5,yMax=1.5;
+  drawGrid(xMin,xMax,yMin,yMax);
+  // Draw f(x) = sin(x)/x with hole at x=0
   ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.beginPath();
   let first=true;
-  for(let px=0;px<W;px++){
-    const x=(px-ox)/sx;
-    if(Math.abs(x-2)<0.02)continue;
-    const y=f0(x);if(!isFinite(y)||Math.abs(y)>20)continue;
-    const py=toSY(y,oy,sy);
+  const pxS=PAD.left,pxE=W-PAD.right;
+  for(let px=pxS;px<=pxE;px++){
+    const x=xMin+(xMax-xMin)*(px-pxS)/(pxE-pxS);
+    if(Math.abs(x)<0.02)continue;
+    const y=f0(x);if(!isFinite(y)||Math.abs(y)>5)continue;
+    const py=toSY(y,yMin,yMax);
     if(first){ctx.moveTo(px,py);first=false}else ctx.lineTo(px,py);
   }
   ctx.stroke();
-  // Hole at x=2
-  const hx=toSX(2,ox,sx),hy=toSY(4,oy,sy);
-  ctx.beginPath();ctx.arc(hx,hy,5,0,Math.PI*2);ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.stroke();
-  // Epsilon band
-  const L=4;
-  ctx.fillStyle='rgba(34,197,94,0.1)';
-  ctx.fillRect(0,toSY(L+s.eps,oy,sy),W,s.eps*2*sy);
-  ctx.strokeStyle='#22c55e';ctx.lineWidth=1;ctx.setLineDash([4,4]);
-  ctx.beginPath();ctx.moveTo(0,toSY(L+s.eps,oy,sy));ctx.lineTo(W,toSY(L+s.eps,oy,sy));ctx.stroke();
-  ctx.beginPath();ctx.moveTo(0,toSY(L-s.eps,oy,sy));ctx.lineTo(W,toSY(L-s.eps,oy,sy));ctx.stroke();
-  ctx.setLineDash([]);
-  // Delta band
-  const a=2;
-  ctx.fillStyle='rgba(59,130,246,0.1)';
-  ctx.fillRect(toSX(a-s.delta,ox,sx),0,s.delta*2*sx,H);
-  ctx.strokeStyle='#60a5fa';ctx.lineWidth=1;ctx.setLineDash([4,4]);
-  ctx.beginPath();ctx.moveTo(toSX(a-s.delta,ox,sx),0);ctx.lineTo(toSX(a-s.delta,ox,sx),H);ctx.stroke();
-  ctx.beginPath();ctx.moveTo(toSX(a+s.delta,ox,sx),0);ctx.lineTo(toSX(a+s.delta,ox,sx),H);ctx.stroke();
-  ctx.setLineDash([]);
-  // Current point
-  if(Math.abs(s.x0-2)>0.02){
-    const px=toSX(s.x0,ox,sx),py=toSY(f0(s.x0),oy,sy);
-    ctx.beginPath();ctx.arc(px,py,6,0,Math.PI*2);ctx.fillStyle='#f59e0b';ctx.fill();
-    // Dashed lines to axes
-    ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;ctx.setLineDash([3,3]);
-    ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px,oy);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(ox,py);ctx.stroke();
-    ctx.setLineDash([]);
+  // Hole at x=0 (open circle at y=1)
+  const hx=toSX(0,xMin,xMax),hy=toSY(1,yMin,yMax);
+  ctx.beginPath();ctx.arc(hx,hy,6,0,Math.PI*2);
+  ctx.fillStyle=isDark?'#0a0a1a':'#f0f2f5';ctx.fill();
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.stroke();
+  // Phase 1+: show unit circle squeeze diagram
+  if(s.revealed){
+    const cx=W-100,cy=H-100,cr=65;
+    const theta=Math.max(0.15,Math.min(Math.abs(s.x0)||0.8,1.2));
+    ctx.strokeStyle='rgba(100,100,120,0.3)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(cx,cy,cr,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx-cr-10,cy);ctx.lineTo(cx+cr+10,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx,cy-cr-10);ctx.lineTo(cx,cy+cr+10);ctx.stroke();
+    const rx=cx+cr*Math.cos(theta),ry=cy-cr*Math.sin(theta);
+    ctx.strokeStyle='#94a3b8';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(rx,ry);ctx.stroke();
+    // sin(theta) - blue chord
+    ctx.strokeStyle='#3b82f6';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.moveTo(rx,cy);ctx.lineTo(rx,ry);ctx.stroke();
+    // Arc theta - green
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.arc(cx,cy,cr,0,-theta,true);ctx.stroke();
+    // tan(theta) - orange tangent
+    const tanLen=cr*Math.tan(theta);
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.moveTo(cx+cr,cy);ctx.lineTo(cx+cr,cy-tanLen);ctx.stroke();
+    // Labels
+    ctx.font='11px sans-serif';
+    ctx.fillStyle='#3b82f6';ctx.fillText('sin θ',rx+3,cy-(cy-ry)/2);
+    ctx.fillStyle='#22c55e';ctx.fillText('θ(弧)',cx+cr*0.5*Math.cos(theta/2)-10,cy-cr*0.5*Math.sin(theta/2)-8);
+    ctx.fillStyle='#f59e0b';ctx.fillText('tan θ',cx+cr+4,cy-tanLen/2);
+    ctx.fillStyle=isDark?'#e2e8f0':'#334155';ctx.font='bold 12px sans-serif';
+    ctx.fillText('sin θ < θ < tan θ',cx-cr,cy+cr+18);
+    // Filled dot at limit
+    ctx.beginPath();ctx.arc(hx,hy,4,0,Math.PI*2);ctx.fillStyle='#a855f7';ctx.fill();
+    // y=1 reference line
+    ctx.strokeStyle='rgba(168,85,247,0.3)';ctx.lineWidth=1;ctx.setLineDash([6,4]);
+    ctx.beginPath();ctx.moveTo(PAD.left,hy);ctx.lineTo(W-PAD.right,hy);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#a855f7';ctx.font='13px sans-serif';
+    ctx.fillText('y = 1（极限值）',PAD.left+4,hy-6);
   }
-  // Labels
-  ctx.fillStyle='#475569';ctx.font='19px sans-serif';
-  ctx.fillText('f(x) = (x²-4)/(x-2)',20,24);
-  ctx.fillText('极限点: x→2, L=4',20,42);
-  ctx.fillStyle='#22c55e';ctx.fillText(`ε = ${s.eps.toFixed(2)}`,W-120,24);
-  ctx.fillStyle='#60a5fa';ctx.fillText(`δ = ${s.delta.toFixed(2)}`,W-120,42);
+  // Phase 2: ε-δ bands
+  if(s.phase>=2){
+    const L=1;
+    // Epsilon band (horizontal, green)
+    const ey1=toSY(L+s.eps,yMin,yMax),ey2=toSY(L-s.eps,yMin,yMax);
+    ctx.fillStyle='rgba(34,197,94,0.08)';
+    ctx.fillRect(PAD.left,ey1,plotW(),ey2-ey1);
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(PAD.left,ey1);ctx.lineTo(W-PAD.right,ey1);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(PAD.left,ey2);ctx.lineTo(W-PAD.right,ey2);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#22c55e';ctx.font='12px sans-serif';
+    ctx.fillText('1+ε='+(L+s.eps).toFixed(2),PAD.left+4,ey1-4);
+    ctx.fillText('1−ε='+(L-s.eps).toFixed(2),PAD.left+4,ey2+14);
+    // Delta band (vertical, blue)
+    const dx1=toSX(-s.delta,xMin,xMax),dx2=toSX(s.delta,xMin,xMax);
+    ctx.fillStyle='rgba(59,130,246,0.08)';
+    ctx.fillRect(dx1,PAD.top,dx2-dx1,plotH());
+    ctx.strokeStyle='#60a5fa';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(dx1,PAD.top);ctx.lineTo(dx1,H-PAD.bottom);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(dx2,PAD.top);ctx.lineTo(dx2,H-PAD.bottom);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#60a5fa';ctx.font='12px sans-serif';
+    ctx.fillText('−δ',dx1-16,toSY(0,yMin,yMax)+18);
+    ctx.fillText('+δ',dx2+4,toSY(0,yMin,yMax)+18);
+  }
+  // Current point
+  if(Math.abs(s.x0)>0.02){
+    const cpx=toSX(s.x0,xMin,xMax),cpy=toSY(f0(s.x0),yMin,yMax);
+    ctx.beginPath();ctx.arc(cpx,cpy,6,0,Math.PI*2);ctx.fillStyle='#f59e0b';ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.strokeStyle='rgba(245,158,11,0.4)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(cpx,cpy);ctx.lineTo(cpx,toSY(0,yMin,yMax));ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cpx,cpy);ctx.lineTo(toSX(0,xMin,xMax),cpy);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#f59e0b';ctx.font='bold 13px monospace';
+    ctx.fillText(f0(s.x0).toFixed(4),cpx+10,cpy-8);
+  }else{
+    ctx.fillStyle='#ef4444';ctx.font='bold 20px sans-serif';
+    ctx.fillText('?',hx-6,hy-12);
+  }
+  // Trail dots
+  if(s.trail)for(const tr of s.trail){
+    const tpx=toSX(tr.x,xMin,xMax),tpy=toSY(tr.fx,yMin,yMax);
+    ctx.beginPath();ctx.arc(tpx,tpy,3,0,Math.PI*2);
+    ctx.fillStyle='rgba(245,158,11,0.5)';ctx.fill();
+  }
+  // Top label
+  ctx.fillStyle=isDark?'#94a3b8':'#475569';ctx.font='14px sans-serif';
+  ctx.fillText('f(x) = sin(x)/x',PAD.left+4,PAD.top-8>12?PAD.top-8:24);
+  if(Math.abs(s.x0)<0.02){
+    ctx.fillStyle='#ef4444';ctx.fillText('x=0 → 0÷0 未定义！',PAD.left+4,PAD.top+16);
+  }
 }
 
 function drawL1(){
+  const xMin=-1,xMax=4,yMin=-2,yMax=5;
   const s=levelState;
-  const ox=W/2,oy=H/2,sx=60,sy=30;
-  drawGrid(ox,oy,sx,sy,[-3,3],[-5,5]);
-  drawCurve(f1,ox,oy,sx,sy,[-3,3],'#3b82f6',2);
-  const x=-2+4*s.t,y=f1(x),slope=f1d(x);
-  const px=toSX(x,ox,sx),py=toSY(y,oy,sy);
-  // Tangent line
-  ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.beginPath();
-  const dx=2;
-  ctx.moveTo(toSX(x-dx,ox,sx),toSY(y-slope*dx,oy,sy));
-  ctx.lineTo(toSX(x+dx,ox,sx),toSY(y+slope*dx,oy,sy));
-  ctx.stroke();
-  // Secant line
-  if(s.showSecant){
-    const h=s.secH,x2=x+h,y2=f1(x2);
-    const secSlope=(y2-y)/h;
-    ctx.strokeStyle='rgba(168,85,247,0.7)';ctx.lineWidth=1.5;ctx.setLineDash([5,5]);ctx.beginPath();
-    ctx.moveTo(toSX(x-dx,ox,sx),toSY(y-secSlope*dx,oy,sy));
-    ctx.lineTo(toSX(x+dx,ox,sx),toSY(y+secSlope*dx,oy,sy));
-    ctx.stroke();ctx.setLineDash([]);
-    // Second point
-    ctx.beginPath();ctx.arc(toSX(x2,ox,sx),toSY(y2,oy,sy),4,0,Math.PI*2);ctx.fillStyle='#a855f7';ctx.fill();
-    ctx.fillStyle='#a855f7';ctx.font='18px sans-serif';
-    ctx.fillText(`割线斜率: ${secSlope.toFixed(2)}`,20,78);
+  if(s.funcIdx===0){
+    drawGrid(xMin,xMax,yMin,yMax);
+    // Phase 0/1/2: Piecewise function x²(x<1), 2x-1(x>1)
+    drawCurve(function(x){return x<0.99?x*x:NaN},xMin,xMax,yMin,yMax,'#3b82f6',2);
+    drawCurve(function(x){return x>1.01?2*x-1:NaN},xMin,xMax,yMin,yMax,'#3b82f6',2);
+    if(s.phase<2){
+      // Open circle at (1,1) - limit point
+      ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(toSX(1,xMin,xMax),toSY(1,yMin,yMax),6,0,Math.PI*2);ctx.stroke();
+      ctx.fillStyle=isDark?'#1a1a2e':'#fff';ctx.fill();
+      // Solid dot at (1,k) - current f(1)
+      ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(toSX(1,xMin,xMax),toSY(s.contK,yMin,yMax),6,0,Math.PI*2);ctx.fill();
+      // Label
+      ctx.font='13px sans-serif';ctx.fillStyle=t('text');
+      ctx.fillText('f(1) = '+s.contK.toFixed(2),toSX(1.2,xMin,xMax),toSY(s.contK,yMin,yMax)-10);
+      // Dashed line showing gap
+      if(Math.abs(s.contK-1)>0.05){
+        ctx.setLineDash([4,4]);ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(toSX(1,xMin,xMax),toSY(s.contK,yMin,yMax));
+        ctx.lineTo(toSX(1,xMin,xMax),toSY(1,yMin,yMax));ctx.stroke();ctx.setLineDash([]);
+      }
+    }
+    // Phase 1: condition check overlay
+    if(s.phase>=1&&s.phase<2){
+      var bx=PAD.left+4,by=H-PAD.bottom-80,bw=170;
+      ctx.fillStyle='rgba(34,197,94,0.12)';ctx.fillRect(bx,by,bw,72);
+      ctx.strokeStyle='#22c55e';ctx.lineWidth=1;ctx.strokeRect(bx,by,bw,72);
+      ctx.font='12px sans-serif';ctx.fillStyle='#22c55e';
+      ctx.fillText('✓ f(1) 有定义',bx+8,by+18);
+      ctx.fillText('✓ 极限存在 = 1',bx+8,by+38);
+      ctx.fillText('✓ f(1) = 极限 → 连续!',bx+8,by+58);
+    }
+    // Phase 2: ε-δ verification at x=1
+    if(s.phase>=2){
+      // Reconnect the function (k=1 fixed)
+      ctx.fillStyle='#22c55e';ctx.beginPath();ctx.arc(toSX(1,xMin,xMax),toSY(1,yMin,yMax),5,0,Math.PI*2);ctx.fill();
+      var epsList=[0.5,0.1,0.02];
+      var eps=epsList[s.epsRound]||0.02;
+      // ε band around y=1
+      ctx.fillStyle='rgba(124,58,237,0.12)';
+      var epsTop=toSY(1+eps,yMin,yMax),epsBot=toSY(1-eps,yMin,yMax);
+      ctx.fillRect(PAD.left,epsTop,plotW(),epsBot-epsTop);
+      ctx.strokeStyle='#7c3aed';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.moveTo(PAD.left,epsTop);ctx.lineTo(W-PAD.right,epsTop);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(PAD.left,epsBot);ctx.lineTo(W-PAD.right,epsBot);ctx.stroke();
+      ctx.setLineDash([]);
+      // δ band around x=1
+      ctx.fillStyle='rgba(59,130,246,0.12)';
+      var d1=toSX(1-s.contDelta,xMin,xMax),d2=toSX(1+s.contDelta,xMin,xMax);
+      ctx.fillRect(d1,PAD.top,d2-d1,plotH());
+      ctx.strokeStyle='#3b82f6';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.moveTo(d1,PAD.top);ctx.lineTo(d1,H-PAD.bottom);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(d2,PAD.top);ctx.lineTo(d2,H-PAD.bottom);ctx.stroke();
+      ctx.setLineDash([]);
+      // Labels
+      ctx.font='11px sans-serif';
+      ctx.fillStyle='#7c3aed';ctx.fillText('ε='+eps,W-PAD.right-40,epsTop-4);
+      ctx.fillStyle='#3b82f6';ctx.fillText('δ='+s.contDelta.toFixed(3),d2+4,PAD.top+16);
+    }
+  }else{
+    // Jump discontinuity: f(x)=|x|/x
+    var jxMin=-3,jxMax=3,jyMin=-2,jyMax=3;
+    drawGrid(jxMin,jxMax,jyMin,jyMax);
+    drawCurve(function(x){return x>0.01?1:x<-0.01?-1:NaN},jxMin,jxMax,jyMin,jyMax,'#ef4444',2);
+    // Open circles at (0,1) and (0,-1)
+    ctx.strokeStyle='#ef4444';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(toSX(0,jxMin,jxMax),toSY(1,jyMin,jyMax),5,0,Math.PI*2);ctx.stroke();
+    ctx.beginPath();ctx.arc(toSX(0,jxMin,jxMax),toSY(-1,jyMin,jyMax),5,0,Math.PI*2);ctx.stroke();
+    // Labels
+    ctx.font='13px sans-serif';ctx.fillStyle='#ef4444';
+    ctx.fillText('左极限 = −1',toSX(-2.5,jxMin,jxMax),toSY(-0.5,jyMin,jyMax));
+    ctx.fillText('右极限 = +1',toSX(0.5,jxMin,jxMax),toSY(1.5,jyMin,jyMax));
+    ctx.fillStyle=t('text');ctx.font='14px sans-serif';
+    ctx.fillText('f(x) = |x|/x',toSX(-2.5,jxMin,jxMax),toSY(2.5,jyMin,jyMax));
+    // Arrow showing gap
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(toSX(0,jxMin,jxMax),toSY(-1,jyMin,jyMax));
+    ctx.lineTo(toSX(0,jxMin,jxMax),toSY(1,jyMin,jyMax));ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#f59e0b';ctx.font='12px sans-serif';
+    ctx.fillText('跳跃!',toSX(0.15,jxMin,jxMax),toSY(0,jyMin,jyMax)+4);
   }
-  // Point
-  ctx.beginPath();ctx.arc(px,py,7,0,Math.PI*2);ctx.fillStyle='#ef4444';ctx.fill();
-  ctx.beginPath();ctx.arc(px,py,7,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
-  // Info
-  ctx.fillStyle='#475569';ctx.font='19px sans-serif';
-  ctx.fillText(`f(x) = x³ - 3x`,20,24);
-  ctx.fillText(`x = ${x.toFixed(2)}, f(x) = ${y.toFixed(2)}`,20,42);
-  ctx.fillStyle='#f59e0b';ctx.fillText(`切线斜率 f'(x) = ${slope.toFixed(2)}`,20,60);
 }
 
 function drawL2(){
+  const xMin=-3,xMax=3,yMin=-10,yMax=10;
+  drawGrid(xMin,xMax,yMin,yMax);
+  drawCurve(f1,xMin,xMax,yMin,yMax,'#3b82f6',2);
   const s=levelState;
-  const ox=W/2,oy=H/2,sx=50,sy=40;
-  drawGrid(ox,oy,sx,sy,[-4,4],[-4,4]);
-  if(s.mode==='chain'){
-    const funcs=[
-      {f:x=>Math.sin(x*x),d:x=>2*x*Math.cos(x*x),label:'sin(x²)',dl:"2x·cos(x²)"},
-      {f:x=>Math.exp(x*x),d:x=>2*x*Math.exp(x*x),label:'e^(x²)',dl:"2x·e^(x²)"},
-      {f:x=>Math.cos(3*x),d:x=>-3*Math.sin(3*x),label:'cos(3x)',dl:"-3sin(3x)"}
-    ];
-    const fn=funcs[s.chainIdx];
-    drawCurve(fn.f,ox,oy,sx,sy,[-4,4],'#3b82f6',2);
-    if(s.showCompare)drawCurve(fn.d,ox,oy,sx,sy,[-4,4],'#f59e0b',1.5);
-    // Chain rule visualization
-    ctx.fillStyle='#e0e0f0';ctx.font='20px sans-serif';
-    ctx.fillText(`f(x) = ${fn.label}`,20,24);
-    ctx.fillText(`外层' · 内层' = ${fn.dl}`,20,44);
-    // Arrows showing chain
-    const cx=W/2,cy=H-80;
-    ctx.fillStyle='#111128';ctx.strokeStyle='#cbd5e1';ctx.lineWidth=1;
-    roundRect(cx-160,cy-25,120,40,8);roundRect(cx+40,cy-25,120,40,8);
-    ctx.fillStyle='#60a5fa';ctx.font='19px sans-serif';
-    ctx.fillText('外层求导',cx-140,cy+2);ctx.fillText('内层求导',cx+60,cy+2);
-    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;drawArrow(cx-30,cy,cx+30,cy);
-    ctx.fillStyle='#f59e0b';ctx.font='22px sans-serif';ctx.fillText('×',cx-8,cy+5);
-  }else{
-    const funcs=[
-      {f:x=>x*x*Math.sin(x),d:x=>2*x*Math.sin(x)+x*x*Math.cos(x),label:'x²·sin(x)',dl:"2x·sin(x)+x²·cos(x)"},
-      {f:x=>Math.exp(x)*Math.cos(x),d:x=>Math.exp(x)*Math.cos(x)-Math.exp(x)*Math.sin(x),label:'eˣ·cos(x)',dl:"eˣcos(x)-eˣsin(x)"}
-    ];
-    const fn=funcs[s.prodIdx];
-    drawCurve(fn.f,ox,oy,sx,sy,[-4,4],'#3b82f6',2);
-    if(s.showCompare)drawCurve(fn.d,ox,oy,sx,sy,[-4,4],'#f59e0b',1.5);
-    ctx.fillStyle='#e0e0f0';ctx.font='20px sans-serif';
-    ctx.fillText(`f(x) = ${fn.label}`,20,24);
-    ctx.fillText(`f'g + fg' = ${fn.dl}`,20,44);
-    // Product rule boxes
-    const cx=W/2,cy=H-80;
-    ctx.fillStyle='#111128';ctx.strokeStyle='#cbd5e1';ctx.lineWidth=1;
-    roundRect(cx-200,cy-25,100,40,8);roundRect(cx-80,cy-25,60,40,8);
-    roundRect(cx+20,cy-25,60,40,8);roundRect(cx+100,cy-25,100,40,8);
-    ctx.fillStyle='#ef4444';ctx.font='19px sans-serif';ctx.fillText("f'",cx-165,cy+2);
-    ctx.fillStyle='#60a5fa';ctx.fillText('g',cx-58,cy+2);
-    ctx.fillStyle='#3b82f6';ctx.fillText('f',cx+38,cy+2);
-    ctx.fillStyle='#ef4444';ctx.fillText("g'",cx+135,cy+2);
-    ctx.fillStyle='#f59e0b';ctx.font='24px sans-serif';ctx.fillText('+',cx-10,cy+5);
+  const x=-2+4*s.t;
+  const y=f1(x);
+  const y2=f1(x+s.h);
+  const slope=(y2-y)/s.h;
+  const tSlope=f1d(x);
+  // Secant line (purple dashed)
+  ctx.setLineDash([6,4]);ctx.strokeStyle='#a78bfa';ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(toSX(x-2,xMin,xMax),toSY(y-2*slope,yMin,yMax));
+  ctx.lineTo(toSX(x+2,xMin,xMax),toSY(y+2*slope,yMin,yMax));
+  ctx.stroke();ctx.setLineDash([]);
+  // Tangent line (gold) - only in phase>=1
+  if(s.phase>=1){
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.beginPath();
+    ctx.moveTo(toSX(x-1.5,xMin,xMax),toSY(y-1.5*tSlope,yMin,yMax));
+    ctx.lineTo(toSX(x+1.5,xMin,xMax),toSY(y+1.5*tSlope,yMin,yMax));
+    ctx.stroke();
   }
-}
-function roundRect(x,y,w,h,r){
-  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
-  ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
-  ctx.closePath();ctx.fill();ctx.stroke();
-}
-function drawArrow(x1,y1,x2,y2){
-  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
-  const a=Math.atan2(y2-y1,x2-x1);
-  ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-10*Math.cos(a-0.4),y2-10*Math.sin(a-0.4));
-  ctx.lineTo(x2-10*Math.cos(a+0.4),y2-10*Math.sin(a+0.4));ctx.closePath();ctx.fillStyle='#f59e0b';ctx.fill();
+  // Points P and Q
+  ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(toSX(x,xMin,xMax),toSY(y,yMin,yMax),6,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#a78bfa';ctx.beginPath();ctx.arc(toSX(x+s.h,xMin,xMax),toSY(y2,yMin,yMax),5,0,Math.PI*2);ctx.fill();
+  // Labels
+  ctx.font='12px sans-serif';ctx.fillStyle=t('text');
+  ctx.fillText('P('+x.toFixed(1)+','+y.toFixed(1)+')',toSX(x,xMin,xMax)+8,toSY(y,yMin,yMax)-8);
+  ctx.fillText('Q',toSX(x+s.h,xMin,xMax)+8,toSY(y2,yMin,yMax)-8);
+  // Phase>=1: derivative curve
+  if(s.phase>=1){
+    drawCurve(f1d,xMin,xMax,yMin,yMax,'rgba(34,197,94,0.5)',1.5);
+    ctx.font='11px sans-serif';ctx.fillStyle='#22c55e';
+    ctx.fillText("f'(x)=3x²−3",toSX(1.5,xMin,xMax),toSY(f1d(1.5),yMin,yMax)-8);
+  }
 }
 
 function drawL3(){
   const s=levelState;
-  const ox=W*0.15,oy=H*0.7,sx=W*0.7/Math.PI,sy=H*0.5;
-  drawGrid(ox,oy,sx,sy,[-1,4],[-0.5,1.5]);
-  // Draw sin(x)
-  drawCurve(Math.sin,ox,oy,sx,sy,[0,Math.PI],'#3b82f6',2);
-  // Riemann rectangles
-  const n=s.n,a=0,b=Math.PI,dx=(b-a)/n;
-  for(let i=0;i<n;i++){
-    let x;
-    if(s.method===0)x=a+i*dx;else if(s.method===1)x=a+(i+1)*dx;else x=a+(i+0.5)*dx;
-    const h=Math.sin(x);
-    const rx=toSX(a+i*dx,ox,sx),ry=toSY(h,oy,sy);
-    const rw=dx*sx,rh=h*sy;
-    ctx.fillStyle='rgba(59,130,246,0.25)';ctx.fillRect(rx,ry,rw,rh);
-    ctx.strokeStyle='rgba(59,130,246,0.6)';ctx.lineWidth=1;ctx.strokeRect(rx,ry,rw,rh);
+  const xMin=0,xMax=3.5,yMin=-1.5,yMax=1.5;
+  drawGrid(xMin,xMax,yMin,yMax);
+  // Phase 1+: 显示当前选中的链式例子函数
+  if(s.phase>=1&&s.chainFuncs){
+    var cf=s.chainFuncs[s.chainIdx];
+    drawCurve(cf.f,xMin,xMax,yMin,yMax,'#3b82f6',2);
+    // 函数标签
+    ctx.font='bold 13px sans-serif';ctx.fillStyle='#3b82f6';
+    ctx.fillText(cf.label,toSX(0.2,xMin,xMax),toSY(1.3,yMin,yMax));
+    // 导函数曲线（淡紫色）
+    drawCurve(cf.fd,xMin,xMax,yMin,yMax,'rgba(124,58,237,0.5)',1.5);
+    ctx.font='11px sans-serif';ctx.fillStyle='#7c3aed';
+    ctx.fillText("f'(x)",toSX(2.5,xMin,xMax),toSY(cf.fd(2.5),yMin,yMax)-10);
+  } else {
+    drawCurve(function(x){return Math.sin(x*x)},xMin,xMax,yMin,yMax,'#3b82f6',2);
+    ctx.font='bold 13px sans-serif';ctx.fillStyle='#3b82f6';
+    ctx.fillText('sin(x²)',toSX(0.2,xMin,xMax),toSY(1.3,yMin,yMax));
   }
-  const approx=riemannSumRaw(n,s.method);
-  ctx.fillStyle='#e0e0f0';ctx.font='20px sans-serif';
-  ctx.fillText(`∫₀π sin(x)dx — 黎曼和`,20,24);
-  ctx.fillText(`n = ${n}, 近似 = ${approx.toFixed(4)}, 精确 = 2.0000`,20,44);
-  const err=Math.abs(approx-2)/2*100;
-  ctx.fillStyle=err<1?'#4ade80':'#f59e0b';
-  ctx.fillText(`误差: ${err.toFixed(2)}%`,20,64);
+  if(s.phase===0){
+    const x=s.ruleX;
+    const y=Math.sin(x*x);
+    const actual=Math.cos(x*x)*2*x;
+    const predicted=s.ruleOuter*s.ruleInner;
+    // 当前点
+    const sx=toSX(x,xMin,xMax),sy=toSY(y,yMin,yMax);
+    ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(sx,sy,6,0,Math.PI*2);ctx.fill();
+    ctx.font='11px sans-serif';ctx.fillStyle=t('text');
+    ctx.fillText('x='+x.toFixed(2),sx+10,sy-10);
+    // 切线（实际斜率）
+    var tLen=0.6;
+    ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.setLineDash([]);
+    ctx.beginPath();ctx.moveTo(toSX(x-tLen,xMin,xMax),toSY(y-actual*tLen,yMin,yMax));
+    ctx.lineTo(toSX(x+tLen,xMin,xMax),toSY(y+actual*tLen,yMin,yMax));ctx.stroke();
+    // 预测切线（橙色虚线）
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.setLineDash([6,4]);
+    ctx.beginPath();ctx.moveTo(toSX(x-tLen,xMin,xMax),toSY(y-predicted*tLen,yMin,yMax));
+    ctx.lineTo(toSX(x+tLen,xMin,xMax),toSY(y+predicted*tLen,yMin,yMax));ctx.stroke();
+    ctx.setLineDash([]);
+    // 斜率对比条（底部）
+    var bx=20,by=H-60,bw=W-40,bh=50;
+    ctx.fillStyle='rgba(0,0,0,0.4)';ctx.fillRect(bx,by,bw,bh);
+    ctx.font='12px sans-serif';
+    var barMax=6,barW=(bw-20)/2,barCx=bx+10+barW/2;
+    // 实际（蓝）
+    var aW=actual/barMax*barW/2;
+    ctx.fillStyle='#3b82f6';ctx.fillRect(barCx,by+8,aW,10);
+    ctx.fillStyle=t('text');ctx.textAlign='left';ctx.fillText('实际: '+actual.toFixed(3),bx+10,by+35);
+    // 预测（橙）
+    var pW=predicted/barMax*barW/2;
+    ctx.fillStyle='#f59e0b';ctx.fillRect(barCx+barW+10,by+8,pW,10);
+    ctx.fillText('预测: '+predicted.toFixed(3),barCx+barW+10,by+35);
+    ctx.textAlign='start';
+    // 匹配指示
+    var gap=Math.abs(actual-predicted);
+    if(gap<Math.abs(actual)*0.05&&Math.abs(actual)>0.1){
+      ctx.fillStyle='#22c55e';ctx.font='bold 14px sans-serif';
+      ctx.fillText('✓ 匹配!',bx+bw/2-20,by+35);
+    }
+  }
+  // Phase 2: 显示当前轮次的函数曲线
+  if(s.phase>=2){
+    const rounds=[
+      {f:function(x){return Math.cos(3*x)},fd:function(x){return -3*Math.sin(3*x)},label:'cos(3x)'},
+      {f:function(x){return x*Math.exp(x)},fd:function(x){return Math.exp(x)+x*Math.exp(x)},label:'x·eˣ'},
+      {f:function(x){return Math.sin(x)*Math.cos(x)},fd:function(x){return Math.cos(2*x)},label:'sin(x)cos(x)'}
+    ];
+    var ri=Math.min(s.matchRound,2);
+    var rd=rounds[ri];
+    // 清除并重绘当前轮次函数
+    ctx.clearRect(0,0,W,H);drawGrid(xMin,xMax,yMin,yMax);
+    drawCurve(rd.f,xMin,xMax,yMin,yMax,'#3b82f6',2);
+    drawCurve(rd.fd,xMin,xMax,yMin,yMax,'rgba(124,58,237,0.5)',1.5);
+    ctx.font='bold 13px sans-serif';ctx.fillStyle='#3b82f6';
+    ctx.fillText(rd.label,toSX(0.2,xMin,xMax),toSY(1.3,yMin,yMax));
+    ctx.font='11px sans-serif';ctx.fillStyle='#7c3aed';
+    ctx.fillText("f'(x)",toSX(2.8,xMin,xMax),toSY(rd.fd(2.8),yMin,yMax)-10);
+  }
 }
 
 function drawL4(){
   const s=levelState;
-  const ox=W*0.12,oy=H*0.55,sx=W*0.7/6,sy=H*0.35;
-  drawGrid(ox,oy,sx,sy,[-1,7],[-2,3]);
-  const fnames=['sin(x)','x²','cos(x)'];
-  // Draw f(x)
-  drawCurve(x=>ftcFunc(s.func,x),ox,oy,sx,sy,[-1,7],'#3b82f6',2);
-  // Draw F(x) = integral
-  drawCurve(x=>ftcIntegral(s.func,x),ox,oy,sx,sy,[0,6],'#22c55e',2);
-  // Animated fill
-  if(s.playing&&s.animX<6)s.animX+=0.03;
-  if(s.animX>0){
-    ctx.fillStyle='rgba(59,130,246,0.2)';ctx.beginPath();
-    ctx.moveTo(toSX(0,ox,sx),oy);
-    for(let x=0;x<=s.animX;x+=0.05){
-      ctx.lineTo(toSX(x,ox,sx),toSY(ftcFunc(s.func,x),oy,sy));
+  if(s.phase<2){
+    const xMin=-1,xMax=5,yMin=-5,yMax=10;
+    drawGrid(xMin,xMax,yMin,yMax);
+    drawCurve(f4,xMin,xMax,yMin,yMax,'#3b82f6',2);
+    // Tangent at current x
+    const x=s.optX;
+    const y=f4(x);
+    const dy=f4d(x);
+    ctx.strokeStyle=Math.abs(dy)<0.3?'#22c55e':'#f59e0b';ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(toSX(x-1,xMin,xMax),toSY(y-dy,yMin,yMax));
+    ctx.lineTo(toSX(x+1,xMin,xMax),toSY(y+dy,yMin,yMax));
+    ctx.stroke();
+    // Point
+    ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(toSX(x,xMin,xMax),toSY(y,yMin,yMax),6,0,Math.PI*2);ctx.fill();
+    // Derivative gauge (right side)
+    const gx=W-40,gy=H/2;
+    ctx.strokeStyle=t('axis');ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(gx,gy-80);ctx.lineTo(gx,gy+80);ctx.stroke();
+    // Zero mark
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(gx-10,gy);ctx.lineTo(gx+10,gy);ctx.stroke();
+    // Needle
+    const ny=gy-Math.max(-80,Math.min(80,dy*8));
+    ctx.fillStyle=Math.abs(dy)<0.3?'#22c55e':'#ef4444';
+    ctx.beginPath();ctx.arc(gx,ny,5,0,Math.PI*2);ctx.fill();
+    ctx.font='11px sans-serif';ctx.fillStyle=t('text');
+    ctx.fillText("f'(x)="+dy.toFixed(2),gx-50,ny-10);
+    // Phase 1: second derivative curve
+    if(s.phase>=1){
+      drawCurve(f4dd,xMin,xMax,yMin,yMax,'rgba(239,68,68,0.4)',1.5);
+      // Mark extrema
+      [{x:1,type:'∩ 极大'},{x:3,type:'∪ 极小'}].forEach(function(p){
+        ctx.font='13px sans-serif';ctx.fillStyle='#7c3aed';
+        ctx.fillText(p.type,toSX(p.x,xMin,xMax)+8,toSY(f4(p.x),yMin,yMax)-12);
+      });
     }
-    ctx.lineTo(toSX(s.animX,ox,sx),oy);ctx.closePath();ctx.fill();
-    if(s.animX>0.5)completeObj(0);
+  }else{
+    // Phase 2: Box optimization
+    const L=s.boxL;
+    const x=s.boxX;
+    const vol=x*(L-2*x)*(L-2*x);
+    // Left: unfolded view
+    const cx=W*0.3,cy=H*0.5,sc=W*0.02;
+    ctx.strokeStyle=t('axis');ctx.lineWidth=1;
+    ctx.strokeRect(cx-L/2*sc,cy-L/2*sc,L*sc,L*sc);
+    // Cut corners
+    ctx.fillStyle='rgba(239,68,68,0.2)';
+    const cs=x*sc;
+    [[cx-L/2*sc,cy-L/2*sc],[cx+L/2*sc-cs,cy-L/2*sc],[cx-L/2*sc,cy+L/2*sc-cs],[cx+L/2*sc-cs,cy+L/2*sc-cs]].forEach(function(p){
+      ctx.fillRect(p[0],p[1],cs,cs);
+    });
+    ctx.setLineDash([3,3]);ctx.strokeStyle='#ef4444';
+    ctx.strokeRect(cx-L/2*sc+cs,cy-L/2*sc,L*sc-2*cs,cs);
+    ctx.strokeRect(cx-L/2*sc+cs,cy+L/2*sc-cs,L*sc-2*cs,cs);
+    ctx.strokeRect(cx-L/2*sc,cy-L/2*sc+cs,cs,L*sc-2*cs);
+    ctx.strokeRect(cx+L/2*sc-cs,cy-L/2*sc+cs,cs,L*sc-2*cs);
+    ctx.setLineDash([]);
+    // Right: volume curve
+    const vx=W*0.65,vw=W*0.3,vy=H*0.15,vh=H*0.7;
+    ctx.strokeStyle=t('axis');ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(vx,vy+vh);ctx.lineTo(vx+vw,vy+vh);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(vx,vy);ctx.lineTo(vx,vy+vh);ctx.stroke();
+    // V(x) curve
+    const maxV=L*L*L/27*4/27;// rough scale
+    ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.beginPath();
+    for(let i=0;i<=100;i++){
+      const xx=i/100*(L/2);
+      const v=xx*(L-2*xx)*(L-2*xx);
+      const px=vx+xx/(L/2)*vw;
+      const py=vy+vh-v/(L*L*L/10)*vh;
+      if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+    // Current point on curve
+    const cpx=vx+x/(L/2)*vw;
+    const cpy=vy+vh-vol/(L*L*L/10)*vh;
+    ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(cpx,cpy,6,0,Math.PI*2);ctx.fill();
+    ctx.font='13px sans-serif';ctx.fillStyle=t('text');
+    ctx.fillText('V='+vol.toFixed(1),cpx+8,cpy-8);
+    ctx.fillText('x (切割)',vx+vw/2,vy+vh+20);
+    ctx.fillText('L='+L,cx,cy-L/2*sc-8);
   }
-  ctx.fillStyle='#e0e0f0';ctx.font='20px sans-serif';
-  ctx.fillText(`f(x) = ${fnames[s.func]}`,20,24);
-  ctx.fillStyle='#3b82f6';ctx.fillText('f(x)',20,44);
-  ctx.fillStyle='#22c55e';ctx.fillText('F(x) = ∫₀ˣ f(t)dt',100,44);
 }
 
 function drawL5(){
+  const xMin=0,xMax=Math.PI+0.3,yMin=-0.3,yMax=1.3;
+  drawGrid(xMin,xMax,yMin,yMax);
   const s=levelState;
-  const ox=W/2,oy=H/2,sx=40,sy=40;
-  drawGrid(ox,oy,sx,sy,[-7,7],[-4,4]);
-  const fnames=['sin(x)','cos(x)','eˣ'];
-  // Original function
-  drawCurve(x=>targetFunc5(s.func,x),ox,oy,sx,sy,[-7,7],'#3b82f6',2);
-  // Taylor approximation
-  drawCurve(x=>taylorApprox(s.func,s.terms,x),ox,oy,sx,sy,[-7,7],'#f59e0b',2);
-  // Show terms
-  ctx.fillStyle='#e0e0f0';ctx.font='20px sans-serif';
-  ctx.fillText(`f(x) = ${fnames[s.func]}`,20,24);
-  ctx.fillStyle='#3b82f6';ctx.fillText('原函数',20,44);
-  ctx.fillStyle='#f59e0b';ctx.fillText(`泰勒展开 (${s.terms} 项)`,120,44);
-  // Show polynomial terms
-  let poly='T(x) = ';
-  for(let n=0;n<Math.min(s.terms,6);n++){
-    if(s.func===0){poly+=(n>0?'+':'')+`${n%2===0?'':'-'}x^${2*n+1}/${factorial(2*n+1)}`}
-    if(s.func===1){poly+=(n>0?'+':'')+`${n%2===0?'':'-'}x^${2*n}/${factorial(2*n)}`}
-    if(s.func===2){poly+=(n>0?'+':'')+`x^${n}/${factorial(n)}`}
-  }
-  if(s.terms>6)poly+=' + ...';
-  ctx.fillStyle='#475569';ctx.font='18px sans-serif';
-  ctx.fillText(poly,20,H-20);
-  // Convergence boundary indicator
-  if(s.func===2&&s.terms<8){
-    const bx=toSX(s.terms*0.8,ox,sx);
-    ctx.strokeStyle='rgba(239,68,68,0.5)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
-    ctx.beginPath();ctx.moveTo(bx,0);ctx.lineTo(bx,H);ctx.stroke();ctx.setLineDash([]);
-    ctx.fillStyle='#ef4444';ctx.font='17px sans-serif';ctx.fillText('逼近边界',bx+4,20);
+  const n=Math.round(s.n);
+  const funcs=[
+    {f:Math.sin,a:0,b:Math.PI},
+    {f:function(x){return x*x},a:0,b:1},
+    {f:Math.exp,a:0,b:2},
+    {f:function(x){return Math.sqrt(Math.max(0,1-x*x))},a:-1,b:1}
+  ];
+  const fn=funcs[s.intFunc||0]||funcs[0];
+  // Adjust view for current function
+  const fxMin=fn.a-0.3,fxMax=fn.b+0.3;
+  const fyMin=-0.3,fyMax=s.intFunc===2?8:1.3;
+  ctx.clearRect(0,0,W,H);
+  drawGrid(fxMin,fxMax,fyMin,fyMax);
+  drawCurve(fn.f,fxMin,fxMax,fyMin,fyMax,'#3b82f6',2);
+  // Riemann rectangles
+  const dx=(fn.b-fn.a)/n;
+  const colors=['rgba(239,68,68,0.3)','rgba(59,130,246,0.3)','rgba(34,197,94,0.3)'];
+  ctx.fillStyle=colors[s.method||0];ctx.strokeStyle=colors[s.method||0].replace('0.3','0.7');ctx.lineWidth=1;
+  for(let i=0;i<n;i++){
+    let x;
+    if(s.method===0)x=fn.a+i*dx;
+    else if(s.method===1)x=fn.a+(i+1)*dx;
+    else x=fn.a+(i+0.5)*dx;
+    const h=fn.f(x);
+    const rx=toSX(fn.a+i*dx,fxMin,fxMax);
+    const rw=toSX(fn.a+(i+1)*dx,fxMin,fxMax)-rx;
+    const ry=toSY(Math.max(0,h),fyMin,fyMax);
+    const rh=toSY(0,fyMin,fyMax)-toSY(h,fyMin,fyMax);
+    ctx.fillRect(rx,toSY(h,fyMin,fyMax),rw,rh);
+    ctx.strokeRect(rx,toSY(h,fyMin,fyMax),rw,rh);
   }
 }
 
 function drawL6(){
   const s=levelState;
-  const ox=W/2,oy=H/2,sx=40,sy=40;
-  drawGrid(ox,oy,sx,sy,[-6,6],[-4,4]);
+  const funcs=[Math.sin,function(x){return x*x},Math.cos];
+  const fn=funcs[s.func]||Math.sin;
+  const xMin=0,xMax=2*Math.PI+0.3,yMin=-2,yMax=3;
+  drawGrid(xMin,xMax,yMin,yMax);
+  // Original function
+  drawCurve(fn,xMin,xMax,yMin,yMax,'#3b82f6',2);
+  // Shaded area from 0 to x
+  const x=s.ftcX;
+  ctx.fillStyle='rgba(59,130,246,0.15)';ctx.beginPath();
+  ctx.moveTo(toSX(0,xMin,xMax),toSY(0,yMin,yMax));
+  for(let px=0;px<=x;px+=0.02){
+    ctx.lineTo(toSX(px,xMin,xMax),toSY(fn(px),yMin,yMax));
+  }
+  ctx.lineTo(toSX(x,xMin,xMax),toSY(0,yMin,yMax));
+  ctx.closePath();ctx.fill();
+  // F(x) curve (building up)
+  ctx.strokeStyle='#22c55e';ctx.lineWidth=2;ctx.beginPath();
+  let started=false;
+  for(let px=0;px<=x;px+=0.05){
+    const fy=ftcIntegral(px,s.func);
+    const sy=toSY(fy,yMin,yMax);
+    if(!started){ctx.moveTo(toSX(px,xMin,xMax),sy);started=true;}
+    else ctx.lineTo(toSX(px,xMin,xMax),sy);
+  }
+  ctx.stroke();
+  // Labels
+  ctx.font='12px sans-serif';
+  ctx.fillStyle='#3b82f6';ctx.fillText('f(t)',toSX(1,xMin,xMax),toSY(fn(1),yMin,yMax)-8);
+  ctx.fillStyle='#22c55e';ctx.fillText('F(x)=∫₀ˣ f(t)dt',toSX(x*0.7,xMin,xMax),toSY(ftcIntegral(x*0.7,s.func),yMin,yMax)-8);
+  // Current x marker
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(toSX(x,xMin,xMax),0);ctx.lineTo(toSX(x,xMin,xMax),H);ctx.stroke();
+  ctx.setLineDash([]);
+  // Phase 1: show F'(x)=f(x) values
+  if(s.phase>=1){
+    const nd=numDeriv(x,s.func);
+    const fv=ftcFunc(x,s.func);
+    ctx.font='14px sans-serif';ctx.fillStyle='#f59e0b';
+    ctx.fillText("F'(x)="+nd.toFixed(3)+' ≈ f(x)='+fv.toFixed(3),20,30);
+  }
+}
+
+function drawL7(){
+  const s=levelState;
+  const nTerms=Math.round(s.terms);
+  const funcIdx=s.func;
+  const xRange=funcIdx===3?[-0.5,2.5]:[-4,4];
+  const yRange=funcIdx===2?[-1,10]:funcIdx===3?[-3,5]:[-2,2];
+  drawGrid(xRange[0],xRange[1],yRange[0],yRange[1]);
+  // Original function
+  drawCurve(function(x){return targetFunc(x,funcIdx)},xRange[0],xRange[1],yRange[0],yRange[1],'#3b82f6',2);
+  // Taylor approximation
+  drawCurve(function(x){return taylorApprox(x,nTerms,funcIdx)},xRange[0],xRange[1],yRange[0],yRange[1],'#f59e0b',2);
+  // Labels
+  ctx.font='12px sans-serif';
+  ctx.fillStyle='#3b82f6';ctx.fillText('原函数',20,20);
+  ctx.fillStyle='#f59e0b';ctx.fillText('泰勒('+nTerms+'项)',20,36);
+  // Phase 1: convergence radius indicator
+  if(s.phase>=1&&funcIdx===3){
+    ctx.strokeStyle='#ef4444';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    const bx=toSX(1,xRange[0],xRange[1]);
+    ctx.beginPath();ctx.moveTo(bx,0);ctx.lineTo(bx,H);ctx.stroke();
+    const bx2=toSX(-1,xRange[0],xRange[1]);
+    ctx.beginPath();ctx.moveTo(bx2,0);ctx.lineTo(bx2,H);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font='12px sans-serif';ctx.fillStyle='#ef4444';
+    ctx.fillText('收敛半径 |x|<1',bx+4,30);
+  }
+}
+
+function drawL8(){
+  const s=levelState;
+  const xMin=-1,xMax=6,yMin=-2,yMax=5;
+  drawGrid(xMin,xMax,yMin,yMax);
   // Direction field
-  const step=0.6;
-  for(let x=-6;x<=6;x+=step){
-    for(let y=-4;y<=4;y+=step){
-      const slope=deField(s.eq,x,y);
-      const len=12;const angle=Math.atan(slope);
-      const dx=len*Math.cos(angle)/2,dy=len*Math.sin(angle)/2;
-      const px=toSX(x,ox,sx),py=toSY(y,oy,sy);
-      const mag=Math.min(Math.abs(slope),3)/3;
-      ctx.strokeStyle=`rgba(${100+155*mag},${130-50*mag},${246-100*mag},0.6)`;
-      ctx.lineWidth=1;ctx.beginPath();
-      ctx.moveTo(px-dx,py+dy);ctx.lineTo(px+dx,py-dy);ctx.stroke();
+  const step=0.4;
+  ctx.strokeStyle='rgba(100,100,200,0.4)';ctx.lineWidth=1;
+  for(let x=xMin;x<=xMax;x+=step){
+    for(let y=yMin;y<=yMax;y+=step){
+      const dy=deField(x,y,s.eq);
+      const len=0.15;
+      const angle=Math.atan2(dy,1);
+      const dx2=len*Math.cos(angle),dy2=len*Math.sin(angle);
+      ctx.beginPath();
+      ctx.moveTo(toSX(x-dx2,xMin,xMax),toSY(y-dy2,yMin,yMax));
+      ctx.lineTo(toSX(x+dx2,xMin,xMax),toSY(y+dy2,yMin,yMax));
+      ctx.stroke();
+      // Arrow head
+      const ax=toSX(x+dx2,xMin,xMax),ay=toSY(y+dy2,yMin,yMax);
+      ctx.fillStyle='rgba(100,100,200,0.4)';
+      ctx.beginPath();ctx.arc(ax,ay,1.5,0,Math.PI*2);ctx.fill();
     }
   }
-  // Solution curve via Euler's method
-  const dt=0.05;let cx=s.ix,cy=s.iy;
-  ctx.strokeStyle='#f59e0b';ctx.lineWidth=2.5;ctx.beginPath();
-  ctx.moveTo(toSX(cx,ox,sx),toSY(cy,oy,sy));
-  const maxSteps=s.longTerm?400:200;
-  for(let i=0;i<maxSteps;i++){
-    const slope=deField(s.eq,cx,cy);
-    cy+=slope*dt;cx+=dt;
-    if(cx>6||cy>5||cy<-5)break;
-    ctx.lineTo(toSX(cx,ox,sx),toSY(cy,oy,sy));
+  // Guess path (orange)
+  if(s.guessPath.length>1){
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.beginPath();
+    s.guessPath.forEach(function(p,i){
+      if(i===0)ctx.moveTo(p.sx,p.sy);else ctx.lineTo(p.sx,p.sy);
+    });
+    ctx.stroke();
   }
-  ctx.stroke();
-  // Backward
-  cx=s.ix;cy=s.iy;
-  ctx.beginPath();ctx.moveTo(toSX(cx,ox,sx),toSY(cy,oy,sy));
-  for(let i=0;i<maxSteps;i++){
-    const slope=deField(s.eq,cx,cy);
-    cy-=slope*dt;cx-=dt;
-    if(cx<-6||cy>5||cy<-5)break;
-    ctx.lineTo(toSX(cx,ox,sx),toSY(cy,oy,sy));
+  // Solution curve (green)
+  if(s.showSolution||s.phase>=1){
+    const pts=solvDE(s.ix,s.iy,s.eq,500,0.01);
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=2;ctx.beginPath();
+    pts.forEach(function(p,i){
+      const sx=toSX(p.x,xMin,xMax),sy=toSY(p.y,yMin,yMax);
+      if(i===0)ctx.moveTo(sx,sy);else ctx.lineTo(sx,sy);
+    });
+    ctx.stroke();
   }
-  ctx.stroke();
   // Initial point
-  const ipx=toSX(s.ix,ox,sx),ipy=toSY(s.iy,oy,sy);
-  ctx.beginPath();ctx.arc(ipx,ipy,8,0,Math.PI*2);ctx.fillStyle='#ef4444';ctx.fill();
-  ctx.beginPath();ctx.arc(ipx,ipy,8,0,Math.PI*2);ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
-  // Labels
-  const eqnames=["y'=x-y","y'=sin(x)·y","y'=y(1-y)"];
-  ctx.fillStyle='#e0e0f0';ctx.font='20px sans-serif';
-  ctx.fillText(`微分方程: ${eqnames[s.eq]}`,20,24);
-  ctx.fillStyle='#ef4444';ctx.fillText(`初始条件: (${s.ix.toFixed(1)}, ${s.iy.toFixed(1)})`,20,44);
+  ctx.fillStyle='#f59e0b';ctx.beginPath();
+  ctx.arc(toSX(s.ix,xMin,xMax),toSY(s.iy,yMin,yMax),7,0,Math.PI*2);ctx.fill();
+  // Equilibrium points in phase>=1
+  if(s.phase>=1&&s.eq===2){
+    [{y:0,label:'不稳定'},{y:1,label:'稳定'}].forEach(function(eq){
+      const ey=toSY(eq.y,yMin,yMax);
+      ctx.setLineDash([6,3]);ctx.strokeStyle='#7c3aed';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(0,ey);ctx.lineTo(W,ey);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font='12px sans-serif';ctx.fillStyle='#7c3aed';
+      ctx.fillText('y='+eq.y+' ('+eq.label+')',10,ey-6);
+    });
+  }
 }
 
 // ===== MOUSE EVENTS =====
-cv.addEventListener('mousedown',e=>{
-  mouse.down=true;
-  const rect=cv.getBoundingClientRect();
-  mouse.px=e.clientX-rect.left;mouse.py=e.clientY-rect.top;
-  if(li===6){
-    const s=levelState;
-    const ox=W/2,oy=H/2,sx=40,sy=40;
-    const ipx=toSX(s.ix,ox,sx),ipy=toSY(s.iy,oy,sy);
-    if(Math.hypot(mouse.px-ipx,mouse.py-ipy)<20)s.dragging=true;
+cv.addEventListener('mousemove',function(e){
+  const r=cv.getBoundingClientRect();
+  mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;
+  if(li===8&&levelState.guessing){
+    levelState.guessPath.push({sx:mouse.x,sy:mouse.y});
+    draw();
   }
 });
-cv.addEventListener('mousemove',e=>{
-  const rect=cv.getBoundingClientRect();
-  mouse.x=e.clientX-rect.left;mouse.y=e.clientY-rect.top;
-  if(li===6&&levelState.dragging){
-    const ox=W/2,oy=H/2,sx=40,sy=40;
-    levelState.ix=(mouse.x-ox)/sx;
-    levelState.iy=-(mouse.y-oy)/sy;
-    levelState.ix=Math.max(-5,Math.min(5,levelState.ix));
-    levelState.iy=Math.max(-3,Math.min(3,levelState.iy));
-    levelState.positions.add(Math.round(levelState.ix*10)+'_'+Math.round(levelState.iy*10));
-    checkL6();renderPanel();
+cv.addEventListener('mousedown',function(e){mouse.down=true;});
+cv.addEventListener('mouseup',function(e){mouse.down=false;});
+cv.addEventListener('click',function(e){
+  if(li===8&&levelState.guessing&&levelState.guessPath.length>3){
+    // Each click extends the guess
   }
 });
-cv.addEventListener('mouseup',()=>{mouse.down=false;if(li===6)levelState.dragging=false});
-cv.addEventListener('mouseleave',()=>{mouse.down=false;if(li===6)levelState.dragging=false});
 
 // ===== ANIMATION LOOP =====
-function loop(){draw();animId=requestAnimationFrame(loop)}
+function loop(){animId=requestAnimationFrame(loop);draw();}
 
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
-
+// ===== INIT =====
+resize();
 </script>
 </body>
 </html>

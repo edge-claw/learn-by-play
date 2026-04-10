@@ -103,7 +103,7 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -117,10 +117,32 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 #themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
 [data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
 [data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;background:linear-gradient(135deg,#7c3aed,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.overlay .sub{color:var(--text-sub);font-size:17px;margin-bottom:32px}
+.overlay .start-btn{padding:14px 48px;font-size:18px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:transform .2s}
+.overlay .start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.features .feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px}
+.features .feat .fi{font-size:26px;margin-bottom:4px}
 </style>
 </head>
 <body data-theme="dark">
 <button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="ov">
+<h1>🛡️ 免疫系统大战</h1>
+<p class="sub">7 个交互关卡 — 从皮肤屏障到免疫记忆</p>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="fi">🩹</div>皮肤屏障</div>
+<div class="feat"><div class="fi">🔬</div>巨噬细胞</div>
+<div class="feat"><div class="fi">🔥</div>炎症反应</div>
+<div class="feat"><div class="fi">🎯</div>抗原呈递</div>
+<div class="feat"><div class="fi">⚔️</div>T细胞杀伤</div>
+<div class="feat"><div class="fi">🏹</div>B细胞抗体</div>
+<div class="feat"><div class="fi">💉</div>疫苗记忆</div>
+</div>
+</div>
 <div class="panel" id="panel"></div>
 <canvas id="cv"></canvas>
 <div id="infobar">
@@ -138,6 +160,7 @@ const TH={
 };
 function t(){return isDark?TH.dark:TH.light}
 function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
+function startGame(){document.getElementById('ov').style.display='none';}
 
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel');
 let W,H,curLevel=0,frame=0,animId;
@@ -153,25 +176,25 @@ document.addEventListener('keydown',e=>{keys[e.key]=true});
 document.addEventListener('keyup',e=>{keys[e.key]=false});
 let mouseX=0,mouseY=0,mouseDown=false,clicked=false;
 const levels=[
-{name:'皮肤屏障',sub:'修补伤口阻止细菌入侵',concept:'皮肤是人体第一道防线——物理屏障。完整的皮肤能阻挡99%的病原体。伤口破坏了屏障，细菌会趁虚而入。',
+{name:'皮肤屏障',sub:'修补伤口阻止细菌入侵',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>场景：</b>皮肤屏障破损，细菌趁虚而入</div>皮肤是人体第一道防线——物理屏障。完整的皮肤能阻挡99%的病原体。伤口破坏了屏障，细菌会趁虚而入。',
  objs:['发现伤口位置','修补2处伤口','阻止所有细菌入侵'],
  learn:'皮肤表面积约<span class="sv">1.7m²</span>，是人体最大的器官。角质层、汗液（含溶菌酶）、皮脂（酸性pH）共同构成<span class="sv">物理+化学屏障</span>。伤口愈合涉及血小板凝集→炎症→增殖→重塑四个阶段。'},
-{name:'巨噬细胞',sub:'吞噬入侵的细菌',concept:'巨噬细胞是先天免疫的"巡逻兵"，能识别并吞噬细菌。点击细菌，指挥巨噬细胞前往吞噬。',
+{name:'巨噬细胞',sub:'吞噬入侵的细菌',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>角色：</b>巨噬细胞 — 先天免疫的巡逻兵（吞噬细菌）</div>巨噬细胞是先天免疫的"巡逻兵"，能识别并吞噬细菌。点击细菌，指挥巨噬细胞前往吞噬。',
  objs:['吞噬第1个细菌','吞噬5个细菌','清除所有细菌'],
  learn:'巨噬细胞（Macrophage）源自希腊语"大吃货"。它通过<span class="sv">模式识别受体（PRR）</span>识别细菌表面的脂多糖等PAMP分子，一个巨噬细胞可吞噬<span class="sv">100+</span>个细菌。'},
-{name:'炎症反应',sub:'释放信号招募援军',concept:'感染区的巨噬细胞释放细胞因子（红色波纹），招募中性粒细胞赶来支援。点击感染区释放信号。',
+{name:'炎症反应',sub:'释放信号招募援军',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>信号：</b>细胞因子（红色波纹）→ 招募中性粒细胞</div>感染区的巨噬细胞释放细胞因子（红色波纹），招募中性粒细胞赶来支援。点击感染区释放信号。',
  objs:['释放第一波细胞因子','招募3个中性粒细胞','消灭感染区所有细菌'],
  learn:'炎症的四大特征：<span class="sv">红、肿、热、痛</span>。细胞因子（IL-1、TNF-α等）使血管扩张、通透性增加，中性粒细胞沿浓度梯度<span class="sv">趋化</span>到感染部位——这就是为什么伤口会红肿发热。'},
-{name:'抗原呈递',sub:'启动适应性免疫',concept:'树突细胞捕获抗原后，将抗原片段装载到MHC分子上，呈递给T细胞。拖拽正确的抗原片段到MHC凹槽中配对。',
+{name:'抗原呈递',sub:'启动适应性免疫',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>桥梁：</b>树突细胞 + MHC 分子 → 激活 T 细胞</div>树突细胞捕获抗原后，将抗原片段装载到MHC分子上，呈递给T细胞。拖拽正确的抗原片段到MHC凹槽中配对。',
  objs:['识别树突细胞','完成抗原-MHC配对','激活T细胞'],
  learn:'树突细胞是先天免疫与适应性免疫的<span class="sv">桥梁</span>。MHC-I呈递内源性抗原（病毒感染），MHC-II呈递外源性抗原（细菌）。2011年诺贝尔奖授予了发现树突细胞的<span class="sv">Ralph Steinman</span>。'},
-{name:'T细胞杀伤',sub:'精准消灭感染细胞',concept:'杀伤性T细胞（CTL）识别被病毒感染的细胞（红色标记），释放穿孔素和颗粒酶将其消灭。点击感染细胞派遣T细胞攻击。',
+{name:'T细胞杀伤',sub:'精准消灭感染细胞',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>武器：</b>CTL 杀伤性 T 细胞（穿孔素 + 颗粒酶）</div>杀伤性T细胞（CTL）识别被病毒感染的细胞（红色标记），释放穿孔素和颗粒酶将其消灭。点击感染细胞派遣T细胞攻击。',
  objs:['识别感染细胞','消灭3个感染细胞','清除所有感染细胞'],
  learn:'CTL通过<span class="sv">穿孔素</span>在靶细胞膜上打孔，注入<span class="sv">颗粒酶</span>诱导凋亡。这是"定点清除"——只杀被感染的细胞，不伤及无辜。HIV之所以致命，正是因为它攻击辅助性T细胞（CD4+），瘫痪整个免疫指挥系统。'},
-{name:'B细胞与抗体',sub:'Y形武器锁定病毒',concept:'B细胞产生Y形抗体，抗体的可变区与病毒表面抗原精确配合（锁钥模型）。拖拽抗体到匹配的病毒上。',
+{name:'B细胞与抗体',sub:'Y形武器锁定病毒',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>武器：</b>Y 形抗体（可变区识别抗原 / 恒定区招募效应）</div>B细胞产生Y形抗体，抗体的可变区与病毒表面抗原精确配合（锁钥模型）。拖拽抗体到匹配的病毒上。',
  objs:['产生第一批抗体','完成3次抗体-抗原配对','中和所有病毒'],
  learn:'每个B细胞只产生一种特异性抗体。抗体的<span class="sv">可变区（Fab）</span>识别抗原，<span class="sv">恒定区（Fc）</span>招募效应功能。人体可产生超过<span class="sv">10亿种</span>不同抗体——通过V(D)J基因重组实现。'},
-{name:'疫苗与记忆',sub:'免疫记忆的力量',concept:'注射减毒疫苗→产生记忆细胞。再次感染时，记忆细胞快速响应，对比首次vs二次免疫的速度差异。',
+{name:'疫苗与记忆',sub:'免疫记忆的力量',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>原理：</b>疫苗 → 记忆细胞 → 二次免疫快速响应</div>注射减毒疫苗→产生记忆细胞。再次感染时，记忆细胞快速响应，对比首次vs二次免疫的速度差异。',
  objs:['注射疫苗','观察首次免疫响应','见证二次免疫快速响应'],
  learn:'首次免疫需<span class="sv">7-14天</span>产生足够抗体，二次免疫仅需<span class="sv">1-3天</span>且抗体量高10-100倍。这就是<span class="sv">免疫记忆</span>——疫苗的核心原理。记忆B细胞可存活<span class="sv">数十年</span>，这就是为什么天花疫苗能终身保护。'}
 ];
@@ -970,10 +993,8 @@ loadLevel(0);
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };

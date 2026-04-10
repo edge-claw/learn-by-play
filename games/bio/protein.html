@@ -96,7 +96,7 @@ canvas{display:block;position:absolute;top:0;left:320px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -110,10 +110,32 @@ canvas{display:block;position:absolute;top:0;left:320px}
 #themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
 [data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
 [data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;background:linear-gradient(135deg,#7c3aed,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.overlay .sub{color:var(--text-sub);font-size:17px;margin-bottom:32px}
+.overlay .start-btn{padding:14px 48px;font-size:18px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:transform .2s}
+.overlay .start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.features .feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px}
+.features .feat .fi{font-size:26px;margin-bottom:4px}
 </style>
 </head>
 <body data-theme="dark">
 <button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="ov">
+<h1>🧪 蛋白质折叠</h1>
+<p class="sub">7 个交互关卡 — 从氨基酸到 AlphaFold</p>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="fi">🔤</div>氨基酸</div>
+<div class="feat"><div class="fi">🌀</div>二级结构</div>
+<div class="feat"><div class="fi">💧</div>疏水坍缩</div>
+<div class="feat"><div class="fi">⛰️</div>能量景观</div>
+<div class="feat"><div class="fi">🛡️</div>分子伴侣</div>
+<div class="feat"><div class="fi">☠️</div>朊病毒</div>
+<div class="feat"><div class="fi">🤖</div>AlphaFold</div>
+</div>
+</div>
 <div class="panel" id="panel"></div>
 <canvas id="cv"></canvas>
 <div id="infoBar">蛋白质折叠交互式教育游戏 | 共7关</div>
@@ -127,6 +149,7 @@ const TH={
 };
 function t(){return isDark?TH.dark:TH.light}
 function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
+function startGame(){document.getElementById('ov').style.display='none';}
 
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const panel=document.getElementById('panel'),infoBar=document.getElementById('infoBar');
@@ -155,25 +178,25 @@ const AA_DATA=[
 {name:'组氨酸',code:'H',type:'positive',color:'#22c55e'}
 ];
 const levels=[
-{name:'氨基酸 — 生命的字母表',concept:'蛋白质由20种氨基酸组成。疏水氨基酸（橙色）倾向藏在蛋白质内部，亲水氨基酸（蓝色）喜欢待在表面与水接触，带电氨基酸（红/绿）形成盐桥稳定结构。',
+{name:'氨基酸 — 生命的字母表',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>分子：</b>20种氨基酸（疏水/亲水/带电）</div>蛋白质由20种氨基酸组成。疏水氨基酸（橙色）倾向藏在蛋白质内部，亲水氨基酸（蓝色）喜欢待在表面与水接触，带电氨基酸（红/绿）形成盐桥稳定结构。',
  objs:['拖拽5个氨基酸到链上','包含至少1个疏水残基','包含至少1个带电残基'],
  learn:'人体约有2万种蛋白质，每种由几十到几千个氨基酸按特定顺序排列。氨基酸序列决定了蛋白质的三维结构和功能。'},
-{name:'二级结构 — 氢键的力量',concept:'蛋白质骨架上的N-H和C=O之间形成氢键，驱动局部折叠。规律的氢键模式产生α-螺旋（弹簧状）和β-折叠（锯齿状）两种经典二级结构。',
+{name:'二级结构 — 氢键的力量',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>结构：</b>α-螺旋（弹簧状）+ β-折叠（锯齿状）</div>蛋白质骨架上的N-H和C=O之间形成氢键，驱动局部折叠。规律的氢键模式产生α-螺旋（弹簧状）和β-折叠（锯齿状）两种经典二级结构。',
  objs:['形成α-螺旋','形成β-折叠','观察完整二级结构'],
  learn:'α-螺旋每圈3.6个残基，螺距0.54nm。β-折叠由多条链平行排列，氢键在链间形成。头发的角蛋白主要是α-螺旋，蜘蛛丝主要是β-折叠。'},
-{name:'疏水坍缩 — 折叠的驱动力',concept:'疏水效应是蛋白质折叠最主要的驱动力。疏水残基为了逃离水环境而聚集到蛋白质内部，就像油滴在水中自发聚集一样，驱动蛋白质从展开链坍缩成紧凑球状。',
+{name:'疏水坍缩 — 折叠的驱动力',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>驱动力：</b>疏水残基逃离水环境 → 蛋白质坍缩折叠</div>疏水效应是蛋白质折叠最主要的驱动力。疏水残基为了逃离水环境而聚集到蛋白质内部，就像油滴在水中自发聚集一样，驱动蛋白质从展开链坍缩成紧凑球状。',
  objs:['开始疏水坍缩','疏水核心形成','蛋白质折叠完成'],
  learn:'疏水效应的本质是熵驱动：水分子围绕疏水基团形成有序"笼"结构（熵减少），疏水基团聚集后释放这些水分子，增加系统总熵。'},
-{name:'能量景观 — 折叠漏斗',concept:'蛋白质折叠可以用能量景观来理解：一个漏斗状的能量面，蛋白质从高能量的展开态（漏斗边缘）沿多条路径滚向最低能量的天然态（漏斗底部）。',
+{name:'能量景观 — 折叠漏斗',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>模型：</b>漏斗状能量景观（高能展开态 → 低能天然态）</div>蛋白质折叠可以用能量景观来理解：一个漏斗状的能量面，蛋白质从高能量的展开态（漏斗边缘）沿多条路径滚向最低能量的天然态（漏斗底部）。',
  objs:['从3个不同起点释放小球','所有路径到达最低点','理解折叠漏斗理论'],
  learn:'Levinthal悖论：一个100残基的蛋白质如果随机搜索所有构象，需要10^80年。但实际折叠只需毫秒到秒级——因为能量景观是漏斗形的，不需要遍历所有构象。'},
-{name:'分子伴侣 — 折叠助手',concept:'有些蛋白质无法自行正确折叠，需要分子伴侣帮助。GroEL/GroES是最著名的分子伴侣：桶状的GroEL捕获错误折叠的蛋白质，盖上GroES帽子，在隔离环境中重新折叠。',
+{name:'分子伴侣 — 折叠助手',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>工具：</b>GroEL/GroES 分子伴侣（折叠笼 + ATP）</div>有些蛋白质无法自行正确折叠，需要分子伴侣帮助。GroEL/GroES是最著名的分子伴侣：桶状的GroEL捕获错误折叠的蛋白质，盖上GroES帽子，在隔离环境中重新折叠。',
  objs:['捕获错误折叠蛋白','GroES封盖隔离','释放正确折叠蛋白'],
  learn:'GroEL/GroES被称为"分子折叠笼"，每个循环消耗7个ATP。细胞中约10-15%的蛋白质需要分子伴侣辅助折叠。热休克蛋白（HSP）也是重要的分子伴侣。'},
-{name:'错误折叠 — 朊病毒传播',concept:'朊病毒（Prion）是一种错误折叠的蛋白质，它能像传染病一样将正常蛋白质"传染"为错误构象。这种链式反应导致蛋白质聚集，引发疯牛病、阿尔茨海默病等神经退行性疾病。',
+{name:'错误折叠 — 朊病毒传播',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>病因：</b>朊病毒（Prion）— 错误折叠的传染性蛋白质</div>朊病毒（Prion）是一种错误折叠的蛋白质，它能像传染病一样将正常蛋白质"传染"为错误构象。这种链式反应导致蛋白质聚集，引发疯牛病、阿尔茨海默病等神经退行性疾病。',
  objs:['观察朊病毒接触正常蛋白','触发构象转变','链式传播形成聚集体'],
  learn:'朊病毒的发现者Stanley Prusiner因此获得1997年诺贝尔奖。阿尔茨海默病中的β-淀粉样蛋白和帕金森病中的α-突触核蛋白也有类似的错误折叠传播机制。'},
-{name:'AlphaFold — AI预测结构',concept:'DeepMind的AlphaFold2在2020年CASP14竞赛中以革命性精度预测蛋白质三维结构，解决了困扰生物学50年的蛋白质折叠问题。它从氨基酸序列直接预测原子级精度的3D结构。',
+{name:'AlphaFold — AI预测结构',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>技术：</b>AlphaFold2 — 氨基酸序列 → 3D 结构预测</div>DeepMind的AlphaFold2在2020年CASP14竞赛中以革命性精度预测蛋白质三维结构，解决了困扰生物学50年的蛋白质折叠问题。它从氨基酸序列直接预测原子级精度的3D结构。',
  objs:['输入氨基酸序列','AI分析完成','生成3D结构预测'],
  learn:'AlphaFold已预测了超过2亿种蛋白质的结构，覆盖几乎所有已知蛋白质。2024年诺贝尔化学奖授予了AlphaFold的开发者Demis Hassabis和John Jumper。'}
 ];
@@ -989,10 +1012,8 @@ function goLevel(i){switchLevel(i);}
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coding Agent 原理探险 - 交互式教育游戏</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --retry-bg:#2a2a5a;--retry-text:#ccc;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --roadmap-text:#a0a0c0;--roadmap-num-bg:#1a1a4a;--roadmap-num-text:#60a5fa;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --retry-bg:#e2e8f0;--retry-text:#475569;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --roadmap-text:#475569;--roadmap-num-bg:#e0e7ff;--roadmap-num-text:#4f46e5;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+canvas{display:block;position:absolute;top:0;left:320px}
+.panel{position:absolute;top:0;left:0;width:320px;height:100%;background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;padding-bottom:24px;display:none}
+.bar{position:absolute;bottom:0;left:320px;right:0;height:40px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:none;align-items:center;padding:0 16px;gap:8px;z-index:10;font-size:14px;color:var(--text)}
+.level-btn{display:none!important}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:15px;cursor:pointer;text-align:center;transition:all .3s}
+.act-btn:hover{background:var(--btn-hover)}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.hint-box{background:var(--hint-bg);border-left:3px solid var(--sv);border-radius:0 8px 8px 0;padding:8px 10px;margin:8px 0;font-size:12px;color:var(--hint-text);line-height:1.5}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:14px;line-height:1.8;color:var(--learn-text);display:none}
+.learn-box .sv{color:var(--sv);font-weight:700}
+.obj-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px}
+.obj-row .dot{width:14px;height:14px;border-radius:50%;border:2px solid #444;display:flex;align-items:center;justify-content:center;font-size:9px}
+.obj-row .dot.done{border-color:#2aaa5a;background:#2aaa5a;color:#fff}
+.obj-row .dot.done::after{content:'✓'}
+.obj-row span{color:#aaa}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:520px}
+.start-box h1{font-size:36px;color:#60a5fa;margin-bottom:8px;letter-spacing:2px}
+.start-box .subtitle{font-size:15px;color:#888;margin-bottom:28px}
+.start-box .features{display:flex;flex-wrap:wrap;gap:16px;margin:24px 0;justify-content:center}
+.start-box .feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.start-box .feat .fi{font-size:26px;margin-bottom:4px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 48px;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:13px;margin:2px}
+.tag.b{background:#3b82f630;color:#60a5fa}.tag.g{background:#22c55e30;color:#4ade80}.tag.r{background:#ef444430;color:#f87171}.tag.y{background:#f59e0b30;color:#fbbf24}.tag.p{background:#a855f730;color:#c084fc}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+<h1>🤖 Coding Agent 原理探险</h1>
+<p class="subtitle">7 个关卡，从 Agent Loop 到多 Agent 协作</p>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="fi">🔄</div>Agent Loop</div>
+<div class="feat"><div class="fi">🔧</div>工具系统</div>
+<div class="feat"><div class="fi">📋</div>任务拆解</div>
+<div class="feat"><div class="fi">📊</div>上下文管理</div>
+<div class="feat"><div class="fi">🔒</div>权限系统</div>
+<div class="feat"><div class="fi">🧠</div>记忆系统</div>
+<div class="feat"><div class="fi">👥</div>多Agent协作</div>
+</div>
+</div>
+</div>
+<canvas id="cv"></canvas>
+<div class="panel" id="panel"></div>
+<div class="bar" id="bar"><span id="barText"></span><div class="level-btns" id="levelBtns"></div></div>
+<script>
+// === Theme ===
+let isDark=true;
+const TH={
+dark:{bg:'#0a0a1a',node:'#1a1a3a',nodeS:'#334155',text:'#e2e8f0',sub:'#888',accent:'#60a5fa',green:'#4ade80',red:'#f87171',orange:'#fbbf24',purple:'#a78bfa',grid:'rgba(99,102,241,0.06)'},
+light:{bg:'#f0f2f5',node:'#e2e8f0',nodeS:'#94a3b8',text:'#1e293b',sub:'#64748b',accent:'#4338ca',green:'#059669',red:'#dc2626',orange:'#d97706',purple:'#7c3aed',grid:'rgba(99,102,241,0.08)'}
+};
+function t(k){return isDark?TH.dark[k]:TH.light[k];}
+function toggleTheme(){isDark=!isDark;document.documentElement.setAttribute('data-theme',isDark?'dark':'light');document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';}
+
+// === Canvas ===
+const cv=document.getElementById('cv'),cx=cv.getContext('2d');
+const panel=document.getElementById('panel'),bar=document.getElementById('bar'),barText=document.getElementById('barText');
+let W,H,mx=0,my=0,frame=0;
+function resize(){W=cv.width=window.innerWidth-320;H=cv.height=window.innerHeight;}
+window.addEventListener('resize',resize);resize();
+cv.addEventListener('mousemove',e=>{mx=e.offsetX;my=e.offsetY;});
+
+// === Levels ===
+const LEVELS=[
+{name:'Agent Loop',icon:'🔄',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心机制：</b>Agent Loop — 接收→思考→工具→结果→循环</div>最小循环',objs:['发送一条用户消息','观察工具调用过程','完成一次完整循环'],
+concept:'Agent 的核心是一个循环：接收消息 → 模型思考 → 调用工具 → 返回结果 → 继续思考，直到给出最终回答。',
+learn:'这就是 Agent Loop——整个 coding agent 的心脏。模型负责思考，代码负责提供工作环境（harness）。循环不停转，直到模型认为任务完成。'},
+{name:'Tool Use',icon:'🔧',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心机制：</b>工具系统 — 注册表 + JSON 调用 + dispatcher</div>工具系统',objs:['注册 5 个工具','调用读文件工具','调用执行命令工具'],
+concept:'工具是 Agent 的手和脚。模型输出 JSON 格式的工具调用（tool_name + params），harness 查找并执行，返回 tool_result。',
+learn:'工具注册表就像一本菜单，模型从中选择需要的工具。dispatcher 负责找到对应函数并执行。没有工具，Agent 就只能说话不能做事。'},
+{name:'Planning',icon:'📋',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心机制：</b>任务拆解 — 大任务 → 子步骤 → 逐步执行</div>任务拆解',objs:['创建任务计划','执行第一个子任务','完成所有子任务'],
+concept:'好的 Agent 不会一头扎进去乱写。它先把大任务拆成小步骤（TodoWrite），逐步执行、逐步标记完成。',
+learn:'计划系统让 Agent 不会迷路。就像你做项目前先列 TODO 清单一样，Agent 也需要先想清楚再动手，用户还能随时看到进度。'},
+{name:'Context Management',icon:'📊',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心机制：</b>上下文管理 — 有限窗口 + 自动压缩</div>上下文管理',objs:['添加消息到上下文','观察上下文接近上限','执行上下文压缩'],
+concept:'模型的上下文窗口有限。对话越长占用越多，快满时 harness 自动压缩——总结之前的对话，保留关键信息。',
+learn:'上下文就像 Agent 的工作记忆，空间有限。压缩（compact）是用模型总结历史对话，丢弃细节保留要点，腾出空间继续工作。'},
+{name:'Permission System',icon:'🔒',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心机制：</b>权限系统 — 安全/危险分级 + 用户审批</div>权限系统',objs:['执行安全操作（自动通过）','触发危险操作警告','手动批准危险操作'],
+concept:'不是所有操作都能直接执行。删除文件、执行命令等危险操作必须先过"权限关"，等用户批准后才继续。',
+learn:'权限系统是 Agent 安全的核心防线。它把操作分为安全和危险两类，危险操作暂停循环弹出确认，防止 Agent 搞破坏。'},
+{name:'Memory System',icon:'🧠',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心机制：</b>记忆系统 — 会话内存 + 持久化文件</div>记忆系统',objs:['在会话中记录信息','持久化保存记忆','新会话中加载记忆'],
+concept:'记忆分两层：会话内存（对话结束就没了）和持久记忆（写入文件，跨会话保留）。',
+learn:'好的记忆系统让 Agent 记住你的偏好、项目背景、之前的决策。CLAUDE.md 和 memory 文件就是 Agent 的长期记忆，不用每次重新交代。'},
+{name:'Multi-Agent',icon:'👥',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心机制：</b>多Agent协作 — 主Agent拆分 + 子Agent并行</div>多Agent协作',objs:['创建子 Agent 并分配任务','观察并行执行','汇总所有结果'],
+concept:'复杂任务可以拆给多个 Agent 并行处理。主 Agent 拆分和汇总，子 Agent 各自有独立上下文，互不干扰。',
+learn:'多 Agent 协作就像技术主管分配任务给团队。每个子 Agent 有自己的上下文窗口，独立工作，最后主 Agent 合并成果。这是从单兵作战到团队协作的升级。'}
+];
+let curLevel=0,objectives=[],levelState={};
+
+// === Core ===
+function startGame(){document.getElementById('startScreen').classList.add('hidden');panel.style.display='block';bar.style.display='flex';goLevel(0);}
+function completeObj(i){if(!objectives[i]){objectives[i]=true;renderPanel();if(objectives.every(v=>v)){const lb=document.querySelector('.learn-box');if(lb)lb.style.display='block';}}}
+function goLevel(n){curLevel=n;objectives=LEVELS[n].objs.map(()=>false);levelState={step:0,anim:0,items:[],particles:[]};renderPanel();barText.textContent=LEVELS[n].icon+' '+LEVELS[n].name+' — '+LEVELS[n].desc;}
+function renderPanel(){
+const L=LEVELS[curLevel];
+let h='<div class="stage-nav"><div class="sn-bar">';
+LEVELS.forEach((_,i)=>{let cls=i<curLevel?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;});
+h+=`</div><div class="sn-info">${L.icon} 第${curLevel+1}关：${L.name}</div><div class="sn-hint">${L.desc}</div></div>`;
+h+=`<div class="concept-box">${L.concept}</div>`;
+h+='<div style="margin:8px 0">';
+L.objs.forEach((o,i)=>{h+=`<div class="obj-row"><div class="dot${objectives[i]?' done':''}"></div><span style="color:${objectives[i]?'var(--goal-done)':'var(--goal-text)'}">${o}</span></div>`;});
+h+='</div>';
+// Per-level buttons
+if(curLevel===0)h+=panelL1();
+else if(curLevel===1)h+=panelL2();
+else if(curLevel===2)h+=panelL3();
+else if(curLevel===3)h+=panelL4();
+else if(curLevel===4)h+=panelL5();
+else if(curLevel===5)h+=panelL6();
+else if(curLevel===6)h+=panelL7();
+h+=`<div class="hint-box">💡 点击按钮与 Canvas 画面互动，完成所有目标解锁知识卡片</div>`;
+h+=`<div class="learn-box"><div class="sv">🎓 知识卡片</div><p>${L.learn}</p></div>`;
+if(objectives.every(v=>v)){
+  if(curLevel<6)h+=`<button class="act-btn green" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+  else h+=`<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握 Coding Agent 的 7 大核心机制</div><div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡完成</div></div><div class="summary-stat"><div class="num">21</div><div class="label">目标达成</div></div></div><div class="summary-keys"><div>🔄 Agent Loop — 核心循环驱动一切</div><div>🔧 Tool Use — 工具让 Agent 能做事</div><div>📋 Planning — 先想后做不迷路</div><div>📊 Context — 有限空间智能管理</div><div>🔒 Permission — 安全防线不可少</div><div>🧠 Memory — 跨会话记住你</div><div>👥 Multi-Agent — 团队协作更高效</div></div></div>`;
+}
+panel.innerHTML=h;
+if(objectives.every(v=>v)){const lb=panel.querySelector('.learn-box');if(lb)lb.style.display='block';}
+}
+
+// === Level 1: Agent Loop ===
+function panelL1(){
+let h='';
+if(!objectives[0])h+=`<button class="act-btn" onclick="l1Send()">📨 发送消息</button>`;
+else if(!objectives[1])h+=`<button class="act-btn" onclick="l1Tool()">🔧 执行工具</button>`;
+else if(!objectives[2])h+=`<button class="act-btn green" onclick="l1Done()">✅ 完成循环</button>`;
+return h;}
+function l1Send(){levelState.step=1;levelState.anim=0;completeObj(0);}
+function l1Tool(){levelState.step=2;levelState.anim=0;completeObj(1);}
+function l1Done(){levelState.step=3;levelState.anim=0;completeObj(2);}
+function drawL1(){
+const nodes=[{x:W/2,y:120,label:'📨 用户消息'},{x:W-160,y:H/2,label:'🤖 LLM 思考'},{x:W/2,y:H-120,label:'🔧 工具调用'},{x:160,y:H/2,label:'📋 工具结果'}];
+// Draw arrows
+cx.strokeStyle=t('accent');cx.lineWidth=2;cx.setLineDash([6,4]);
+for(let i=0;i<4;i++){const a=nodes[i],b=nodes[(i+1)%4];cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke();}
+cx.setLineDash([]);
+// Draw nodes
+nodes.forEach((n,i)=>{
+const active=levelState.step>i||(levelState.step===i);
+cx.beginPath();cx.arc(n.x,n.y,50,0,Math.PI*2);
+cx.fillStyle=active?t('accent')+'30':t('node');cx.fill();
+cx.strokeStyle=active?t('accent'):t('nodeS');cx.lineWidth=active?3:1.5;cx.stroke();
+cx.fillStyle=t('text');cx.font='16px system-ui';cx.textAlign='center';cx.textBaseline='middle';cx.fillText(n.label,n.x,n.y);
+});
+// Animated dot
+if(levelState.step>0){
+levelState.anim+=0.012;
+const idx=Math.min(levelState.step-1,3);const nxt=(idx+1)%4;
+const p=Math.min(levelState.anim,1);
+const a=nodes[idx],b=nodes[nxt];
+const dx=a.x+(b.x-a.x)*p,dy=a.y+(b.y-a.y)*p;
+cx.beginPath();cx.arc(dx,dy,10,0,Math.PI*2);cx.fillStyle=t('accent');cx.fill();
+cx.beginPath();cx.arc(dx,dy,18,0,Math.PI*2);cx.strokeStyle=t('accent')+'60';cx.lineWidth=2;cx.stroke();
+}
+cx.fillStyle=t('sub');cx.font='14px system-ui';cx.textAlign='center';
+cx.fillText('Agent Loop：消息 → 思考 → 工具 → 结果 → 循环',W/2,H-30);
+}
+
+// === Level 2: Tool Use ===
+const TOOLS=[{icon:'📄',name:'读文件'},{icon:'✏️',name:'写文件'},{icon:'🔍',name:'搜索'},{icon:'💻',name:'执行命令'},{icon:'🌐',name:'网络请求'}];
+function panelL2(){
+let h='';
+if(!objectives[0])h+=`<button class="act-btn" onclick="l2Reg()">📦 注册工具</button>`;
+else if(!objectives[1])h+=`<button class="act-btn" onclick="l2Read()">📄 调用读文件</button>`;
+else if(!objectives[2])h+=`<button class="act-btn green" onclick="l2Exec()">💻 调用执行命令</button>`;
+return h;}
+function l2Reg(){levelState.step=1;levelState.anim=0;levelState.regCount=0;completeObj(0);}
+function l2Read(){levelState.step=2;levelState.anim=0;levelState.activeTool=0;completeObj(1);}
+function l2Exec(){levelState.step=3;levelState.anim=0;levelState.activeTool=3;completeObj(2);}
+function drawL2(){
+// Registry
+const rx=80,ry=100,rw=200,rh=340;
+cx.fillStyle=t('node');cx.strokeStyle=t('nodeS');cx.lineWidth=1.5;
+cx.beginPath();cx.roundRect(rx,ry,rw,rh,10);cx.fill();cx.stroke();
+cx.fillStyle=t('accent');cx.font='bold 15px system-ui';cx.textAlign='center';cx.fillText('工具注册表',rx+rw/2,ry-12);
+const shown=levelState.step>=1?5:0;
+for(let i=0;i<shown;i++){
+const ty=ry+20+i*62;
+const active=levelState.step>=2&&TOOLS[i]===TOOLS[levelState.activeTool];
+cx.fillStyle=active?t('accent')+'30':t('bg');cx.strokeStyle=active?t('accent'):t('nodeS');cx.lineWidth=active?2:1;
+cx.beginPath();cx.roundRect(rx+12,ty,rw-24,50,6);cx.fill();cx.stroke();
+cx.fillStyle=t('text');cx.font='20px system-ui';cx.textAlign='center';cx.fillText(TOOLS[i].icon+' '+TOOLS[i].name,rx+rw/2,ty+30);
+}
+// Dispatch flow
+if(levelState.step>=2){
+const fx=340,fy=H/2;
+cx.strokeStyle=t('accent');cx.lineWidth=2;cx.setLineDash([5,3]);
+cx.beginPath();cx.moveTo(fx,fy);cx.lineTo(fx+160,fy);cx.stroke();
+cx.beginPath();cx.moveTo(fx+160,fy);cx.lineTo(fx+320,fy);cx.stroke();
+cx.setLineDash([]);
+// Boxes
+const boxes=[{x:fx+80,y:fy,label:'Dispatcher'},{x:fx+240,y:fy,label:'tool_result'}];
+boxes.forEach(b=>{
+cx.fillStyle=t('node');cx.strokeStyle=t('accent');cx.lineWidth=1.5;
+cx.beginPath();cx.roundRect(b.x-55,b.y-25,110,50,8);cx.fill();cx.stroke();
+cx.fillStyle=t('text');cx.font='14px system-ui';cx.textAlign='center';cx.textBaseline='middle';cx.fillText(b.label,b.x,b.y);
+});
+// Result text
+if(levelState.step===2){cx.fillStyle=t('green');cx.font='13px monospace';cx.textAlign='left';cx.fillText('→ "文件内容: Hello World..."',fx+300,fy+50);}
+if(levelState.step===3){cx.fillStyle=t('green');cx.font='13px monospace';cx.textAlign='left';cx.fillText('→ "exit code: 0, stdout: OK"',fx+300,fy+50);}
+}
+cx.fillStyle=t('sub');cx.font='14px system-ui';cx.textAlign='center';cx.fillText('模型选择工具 → Dispatcher 执行 → 返回 tool_result',W/2,H-30);
+}
+
+// === Level 3: Planning ===
+const TASKS=['1. 分析现有认证代码','2. 设计新的认证接口','3. 实现 JWT 中间件','4. 编写单元测试'];
+function panelL3(){
+let h='';
+if(!objectives[0])h+=`<button class="act-btn" onclick="l3Plan()">📋 创建计划</button>`;
+else if(!objectives[1])h+=`<button class="act-btn" onclick="l3Step()">▶️ 执行步骤 1</button>`;
+else if(!objectives[2])h+=`<button class="act-btn green" onclick="l3All()">✅ 完成所有步骤</button>`;
+return h;}
+function l3Plan(){levelState.step=1;levelState.anim=0;levelState.done=[];completeObj(0);}
+function l3Step(){levelState.step=2;levelState.done=[0];completeObj(1);}
+function l3All(){levelState.step=3;levelState.done=[0,1,2,3];completeObj(2);}
+function drawL3(){
+const cx0=W/2,cy0=80;
+// Big task
+cx.fillStyle=t('accent')+'20';cx.strokeStyle=t('accent');cx.lineWidth=2;
+cx.beginPath();cx.roundRect(cx0-160,cy0,320,50,10);cx.fill();cx.stroke();
+cx.fillStyle=t('text');cx.font='bold 16px system-ui';cx.textAlign='center';cx.textBaseline='middle';cx.fillText('🎯 重构用户认证模块',cx0,cy0+25);
+if(levelState.step>=1){
+// Subtasks
+TASKS.forEach((task,i)=>{
+const ty=cy0+100+i*80;
+const done=levelState.done&&levelState.done.includes(i);
+// Line from parent
+cx.strokeStyle=t('nodeS');cx.lineWidth=1;cx.beginPath();cx.moveTo(cx0,cy0+50);cx.lineTo(cx0,ty);cx.stroke();
+// Task box
+cx.fillStyle=done?t('green')+'20':t('node');cx.strokeStyle=done?t('green'):t('nodeS');cx.lineWidth=done?2:1;
+cx.beginPath();cx.roundRect(cx0-150,ty-20,300,44,8);cx.fill();cx.stroke();
+// Checkbox
+cx.fillStyle=done?t('green'):t('nodeS');cx.beginPath();cx.roundRect(cx0-130,ty-10,24,24,4);cx.fill();
+if(done){cx.fillStyle='#fff';cx.font='bold 16px system-ui';cx.textAlign='center';cx.textBaseline='middle';cx.fillText('✓',cx0-118,ty+3);}
+// Text
+cx.fillStyle=done?t('green'):t('text');cx.font='15px system-ui';cx.textAlign='left';cx.textBaseline='middle';cx.fillText(task,cx0-100,ty+2);
+});
+// Progress bar
+const progress=levelState.done?levelState.done.length/4:0;
+const barY=cy0+100+4*80+20,barW=300;
+cx.fillStyle=t('node');cx.beginPath();cx.roundRect(cx0-barW/2,barY,barW,16,8);cx.fill();
+cx.fillStyle=t('green');cx.beginPath();cx.roundRect(cx0-barW/2,barY,barW*progress,16,8);cx.fill();
+cx.fillStyle=t('text');cx.font='13px system-ui';cx.textAlign='center';cx.fillText(Math.round(progress*100)+'% 完成',cx0,barY+34);
+}
+cx.fillStyle=t('sub');cx.font='14px system-ui';cx.textAlign='center';cx.fillText('大任务拆解 → 逐步执行 → 标记完成 → 跟踪进度',W/2,H-30);
+}
+
+// === Level 4: Context Management ===
+function panelL4(){
+let h='';
+if(!objectives[0])h+=`<button class="act-btn" onclick="l4Add()">💬 添加对话</button>`;
+else if(!objectives[1])h+=`<button class="act-btn" onclick="l4Fill()">💬 继续对话</button>`;
+else if(!objectives[2])h+=`<button class="act-btn green" onclick="l4Compact()">🗜️ 执行压缩</button>`;
+return h;}
+function l4Add(){levelState.step=1;levelState.tokens=28000;completeObj(0);}
+function l4Fill(){levelState.step=2;levelState.tokens=85000;completeObj(1);}
+function l4Compact(){levelState.step=3;levelState.tokens=22000;completeObj(2);}
+function drawL4(){
+const bx=W/2-60,by=60,bw=120,bh=H-140,maxTk=100000;
+const tk=levelState.tokens||0;const pct=tk/maxTk;
+cx.fillStyle=t('node');cx.strokeStyle=t('nodeS');cx.lineWidth=1.5;
+cx.beginPath();cx.roundRect(bx,by,bw,bh,10);cx.fill();cx.stroke();
+const fillH=bh*pct;const color=pct>0.8?t('red'):pct>0.5?t('orange'):t('green');
+cx.fillStyle=color+'60';cx.beginPath();cx.roundRect(bx+3,by+bh-fillH+3,bw-6,Math.max(fillH-6,0),8);cx.fill();
+cx.fillStyle=t('accent');cx.font='bold 16px system-ui';cx.textAlign='center';cx.fillText('上下文窗口',bx+bw/2,by-14);
+cx.fillStyle=t('text');cx.font='bold 20px monospace';cx.fillText(Math.round(tk/1000)+'K / 100K',bx+bw/2,by+bh+30);
+const msgs=levelState.step>=1?['user: 帮我重构...','assistant: 好的...','user: 再改一下...','tool: 文件内容...']:[];
+if(levelState.step>=2){msgs.push('user: 继续优化...','assistant: 分析中...','tool: 搜索结果...','user: 还有问题...');}
+msgs.forEach((m,i)=>{
+const my2=by+bh-fillH+20+i*28;if(my2>by+bh-10||my2<by)return;
+cx.fillStyle=m.startsWith('user')?t('accent'):m.startsWith('tool')?t('orange'):t('green');
+cx.font='11px monospace';cx.textAlign='center';cx.fillText(m,bx+bw/2,my2);
+});
+if(levelState.step===2){cx.fillStyle=t('red');cx.font='bold 18px system-ui';cx.textAlign='center';cx.fillText('⚠️ 上下文即将溢出！',W/2,H/2-20);cx.fillStyle=t('orange');cx.font='14px system-ui';cx.fillText('需要执行压缩释放空间',W/2,H/2+10);}
+if(levelState.step===3){cx.fillStyle=t('green');cx.font='bold 18px system-ui';cx.textAlign='center';cx.fillText('✅ 压缩完成！保留关键信息，释放空间',W/2,H/2);}
+cx.fillStyle=t('sub');cx.font='12px system-ui';cx.textAlign='left';
+cx.fillText('← 安全区',bx+bw+16,by+bh*0.7);cx.fillStyle=t('orange');cx.fillText('← 警告区',bx+bw+16,by+bh*0.3);cx.fillStyle=t('red');cx.fillText('← 危险区',bx+bw+16,by+bh*0.1);
+cx.fillStyle=t('sub');cx.font='14px system-ui';cx.textAlign='center';cx.fillText('对话越长 → 上下文越满 → 自动压缩 → 继续工作',W/2,H-30);
+}
+
+// === Level 5: Permission System ===
+function panelL5(){
+let h='';
+if(!objectives[0])h+=`<button class="act-btn" onclick="l5Safe()">📄 读取文件</button>`;
+else if(!objectives[1])h+=`<button class="act-btn" onclick="l5Danger()">🗑️ 删除文件</button>`;
+else if(!objectives[2])h+=`<button class="act-btn green" onclick="l5Approve()">✅ 批准操作</button>`;
+return h;}
+function l5Safe(){levelState.step=1;completeObj(0);}
+function l5Danger(){levelState.step=2;completeObj(1);}
+function l5Approve(){levelState.step=3;completeObj(2);}
+function drawL5(){
+const gx=W/2,gy=H/2;
+cx.fillStyle=t('node');cx.strokeStyle=t('accent');cx.lineWidth=3;
+cx.beginPath();cx.roundRect(gx-40,gy-80,80,160,10);cx.fill();cx.stroke();
+cx.fillStyle=t('accent');cx.font='bold 14px system-ui';cx.textAlign='center';cx.fillText('权限',gx,gy-90);cx.fillText('管道',gx,gy+100);
+if(levelState.step===2){
+cx.strokeStyle=t('red');cx.lineWidth=4;
+for(let i=0;i<4;i++){const yy=gy-60+i*35;cx.beginPath();cx.moveTo(gx-30,yy);cx.lineTo(gx+30,yy);cx.stroke();}
+}
+const ops=[{step:1,label:'📄 读取文件',color:t('green')},{step:2,label:'🗑️ 删除文件',color:t('red')},{step:3,label:'🗑️ 删除文件',color:t('orange')}];
+const op=ops.find(o=>o.step===levelState.step);
+if(op){
+const ox=gx-200;
+cx.fillStyle=op.color+'30';cx.strokeStyle=op.color;cx.lineWidth=2;
+cx.beginPath();cx.roundRect(ox-70,gy-25,140,50,10);cx.fill();cx.stroke();
+cx.fillStyle=op.color;cx.font='16px system-ui';cx.textAlign='center';cx.textBaseline='middle';cx.fillText(op.label,ox,gy);
+cx.strokeStyle=op.color;cx.lineWidth=2;cx.setLineDash([5,3]);cx.beginPath();cx.moveTo(ox+70,gy);cx.lineTo(gx-40,gy);cx.stroke();cx.setLineDash([]);
+}
+if(levelState.step===1){
+cx.fillStyle=t('green')+'30';cx.strokeStyle=t('green');cx.lineWidth=2;
+cx.beginPath();cx.roundRect(gx+120,gy-25,160,50,10);cx.fill();cx.stroke();
+cx.fillStyle=t('green');cx.font='16px system-ui';cx.textAlign='center';cx.textBaseline='middle';cx.fillText('✅ 自动通过',gx+200,gy);
+}
+if(levelState.step===2){
+cx.fillStyle=t('red');cx.font='bold 22px system-ui';cx.textAlign='center';cx.fillText('⚠️ 危险操作！',gx,gy);
+cx.fillStyle=t('red')+'80';cx.font='14px system-ui';cx.fillText('需要用户确认才能继续',gx,gy+30);
+}
+if(levelState.step===3){
+cx.fillStyle=t('green')+'30';cx.strokeStyle=t('green');cx.lineWidth=2;
+cx.beginPath();cx.roundRect(gx+120,gy-25,160,50,10);cx.fill();cx.stroke();
+cx.fillStyle=t('green');cx.font='16px system-ui';cx.textAlign='center';cx.textBaseline='middle';cx.fillText('✅ 已批准执行',gx+200,gy);
+}
+cx.fillStyle=t('sub');cx.font='14px system-ui';cx.textAlign='center';cx.fillText('安全操作自动通过 → 危险操作拦截 → 用户确认后放行',W/2,H-30);
+}
+
+// === Level 6: Memory System ===
+function panelL6(){
+let h='';
+if(!objectives[0])h+=`<button class="act-btn" onclick="l6Record()">📝 记录偏好</button>`;
+else if(!objectives[1])h+=`<button class="act-btn" onclick="l6Save()">💾 保存到磁盘</button>`;
+else if(!objectives[2])h+=`<button class="act-btn green" onclick="l6Load()">🔄 新会话加载</button>`;
+return h;}
+function l6Record(){levelState.step=1;levelState.items=['偏好: 使用中文回复','项目: learn-by-play'];completeObj(0);}
+function l6Save(){levelState.step=2;completeObj(1);}
+function l6Load(){levelState.step=3;completeObj(2);}
+function drawL6(){
+const lx=W*0.25,rx=W*0.75,cy=H/2-20;
+cx.fillStyle=t('node');cx.strokeStyle=levelState.step===3?t('red'):t('accent');cx.lineWidth=2;
+cx.beginPath();cx.ellipse(lx,cy,140,100,0,0,Math.PI*2);cx.fill();cx.stroke();
+cx.fillStyle=t('accent');cx.font='bold 16px system-ui';cx.textAlign='center';cx.fillText('☁️ 会话内存',lx,cy-120);
+cx.fillStyle=t('sub');cx.font='12px system-ui';cx.fillText('（对话结束即消失）',lx,cy-100);
+cx.fillStyle=t('node');cx.strokeStyle=t('green');cx.lineWidth=2;
+cx.beginPath();cx.roundRect(rx-120,cy-80,240,160,12);cx.fill();cx.stroke();
+cx.fillStyle=t('green');cx.font='bold 16px system-ui';cx.textAlign='center';cx.fillText('💾 持久记忆',rx,cy-100);
+cx.fillStyle=t('sub');cx.font='12px system-ui';cx.fillText('（CLAUDE.md / memory 文件）',rx,cy-80);
+if(levelState.step>=1&&levelState.step<3&&levelState.items){
+levelState.items.forEach((item,i)=>{cx.fillStyle=t('text');cx.font='13px system-ui';cx.textAlign='center';cx.fillText(item,lx,cy-15+i*30);});}
+if(levelState.step>=2&&levelState.items){
+levelState.items.forEach((item,i)=>{cx.fillStyle=t('green');cx.font='13px system-ui';cx.textAlign='center';cx.fillText(item,rx,cy-15+i*30);});}
+if(levelState.step===2){
+cx.strokeStyle=t('orange');cx.lineWidth=2;cx.setLineDash([5,3]);
+cx.beginPath();cx.moveTo(lx+140,cy);cx.lineTo(rx-120,cy);cx.stroke();cx.setLineDash([]);
+cx.fillStyle=t('orange');cx.font='20px system-ui';cx.textAlign='center';cx.fillText('→ 持久化 →',W/2,cy-10);
+}
+if(levelState.step===3){
+cx.fillStyle=t('red')+'40';cx.font='bold 14px system-ui';cx.textAlign='center';cx.fillText('❌ 会话已清空',lx,cy);
+cx.strokeStyle=t('green');cx.lineWidth=2;cx.setLineDash([5,3]);
+cx.beginPath();cx.moveTo(rx-120,cy);cx.lineTo(lx+140,cy);cx.stroke();cx.setLineDash([]);
+cx.fillStyle=t('green');cx.font='20px system-ui';cx.fillText('← 加载记忆 ←',W/2,cy+40);
+if(levelState.items)levelState.items.forEach((item,i)=>{cx.fillStyle=t('green');cx.font='13px system-ui';cx.textAlign='center';cx.fillText('✅ '+item,lx,cy+70+i*26);});
+}
+cx.fillStyle=t('sub');cx.font='14px system-ui';cx.textAlign='center';cx.fillText('会话记录 → 持久化保存 → 新会话自动加载',W/2,H-30);
+}
+
+// === Level 7: Multi-Agent ===
+function panelL7(){
+let h='';
+if(!objectives[0])h+=`<button class="act-btn" onclick="l7Spawn()">🚀 分配任务</button>`;
+else if(!objectives[1])h+=`<button class="act-btn" onclick="l7Run()">⚡ 并行执行</button>`;
+else if(!objectives[2])h+=`<button class="act-btn green" onclick="l7Merge()">📥 汇总结果</button>`;
+return h;}
+function l7Spawn(){levelState.step=1;completeObj(0);}
+function l7Run(){levelState.step=2;levelState.anim=0;completeObj(1);}
+function l7Merge(){levelState.step=3;completeObj(2);}
+function drawL7(){
+const mcx=W/2,mcy=H/2-40;
+cx.fillStyle=t('accent')+'30';cx.strokeStyle=t('accent');cx.lineWidth=3;
+cx.beginPath();cx.arc(mcx,mcy,60,0,Math.PI*2);cx.fill();cx.stroke();
+cx.fillStyle=t('text');cx.font='bold 18px system-ui';cx.textAlign='center';cx.textBaseline='middle';cx.fillText('🤖 主 Agent',mcx,mcy);
+const subs=[{x:mcx-240,y:mcy+200,label:'📄 读代码',task:'分析现有代码'},{x:mcx,y:mcy+240,label:'🔍 搜索',task:'查找相关文件'},{x:mcx+240,y:mcy+200,label:'✏️ 写代码',task:'实现新功能'}];
+if(levelState.step>=1){
+subs.forEach((s,i)=>{
+cx.strokeStyle=t('nodeS');cx.lineWidth=1.5;cx.setLineDash([4,3]);
+cx.beginPath();cx.moveTo(mcx,mcy+60);cx.lineTo(s.x,s.y-45);cx.stroke();cx.setLineDash([]);
+const working=levelState.step===2;
+cx.fillStyle=working?t('purple')+'30':t('node');cx.strokeStyle=working?t('purple'):t('nodeS');cx.lineWidth=2;
+cx.beginPath();cx.arc(s.x,s.y,42,0,Math.PI*2);cx.fill();cx.stroke();
+cx.fillStyle=t('text');cx.font='14px system-ui';cx.textAlign='center';cx.textBaseline='middle';cx.fillText(s.label,s.x,s.y-8);
+cx.fillStyle=t('sub');cx.font='11px system-ui';cx.fillText(s.task,s.x,s.y+14);
+if(working){const angle=frame*0.05+i*2;cx.strokeStyle=t('purple');cx.lineWidth=2;cx.beginPath();cx.arc(s.x,s.y,50,angle,angle+Math.PI*1.2);cx.stroke();}
+});}
+if(levelState.step===3){
+subs.forEach(s=>{
+cx.strokeStyle=t('green');cx.lineWidth=2;
+cx.beginPath();cx.moveTo(s.x,s.y-42);cx.lineTo(mcx,mcy+60);cx.stroke();
+cx.fillStyle=t('green');cx.beginPath();cx.arc(mcx,mcy+60,6,0,Math.PI*2);cx.fill();
+});
+cx.fillStyle=t('green');cx.font='bold 16px system-ui';cx.textAlign='center';cx.fillText('✅ 结果已汇总',mcx,mcy+130);
+}
+cx.fillStyle=t('sub');cx.font='14px system-ui';cx.textAlign='center';cx.fillText('主 Agent 拆分 → 子 Agent 并行 → 结果汇总合并',W/2,H-30);
+}
+
+// === Animation Loop ===
+const drawFns=[drawL1,drawL2,drawL3,drawL4,drawL5,drawL6,drawL7];
+function draw(){
+frame++;
+cx.fillStyle=t('bg');cx.fillRect(0,0,W,H);
+cx.strokeStyle=t('grid');cx.lineWidth=1;
+for(let x=0;x<W;x+=60){cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,H);cx.stroke();}
+for(let y=0;y<H;y+=60){cx.beginPath();cx.moveTo(0,y);cx.lineTo(W,y);cx.stroke();}
+if(drawFns[curLevel])drawFns[curLevel]();
+requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+</script>
+</body>
+</html>

@@ -107,7 +107,6 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .result-box .btn-next{background:#3b82f6;color:#fff}
 .result-box .btn-retry{background:var(--stage-bar);color:var(--text-sub)}
 
-#roadmap-container{display:none}
 .roadmap{margin:20px auto;max-width:500px;text-align:left}
 .roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
 .roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
@@ -117,7 +116,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -140,7 +139,6 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 <div class="start-box">
   <h1>⚡ <span class="gold">粒子加速器</span>探险</h1>
   <div class="sub">7 个关卡，从电场加速到发现上帝粒子</div>
-  <div id="roadmap-container"></div>
 <button class="start-btn" onclick="startGame()">开始探险</button>
   <div class="features">
     <div class="feat"><div class="fi">⚡</div>电场加速</div>
@@ -893,6 +891,31 @@ renderPanel();
 function resetLevel6(){initLevel6();renderPanel();}
 
 /* ========== RENDER PANEL ========== */
+// Lightweight DOM patcher: preserves focused range inputs during panel updates
+function _patchPanel(el,html){
+  var ae=document.activeElement;
+  if(!ae||ae.type!=='range'||!el.contains(ae)){el.innerHTML=html;return;}
+  var tmp=document.createElement('div');tmp.innerHTML=html;
+  _diffNodes(el,tmp);
+}
+function _diffNodes(o,n){
+  var oc=Array.from(o.childNodes),nc=Array.from(n.childNodes);
+  var i=0;
+  while(i<oc.length&&i<nc.length){
+    var a=oc[i],b=nc[i];
+    if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName){o.replaceChild(b.cloneNode(true),a);i++;continue;}
+    if(a.nodeType===3){if(a.textContent!==b.textContent)a.textContent=b.textContent;i++;continue;}
+    if(a.nodeType===1){
+      if(a.tagName==='INPUT'&&a.type==='range'&&a===document.activeElement){i++;continue;}
+      for(var j=0;j<b.attributes.length;j++){var at=b.attributes[j];if(a.getAttribute(at.name)!==at.value)a.setAttribute(at.name,at.value);}
+      _diffNodes(a,b);
+    }
+    i++;
+  }
+  while(oc.length>nc.length)o.removeChild(o.lastChild);
+  for(;i<nc.length;i++)o.appendChild(nc[i].cloneNode(true));
+}
+
 function renderPanel(){
 const s=levelState,L=levels[currentLevel];
 let h='<div style="margin-bottom:8px">';
@@ -905,6 +928,7 @@ h+=`<div class="m-title">${L.icon} ${L.name}</div><div class="m-sub">${L.sub}</d
 
 if(currentLevel===0){
 let g=s.goals||[false,false,false];
+h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心公式：</b>E = qV（动能 = 电荷 × 电压）</div>`;
 h+=`<div class="concept-box">质子在电场中加速，获得动能 E = qV。<br>电压越高，粒子能量越大。</div>`;
 h+=goalHtml(['加速到 1 keV','加速到 10 keV','理解电压与能量关系'],g);
 h+=`<div class="slider-wrap"><label>电压: <span class="sv">${s.voltage} kV</span></label>`;
@@ -914,6 +938,7 @@ h+=`<button class="act-btn" onclick="resetLevel0()">🔄 重置</button>`;
 h+=`<div class="hint-box">💡 先调低电压试试，再调到最大看看能量变化</div>`;
 }else if(currentLevel===1){
 let g=s.goals||[false,false,false];
+h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心原理：</b>回旋加速器 — 磁场偏转 + 电场加速</div>`;
 h+=`<div class="concept-box">回旋加速器：粒子在D形电极间来回加速，磁场使其走圆弧。每过间隙加速一次，半径增大。</div>`;
 h+=goalHtml(['完成 3 圈','调磁场使粒子不飞出','达到 50 keV'],g);
 h+=`<div class="slider-wrap"><label>磁场: <span class="sv">${s.bField?.toFixed(2)||'0.50'} T</span></label>`;
@@ -923,6 +948,7 @@ h+=`<button class="act-btn" onclick="resetLevel1()">🔄 重置</button>`;
 if(s.escaped)h+=`<div class="hint-box">⚠️ 粒子飞出了！试试增大磁场</div>`;
 }else if(currentLevel===2){
 let g=s.goals||[false,false,false];
+h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心原理：</b>同步加速器 — 固定轨道 + 磁场同步增强 + 相对论效应</div>`;
 h+=`<div class="concept-box">同步加速器：固定轨道半径，磁场随能量同步增强。射频腔每圈加速粒子。接近光速时，相对论效应显著。</div>`;
 h+=goalHtml(['运行 10 圈','加速到 99% 光速','达到 TeV 级能量'],g);
 h+=`<button class="act-btn" onclick="startSynchrotron()">💫 启动同步加速器</button>`;
@@ -930,6 +956,7 @@ h+=`<button class="act-btn" onclick="resetLevel2()">🔄 重置</button>`;
 h+=`<div class="hint-box">💡 观察粒子接近光速时γ因子的变化</div>`;
 }else if(currentLevel===3){
 let g=s.goals||[false,false,false];
+h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心公式：</b>E = mc²（质能等价）</div>`;
 h+=`<div class="concept-box">两束高能粒子对向飞来，碰撞时动能转化为质量（E=mc²），创造出新粒子。带电粒子在磁场中弯曲。</div>`;
 h+=goalHtml(['完成一次对撞','观察弯曲轨迹','产生 3 种以上粒子'],g);
 h+=`<button class="act-btn" onclick="fireBeams()">💥 对撞！</button>`;
@@ -937,6 +964,7 @@ h+=`<button class="act-btn" onclick="resetLevel3()">🔄 重置</button>`;
 h+=`<div class="hint-box">💡 多次对撞可以产生不同种类的粒子</div>`;
 }else if(currentLevel===4){
 let g=s.goals||[false,false,false];
+h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心结构：</b>径迹室 → 电磁量能器 → 强子量能器 → &#956;子探测器</div>`;
 h+=`<div class="concept-box">探测器像洋葱一样分层：径迹室→电磁量能器→强子量能器→μ子探测器。不同粒子在不同层停下。</div>`;
 h+=goalHtml(['识别电子（电磁量能器停下）','识别μ子（穿透所有层）','推断中微子（缺失能量）'],g);
 if(!s.guessMode){h+=`<button class="act-btn" onclick="startDetector()">🔍 开始识别粒子</button>`;}
@@ -949,6 +977,7 @@ h+=`<button class="act-btn" onclick="guessParticle('${n}')">${n}</button>`;
 h+=`<button class="act-btn" onclick="resetLevel4()">🔄 重新生成</button>`;
 }else if(currentLevel===5){
 let g=s.goals||[false,false,false];
+h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>5&#963; 统计显著性 — 百万分之一的偶然概率</div>`;
 h+=`<div class="concept-box">在质量分布图中寻找异常凸起。收集足够数据，当统计显著性达到5σ（百万分之一的偶然概率），即可宣布发现新粒子。</div>`;
 h+=goalHtml(['收集 2000+ 事件','发现 125 GeV 异常（3σ）','达到 5σ 宣布发现'],g);
 h+=`<button class="act-btn" onclick="addHiggsData()">📊 增加 1000 事件</button>`;
@@ -956,12 +985,13 @@ h+=`<button class="act-btn" onclick="resetLevel5()">🔄 重置</button>`;
 h+=`<div class="hint-box">💡 注意 125 GeV 附近的黄色柱子</div>`;
 }else if(currentLevel===6){
 let g=s.goals||[false,false,false];
+h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心内容：</b>标准模型 17 种基本粒子 — 6夸克 + 6轻子 + 4玻色子 + 希格斯</div>`;
 h+=`<div class="concept-box">标准模型包含 17 种基本粒子：6种夸克、6种轻子、4种规范玻色子和1个希格斯玻色子。将卡片拖到正确位置！</div>`;
 h+=goalHtml(['放置所有夸克（6种）','放置所有轻子（6种）','完成整个标准模型（17种）'],g);
 h+=`<button class="act-btn" onclick="resetLevel6()">🔄 重置</button>`;
 h+=`<div class="hint-box">💡 提示：上型夸克(u,c,t)电荷+2/3，下型夸克(d,s,b)电荷-1/3</div>`;
 }
-panelEl.innerHTML=h;
+_patchPanel(panelEl,h);
 bbLeft.textContent=`关卡 ${currentLevel+1}/7: ${L.name}`;
 bbRight.textContent=`已完成: ${completedLevels.size}/7`;
 }
@@ -1075,20 +1105,6 @@ function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeo
     return{done:d,total:t};
   }
 
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
 
   // 2. 阶段导航
   window._stageNavHTML=function(){
@@ -1102,10 +1118,8 @@ function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeo
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };
@@ -1155,6 +1169,7 @@ function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeo
   }
 })();
 try{renderPanel();}catch(e){}
+
 
 </script>
 </body>

@@ -87,7 +87,7 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .bar button{background:var(--bg);color:#ccc;border:1px solid #333;padding:4px 14px;border-radius:4px;cursor:pointer;font-size:12px;transition:all 0.2s}
 .bar button:hover{background:#2a2a3e}
 .bar button.active{background:#f97316;color:#fff;border-color:#f97316}
-.slider-row{display:flex;align-items:center;gap:6px;margin:4px 0}
+.slider-row{display:flex;align-items:center;gap:6px;margin:4px 0;font-variant-numeric:tabular-nums}
 .slider-row label{font-size:11px;color:#aaa;min-width:50px}
 .slider-row input[type=range]{flex:1;accent-color:#f97316}
 .slider-row span{font-size:11px;color:#fb923c;min-width:40px;text-align:right}
@@ -101,7 +101,7 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -125,7 +125,6 @@ body{background:var(--bg);color:var(--text);font-family:'Microsoft YaHei','PingF
 <div class="overlay" id="overlay">
 <h1>⚗️ 化学反应与动力学 探险</h1>
 <p>从配平方程式到电化学，7个关卡带你探索化学反应的奥秘。拖动原子、调节温度、观察电子转移，在互动中理解化学世界的规律。</p>
-<div id="roadmap-container"></div>
 <button class="start-btn" onclick="startGame()">开始探索 🔬</button>
 <div class="features">
 <div class="feat"><div class="fi">⚖️</div>方程式配平</div>
@@ -711,6 +710,31 @@ function drawElectrolysis(){
 }
 
 // ========== PANEL RENDERING ==========
+// Lightweight DOM patcher: preserves focused range inputs during panel updates
+function _patchPanel(el,html){
+  var ae=document.activeElement;
+  if(!ae||ae.type!=='range'||!el.contains(ae)){el.innerHTML=html;return;}
+  var tmp=document.createElement('div');tmp.innerHTML=html;
+  _diffNodes(el,tmp);
+}
+function _diffNodes(o,n){
+  var oc=Array.from(o.childNodes),nc=Array.from(n.childNodes);
+  var i=0;
+  while(i<oc.length&&i<nc.length){
+    var a=oc[i],b=nc[i];
+    if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName){o.replaceChild(b.cloneNode(true),a);i++;continue;}
+    if(a.nodeType===3){if(a.textContent!==b.textContent)a.textContent=b.textContent;i++;continue;}
+    if(a.nodeType===1){
+      if(a.tagName==='INPUT'&&a.type==='range'&&a===document.activeElement){i++;continue;}
+      for(var j=0;j<b.attributes.length;j++){var at=b.attributes[j];if(a.getAttribute(at.name)!==at.value)a.setAttribute(at.name,at.value);}
+      _diffNodes(a,b);
+    }
+    i++;
+  }
+  while(oc.length>nc.length)o.removeChild(o.lastChild);
+  for(;i<nc.length;i++)o.appendChild(nc[i].cloneNode(true));
+}
+
 function renderPanel(){
   let li=curLevel;
   let h='';
@@ -734,6 +758,8 @@ function renderPanel(){
     ['启动电池运行','观察电子流动3秒以上','切换到电解池模式']
   ];
   h+=`<h2>关卡 ${li+1}: ${titles[li]}</h2>`;
+  const _kw=['质量守恒：反应前后原子种类和数目不变','四类反应：化合（多→一）/ 分解（一→多）/ 置换 / 复分解','温度↑浓度↑催化剂 → 反应速率↑','Le Chatelier原理：平衡向减弱改变的方向移动','氧化 = 失电子（氧化数↑），还原 = 得电子（氧化数↓）','酸碱滴定：等当点时酸碱恰好完全反应，pH突变','原电池：化学能→电能；电解池：电能→化学能'][li];
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>${_kw}</div>`;
   h+=`<p style="color:#aaa;font-size:12px;margin-bottom:8px">${descs[li]}</p>`;
   h+=`<h3>目标</h3>`;
   for(let i=0;i<3;i++){
@@ -792,7 +818,7 @@ function renderPanel(){
   // 下一关按钮
   if(levelObjs[li].every(v=>v)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
   if(levelObjs[li].every(v=>v)&&li===6)h+=`${_summaryHTML()}`;
-  panel.innerHTML=h;
+  _patchPanel(panel,h);
 }
 
 // ========== MOUSE EVENTS (Level 1 drag) ==========
@@ -875,20 +901,6 @@ cv.addEventListener('touchend',e=>{cv.dispatchEvent(new MouseEvent('mouseup',{})
     return{done:d,total:t};
   }
 
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
 
   // 2. 阶段导航
   window._stageNavHTML=function(){
@@ -902,10 +914,8 @@ cv.addEventListener('touchend',e=>{cv.dispatchEvent(new MouseEvent('mouseup',{})
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };
@@ -955,6 +965,7 @@ cv.addEventListener('touchend',e=>{cv.dispatchEvent(new MouseEvent('mouseup',{})
   }
 })();
 try{renderPanel();}catch(e){}
+
 
 </script>
 </body>

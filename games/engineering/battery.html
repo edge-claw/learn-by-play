@@ -110,7 +110,6 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .result-box .btn-next{background:#3b82f6;color:#fff}
 .result-box .btn-retry{background:var(--stage-bar);color:var(--text-sub)}
 
-#roadmap-container{display:none}
 .roadmap{margin:20px auto;max-width:500px;text-align:left}
 .roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
 .roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
@@ -120,7 +119,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -143,7 +142,6 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 <div class="start-box">
   <h1>🔋 <span class="gold">电池与储能</span>技术探险</h1>
   <div class="sub">7 个关卡，从原电池到电网级储能</div>
-  <div id="roadmap-container"></div>
 <button class="start-btn" onclick="startGame()">开始探险</button>
   <div class="features">
     <div class="feat"><div class="fi">⚗️</div>氧化还原</div>
@@ -232,6 +230,8 @@ function renderPanel(){
   }
   h+='</div>';
   h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
+  const _kw=['氧化还原：锌失电子（氧化）→ 铜得电子（还原）','锂离子嵌入脱嵌：充电正极→负极，放电反向','倍率 C = 1小时放完的电流，大C容量↓电压↓','热失控链式反应：SEI分解→正极释氧→电解液燃烧','固态电解质：阻挡锂枝晶 + 兼容锂金属负极','BMS均衡：高压放电、低压充电，保持一致性','储能调峰填谷：白天充电存储，夜间放电补充'][currentLevel];
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>${_kw}</div>`;
   h+=`<div class="concept-box">${L.concept}</div>`;
   h+='<div style="margin:8px 0;font-size:12px;color:var(--text-muted);font-weight:600">目标清单</div>';
   for(let i=0;i<L.goals.length;i++){
@@ -820,20 +820,6 @@ function goLevel(i){switchLevel(i);}
     return{done:d,total:t};
   }
 
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
 
   // 2. 阶段导航
   window._stageNavHTML=function(){
@@ -847,10 +833,8 @@ function goLevel(i){switchLevel(i);}
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };

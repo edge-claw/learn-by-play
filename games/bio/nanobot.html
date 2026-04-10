@@ -103,7 +103,7 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -117,10 +117,32 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 #themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
 [data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
 [data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;background:linear-gradient(135deg,#7c3aed,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.overlay .sub{color:var(--text-sub);font-size:17px;margin-bottom:32px}
+.overlay .start-btn{padding:14px 48px;font-size:18px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:transform .2s}
+.overlay .start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.features .feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px}
+.features .feat .fi{font-size:26px;margin-bottom:4px}
 </style>
 </head>
 <body data-theme="dark">
 <button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="ov">
+<h1>🤖 纳米机器人体内任务</h1>
+<p class="sub">7 个交互关卡 — 从纳米尺度到群体协作</p>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="fi">🔬</div>纳米尺度</div>
+<div class="feat"><div class="fi">⚙️</div>分子马达</div>
+<div class="feat"><div class="fi">🩸</div>血管巡航</div>
+<div class="feat"><div class="fi">🎯</div>靶向给药</div>
+<div class="feat"><div class="fi">🧠</div>血脑屏障</div>
+<div class="feat"><div class="fi">🔪</div>纳米手术</div>
+<div class="feat"><div class="fi">🐝</div>群体协作</div>
+</div>
+</div>
 <div class="panel" id="panel"></div>
 <canvas id="cv"></canvas>
 <div id="infobar">
@@ -138,6 +160,7 @@ const TH={
 };
 function t(){return isDark?TH.dark:TH.light}
 function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
+function startGame(){document.getElementById('ov').style.display='none';}
 
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel');
 let W,H,curLevel=0,frame=0,animId;
@@ -159,25 +182,25 @@ cv.addEventListener('mousemove',e=>{const r=cv.getBoundingClientRect();mouseX=(e
 cv.addEventListener('mousedown',()=>mouseDown=true);
 cv.addEventListener('mouseup',()=>mouseDown=false);
 const levels=[
-{name:'纳米尺度',sub:'缩小到分子世界',concept:'纳米=十亿分之一米。头发~80000nm，红细胞~7000nm，细菌~1000nm，病毒~100nm，蛋白质~10nm，DNA宽2nm，原子~0.1nm。',
+{name:'纳米尺度',sub:'缩小到分子世界',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>尺度：</b>纳米 = 十亿分之一米（头发 80000nm → 原子 0.1nm）</div>纳米=十亿分之一米。头发~80000nm，红细胞~7000nm，细菌~1000nm，病毒~100nm，蛋白质~10nm，DNA宽2nm，原子~0.1nm。',
  objs:['放大到看见细胞/细菌','放大到看见病毒','放大到看见DNA'],
  learn:'纳米机器人工作在<span class="sv">1-100nm</span>尺度。在这个世界里，<span class="sv">布朗运动</span>（分子随机碰撞）比重力重要得多，表面力远大于体积力——完全不同的物理规则。'},
-{name:'分子马达',sub:'生命的引擎',concept:'细胞内有天然纳米机器：ATP合酶（旋转马达，每消耗1个ATP转120°）、驱动蛋白（沿微管行走，步长8nm）、鞭毛马达（螺旋桨式旋转）。',
+{name:'分子马达',sub:'生命的引擎',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>引擎：</b>ATP 合酶 / 驱动蛋白 / 鞭毛马达</div>细胞内有天然纳米机器：ATP合酶（旋转马达，每消耗1个ATP转120°）、驱动蛋白（沿微管行走，步长8nm）、鞭毛马达（螺旋桨式旋转）。',
  objs:['ATP合酶转满一圈','驱动蛋白走10步','观察鞭毛马达运转'],
  learn:'ATP合酶直径仅<span class="sv">~10nm</span>，却是已知效率最高的马达，接近<span class="sv">100%</span>。驱动蛋白沿微管"行走"运输货物，步长精确<span class="sv">8nm</span>。人造纳米机器人的灵感很多来自这些天然分子机器。'},
-{name:'血管巡航',sub:'在血流中导航',concept:'纳米机器人在血管中面临：高速血流冲击、红细胞碰撞、白细胞免疫追踪。用方向键/鼠标控制导航。',
+{name:'血管巡航',sub:'在血流中导航',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>场景：</b>血管内导航（高速血流 + 红细胞碰撞 + 免疫追踪）</div>纳米机器人在血管中面临：高速血流冲击、红细胞碰撞、白细胞免疫追踪。用方向键/鼠标控制导航。',
  objs:['在血管中移动机器人','成功躲避3个红细胞','到达目标位置'],
  learn:'<span class="sv">2020年</span>已有团队用磁控纳米机器人在活体小鼠血管中成功导航。血流速度在主动脉中可达<span class="sv">1m/s</span>，纳米机器人需要磁场/超声/化学驱动来对抗血流。'},
-{name:'靶向给药',sub:'精准打击癌细胞',concept:'纳米载体表面装配特异性抗体，只与癌细胞表面受体结合。正常细胞（绿色）无受体突起，癌细胞（红色）有受体突起。',
+{name:'靶向给药',sub:'精准打击癌细胞',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>策略：</b>抗体修饰纳米载体 → 精准对接癌细胞受体</div>纳米载体表面装配特异性抗体，只与癌细胞表面受体结合。正常细胞（绿色）无受体突起，癌细胞（红色）有受体突起。',
  objs:['选择正确的抗体','纳米载体对接癌细胞','释放药物消灭癌细胞'],
  learn:'mRNA疫苗用的脂质纳米颗粒（LNP）也是纳米给药技术。FDA已批准多种纳米药物（Doxil、Abraxane）。<span class="sv">靶向给药</span>让化疗从"杀敌一千自损八百"变为精准打击。'},
-{name:'穿越血脑屏障',sub:'大脑的防火墙',concept:'血脑屏障（BBB）阻止98%药物进入大脑。调节参数：尺寸(10-500nm)、表面电荷(正/中/负)、表面修饰(PEG/转铁蛋白/载脂蛋白)。',
+{name:'穿越血脑屏障',sub:'大脑的防火墙',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>挑战：</b>血脑屏障（BBB）— 阻止 98% 药物进入大脑</div>血脑屏障（BBB）阻止98%药物进入大脑。调节参数：尺寸(10-500nm)、表面电荷(正/中/负)、表面修饰(PEG/转铁蛋白/载脂蛋白)。',
  objs:['尝试一次失败的穿越','找到正确参数组合','成功穿越血脑屏障'],
  learn:'成功穿越BBB的关键：尺寸<span class="sv">&lt;100nm</span> + <span class="sv">转铁蛋白</span>受体介导胞吞。<span class="sv">2024年</span>已有研究用超声+微泡暂时打开BBB，配合纳米载体递送药物到脑部。'},
-{name:'纳米手术',sub:'清除血管斑块',concept:'鼠标控制纳米刀具切割动脉粥样硬化斑块（黄色）。注意不要切到血管壁（红色）！观察血流量指示器的改善。',
+{name:'纳米手术',sub:'清除血管斑块',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>操作：</b>纳米刀具切割动脉斑块（黄色），避开血管壁（红色）</div>鼠标控制纳米刀具切割动脉粥样硬化斑块（黄色）。注意不要切到血管壁（红色）！观察血流量指示器的改善。',
  objs:['开始切割斑块','清除50%以上斑块','血流量恢复到80%'],
  learn:'心血管疾病是全球第一大死因。已有团队用磁控纳米机器人在<span class="sv">猪血管</span>中成功清除血栓。未来纳米手术可能让心脏搭桥手术成为历史。'},
-{name:'群体协作',sub:'纳米机器人集群',concept:'单个纳米机器人能力有限，但1000个协作可完成复杂任务。设定行为模式：趋化→包围→攻击，观察自组织涌现。',
+{name:'群体协作',sub:'纳米机器人集群',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>模式：</b>1000 个纳米机器人集群（趋化 → 包围 → 攻击）</div>单个纳米机器人能力有限，但1000个协作可完成复杂任务。设定行为模式：趋化→包围→攻击，观察自组织涌现。',
  objs:['释放纳米机器人集群','集群包围肿瘤','释放药物消灭肿瘤'],
  learn:'<span class="sv">2018年</span>已有团队用DNA纳米机器人集群在小鼠体内精准攻击肿瘤。每个机器人只需遵循简单规则（趋化、避障），就能<span class="sv">涌现</span>出复杂集体行为——如同蚂蚁建造精密蚁巢。'}
 ];
@@ -958,10 +981,8 @@ loadLevel(0);
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };

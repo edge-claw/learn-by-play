@@ -122,7 +122,7 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -136,10 +136,32 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 #themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
 [data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
 [data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;background:linear-gradient(135deg,#7c3aed,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.overlay .sub{color:var(--text-sub);font-size:17px;margin-bottom:32px}
+.overlay .start-btn{padding:14px 48px;font-size:18px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:transform .2s}
+.overlay .start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.features .feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px}
+.features .feat .fi{font-size:26px;margin-bottom:4px}
 </style>
 </head>
 <body data-theme="dark">
 <button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="ov">
+<h1>🧬 CRISPR 基因编辑</h1>
+<p class="sub">7 个交互关卡 — 从 DNA 双螺旋到基因治疗</p>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="fi">🧬</div>DNA双螺旋</div>
+<div class="feat"><div class="fi">🦠</div>CRISPR来源</div>
+<div class="feat"><div class="fi">🎯</div>向导RNA</div>
+<div class="feat"><div class="fi">✂️</div>Cas9剪切</div>
+<div class="feat"><div class="fi">🔧</div>基因修复</div>
+<div class="feat"><div class="fi">🔍</div>脱靶检测</div>
+<div class="feat"><div class="fi">💊</div>基因治疗</div>
+</div>
+</div>
 <div class="panel" id="panel"></div>
 <canvas id="cv"></canvas>
 <div id="infobar">
@@ -157,6 +179,7 @@ const TH={
 };
 function t(){return isDark?TH.dark:TH.light}
 function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
+function startGame(){document.getElementById('ov').style.display='none';}
 
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel');
 let W,H,curLevel=0,frame=0,animId,levelFadeAlpha=1;
@@ -230,19 +253,19 @@ window.addEventListener('resize',resize);
 
 /* ===== LEVELS DATA ===== */
 const levels=[
-  {name:'DNA双螺旋',sub:'生命的密码',concept:'DNA由4种碱基组成：腺嘌呤(A)与胸腺嘧啶(T)配对，胞嘧啶(C)与鸟嘌呤(G)配对，通过氢键连接形成双螺旋结构。',
+  {name:'DNA双螺旋',sub:'生命的密码',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>分子：</b>DNA 双螺旋（A-T / C-G 碱基配对）</div>DNA由4种碱基组成：腺嘌呤(A)与胸腺嘧啶(T)配对，胞嘧啶(C)与鸟嘌呤(G)配对，通过氢键连接形成双螺旋结构。',
    objs:['正确配对3个碱基','完成整条链','观察双螺旋'],learn:'人类DNA有<span class="sv">30亿</span>碱基对，展开约<span class="sv">2米</span>长，却塞在仅<span class="sv">6微米</span>的细胞核里。如果把全身细胞的DNA首尾相连，可以往返太阳750次。'},
-  {name:'CRISPR天然来源',sub:'细菌免疫系统',concept:'CRISPR原本是细菌的免疫系统。细菌截取入侵病毒的DNA片段，存入CRISPR阵列，下次遇到相同病毒时即可识别并消灭。',
+  {name:'CRISPR天然来源',sub:'细菌免疫系统',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>来源：</b>细菌免疫系统（截取病毒 DNA → 存入 CRISPR 阵列）</div>CRISPR原本是细菌的免疫系统。细菌截取入侵病毒的DNA片段，存入CRISPR阵列，下次遇到相同病毒时即可识别并消灭。',
    objs:['观察噬菌体入侵','截取并存储片段','抵御第二次入侵'],learn:'2020年，Jennifer Doudna和Emmanuelle Charpentier因发现CRISPR基因编辑技术获得<span class="sv">诺贝尔化学奖</span>。这是诺贝尔科学奖首次同时颁给两位女性。'},
-  {name:'向导RNA',sub:'精准定位',concept:'sgRNA（单向导RNA）是CRISPR的GPS。它与目标DNA序列互补配对，引导Cas9蛋白精确找到基因组中的目标位置。PAM序列（NGG）是必需的识别信号。',
+  {name:'向导RNA',sub:'精准定位',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>工具：</b>sgRNA（单向导 RNA）+ PAM 序列（NGG）</div>sgRNA（单向导RNA）是CRISPR的GPS。它与目标DNA序列互补配对，引导Cas9蛋白精确找到基因组中的目标位置。PAM序列（NGG）是必需的识别信号。',
    objs:['设计互补sgRNA','找到PAM位置','成功配对'],learn:'20个碱基的sgRNA在30亿碱基对中足以唯一定位目标——<span class="sv">4²⁰ = 1万亿</span>种可能组合，远超人类基因组大小。'},
-  {name:'Cas9剪切',sub:'分子剪刀',concept:'Cas9蛋白在sgRNA引导下找到目标DNA，用RuvC和HNH两个核酸酶结构域分别切断DNA双链的两条链，产生双链断裂（DSB）。',
+  {name:'Cas9剪切',sub:'分子剪刀',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>工具：</b>Cas9 分子剪刀（RuvC + HNH 双核酸酶结构域）</div>Cas9蛋白在sgRNA引导下找到目标DNA，用RuvC和HNH两个核酸酶结构域分别切断DNA双链的两条链，产生双链断裂（DSB）。',
    objs:['Cas9结合DNA','打开双链(R-loop)','完成双链断裂'],learn:'Cas9蛋白约<span class="sv">160kDa</span>，切割后触发细胞自身的DNA修复机制——这正是基因编辑的关键时刻。'},
-  {name:'基因修复',sub:'两条路径',concept:'DNA断裂后，细胞有两种修复方式：NHEJ（非同源末端连接）快速但易出错，常导致基因敲除；HDR（同源定向修复）精确但效率低，可实现基因敲入。',
+  {name:'基因修复',sub:'两条路径',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>路径：</b>NHEJ（快速易错/基因敲除）vs HDR（精确/基因敲入）</div>DNA断裂后，细胞有两种修复方式：NHEJ（非同源末端连接）快速但易出错，常导致基因敲除；HDR（同源定向修复）精确但效率低，可实现基因敲入。',
    objs:['NHEJ敲除基因','HDR精确插入','理解两种区别'],learn:'HDR效率通常只有<span class="sv">5-20%</span>，提高HDR效率是基因治疗的关键挑战。科学家正在开发碱基编辑器和先导编辑器来绕过这个限制。'},
-  {name:'脱靶检测',sub:'安全第一',concept:'sgRNA可能与基因组中其他相似序列部分匹配，导致Cas9在非目标位点错误切割。脱靶效应是CRISPR临床应用的主要安全隐患。',
+  {name:'脱靶检测',sub:'安全第一',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>风险：</b>脱靶效应 — sgRNA 错误匹配非目标位点</div>sgRNA可能与基因组中其他相似序列部分匹配，导致Cas9在非目标位点错误切割。脱靶效应是CRISPR临床应用的主要安全隐患。',
    objs:['找到正确靶点','找到所有脱靶位点','理解脱靶风险'],learn:'高保真Cas9变体（如<span class="sv">eSpCas9</span>、<span class="sv">HiFi Cas9</span>）可显著减少脱靶。临床应用前必须进行全基因组测序验证安全性。'},
-  {name:'基因治疗',sub:'治愈镰刀型贫血',concept:'HBB基因单碱基突变（GAG→GTG）导致血红蛋白异常，红细胞变成镰刀形。CRISPR可精确修复这个突变，使红细胞恢复正常圆盘形。',
+  {name:'基因治疗',sub:'治愈镰刀型贫血',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>应用：</b>镰刀型贫血（HBB 基因 GAG→GTG 单碱基突变）</div>HBB基因单碱基突变（GAG→GTG）导致血红蛋白异常，红细胞变成镰刀形。CRISPR可精确修复这个突变，使红细胞恢复正常圆盘形。',
    objs:['识别突变位点','完成递送与切割','修复突变，红细胞恢复'],learn:'2023年FDA批准首个CRISPR基因疗法<span class="sv">Casgevy</span>，用于治疗镰刀型贫血和β-地中海贫血。<span class="sv">一次治疗，终身治愈</span>。'}
 ];
 
@@ -978,10 +1001,8 @@ resize();initLevel0();panelDirty=true;renderPanel();mainLoop();
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };

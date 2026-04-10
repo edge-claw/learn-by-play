@@ -111,7 +111,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -160,25 +160,25 @@ let W, H, curLevel = 0, animId, time = 0;
 const PINK = '#ec4899', PINK2 = '#f472b6', GREEN = '#22c55e', CYAN = '#06b6d4', YELLOW = '#eab308', ORANGE = '#f97316', PURPLE = '#a855f7';
 
 const levels = [
-  { title:'关卡 1: 基本信号', desc:'认识常见信号波形：正弦波、方波、三角波、脉冲和阶跃信号。调节参数观察波形变化。',
+  { title:'关卡 1: 基本信号', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>常见波形：</b>正弦波 sin(2πft)、方波、三角波、脉冲 δ(t)、阶跃 u(t)</div>认识常见信号波形，调节参数观察波形变化。',
     objs:['生成正弦波','调节频率和幅度','生成方波'],
     learn:'信号是随时间变化的物理量。正弦波是最基本的信号，任何周期信号都可以分解为正弦波的叠加（傅里叶定理）。频率决定振荡快慢，幅度决定信号强弱，相位决定起始位置。'},
-  { title:'关卡 2: 信号运算', desc:'对两个信号进行加法、乘法、时移、尺度变换和翻转运算，观察运算结果。',
+  { title:'关卡 2: 信号运算', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>基本运算：</b>加法 x₁+x₂、乘法 x₁·x₂、时移 x(t-t₀)、尺度变换 x(at)</div>对两个信号进行运算，观察运算结果。',
     objs:['信号相加','信号相乘（调制）','时移操作'],
     learn:'信号运算是信号处理的基础。加法用于信号混合，乘法用于调制，时移改变信号出现的时刻，尺度变换改变信号的时间尺度。'},
-  { title:'关卡 3: 卷积', desc:'卷积是 LTI 系统的核心运算。观察"翻转-滑动-积分"的过程，理解卷积的几何意义。',
+  { title:'关卡 3: 卷积', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>卷积公式：</b>y(t) = ∫x(τ)h(t-τ)dτ — 翻转·滑动·积分</div>卷积是 LTI 系统的核心运算，观察其几何意义。',
     objs:['理解翻转操作','观察滑动过程','得到卷积结果'],
     learn:'卷积 y(t)=∫x(τ)h(t-τ)dτ 描述了 LTI 系统的输入输出关系。h(t) 是系统的冲激响应。卷积的步骤：翻转 h(τ)→h(-τ)，平移 h(t-τ)，相乘并积分。'},
-  { title:'关卡 4: 傅里叶级数', desc:'周期信号可以分解为不同频率的正弦/余弦分量之和。逐步添加谐波，观察逼近效果。',
+  { title:'关卡 4: 傅里叶级数', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>傅里叶级数：</b>f(t) = a₀ + Σ(aₙcos nωt + bₙsin nωt)</div>周期信号分解为谐波之和，逐步添加观察逼近效果。',
     objs:['添加基波','叠加 3 次谐波','用 N 次谐波逼近方波'],
     learn:'傅里叶级数：任何满足狄利克雷条件的周期信号都可以展开为 f(t)=a₀+Σ(aₙcos(nωt)+bₙsin(nωt))。方波的傅里叶级数只含奇次谐波：4/π·Σ sin(nωt)/n (n=1,3,5...)'},
-  { title:'关卡 5: 傅里叶变换', desc:'将信号从时域变换到频域，观察频谱特征。调节采样率体验混叠现象。',
+  { title:'关卡 5: 傅里叶变换', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>傅里叶变换：</b>F(ω) = ∫f(t)e⁻ʲωᵗdt &nbsp;|&nbsp; 采样定理 fs &gt; 2fmax</div>将信号从时域变换到频域，观察频谱特征。',
     objs:['观察正弦波频谱','观察方波频谱','触发采样混叠'],
     learn:'傅里叶变换 F(ω)=∫f(t)e^(-jωt)dt 将时域信号映射到频域。采样定理（奈奎斯特）：采样频率必须大于信号最高频率的 2 倍，否则产生混叠。'},
-  { title:'关卡 6: 滤波', desc:'通过低通、高通、带通滤波器处理混合信号，观察频域滤波效果。',
+  { title:'关卡 6: 滤波', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>滤波器：</b>低通 LPF、高通 HPF、带通 BPF — 频率响应 H(ω)</div>通过滤波器处理混合信号，观察频域滤波效果。',
     objs:['低通滤波提取基波','高通滤波提取高频','带通滤波'],
     learn:'滤波器是一种 LTI 系统，通过其频率响应 H(ω) 选择性地通过或抑制特定频率分量。低通滤波器保留低频，高通保留高频，带通保留特定频段。'},
-  { title:'关卡 7: 调制与解调', desc:'AM 调幅将基带信号搬移到高频载波上传输，包络检波实现解调。',
+  { title:'关卡 7: 调制与解调', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>AM 调幅：</b>s(t) = [1 + m·x(t)]·cos(ωct)，m 为调制深度</div>将基带信号搬移到高频载波上传输，包络检波实现解调。',
     objs:['实现 AM 调制','调节调制深度','包络检波解调'],
     learn:'调幅 AM：s(t)=[1+m·x(t)]·cos(ωct)，其中 m 是调制深度。m<1 时可用包络检波解调。调制将信号频谱搬移到载波频率附近，是无线通信的基础。'}
 ];
@@ -849,10 +849,8 @@ window.addEventListener('resize', resize);
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };

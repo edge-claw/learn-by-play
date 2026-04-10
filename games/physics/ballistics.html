@@ -116,7 +116,6 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .result-box .btn-next{background:#ff6a33;color:#fff}
 .result-box .btn-retry{background:var(--stage-bar);color:var(--text-sub)}
 
-#roadmap-container{display:none}
 .roadmap{margin:20px auto;max-width:500px;text-align:left}
 .roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
 .roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
@@ -126,7 +125,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -150,7 +149,6 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 <div class="start-box">
   <h1>🎯 <span class="gold">弹道</span>物理原理探险</h1>
   <div class="sub">6 个关卡，亲手体验经典力学核心原理</div>
-  <div id="roadmap-container"></div>
 <button class="start-btn" onclick="startGame()">开始探险</button>
   <div class="features">
     <div class="feat"><div class="fi">🏹</div>抛体运动</div>
@@ -188,22 +186,22 @@ const G = 9.81, dt = 1/60;
 const panelEl = document.getElementById('panel');
 
 const levels = [
-  { title:'抛体运动', sub:'45度最远', concept:'斜抛运动：物体以一定角度和速度抛出后，只受重力作用，走抛物线轨迹。在没有空气阻力时，45° 发射角能让物体飞得最远。',
+  { title:'抛体运动', sub:'45度最远', highlight:'斜抛公式：R = v&#178;sin(2&#952;)/g，&#952;=45&#176; 时 R 最大', concept:'斜抛运动：物体以一定角度和速度抛出后，只受重力作用，走抛物线轨迹。在没有空气阻力时，45° 发射角能让物体飞得最远。',
     goals:['发射一次观察抛物线','用 45° 发射观察最远距离','命中目标靶子'],
     learn:'在没有空气阻力的理想情况下，<b>45度角</b>能让物体飞得最远。这是因为 45° 完美平衡了水平速度和滞空时间。古代投石机的操作手凭经验就知道这个道理——现代物理只是用数学证明了它。' },
-  { title:'空气阻力', sub:'真空 vs 现实', concept:'空气阻力与速度的平方成正比（F = ½ρCdAv²）。真空中的完美抛物线在现实中会被"压扁"，飞行距离大幅缩短。',
+  { title:'空气阻力', sub:'真空 vs 现实', highlight:'阻力公式：F = &#189;&#961;C<sub>d</sub>Av&#178;（与速度平方成正比）', concept:'空气阻力与速度的平方成正比（F = ½ρCdAv²）。真空中的完美抛物线在现实中会被"压扁"，飞行距离大幅缩短。',
     goals:['对比真空和有阻力的轨迹','观察高速时阻力影响更大','发现现实最佳角度不是 45°'],
     learn:'在真实世界中，空气阻力会"偷走"物体的动能。速度越快，阻力越大（和速度的平方成正比！）。所以棒球投手投出的球不是完美抛物线，狙击手要考虑的也远不止重力。现实中的最佳发射角度通常在 <b>30°~40°</b> 之间。' },
-  { title:'动量守恒', sub:'牛顿摆', concept:'动量 = 质量 × 速度。碰撞中总动量守恒。弹性碰撞中动能也守恒。牛顿摆完美展示了这两个守恒定律。',
+  { title:'动量守恒', sub:'牛顿摆', highlight:'动量守恒：p = mv，碰撞前后总动量不变', concept:'动量 = 质量 × 速度。碰撞中总动量守恒。弹性碰撞中动能也守恒。牛顿摆完美展示了这两个守恒定律。',
     goals:['释放 1 个球观察结果','释放 2 个球观察结果','释放 3 个球观察结果'],
     learn:'牛顿摆完美展示了<b>动量守恒</b>和<b>能量守恒</b>。释放 1 个球，动量只够让 1 个球以相同速度弹起。释放 2 个球，就有 2 个球弹起。这不是魔法，是物理定律在精确地"记账"——动量和能量一分不差地传递。' },
-  { title:'科里奥利力', sub:'地球自转的影响', concept:'在旋转的地球上，运动物体会偏转（北半球向右偏）。远程射击和导弹必须考虑这个效应。',
+  { title:'科里奥利力', sub:'地球自转的影响', highlight:'科里奥利力：F = −2m(&#969; &#215; v)，北半球向右偏转', concept:'在旋转的地球上，运动物体会偏转（北半球向右偏）。远程射击和导弹必须考虑这个效应。',
     goals:['观察不补偿时的偏转','理解科里奥利力方向','补偿偏转命中目标'],
     learn:'地球每天自转一圈，赤道表面速度约 <b>1670km/h</b>。当你向北发射物体时，它保持着出发点的东向速度，但越往北地面东向速度越慢——所以物体看起来向右偏了。这就是科里奥利力，它影响着洋流、台风旋转方向，以及远程弹道。' },
-  { title:'终端速度', sub:'自由落体的极限', concept:'下落物体加速到一定速度后，空气阻力等于重力，不再加速，达到终端速度。羽毛和铁球在真空中同时落地。',
+  { title:'终端速度', sub:'自由落体的极限', highlight:'终端速度：mg = &#189;&#961;C<sub>d</sub>Av<sub>t</sub>&#178;（重力 = 阻力时不再加速）', concept:'下落物体加速到一定速度后，空气阻力等于重力，不再加速，达到终端速度。羽毛和铁球在真空中同时落地。',
     goals:['在真空中验证同时落地','在大气中观察不同终端速度','打开降落伞降低终端速度'],
     learn:'伽利略说"不同重量的物体同时落地"——在真空中确实如此！但在空气中，轻的物体表面积相对更大，空气阻力影响更大。跳伞员的终端速度约 <b>200km/h</b>，打开伞后降到 <b>20km/h</b>。没有空气阻力，降落伞就是一块没用的布。' },
-  { title:'三体问题', sub:'混沌的开始', concept:'两个天体的运动可以精确计算，但加入第三个天体后，运动变得不可预测——这就是三体问题，混沌理论的经典案例。',
+  { title:'三体问题', sub:'混沌的开始', highlight:'三体问题：无通解（庞加莱证明），初始条件微小差异 → 完全不同结果', concept:'两个天体的运动可以精确计算，但加入第三个天体后，运动变得不可预测——这就是三体问题，混沌理论的经典案例。',
     goals:['运行一次模拟观察轨迹','尝试 8 字形预设','微调初始位置观察蝴蝶效应'],
     learn:'三体问题没有通解——这是数学上已经证明的。三个天体的引力相互作用产生<b>混沌</b>：初始条件的微小差异会导致完全不同的结果。这就是为什么长期天气预报不可能精确，也是刘慈欣《三体》小说的科学基础。宇宙比我们想象的更不可预测。' }
 ];
@@ -233,6 +231,7 @@ function renderPanel(){
   });
   h+='</div>';
   h+=`<div class="level-title">${lv.title}</div><div class="level-sub">${lv.sub}</div>`;
+  if(lv.highlight)h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心公式：</b>${lv.highlight}</div>`;
   h+=`<div class="concept-box">${lv.concept}</div>`;
   h+=`<div class="section-title">目标清单</div>`;
   lv.goals.forEach((g,i)=>{
@@ -1035,20 +1034,6 @@ function goLevel(i){switchLevel(i);}
     return{done:d,total:t};
   }
 
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
 
   // 2. 阶段导航
   window._stageNavHTML=function(){
@@ -1062,10 +1047,8 @@ function goLevel(i){switchLevel(i);}
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };

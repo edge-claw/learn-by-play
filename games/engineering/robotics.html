@@ -110,7 +110,6 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .result-box .btn-next{background:#0284c7;color:#fff}
 .result-box .btn-retry{background:var(--stage-bar);color:var(--text-sub)}
 
-#roadmap-container{display:none}
 .roadmap{margin:20px auto;max-width:500px;text-align:left}
 .roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
 .roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
@@ -120,7 +119,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
-.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -143,7 +142,6 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 <div class="start-box">
   <h1>🤖 <span class="gold">机器人学</span> 探险</h1>
   <div class="sub">7 个关卡，从机械臂运动学到群体智能</div>
-  <div id="roadmap-container"></div>
 <button class="start-btn" onclick="startGame()">开始探索</button>
   <div class="features">
     <div class="feat"><div class="fi">🦾</div>运动学</div>
@@ -286,6 +284,31 @@ function initLevel(n){
 }
 
 // ========== RENDER PANEL ==========
+// Lightweight DOM patcher: preserves focused range inputs during panel updates
+function _patchPanel(el,html){
+  var ae=document.activeElement;
+  if(!ae||ae.type!=='range'||!el.contains(ae)){el.innerHTML=html;return;}
+  var tmp=document.createElement('div');tmp.innerHTML=html;
+  _diffNodes(el,tmp);
+}
+function _diffNodes(o,n){
+  var oc=Array.from(o.childNodes),nc=Array.from(n.childNodes);
+  var i=0;
+  while(i<oc.length&&i<nc.length){
+    var a=oc[i],b=nc[i];
+    if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName){o.replaceChild(b.cloneNode(true),a);i++;continue;}
+    if(a.nodeType===3){if(a.textContent!==b.textContent)a.textContent=b.textContent;i++;continue;}
+    if(a.nodeType===1){
+      if(a.tagName==='INPUT'&&a.type==='range'&&a===document.activeElement){i++;continue;}
+      for(var j=0;j<b.attributes.length;j++){var at=b.attributes[j];if(a.getAttribute(at.name)!==at.value)a.setAttribute(at.name,at.value);}
+      _diffNodes(a,b);
+    }
+    i++;
+  }
+  while(oc.length>nc.length)o.removeChild(o.lastChild);
+  for(;i<nc.length;i++)o.appendChild(nc[i].cloneNode(true));
+}
+
 function renderPanel(){
   let li=curLevel,h='';
   h+='<div style="margin-bottom:8px">';
@@ -295,6 +318,8 @@ function renderPanel(){
   }
   h+='</div>';
   h+=`<div class="m-title">${levelNames[li]}</div>`;
+  const _kw=['正运动学(FK)：关节角→末端位置；逆运动学(IK)：目标→关节角','6自由度 = 3平移 + 3旋转，旋转关节(R) vs 移动关节(P)','A*：启发式最优路径；RRT：随机采样探索高维空间','SLAM：同时定位与建图，激光雷达+粒子滤波','力封闭抓取 + 阻抗控制（像弹簧一样柔顺）','卡尔曼滤波：预测+更新，多传感器优势互补','去中心化控制：简单规则 → 涌现复杂集体行为'][li];
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>${_kw}</div>`;
   h+=`<div class="m-sub">${levelDescs[li]}</div>`;
   h+='<div style="margin:8px 0">';
   for(let i=0;i<3;i++){
@@ -357,7 +382,7 @@ function renderPanel(){
     if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
     if(li===6)h+=`${_summaryHTML()}`;
   }
-  panel.innerHTML=h;
+  _patchPanel(panel,h);
 }
 
 function renderBar(){
@@ -1022,20 +1047,6 @@ drawStartBg();
     return{done:d,total:t};
   }
 
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
 
   // 2. 阶段导航
   window._stageNavHTML=function(){
@@ -1049,10 +1060,8 @@ drawStartBg();
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C '+(cur+1)+'/'+total+' \u5173\uFF1A'+(names[cur]||'')+' | \u8FDB\u5EA6 '+pct+'%</div>';
-    if(cur<total){
-      h+='<div class="sn-hint">\u{1F4A1} \u672C\u5173\u4F60\u5C06\u5B66\u4E60\uFF1A'+(names[cur]||'')+'</div>';
-    }
+    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+
     h+='</div>';
     return h;
   };
@@ -1102,6 +1111,7 @@ drawStartBg();
   }
 })();
 try{renderPanel();}catch(e){}
+
 
 </script>
 </body>
