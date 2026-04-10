@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔥 热力学探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --slider-label:#888;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --slider-label:#888;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#f59e0b}
+.start-box .sub{font-size:17px;color:var(--sub-color);margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100% - 32px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none;padding-bottom:16px}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}.g-text{color:var(--text-sub)}.g-text.done{color:#059669;text-decoration:line-through}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:15px;cursor:pointer;text-align:center}
+.act-btn:hover{background:var(--btn-hover)}.act-btn:disabled{opacity:0.4;cursor:not-allowed}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--hint-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:14px;line-height:1.8;color:var(--learn-text)}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:var(--slider-label)}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#f59e0b}
+.sv{color:var(--sv);font-weight:bold}
+.m-title{font-size:17px;font-weight:700;margin:8px 0 4px;color:var(--title-color)}
+.m-sub{font-size:12px;color:var(--sub-color);margin-bottom:8px}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:var(--bar-bg);border-top:1px solid var(--bar-border);z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}#bottom-bar .bb-right{text-align:right}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#f59e0b;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🔥 <span class="gold">热力学</span>探险</h1>
+  <div class="sub">7 个关卡，从分子运动到相变的热力学之旅</div>
+  <button class="start-btn" onclick="startGame()">开始探索</button>
+  <div class="features">
+    <div class="feat"><div class="fi">🌡️</div>分子运动</div>
+    <div class="feat"><div class="fi">🔥</div>热传导</div>
+    <div class="feat"><div class="fi">💨</div>理想气体</div>
+    <div class="feat"><div class="fi">⚡</div>第一定律</div>
+    <div class="feat"><div class="fi">🎲</div>熵与不可逆</div>
+    <div class="feat"><div class="fi">🔄</div>卡诺循环</div>
+    <div class="feat"><div class="fi">❄️</div>相变</div>
+  </div>
+</div>
+</div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+// === 主题系统 ===
+let isDark=true;
+const TH={
+  dark:{bg1:'#1a0a0a',bg2:'#0d0d1a',grid:'rgba(245,158,11,0.05)',text:'#fff',textSec:'rgba(255,255,255,0.6)'},
+  light:{bg1:'#f5ede0',bg2:'#f0f2f5',grid:'rgba(245,158,11,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)'}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{renderPanel()}catch(e){}}
+
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,lastTime=0;
+let gameState='start',currentLevel=0,levelState={},particles=[];
+const completedLevels=new Set();
+
+const levels=[
+  {title:'温度与分子运动',sub:'麦克斯韦速度分布',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心公式：</b>E<sub>k</sub> = ³⁄₂ kT &nbsp;（分子平均动能正比于温度）</div>温度的微观本质是分子无规则运动的剧烈程度。温度越高，分子运动越快，速度分布曲线越宽越矮。',goals:['调节温度观察分子速度变化','观察麦克斯韦速度分布曲线'],learn:'麦克斯韦-玻尔兹曼分布描述了理想气体分子的速度分布。温度升高时，分布曲线变宽变矮，峰值右移——更多分子获得高速。最概然速率 v_p = √(2kT/m)。这个分布是统计力学的基石，由麦克斯韦在1860年推导。'},
+  {title:'热传导',sub:'傅里叶定律',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>傅里叶定律：</b>q = -k · dT/dx &nbsp;（热流密度正比于温度梯度）</div>热量自发地从高温传向低温。金属棒两端温度不同时，热量沿棒传递，最终达到稳态线性分布。',goals:['设置两端温度差','观察热量传递过程达到稳态'],learn:'傅里叶定律（1822年）是热传导的基本定律。热导率k反映材料导热能力：铜(401 W/m·K)远大于木头(0.12)。稳态时温度沿棒线性分布。瞬态过程遵循热扩散方程 ∂T/∂t = α·∂²T/∂x²，其中α=k/(ρc)是热扩散率。'},
+  {title:'理想气体定律',sub:'PV=nRT',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>状态方程：</b>PV = nRT &nbsp;（压强×体积 = 物质的量×气体常数×温度）</div>理想气体的三个状态量P、V、T相互关联。固定一个，改变另一个，第三个必然变化。',goals:['固定T，改变V观察P变化（玻意耳定律）','固定V，改变T观察P变化（查理定律）'],learn:'理想气体状态方程统一了玻意耳定律(PV=常数)、查理定律(P/T=常数)和盖-吕萨克定律(V/T=常数)。R=8.314 J/(mol·K)是普适气体常数。真实气体在高压低温下偏离理想行为，需用范德瓦尔斯方程修正。'},
+  {title:'热力学第一定律',sub:'能量守恒',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>第一定律：</b>ΔU = Q - W &nbsp;（内能变化 = 吸热 - 做功）</div>活塞气缸系统中，加热气体使其膨胀做功。内能、热量、功三者满足能量守恒。',goals:['加热气体观察膨胀做功','验证 ΔU = Q - W 能量守恒'],learn:'热力学第一定律本质是能量守恒定律在热学中的表述。内能U是状态量（只取决于温度），Q和W是过程量（取决于路径）。等温过程ΔU=0，Q=W；绝热过程Q=0，W=-ΔU；等容过程W=0，ΔU=Q。这是热机和制冷机的理论基础。'},
+  {title:'熵与第二定律',sub:'不可逆过程',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>第二定律：</b>ΔS ≥ 0 &nbsp;（孤立系统的熵永不减少）</div>气体自由膨胀后不会自发回到原来的一半空间——这就是不可逆性。熵是无序度的量度。',goals:['释放气体观察自由膨胀','观察熵值只增不减'],learn:'熵(Entropy)由克劳修斯在1865年引入，玻尔兹曼给出统计解释：S = k·ln(Ω)，Ω是微观状态数。气体从半边膨胀到全部空间，Ω增大，S增大。这个过程不可逆——虽然所有分子同时回到左边不违反力学定律，但概率极小(~2^(-N))。熵增原理决定了时间的方向。'},
+  {title:'卡诺循环',sub:'热机效率极限',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>卡诺效率：</b>η = 1 - T<sub>冷</sub>/T<sub>热</sub> &nbsp;（理想热机效率上限）</div>卡诺循环由四步组成：等温膨胀→绝热膨胀→等温压缩→绝热压缩。它是效率最高的理想热机。',goals:['观察四步循环动画','调节冷热源温度计算效率'],learn:'卡诺定理（1824年）指出：在相同冷热源之间工作的所有热机中，可逆卡诺热机效率最高。η=1-Tc/Th 说明：(1)效率永远小于100%；(2)温差越大效率越高；(3)冷源温度不可能为0K。这个定理是热力学第二定律的另一种表述，也解释了为什么永动机不可能。'},
+  {title:'相变',sub:'物态变化',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键现象：</b>相变时温度不变，热量用于破坏/建立分子间作用力</div>加热冰→水→蒸汽的过程中，温度-时间曲线出现两个平台期（0°C和100°C），对应熔化和汽化潜热。',goals:['加热观察冰→水→蒸汽全过程','观察温度曲线的平台期'],learn:'相变是物质在不同相（固、液、气）之间的转变。熔化潜热(冰:334 kJ/kg)和汽化潜热(水:2260 kJ/kg)反映了破坏分子间作用力所需的能量。汽化潜热远大于熔化潜热，因为气化需要完全克服分子间引力。克拉伯龙方程 dP/dT = L/(TΔV) 描述了相变线的斜率。'}
+];
+
+function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight}
+window.addEventListener('resize',resize);resize();
+
+// === 粒子效果 ===
+function addP(x,y,vx,vy,col,life,sz){particles.push({x,y,vx,vy,col,life,ml:life,sz:sz||3})}
+function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1)}}
+function drawParticles(){for(let p of particles){const a=Math.max(0,p.life/p.ml);ctx.globalAlpha=a;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.sz*a,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+
+// === 温度→颜色 ===
+function tempColor(temp,minT,maxT){
+  const r=Math.max(0,Math.min(1,(temp-minT)/(maxT-minT)));
+  const R=Math.round(30+225*r),G=Math.round(100+50*Math.sin(r*Math.PI)),B=Math.round(255-225*r);
+  return `rgb(${R},${G},${B})`;
+}
+
+function startGame(){
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('panel').style.display='block';
+  document.getElementById('bottom-bar').style.display='flex';
+  gameState='play';currentLevel=0;initLevel(0);renderPanel();
+  requestAnimationFrame(mainLoop);
+}
+
+// === 关卡初始化 ===
+function initLevel(idx){
+  currentLevel=idx;particles=[];
+  const cx=CW/2+160,cy=CH/2;
+  if(idx===0){
+    // 温度与分子运动
+    const mols=[];
+    for(let i=0;i<80;i++){
+      const a=Math.random()*Math.PI*2,sp=50+Math.random()*100;
+      mols.push({x:cx-150+Math.random()*300,y:cy-150+Math.random()*300,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r:4});
+    }
+    levelState={temp:300,molecules:mols,goalDone:[false,false],boxL:cx-180,boxR:cx+180,boxT:cy-180,boxB:cy+180};
+  } else if(idx===1){
+    // 热传导
+    const N=40;const temps=[];
+    for(let i=0;i<N;i++)temps.push(200);
+    levelState={tempLeft:500,tempRight:100,barTemps:temps,elapsed:0,steady:false,goalDone:[false,false],N:N};
+  } else if(idx===2){
+    // 理想气体定律
+    const mols=[];
+    for(let i=0;i<40;i++){
+      const a=Math.random()*Math.PI*2,sp=80;
+      mols.push({x:cx-60+Math.random()*120,y:cy-80+Math.random()*160,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp});
+    }
+    levelState={P:1,V:1,T:300,mode:'boyle',molecules:mols,goalDone:[false,false],pistonY:cy-100};
+  } else if(idx===3){
+    // 热力学第一定律
+    levelState={Q:0,W:0,dU:0,temp:300,volume:1,pressure:1,heating:false,elapsed:0,goalDone:[false,false],pistonX:0,history:[]};
+  } else if(idx===4){
+    // 熵与第二定律
+    const mols=[];
+    for(let i=0;i<60;i++){
+      const a=Math.random()*Math.PI*2,sp=40+Math.random()*80;
+      mols.push({x:cx-180+Math.random()*80,y:cy-120+Math.random()*240,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp});
+    }
+    levelState={molecules:mols,released:false,entropy:0,entropyHistory:[],elapsed:0,goalDone:[false,false],wallOpen:false};
+  } else if(idx===5){
+    // 卡诺循环
+    levelState={Th:600,Tc:300,step:0,animProgress:0,running:false,pvPoints:[],efficiency:0,goalDone:[false,false],cycleComplete:false,V:1,P:1,phase:'idle'};
+  } else if(idx===6){
+    // 相变
+    levelState={temp:-20,targetTemp:200,heating:false,elapsed:0,phase:'ice',heatAdded:0,tempHistory:[],goalDone:[false,false],meltProgress:0,boilProgress:0};
+  }
+  renderPanel();
+}
+
+function completeLevel(idx){if(!completedLevels.has(idx)){completedLevels.add(idx);renderPanel()}}
+
+// === stage-nav ===
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<levels.length;i++){
+    let cls='sn-d';if(completedLevels.has(i))cls+=' done';if(i===currentLevel)cls+=' cur';
+    h+=`<div class="${cls}" onclick="switchLevel(${i})"></div>`;
+  }
+  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关：${levels[currentLevel].title}</div>`;
+  h+=`<div class="sn-hint">${levels[currentLevel].sub}</div></div>`;
+  return h;
+}
+
+// === 面板渲染 ===
+function renderPanel(){
+  const L=levels[currentLevel],S=levelState,p=document.getElementById('panel');
+  let h=renderStageNav();
+  h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
+  h+=`<div class="concept-box">${L.concept}</div>`;
+  h+='<div style="margin:8px 0;font-size:12px;color:var(--text-muted);font-weight:600">目标清单</div>';
+  for(let i=0;i<L.goals.length;i++){
+    const done=S.goalDone&&S.goalDone[i];
+    h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`;
+  }
+  h+=renderLevelActions();
+  if(S.goalDone&&S.goalDone.every(g=>g)){
+    h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
+    if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
+    else h+=summaryHTML();
+  }
+  p.innerHTML=h;
+  document.getElementById('bbLeft').textContent=`第 ${currentLevel+1} 关：${L.title}`;
+  document.getElementById('bbRight').textContent=`${completedLevels.size}/${levels.length} 已完成`;
+}
+
+function switchLevel(i){initLevel(i)}
+
+function summaryHTML(){
+  let h='<div class="summary-box"><div class="summary-title">🎉 热力学探险完成！</div>';
+  h+='<div class="summary-sub">你已掌握热力学的核心概念</div>';
+  h+='<div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡通过</div></div>';
+  h+='<div class="summary-stat"><div class="num">14</div><div class="label">目标达成</div></div></div>';
+  h+='<div class="summary-keys"><div>🌡️ 温度是分子运动的宏观表现</div><div>🔥 热量自发从高温流向低温</div>';
+  h+='<div>💨 PV=nRT 统一了气体三大定律</div><div>⚡ 能量守恒：ΔU=Q-W</div>';
+  h+='<div>🎲 熵增决定了时间的方向</div><div>🔄 卡诺效率是热机的理论极限</div>';
+  h+='<div>❄️ 相变潜热用于改变分子间作用力</div></div></div>';
+  return h;
+}
+
+// === 面板控件 ===
+function renderLevelActions(){
+  const S=levelState;let h='';
+  if(currentLevel===0){
+    h+=`<div class="slider-wrap"><label>温度: <span class="sv">${S.temp.toFixed(0)} K</span></label><input type="range" min="50" max="800" value="${S.temp}" oninput="doAction('setTemp',this.value)"></div>`;
+    h+=`<div style="font-size:12px;color:var(--sv);margin:4px 0">分子平均速率: <span class="sv">${(Math.sqrt(3*1.38e-23*S.temp/4.65e-26)).toFixed(0)} m/s</span></div>`;
+    h+=`<div class="hint-box">💡 拖动温度滑块，观察画布上分子运动速度和速度分布曲线的变化</div>`;
+  } else if(currentLevel===1){
+    h+=`<div class="slider-wrap"><label>左端温度: <span class="sv" style="color:#ef4444">${S.tempLeft.toFixed(0)} K</span></label><input type="range" min="100" max="800" value="${S.tempLeft}" oninput="doAction('setTL',this.value)"></div>`;
+    h+=`<div class="slider-wrap"><label>右端温度: <span class="sv" style="color:#3b82f6">${S.tempRight.toFixed(0)} K</span></label><input type="range" min="100" max="800" value="${S.tempRight}" oninput="doAction('setTR',this.value)"></div>`;
+    h+=`<div style="font-size:12px;color:var(--sv);margin:4px 0">温度梯度: <span class="sv">${((S.tempLeft-S.tempRight)/1).toFixed(0)} K/m</span></div>`;
+    h+=`<div style="font-size:12px;color:${S.steady?'#4ade80':'var(--text-muted)'};margin:2px 0">状态: ${S.steady?'✅ 稳态':'传热中...'}</div>`;
+    h+=`<div class="hint-box">💡 设置两端不同温度，观察热量从高温端传向低温端的过程</div>`;
+  } else if(currentLevel===2){
+    h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-muted)">实验模式:</label></div>`;
+    h+=`<button class="act-btn" style="${S.mode==='boyle'?'border-color:#f59e0b;color:#f59e0b':''}" onclick="doAction('mode','boyle')">玻意耳定律 (固定T，变V看P)</button>`;
+    h+=`<button class="act-btn" style="${S.mode==='charles'?'border-color:#f59e0b;color:#f59e0b':''}" onclick="doAction('mode','charles')">查理定律 (固定V，变T看P)</button>`;
+    if(S.mode==='boyle'){
+      h+=`<div class="slider-wrap"><label>体积 V: <span class="sv">${S.V.toFixed(2)} L</span></label><input type="range" min="20" max="200" value="${S.V*100}" oninput="doAction('setV',this.value)"></div>`;
+      h+=`<div style="font-size:12px;color:var(--sv);margin:4px 0">压强 P: <span class="sv">${S.P.toFixed(2)} atm</span> &nbsp; T = 300 K (固定)</div>`;
+    } else {
+      h+=`<div class="slider-wrap"><label>温度 T: <span class="sv">${S.T.toFixed(0)} K</span></label><input type="range" min="100" max="800" value="${S.T}" oninput="doAction('setT',this.value)"></div>`;
+      h+=`<div style="font-size:12px;color:var(--sv);margin:4px 0">压强 P: <span class="sv">${S.P.toFixed(2)} atm</span> &nbsp; V = 1.00 L (固定)</div>`;
+    }
+    h+=`<div class="hint-box">💡 切换模式，拖动滑块验证 PV=nRT 的不同推论</div>`;
+  } else if(currentLevel===3){
+    h+=`<button class="act-btn" onclick="doAction('heat')" ${S.heating?'disabled':''}>🔥 加热 (+100 J)</button>`;
+    h+=`<button class="act-btn" onclick="doAction('compress')">⬅️ 压缩气体</button>`;
+    h+=`<button class="act-btn" onclick="doAction('expand')">➡️ 膨胀做功</button>`;
+    h+=`<button class="act-btn" onclick="doAction('resetThermo')">🔄 重置</button>`;
+    h+=`<div style="font-size:12px;margin:6px 0;line-height:1.8">`;
+    h+=`<span style="color:#ef4444">Q (吸热)</span>: <span class="sv">${S.Q.toFixed(0)} J</span><br>`;
+    h+=`<span style="color:#3b82f6">W (做功)</span>: <span class="sv">${S.W.toFixed(0)} J</span><br>`;
+    h+=`<span style="color:#f59e0b">ΔU (内能变化)</span>: <span class="sv">${S.dU.toFixed(0)} J</span><br>`;
+    h+=`验证: Q - W = <span class="sv">${(S.Q-S.W).toFixed(0)}</span> ≈ ΔU = <span class="sv">${S.dU.toFixed(0)}</span></div>`;
+    h+=`<div class="hint-box">💡 先加热气体，再让它膨胀做功，验证 ΔU = Q - W</div>`;
+  } else if(currentLevel===4){
+    h+=`<button class="act-btn" onclick="doAction('release')" ${S.released?'disabled':''}>🔓 打开隔板，释放气体</button>`;
+    h+=`<button class="act-btn" onclick="doAction('resetEntropy')">🔄 重置</button>`;
+    h+=`<div style="font-size:12px;margin:6px 0;line-height:1.8">`;
+    h+=`熵 S: <span class="sv">${S.entropy.toFixed(2)} J/K</span><br>`;
+    h+=`左侧分子数: <span class="sv">${S.molecules.filter(m=>m.x<CW/2+160).length}</span> / ${S.molecules.length}<br>`;
+    h+=`右侧分子数: <span class="sv">${S.molecules.filter(m=>m.x>=CW/2+160).length}</span> / ${S.molecules.length}</div>`;
+    h+=`<div class="hint-box">💡 打开隔板后，气体自发膨胀到整个空间，熵持续增大且不可逆</div>`;
+  } else if(currentLevel===5){
+    h+=`<div class="slider-wrap"><label>热源温度 T<sub>h</sub>: <span class="sv" style="color:#ef4444">${S.Th.toFixed(0)} K</span></label><input type="range" min="400" max="1000" value="${S.Th}" oninput="doAction('setTh',this.value)"></div>`;
+    h+=`<div class="slider-wrap"><label>冷源温度 T<sub>c</sub>: <span class="sv" style="color:#3b82f6">${S.Tc.toFixed(0)} K</span></label><input type="range" min="200" max="500" value="${S.Tc}" oninput="doAction('setTc',this.value)"></div>`;
+    h+=`<button class="act-btn" onclick="doAction('startCarnot')" ${S.running?'disabled':''}>▶️ 运行卡诺循环</button>`;
+    h+=`<button class="act-btn" onclick="doAction('resetCarnot')">🔄 重置</button>`;
+    h+=`<div style="font-size:12px;margin:6px 0;line-height:1.8">`;
+    h+=`卡诺效率: <span class="sv">${((1-S.Tc/S.Th)*100).toFixed(1)}%</span><br>`;
+    const stepNames=['等温膨胀','绝热膨胀','等温压缩','绝热压缩','完成'];
+    h+=`当前步骤: <span class="sv">${S.running?stepNames[Math.min(S.step,4)]:'未启动'}</span></div>`;
+    h+=`<div class="hint-box">💡 调节冷热源温度，运行循环观察PV图和效率变化</div>`;
+  } else if(currentLevel===6){
+    h+=`<button class="act-btn" onclick="doAction('startHeat')" ${S.heating?'disabled':''}>🔥 开始加热</button>`;
+    h+=`<button class="act-btn" onclick="doAction('stopHeat')" ${!S.heating?'disabled':''}>⏸️ 停止加热</button>`;
+    h+=`<button class="act-btn" onclick="doAction('resetPhase')">🔄 重置</button>`;
+    h+=`<div style="font-size:12px;margin:6px 0;line-height:1.8">`;
+    h+=`温度: <span class="sv">${S.temp.toFixed(1)} °C</span><br>`;
+    h+=`物态: <span class="sv">${{ice:'固态(冰)',melting:'熔化中',water:'液态(水)',boiling:'汽化中',steam:'气态(蒸汽)'}[S.phase]}</span><br>`;
+    h+=`已加热量: <span class="sv">${S.heatAdded.toFixed(0)} J</span></div>`;
+    h+=`<div class="hint-box">💡 持续加热，观察温度-时间曲线在0°C和100°C出现平台期</div>`;
+  }
+  return h;
+}
+
+// === 动作处理 ===
+function doAction(action,param){
+  const S=levelState;
+  if(currentLevel===0){
+    if(action==='setTemp'){
+      S.temp=+param;
+      const scale=S.temp/300;
+      S.molecules.forEach(m=>{
+        const sp=Math.sqrt(m.vx*m.vx+m.vy*m.vy);
+        const target=(50+Math.random()*100)*Math.sqrt(scale);
+        if(sp>0){const f=target/sp;m.vx*=f;m.vy*=f}
+      });
+      if(S.temp!==300)S.goalDone[0]=true;
+      if(S.temp>=200&&S.temp<=800)S.goalDone[1]=true;
+      if(S.goalDone.every(g=>g))completeLevel(0);
+      renderPanel();
+    }
+  } else if(currentLevel===1){
+    if(action==='setTL'){S.tempLeft=+param;S.steady=false;S.elapsed=0;resetBar();S.goalDone[0]=Math.abs(S.tempLeft-S.tempRight)>100;renderPanel()}
+    if(action==='setTR'){S.tempRight=+param;S.steady=false;S.elapsed=0;resetBar();S.goalDone[0]=Math.abs(S.tempLeft-S.tempRight)>100;renderPanel()}
+  } else if(currentLevel===2){
+    if(action==='mode'){S.mode=param;S.T=300;S.V=1;S.P=1;renderPanel()}
+    if(action==='setV'){S.V=+param/100;S.P=300/(S.V*300);S.goalDone[0]=true;if(S.goalDone[0])completeLevel(2);renderPanel()}
+    if(action==='setT'){S.T=+param;S.P=S.T/300;S.goalDone[1]=true;if(S.goalDone[1])completeLevel(2);renderPanel()}
+  } else if(currentLevel===3){
+    if(action==='heat'){S.Q+=100;S.dU+=60;S.W+=40;S.temp+=20;S.volume+=0.1;S.heating=true;setTimeout(()=>{S.heating=false;renderPanel()},500);S.goalDone[0]=true;checkThermo();renderPanel()}
+    if(action==='expand'){S.W+=50;S.dU-=50;S.temp-=10;S.volume+=0.15;S.goalDone[0]=true;checkThermo();renderPanel()}
+    if(action==='compress'){S.W-=50;S.dU+=50;S.temp+=10;S.volume-=0.1;if(S.volume<0.3)S.volume=0.3;renderPanel()}
+    if(action==='resetThermo'){S.Q=0;S.W=0;S.dU=0;S.temp=300;S.volume=1;S.pressure=1;S.history=[];renderPanel()}
+  } else if(currentLevel===4){
+    if(action==='release'){S.released=true;S.wallOpen=true;S.goalDone[0]=true;renderPanel()}
+    if(action==='resetEntropy'){
+      const cx=CW/2+160,cy=CH/2;
+      S.molecules=[];
+      for(let i=0;i<60;i++){
+        const a=Math.random()*Math.PI*2,sp=40+Math.random()*80;
+        S.molecules.push({x:cx-180+Math.random()*80,y:cy-120+Math.random()*240,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp});
+      }
+      S.released=false;S.wallOpen=false;S.entropy=0;S.entropyHistory=[];S.elapsed=0;S.goalDone=[false,false];renderPanel();
+    }
+  } else if(currentLevel===5){
+    if(action==='setTh'){S.Th=+param;if(S.Th<=S.Tc)S.Tc=S.Th-50;renderPanel()}
+    if(action==='setTc'){S.Tc=+param;if(S.Tc>=S.Th)S.Th=S.Tc+50;renderPanel()}
+    if(action==='startCarnot'){S.running=true;S.step=0;S.animProgress=0;S.pvPoints=[];S.cycleComplete=false;S.goalDone[0]=true;renderPanel()}
+    if(action==='resetCarnot'){S.running=false;S.step=0;S.animProgress=0;S.pvPoints=[];S.cycleComplete=false;S.V=1;S.P=1;S.phase='idle';renderPanel()}
+  } else if(currentLevel===6){
+    if(action==='startHeat'){S.heating=true;renderPanel()}
+    if(action==='stopHeat'){S.heating=false;renderPanel()}
+    if(action==='resetPhase'){S.temp=-20;S.heating=false;S.elapsed=0;S.phase='ice';S.heatAdded=0;S.tempHistory=[];S.meltProgress=0;S.boilProgress=0;S.goalDone=[false,false];renderPanel()}
+  }
+}
+
+function resetBar(){
+  const S=levelState;
+  for(let i=0;i<S.N;i++)S.barTemps[i]=(S.tempLeft*(S.N-1-i)+S.tempRight*i)/(S.N-1)*0.3+200*0.7;
+}
+
+function checkThermo(){
+  const S=levelState;
+  if(Math.abs(S.Q-S.W-S.dU)<15&&S.Q>0&&S.W>0){S.goalDone[1]=true;completeLevel(3)}
+}
+
+// === 每帧更新 ===
+function updateLevel(idx,dt){
+  const S=levelState;
+  const cx=CW/2+160,cy=CH/2;
+  if(idx===0){
+    // 分子运动
+    S.molecules.forEach(m=>{
+      m.x+=m.vx*dt;m.y+=m.vy*dt;
+      if(m.x<S.boxL+m.r){m.x=S.boxL+m.r;m.vx*=-1}
+      if(m.x>S.boxR-m.r){m.x=S.boxR-m.r;m.vx*=-1}
+      if(m.y<S.boxT+m.r){m.y=S.boxT+m.r;m.vy*=-1}
+      if(m.y>S.boxB-m.r){m.y=S.boxB-m.r;m.vy*=-1}
+    });
+  } else if(idx===1){
+    // 热传导扩散
+    S.elapsed+=dt;
+    const alpha=0.4;
+    const newT=[...S.barTemps];
+    newT[0]=S.tempLeft;newT[S.N-1]=S.tempRight;
+    for(let iter=0;iter<5;iter++){
+      for(let i=1;i<S.N-1;i++){
+        newT[i]+=(S.barTemps[i-1]-2*S.barTemps[i]+S.barTemps[i+1])*alpha;
+      }
+    }
+    S.barTemps=newT;S.barTemps[0]=S.tempLeft;S.barTemps[S.N-1]=S.tempRight;
+    // check steady
+    let maxDiff=0;
+    for(let i=1;i<S.N-1;i++){
+      const expected=S.tempLeft+(S.tempRight-S.tempLeft)*i/(S.N-1);
+      maxDiff=Math.max(maxDiff,Math.abs(S.barTemps[i]-expected));
+    }
+    if(maxDiff<5&&S.goalDone[0]){S.steady=true;S.goalDone[1]=true;completeLevel(1);renderPanel()}
+  } else if(idx===2){
+    // 理想气体分子运动
+    const bx=cx-80,bw=160;
+    const vScale=S.mode==='boyle'?S.V:1;
+    const tScale=S.mode==='charles'?S.T/300:1;
+    const boxH=240*vScale;
+    S.molecules.forEach(m=>{
+      const sp=80*Math.sqrt(tScale);
+      const curSp=Math.sqrt(m.vx*m.vx+m.vy*m.vy);
+      if(curSp>0){const f=sp/curSp;m.vx=m.vx*0.95+m.vx*f*0.05;m.vy=m.vy*0.95+m.vy*f*0.05}
+      m.x+=m.vx*dt;m.y+=m.vy*dt;
+      if(m.x<bx){m.x=bx;m.vx*=-1}if(m.x>bx+bw){m.x=bx+bw;m.vx*=-1}
+      if(m.y<cy-boxH/2){m.y=cy-boxH/2;m.vy*=-1}if(m.y>cy+boxH/2){m.y=cy+boxH/2;m.vy*=-1}
+    });
+  } else if(idx===4){
+    // 熵 - 自由膨胀
+    if(S.released){
+      S.elapsed+=dt;
+      const boxL=cx-200,boxR=cx+200,boxT=cy-140,boxB=cy+140;
+      S.molecules.forEach(m=>{
+        m.x+=m.vx*dt;m.y+=m.vy*dt;
+        if(m.x<boxL){m.x=boxL;m.vx*=-1}if(m.x>boxR){m.x=boxR;m.vx*=-1}
+        if(m.y<boxT){m.y=boxT;m.vy*=-1}if(m.y>boxB){m.y=boxB;m.vy*=-1}
+      });
+      // 计算熵（基于分布均匀度）
+      const left=S.molecules.filter(m=>m.x<cx).length;
+      const right=S.molecules.length-left;
+      const pL=left/S.molecules.length,pR=right/S.molecules.length;
+      S.entropy=-(pL>0?pL*Math.log(pL):0)-(pR>0?pR*Math.log(pR):0);
+      S.entropy*=100; // scale for display
+      if(S.entropyHistory.length<200)S.entropyHistory.push(S.entropy);
+      if(S.elapsed>3&&Math.abs(left-right)<S.molecules.length*0.3){S.goalDone[1]=true;completeLevel(4);renderPanel()}
+    } else {
+      const wallX=cx-100;
+      S.molecules.forEach(m=>{
+        m.x+=m.vx*dt;m.y+=m.vy*dt;
+        if(m.x<cx-200){m.x=cx-200;m.vx*=-1}if(m.x>wallX){m.x=wallX;m.vx*=-1}
+        if(m.y<cy-140){m.y=cy-140;m.vy*=-1}if(m.y>cy+140){m.y=cy+140;m.vy*=-1}
+      });
+    }
+  } else if(idx===5){
+    // 卡诺循环动画
+    if(S.running&&!S.cycleComplete){
+      S.animProgress+=dt*0.5;
+      if(S.animProgress>=1){
+        S.animProgress=0;S.step++;
+        if(S.step>=4){S.cycleComplete=true;S.running=false;S.goalDone[1]=true;completeLevel(5);renderPanel()}
+      }
+      // 生成PV点
+      const prog=S.animProgress;
+      const V1=1,V2=2,V3=3,V4=1.5;
+      const P1=S.Th/300,P4=S.Tc/300*0.8;
+      if(S.step===0){S.V=V1+(V2-V1)*prog;S.P=P1*V1/S.V}
+      else if(S.step===1){S.V=V2+(V3-V2)*prog;S.P=P1*V1/V2*Math.pow(V2/S.V,1.4)}
+      else if(S.step===2){S.V=V3+(V4-V3)*prog;S.P=P4*V4/S.V}
+      else if(S.step===3){S.V=V4+(V1-V4)*prog;S.P=P4*V4/V4*Math.pow(V4/S.V,1.4)}
+      S.pvPoints.push({v:S.V,p:S.P,step:S.step});
+    }
+  } else if(idx===6){
+    // 相变加热
+    if(S.heating){
+      S.elapsed+=dt;
+      const heatRate=80; // J/s
+      S.heatAdded+=heatRate*dt;
+      if(S.phase==='ice'){
+        S.temp+=heatRate*dt*0.5;
+        if(S.temp>=0){S.temp=0;S.phase='melting';S.meltProgress=0}
+      } else if(S.phase==='melting'){
+        S.meltProgress+=dt*0.3;
+        if(S.meltProgress>=1){S.phase='water';S.meltProgress=1}
+      } else if(S.phase==='water'){
+        S.temp+=heatRate*dt*0.3;
+        if(S.temp>=100){S.temp=100;S.phase='boiling';S.boilProgress=0}
+      } else if(S.phase==='boiling'){
+        S.boilProgress+=dt*0.2;
+        if(S.boilProgress>=1){S.phase='steam';S.boilProgress=1}
+      } else if(S.phase==='steam'){
+        S.temp+=heatRate*dt*0.4;
+        if(S.temp>200)S.temp=200;
+      }
+      S.tempHistory.push({t:S.elapsed,temp:S.temp});
+      if(S.phase==='water'||S.phase==='boiling'||S.phase==='steam')S.goalDone[0]=true;
+      if(S.tempHistory.length>20){
+        const recent=S.tempHistory.slice(-20);
+        const hasPlat=recent.filter(p=>Math.abs(p.temp-0)<1).length>5||recent.filter(p=>Math.abs(p.temp-100)<1).length>5;
+        if(hasPlat||S.phase==='steam'){S.goalDone[1]=true;completeLevel(6);renderPanel()}
+      }
+    }
+  }
+}
+
+// === 绘制关卡 ===
+function drawLevel(idx){
+  const S=levelState;
+  const cx=CW/2+160,cy=CH/2;
+  if(idx===0) drawLevel0(S,cx,cy);
+  else if(idx===1) drawLevel1(S,cx,cy);
+  else if(idx===2) drawLevel2(S,cx,cy);
+  else if(idx===3) drawLevel3(S,cx,cy);
+  else if(idx===4) drawLevel4(S,cx,cy);
+  else if(idx===5) drawLevel5(S,cx,cy);
+  else if(idx===6) drawLevel6(S,cx,cy);
+}
+
+// --- 关卡0: 温度与分子运动 ---
+function drawLevel0(S,cx,cy){
+  // 容器
+  ctx.strokeStyle=t().textSec;ctx.lineWidth=2;
+  ctx.strokeRect(S.boxL,S.boxT,S.boxR-S.boxL,S.boxB-S.boxT);
+  // 分子
+  S.molecules.forEach(m=>{
+    const sp=Math.sqrt(m.vx*m.vx+m.vy*m.vy);
+    const col=tempColor(sp,20,300);
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(m.x,m.y,m.r,0,Math.PI*2);ctx.fill();
+    // 速度尾迹
+    ctx.strokeStyle=col;ctx.globalAlpha=0.3;ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(m.x,m.y);ctx.lineTo(m.x-m.vx*0.05,m.y-m.vy*0.05);ctx.stroke();
+    ctx.globalAlpha=1;
+  });
+  // 麦克斯韦速度分布曲线
+  const gx=cx-160,gy=cy+220,gw=320,gh=100;
+  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(gx,gy-gh,gw,gh);
+  ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.strokeRect(gx,gy-gh,gw,gh);
+  // 理论曲线
+  const kT=S.temp/300;
+  ctx.beginPath();ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+  for(let i=0;i<=gw;i++){
+    const v=i/gw*4;
+    const f=4*Math.PI*Math.pow(1/(2*Math.PI*kT),1.5)*v*v*Math.exp(-v*v/(2*kT));
+    const py=gy-f*gh*8;
+    if(i===0)ctx.moveTo(gx+i,py);else ctx.lineTo(gx+i,py);
+  }
+  ctx.stroke();
+  // 速度直方图
+  const bins=new Array(20).fill(0);
+  S.molecules.forEach(m=>{
+    const sp=Math.sqrt(m.vx*m.vx+m.vy*m.vy)/80;
+    const bi=Math.min(19,Math.floor(sp/4*20));
+    bins[bi]++;
+  });
+  const maxBin=Math.max(...bins,1);
+  ctx.fillStyle='rgba(245,158,11,0.3)';
+  for(let i=0;i<20;i++){
+    const bh=bins[i]/maxBin*gh*0.8;
+    ctx.fillRect(gx+i*gw/20,gy-bh,gw/20-1,bh);
+  }
+  // 标签
+  ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('速度分布',cx,gy+16);
+  ctx.fillText(`T = ${S.temp.toFixed(0)} K`,cx,S.boxT-10);
+}
+
+// --- 关卡1: 热传导 ---
+function drawLevel1(S,cx,cy){
+  const barL=cx-200,barW=400,barH=40,barY=cy-barH/2;
+  // 金属棒
+  for(let i=0;i<S.N;i++){
+    const x=barL+i*barW/S.N;
+    const w=barW/S.N;
+    ctx.fillStyle=tempColor(S.barTemps[i],100,800);
+    ctx.fillRect(x,barY,w+1,barH);
+  }
+  ctx.strokeStyle=t().textSec;ctx.lineWidth=2;ctx.strokeRect(barL,barY,barW,barH);
+  // 温度标签
+  ctx.fillStyle='#ef4444';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`${S.tempLeft.toFixed(0)} K`,barL-30,cy+5);
+  ctx.fillStyle='#3b82f6';
+  ctx.fillText(`${S.tempRight.toFixed(0)} K`,barL+barW+30,cy+5);
+  // 温度分布曲线
+  const gy=cy+80,gh=120;
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(barL,gy);ctx.lineTo(barL+barW,gy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(barL,gy-gh);ctx.lineTo(barL+barW,gy-gh);ctx.stroke();
+  ctx.beginPath();ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+  for(let i=0;i<S.N;i++){
+    const x=barL+i*barW/(S.N-1);
+    const y=gy-((S.barTemps[i]-100)/700)*gh;
+    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  // 稳态线
+  ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.moveTo(barL,gy-((S.tempLeft-100)/700)*gh);
+  ctx.lineTo(barL+barW,gy-((S.tempRight-100)/700)*gh);
+  ctx.stroke();ctx.setLineDash([]);
+  // 热流箭头
+  if(S.tempLeft>S.tempRight){
+    const arrowY=barY-20;
+    ctx.fillStyle='#ef4444';ctx.font='12px sans-serif';ctx.textAlign='center';
+    ctx.fillText('热流方向 →',cx,arrowY);
+  }
+  ctx.fillStyle=t().text;ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText('T(K)',barL-40,gy-gh+5);
+}
+
+// --- 关卡2: 理想气体 ---
+function drawLevel2(S,cx,cy){
+  const bx=cx-80,bw=160;
+  const vScale=S.mode==='boyle'?S.V:1;
+  const boxH=240*vScale;
+  const by=cy-boxH/2;
+  // 容器
+  ctx.strokeStyle=t().textSec;ctx.lineWidth=2;
+  ctx.strokeRect(bx,by,bw,boxH);
+  // 活塞顶部
+  ctx.fillStyle='rgba(100,100,200,0.3)';ctx.fillRect(bx,by-10,bw,10);
+  // 分子
+  const tScale=S.mode==='charles'?S.T/300:1;
+  S.molecules.forEach(m=>{
+    const col=tempColor(tScale*300,100,800);
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(m.x,m.y,4,0,Math.PI*2);ctx.fill();
+  });
+  // PV 图
+  const gx=cx+120,gy=cy+100,gw=180,gh=180;
+  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(gx,gy-gh,gw,gh);
+  ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.strokeRect(gx,gy-gh,gw,gh);
+  // 坐标轴标签
+  ctx.fillStyle=t().text;ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText(S.mode==='boyle'?'V':'T',gx+gw/2,gy+16);
+  ctx.save();ctx.translate(gx-12,gy-gh/2);ctx.rotate(-Math.PI/2);ctx.fillText('P',0,0);ctx.restore();
+  // 曲线
+  ctx.beginPath();ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+  if(S.mode==='boyle'){
+    for(let i=1;i<=100;i++){
+      const v=i/50;const p=1/v;
+      const px=gx+(v/2)*gw;const py=gy-(p/3)*gh;
+      if(i===1)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    }
+  } else {
+    for(let i=0;i<=100;i++){
+      const tt=100+i*7;const p=tt/300;
+      const px=gx+((tt-100)/700)*gw;const py=gy-(p/3)*gh;
+      if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    }
+  }
+  ctx.stroke();
+  // 当前点
+  const dotX=S.mode==='boyle'?gx+(S.V/2)*gw:gx+((S.T-100)/700)*gw;
+  const dotY=gy-(S.P/3)*gh;
+  ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(dotX,dotY,6,0,Math.PI*2);ctx.fill();
+  // 标签
+  ctx.fillStyle=t().text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('PV = nRT',cx,by-25);
+}
+
+// --- 关卡3: 热力学第一定律 ---
+function drawLevel3(S,cx,cy){
+  // 气缸
+  const cylL=cx-100,cylW=200,cylH=160,cylY=cy-cylH/2;
+  const pistonOffset=S.volume*40-40;
+  ctx.fillStyle='rgba(100,100,200,0.1)';ctx.fillRect(cylL,cylY,cylW+pistonOffset,cylH);
+  ctx.strokeStyle=t().textSec;ctx.lineWidth=2;
+  ctx.strokeRect(cylL,cylY,cylW+pistonOffset,cylH);
+  // 活塞
+  ctx.fillStyle='rgba(150,150,200,0.5)';ctx.fillRect(cylL+cylW+pistonOffset-8,cylY,8,cylH);
+  // 气体分子
+  for(let i=0;i<20;i++){
+    const mx=cylL+20+Math.random()*(cylW+pistonOffset-40);
+    const my=cylY+20+Math.random()*(cylH-40);
+    const col=tempColor(S.temp,200,500);
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(mx,my,3,0,Math.PI*2);ctx.fill();
+  }
+  // 火焰（加热时）
+  if(S.heating){
+    for(let i=0;i<5;i++){
+      const fx=cylL+30+i*35;const fy=cylY+cylH+10;
+      ctx.fillStyle=`rgba(255,${100+Math.random()*100},0,${0.5+Math.random()*0.5})`;
+      ctx.beginPath();ctx.arc(fx,fy,5+Math.random()*5,0,Math.PI*2);ctx.fill();
+    }
+  }
+  // 能量条
+  const barX=cx-120,barY=cy+120,barW=240,barH=20;
+  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(barX,barY,barW,barH*3+10);
+  const maxE=Math.max(Math.abs(S.Q),Math.abs(S.W),Math.abs(S.dU),100);
+  // Q bar
+  ctx.fillStyle='#ef4444';ctx.fillRect(barX,barY,Math.max(0,S.Q/maxE)*barW,barH);
+  ctx.fillStyle=t().text;ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText(`Q=${S.Q.toFixed(0)}J`,barX+5,barY+14);
+  // W bar
+  ctx.fillStyle='#3b82f6';ctx.fillRect(barX,barY+barH+5,Math.max(0,S.W/maxE)*barW,barH);
+  ctx.fillText(`W=${S.W.toFixed(0)}J`,barX+5,barY+barH+19);
+  // dU bar
+  ctx.fillStyle='#f59e0b';ctx.fillRect(barX,barY+barH*2+10,Math.max(0,S.dU/maxE)*barW,barH);
+  ctx.fillText(`ΔU=${S.dU.toFixed(0)}J`,barX+5,barY+barH*2+24);
+  // 公式
+  ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  ctx.fillText('ΔU = Q - W',cx,cylY-20);
+}
+
+// --- 关卡4: 熵与第二定律 ---
+function drawLevel4(S,cx,cy){
+  const boxL=cx-200,boxR=cx+200,boxT=cy-140,boxB=cy+140;
+  // 容器
+  ctx.strokeStyle=t().textSec;ctx.lineWidth=2;
+  ctx.strokeRect(boxL,boxT,boxR-boxL,boxB-boxT);
+  // 隔板
+  if(!S.wallOpen){
+    ctx.fillStyle='rgba(200,200,200,0.6)';ctx.fillRect(cx-100-2,boxT,4,boxB-boxT);
+    ctx.fillStyle=t().text;ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText('隔板',cx-100,boxT-8);
+  } else {
+    // 虚线表示原隔板位置
+    ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(200,200,200,0.2)';
+    ctx.beginPath();ctx.moveTo(cx-100,boxT);ctx.lineTo(cx-100,boxB);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // 分子
+  S.molecules.forEach(m=>{
+    ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(m.x,m.y,4,0,Math.PI*2);ctx.fill();
+  });
+  // 熵曲线
+  if(S.entropyHistory.length>1){
+    const gx=cx-150,gy=boxB+30,gw=300,gh=80;
+    ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(gx,gy,gw,gh);
+    ctx.beginPath();ctx.strokeStyle='#22c55e';ctx.lineWidth=2;
+    const maxS=Math.max(...S.entropyHistory,1);
+    S.entropyHistory.forEach((s,i)=>{
+      const px=gx+i/200*gw;const py=gy+gh-s/maxS*gh*0.9;
+      if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+    ctx.fillStyle=t().text;ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText('熵 S (时间→)',cx,gy+gh+14);
+  }
+  // 标签
+  ctx.fillStyle=t().text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('ΔS ≥ 0（熵增原理）',cx,boxT-15);
+  if(!S.wallOpen){
+    ctx.font='12px sans-serif';ctx.fillStyle=t().textSec;
+    ctx.fillText('气体被限制在左半边',cx-150,cy);
+  }
+}
+
+// --- 关卡5: 卡诺循环 ---
+function drawLevel5(S,cx,cy){
+  // PV 图
+  const gx=cx-150,gy=cy+140,gw=300,gh=260;
+  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(gx,gy-gh,gw,gh);
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;
+  ctx.strokeRect(gx,gy-gh,gw,gh);
+  // 坐标轴
+  ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('V (体积)',cx,gy+18);
+  ctx.save();ctx.translate(gx-14,gy-gh/2);ctx.rotate(-Math.PI/2);ctx.fillText('P (压强)',0,0);ctx.restore();
+  // 理论卡诺循环轮廓
+  const V1=1,V2=2,V3=3,V4=1.5;
+  const P1=S.Th/300,P2=P1*V1/V2,P3=S.Tc/300*V4/V3*0.8,P4=S.Tc/300*0.8;
+  const toX=v=>gx+(v/4)*gw;
+  const toY=p=>gy-(p/4)*gh;
+  // 四条理论线
+  ctx.setLineDash([3,3]);ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.lineWidth=1;
+  // 等温膨胀 1→2
+  ctx.beginPath();for(let i=0;i<=20;i++){const v=V1+(V2-V1)*i/20;ctx.lineTo(toX(v),toY(P1*V1/v))}ctx.stroke();
+  // 绝热膨胀 2→3
+  ctx.beginPath();for(let i=0;i<=20;i++){const v=V2+(V3-V2)*i/20;ctx.lineTo(toX(v),toY(P2*Math.pow(V2/v,1.4)))}ctx.stroke();
+  // 等温压缩 3→4
+  ctx.beginPath();for(let i=0;i<=20;i++){const v=V3+(V4-V3)*i/20;ctx.lineTo(toX(v),toY(P4*V4/v))}ctx.stroke();
+  // 绝热压缩 4→1
+  ctx.beginPath();for(let i=0;i<=20;i++){const v=V4+(V1-V4)*i/20;ctx.lineTo(toX(v),toY(P4*V4/V4*Math.pow(V4/v,1.4)))}ctx.stroke();
+  ctx.setLineDash([]);
+  // 实际轨迹
+  if(S.pvPoints.length>1){
+    const colors=['#ef4444','#f59e0b','#3b82f6','#22c55e'];
+    let lastStep=-1;
+    S.pvPoints.forEach((pt,i)=>{
+      if(pt.step!==lastStep){if(lastStep>=0)ctx.stroke();ctx.beginPath();ctx.strokeStyle=colors[pt.step];ctx.lineWidth=3;lastStep=pt.step}
+      const px=toX(pt.v),py=toY(pt.p);
+      if(i===0||S.pvPoints[i-1].step!==pt.step)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+    // 当前点
+    const last=S.pvPoints[S.pvPoints.length-1];
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(toX(last.v),toY(last.p),5,0,Math.PI*2);ctx.fill();
+  }
+  // 热源/冷源
+  ctx.fillStyle='#ef4444';ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`热源 Th=${S.Th}K`,cx-80,gy-gh-15);
+  ctx.fillStyle='#3b82f6';
+  ctx.fillText(`冷源 Tc=${S.Tc}K`,cx+80,gy-gh-15);
+  // 效率
+  ctx.fillStyle='#f59e0b';ctx.font='bold 16px sans-serif';
+  ctx.fillText(`η = ${((1-S.Tc/S.Th)*100).toFixed(1)}%`,cx,gy-gh-40);
+  // 步骤标签
+  const stepLabels=['① 等温膨胀','② 绝热膨胀','③ 等温压缩','④ 绝热压缩'];
+  const stepColors=['#ef4444','#f59e0b','#3b82f6','#22c55e'];
+  for(let i=0;i<4;i++){
+    ctx.fillStyle=stepColors[i];ctx.font='11px sans-serif';ctx.textAlign='left';
+    ctx.fillText(stepLabels[i],gx+gw+15,gy-gh+30+i*20);
+  }
+}
+
+// --- 关卡6: 相变 ---
+function drawLevel6(S,cx,cy){
+  // 容器
+  const contL=cx-100,contW=200,contH=160,contY=cy-contH/2;
+  ctx.strokeStyle=t().textSec;ctx.lineWidth=2;
+  ctx.strokeRect(contL,contY,contW,contH);
+  // 物质
+  if(S.phase==='ice'){
+    // 冰 - 规则排列的分子
+    ctx.fillStyle='rgba(100,180,255,0.6)';ctx.fillRect(contL+2,contY+2,contW-4,contH-4);
+    for(let r=0;r<8;r++)for(let c=0;c<10;c++){
+      ctx.fillStyle='#93c5fd';ctx.beginPath();
+      ctx.arc(contL+15+c*19,contY+15+r*18,4,0,Math.PI*2);ctx.fill();
+    }
+  } else if(S.phase==='melting'){
+    // 熔化中 - 部分有序部分无序
+    const meltLine=contY+contH*(1-S.meltProgress);
+    ctx.fillStyle='rgba(100,180,255,0.4)';ctx.fillRect(contL+2,meltLine,contW-4,contY+contH-meltLine-2);
+    ctx.fillStyle='rgba(59,130,246,0.3)';ctx.fillRect(contL+2,contY+2,contW-4,meltLine-contY-2);
+    for(let i=0;i<40;i++){
+      const inIce=Math.random()>S.meltProgress;
+      const mx=contL+10+Math.random()*(contW-20);
+      const my=inIce?contY+10+Math.random()*(meltLine-contY-10):meltLine+Math.random()*(contY+contH-meltLine-10);
+      ctx.fillStyle=inIce?'#93c5fd':'#3b82f6';
+      ctx.beginPath();ctx.arc(mx,my,3+Math.random()*2,0,Math.PI*2);ctx.fill();
+    }
+  } else if(S.phase==='water'){
+    ctx.fillStyle='rgba(59,130,246,0.3)';ctx.fillRect(contL+2,contY+2,contW-4,contH-4);
+    for(let i=0;i<40;i++){
+      const mx=contL+10+Math.random()*(contW-20);
+      const my=contY+10+Math.random()*(contH-20);
+      ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(mx,my,3+Math.random()*2,0,Math.PI*2);ctx.fill();
+    }
+  } else if(S.phase==='boiling'){
+    ctx.fillStyle='rgba(59,130,246,0.2)';ctx.fillRect(contL+2,contY+2,contW-4,contH-4);
+    for(let i=0;i<30;i++){
+      const mx=contL+10+Math.random()*(contW-20);
+      const my=contY+10+Math.random()*(contH-20);
+      ctx.fillStyle=Math.random()>S.boilProgress?'#3b82f6':'rgba(200,200,200,0.5)';
+      ctx.beginPath();ctx.arc(mx,my,3+Math.random()*3,0,Math.PI*2);ctx.fill();
+    }
+    // 气泡
+    for(let i=0;i<8;i++){
+      const bx=contL+20+Math.random()*(contW-40);
+      const by=contY+contH-20-Math.random()*contH*0.8;
+      ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(bx,by,3+Math.random()*5,0,Math.PI*2);ctx.stroke();
+    }
+  } else if(S.phase==='steam'){
+    for(let i=0;i<25;i++){
+      const mx=contL+10+Math.random()*(contW-20);
+      const my=contY+10+Math.random()*(contH-20);
+      ctx.fillStyle=`rgba(200,200,200,${0.2+Math.random()*0.3})`;
+      ctx.beginPath();ctx.arc(mx,my,4+Math.random()*4,0,Math.PI*2);ctx.fill();
+    }
+  }
+  // 火焰
+  if(S.heating){
+    for(let i=0;i<7;i++){
+      const fx=contL+15+i*28;const fy=contY+contH+12;
+      ctx.fillStyle=`rgba(255,${80+Math.random()*120},0,${0.4+Math.random()*0.5})`;
+      ctx.beginPath();ctx.arc(fx,fy,4+Math.random()*6,0,Math.PI*2);ctx.fill();
+    }
+  }
+  // 温度-时间曲线
+  if(S.tempHistory.length>2){
+    const gx=cx-180,gy=cy+140,gw=360,gh=120;
+    ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(gx,gy,gw,gh);
+    // 0°C 和 100°C 参考线
+    const tToY=t=>gy+gh-(t+20)/220*gh;
+    ctx.setLineDash([3,3]);ctx.strokeStyle='rgba(100,180,255,0.3)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(gx,tToY(0));ctx.lineTo(gx+gw,tToY(0));ctx.stroke();
+    ctx.strokeStyle='rgba(255,100,100,0.3)';
+    ctx.beginPath();ctx.moveTo(gx,tToY(100));ctx.lineTo(gx+gw,tToY(100));ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(100,180,255,0.5)';ctx.font='10px sans-serif';ctx.textAlign='right';
+    ctx.fillText('0°C',gx-4,tToY(0)+4);
+    ctx.fillStyle='rgba(255,100,100,0.5)';
+    ctx.fillText('100°C',gx-4,tToY(100)+4);
+    // 曲线
+    ctx.beginPath();ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+    const maxT=S.tempHistory[S.tempHistory.length-1].t;
+    S.tempHistory.forEach((pt,i)=>{
+      const px=gx+(pt.t/Math.max(maxT,1))*gw;
+      const py=tToY(pt.temp);
+      if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    });
+    ctx.stroke();
+    ctx.fillStyle=t().text;ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText('温度-时间曲线',cx,gy+gh+14);
+  }
+  // 温度标签
+  ctx.fillStyle=t().text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`${S.temp.toFixed(1)} °C`,cx,contY-15);
+}
+
+// === 主循环 ===
+function mainLoop(ts){
+  requestAnimationFrame(mainLoop);
+  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;time+=dt;
+  ctx.clearRect(0,0,CW,CH);
+  // 背景
+  const th=t();
+  const bgGrd=ctx.createLinearGradient(0,0,0,CH);
+  bgGrd.addColorStop(0,th.bg1);bgGrd.addColorStop(1,th.bg2);
+  ctx.fillStyle=bgGrd;ctx.fillRect(0,0,CW,CH);
+  // 网格
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let gx=0;gx<CW;gx+=40){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,CH);ctx.stroke()}
+  for(let gy=0;gy<CH;gy+=40){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(CW,gy);ctx.stroke()}
+
+  if(gameState==='play'){
+    updateLevel(currentLevel,dt);
+    drawLevel(currentLevel);
+    updateParticles(dt);drawParticles();
+  }
+}
+</script>
+</body>
+</html>

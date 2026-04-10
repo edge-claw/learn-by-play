@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>电磁学探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --slider-label:#888;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --slider-label:#888;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#60a5fa}
+.start-box .sub{font-size:17px;color:var(--sub-color);margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:var(--feat-text);font-size:12px;width:72px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100% - 32px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none;padding-bottom:16px}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:15px;cursor:pointer;text-align:center}
+.act-btn:hover{background:var(--btn-hover)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--hint-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:14px;line-height:1.8;color:var(--learn-text)}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:var(--slider-label)}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}
+.sv{color:var(--sv);font-weight:bold}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
+.quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg)}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:var(--bar-bg);border-top:1px solid var(--bar-border);z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}#bottom-bar .bb-right{text-align:right}
+.overlay .result-box{text-align:center;max-width:460px;background:var(--result-bg);border:1px solid var(--result-border);border-radius:16px;padding:28px 36px}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px;background:#3b82f6;color:#fff}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+.desc{font-size:13px;color:var(--concept-text);line-height:1.6;margin:6px 0}
+.stat{font-size:12px;color:var(--text-sub);margin:3px 0}
+h2{color:var(--sv);font-size:17px;margin:8px 0 4px}
+h3{color:var(--sv);font-size:14px;margin:8px 0 4px}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🧲 <span class="gold">电磁学探险</span></h1>
+  <div class="sub">7 个关卡，从库仑定律到电磁波的奇妙旅程</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">⚡</div>库仑定律</div>
+    <div class="feat"><div class="fi">🔋</div>电场线</div>
+    <div class="feat"><div class="fi">🧲</div>磁场</div>
+    <div class="feat"><div class="fi">🔄</div>电磁感应</div>
+    <div class="feat"><div class="fi">💪</div>安培力</div>
+    <div class="feat"><div class="fi">📡</div>LC振荡</div>
+    <div class="feat"><div class="fi">🌊</div>电磁波</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+// === Theme ===
+let isDark=true;
+const TH={
+  dark:{bg1:'#0a0a2e',bg2:'#0d0d1a',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)',pos:'#ef4444',neg:'#3b82f6',field:'#60a5fa',force:'#f59e0b',mag:'#22c55e',wave:'#a855f7',showStars:true},
+  light:{bg1:'#e8edf5',bg2:'#f0f2f5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',pos:'#dc2626',neg:'#2563eb',field:'#4338ca',force:'#d97706',mag:'#059669',wave:'#7c3aed',showStars:false}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel()}
+
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0;
+let gameState='start',currentLevel=0;
+let levelState={},bgStars=[],particles=[];
+const completedLevels=new Set();
+const quizPassed=new Set();
+let quizLocked=false,totalScore=0;
+const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
+const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
+let mouseX=0,mouseY=0,mouseDown=false,dragObj=null;
+
+const levels=[
+  {name:'库仑定律',sub:'F=kq₁q₂/r²',icon:'⚡'},
+  {name:'电场线',sub:'场的可视化',icon:'🔋'},
+  {name:'磁场与电流',sub:'右手定则',icon:'🧲'},
+  {name:'电磁感应',sub:'法拉第定律',icon:'🔄'},
+  {name:'安培力',sub:'F=BILsinθ',icon:'💪'},
+  {name:'LC振荡',sub:'能量转换',icon:'📡'},
+  {name:'电磁波',sub:'c=λf',icon:'🌊'}
+];
+
+function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight}
+addEventListener('resize',resize);resize();
+for(let i=0;i<100;i++)bgStars.push({x:Math.random()*2e3,y:Math.random()*1200,r:Math.random()*1.2+.3,a:Math.random()*.5+.3});
+
+// === Audio ===
+let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function playSound(type){
+  initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}
+  else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}
+  else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}
+}
+
+// === Particles ===
+function spawnParticles(x,y,color,count=12){
+  for(let i=0;i<count;i++){const a=Math.random()*Math.PI*2,sp=1+Math.random()*3;
+    particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:0.6+Math.random()*0.4,color,r:2+Math.random()*3})}
+}
+function updateParticles(dt){
+  for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life-=dt;
+    if(p.life<=0){particles.splice(i,1);continue}
+    ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()}
+  ctx.globalAlpha=1;
+}
+
+// === Canvas offset for panel ===
+const PW=320;
+function cx(){return PW+(CW-PW)/2}
+function cy(){return CH/2}
+function cw(){return CW-PW}
+function ch(){return CH-32}
+
+// === Quiz ===
+const quizData=[
+  {q:'库仑力与距离的关系是？',opts:['与距离成正比','与距离平方成反比','与距离无关'],ans:1},
+  {q:'正电荷的电场线方向是？',opts:['指向电荷','从电荷向外发散','平行于电荷'],ans:1},
+  {q:'通电直导线周围磁场的形状是？',opts:['直线形','同心圆形','螺旋形'],ans:1},
+  {q:'法拉第电磁感应定律中，感应电动势与什么成正比？',opts:['磁通量','磁通量的变化率','磁场强度'],ans:1},
+  {q:'安培力 F=BILsinθ 中，θ=0 时力为？',opts:['最大','零','无法确定'],ans:1},
+  {q:'LC振荡中能量如何转换？',opts:['电能→热能','电场能⇌磁场能','动能→势能'],ans:1},
+  {q:'电磁波中电场和磁场的关系是？',opts:['平行振荡','相互垂直且垂直于传播方向','方向相同'],ans:1}
+];
+
+function renderQuiz(idx){
+  const qd=quizData[idx];if(!qd)return '';
+  let h='<div class="quiz-box"><div class="quiz-q">📝 通关测验：'+qd.q+'</div>';
+  qd.opts.forEach((opt,i)=>{
+    const cls=quizPassed.has(idx)?(i===qd.ans?'correct':''):'';
+    h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${idx},${i})">${opt}</div>`;
+  });
+  if(quizPassed.has(idx))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过</div>';
+  h+='</div>';return h;
+}
+function answerQuiz(li,oi){
+  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  const qd=quizData[li],opts=panelEl.querySelectorAll('.quiz-opt');
+  opts.forEach((el,i)=>{el.classList.add(i===qd.ans?'correct':'wrong')});
+  if(oi===qd.ans){quizPassed.add(li);playSound('success');totalScore+=10;
+    setTimeout(()=>{quizLocked=false;goLevel(currentLevel+1)},800);
+  }else{playSound('fail');setTimeout(()=>{quizLocked=false;renderPanel()},1000)}
+}
+
+// === Stage nav ===
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  levels.forEach((_,i)=>{const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':'';
+    h+=`<div class="sn-d ${cls}" onclick="switchLevel(${i})"></div>`});
+  h+=`</div><div class="sn-info">${levels[currentLevel].icon} 第${currentLevel+1}/${levels.length}关 · ${levels[currentLevel].name}</div>`;
+  h+=`<div class="sn-hint">${levels[currentLevel].sub}</div></div>`;return h;
+}
+function switchLevel(i){playSound('click');goLevel(i)}
+function goLevel(idx){
+  if(idx<0||idx>=levels.length){showResult();return}
+  currentLevel=idx;initLevel(idx);renderPanel();
+}
+
+// === Level init ===
+function initLevel(idx){
+  levelState={explored:false,done:false};
+  const mx=cx(),my=cy();
+  switch(idx){
+    case 0:// Coulomb
+      levelState.q1=3;levelState.q2=-2;levelState.dist=200;levelState.dragging=null;
+      levelState.charge1={x:mx-100,y:my};levelState.charge2={x:mx+100,y:my};
+      levelState.explored=false;levelState.interactions=0;break;
+    case 1:// Field lines
+      levelState.charges=[];levelState.mode='pos';levelState.explored=false;break;
+    case 2:// Magnetic field
+      levelState.current=5;levelState.wireY=my;levelState.explored=false;break;
+    case 3:// Induction
+      levelState.magnetX=mx-200;levelState.magnetVel=0;levelState.coilX=mx;
+      levelState.emf=0;levelState.flux=0;levelState.prevFlux=0;levelState.emfHistory=[];
+      levelState.draggingMagnet=false;levelState.explored=false;break;
+    case 4:// Ampere force
+      levelState.current=5;levelState.B=0.5;levelState.angle=90;levelState.explored=false;break;
+    case 5:// LC oscillation
+      levelState.L=0.01;levelState.C=0.001;levelState.t=0;levelState.qCharge=1;
+      levelState.iCurrent=0;levelState.history=[];levelState.explored=false;break;
+    case 6:// EM wave
+      levelState.freq=1;levelState.t=0;levelState.explored=false;break;
+  }
+}
+
+function isLevelDone(idx){return completedLevels.has(idx)}
+function completeLevel(idx){
+  if(!completedLevels.has(idx)){completedLevels.add(idx);totalScore+=20;playSound('success');
+    spawnParticles(cx(),cy(),'#22c55e',20);renderPanel()}
+}
+
+// === Slider helper ===
+function sliderDrag(){
+  const idx=currentLevel;
+  switch(idx){
+    case 0:{
+      const q1El=document.getElementById('sq1'),q2El=document.getElementById('sq2');
+      if(q1El)levelState.q1=+q1El.value;if(q2El)levelState.q2=+q2El.value;
+      const l1=document.getElementById('lq1'),l2=document.getElementById('lq2');
+      if(l1)l1.textContent=levelState.q1+'μC';if(l2)l2.textContent=levelState.q2+'μC';
+      levelState.interactions++;if(levelState.interactions>=3)levelState.explored=true;
+      break;}
+    case 2:{
+      const cEl=document.getElementById('scur');if(cEl)levelState.current=+cEl.value;
+      const lc=document.getElementById('lcur');if(lc)lc.textContent=levelState.current+'A';
+      levelState.explored=true;break;}
+    case 4:{
+      const ci=document.getElementById('sai'),bi=document.getElementById('sbi'),ai=document.getElementById('sag');
+      if(ci)levelState.current=+ci.value;if(bi)levelState.B=+bi.value;if(ai)levelState.angle=+ai.value;
+      const li=document.getElementById('lai'),lb=document.getElementById('lbi'),la=document.getElementById('lag');
+      if(li)li.textContent=levelState.current+'A';if(lb)lb.textContent=levelState.B+'T';if(la)la.textContent=levelState.angle+'°';
+      levelState.explored=true;break;}
+    case 5:{
+      const le=document.getElementById('slc'),ce=document.getElementById('scc');
+      if(le)levelState.L=+le.value;if(ce)levelState.C=+ce.value;
+      const ll=document.getElementById('llc'),lcc=document.getElementById('lcc');
+      if(ll)ll.textContent=(levelState.L*1000).toFixed(1)+'mH';if(lcc)lcc.textContent=(levelState.C*1000).toFixed(1)+'mF';
+      levelState.t=0;levelState.history=[];levelState.explored=true;break;}
+    case 6:{
+      const fe=document.getElementById('sfr');if(fe)levelState.freq=+fe.value;
+      const lf=document.getElementById('lfr');if(lf)lf.textContent=levelState.freq.toFixed(1)+'Hz';
+      levelState.explored=true;break;}
+  }
+}
+
+// === Panel rendering ===
+function renderPanel(){
+  let h=renderStageNav();
+  h+=renderLevelPanel(currentLevel);
+  if(completedLevels.has(currentLevel)){
+    h+=renderQuiz(currentLevel);
+    if(quizPassed.has(currentLevel)&&currentLevel<levels.length-1)
+      h+=`<button class="act-btn" onclick="switchLevel(${currentLevel+1})" style="background:#3b82f6;color:#fff;border:none;margin-top:8px">下一关 →</button>`;
+  }
+  h+=`<div style="margin-top:12px;padding:8px;background:var(--concept-bg);border-radius:8px;font-size:12px;color:var(--text-sub)">总分: <span class="sv">${totalScore}</span> | 已通过: <span class="sv">${quizPassed.size}/${levels.length}</span></div>`;
+  panelEl.innerHTML=h;
+}
+
+function renderLevelPanel(idx){
+  let h='';
+  switch(idx){
+    case 0:{// Coulomb
+      h+=`<h2>库仑定律</h2>`;
+      h+=`<div class="concept-box">⚡ <b>F = k·q₁·q₂ / r²</b><br>k = 8.99×10⁹ N·m²/C²</div>`;
+      h+=`<div class="desc">画布上有<span style="color:${t().pos}">红色正电荷</span>和<span style="color:${t().neg}">蓝色负电荷</span>。拖动电荷改变距离，调节电荷量，观察<span style="color:${t().force}">黄色力箭头</span>的变化。</div>`;
+      const k=8.99e9,F=k*Math.abs(levelState.q1*1e-6)*Math.abs(levelState.q2*1e-6)/Math.pow(levelState.dist/200*0.1,2);
+      h+=`<div class="stat">距离: <span class="sv">${(levelState.dist/200*0.1).toFixed(3)} m</span></div>`;
+      h+=`<div class="stat">库仑力: <span class="sv" style="color:${t().force}">${F.toFixed(2)} N</span></div>`;
+      h+=`<div class="slider-wrap"><label>q₁ 电荷量: <span id="lq1">${levelState.q1}μC</span></label><input type="range" id="sq1" min="-5" max="5" step="1" value="${levelState.q1}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>q₂ 电荷量: <span id="lq2">${levelState.q2}μC</span></label><input type="range" id="sq2" min="-5" max="5" step="1" value="${levelState.q2}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+      if(levelState.explored&&!completedLevels.has(0)){
+        h+=`<div class="hint-box">💡 试试把两个电荷拉近或推远，观察力如何变化。距离减半，力变为4倍！</div>`;
+        h+=`<button class="act-btn" onclick="completeLevel(0)">我理解了库仑定律 ✓</button>`;
+      }
+      break;}
+    case 1:{// Field lines
+      h+=`<h2>电场线</h2>`;
+      h+=`<div class="concept-box">🔋 电场线从<span style="color:${t().pos}">正电荷</span>出发，终止于<span style="color:${t().neg}">负电荷</span><br>线的密度表示场强大小</div>`;
+      h+=`<div class="desc">点击画布放置电荷，观察电场线的实时分布。切换正/负电荷模式，尝试不同组合。</div>`;
+      h+=`<button class="act-btn" onclick="levelState.mode='pos';renderPanel()" style="${levelState.mode==='pos'?'background:'+t().pos+';color:#fff;border:none':''}">➕ 放置正电荷</button>`;
+      h+=`<button class="act-btn" onclick="levelState.mode='neg';renderPanel()" style="${levelState.mode==='neg'?'background:'+t().neg+';color:#fff;border:none':''}">➖ 放置负电荷</button>`;
+      h+=`<button class="act-btn" onclick="levelState.charges=[];renderPanel()">🗑️ 清空</button>`;
+      h+=`<div class="stat">已放置: <span class="sv">${levelState.charges.length}</span> 个电荷</div>`;
+      if(levelState.charges.length>=3&&!completedLevels.has(1)){
+        levelState.explored=true;
+        h+=`<div class="hint-box">💡 注意电场线的方向和密度。正正相斥时线互相排开，正负相吸时线相连。</div>`;
+        h+=`<button class="act-btn" onclick="completeLevel(1)">我理解了电场线 ✓</button>`;
+      }
+      break;}
+    case 2:{// Magnetic field
+      h+=`<h2>磁场与电流</h2>`;
+      h+=`<div class="concept-box">🧲 <b>右手定则</b>：拇指指向电流方向，四指弯曲方向即为磁场方向<br>B = μ₀I/(2πr)</div>`;
+      h+=`<div class="desc">画布中央是一根通电导线（电流垂直屏幕）。<span style="color:${t().mag}">绿色圆环</span>表示磁场线，调节电流大小观察磁场变化。</div>`;
+      h+=`<div class="stat">电流: <span class="sv" style="color:${t().force}">${levelState.current} A</span></div>`;
+      h+=`<div class="slider-wrap"><label>电流大小: <span id="lcur">${levelState.current}A</span></label><input type="range" id="scur" min="1" max="20" step="1" value="${levelState.current}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+      if(levelState.explored&&!completedLevels.has(2)){
+        h+=`<div class="hint-box">💡 电流越大，磁场越强（圆环越密）。距导线越远，磁场越弱。</div>`;
+        h+=`<button class="act-btn" onclick="completeLevel(2)">我理解了右手定则 ✓</button>`;
+      }
+      break;}
+    case 3:// Induction - next chunk
+    case 4:// Ampere
+    case 5:// LC
+    case 6:// EM wave
+      h+=renderLevelPanel2(idx);break;
+  }
+  return h;
+}
+
+function renderLevelPanel2(idx){
+  let h='';
+  switch(idx){
+    case 3:{// Induction
+      h+=`<h2>电磁感应</h2>`;
+      h+=`<div class="concept-box">🔄 <b>法拉第定律</b>：ε = -dΦ/dt<br>磁通量变化越快，感应电动势越大</div>`;
+      h+=`<div class="desc">拖动<span style="color:${t().pos}">红色磁铁</span>穿过<span style="color:${t().mag}">绿色线圈</span>，观察感应电动势的变化。移动越快，电动势越大！</div>`;
+      h+=`<div class="stat">磁铁位置: <span class="sv">${(levelState.magnetX-cx()).toFixed(0)} px</span></div>`;
+      h+=`<div class="stat">感应电动势: <span class="sv" style="color:${t().force}">${levelState.emf.toFixed(2)} V</span></div>`;
+      h+=`<div class="hint-box">💡 用鼠标拖动磁铁左右移动，穿过线圈时观察电动势波形。</div>`;
+      if(levelState.explored&&!completedLevels.has(3)){
+        h+=`<button class="act-btn" onclick="completeLevel(3)">我理解了电磁感应 ✓</button>`;
+      }
+      break;}
+    case 4:{// Ampere force
+      h+=`<h2>安培力</h2>`;
+      const F4=levelState.B*levelState.current*0.1*Math.sin(levelState.angle*Math.PI/180);
+      h+=`<div class="concept-box">💪 <b>F = BILsinθ</b><br>通电导线在磁场中受力</div>`;
+      h+=`<div class="desc">调节<span style="color:${t().force}">电流</span>、<span style="color:${t().mag}">磁场强度</span>和<span style="color:${t().wave}">角度</span>，观察导线受力的大小和方向。</div>`;
+      h+=`<div class="stat">安培力: <span class="sv" style="color:${t().force}">${F4.toFixed(3)} N</span></div>`;
+      h+=`<div class="slider-wrap"><label>电流 I: <span id="lai">${levelState.current}A</span></label><input type="range" id="sai" min="1" max="20" step="1" value="${levelState.current}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>磁场 B: <span id="lbi">${levelState.B}T</span></label><input type="range" id="sbi" min="0.1" max="2" step="0.1" value="${levelState.B}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>角度 θ: <span id="lag">${levelState.angle}°</span></label><input type="range" id="sag" min="0" max="180" step="5" value="${levelState.angle}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+      if(levelState.explored&&!completedLevels.has(4)){
+        h+=`<div class="hint-box">💡 θ=90°时力最大，θ=0°或180°时力为零。这就是sinθ的作用！</div>`;
+        h+=`<button class="act-btn" onclick="completeLevel(4)">我理解了安培力 ✓</button>`;
+      }
+      break;}
+    case 5:{// LC
+      const omega=1/Math.sqrt(levelState.L*levelState.C);
+      const freq5=omega/(2*Math.PI);
+      h+=`<h2>LC 振荡</h2>`;
+      h+=`<div class="concept-box">📡 <b>f = 1/(2π√LC)</b><br>电容和电感之间能量来回转换</div>`;
+      h+=`<div class="desc">调节<span style="color:${t().neg}">电感L</span>和<span style="color:${t().pos}">电容C</span>的值，观察振荡频率和波形变化。<span style="color:${t().neg}">蓝色</span>是电荷（电场能），<span style="color:${t().pos}">红色</span>是电流（磁场能）。</div>`;
+      h+=`<div class="stat">振荡频率: <span class="sv">${freq5.toFixed(1)} Hz</span></div>`;
+      h+=`<div class="stat">周期: <span class="sv">${(1/freq5*1000).toFixed(1)} ms</span></div>`;
+      h+=`<div class="slider-wrap"><label>电感 L: <span id="llc">${(levelState.L*1000).toFixed(1)}mH</span></label><input type="range" id="slc" min="0.001" max="0.1" step="0.001" value="${levelState.L}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>电容 C: <span id="lcc">${(levelState.C*1000).toFixed(1)}mF</span></label><input type="range" id="scc" min="0.0001" max="0.01" step="0.0001" value="${levelState.C}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+      if(levelState.explored&&!completedLevels.has(5)){
+        h+=`<div class="hint-box">💡 L或C增大，频率降低（振荡变慢）。能量在电场和磁场之间完美转换！</div>`;
+        h+=`<button class="act-btn" onclick="completeLevel(5)">我理解了LC振荡 ✓</button>`;
+      }
+      break;}
+    case 6:{// EM wave
+      const wl=3e8/(levelState.freq*1e8);
+      h+=`<h2>电磁波</h2>`;
+      h+=`<div class="concept-box">🌊 <b>c = λf</b><br>电场和磁场垂直振荡，以光速传播<br>c = 3×10⁸ m/s</div>`;
+      h+=`<div class="desc">调节频率，观察<span style="color:${t().pos}">红色电场</span>和<span style="color:${t().mag}">绿色磁场</span>垂直振荡传播。频率越高，波长越短。</div>`;
+      h+=`<div class="stat">频率: <span class="sv">${(levelState.freq*1e8/1e6).toFixed(0)} MHz</span></div>`;
+      h+=`<div class="stat">波长: <span class="sv">${wl.toFixed(2)} m</span></div>`;
+      h+=`<div class="slider-wrap"><label>频率: <span id="lfr">${levelState.freq.toFixed(1)}Hz</span> (×10⁸)</label><input type="range" id="sfr" min="0.5" max="5" step="0.1" value="${levelState.freq}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+      if(levelState.explored&&!completedLevels.has(6)){
+        h+=`<div class="hint-box">💡 电磁波不需要介质，在真空中以光速传播。电场和磁场互相激发！</div>`;
+        h+=`<button class="act-btn" onclick="completeLevel(6)">我理解了电磁波 ✓</button>`;
+      }
+      break;}
+  }
+  return h;
+}
+
+// === Drawing ===
+function drawArrow(x1,y1,x2,y2,color,width=2){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy);
+  if(len<1)return;
+  const ux=dx/len,uy=dy/len;
+  ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  const hl=Math.min(12,len*0.3);
+  ctx.fillStyle=color;ctx.beginPath();
+  ctx.moveTo(x2,y2);ctx.lineTo(x2-ux*hl-uy*hl*0.4,y2-uy*hl+ux*hl*0.4);
+  ctx.lineTo(x2-ux*hl+uy*hl*0.4,y2-uy*hl-ux*hl*0.4);ctx.fill();
+}
+
+function drawCharge(x,y,q,r){
+  const col=q>0?t().pos:t().neg;
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+  const grd=ctx.createRadialGradient(x,y,0,x,y,r);
+  grd.addColorStop(0,col);grd.addColorStop(1,col+'44');
+  ctx.fillStyle=grd;ctx.fill();
+  ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(q>0?'+':'−',x,y);
+}
+
+function drawLevel(idx){
+  const mx=cx(),my=cy(),w=cw(),h=ch();
+  switch(idx){
+    case 0: drawCoulomb(mx,my,w,h);break;
+    case 1: drawFieldLines(mx,my,w,h);break;
+    case 2: drawMagField(mx,my,w,h);break;
+    case 3: drawInduction(mx,my,w,h);break;
+    case 4: drawAmpere(mx,my,w,h);break;
+    case 5: drawLC(mx,my,w,h);break;
+    case 6: drawEMWave(mx,my,w,h);break;
+  }
+}
+
+function drawCoulomb(mx,my,w,h){
+  const s=levelState;
+  const x1=s.charge1.x,y1=s.charge1.y,x2=s.charge2.x,y2=s.charge2.y;
+  const dx=x2-x1,dy=y2-y1,dist=Math.sqrt(dx*dx+dy*dy);
+  s.dist=dist;
+  // distance line
+  ctx.setLineDash([5,5]);ctx.strokeStyle=t().textMut;ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([]);
+  // distance label
+  ctx.fillStyle=t().textSec;ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`r = ${(dist/200*0.1).toFixed(3)} m`,(x1+x2)/2,(y1+y2)/2-20);
+  // force arrows
+  const k=8.99e9,r_m=dist/200*0.1;
+  const F=k*Math.abs(s.q1*1e-6)*Math.abs(s.q2*1e-6)/(r_m*r_m);
+  const fScale=Math.min(F*5e-4,120);
+  const ux=dx/dist,uy=dy/dist;
+  const attract=(s.q1>0&&s.q2<0)||(s.q1<0&&s.q2>0);
+  if(s.q1!==0&&s.q2!==0){
+    if(attract){
+      drawArrow(x1-ux*25,y1-uy*25,x1+ux*fScale,y1+uy*fScale,t().force,3);
+      drawArrow(x2+ux*25,y2+uy*25,x2-ux*fScale,y2-uy*fScale,t().force,3);
+    }else{
+      drawArrow(x1+ux*25,y1+uy*25,x1-ux*fScale,y1-uy*fScale,t().force,3);
+      drawArrow(x2-ux*25,y2-uy*25,x2+ux*fScale,y2+uy*fScale,t().force,3);
+    }
+  }
+  // charges
+  drawCharge(x1,y1,s.q1,22);
+  drawCharge(x2,y2,s.q2,22);
+  // force label
+  ctx.fillStyle=t().force;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`F = ${F.toFixed(2)} N`,mx,my+80);
+}
+
+function drawFieldLines(mx,my,w,h){
+  const s=levelState;
+  // draw field lines
+  s.charges.forEach(c=>{
+    const nLines=12;
+    for(let i=0;i<nLines;i++){
+      const angle=i/nLines*Math.PI*2;
+      let px=c.x+Math.cos(angle)*20,py=c.y+Math.sin(angle)*20;
+      ctx.beginPath();ctx.moveTo(px,py);
+      ctx.strokeStyle=t().field+'88';ctx.lineWidth=1.5;
+      for(let step=0;step<80;step++){
+        let ex=0,ey=0;
+        s.charges.forEach(oc=>{
+          const ddx=px-oc.x,ddy=py-oc.y;
+          const d2=ddx*ddx+ddy*ddy;if(d2<100)return;
+          const d=Math.sqrt(d2);const e=oc.q/(d2);
+          ex+=e*ddx/d;ey+=e*ddy/d;
+        });
+        const em=Math.sqrt(ex*ex+ey*ey);if(em<0.0001)break;
+        const dir=c.q>0?1:-1;
+        px+=dir*ex/em*5;py+=dir*ey/em*5;
+        if(px<PW||px>CW||py<0||py>CH-32)break;
+        // check if near opposite charge
+        let hitOpposite=false;
+        s.charges.forEach(oc=>{
+          if(oc.q*c.q<0){const dd=Math.sqrt((px-oc.x)**2+(py-oc.y)**2);if(dd<18)hitOpposite=true;}
+        });
+        ctx.lineTo(px,py);
+        if(hitOpposite)break;
+      }
+      ctx.stroke();
+    }
+  });
+  // draw charges
+  s.charges.forEach(c=>drawCharge(c.x,c.y,c.q,18));
+  // instruction
+  if(s.charges.length===0){
+    ctx.fillStyle=t().textMut;ctx.font='16px sans-serif';ctx.textAlign='center';
+    ctx.fillText('点击画布放置电荷',mx,my);
+  }
+}
+
+function drawMagField(mx,my,w,h){
+  const s=levelState;
+  const I=s.current;
+  // wire (current into screen)
+  ctx.beginPath();ctx.arc(mx,my,15,0,Math.PI*2);
+  ctx.fillStyle=t().force;ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('⊗',mx,my);
+  // magnetic field circles
+  const nRings=Math.min(Math.floor(I/2)+3,12);
+  for(let i=1;i<=nRings;i++){
+    const r=30+i*25;
+    ctx.beginPath();ctx.arc(mx,my,r,0,Math.PI*2);
+    ctx.strokeStyle=t().mag;ctx.lineWidth=1.5;ctx.globalAlpha=0.3+0.4*(1-i/nRings);ctx.stroke();
+    // direction arrows on circle (clockwise for current into screen)
+    const nArrows=4;
+    for(let j=0;j<nArrows;j++){
+      const a=j/nArrows*Math.PI*2+time*0.5;
+      const ax=mx+Math.cos(a)*r,ay=my+Math.sin(a)*r;
+      const tx=mx+Math.cos(a+0.15)*r,ty=my+Math.sin(a+0.15)*r;
+      drawArrow(ax,ay,tx,ty,t().mag,1.5);
+    }
+  }
+  ctx.globalAlpha=1;
+  // B value at cursor distance
+  const dr=Math.sqrt((mouseX-mx)**2+(mouseY-my)**2);
+  if(dr>20&&mouseX>PW){
+    const B=4*Math.PI*1e-7*I/(2*Math.PI*(dr/200));
+    ctx.fillStyle=t().mag;ctx.font='12px sans-serif';ctx.textAlign='left';
+    ctx.fillText(`B = ${(B*1e6).toFixed(2)} μT (此处)`,mouseX+15,mouseY-10);
+  }
+  // label
+  ctx.fillStyle=t().textSec;ctx.font='13px sans-serif';ctx.textAlign='center';
+  ctx.fillText('电流方向：垂直屏幕向内 (⊗)',mx,my+nRings*25+50);
+  ctx.fillText('磁场方向：顺时针（右手定则）',mx,my+nRings*25+70);
+}
+
+function drawInduction(mx,my,w,h){
+  const s=levelState;
+  // coil
+  ctx.strokeStyle=t().mag;ctx.lineWidth=4;
+  ctx.beginPath();ctx.ellipse(s.coilX,my,15,60,0,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle=t().mag+'66';ctx.lineWidth=2;
+  ctx.beginPath();ctx.ellipse(s.coilX-8,my,12,55,0,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.ellipse(s.coilX+8,my,12,55,0,0,Math.PI*2);ctx.stroke();
+  // magnet
+  const mw=80,mh=40;
+  const mgx=s.magnetX-mw/2,mgy=my-mh/2;
+  ctx.fillStyle=t().pos;ctx.fillRect(mgx,mgy,mw/2,mh);
+  ctx.fillStyle=t().neg;ctx.fillRect(mgx+mw/2,mgy,mw/2,mh);
+  ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('N',mgx+mw/4,my);ctx.fillText('S',mgx+3*mw/4,my);
+  // field lines from magnet
+  ctx.strokeStyle=t().field+'44';ctx.lineWidth=1;
+  for(let i=-2;i<=2;i++){
+    const sy=my+i*12;
+    ctx.beginPath();ctx.moveTo(s.magnetX+mw/2,sy);
+    ctx.quadraticCurveTo(s.magnetX+mw,sy+i*20,s.magnetX+mw/2,sy+i*40);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(s.magnetX-mw/2,sy);
+    ctx.quadraticCurveTo(s.magnetX-mw,sy+i*20,s.magnetX-mw/2,sy+i*40);ctx.stroke();
+  }
+  // EMF waveform
+  const hx=PW+40,hy=my+120,hw=w-80,hh=80;
+  ctx.strokeStyle=t().textMut;ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(hx,hy);ctx.lineTo(hx+hw,hy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(hx,hy-hh);ctx.lineTo(hx,hy+hh);ctx.stroke();
+  ctx.fillStyle=t().textMut;ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText('EMF',hx+4,hy-hh+10);ctx.fillText('时间→',hx+hw-30,hy+15);
+  if(s.emfHistory.length>1){
+    ctx.beginPath();ctx.strokeStyle=t().force;ctx.lineWidth=2;
+    const step=hw/200;
+    const start=Math.max(0,s.emfHistory.length-200);
+    for(let i=start;i<s.emfHistory.length;i++){
+      const px=hx+(i-start)*step;
+      const py=hy-s.emfHistory[i]*hh*0.8;
+      if(i===start)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+  }
+}
+
+function drawAmpere(mx,my,w,h){
+  const s=levelState;
+  const F=s.B*s.current*0.1*Math.sin(s.angle*Math.PI/180);
+  // magnetic field (horizontal arrows)
+  ctx.fillStyle=t().mag+'22';ctx.fillRect(PW+20,my-120,w-40,240);
+  for(let y=my-100;y<=my+100;y+=40){
+    for(let x=PW+60;x<CW-40;x+=80){
+      drawArrow(x-20,y,x+20,y,t().mag+'66',1.5);
+    }
+  }
+  ctx.fillStyle=t().mag;ctx.font='13px sans-serif';ctx.textAlign='right';
+  ctx.fillText('B →',CW-20,my-130);
+  // wire with current at angle
+  const wireLen=160;
+  const rad=s.angle*Math.PI/180;
+  const wx1=mx-Math.cos(rad)*wireLen/2,wy1=my;
+  const wx2=mx+Math.cos(rad)*wireLen/2,wy2=my;
+  ctx.strokeStyle=t().force;ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(wx1,wy1);ctx.lineTo(wx2,wy2);ctx.stroke();
+  // current direction arrow on wire
+  drawArrow(wx1,wy1,wx2,wy2,t().force,3);
+  ctx.fillStyle=t().force;ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`I=${s.current}A, θ=${s.angle}°`,mx,wy1+25);
+  // force arrow (perpendicular, upward for standard config)
+  const fScale=Math.min(Math.abs(F)*300,150);
+  if(Math.abs(F)>0.001){
+    const dir=F>0?-1:1;
+    drawArrow(mx,my,mx,my+dir*fScale,'#f59e0b',4);
+    ctx.fillStyle='#f59e0b';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`F = ${Math.abs(F).toFixed(3)} N`,mx,my+dir*fScale+dir*20);
+  }
+}
+
+function drawLC(mx,my,w,h){
+  const s=levelState;
+  const omega=1/Math.sqrt(s.L*s.C);
+  // circuit diagram
+  const cx0=mx,cy0=my-60;
+  // capacitor
+  ctx.strokeStyle=t().neg;ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(cx0-60,cy0);ctx.lineTo(cx0-15,cy0);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx0+15,cy0);ctx.lineTo(cx0+60,cy0);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx0-15,cy0-20);ctx.lineTo(cx0-15,cy0+20);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx0+15,cy0-20);ctx.lineTo(cx0+15,cy0+20);ctx.stroke();
+  // charge indicator on capacitor
+  const qNorm=s.qCharge;
+  const barH=Math.abs(qNorm)*18;
+  ctx.fillStyle=t().neg+'88';ctx.fillRect(cx0-14,cy0-barH,10,barH*2);
+  ctx.fillStyle=t().neg;ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('C',cx0,cy0+35);
+  // inductor (coil symbol)
+  const iy=cy0+80;
+  ctx.strokeStyle=t().pos;ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(cx0-60,iy);
+  for(let i=0;i<4;i++){
+    const bx=cx0-45+i*30;
+    ctx.arc(bx,iy,12,Math.PI,0,false);
+  }
+  ctx.lineTo(cx0+60,iy);ctx.stroke();
+  ctx.fillStyle=t().pos;ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('L',cx0,iy+30);
+  // connecting wires
+  ctx.strokeStyle=t().textMut;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx0-60,cy0);ctx.lineTo(cx0-60,iy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx0+60,cy0);ctx.lineTo(cx0+60,iy);ctx.stroke();
+  // current arrow
+  const iNorm=s.iCurrent;
+  if(Math.abs(iNorm)>0.05){
+    const dir=iNorm>0?1:-1;
+    ctx.fillStyle=t().pos;ctx.font='12px sans-serif';ctx.textAlign='left';
+    ctx.fillText(`I=${(iNorm).toFixed(2)}`,cx0+65,(cy0+iy)/2);
+    drawArrow(cx0+60,cy0+20,cx0+60,cy0+20+dir*30,t().pos,2);
+  }
+  // waveform
+  const wx=PW+30,wy=my+80,ww=w-60,wh=60;
+  ctx.strokeStyle=t().textMut;ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(wx,wy);ctx.lineTo(wx+ww,wy);ctx.stroke();
+  // draw history
+  if(s.history.length>1){
+    const step=ww/300;
+    const start=Math.max(0,s.history.length-300);
+    // charge (blue)
+    ctx.beginPath();ctx.strokeStyle=t().neg;ctx.lineWidth=2;
+    for(let i=start;i<s.history.length;i++){
+      const px=wx+(i-start)*step,py=wy-s.history[i].q*wh;
+      if(i===start)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    }ctx.stroke();
+    // current (red)
+    ctx.beginPath();ctx.strokeStyle=t().pos;ctx.lineWidth=2;
+    for(let i=start;i<s.history.length;i++){
+      const px=wx+(i-start)*step,py=wy-s.history[i].i*wh;
+      if(i===start)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    }ctx.stroke();
+  }
+  ctx.fillStyle=t().neg;ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText('电荷 q',wx,wy-wh-5);
+  ctx.fillStyle=t().pos;ctx.fillText('电流 I',wx+60,wy-wh-5);
+}
+
+function drawEMWave(mx,my,w,h){
+  const s=levelState;
+  const wl=300/s.freq;// wavelength in pixels
+  const amp=80;
+  const ox=PW+40;
+  // propagation axis
+  ctx.strokeStyle=t().textMut;ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(ox,my);ctx.lineTo(CW-20,my);ctx.stroke();
+  drawArrow(CW-40,my,CW-20,my,t().textMut,1.5);
+  ctx.fillStyle=t().textMut;ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('传播方向 →',CW-60,my+20);
+  // E field (vertical, red)
+  ctx.beginPath();ctx.strokeStyle=t().pos;ctx.lineWidth=2.5;
+  for(let x=ox;x<CW-20;x+=2){
+    const phase=(x-ox)/wl*Math.PI*2-s.t*5;
+    const ey=my-Math.sin(phase)*amp;
+    if(x===ox)ctx.moveTo(x,ey);else ctx.lineTo(x,ey);
+  }ctx.stroke();
+  // B field (horizontal offset, green) - draw as depth illusion
+  ctx.beginPath();ctx.strokeStyle=t().mag;ctx.lineWidth=2.5;
+  for(let x=ox;x<CW-20;x+=2){
+    const phase=(x-ox)/wl*Math.PI*2-s.t*5;
+    const bz=Math.cos(phase)*amp*0.5;// perspective
+    const by=my+bz*0.4;
+    if(x===ox)ctx.moveTo(x,by);else ctx.lineTo(x,by);
+  }ctx.stroke();
+  // E/B arrows at sample points
+  for(let x=ox+wl/4;x<CW-40;x+=wl/2){
+    const phase=(x-ox)/wl*Math.PI*2-s.t*5;
+    const eVal=Math.sin(phase)*amp;
+    const bVal=Math.cos(phase)*amp*0.5;
+    if(Math.abs(eVal)>10)drawArrow(x,my,x,my-eVal,t().pos+'88',1.5);
+    if(Math.abs(bVal)>5){
+      ctx.strokeStyle=t().mag+'88';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.moveTo(x,my);ctx.lineTo(x,my+bVal*0.4);ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+  // labels
+  ctx.fillStyle=t().pos;ctx.font='bold 13px sans-serif';ctx.textAlign='left';
+  ctx.fillText('E (电场)',ox+10,my-amp-10);
+  ctx.fillStyle=t().mag;ctx.fillText('B (磁场)',ox+10,my+amp*0.5+25);
+  // wavelength indicator
+  const wlStart=ox+20,wlEnd=wlStart+wl;
+  if(wlEnd<CW-40){
+    ctx.strokeStyle=t().wave;ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(wlStart,my+amp+30);ctx.lineTo(wlEnd,my+amp+30);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(wlStart,my+amp+25);ctx.lineTo(wlStart,my+amp+35);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(wlEnd,my+amp+25);ctx.lineTo(wlEnd,my+amp+35);ctx.stroke();
+    ctx.fillStyle=t().wave;ctx.font='12px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`λ = ${(3e8/(s.freq*1e8)).toFixed(2)} m`,(wlStart+wlEnd)/2,my+amp+48);
+  }
+}
+
+// === Update ===
+function updateLevel(idx,dt){
+  switch(idx){
+    case 3:{// Induction
+      const s=levelState;
+      if(s.draggingMagnet){s.magnetX=mouseX}
+      // flux based on magnet-coil distance
+      const d=s.magnetX-s.coilX;
+      const sigma=60;
+      s.flux=Math.exp(-d*d/(2*sigma*sigma));
+      s.emf=-(s.flux-s.prevFlux)/(dt||0.016)*0.3;
+      s.prevFlux=s.flux;
+      s.emfHistory.push(Math.max(-1,Math.min(1,s.emf)));
+      if(s.emfHistory.length>500)s.emfHistory.shift();
+      if(Math.abs(s.emf)>0.1)s.explored=true;
+      break;}
+    case 5:{// LC
+      const s=levelState;
+      const omega=1/Math.sqrt(s.L*s.C);
+      s.t+=dt;
+      s.qCharge=Math.cos(omega*s.t);
+      s.iCurrent=-Math.sin(omega*s.t);
+      s.history.push({q:s.qCharge,i:s.iCurrent});
+      if(s.history.length>600)s.history.shift();
+      break;}
+    case 6:{// EM wave
+      levelState.t+=dt;
+      break;}
+  }
+}
+
+// === Mouse events ===
+canvas.addEventListener('mousemove',e=>{mouseX=e.clientX;mouseY=e.clientY;
+  if(gameState!=='play')return;
+  if(currentLevel===0&&levelState.dragging){
+    const c=levelState.dragging==='c1'?levelState.charge1:levelState.charge2;
+    c.x=Math.max(PW+30,Math.min(CW-30,mouseX));
+    c.y=Math.max(30,Math.min(CH-60,mouseY));
+    levelState.interactions++;
+    if(levelState.interactions>=5)levelState.explored=true;
+    renderPanel();
+  }
+  if(currentLevel===3&&levelState.draggingMagnet){
+    levelState.magnetX=Math.max(PW+60,Math.min(CW-60,mouseX));
+  }
+});
+canvas.addEventListener('mousedown',e=>{
+  mouseDown=true;mouseX=e.clientX;mouseY=e.clientY;
+  if(gameState!=='play')return;
+  if(currentLevel===0){
+    const s=levelState;
+    if(Math.hypot(mouseX-s.charge1.x,mouseY-s.charge1.y)<30)s.dragging='c1';
+    else if(Math.hypot(mouseX-s.charge2.x,mouseY-s.charge2.y)<30)s.dragging='c2';
+  }
+  if(currentLevel===3){
+    const s=levelState;
+    if(Math.abs(mouseX-s.magnetX)<50&&Math.abs(mouseY-cy())<30)s.draggingMagnet=true;
+  }
+});
+canvas.addEventListener('mouseup',e=>{
+  mouseDown=false;
+  if(currentLevel===0)levelState.dragging=null;
+  if(currentLevel===3)levelState.draggingMagnet=false;
+});
+
+function handleClick(x,y){
+  if(currentLevel===1&&x>PW){
+    const q=levelState.mode==='pos'?1:-1;
+    levelState.charges.push({x,y,q});
+    playSound('click');renderPanel();
+  }
+}
+canvas.addEventListener('click',e=>{
+  if(gameState!=='play')return;
+  const rect=canvas.getBoundingClientRect();
+  const x=(e.clientX-rect.left)*(CW/rect.width);
+  const y=(e.clientY-rect.top)*(CH/rect.height);
+  handleClick(x,y);
+});
+
+// === Touch support ===
+canvas.addEventListener('touchstart',e=>{
+  e.preventDefault();const touch=e.touches[0];
+  mouseX=touch.clientX;mouseY=touch.clientY;mouseDown=true;
+  if(gameState!=='play')return;
+  if(currentLevel===0){
+    const s=levelState;
+    if(Math.hypot(mouseX-s.charge1.x,mouseY-s.charge1.y)<40)s.dragging='c1';
+    else if(Math.hypot(mouseX-s.charge2.x,mouseY-s.charge2.y)<40)s.dragging='c2';
+  }
+  if(currentLevel===3){
+    if(Math.abs(mouseX-levelState.magnetX)<60&&Math.abs(mouseY-cy())<40)levelState.draggingMagnet=true;
+  }
+  if(currentLevel===1&&mouseX>PW){
+    const q=levelState.mode==='pos'?1:-1;
+    levelState.charges.push({x:mouseX,y:mouseY,q});playSound('click');renderPanel();
+  }
+},{passive:false});
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();const touch=e.touches[0];
+  mouseX=touch.clientX;mouseY=touch.clientY;
+  if(currentLevel===0&&levelState.dragging){
+    const c=levelState.dragging==='c1'?levelState.charge1:levelState.charge2;
+    c.x=Math.max(PW+30,Math.min(CW-30,mouseX));c.y=Math.max(30,Math.min(CH-60,mouseY));
+    levelState.interactions++;if(levelState.interactions>=5)levelState.explored=true;renderPanel();
+  }
+  if(currentLevel===3&&levelState.draggingMagnet)levelState.magnetX=Math.max(PW+60,Math.min(CW-60,mouseX));
+},{passive:false});
+canvas.addEventListener('touchend',e=>{
+  mouseDown=false;if(currentLevel===0)levelState.dragging=null;if(currentLevel===3)levelState.draggingMagnet=false;
+});
+
+// === Result ===
+function showResult(){
+  gameState='result';panelEl.style.display='none';bbEl.style.display='none';
+  const rm=document.getElementById('resultModal'),rb=document.getElementById('resultBox');
+  let h=`<div style="font-size:48px;margin-bottom:10px">🎉</div>`;
+  h+=`<div style="font-size:22px;font-weight:700;margin-bottom:8px;color:var(--sv)">恭喜通关！</div>`;
+  h+=`<div style="font-size:14px;color:var(--text-sub);margin-bottom:8px">你已完成电磁学探险的全部 7 个关卡</div>`;
+  h+=`<div style="font-size:18px;margin-bottom:16px">总分: <span class="sv">${totalScore}</span> 分</div>`;
+  h+=`<div class="learn-box" style="text-align:left">`;
+  h+=`<b>你学到了：</b><br>`;
+  h+=`⚡ 库仑定律：电荷间力与距离平方成反比<br>`;
+  h+=`🔋 电场线：从正电荷出发，终止于负电荷<br>`;
+  h+=`🧲 右手定则：电流方向决定磁场方向<br>`;
+  h+=`🔄 法拉第定律：变化的磁通量产生感应电动势<br>`;
+  h+=`💪 安培力：F=BILsinθ<br>`;
+  h+=`📡 LC振荡：电场能与磁场能的完美转换<br>`;
+  h+=`🌊 电磁波：电场和磁场垂直振荡以光速传播</div>`;
+  h+=`<button onclick="location.reload()">再玩一次</button>`;
+  rb.innerHTML=h;rm.classList.remove('hidden');
+}
+
+// === Main loop ===
+let lastTime=0;
+function mainLoop(ts){
+  requestAnimationFrame(mainLoop);
+  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;time+=dt;
+  ctx.clearRect(0,0,CW,CH);
+  // background
+  ctx.fillStyle=t().bg1;ctx.fillRect(0,0,CW,CH);
+  if(t().showStars)bgStars.forEach(s=>{ctx.globalAlpha=s.a*(0.7+0.3*Math.sin(time*0.5+s.x));ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.x%CW,s.y%CH,s.r,0,Math.PI*2);ctx.fill()});
+  ctx.globalAlpha=1;
+  // grid
+  ctx.strokeStyle=t().grid;ctx.lineWidth=1;
+  for(let gx=PW;gx<CW;gx+=40){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,CH);ctx.stroke()}
+  for(let gy=0;gy<CH;gy+=40){ctx.beginPath();ctx.moveTo(PW,gy);ctx.lineTo(CW,gy);ctx.stroke()}
+
+  if(gameState==='play'){
+    updateLevel(currentLevel,dt);
+    updateParticles(dt);
+    drawLevel(currentLevel);
+  }
+  bbLeft.textContent=`第${currentLevel+1}/${levels.length}关 · ${levels[currentLevel].name}`;
+  bbRight.textContent=`总分: ${totalScore}`;
+}
+
+function startGame(){
+  playSound('click');
+  document.getElementById('startScreen').classList.add('hidden');
+  panelEl.style.display='block';bbEl.style.display='flex';
+  gameState='play';goLevel(0);requestAnimationFrame(mainLoop);
+}
+</script>
+</body>
+</html>

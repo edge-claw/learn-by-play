@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔭 光学原理探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+/* === 暗色系（默认） === */
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;
+  --slider-label:#888;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+/* === 亮色系 === */
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;
+  --slider-label:#888;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#60a5fa}
+.start-box .sub{font-size:17px;color:var(--sub-color);margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100% - 32px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none;padding-bottom:16px}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}
+.g-text{color:var(--text-sub)}
+.g-text.done{color:#059669;text-decoration:line-through}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:15px;cursor:pointer;text-align:center}
+.act-btn:hover{background:var(--btn-hover)}
+.act-btn:disabled{opacity:0.4;cursor:not-allowed}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--hint-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:14px;line-height:1.8;color:var(--learn-text)}
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:11px;color:var(--slider-label)}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}
+.sv{color:var(--sv);font-weight:bold}
+.m-title{font-size:17px;font-weight:700;margin:8px 0 4px;color:var(--title-color)}
+.m-sub{font-size:12px;color:var(--sub-color);margin-bottom:8px}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:var(--bar-bg);border-top:1px solid var(--bar-border);z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}
+#bottom-bar .bb-right{text-align:right}
+.overlay .result-box{text-align:center;max-width:420px;background:var(--result-bg);border:1px solid var(--result-border);border-radius:16px;padding:28px 36px;box-shadow:0 8px 32px rgba(0,0,0,0.1)}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#3b82f6;color:#fff}
+.result-box .btn-retry{background:var(--stage-bar);color:var(--text-sub)}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
+.quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg)}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🔭 <span class="gold">光学原理</span>探险</h1>
+  <div class="sub">7 个关卡，亲手体验光的奥秘</div>
+<button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">🌊</div>折射定律</div>
+    <div class="feat"><div class="fi">💎</div>全反射</div>
+    <div class="feat"><div class="fi">🔍</div>透镜成像</div>
+    <div class="feat"><div class="fi">🌈</div>色散棱镜</div>
+    <div class="feat"><div class="fi">〰️</div>干涉衍射</div>
+    <div class="feat"><div class="fi">🕶️</div>偏振</div>
+    <div class="feat"><div class="fi">📡</div>光纤通信</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+// === 主题系统 ===
+let isDark=true;
+const TH={
+  dark:{bg1:'#0a0a2e',bg2:'#0d0d1a',bg3:'#0a0a1a',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)',showStars:true},
+  light:{bg1:'#e8edf5',bg2:'#f0f2f5',bg3:'#e0e7f0',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',showStars:false}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{renderPanel()}catch(e){}}
+
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,animId;
+let gameState='start',currentLevel=0;
+let levelState={},stars=[],particles=[];
+const completedLevels=new Set();
+const quizPassed=new Set();
+let quizLocked=false;
+let totalScore=0;
+const levelScores=new Array(7).fill(0);
+let dragging=null,dragStartX=0,dragStartY=0;
+
+const levels=[
+{title:'折射定律',sub:'斯涅尔定律',highlight:'斯涅尔定律：n₁ sin θ₁ = n₂ sin θ₂',concept:'光从一种介质进入另一种介质时会改变方向。入射角和折射角的正弦之比等于两种介质折射率之比。空气 n≈1.0，水 n≈1.33，玻璃 n≈1.5。',goals:['拖动光线改变入射角，观察折射','切换到玻璃介质观察更大偏折','使 sin θ₁/sin θ₂ 的比值稳定在 n₂±0.05'],learn:'斯涅尔定律是几何光学的基石。折射率 n = c/v，即光速与介质中光速之比。折射率越大，光在介质中传播越慢，偏折越大。这个定律解释了为什么水中的筷子看起来是弯的。'},
+{title:'全反射',sub:'临界角',highlight:'临界角：θc = arcsin(n₂/n₁)，当 θ > θc 时发生全反射',concept:'光从光密介质（如玻璃 n=1.5）射向光疏介质（如空气 n=1.0）时，当入射角超过临界角，光线不再折射而是完全反射回来。',goals:['从小角度开始，观察折射光线','增大入射角，找到临界角','超过临界角，观察全反射现象'],learn:'全反射的临界角 θc = arcsin(n₂/n₁)。对于玻璃→空气，θc ≈ 41.8°。全反射是光纤通信的物理基础——光在光纤芯中不断全反射，几乎无损耗地传输数百公里。'},
+{title:'透镜成像',sub:'薄透镜公式',highlight:'薄透镜公式：1/f = 1/u + 1/v',concept:'凸透镜能使平行光汇聚到焦点。物体在不同位置时，成像位置和大小不同：物距>2f 时成缩小实像；物距=2f 时成等大实像；f<物距<2f 时成放大实像；物距<f 时成放大虚像。',goals:['拖动物体到 2f 外，观察缩小实像','拖动物体到 f 和 2f 之间，观察放大实像','拖动物体到 f 内，观察虚像'],learn:'薄透镜公式 1/f = 1/u + 1/v 是光学设计的核心。f 是焦距，u 是物距，v 是像距。v>0 为实像（在透镜另一侧），v<0 为虚像（在透镜同侧）。放大率 m = -v/u。'},
+{title:'色散与棱镜',sub:'牛顿棱镜实验',highlight:'色散：不同波长的光折射率不同，n(λ) 随波长减小而增大',concept:'白光是多种波长光的混合。通过棱镜时，短波长（紫光）折射率大、偏折多，长波长（红光）折射率小、偏折少，白光被分解成彩虹色带。',goals:['观察白光通过棱镜分解成彩虹','调节棱镜角度改变色散程度','识别出红橙黄绿蓝靛紫的顺序'],learn:'牛顿在1666年用棱镜实验证明白光是复合光。色散的本质是介质折射率随波长变化（色散关系）。这个发现催生了光谱学，让我们能通过光谱分析恒星的化学成分。'},
+{title:'干涉与衍射',sub:'杨氏双缝实验',highlight:'双缝干涉：明纹位置 y = mλL/d（m=0,±1,±2...）',concept:'光是一种波，两束相干光叠加时会产生干涉：波峰+波峰=明纹（相长干涉），波峰+波谷=暗纹（相消干涉）。缝距 d 越小、波长 λ 越大，条纹间距越大。',goals:['观察双缝干涉的明暗条纹','调节缝距 d，观察条纹间距变化','切换波长（颜色），观察条纹变化'],learn:'杨氏双缝实验（1801年）是证明光的波动性的里程碑。干涉条纹间距 Δy = λL/d。这个实验后来在量子力学中再次登场——单个光子也能产生干涉，揭示了波粒二象性。'},
+{title:'偏振',sub:'马吕斯定律',highlight:'马吕斯定律：I = I₀ cos²θ',concept:'自然光的电场振动方向是随机的。通过偏振片后，只有沿偏振方向的分量能通过。第二块偏振片（检偏器）旋转角度 θ 时，透射强度 I = I₀cos²θ。',goals:['观察自然光通过第一块偏振片','旋转第二块偏振片，观察亮度变化','找到 θ=90° 时完全消光的位置'],learn:'马吕斯定律 I = I₀cos²θ 描述了偏振光通过检偏器的强度变化。θ=0° 时全透，θ=90° 时全灭。偏振在日常生活中很常见：偏光太阳镜、LCD 显示屏、3D 电影都利用了偏振原理。'},
+{title:'光纤通信',sub:'全反射的应用',highlight:'光纤原理：纤芯 n₁ > 包层 n₂，光在纤芯中全反射传输',concept:'光纤由高折射率纤芯和低折射率包层组成。光以大于临界角的角度射入纤芯后，在纤芯-包层界面不断全反射，沿光纤传输。调节入射角使光信号成功传输。',goals:['调节入射角使光进入光纤纤芯','观察光在光纤中全反射传输','成功传输 3 个光脉冲信号'],learn:'光纤通信是现代互联网的基础。单模光纤纤芯直径仅 9μm，光以全反射方式传输，损耗极低（~0.2dB/km）。一根光纤可同时传输数十太比特数据，相当于同时播放数百万部高清电影。'}
+];
+
+// === 音效 ===
+let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function playSound(type){
+  initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}
+  else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}
+  else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}
+}
+
+// === 粒子 & 星星 ===
+function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
+function initStars(){stars=[];for(let i=0;i<80;i++)stars.push({x:Math.random()*CW,y:Math.random()*CH,r:Math.random()*1.5+.3,tw:Math.random()*Math.PI*2,sp:Math.random()*.02+.005})}
+function drawStars(){if(!t().showStars)return;for(let s of stars){const a=.4+.6*Math.abs(Math.sin(s.tw+time*s.sp));ctx.fillStyle=`rgba(255,255,255,${a})`;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill()}}
+function addP(x,y,vx,vy,col,life,sz){particles.push({x,y,vx,vy,col,life,ml:life,sz:sz||3})}
+function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1)}}
+function drawParticles(){for(let p of particles){const a=Math.max(0,p.life/p.ml);ctx.globalAlpha=a;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.sz*a,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+window.addEventListener('resize',resize);resize();
+
+// === 关卡状态 ===
+function startGame(){document.getElementById('startScreen').classList.add('hidden');document.getElementById('panel').style.display='block';document.getElementById('bottom-bar').style.display='flex';gameState='play';currentLevel=0;initLevel(0);renderPanel();requestAnimationFrame(mainLoop)}
+
+function completeObj(idx){
+  if(!levelState.goals)return;
+  if(!levelState.goals[idx]){levelState.goals[idx]=true;playSound('success');
+    const done=levelState.goals.filter(Boolean).length;
+    if(done>=3){completedLevels.add(currentLevel);levelScores[currentLevel]=30}
+    renderPanel();
+  }
+}
+
+// === 关卡初始化 ===
+function initLevel(idx){
+  currentLevel=idx;particles=[];
+  const cx=CW/2+160,cy=CH/2;
+  switch(idx){
+    case 0: // 折射定律
+      levelState={goals:[false,false,false],angle:30,medium:'water',
+        nAir:1.0,nWater:1.33,nGlass:1.5,verified:0};break;
+    case 1: // 全反射
+      levelState={goals:[false,false,false],angle:20,n1:1.5,n2:1.0,
+        criticalFound:false,totalReflection:false};break;
+    case 2: // 透镜成像
+      levelState={goals:[false,false,false],objDist:300,focalLen:120,
+        seenSmall:false,seenBig:false,seenVirtual:false};break;
+    case 3: // 色散
+      levelState={goals:[false,false,false],prismAngle:60,
+        identified:false,angleAdjusted:false};break;
+    case 4: // 干涉
+      levelState={goals:[false,false,false],slitDist:0.5,wavelength:550,
+        dChanged:false,wlChanged:false};break;
+    case 5: // 偏振
+      levelState={goals:[false,false,false],polAngle:0,
+        passedFirst:false,foundExtinct:false};break;
+    case 6: // 光纤
+      levelState={goals:[false,false,false],fiberAngle:30,
+        pulsesSent:0,pulsesDelivered:0,sending:false,pulsePhase:0,
+        pulses:[]};break;
+  }
+  renderPanel();
+}
+
+// === 绘制背景 ===
+function drawBg(){
+  const th=t();
+  const bgGrd=ctx.createLinearGradient(0,0,0,CH);
+  bgGrd.addColorStop(0,th.bg1);bgGrd.addColorStop(0.5,th.bg2);bgGrd.addColorStop(1,th.bg3);
+  ctx.fillStyle=bgGrd;ctx.fillRect(0,0,CW,CH);
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let gx=0;gx<CW;gx+=40){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,CH);ctx.stroke()}
+  for(let gy=0;gy<CH;gy+=40){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(CW,gy);ctx.stroke()}
+  drawStars();
+}
+
+// === 关卡0: 折射定律 ===
+function drawLevel0(){
+  const cx=CW/2+160,cy=CH/2;
+  const s=levelState;
+  const n2=s.medium==='water'?s.nWater:s.nGlass;
+  const theta1=s.angle*Math.PI/180;
+  const sinTheta2=Math.sin(theta1)*s.nAir/n2;
+  const theta2=sinTheta2<=1?Math.asin(sinTheta2):null;
+
+  // 介质区域
+  ctx.fillStyle=isDark?'rgba(10,10,40,0.5)':'rgba(220,230,255,0.5)';
+  ctx.fillRect(cx-300,cy-250,600,250);
+  ctx.fillStyle=s.medium==='water'?(isDark?'rgba(30,80,180,0.3)':'rgba(100,160,255,0.25)'):(isDark?'rgba(80,60,120,0.3)':'rgba(180,160,220,0.25)');
+  ctx.fillRect(cx-300,cy,600,250);
+
+  // 界面线
+  ctx.strokeStyle=isDark?'#555':'#999';ctx.lineWidth=2;ctx.setLineDash([8,4]);
+  ctx.beginPath();ctx.moveTo(cx-300,cy);ctx.lineTo(cx+300,cy);ctx.stroke();ctx.setLineDash([]);
+
+  // 法线
+  ctx.strokeStyle=isDark?'#666':'#aaa';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(cx,cy-220);ctx.lineTo(cx,cy+220);ctx.stroke();ctx.setLineDash([]);
+
+  // 入射光线
+  const rayLen=220;
+  const ix=cx-Math.sin(theta1)*rayLen,iy=cy-Math.cos(theta1)*rayLen;
+  ctx.strokeStyle='#fbbf24';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(ix,iy);ctx.lineTo(cx,cy);ctx.stroke();
+  // 箭头
+  drawArrow(ix,iy,cx,cy,'#fbbf24');
+
+  // 折射光线
+  if(theta2!==null){
+    const rx=cx+Math.sin(theta2)*rayLen,ry=cy+Math.cos(theta2)*rayLen;
+    ctx.strokeStyle='#60a5fa';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(rx,ry);ctx.stroke();
+    drawArrow(cx,cy,rx,ry,'#60a5fa');
+  }
+
+  // 角度弧
+  ctx.strokeStyle='#fbbf24';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.arc(cx,cy,40,-Math.PI/2,-Math.PI/2+theta1);ctx.stroke();
+  if(theta2!==null){
+    ctx.strokeStyle='#60a5fa';
+    ctx.beginPath();ctx.arc(cx,cy,40,Math.PI/2-theta2,Math.PI/2);ctx.stroke();
+  }
+
+  // 标签
+  ctx.font='14px sans-serif';ctx.fillStyle='#fbbf24';
+  ctx.fillText('θ₁='+s.angle+'°',cx+50,cy-60);
+  if(theta2!==null){
+    ctx.fillStyle='#60a5fa';
+    ctx.fillText('θ₂='+(theta2*180/Math.PI).toFixed(1)+'°',cx+50,cy+70);
+  }
+  ctx.fillStyle=t().text;ctx.font='13px sans-serif';
+  ctx.fillText('空气 n=1.0',cx-280,cy-20);
+  ctx.fillText((s.medium==='water'?'水 n=1.33':'玻璃 n=1.50'),cx-280,cy+30);
+
+  // 拖动手柄
+  ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(ix,iy,8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=isDark?'#000':'#fff';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText('拖',ix,iy+3);ctx.textAlign='start';
+}
+
+function drawArrow(x1,y1,x2,y2,col){
+  const a=Math.atan2(y2-y1,x2-x1);const hl=10;
+  ctx.fillStyle=col;ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hl*Math.cos(a-0.4),y2-hl*Math.sin(a-0.4));
+  ctx.lineTo(x2-hl*Math.cos(a+0.4),y2-hl*Math.sin(a+0.4));
+  ctx.fill();
+}
+
+// === 关卡1: 全反射 ===
+function drawLevel1(){
+  const cx=CW/2+160,cy=CH/2;
+  const s=levelState;
+  const theta1=s.angle*Math.PI/180;
+  const critAngle=Math.asin(s.n2/s.n1);
+  const sinTheta2=Math.sin(theta1)*s.n1/s.n2;
+
+  // 介质（上方玻璃，下方空气）
+  ctx.fillStyle=isDark?'rgba(80,60,140,0.3)':'rgba(180,160,230,0.25)';
+  ctx.fillRect(cx-300,cy-250,600,250);
+  ctx.fillStyle=isDark?'rgba(10,10,40,0.3)':'rgba(220,230,255,0.3)';
+  ctx.fillRect(cx-300,cy,600,250);
+
+  // 界面
+  ctx.strokeStyle=isDark?'#555':'#999';ctx.lineWidth=2;ctx.setLineDash([8,4]);
+  ctx.beginPath();ctx.moveTo(cx-300,cy);ctx.lineTo(cx+300,cy);ctx.stroke();ctx.setLineDash([]);
+  // 法线
+  ctx.strokeStyle=isDark?'#666':'#aaa';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(cx,cy-220);ctx.lineTo(cx,cy+220);ctx.stroke();ctx.setLineDash([]);
+
+  // 入射光（从玻璃中向下射向界面）
+  const rayLen=200;
+  const ix=cx-Math.sin(theta1)*rayLen,iy=cy-Math.cos(theta1)*rayLen;
+  ctx.strokeStyle='#fbbf24';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(ix,iy);ctx.lineTo(cx,cy);ctx.stroke();
+  drawArrow(ix,iy,cx,cy,'#fbbf24');
+
+  if(sinTheta2<=1){
+    // 折射光
+    const theta2=Math.asin(sinTheta2);
+    const rx=cx+Math.sin(theta2)*rayLen,ry=cy+Math.cos(theta2)*rayLen;
+    ctx.strokeStyle='#60a5fa';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(rx,ry);ctx.stroke();
+    drawArrow(cx,cy,rx,ry,'#60a5fa');
+    // 部分反射（弱）
+    const refX=cx+Math.sin(theta1)*rayLen*0.6,refY=cy-Math.cos(theta1)*rayLen*0.6;
+    ctx.strokeStyle='rgba(251,191,36,0.3)';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(refX,refY);ctx.stroke();
+  } else {
+    // 全反射
+    const refX=cx+Math.sin(theta1)*rayLen,refY=cy-Math.cos(theta1)*rayLen;
+    ctx.strokeStyle='#ef4444';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(refX,refY);ctx.stroke();
+    drawArrow(cx,cy,refX,refY,'#ef4444');
+    // 全反射光晕
+    ctx.beginPath();ctx.arc(cx,cy,15,0,Math.PI*2);
+    ctx.fillStyle='rgba(239,68,68,0.3)';ctx.fill();
+  }
+
+  // 角度标注
+  ctx.font='14px sans-serif';ctx.fillStyle='#fbbf24';
+  ctx.fillText('θ='+s.angle+'°',cx+50,cy-60);
+  ctx.fillStyle='#ef4444';
+  ctx.fillText('θc='+(critAngle*180/Math.PI).toFixed(1)+'°',cx+50,cy-40);
+  ctx.fillStyle=t().text;ctx.font='13px sans-serif';
+  ctx.fillText('玻璃 n=1.5',cx-280,cy-20);
+  ctx.fillText('空气 n=1.0',cx-280,cy+30);
+
+  // 拖动手柄
+  ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(ix,iy,8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=isDark?'#000':'#fff';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText('拖',ix,iy+3);ctx.textAlign='start';
+}
+
+// === 关卡2: 透镜成像 ===
+function drawLevel2(){
+  const cx=CW/2+160,cy=CH/2;
+  const s=levelState;
+  const f=s.focalLen;
+  const u=s.objDist;
+  const v=(u===f)?Infinity:u*f/(u-f);
+  const m=(u===f)?Infinity:-v/u;
+  const scale=0.8;
+
+  // 光轴
+  ctx.strokeStyle=isDark?'#444':'#bbb';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(cx-400,cy);ctx.lineTo(cx+400,cy);ctx.stroke();
+
+  // 透镜
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(cx,cy-120);ctx.lineTo(cx,cy+120);ctx.stroke();
+  // 透镜箭头
+  ctx.beginPath();ctx.moveTo(cx-8,cy-110);ctx.lineTo(cx,cy-120);ctx.lineTo(cx+8,cy-110);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-8,cy+110);ctx.lineTo(cx,cy+120);ctx.lineTo(cx+8,cy+110);ctx.stroke();
+
+  // 焦点标记
+  ctx.fillStyle='#22c55e';
+  ctx.beginPath();ctx.arc(cx-f*scale,cy,4,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(cx+f*scale,cy,4,0,Math.PI*2);ctx.fill();
+  ctx.font='12px sans-serif';ctx.fillStyle='#22c55e';
+  ctx.fillText('F',cx-f*scale-4,cy+18);ctx.fillText('F\'',cx+f*scale-4,cy+18);
+  // 2f 标记
+  ctx.fillStyle='#f59e0b';
+  ctx.beginPath();ctx.arc(cx-2*f*scale,cy,3,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(cx+2*f*scale,cy,3,0,Math.PI*2);ctx.fill();
+  ctx.fillText('2F',cx-2*f*scale-6,cy+18);ctx.fillText('2F\'',cx+2*f*scale-6,cy+18);
+
+  // 物体（箭头）
+  const objX=cx-u*scale;
+  const objH=60;
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(objX,cy);ctx.lineTo(objX,cy-objH);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(objX-6,cy-objH+10);ctx.lineTo(objX,cy-objH);ctx.lineTo(objX+6,cy-objH+10);ctx.stroke();
+  ctx.fillStyle='#ef4444';ctx.font='13px sans-serif';ctx.fillText('物',objX-6,cy+18);
+
+  // 拖动手柄
+  ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(objX,cy-objH,8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=isDark?'#000':'#fff';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText('拖',objX,cy-objH+3);ctx.textAlign='start';
+
+  // 成像
+  if(u!==f && isFinite(v)){
+    const imgX=cx+v*scale;
+    const imgH=objH*Math.abs(m);
+    const isReal=v>0;
+    if(Math.abs(imgX-cx)<380 && imgH<300){
+      ctx.strokeStyle=isReal?'#3b82f6':'rgba(59,130,246,0.5)';
+      ctx.lineWidth=3;
+      if(!isReal)ctx.setLineDash([6,4]);
+      const imgTop=isReal?cy-imgH:cy-imgH;
+      ctx.beginPath();ctx.moveTo(imgX,cy);ctx.lineTo(imgX,imgTop);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(imgX-6,imgTop+(isReal?10:-10));ctx.lineTo(imgX,imgTop);ctx.lineTo(imgX+6,imgTop+(isReal?10:-10));ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#3b82f6';ctx.font='13px sans-serif';
+      ctx.fillText(isReal?'实像':'虚像',imgX-12,cy+18);
+    }
+
+    // 光线追迹（3条主光线）
+    ctx.lineWidth=1;ctx.globalAlpha=0.5;
+    // 平行光→过焦点
+    ctx.strokeStyle='#fbbf24';ctx.beginPath();
+    ctx.moveTo(objX,cy-objH);ctx.lineTo(cx,cy-objH);
+    if(isReal){ctx.lineTo(imgX,cy-imgH)}else{ctx.lineTo(cx+400,(cy-objH)+(400)*(objH-0)/(f*scale))}
+    ctx.stroke();
+    // 过光心
+    ctx.strokeStyle='#22c55e';ctx.beginPath();
+    ctx.moveTo(objX,cy-objH);ctx.lineTo(cx+(isReal?Math.abs(v*scale):200),(isReal?cy-imgH:cy-objH*(1+200/(u*scale))));
+    ctx.stroke();
+    ctx.globalAlpha=1;
+  }
+
+  // 标注
+  ctx.fillStyle=t().text;ctx.font='13px sans-serif';
+  ctx.fillText('f='+f+'mm',cx+5,cy-130);
+  ctx.fillText('u='+u.toFixed(0)+'mm',objX-10,cy+35);
+  if(u!==f&&isFinite(v)){
+    ctx.fillText('v='+(v>0?'+':'')+v.toFixed(0)+'mm',cx+10,cy+35);
+    ctx.fillText('m='+(m>0?'+':'')+m.toFixed(2),cx+10,cy+50);
+  }
+}
+
+// === 关卡3: 色散棱镜 ===
+function drawLevel3(){
+  const cx=CW/2+160,cy=CH/2;
+  const s=levelState;
+  const prismA=s.prismAngle*Math.PI/180;
+
+  // 棱镜三角形
+  const pH=180,pW=pH*Math.tan(prismA/2);
+  const p1={x:cx,y:cy-pH/2};
+  const p2={x:cx-pW,y:cy+pH/2};
+  const p3={x:cx+pW,y:cy+pH/2};
+  ctx.fillStyle=isDark?'rgba(100,120,200,0.2)':'rgba(160,180,240,0.2)';
+  ctx.strokeStyle=isDark?'rgba(100,120,200,0.6)':'rgba(100,120,200,0.4)';
+  ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.lineTo(p3.x,p3.y);ctx.closePath();
+  ctx.fill();ctx.stroke();
+
+  // 白光入射
+  const entryX=cx-pW-150,entryY=cy+20;
+  ctx.strokeStyle='#fff';ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(entryX,entryY);
+  const hitX=cx-pW*0.6,hitY=cy+pH*0.1;
+  ctx.lineTo(hitX,hitY);ctx.stroke();
+
+  // 色散光谱
+  const colors=['#ff0000','#ff6600','#ffcc00','#00cc00','#0066ff','#3300cc','#6600cc'];
+  const names=['红','橙','黄','绿','蓝','靛','紫'];
+  const baseAngle=-0.3;
+  const spread=prismA*0.4;
+  for(let i=0;i<7;i++){
+    const frac=i/6;
+    const angle=baseAngle-spread/2+spread*frac;
+    const exitX=cx+pW*0.6,exitY=cy+pH*0.05;
+    const endX=exitX+200*Math.cos(angle);
+    const endY=exitY+200*Math.sin(angle);
+    ctx.strokeStyle=colors[6-i];ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.moveTo(exitX,exitY);ctx.lineTo(endX,endY);ctx.stroke();
+    ctx.fillStyle=colors[6-i];ctx.font='12px sans-serif';
+    ctx.fillText(names[6-i],endX+5,endY+4);
+  }
+
+  // 标注
+  ctx.fillStyle=t().text;ctx.font='14px sans-serif';
+  ctx.fillText('棱镜角: '+s.prismAngle+'°',cx-40,cy+pH/2+30);
+  ctx.fillStyle='#fff';ctx.font='12px sans-serif';
+  ctx.fillText('白光',entryX-10,entryY-15);
+}
+
+// === 关卡4: 双缝干涉 ===
+function drawLevel4(){
+  const cx=CW/2+160,cy=CH/2;
+  const s=levelState;
+  const wl=s.wavelength;
+  const d=s.slitDist;
+
+  // 光源
+  ctx.fillStyle=wlToColor(wl);
+  ctx.beginPath();ctx.arc(cx-300,cy,8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=t().text;ctx.font='12px sans-serif';
+  ctx.fillText('光源',cx-315,cy-15);
+
+  // 双缝屏
+  ctx.fillStyle=isDark?'#333':'#ccc';
+  ctx.fillRect(cx-150,cy-200,6,200-d*100-3);
+  ctx.fillRect(cx-150,cy+3+d*100,6,200-d*100-3);
+  // 缝隙
+  ctx.fillStyle=wlToColor(wl);
+  ctx.fillRect(cx-150,cy-d*100-3,6,6);
+  ctx.fillRect(cx-150,cy+d*100-3,6,6);
+
+  // 光线到双缝
+  ctx.strokeStyle=`${wlToColor(wl)}88`;ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(cx-300,cy);ctx.lineTo(cx-150,cy-d*100);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-300,cy);ctx.lineTo(cx-150,cy+d*100);ctx.stroke();
+
+  // 干涉条纹屏
+  const screenX=cx+150;
+  const screenH=350;
+  const L=300;
+  for(let py=-screenH/2;py<=screenH/2;py+=1){
+    const y=py;
+    const pathDiff=d*y/L*1000;
+    const phase=2*Math.PI*pathDiff/wl;
+    const intensity=Math.cos(phase/2)**2;
+    const col=wlToColor(wl);
+    const r=parseInt(col.slice(1,3),16);
+    const g=parseInt(col.slice(3,5),16);
+    const b=parseInt(col.slice(5,7),16);
+    ctx.fillStyle=`rgba(${r},${g},${b},${intensity*0.9})`;
+    ctx.fillRect(screenX,cy+py,40,1);
+  }
+
+  // 屏幕边框
+  ctx.strokeStyle=isDark?'#555':'#999';ctx.lineWidth=1;
+  ctx.strokeRect(screenX,cy-screenH/2,40,screenH);
+
+  // 标注
+  ctx.fillStyle=t().text;ctx.font='13px sans-serif';
+  ctx.fillText('d='+d.toFixed(2)+'mm',cx-170,cy+d*100+25);
+  ctx.fillText('λ='+wl+'nm',cx-315,cy+25);
+  ctx.fillText('干涉条纹',screenX+5,cy-screenH/2-8);
+}
+
+function wlToColor(wl){
+  if(wl<440)return '#6600cc';
+  if(wl<490)return '#0066ff';
+  if(wl<510)return '#00cc66';
+  if(wl<560)return '#00cc00';
+  if(wl<590)return '#cccc00';
+  if(wl<630)return '#ff6600';
+  return '#ff0000';
+}
+
+// === 关卡5: 偏振 ===
+function drawLevel5(){
+  const cx=CW/2+160,cy=CH/2;
+  const s=levelState;
+  const theta=s.polAngle*Math.PI/180;
+  const I=Math.cos(theta)**2;
+
+  // 自然光源
+  ctx.fillStyle='#fbbf24';
+  ctx.beginPath();ctx.arc(cx-280,cy,15,0,Math.PI*2);ctx.fill();
+  // 自然光振动方向（随机箭头）
+  ctx.strokeStyle='#fbbf2488';ctx.lineWidth=1;
+  for(let a=0;a<Math.PI;a+=Math.PI/6){
+    ctx.beginPath();ctx.moveTo(cx-280+12*Math.cos(a),cy+12*Math.sin(a));
+    ctx.lineTo(cx-280-12*Math.cos(a),cy-12*Math.sin(a));ctx.stroke();
+  }
+  ctx.fillStyle=t().text;ctx.font='12px sans-serif';
+  ctx.fillText('自然光',cx-300,cy-25);
+
+  // 第一块偏振片（竖直）
+  ctx.fillStyle=isDark?'rgba(100,100,200,0.3)':'rgba(150,150,220,0.2)';
+  ctx.fillRect(cx-140,cy-100,8,200);
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;
+  ctx.strokeRect(cx-140,cy-100,8,200);
+  // 偏振方向线
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx-136,cy-80);ctx.lineTo(cx-136,cy+80);ctx.stroke();
+  ctx.fillStyle='#60a5fa';ctx.font='11px sans-serif';
+  ctx.fillText('偏振片P₁',cx-160,cy-108);
+  ctx.fillText('(竖直)',cx-155,cy+118);
+
+  // 偏振光（P1到P2之间）
+  const lightAlpha=0.5;
+  ctx.strokeStyle=`rgba(96,165,250,${lightAlpha})`;ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(cx-132,cy);ctx.lineTo(cx+60,cy);ctx.stroke();
+  // 偏振方向指示
+  for(let x=cx-100;x<cx+50;x+=30){
+    ctx.strokeStyle='#60a5fa44';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,cy-15);ctx.lineTo(x,cy+15);ctx.stroke();
+  }
+
+  // 第二块偏振片（可旋转）
+  ctx.save();ctx.translate(cx+80,cy);ctx.rotate(theta);
+  ctx.fillStyle=isDark?'rgba(200,100,100,0.3)':'rgba(220,150,150,0.2)';
+  ctx.fillRect(-4,-100,8,200);
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=2;
+  ctx.strokeRect(-4,-100,8,200);
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(0,-80);ctx.lineTo(0,80);ctx.stroke();
+  ctx.restore();
+  ctx.fillStyle='#ef4444';ctx.font='11px sans-serif';
+  ctx.fillText('检偏器P₂',cx+55,cy-108);
+  ctx.fillText('θ='+s.polAngle+'°',cx+60,cy+118);
+
+  // 旋转手柄
+  const handleX=cx+80+100*Math.sin(theta);
+  const handleY=cy-100*Math.cos(theta);
+  ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(handleX,handleY,8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=isDark?'#000':'#fff';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText('拖',handleX,handleY+3);ctx.textAlign='start';
+
+  // 透射光
+  if(I>0.01){
+    ctx.strokeStyle=`rgba(96,165,250,${I*0.8})`;ctx.lineWidth=3*I+0.5;
+    ctx.beginPath();ctx.moveTo(cx+88,cy);ctx.lineTo(cx+250,cy);ctx.stroke();
+  }
+
+  // 强度指示器
+  const barX=cx+270,barY=cy-80,barH=160;
+  ctx.fillStyle=isDark?'#1a1a3a':'#e2e8f0';
+  ctx.fillRect(barX,barY,20,barH);
+  ctx.fillStyle=`rgba(96,165,250,${0.3+I*0.7})`;
+  ctx.fillRect(barX,barY+barH*(1-I),20,barH*I);
+  ctx.strokeStyle=isDark?'#444':'#999';ctx.lineWidth=1;
+  ctx.strokeRect(barX,barY,20,barH);
+  ctx.fillStyle=t().text;ctx.font='12px sans-serif';
+  ctx.fillText('I/I₀='+(I).toFixed(2),barX-10,barY-8);
+  ctx.fillText('cos²'+s.polAngle+'°='+(I).toFixed(2),barX-30,barY+barH+18);
+}
+
+// === 关卡6: 光纤通信 ===
+function drawLevel6(){
+  const cx=CW/2+160,cy=CH/2;
+  const s=levelState;
+  const fiberLen=500,fiberH=60;
+  const fiberX=cx-fiberLen/2,fiberY=cy-fiberH/2;
+  const n1=1.5,n2=1.3;
+  const critAngle=Math.asin(n2/n1)*180/Math.PI;
+  const theta=s.fiberAngle;
+  const isTotalReflection=theta>critAngle;
+
+  // 光纤包层
+  ctx.fillStyle=isDark?'rgba(60,60,100,0.3)':'rgba(180,180,220,0.2)';
+  ctx.fillRect(fiberX-20,fiberY-20,fiberLen+40,fiberH+40);
+  ctx.strokeStyle=isDark?'#555':'#aaa';ctx.lineWidth=1;
+  ctx.strokeRect(fiberX-20,fiberY-20,fiberLen+40,fiberH+40);
+
+  // 光纤纤芯
+  ctx.fillStyle=isDark?'rgba(80,80,160,0.4)':'rgba(200,200,240,0.3)';
+  ctx.fillRect(fiberX,fiberY,fiberLen,fiberH);
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;
+  ctx.strokeRect(fiberX,fiberY,fiberLen,fiberH);
+
+  // 标注
+  ctx.fillStyle=t().text;ctx.font='12px sans-serif';
+  ctx.fillText('纤芯 n₁=1.5',fiberX+fiberLen/2-40,fiberY-5);
+  ctx.fillText('包层 n₂=1.3',fiberX+fiberLen/2-40,fiberY+fiberH+15);
+
+  // 入射光线和光纤内传播
+  const entryY=cy;
+  const angleRad=theta*Math.PI/180;
+
+  if(isTotalReflection){
+    // 全反射传播 - 锯齿形
+    ctx.strokeStyle='#fbbf24';ctx.lineWidth=2.5;
+    ctx.beginPath();
+    let px=fiberX,py=entryY;
+    let goingDown=true;
+    ctx.moveTo(fiberX-40,entryY);
+    ctx.lineTo(px,py);
+    const stepX=fiberH/Math.tan(angleRad);
+    while(px<fiberX+fiberLen){
+      const nextY=goingDown?fiberY+fiberH:fiberY;
+      const nextX=px+stepX;
+      if(nextX>fiberX+fiberLen){
+        const frac=(fiberX+fiberLen-px)/stepX;
+        ctx.lineTo(fiberX+fiberLen,py+(nextY-py)*frac);
+        break;
+      }
+      ctx.lineTo(nextX,nextY);
+      px=nextX;py=nextY;goingDown=!goingDown;
+      // 反射点光晕
+      addP(nextX,nextY,0,0,'rgba(251,191,36,0.5)',0.3,4);
+    }
+    ctx.stroke();
+
+    // 输出光
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.moveTo(fiberX+fiberLen,py);ctx.lineTo(fiberX+fiberLen+50,py);ctx.stroke();
+    ctx.fillStyle='#22c55e';ctx.font='13px sans-serif';
+    ctx.fillText('信号输出 ✓',fiberX+fiberLen+10,py-15);
+
+    // 脉冲动画
+    for(const p of s.pulses){
+      if(p.x>=fiberX && p.x<=fiberX+fiberLen){
+        ctx.fillStyle='rgba(251,191,36,0.8)';
+        ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle='rgba(251,191,36,0.3)';
+        ctx.beginPath();ctx.arc(p.x,p.y,10,0,Math.PI*2);ctx.fill();
+      }
+    }
+  } else {
+    // 光线泄漏
+    ctx.strokeStyle='#fbbf24';ctx.lineWidth=2.5;
+    ctx.beginPath();ctx.moveTo(fiberX-40,entryY);ctx.lineTo(fiberX,entryY);
+    const hitY=fiberY+fiberH;
+    const hitX=fiberX+fiberH/Math.tan(angleRad);
+    ctx.lineTo(Math.min(hitX,fiberX+fiberLen),Math.min(hitY,fiberY+fiberH));
+    ctx.stroke();
+    // 泄漏光
+    if(hitX<fiberX+fiberLen){
+      ctx.strokeStyle='rgba(239,68,68,0.5)';ctx.lineWidth=1.5;ctx.setLineDash([4,4]);
+      ctx.beginPath();ctx.moveTo(hitX,hitY);ctx.lineTo(hitX+60,hitY+40);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#ef4444';ctx.font='12px sans-serif';
+      ctx.fillText('光泄漏!',hitX+10,hitY+55);
+    }
+  }
+
+  // 入射角标注
+  ctx.fillStyle='#fbbf24';ctx.font='14px sans-serif';
+  ctx.fillText('入射角: '+theta+'°',fiberX-40,cy-fiberH-10);
+  ctx.fillStyle='#ef4444';
+  ctx.fillText('临界角: '+critAngle.toFixed(1)+'°',fiberX-40,cy-fiberH+8);
+  ctx.fillStyle=isTotalReflection?'#22c55e':'#ef4444';
+  ctx.fillText(isTotalReflection?'全反射传输中':'角度不足，信号泄漏',fiberX+fiberLen/2-60,cy+fiberH+40);
+
+  // 脉冲计数
+  ctx.fillStyle=t().text;ctx.font='13px sans-serif';
+  ctx.fillText('已发送: '+s.pulsesSent+' | 已送达: '+s.pulsesDelivered,fiberX,cy+fiberH+60);
+}
+
+// === 更新逻辑 ===
+function updateLevel(idx,dt){
+  const s=levelState;
+  switch(idx){
+    case 0:{
+      const n2=s.medium==='water'?s.nWater:s.nGlass;
+      const theta1=s.angle*Math.PI/180;
+      const sinTheta2=Math.sin(theta1)/n2;
+      if(sinTheta2<=1){
+        const ratio=Math.sin(theta1)/sinTheta2/n2;
+      }
+      if(s.angle>10)completeObj(0);
+      if(s.medium==='glass')completeObj(1);
+      // 验证 snell
+      if(s.angle>=20&&s.angle<=70){
+        const measured=Math.sin(theta1)/(Math.sin(Math.asin(Math.sin(theta1)/n2)));
+        if(Math.abs(measured-n2)<0.05)s.verified++;
+        if(s.verified>=3)completeObj(2);
+      }
+      break;
+    }
+    case 1:{
+      const critAngle=Math.asin(s.n2/s.n1)*180/Math.PI;
+      if(s.angle>10&&s.angle<critAngle)completeObj(0);
+      if(Math.abs(s.angle-critAngle)<3){s.criticalFound=true;completeObj(1)}
+      if(s.angle>critAngle+2){s.totalReflection=true;completeObj(2)}
+      break;
+    }
+    case 2:{
+      const f=s.focalLen;const u=s.objDist;
+      if(u>2*f&&!s.seenSmall){s.seenSmall=true;completeObj(0)}
+      if(u>f&&u<2*f&&!s.seenBig){s.seenBig=true;completeObj(1)}
+      if(u<f&&!s.seenVirtual){s.seenVirtual=true;completeObj(2)}
+      break;
+    }
+    case 3:{
+      completeObj(0);// 白光通过棱镜始终可见
+      if(s.prismAngle!==60)completeObj(1);
+      if(s.identified)completeObj(2);
+      break;
+    }
+    case 4:{
+      completeObj(0);
+      if(s.dChanged)completeObj(1);
+      if(s.wlChanged)completeObj(2);
+      break;
+    }
+    case 5:{
+      if(s.passedFirst)completeObj(0);
+      if(s.polAngle>20)completeObj(1);
+      if(Math.abs(s.polAngle-90)<5||s.foundExtinct){s.foundExtinct=true;completeObj(2)}
+      break;
+    }
+    case 6:{
+      const critAngle=Math.asin(1.3/1.5)*180/Math.PI;
+      if(s.fiberAngle>critAngle)completeObj(0);
+      // 更新脉冲
+      for(let i=s.pulses.length-1;i>=0;i--){
+        const p=s.pulses[i];
+        p.x+=150*dt;
+        // 简单锯齿 y
+        const fiberX=CW/2+160-250,fiberH=60,fiberY=CH/2-30;
+        const period=fiberH/Math.tan(s.fiberAngle*Math.PI/180)*2;
+        if(period>0){
+          const phase=(p.x-fiberX)%period;
+          p.y=phase<period/2?fiberY+fiberH*phase/(period/2):fiberY+fiberH*(1-(phase-period/2)/(period/2));
+        }
+        if(p.x>fiberX+500){
+          s.pulsesDelivered++;
+          s.pulses.splice(i,1);
+          if(s.pulsesDelivered>=1)completeObj(1);
+          if(s.pulsesDelivered>=3)completeObj(2);
+          renderPanel();
+        }
+      }
+      break;
+    }
+  }
+}
+
+// === 面板渲染 ===
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  levels.forEach((_,i)=>{
+    const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':'';
+    h+=`<div class="sn-d ${cls}" onclick="switchLevel(${i})"></div>`;
+  });
+  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 — ${levels[currentLevel].title}</div>`;
+  h+=`<div class="sn-hint">${levels[currentLevel].sub}</div></div>`;
+  return h;
+}
+
+function renderGoals(){
+  const lv=levels[currentLevel];const s=levelState;
+  let h='<div style="margin:8px 0">';
+  lv.goals.forEach((g,i)=>{
+    const done=s.goals&&s.goals[i];
+    h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${g}</span></div>`;
+  });
+  h+='</div>';
+  return h;
+}
+
+function renderPanel(){
+  const lv=levels[currentLevel];const s=levelState;
+  let h=renderStageNav();
+  h+=`<div class="m-title">${lv.title}</div>`;
+  h+=`<div class="m-sub">${lv.sub}</div>`;
+  h+=`<div class="concept-box"><b>核心公式：</b>${lv.highlight}</div>`;
+  h+=`<div class="concept-box">${lv.concept}</div>`;
+  h+=renderGoals();
+
+  // 每关特有控件
+  switch(currentLevel){
+    case 0:
+      h+=`<div class="slider-wrap"><label>入射角: <span class="sv">${s.angle}°</span></label>`;
+      h+=`<input type="range" min="5" max="85" value="${s.angle}" oninput="sliderDrag(0,this.value)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div style="margin:6px 0"><button class="act-btn${s.medium==='water'?' green':''}" onclick="setMedium('water')">水 (n=1.33)</button>`;
+      h+=`<button class="act-btn${s.medium==='glass'?' green':''}" onclick="setMedium('glass')">玻璃 (n=1.50)</button></div>`;
+      const n2v=s.medium==='water'?1.33:1.5;
+      const t1r=s.angle*Math.PI/180;
+      const st2=Math.sin(t1r)/n2v;
+      if(st2<=1){
+        const t2=Math.asin(st2)*180/Math.PI;
+        h+=`<div class="hint-box">sin(${s.angle}°)/sin(${t2.toFixed(1)}°) = <span class="sv">${(Math.sin(t1r)/Math.sin(t2*Math.PI/180)).toFixed(3)}</span> ≈ n₂=${n2v}</div>`;
+      }
+      break;
+    case 1:
+      h+=`<div class="slider-wrap"><label>入射角: <span class="sv">${s.angle}°</span></label>`;
+      h+=`<input type="range" min="5" max="85" value="${s.angle}" oninput="sliderDrag(1,this.value)" onchange="this.blur();renderPanel()"></div>`;
+      const ca=Math.asin(s.n2/s.n1)*180/Math.PI;
+      h+=`<div class="hint-box">临界角 θc = arcsin(${s.n2}/${s.n1}) = <span class="sv">${ca.toFixed(1)}°</span><br>`;
+      h+=s.angle>ca?'<span style="color:#ef4444;font-weight:bold">全反射!</span>':'折射中...';
+      h+='</div>';
+      break;
+    case 2:
+      h+=`<div class="slider-wrap"><label>物距 u: <span class="sv">${s.objDist.toFixed(0)}mm</span> (f=${s.focalLen}mm)</label>`;
+      h+=`<input type="range" min="30" max="400" value="${s.objDist}" oninput="sliderDrag(2,this.value)" onchange="this.blur();renderPanel()"></div>`;
+      const fv=s.focalLen,uv=s.objDist;
+      if(uv!==fv){
+        const vv=uv*fv/(uv-fv);const mv=-vv/uv;
+        h+=`<div class="hint-box">v = ${vv.toFixed(0)}mm | m = ${mv.toFixed(2)}<br>`;
+        h+=vv>0?(Math.abs(mv)<1?'缩小实像':'放大实像'):'放大虚像';
+        h+='</div>';
+      }else{h+=`<div class="hint-box">u = f，像在无穷远</div>`}
+      break;
+    case 3:
+      h+=`<div class="slider-wrap"><label>棱镜角: <span class="sv">${s.prismAngle}°</span></label>`;
+      h+=`<input type="range" min="30" max="80" value="${s.prismAngle}" oninput="sliderDrag(3,this.value)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<button class="act-btn${s.identified?' green':''}" onclick="identifySpectrum()">我已识别出 红→紫 的顺序</button>`;
+      h+=`<div class="hint-box">棱镜角越大，色散越明显。紫光偏折最大（折射率最高），红光偏折最小。</div>`;
+      break;
+    case 4:
+      h+=`<div class="slider-wrap"><label>缝距 d: <span class="sv">${s.slitDist.toFixed(2)}mm</span></label>`;
+      h+=`<input type="range" min="10" max="200" value="${s.slitDist*100}" oninput="sliderDrag(4,this.value/100)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>波长 λ: <span class="sv" style="color:${wlToColor(s.wavelength)}">${s.wavelength}nm</span></label>`;
+      h+=`<input type="range" min="380" max="700" value="${s.wavelength}" oninput="sliderDrag(5,this.value)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="hint-box">条纹间距 Δy = λL/d<br>d↑ → 条纹变密 | λ↑ → 条纹变疏</div>`;
+      break;
+    case 5:
+      h+=`<div class="slider-wrap"><label>检偏器角度 θ: <span class="sv">${s.polAngle}°</span></label>`;
+      h+=`<input type="range" min="0" max="180" value="${s.polAngle}" oninput="sliderDrag(6,this.value)" onchange="this.blur();renderPanel()"></div>`;
+      const Iv=Math.cos(s.polAngle*Math.PI/180)**2;
+      h+=`<div class="hint-box">I/I₀ = cos²(${s.polAngle}°) = <span class="sv">${Iv.toFixed(3)}</span><br>`;
+      h+=Iv<0.01?'<span style="color:#ef4444;font-weight:bold">完全消光!</span>':`透射率 ${(Iv*100).toFixed(1)}%`;
+      h+='</div>';
+      if(!s.passedFirst){s.passedFirst=true}
+      break;
+    case 6:{
+      h+=`<div class="slider-wrap"><label>入射角: <span class="sv">${s.fiberAngle}°</span></label>`;
+      h+=`<input type="range" min="10" max="85" value="${s.fiberAngle}" oninput="sliderDrag(7,this.value)" onchange="this.blur();renderPanel()"></div>`;
+      const ca6=Math.asin(1.3/1.5)*180/Math.PI;
+      const ok=s.fiberAngle>ca6;
+      h+=`<div class="hint-box">临界角: ${ca6.toFixed(1)}° | ${ok?'<span style="color:#22c55e">全反射传输</span>':'<span style="color:#ef4444">信号泄漏</span>'}</div>`;
+      h+=`<button class="act-btn${ok?' green':''}" onclick="sendPulse()"${ok?'':'disabled'}>发送光脉冲</button>`;
+      h+=`<div style="font-size:12px;color:var(--text-sub);margin-top:4px">已送达: <span class="sv">${s.pulsesDelivered}/3</span></div>`;
+      break;
+    }
+  }
+
+  // 知识点
+  if(completedLevels.has(currentLevel)){
+    h+=`<div class="learn-box">📚 ${lv.learn}</div>`;
+  }
+
+  // quiz
+  if(completedLevels.has(currentLevel)){
+    h+=renderQuiz(currentLevel);
+    if(quizPassed.has(currentLevel)&&currentLevel<levels.length-1){
+      h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
+    }
+  }
+
+  // 总分
+  h+=`<div style="margin-top:12px;padding:8px;background:var(--concept-bg);border-radius:8px;font-size:12px;color:var(--text-sub)">`;
+  h+=`总分: <span class="sv">${totalScore}</span> | 已通过: <span class="sv">${quizPassed.size}/${levels.length}</span></div>`;
+
+  document.getElementById('panel').innerHTML=h;
+}
+
+// === Quiz ===
+const quizData=[
+  {q:'光从空气射入水中，入射角30°，折射角约为多少？',opts:['22°','30°','45°'],ans:0},
+  {q:'全反射发生的条件是？',opts:['光从光疏到光密','光从光密到光疏且超过临界角','任何角度都可以'],ans:1},
+  {q:'物体在凸透镜焦点内，成什么像？',opts:['倒立缩小实像','倒立放大实像','正立放大虚像'],ans:2},
+  {q:'棱镜色散中，哪种光偏折最大？',opts:['红光','绿光','紫光'],ans:2},
+  {q:'双缝干涉中，增大缝距d会怎样？',opts:['条纹变疏','条纹变密','没有变化'],ans:1},
+  {q:'两块偏振片夹角90°时，透射强度为？',opts:['I₀','I₀/2','0'],ans:2},
+  {q:'光纤通信利用的是什么原理？',opts:['折射','全反射','衍射'],ans:1}
+];
+
+function renderQuiz(levelIdx){
+  const qd=quizData[levelIdx];if(!qd)return '';
+  let h='<div class="quiz-box"><div class="quiz-q">📝 '+qd.q+'</div>';
+  qd.opts.forEach((opt,i)=>{
+    const cls=quizPassed.has(levelIdx)?(i===qd.ans?'correct':''):'';
+    h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${levelIdx},${i})">${opt}</div>`;
+  });
+  if(quizPassed.has(levelIdx))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过</div>';
+  h+='</div>';return h;
+}
+function answerQuiz(li,oi){
+  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  const qd=quizData[li];
+  const opts=document.getElementById('panel').querySelectorAll('.quiz-opt');
+  opts.forEach((el,i)=>{el.classList.add(i===qd.ans?'correct':'wrong')});
+  if(oi===qd.ans){
+    quizPassed.add(li);playSound('success');levelScores[li]+=10;totalScore+=10;
+    setTimeout(()=>{quizLocked=false;if(li<levels.length-1)switchLevel(li+1);else showResult()},800);
+  }else{playSound('fail');setTimeout(()=>{quizLocked=false;renderPanel()},1000)}
+}
+
+// === 交互函数 ===
+function setMedium(m){levelState.medium=m;renderPanel()}
+function identifySpectrum(){levelState.identified=true;playSound('success');renderPanel()}
+function sendPulse(){
+  const s=levelState;
+  if(s.pulses.length>3)return;
+  s.pulsesSent++;
+  const fiberX=CW/2+160-250;
+  s.pulses.push({x:fiberX,y:CH/2});
+  renderPanel();
+}
+
+function sliderDrag(id,val){
+  const s=levelState;const v=parseFloat(val);
+  switch(id){
+    case 0:s.angle=v;break;
+    case 1:s.angle=v;break;
+    case 2:s.objDist=v;break;
+    case 3:s.prismAngle=v;if(v!==60)s.angleAdjusted=true;break;
+    case 4:s.slitDist=v;s.dChanged=true;break;
+    case 5:s.wavelength=v;s.wlChanged=true;break;
+    case 6:s.polAngle=v;break;
+    case 7:s.fiberAngle=v;break;
+  }
+  // 更新 label
+  const wrap=event.target.parentElement;
+  const sp=wrap.querySelector('.sv');
+  if(sp){
+    switch(id){
+      case 0:case 1:case 7:sp.textContent=v+'°';break;
+      case 2:sp.textContent=v.toFixed(0)+'mm';break;
+      case 3:sp.textContent=v+'°';break;
+      case 4:sp.textContent=v.toFixed(2)+'mm';break;
+      case 5:sp.textContent=v+'nm';sp.style.color=wlToColor(v);break;
+      case 6:sp.textContent=v+'°';break;
+    }
+  }
+}
+
+function switchLevel(idx){if(idx<0||idx>=levels.length)return;playSound('click');initLevel(idx);renderPanel()}
+
+// === 拖拽交互 ===
+canvas.addEventListener('mousedown',e=>{
+  if(gameState!=='play')return;
+  const rect=canvas.getBoundingClientRect();
+  const mx=(e.clientX-rect.left)*(CW/rect.width);
+  const my=(e.clientY-rect.top)*(CH/rect.height);
+  const cx=CW/2+160,cy=CH/2;
+
+  if(currentLevel===0){
+    const theta=levelState.angle*Math.PI/180;
+    const ix=cx-Math.sin(theta)*220,iy=cy-Math.cos(theta)*220;
+    if(Math.hypot(mx-ix,my-iy)<20){dragging='angle0';return}
+  }
+  if(currentLevel===1){
+    const theta=levelState.angle*Math.PI/180;
+    const ix=cx-Math.sin(theta)*200,iy=cy-Math.cos(theta)*200;
+    if(Math.hypot(mx-ix,my-iy)<20){dragging='angle1';return}
+  }
+  if(currentLevel===2){
+    const objX=cx-levelState.objDist*0.8;
+    if(Math.hypot(mx-objX,my-(cy-60))<20){dragging='lens';return}
+  }
+  if(currentLevel===5){
+    const theta=levelState.polAngle*Math.PI/180;
+    const hx=cx+80+100*Math.sin(theta),hy=cy-100*Math.cos(theta);
+    if(Math.hypot(mx-hx,my-hy)<20){dragging='pol';return}
+  }
+});
+
+canvas.addEventListener('mousemove',e=>{
+  if(!dragging)return;
+  const rect=canvas.getBoundingClientRect();
+  const mx=(e.clientX-rect.left)*(CW/rect.width);
+  const my=(e.clientY-rect.top)*(CH/rect.height);
+  const cx=CW/2+160,cy=CH/2;
+
+  if(dragging==='angle0'||dragging==='angle1'){
+    const dx=cx-mx,dy=cy-my;
+    let angle=Math.atan2(dx,dy)*180/Math.PI;
+    angle=Math.max(5,Math.min(85,angle));
+    levelState.angle=Math.round(angle);
+  }
+  if(dragging==='lens'){
+    const dist=(cx-mx)/0.8;
+    levelState.objDist=Math.max(30,Math.min(400,dist));
+  }
+  if(dragging==='pol'){
+    const dx=mx-(cx+80),dy=my-cy;
+    let angle=Math.atan2(dx,-dy)*180/Math.PI;
+    if(angle<0)angle+=360;
+    if(angle>180)angle=360-angle;
+    levelState.polAngle=Math.round(Math.max(0,Math.min(180,angle)));
+  }
+});
+
+canvas.addEventListener('mouseup',()=>{if(dragging){dragging=null;renderPanel()}});
+canvas.addEventListener('mouseleave',()=>{if(dragging){dragging=null;renderPanel()}});
+
+// touch 支持
+canvas.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  const t=e.touches[0];
+  canvas.dispatchEvent(new MouseEvent('mousedown',{clientX:t.clientX,clientY:t.clientY}));
+},{passive:false});
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  const t=e.touches[0];
+  canvas.dispatchEvent(new MouseEvent('mousemove',{clientX:t.clientX,clientY:t.clientY}));
+},{passive:false});
+canvas.addEventListener('touchend',e=>{
+  canvas.dispatchEvent(new MouseEvent('mouseup'));
+});
+
+function handleClick(x,y){}
+
+// === 结果页 ===
+function showResult(){
+  gameState='result';
+  document.getElementById('panel').style.display='none';
+  document.getElementById('bottom-bar').style.display='none';
+  const rb=document.getElementById('resultBox');
+  let h=`<div class="rb-icon">🎉</div><div class="rb-title">恭喜通关！</div>`;
+  h+=`<div style="font-size:16px;color:var(--text-sub);margin:12px 0">你已掌握光学 7 大核心原理</div>`;
+  h+=`<div style="font-size:24px;font-weight:bold;color:#22c55e;margin:8px 0">${totalScore} 分</div>`;
+  h+=`<div style="margin:16px 0">`;
+  levels.forEach((lv,i)=>{
+    h+=`<div style="font-size:12px;color:var(--text-sub);margin:2px 0">${quizPassed.has(i)?'✅':'⬜'} ${lv.title}</div>`;
+  });
+  h+=`</div>`;
+  h+=`<button class="btn-next" onclick="location.reload()">再玩一次</button>`;
+  rb.innerHTML=h;
+  document.getElementById('resultModal').classList.remove('hidden');
+}
+
+// === 主循环 ===
+let lastTime=0;
+function mainLoop(ts){
+  requestAnimationFrame(mainLoop);
+  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;time+=dt;
+
+  ctx.clearRect(0,0,CW,CH);
+  drawBg();
+
+  if(gameState==='play'){
+    updateParticles(dt);
+    drawParticles();
+    updateLevel(currentLevel,dt);
+    switch(currentLevel){
+      case 0:drawLevel0();break;
+      case 1:drawLevel1();break;
+      case 2:drawLevel2();break;
+      case 3:drawLevel3();break;
+      case 4:drawLevel4();break;
+      case 5:drawLevel5();break;
+      case 6:drawLevel6();break;
+    }
+  }
+
+  // bottom-bar
+  document.getElementById('bbLeft').textContent=`第 ${currentLevel+1}/${levels.length} 关 — ${levels[currentLevel].title}`;
+  document.getElementById('bbRight').textContent=`总分: ${totalScore}`;
+}
+</script>
+</body>
+</html>

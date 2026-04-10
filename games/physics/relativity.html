@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>🚀 相对论探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --slider-label:#888;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --slider-label:#888;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50;transition:opacity 0.5s}
+.overlay.hidden{display:none;opacity:0}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#60a5fa}
+.start-box .sub{font-size:17px;color:var(--sub-color);margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:var(--feat-text);font-size:12px;width:70px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100% - 32px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none;padding-bottom:16px}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:15px;cursor:pointer;text-align:center}
+.act-btn:hover{background:var(--btn-hover)}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--hint-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:14px;line-height:1.8;color:var(--learn-text)}
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:11px;color:var(--slider-label)}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}
+.sv{color:var(--sv);font-weight:bold}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:var(--bar-bg);border-top:1px solid var(--bar-border);z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}
+#bottom-bar .bb-right{text-align:right}
+.overlay .result-box{text-align:center;max-width:480px;background:var(--result-bg);border:1px solid var(--result-border);border-radius:16px;padding:28px 36px;box-shadow:0 8px 32px rgba(0,0,0,0.3)}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.quiz-box{border:1px solid var(--quiz-border);border-radius:10px;padding:12px;margin:10px 0;background:var(--quiz-bg)}
+.quiz-box .quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px 10px;margin:4px 0;border-radius:6px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:12px;cursor:pointer;text-align:left;transition:all 0.2s}
+.quiz-opt:hover{background:var(--quiz-opt-hover);border-color:var(--quiz-border)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:var(--quiz-correct-text);color:var(--quiz-correct-text);font-weight:700}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:var(--quiz-wrong-text);color:var(--quiz-wrong-text)}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}
+.g-text{color:var(--text-sub)}
+.g-text.done{color:#22c55e;text-decoration:line-through}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🚀 <span class="gold">相对论</span>探险</h1>
+  <div class="sub">7 个关卡，探索爱因斯坦的时空奥秘</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">💡</div>光速不变</div>
+    <div class="feat"><div class="fi">⏱️</div>时间膨胀</div>
+    <div class="feat"><div class="fi">📏</div>长度收缩</div>
+    <div class="feat"><div class="fi">⚡</div>质速关系</div>
+    <div class="feat"><div class="fi">👫</div>双生子佯谬</div>
+    <div class="feat"><div class="fi">🛗</div>等效原理</div>
+    <div class="feat"><div class="fi">🌌</div>时空弯曲</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+// === 主题 ===
+let isDark=true;
+const TH={
+  dark:{bg1:'#0a0a2e',bg2:'#0d0d1a',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)',showStars:true},
+  light:{bg1:'#e8edf5',bg2:'#f0f2f5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',showStars:false}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel()}
+
+// === 基础 ===
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const panel=document.getElementById('panel');
+const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
+let CW,CH;
+function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight}
+resize();window.addEventListener('resize',resize);
+
+// === 音效 ===
+let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function playSound(type){
+  initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}
+  else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}
+  else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}
+}
+
+// === 粒子 ===
+let particles=[];
+function spawnParticles(x,y,color,count=12){for(let i=0;i<count;i++){const a=Math.random()*Math.PI*2,sp=1+Math.random()*3;particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:0.6+Math.random()*0.4,color,r:2+Math.random()*3})}}
+function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life-=dt;if(p.life<=0){particles.splice(i,1);continue}ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+
+// === 星空背景 ===
+const stars=[];for(let i=0;i<200;i++)stars.push({x:Math.random(),y:Math.random(),r:Math.random()*1.5+0.5,b:Math.random()});
+function drawStars(){if(!t().showStars)return;stars.forEach(s=>{ctx.globalAlpha=0.3+0.7*Math.abs(Math.sin(s.b+=0.005));ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.x*CW,s.y*CH,s.r,0,Math.PI*2);ctx.fill()});ctx.globalAlpha=1}
+
+// === 关卡系统 ===
+const levelNames=['光速不变','时间膨胀','长度收缩','质速关系','双生子佯谬','等效原理','时空弯曲'];
+let currentLevel=0,gameState='title',levelState={},totalScore=0;
+const levelScores=new Array(7).fill(0);
+const quizPassed=new Set();
+const C=3e8; // 光速
+
+function gamma(v){const b=v/C;return 1/Math.sqrt(1-b*b)}
+
+// === Quiz ===
+const quizData=[
+  {q:'光速在所有惯性参考系中的值是？',opts:['取决于光源速度','取决于观察者速度','恒为 c ≈ 3×10⁸ m/s','取决于介质'],ans:2},
+  {q:'以 0.8c 运动的飞船上，时间流逝速度相比地面？',opts:['更快','一样','更慢（γ≈1.67）','完全停止'],ans:2},
+  {q:'高速运动的物体在运动方向上会？',opts:['变长','不变','变短','变宽'],ans:2},
+  {q:'当物体速度趋近光速时，其相对论质量？',opts:['趋近于零','保持不变','趋近于无穷大','变为负数'],ans:2},
+  {q:'双生子佯谬中，旅行的双胞胎回来后？',opts:['比留守者老','和留守者一样大','比留守者年轻','无法确定'],ans:2},
+  {q:'等效原理说的是什么等效？',opts:['质量和能量','时间和空间','引力和加速度','光和声音'],ans:2},
+  {q:'大质量天体附近的光线会？',opts:['加速','减速','弯曲','消失'],ans:2}
+];
+let quizLocked=false;
+function renderQuiz(li){
+  const qd=quizData[li];if(!qd)return '';
+  let h='<div class="quiz-box"><div class="quiz-title">📝 通关测验：'+qd.q+'</div>';
+  qd.opts.forEach((opt,i)=>{const cls=quizPassed.has(li)?(i===qd.ans?'correct':''):'';h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${opt}</div>`});
+  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过</div>';
+  h+='</div>';return h;
+}
+function answerQuiz(li,oi){
+  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  const qd=quizData[li];const opts=panel.querySelectorAll('.quiz-opt');
+  opts.forEach((el,i)=>{el.classList.add(i===qd.ans?'correct':'wrong')});
+  if(oi===qd.ans){quizPassed.add(li);playSound('success');levelScores[li]+=10;totalScore+=10;setTimeout(()=>{quizLocked=false;goLevel(currentLevel+1)},800)}
+  else{playSound('fail');setTimeout(()=>{quizLocked=false;renderPanel()},1000)}
+}
+
+// === stage-nav ===
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  levelNames.forEach((_,i)=>{const cls=i<currentLevel?'done':i===currentLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="switchLevel(${i})"></div>`});
+  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levelNames.length} 关</div>`;
+  h+=`<div class="sn-hint">${levelNames[currentLevel]}</div></div>`;return h;
+}
+
+// === 关卡切换 ===
+let levelFadeAlpha=1;
+function goLevel(idx){if(idx<0||idx>=levelNames.length){showResult();return}currentLevel=idx;initLevel(idx);levelFadeAlpha=0;renderPanel()}
+function switchLevel(idx){playSound('click');goLevel(idx)}
+
+// === 面板 ===
+let _panelBusy=false;
+function renderPanel(){
+  if(_panelBusy)return;_panelBusy=true;
+  let h=renderStageNav();
+  h+=`<h2 style="color:var(--title-color);font-size:17px;margin:8px 0 4px">${levelNames[currentLevel]}</h2>`;
+  h+=renderLevelPanel(currentLevel);
+  if(isLevelDone(currentLevel)){h+=renderQuiz(currentLevel);if(quizPassed.has(currentLevel)&&currentLevel<levelNames.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`}
+  h+=`<div style="margin-top:12px;padding:8px;background:var(--concept-bg);border-radius:8px;font-size:12px;color:var(--text-sub)">总分: <span class="sv">${totalScore}</span> | 已通过: <span class="sv">${quizPassed.size}/${levelNames.length}</span></div>`;
+  panel.innerHTML=h;_panelBusy=false;
+}
+
+// === 结果页 ===
+function showResult(){
+  gameState='result';panel.style.display='none';document.getElementById('bottom-bar').style.display='none';
+  let h=`<div style="font-size:48px;margin-bottom:10px">🎉</div>`;
+  h+=`<h2 style="color:var(--sv);margin-bottom:8px">恭喜通关！</h2>`;
+  h+=`<div style="font-size:14px;color:var(--text-sub);margin-bottom:6px">你已完成相对论探险的全部 7 个关卡</div>`;
+  h+=`<div style="font-size:22px;font-weight:bold;color:#22c55e;margin:12px 0">总分: ${totalScore} 分</div>`;
+  h+=`<div class="learn-box" style="text-align:left;font-size:13px;line-height:1.8">`;
+  h+=`<b>你学到了：</b><br>`;
+  h+=`• 光速在所有参考系中恒定不变<br>`;
+  h+=`• 高速运动导致时间膨胀和长度收缩<br>`;
+  h+=`• E=mc² 揭示质量与能量的等价<br>`;
+  h+=`• 引力与加速度等效，质量弯曲时空</div>`;
+  h+=`<button style="padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:#3b82f6;color:#fff" onclick="location.reload()">再玩一次</button>`;
+  document.getElementById('resultBox').innerHTML=h;
+  document.getElementById('resultModal').classList.remove('hidden');
+}
+
+// === 启动 ===
+function startGame(){
+  playSound('click');document.getElementById('startScreen').classList.add('hidden');
+  panel.style.display='block';document.getElementById('bottom-bar').style.display='flex';
+  gameState='play';goLevel(0);requestAnimationFrame(mainLoop);
+}
+
+// ========== 关卡状态 ==========
+
+function initLevel(idx){
+  levelState={time:0,done:false};
+  switch(idx){
+    case 0: // 光速不变
+      levelState.observerV=0;levelState.sourceV=0;levelState.measured=false;levelState.trials=0;levelState.successCount=0;
+      break;
+    case 1: // 时间膨胀
+      levelState.shipV=0;levelState.clockAngle=0;levelState.earthClock=0;levelState.shipClock=0;levelState.running=false;levelState.observed=false;
+      break;
+    case 2: // 长度收缩
+      levelState.shipV=0;levelState.observed=false;
+      break;
+    case 3: // 质速关系
+      levelState.shipV=0;levelState.observed=false;
+      break;
+    case 4: // 双生子佯谬
+      levelState.tripSpeed=0.5*C;levelState.tripYears=10;levelState.launched=false;levelState.phase=0;levelState.animT=0;levelState.shipX=0;
+      break;
+    case 5: // 等效原理
+      levelState.mode='gravity';levelState.ballY=0;levelState.ballVy=0;levelState.lightY=0;levelState.animT=0;levelState.dropped=false;levelState.guessed=false;levelState.guess='';
+      break;
+    case 6: // 时空弯曲
+      levelState.mass=1;levelState.photonX=0;levelState.photonY=0;levelState.animT=0;levelState.running=false;levelState.observed=false;
+      break;
+  }
+}
+
+function isLevelDone(idx){return levelState.done}
+
+function sliderDrag(){
+  const el=event.target;const id=el.dataset.id;const val=parseFloat(el.value);
+  switch(currentLevel){
+    case 0:if(id==='ov')levelState.observerV=val*C;if(id==='sv')levelState.sourceV=val*C;break;
+    case 1:levelState.shipV=val*C;levelState.running=false;levelState.earthClock=0;levelState.shipClock=0;levelState.clockAngle=0;break;
+    case 2:levelState.shipV=val*C;break;
+    case 3:levelState.shipV=val*C;break;
+    case 4:levelState.tripSpeed=val*C;levelState.launched=false;levelState.phase=0;levelState.animT=0;break;
+    case 6:levelState.mass=val;levelState.running=false;levelState.animT=0;break;
+  }
+  // update label
+  const lb=el.parentElement.querySelector('.sv-label');
+  if(lb){
+    if(currentLevel<=3||currentLevel===4)lb.textContent=(val).toFixed(2)+'c';
+    else if(currentLevel===6)lb.textContent=val.toFixed(1)+' M☉';
+  }
+}
+
+// ========== 面板内容 ==========
+function renderLevelPanel(idx){
+  let h='';
+  switch(idx){
+  case 0:{
+    const ov=levelState.observerV/C,sv=levelState.sourceV/C;
+    h+=`<div class="concept-box"><b>核心定律：</b>光速不变原理<br>无论光源或观察者如何运动，真空中光速恒为<br><span class="sv">c ≈ 3×10⁸ m/s</span></div>`;
+    h+=`<div class="hint-box">画布上有两个参考系：地面观察者和飞船观察者。调整他们的速度，然后点击"测量光速"，看看测到的光速是否变化。</div>`;
+    h+=`<div class="slider-wrap"><label>观察者速度: <span class="sv-label">${ov.toFixed(2)}c</span></label><input type="range" min="0" max="0.95" step="0.05" value="${ov}" data-id="ov" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div class="slider-wrap"><label>光源速度: <span class="sv-label">${sv.toFixed(2)}c</span></label><input type="range" min="0" max="0.95" step="0.05" value="${sv}" data-id="sv" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<button class="act-btn" onclick="measureLight()">📡 测量光速</button>`;
+    if(levelState.measured)h+=`<div class="learn-box">测量结果: <span class="sv">c = 3×10⁸ m/s</span><br>无论观察者速度 ${ov.toFixed(2)}c 还是光源速度 ${sv.toFixed(2)}c，测到的光速始终是 c！<br>已验证 <span class="sv">${levelState.successCount}/3</span> 次</div>`;
+    if(levelState.successCount>=3&&!levelState.done){levelState.done=true;playSound('success');spawnParticles(CW/2,CH/2,'#60a5fa',20)}
+    break;
+  }
+  case 1:{
+    const sv=levelState.shipV/C;const g=sv>0?gamma(levelState.shipV):1;
+    h+=`<div class="concept-box"><b>时间膨胀公式：</b><br>Δt' = γ·Δt，其中 <span class="sv">γ = 1/√(1-v²/c²)</span><br>运动的时钟走得更慢</div>`;
+    h+=`<div class="hint-box">画布上有一个"光钟"——光在两面镜子间来回反射。调整飞船速度，观察运动光钟的光路变长，时间变慢。</div>`;
+    h+=`<div class="slider-wrap"><label>飞船速度: <span class="sv-label">${sv.toFixed(2)}c</span></label><input type="range" min="0" max="0.99" step="0.01" value="${sv}" data-id="sv" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<button class="act-btn" onclick="startClock()">⏱️ 启动光钟</button>`;
+    h+=`<div style="margin:8px 0;font-size:13px;color:var(--text-sub)">γ 因子: <span class="sv">${g.toFixed(4)}</span></div>`;
+    h+=`<div style="font-size:13px;color:var(--text-sub)">地球时间: <span style="color:#22c55e">${levelState.earthClock.toFixed(2)}s</span></div>`;
+    h+=`<div style="font-size:13px;color:var(--text-sub)">飞船时间: <span style="color:#f59e0b">${levelState.shipClock.toFixed(2)}s</span></div>`;
+    if(levelState.earthClock>3&&sv>=0.5&&!levelState.observed){levelState.observed=true}
+    if(levelState.observed&&!levelState.done){levelState.done=true;playSound('success');spawnParticles(CW/2,CH/2,'#f59e0b',20)}
+    if(levelState.observed)h+=`<div class="learn-box">以 ${sv.toFixed(2)}c 运动时，飞船上的时间只过了地球时间的 <span class="sv">1/γ = ${(1/g).toFixed(3)}</span> 倍。速度越快，时间越慢！</div>`;
+    break;
+  }
+  case 2:{
+    const sv=levelState.shipV/C;const g=sv>0?gamma(levelState.shipV):1;const L0=100;const L=L0/g;
+    h+=`<div class="concept-box"><b>长度收缩公式：</b><br><span class="sv">L = L₀/γ = L₀·√(1-v²/c²)</span><br>运动方向上的长度缩短</div>`;
+    h+=`<div class="hint-box">画布上有一艘飞船（静止长度 100m）。拖动速度滑块，观察飞船在运动方向上如何收缩。将速度拖到 0.9c 以上观察明显收缩。</div>`;
+    h+=`<div class="slider-wrap"><label>飞船速度: <span class="sv-label">${sv.toFixed(2)}c</span></label><input type="range" min="0" max="0.99" step="0.01" value="${sv}" data-id="sv" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div style="margin:8px 0;font-size:13px;color:var(--text-sub)">γ 因子: <span class="sv">${g.toFixed(4)}</span></div>`;
+    h+=`<div style="font-size:13px;color:var(--text-sub)">静止长度: <span style="color:#22c55e">100 m</span></div>`;
+    h+=`<div style="font-size:13px;color:var(--text-sub)">观测长度: <span style="color:#f59e0b">${L.toFixed(2)} m</span></div>`;
+    if(sv>=0.9&&!levelState.observed){levelState.observed=true}
+    if(levelState.observed&&!levelState.done){levelState.done=true;playSound('success');spawnParticles(CW/2,CH/2,'#22c55e',20)}
+    if(levelState.observed)h+=`<div class="learn-box">在 ${sv.toFixed(2)}c 时，100m 的飞船看起来只有 <span class="sv">${L.toFixed(1)}m</span>！这不是视觉错觉，而是时空本身的性质。</div>`;
+    break;
+  }
+  case 3:{
+    const sv=levelState.shipV/C;const g=sv>0?gamma(levelState.shipV):1;const m0=1;const mRel=m0*g;const E=mRel*C*C;
+    h+=`<div class="concept-box"><b>质能方程：</b><br><span class="sv">E = γm₀c²</span><br>相对论质量 m = γm₀，趋近光速时趋于无穷</div>`;
+    h+=`<div class="hint-box">画布上显示一个粒子的质量随速度变化。拖动速度滑块到 0.99c 附近，观察质量如何急剧增加。这就是为什么有质量的物体无法达到光速。</div>`;
+    h+=`<div class="slider-wrap"><label>粒子速度: <span class="sv-label">${sv.toFixed(2)}c</span></label><input type="range" min="0" max="0.999" step="0.001" value="${sv}" data-id="sv" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div style="margin:8px 0;font-size:13px;color:var(--text-sub)">γ 因子: <span class="sv">${g.toFixed(4)}</span></div>`;
+    h+=`<div style="font-size:13px;color:var(--text-sub)">静止质量: <span style="color:#22c55e">m₀ = 1 kg</span></div>`;
+    h+=`<div style="font-size:13px;color:var(--text-sub)">相对论质量: <span style="color:#ef4444">${mRel.toFixed(4)} kg</span></div>`;
+    h+=`<div style="font-size:13px;color:var(--text-sub)">总能量: <span style="color:#f59e0b">${(E/1e16).toFixed(4)} ×10¹⁶ J</span></div>`;
+    if(sv>=0.99&&!levelState.observed){levelState.observed=true}
+    if(levelState.observed&&!levelState.done){levelState.done=true;playSound('success');spawnParticles(CW/2,CH/2,'#ef4444',20)}
+    if(levelState.observed)h+=`<div class="learn-box">在 ${sv.toFixed(3)}c 时，质量增加到静止质量的 <span class="sv">${g.toFixed(1)} 倍</span>！要加速到光速需要无穷大的能量，所以有质量的物体永远无法达到光速。</div>`;
+    break;
+  }
+  case 4:{
+    const sv=levelState.tripSpeed/C;const g=gamma(levelState.tripSpeed);
+    h+=`<div class="concept-box"><b>双生子佯谬：</b><br>一个双胞胎乘飞船以接近光速旅行<br>回来后发现自己比留在地球的兄弟<span class="sv">更年轻</span></div>`;
+    h+=`<div class="hint-box">设定飞船速度，然后点击"发射飞船"。观察两个双胞胎的年龄差异。旅行者经历的时间更短！</div>`;
+    h+=`<div class="slider-wrap"><label>飞船速度: <span class="sv-label">${sv.toFixed(2)}c</span></label><input type="range" min="0.1" max="0.99" step="0.01" value="${sv}" data-id="sv" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+    if(!levelState.launched)h+=`<button class="act-btn" onclick="launchTwin()">🚀 发射飞船（地球时间10年旅行）</button>`;
+    h+=`<div style="margin:8px 0;font-size:13px;color:var(--text-sub)">γ 因子: <span class="sv">${g.toFixed(4)}</span></div>`;
+    if(levelState.launched){
+      const earthAge=30+levelState.tripYears;const shipAge=30+levelState.tripYears/g;
+      h+=`<div style="font-size:13px;color:var(--text-sub)">地球双胞胎年龄: <span style="color:#22c55e">${earthAge.toFixed(1)} 岁</span></div>`;
+      h+=`<div style="font-size:13px;color:var(--text-sub)">旅行双胞胎年龄: <span style="color:#f59e0b">${shipAge.toFixed(1)} 岁</span></div>`;
+      h+=`<div style="font-size:13px;color:var(--text-sub)">年龄差: <span style="color:#ef4444">${(earthAge-shipAge).toFixed(1)} 年</span></div>`;
+    }
+    if(levelState.phase>=2&&!levelState.done){levelState.done=true;playSound('success');spawnParticles(CW/2,CH/2,'#7c3aed',20)}
+    if(levelState.done)h+=`<div class="learn-box">旅行者以 ${sv.toFixed(2)}c 飞行 10 年（地球时间），自己只经历了 <span class="sv">${(10/g).toFixed(1)} 年</span>。这不是佯谬——加速和减速打破了对称性，旅行者确实更年轻！</div>`;
+    break;
+  }
+  case 5:{
+    h+=`<div class="concept-box"><b>等效原理：</b><br>在局部范围内，<span class="sv">引力场</span>与<span class="sv">加速参考系</span>不可区分<br>——爱因斯坦，1907</div>`;
+    h+=`<div class="hint-box">画布上有两个电梯：一个在地球引力场中，一个在太空中加速。点击"释放小球"和"发射光线"，观察它们在两个电梯中的行为完全相同！</div>`;
+    if(!levelState.dropped)h+=`<button class="act-btn" onclick="dropBall()">🔴 释放小球</button>`;
+    if(levelState.dropped&&!levelState.guessed){
+      h+=`<div style="margin:8px 0;font-size:13px;color:var(--text-sub)">哪个电梯在引力场中？</div>`;
+      h+=`<button class="act-btn" onclick="guessElevator('left')" style="width:48%;display:inline-block;margin-right:2%">左边</button>`;
+      h+=`<button class="act-btn" onclick="guessElevator('right')" style="width:48%;display:inline-block">右边</button>`;
+    }
+    if(levelState.guessed){
+      h+=`<div class="learn-box">答案是：<span class="sv">无法区分！</span><br>左边是引力场，右边是加速度——但电梯内的人无法通过任何局部实验区分它们。这就是等效原理的核心。<br><br>光线在两个电梯中都会弯曲——这预言了引力透镜效应！</div>`;
+    }
+    if(levelState.guessed&&!levelState.done){levelState.done=true;playSound('success');spawnParticles(CW/2,CH/2,'#3b82f6',20)}
+    break;
+  }
+  case 6:{
+    const m=levelState.mass;
+    h+=`<div class="concept-box"><b>广义相对论：</b><br>质量告诉时空如何弯曲<br>时空告诉物质如何运动<br><span class="sv">引力 = 时空弯曲</span></div>`;
+    h+=`<div class="hint-box">画布上有一个时空网格和一个大质量天体。调整质量大小，然后点击"发射光子"，观察光线如何被弯曲的时空偏折（引力透镜效应）。</div>`;
+    h+=`<div class="slider-wrap"><label>天体质量: <span class="sv-label">${m.toFixed(1)} M☉</span></label><input type="range" min="0.5" max="10" step="0.5" value="${m}" data-id="mass" oninput="sliderDrag()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<button class="act-btn" onclick="firePhoton()">💫 发射光子</button>`;
+    if(levelState.observed)h+=`<div class="learn-box">质量为 <span class="sv">${m.toFixed(1)} M☉</span> 的天体弯曲了周围的时空，光子经过时路径发生偏折。质量越大，偏折越明显。<br><br>这就是爱因斯坦预言的<span class="sv">引力透镜</span>效应，1919年日食观测首次证实！</div>`;
+    if(levelState.observed&&!levelState.done){levelState.done=true;playSound('success');spawnParticles(CW/2,CH/2,'#f59e0b',20)}
+    break;
+  }
+  }
+  return h;
+}
+
+// ========== 关卡动作 ==========
+function measureLight(){
+  levelState.measured=true;levelState.trials++;levelState.successCount++;
+  playSound('click');
+  const cx=(CW-320)/2+320,cy=CH/2;
+  spawnParticles(cx,cy,'#fbbf24',8);
+  renderPanel();
+}
+
+function startClock(){levelState.running=true;levelState.earthClock=0;levelState.shipClock=0;levelState.clockAngle=0;playSound('click')}
+
+function launchTwin(){levelState.launched=true;levelState.phase=0;levelState.animT=0;levelState.shipX=0;playSound('click');renderPanel()}
+
+function dropBall(){levelState.dropped=true;levelState.ballY=0;levelState.ballVy=0;levelState.lightY=0;levelState.animT=0;playSound('click');renderPanel()}
+
+function guessElevator(g){levelState.guessed=true;levelState.guess=g;playSound('success');renderPanel()}
+
+function firePhoton(){levelState.running=true;levelState.photonX=-300;levelState.photonY=-80;levelState.animT=0;playSound('click')}
+
+// ========== 绘制函数 ==========
+function drawLevel(idx){
+  const ox=320,aw=CW-ox,cx=ox+aw/2,cy=CH/2;
+  switch(idx){
+  case 0: drawLevel0(ox,aw,cx,cy);break;
+  case 1: drawLevel1(ox,aw,cx,cy);break;
+  case 2: drawLevel2(ox,aw,cx,cy);break;
+  case 3: drawLevel3(ox,aw,cx,cy);break;
+  case 4: drawLevel4(ox,aw,cx,cy);break;
+  case 5: drawLevel5(ox,aw,cx,cy);break;
+  case 6: drawLevel6(ox,aw,cx,cy);break;
+  }
+}
+
+function drawLevel0(ox,aw,cx,cy){
+  const th=t();
+  // 两个参考系
+  const y1=cy-100,y2=cy+100;
+  // 地面观察者
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;
+  ctx.strokeRect(ox+60,y1-60,aw-120,120);
+  ctx.fillStyle=th.text;ctx.font='14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('地面参考系',cx,y1-70);
+  // 观察者
+  ctx.font='30px sans-serif';ctx.fillText('🧑‍🔬',ox+120,y1+10);
+  // 光子
+  const lx=ox+200+((levelState.time*200)%(aw-300));
+  ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(lx,y1,8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fbbf24';ctx.font='12px sans-serif';ctx.fillText('光子 →',lx,y1-18);
+  // 飞船参考系
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+  ctx.strokeRect(ox+60,y2-60,aw-120,120);
+  ctx.fillStyle=th.text;ctx.font='14px sans-serif';
+  ctx.fillText('飞船参考系 (v='+((levelState.observerV/C).toFixed(2))+'c)',cx,y2-70);
+  // 飞船中的观察者
+  const shipOff=(levelState.time*levelState.observerV/C*50)%80;
+  ctx.font='30px sans-serif';ctx.fillText('🚀',ox+120+shipOff,y2+10);
+  // 光子（在飞船参考系中速度仍为c）
+  const lx2=ox+200+((levelState.time*200)%(aw-300));
+  ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(lx2,y2,8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fbbf24';ctx.font='12px sans-serif';ctx.fillText('光子 →',lx2,y2-18);
+  // 测量结果
+  if(levelState.measured){
+    ctx.fillStyle='#22c55e';ctx.font='bold 16px sans-serif';
+    ctx.fillText('测量光速 = c = 3×10⁸ m/s ✓',cx,y1+90);
+    ctx.fillText('测量光速 = c = 3×10⁸ m/s ✓',cx,y2+90);
+  }
+}
+
+function drawLevel1(ox,aw,cx,cy){
+  const th=t();const sv=levelState.shipV/C;const g=sv>0?gamma(levelState.shipV):1;
+  // 静止光钟（左）
+  const lx=ox+aw*0.3,rx=ox+aw*0.7;
+  const mirrorH=160;
+  ctx.fillStyle=th.text;ctx.font='14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('静止光钟',lx,cy-mirrorH/2-30);
+  ctx.fillText('运动光钟 (v='+sv.toFixed(2)+'c)',rx,cy-mirrorH/2-30);
+  // 镜子
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(lx-30,cy-mirrorH/2);ctx.lineTo(lx+30,cy-mirrorH/2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(lx-30,cy+mirrorH/2);ctx.lineTo(lx+30,cy+mirrorH/2);ctx.stroke();
+  // 光子在静止光钟中上下弹跳
+  const bounce=Math.abs(Math.sin(levelState.clockAngle))*mirrorH;
+  const ly=cy-mirrorH/2+bounce;
+  ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(lx,ly,6,0,Math.PI*2);ctx.fill();
+  // 光路
+  ctx.strokeStyle='rgba(251,191,36,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(lx,cy-mirrorH/2);ctx.lineTo(lx,cy+mirrorH/2);ctx.stroke();
+  ctx.setLineDash([]);
+  // 运动光钟
+  const drift=sv*80;
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(rx-30,cy-mirrorH/2);ctx.lineTo(rx+30,cy-mirrorH/2);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(rx-30,cy+mirrorH/2);ctx.lineTo(rx+30,cy+mirrorH/2);ctx.stroke();
+  // 光子在运动光钟中走斜线
+  const bounce2=Math.abs(Math.sin(levelState.clockAngle/g))*mirrorH;
+  const hDrift=Math.sin(levelState.clockAngle/g)*drift;
+  const ly2=cy-mirrorH/2+bounce2;
+  ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(rx+hDrift,ly2,6,0,Math.PI*2);ctx.fill();
+  // 斜线光路
+  ctx.strokeStyle='rgba(245,158,11,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(rx-drift,cy+mirrorH/2);ctx.lineTo(rx,cy-mirrorH/2);ctx.lineTo(rx+drift,cy+mirrorH/2);ctx.stroke();
+  ctx.setLineDash([]);
+  // γ 因子显示
+  ctx.fillStyle='#ef4444';ctx.font='bold 18px sans-serif';
+  ctx.fillText('γ = '+g.toFixed(3),cx,cy+mirrorH/2+50);
+  // 时钟显示
+  ctx.fillStyle='#22c55e';ctx.font='14px sans-serif';
+  ctx.fillText('地球: '+levelState.earthClock.toFixed(2)+'s',lx,cy+mirrorH/2+30);
+  ctx.fillStyle='#f59e0b';
+  ctx.fillText('飞船: '+levelState.shipClock.toFixed(2)+'s',rx,cy+mirrorH/2+30);
+}
+
+function drawLevel2(ox,aw,cx,cy){
+  const th=t();const sv=levelState.shipV/C;const g=sv>0?gamma(levelState.shipV):1;
+  const L0=aw*0.5;const L=L0/g;
+  // 静止飞船（上）
+  ctx.fillStyle=th.text;ctx.font='14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('静止参考系中的飞船 (L₀ = 100m)',cx,cy-120);
+  drawShip(cx-L0/2,cy-100,L0,40,'#3b82f6');
+  // 标注长度
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(cx-L0/2,cy-50);ctx.lineTo(cx+L0/2,cy-50);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-L0/2,cy-55);ctx.lineTo(cx-L0/2,cy-45);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+L0/2,cy-55);ctx.lineTo(cx+L0/2,cy-45);ctx.stroke();
+  ctx.fillStyle='#3b82f6';ctx.font='12px sans-serif';ctx.fillText('100 m',cx,cy-38);
+  // 运动飞船（下）
+  ctx.fillStyle=th.text;ctx.font='14px sans-serif';
+  ctx.fillText('以 '+sv.toFixed(2)+'c 运动时观测 (L = '+(100/g).toFixed(1)+'m)',cx,cy+30);
+  drawShip(cx-L/2,cy+50,L,40,'#f59e0b');
+  // 标注收缩长度
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(cx-L/2,cy+100);ctx.lineTo(cx+L/2,cy+100);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-L/2,cy+95);ctx.lineTo(cx-L/2,cy+105);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+L/2,cy+95);ctx.lineTo(cx+L/2,cy+105);ctx.stroke();
+  ctx.fillStyle='#f59e0b';ctx.font='12px sans-serif';ctx.fillText((100/g).toFixed(1)+' m',cx,cy+115);
+  // 收缩百分比
+  ctx.fillStyle='#ef4444';ctx.font='bold 16px sans-serif';
+  ctx.fillText('收缩 '+(100-100/g).toFixed(1)+'%',cx,cy+150);
+}
+
+function drawShip(x,y,w,h,color){
+  ctx.fillStyle=color;ctx.globalAlpha=0.3;
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+w-h/2,y);ctx.lineTo(x+w,y+h/2);ctx.lineTo(x+w-h/2,y+h);ctx.lineTo(x,y+h);ctx.closePath();ctx.fill();
+  ctx.globalAlpha=1;ctx.strokeStyle=color;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+w-h/2,y);ctx.lineTo(x+w,y+h/2);ctx.lineTo(x+w-h/2,y+h);ctx.lineTo(x,y+h);ctx.closePath();ctx.stroke();
+  // 窗户
+  ctx.fillStyle=color;ctx.globalAlpha=0.6;
+  ctx.beginPath();ctx.arc(x+w*0.3,y+h/2,h*0.15,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(x+w*0.5,y+h/2,h*0.15,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;
+}
+
+function drawLevel3(ox,aw,cx,cy){
+  const th=t();const sv=levelState.shipV/C;const g=sv>0?gamma(levelState.shipV):1;
+  // 质量可视化 - 圆的大小代表质量
+  const baseR=20;const r=Math.min(baseR*g,aw*0.35);
+  // 背景标尺
+  ctx.strokeStyle=th.textMut;ctx.lineWidth=1;
+  for(let i=1;i<=10;i++){
+    const sr=baseR*i;if(sr>aw*0.4)break;
+    ctx.beginPath();ctx.arc(cx,cy,sr,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle=th.textMut;ctx.font='10px sans-serif';ctx.textAlign='left';
+    ctx.fillText(i+'m₀',cx+sr+4,cy);
+  }
+  // 粒子
+  const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+  grd.addColorStop(0,'#ef4444');grd.addColorStop(0.7,'#dc2626');grd.addColorStop(1,'rgba(239,68,68,0.1)');
+  ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+  // 标注
+  ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  ctx.fillText('m = '+g.toFixed(2)+' m₀',cx,cy-r-20);
+  ctx.fillStyle='#f59e0b';ctx.font='14px sans-serif';
+  ctx.fillText('v = '+sv.toFixed(3)+'c',cx,cy+r+30);
+  ctx.fillStyle='#ef4444';ctx.font='bold 14px sans-serif';
+  ctx.fillText('E = '+g.toFixed(2)+' m₀c²',cx,cy+r+50);
+  // 光速墙
+  ctx.strokeStyle='rgba(239,68,68,0.5)';ctx.lineWidth=2;ctx.setLineDash([8,8]);
+  ctx.beginPath();ctx.moveTo(cx+aw*0.38,cy-150);ctx.lineTo(cx+aw*0.38,cy+150);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#ef4444';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('光速壁垒 c',cx+aw*0.38,cy-160);
+  // 速度条
+  const barW=aw*0.6,barH=12,barX=cx-barW/2,barY=cy+100;
+  ctx.fillStyle=th.textMut;ctx.globalAlpha=0.2;
+  ctx.fillRect(barX,barY,barW,barH);ctx.globalAlpha=1;
+  const fillW=barW*sv;
+  const barGrd=ctx.createLinearGradient(barX,0,barX+fillW,0);
+  barGrd.addColorStop(0,'#22c55e');barGrd.addColorStop(0.7,'#f59e0b');barGrd.addColorStop(1,'#ef4444');
+  ctx.fillStyle=barGrd;ctx.fillRect(barX,barY,fillW,barH);
+  ctx.fillStyle=th.text;ctx.font='11px sans-serif';
+  ctx.fillText('0',barX,barY+barH+14);ctx.fillText('c',barX+barW,barY+barH+14);
+}
+
+function drawLevel4(ox,aw,cx,cy){
+  const th=t();const sv=levelState.tripSpeed/C;const g=gamma(levelState.tripSpeed);
+  // 地球
+  ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(ox+100,cy,40,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#22c55e';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('🌍 地球',ox+100,cy+60);
+  // 地球双胞胎
+  ctx.font='28px sans-serif';ctx.fillText('👨',ox+100,cy-50);
+  // 目标星球
+  ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(ox+aw-60,cy,25,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#f59e0b';ctx.font='12px sans-serif';ctx.fillText('⭐ 目标',ox+aw-60,cy+50);
+  // 飞船轨迹
+  ctx.strokeStyle='rgba(99,102,241,0.3)';ctx.lineWidth=1;ctx.setLineDash([6,6]);
+  ctx.beginPath();ctx.moveTo(ox+150,cy);ctx.lineTo(ox+aw-90,cy);ctx.stroke();
+  ctx.setLineDash([]);
+  if(levelState.launched){
+    // 飞船位置
+    const maxX=aw-250;
+    let shipX;
+    if(levelState.phase===0)shipX=levelState.animT/5*maxX;
+    else if(levelState.phase===1)shipX=maxX-levelState.animT/5*maxX;
+    else shipX=0;
+    ctx.font='28px sans-serif';ctx.textAlign='center';
+    ctx.fillText(levelState.phase===1?'🚀':'🚀',ox+150+shipX,cy-5);
+    // 年龄显示
+    const progress=Math.min(levelState.animT/5,1);
+    const earthYears=progress*levelState.tripYears*(levelState.phase>=1?2:1);
+    const shipYears=progress*levelState.tripYears/g*(levelState.phase>=1?2:1);
+    ctx.fillStyle='#22c55e';ctx.font='bold 14px sans-serif';
+    ctx.fillText('地球: +'+(earthYears).toFixed(1)+'年',ox+100,cy+90);
+    ctx.fillStyle='#f59e0b';
+    ctx.fillText('飞船: +'+(shipYears).toFixed(1)+'年',ox+150+shipX,cy+30);
+  }
+  // 时间线
+  const tlY=cy+140;
+  ctx.strokeStyle=th.textMut;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(ox+60,tlY);ctx.lineTo(ox+aw-40,tlY);ctx.stroke();
+  ctx.fillStyle=th.text;ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('出发',ox+100,tlY+16);ctx.fillText('返回',ox+aw-60,tlY+16);
+}
+
+function drawLevel5(ox,aw,cx,cy){
+  const th=t();
+  const ew=180,eh=240;
+  const lx=ox+aw*0.3,rx=ox+aw*0.7;
+  // 左电梯 - 引力
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;
+  ctx.strokeRect(lx-ew/2,cy-eh/2,ew,eh);
+  ctx.fillStyle=th.text;ctx.font='14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('电梯 A',lx,cy-eh/2-15);
+  // 右电梯 - 加速
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+  ctx.strokeRect(rx-ew/2,cy-eh/2,ew,eh);
+  ctx.fillStyle=th.text;ctx.font='14px sans-serif';
+  ctx.fillText('电梯 B',rx,cy-eh/2-15);
+  // 引力/加速箭头
+  ctx.fillStyle='rgba(255,255,255,0.15)';ctx.font='20px sans-serif';
+  ctx.fillText('↓ g',lx,cy+eh/2+25);ctx.fillText('↑ a=g',rx,cy+eh/2+25);
+  if(levelState.dropped){
+    const t2=levelState.animT;const fallDist=Math.min(0.5*9.8*t2*t2*20,eh*0.7);
+    // 小球 - 两个电梯中行为相同
+    ctx.fillStyle='#ef4444';
+    ctx.beginPath();ctx.arc(lx,cy-eh/2+30+fallDist,8,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(rx,cy-eh/2+30+fallDist,8,0,Math.PI*2);ctx.fill();
+    // 光线弯曲
+    const bendAmt=Math.min(t2*30,40);
+    ctx.strokeStyle='#fbbf24';ctx.lineWidth=2;
+    // 左电梯光线
+    ctx.beginPath();
+    for(let i=0;i<=20;i++){
+      const px=lx-ew/2+10+(ew-20)*i/20;
+      const py=cy-20+bendAmt*(i/20)*(i/20);
+      if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+    // 右电梯光线
+    ctx.beginPath();
+    for(let i=0;i<=20;i++){
+      const px=rx-ew/2+10+(ew-20)*i/20;
+      const py=cy-20+bendAmt*(i/20)*(i/20);
+      if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+    // 标注
+    ctx.fillStyle='#fbbf24';ctx.font='11px sans-serif';
+    ctx.fillText('光线弯曲',lx,cy-30);ctx.fillText('光线弯曲',rx,cy-30);
+  }
+  // 人
+  ctx.font='36px sans-serif';
+  ctx.fillText('🧑‍🚀',lx,cy+40);ctx.fillText('🧑‍🚀',rx,cy+40);
+  if(levelState.guessed){
+    ctx.fillStyle='#22c55e';ctx.font='bold 14px sans-serif';
+    ctx.fillText('引力场 ↓',lx,cy+eh/2+50);
+    ctx.fillText('加速度 ↑',rx,cy+eh/2+50);
+    ctx.fillStyle='#7c3aed';ctx.font='bold 16px sans-serif';
+    ctx.fillText('完全等效！无法区分！',cx,cy+eh/2+80);
+  }
+}
+
+function drawLevel6(ox,aw,cx,cy){
+  const th=t();const m=levelState.mass;
+  // 时空网格
+  const gridSize=40;const gridRange=10;
+  ctx.strokeStyle='rgba(99,102,241,0.2)';ctx.lineWidth=1;
+  for(let i=-gridRange;i<=gridRange;i++){
+    ctx.beginPath();
+    for(let j=-gridRange;j<=gridRange;j++){
+      const gx=cx+j*gridSize;const gy=cy+i*gridSize;
+      const dx=gx-cx,dy=gy-cy;const dist=Math.sqrt(dx*dx+dy*dy);
+      const warp=dist>20?m*800/(dist):0;
+      const wx=gx+(dist>0?dx/dist*warp:0);
+      const wy=gy+(dist>0?dy/dist*warp:0);
+      if(j===-gridRange)ctx.moveTo(wx,wy);else ctx.lineTo(wx,wy);
+    }
+    ctx.stroke();
+  }
+  for(let j=-gridRange;j<=gridRange;j++){
+    ctx.beginPath();
+    for(let i=-gridRange;i<=gridRange;i++){
+      const gx=cx+j*gridSize;const gy=cy+i*gridSize;
+      const dx=gx-cx,dy=gy-cy;const dist=Math.sqrt(dx*dx+dy*dy);
+      const warp=dist>20?m*800/(dist):0;
+      const wx=gx+(dist>0?dx/dist*warp:0);
+      const wy=gy+(dist>0?dy/dist*warp:0);
+      if(i===-gridRange)ctx.moveTo(wx,wy);else ctx.lineTo(wx,wy);
+    }
+    ctx.stroke();
+  }
+  // 中心天体
+  const starR=15+m*3;
+  const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,starR*2);
+  grd.addColorStop(0,'#fbbf24');grd.addColorStop(0.5,'#f59e0b');grd.addColorStop(1,'rgba(245,158,11,0)');
+  ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,starR*2,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(cx,cy,starR,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=th.text;ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText(m.toFixed(1)+' M☉',cx,cy+starR+20);
+  // 光子
+  if(levelState.running){
+    const px=cx+levelState.photonX;const py=cy+levelState.photonY;
+    ctx.fillStyle='#22c55e';ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();
+    // 光子轨迹
+    ctx.strokeStyle='rgba(34,197,94,0.4)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(cx-300,cy-80);
+    // 简化的弯曲轨迹
+    const bendMax=m*15;
+    for(let i=0;i<=60;i++){
+      const frac=i/60;const tx=cx-300+600*frac;
+      const distFromCenter=Math.abs(tx-cx);
+      const bend=distFromCenter<200?bendMax*Math.exp(-distFromCenter*distFromCenter/8000):0;
+      const ty=cy-80+bend;
+      ctx.lineTo(tx,ty);
+    }
+    ctx.stroke();
+    // 无弯曲参考线
+    ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(cx-300,cy-80);ctx.lineTo(cx+300,cy-80);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=th.textMut;ctx.font='10px sans-serif';
+    ctx.fillText('无引力时的直线路径',cx,cy-90);
+  }
+}
+
+// ========== 更新逻辑 ==========
+function updateLevel(idx,dt){
+  levelState.time+=dt;
+  switch(idx){
+  case 0:break;
+  case 1:
+    if(levelState.running){
+      const sv=levelState.shipV/C;const g=sv>0?gamma(levelState.shipV):1;
+      levelState.clockAngle+=dt*3;
+      levelState.earthClock+=dt;
+      levelState.shipClock+=dt/g;
+    }
+    break;
+  case 4:
+    if(levelState.launched&&levelState.phase<2){
+      levelState.animT+=dt;
+      if(levelState.animT>=5){
+        levelState.animT=0;levelState.phase++;
+        if(levelState.phase>=2)renderPanel();
+      }
+    }
+    break;
+  case 5:
+    if(levelState.dropped)levelState.animT+=dt;
+    break;
+  case 6:
+    if(levelState.running){
+      levelState.animT+=dt;
+      const speed=200;
+      levelState.photonX=-300+levelState.animT*speed;
+      const distFromCenter=Math.abs(levelState.photonX);
+      const bendMax=levelState.mass*15;
+      levelState.photonY=-80+(distFromCenter<200?bendMax*Math.exp(-distFromCenter*distFromCenter/8000):0);
+      if(levelState.photonX>320){
+        levelState.running=false;levelState.observed=true;renderPanel();
+      }
+    }
+    break;
+  }
+}
+
+// ========== 主循环 ==========
+let lastTime=0;
+function mainLoop(ts){
+  requestAnimationFrame(mainLoop);
+  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;
+  if(levelFadeAlpha<1)levelFadeAlpha=Math.min(1,levelFadeAlpha+dt*3);
+  ctx.clearRect(0,0,CW,CH);
+  // 背景
+  const th=t();
+  const bgGrd=ctx.createLinearGradient(0,0,0,CH);
+  bgGrd.addColorStop(0,th.bg1);bgGrd.addColorStop(1,th.bg2);
+  ctx.fillStyle=bgGrd;ctx.fillRect(0,0,CW,CH);
+  drawStars();
+  // 淡色网格
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let gx=0;gx<CW;gx+=40){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,CH);ctx.stroke()}
+  for(let gy=0;gy<CH;gy+=40){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(CW,gy);ctx.stroke()}
+  if(gameState==='play'){
+    ctx.globalAlpha=levelFadeAlpha;
+    updateParticles(dt);
+    updateLevel(currentLevel,dt);
+    drawLevel(currentLevel);
+    ctx.globalAlpha=1;
+  }
+  bbLeft.textContent=`第 ${currentLevel+1}/${levelNames.length} 关 — ${levelNames[currentLevel]}`;
+  bbRight.textContent=`总分: ${totalScore}`;
+}
+
+// ========== 交互 ==========
+canvas.addEventListener('click',e=>{
+  if(gameState!=='play')return;
+  const rect=canvas.getBoundingClientRect();
+  const x=(e.clientX-rect.left)*(CW/rect.width);
+  const y=(e.clientY-rect.top)*(CH/rect.height);
+  handleClick(x,y);
+});
+function handleClick(x,y){}
+</script>
+</body>
+</html>

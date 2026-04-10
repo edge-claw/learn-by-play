@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>流体力学探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --slider-label:#888;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --slider-label:#888;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#3b82f6}
+.start-box .sub{font-size:17px;color:var(--sub-color);margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:var(--feat-text);font-size:12px;width:68px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+#lp{position:absolute;top:0;left:0;width:320px;height:100%;background:var(--panel-bg);border-right:1px solid var(--panel-border);z-index:20;display:none;flex-direction:column;overflow:hidden}
+#lp .lp-head{padding:12px 16px;border-bottom:1px solid var(--panel-border);display:flex;align-items:center;justify-content:space-between}
+#lp .lp-title{font-size:14px;font-weight:700;color:#3b82f6}
+#lp .lp-step{font-size:11px;color:#888}
+#lp-body{flex:1;overflow-y:auto;padding:0}
+.mission{margin:12px;padding:14px;background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:10px}
+.mission .m-title{font-size:17px;font-weight:700;margin:4px 0;color:var(--title-color)}
+.mission .m-desc{font-size:13px;color:var(--text-sub);line-height:1.6}
+.mission .m-concept{margin-top:10px;padding:8px 10px;background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:6px;font-size:12px;color:var(--concept-text);line-height:1.6}
+.mission .m-concept b{color:var(--sv)}
+.goal-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px}
+.goal-row .g-icon{font-size:15px}
+.goal-row .g-text{color:var(--goal-text);flex:1}
+.hint-b{margin:0 12px;padding:10px 14px;background:var(--hint-bg);border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;font-size:12px;color:var(--hint-text);line-height:1.5}
+.act-section{margin:12px}
+.act-btn{width:100%;padding:12px;background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;transition:all .2s}
+.act-btn:hover{filter:brightness(1.1)}
+.act-btn.green{background:linear-gradient(135deg,#22c55e,#4ade80)}
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:12px;color:var(--slider-label);display:block;margin-bottom:4px}
+.slider-wrap input[type=range]{width:100%;accent-color:#3b82f6}
+.slider-wrap .sv{font-size:13px;color:var(--sv);font-weight:700}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 12px}
+.quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg)}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+.result-box{text-align:center;max-width:420px;background:var(--result-bg);border:1px solid var(--result-border);border-radius:16px;padding:28px 36px}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}
+#bottom-bar .bb-right{text-align:right}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🌊 <span class="gold">流体力学</span>探险</h1>
+  <div class="sub">7 个关卡，亲手体验流体的奇妙世界</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">💧</div>水压</div>
+    <div class="feat"><div class="fi">⚙️</div>液压机</div>
+    <div class="feat"><div class="fi">🛟</div>浮力</div>
+    <div class="feat"><div class="fi">🌬️</div>伯努利</div>
+    <div class="feat"><div class="fi">🫗</div>粘性</div>
+    <div class="feat"><div class="fi">🌀</div>湍流</div>
+    <div class="feat"><div class="fi">✈️</div>升力</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div id="lp">
+  <div class="lp-head"><span class="lp-title" id="lpTitle">第 1 关</span><span class="lp-step" id="lpStep">1/7</span></div>
+  <div id="lp-body"></div>
+</div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+// === 主题系统 ===
+let isDark=true;
+const TH={
+  dark:{bg1:'#0a0a2e',bg2:'#0d0d1a',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',water:'rgba(30,100,200,0.4)',waterDeep:'rgba(10,40,120,0.7)'},
+  light:{bg1:'#e8edf5',bg2:'#f0f2f5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',water:'rgba(100,180,255,0.4)',waterDeep:'rgba(40,100,200,0.5)'}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel()}
+
+// === 全局变量 ===
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,gameState='start',currentLevel=0,levelState={},particles=[];
+const TOTAL=7;
+const quizPassed=new Set();
+let quizLocked=false;
+
+function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight}
+resize();window.addEventListener('resize',resize);
+
+// === 音效 ===
+let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function playSound(type){
+  initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}
+  else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}
+  else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}
+}
+
+// === 粒子 ===
+function addP(x,y,vx,vy,color,life,size){particles.push({x,y,vx,vy,color,life,maxLife:life,size:size||3})}
+function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1)}}
+function drawParticles(){for(let p of particles){const a=Math.max(0,p.life/p.maxLife);ctx.globalAlpha=a;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.size*a,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+
+// === 关卡定义 ===
+const LEVELS=[
+  {id:1,title:'压强与深度',icon:'💧',
+   desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心公式：</b>P = ρgh（压强 = 密度 × 重力加速度 × 深度）</div>水下越深，压强越大。拖动深度滑块，观察压强如何随深度线性增加。',
+   goals:[{label:'将深度调到 5m 以上',check:s=>s.depth>=5},{label:'观察压强超过 150 kPa',check:s=>s.pressure>=150}],
+   hint:'拖动深度滑块，观察右侧压强计的变化。注意压强和深度是线性关系！',
+   quiz:{q:'在水下10米处，水的压强大约是多少？（ρ=1000 kg/m³, g=10 m/s²）',opts:['50 kPa','100 kPa','200 kPa'],ans:1}},
+  {id:2,title:'帕斯卡原理 — 液压机',icon:'⚙️',
+   desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心定律：</b>F₂/F₁ = A₂/A₁（力的放大比 = 面积比）</div>密封液体传递压强不变。小活塞施力，大活塞输出更大的力！',
+   goals:[{label:'调节面积比使力放大 4 倍以上',check:s=>s.ratio>=4},{label:'举起重物（输出力 > 800N）',check:s=>s.forceOut>=800}],
+   hint:'调节大活塞面积，让面积比增大。然后调节输入力，让输出力超过 800N 举起重物！',
+   quiz:{q:'液压机小活塞面积 10cm²，大活塞面积 100cm²，小活塞施力 50N，大活塞输出力是？',opts:['50N','500N','5000N'],ans:1}},
+  {id:3,title:'浮力 — 阿基米德原理',icon:'🛟',
+   desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心公式：</b>F浮 = ρ液 g V排（浮力 = 液体密度 × g × 排开液体体积）</div>物体密度小于液体密度就浮起来，大于就沉下去。',
+   goals:[{label:'让物体浮起来（密度 < 1000）',check:s=>s.floated},{label:'让物体沉下去（密度 > 1000）',check:s=>s.sunk}],
+   hint:'拖动物体密度滑块，观察物体在水中的沉浮状态。密度等于水时刚好悬浮！',
+   quiz:{q:'一个体积 0.1m³ 的物体放入水中（ρ水=1000），完全浸没时浮力是？',opts:['100N','500N','1000N'],ans:2}},
+  {id:4,title:'伯努利方程',icon:'🌬️',
+   desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心定律：</b>P + ½ρv² = 常数（流速快→压强低）</div>管道变窄处流速加快、压强降低。这就是文丘里效应！',
+   goals:[{label:'让窄管流速超过 8 m/s',check:s=>s.v2>=8},{label:'观察窄管压强低于宽管',check:s=>s.pressureDrop}],
+   hint:'调节管道收缩比，观察窄管处流速增大、压强降低的现象。',
+   quiz:{q:'水管变窄后，水流速度和压强分别怎么变？',opts:['速度增大，压强增大','速度增大，压强降低','速度减小，压强降低'],ans:1}},
+  {id:5,title:'粘性与层流',icon:'🫗',
+   desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>粘度越高，流体越"稠"，管道中心流速最快（抛物线分布）</div>不同粘度的流体在管道中的速度分布不同。水很稀，蜂蜜很稠。',
+   goals:[{label:'对比水和蜂蜜的速度分布',check:s=>s.compared},{label:'观察高粘度流体的平坦速度分布',check:s=>s.seenFlat}],
+   hint:'切换不同流体，观察管道截面上的速度分布曲线。粘度越高，分布越平坦。',
+   quiz:{q:'层流中管道中心的流速与管壁相比？',opts:['相同','中心更快（抛物线分布）','管壁更快'],ans:1}},
+  {id:6,title:'雷诺数与湍流',icon:'🌀',
+   desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心公式：</b>Re = ρvD/μ（Re > 2300 时层流→湍流）</div>增大流速或管径，雷诺数增大。超过临界值 2300，有序的层流变成混乱的湍流！',
+   goals:[{label:'让雷诺数超过 2300',check:s=>s.re>2300},{label:'观察湍流状态',check:s=>s.seenTurbulent}],
+   hint:'增大流速滑块，观察流线从整齐变为混乱。Re > 2300 就是湍流！',
+   quiz:{q:'以下哪种情况更容易出现湍流？',opts:['低速、小管径、高粘度','高速、大管径、低粘度','低速、大管径、高粘度'],ans:1}},
+  {id:7,title:'升力原理',icon:'✈️',
+   desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心原理：</b>机翼上方流速快→压强低，下方流速慢→压强高，产生向上的升力</div>调节攻角和风速，观察升力和阻力的变化。攻角太大会失速！',
+   goals:[{label:'产生正升力（升力 > 0）',check:s=>s.lift>0},{label:'找到最佳升阻比',check:s=>s.bestRatio}],
+   hint:'调节攻角和风速。攻角增大升力先增后减（失速），找到升阻比最大的攻角！',
+   quiz:{q:'飞机机翼产生升力的主要原因是？',opts:['机翼上下表面的压强差','机翼拍打空气','发动机直接向下喷气'],ans:0}}
+];
+
+// === 关卡初始化 ===
+function initLevel(idx){
+  const s={};
+  switch(idx){
+    case 0: s.depth=0;s.pressure=101.325;s.maxDepthReached=0;s.waterParticles=[];
+      for(let i=0;i<60;i++)s.waterParticles.push({x:Math.random(),y:Math.random(),vx:(Math.random()-0.5)*0.3,vy:Math.random()*0.1});
+      break;
+    case 1: s.areaIn=10;s.areaOut=10;s.forceIn=100;s.ratio=1;s.forceOut=100;s.pistonY=0;s.lifted=false;break;
+    case 2: s.objDensity=500;s.objY=0.45;s.objVy=0;s.floated=false;s.sunk=false;s.waterLevel=0.55;break;
+    case 3: s.d1=0.1;s.d2=0.1;s.v1=3;s.v2=3;s.p1=100;s.p2=100;s.pressureDrop=false;s.flowParticles=[];
+      for(let i=0;i<40;i++)s.flowParticles.push({x:Math.random(),y:Math.random()*0.8+0.1,speed:1});
+      break;
+    case 4: s.fluid='water';s.compared=false;s.seenFlat=false;s.viscosity=0.001;break;
+    case 5: s.velocity=0.5;s.diameter=0.05;s.viscosity=0.001;s.density=1000;s.re=25000;s.seenTurbulent=false;
+      s.streamlines=[];for(let i=0;i<12;i++)s.streamlines.push({y:0.1+0.8*(i/11),phase:Math.random()*Math.PI*2});
+      break;
+    case 6: s.angle=5;s.windSpeed=30;s.lift=0;s.drag=0;s.bestRatio=false;s.maxLDRatio=0;s.trailParticles=[];break;
+  }
+  levelState=s;
+}
+
+// === 关卡完成判断 ===
+function isLevelDone(idx){
+  const s=levelState,L=LEVELS[idx];
+  return L.goals.every(g=>g.check(s));
+}
+
+// === 关卡更新 ===
+function updateLevel(idx,dt){
+  const s=levelState;
+  switch(idx){
+    case 0:// 压强与深度
+      s.pressure=101.325+1000*9.81*s.depth/1000;
+      if(s.depth>s.maxDepthReached)s.maxDepthReached=s.depth;
+      s.waterParticles.forEach(p=>{p.x+=p.vx*dt*0.1;p.y+=p.vy*dt*0.1;if(p.x<0)p.x=1;if(p.x>1)p.x=0;if(p.y<0)p.y=1;if(p.y>1)p.y=0});
+      break;
+    case 1:// 帕斯卡原理
+      s.ratio=s.areaOut/s.areaIn;
+      s.forceOut=s.forceIn*s.ratio;
+      s.pistonY+=(s.forceOut>=800?-1:0.5)*dt;
+      s.pistonY=Math.max(-1,Math.min(0,s.pistonY));
+      if(s.forceOut>=800)s.lifted=true;
+      break;
+    case 2:{// 浮力
+      const rhoW=1000,g=9.81,V=0.001;
+      const Fb=rhoW*g*V,Fg=s.objDensity*g*V;
+      const acc=(Fb-Fg)/(s.objDensity*V)*0.0001;
+      s.objVy-=acc*dt;s.objVy*=0.92;
+      s.objY+=s.objVy*dt;
+      s.objY=Math.max(0.1,Math.min(0.9,s.objY));
+      if(s.objDensity<1000){s.floated=true;if(s.objY<s.waterLevel-0.12)s.objY=s.waterLevel-0.12}
+      if(s.objDensity>1000){s.sunk=true}
+      if(s.objDensity===1000){s.objY+=(s.waterLevel-s.objY)*dt*2}
+      break;}
+    case 3:{// 伯努利
+      const A1=Math.PI*(s.d1/2)**2,A2=Math.PI*(s.d2/2)**2;
+      s.v2=s.v1*A1/A2;
+      s.p1=100;s.p2=s.p1+0.5*1000*(s.v1**2-s.v2**2)/1000;
+      if(s.p2<s.p1)s.pressureDrop=true;
+      s.flowParticles.forEach(p=>{p.x+=p.speed*dt*0.15;if(p.x>1)p.x=0});
+      break;}
+    case 4:// 粘性
+      if(s.fluid==='water')s.viscosity=0.001;
+      else if(s.fluid==='oil')s.viscosity=0.1;
+      else s.viscosity=10;
+      break;
+    case 5:{// 雷诺数
+      s.re=s.density*s.velocity*s.diameter/s.viscosity;
+      if(s.re>2300)s.seenTurbulent=true;
+      s.streamlines.forEach(sl=>{sl.phase+=dt*2});
+      break;}
+    case 6:{// 升力
+      const aRad=s.angle*Math.PI/180;
+      let cl;
+      if(s.angle<=12) cl=2*Math.PI*aRad*0.9;// 线性区
+      else if(s.angle<=18) cl=2*Math.PI*(12*Math.PI/180)*0.9*(1-(s.angle-12)/12);// 失速过渡
+      else cl=Math.max(0,0.3-0.02*(s.angle-18));// 深度失速
+      if(s.angle<0) cl=2*Math.PI*aRad*0.8;
+      const cd=0.01+cl*cl/(Math.PI*6*0.9)+(s.angle>15?0.05*(s.angle-15):0);
+      const q=0.5*1.225*s.windSpeed**2;
+      s.lift=cl*q*1;s.drag=cd*q*1;
+      const ldRatio=s.drag>0.1?s.lift/s.drag:0;
+      if(ldRatio>s.maxLDRatio&&s.lift>0){s.maxLDRatio=ldRatio;if(ldRatio>10)s.bestRatio=true}
+      break;}
+  }
+}
+
+// === 绘制背景 ===
+function drawBg(){
+  const th=t();
+  const bgGrd=ctx.createLinearGradient(0,0,0,CH);
+  bgGrd.addColorStop(0,th.bg1);bgGrd.addColorStop(1,th.bg2);
+  ctx.fillStyle=bgGrd;ctx.fillRect(0,0,CW,CH);
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let gx=0;gx<CW;gx+=40){ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,CH);ctx.stroke()}
+  for(let gy=0;gy<CH;gy+=40){ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(CW,gy);ctx.stroke()}
+}
+
+// === 画布区域（面板右侧） ===
+function drawArea(){return{x:320,y:0,w:CW-320,h:CH-36}}
+
+// === 关卡绘制 ===
+function drawLevel(idx){
+  const s=levelState,A=drawArea(),cx=A.x+A.w/2,cy=A.y+A.h/2;
+  switch(idx){
+    case 0: drawLevel0(s,A,cx,cy);break;
+    case 1: drawLevel1(s,A,cx,cy);break;
+    case 2: drawLevel2(s,A,cx,cy);break;
+    case 3: drawLevel3(s,A,cx,cy);break;
+    case 4: drawLevel4(s,A,cx,cy);break;
+    case 5: drawLevel5(s,A,cx,cy);break;
+    case 6: drawLevel6(s,A,cx,cy);break;
+  }
+}
+
+function drawLevel0(s,A,cx,cy){
+  // 水下场景
+  const wTop=A.y+60,wBot=A.y+A.h-20,wLeft=A.x+40,wRight=A.x+A.w-40;
+  const wH=wBot-wTop;
+  // 水体渐变
+  const wGrd=ctx.createLinearGradient(0,wTop,0,wBot);
+  wGrd.addColorStop(0,'rgba(100,180,255,0.3)');wGrd.addColorStop(1,'rgba(10,30,100,0.8)');
+  ctx.fillStyle=wGrd;ctx.fillRect(wLeft,wTop,wRight-wLeft,wH);
+  // 水面
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(wLeft,wTop);ctx.lineTo(wRight,wTop);ctx.stroke();
+  ctx.fillStyle=isDark?'#ccc':'#333';ctx.font='13px sans-serif';ctx.textAlign='center';
+  ctx.fillText('水面 (0m)',cx,wTop-8);
+  // 深度标尺
+  for(let d=0;d<=20;d+=5){
+    const yy=wTop+d/20*wH;
+    ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(wLeft,yy);ctx.lineTo(wRight,yy);ctx.stroke();
+    ctx.fillStyle=isDark?'#aaa':'#555';ctx.textAlign='left';ctx.font='11px sans-serif';
+    ctx.fillText(d+'m',wLeft+4,yy+12);
+  }
+  // 当前深度指示器
+  const depthY=wTop+s.depth/20*wH;
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=2;ctx.setLineDash([5,3]);
+  ctx.beginPath();ctx.moveTo(wLeft,depthY);ctx.lineTo(wRight,depthY);ctx.stroke();
+  ctx.setLineDash([]);
+  // 压强指示球
+  const ballR=15+s.pressure/300*20;
+  ctx.fillStyle=`rgba(239,68,68,${0.3+s.pressure/500})`;
+  ctx.beginPath();ctx.arc(cx,depthY,ballR,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=2;ctx.stroke();
+  // 压强箭头（四方向）
+  const arrowLen=ballR+s.pressure/20;
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+  [[0,-1],[0,1],[-1,0],[1,0]].forEach(([dx,dy])=>{
+    ctx.beginPath();ctx.moveTo(cx,depthY);ctx.lineTo(cx+dx*arrowLen,depthY+dy*arrowLen);ctx.stroke();
+    // 箭头头
+    const ax=cx+dx*arrowLen,ay=depthY+dy*arrowLen;
+    ctx.beginPath();ctx.arc(ax,ay,3,0,Math.PI*2);ctx.fill();
+  });
+  // 水中粒子
+  s.waterParticles.forEach(p=>{
+    const px=wLeft+p.x*(wRight-wLeft),py=wTop+p.y*wH;
+    const alpha=0.2+p.y*0.4;
+    ctx.fillStyle=`rgba(100,180,255,${alpha})`;
+    ctx.beginPath();ctx.arc(px,py,2,0,Math.PI*2);ctx.fill();
+  });
+  // 数值标注
+  ctx.fillStyle='#60a5fa';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`P = ${s.pressure.toFixed(1)} kPa`,cx,A.y+40);
+  ctx.fillStyle=isDark?'#aaa':'#555';ctx.font='12px sans-serif';
+  ctx.fillText(`深度 h = ${s.depth.toFixed(1)} m`,cx,depthY-ballR-10);
+}
+
+function drawLevel1(s,A,cx,cy){
+  // 液压机
+  const baseY=cy+80,pipeY=cy-20;
+  // 小活塞（左）
+  const lx=A.x+A.w*0.25,lw=40,lh=80;
+  ctx.fillStyle='rgba(100,180,255,0.3)';ctx.fillRect(lx-lw/2,pipeY,lw,baseY-pipeY);
+  ctx.fillStyle='#3b82f6';ctx.fillRect(lx-lw/2,pipeY-10,lw,12);
+  // 大活塞（右）
+  const rx=A.x+A.w*0.75,rw=40+s.areaOut*2,rh=80;
+  const pistonOffset=s.pistonY*40;
+  ctx.fillStyle='rgba(100,180,255,0.3)';ctx.fillRect(rx-rw/2,pipeY,rw,baseY-pipeY);
+  ctx.fillStyle='#22c55e';ctx.fillRect(rx-rw/2,pipeY-10+pistonOffset,rw,12);
+  // 连接管
+  ctx.fillStyle='rgba(100,180,255,0.2)';ctx.fillRect(lx+lw/2,baseY-20,rx-rw/2-lx-lw/2,20);
+  // 液体
+  ctx.fillStyle='rgba(59,130,246,0.4)';
+  ctx.fillRect(lx-lw/2,pipeY+2,lw,baseY-pipeY-2);
+  ctx.fillRect(rx-rw/2,pipeY+2+pistonOffset,rw,baseY-pipeY-2-pistonOffset);
+  // 力箭头
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(lx,pipeY-40);ctx.lineTo(lx,pipeY-12);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(lx-6,pipeY-18);ctx.lineTo(lx,pipeY-12);ctx.lineTo(lx+6,pipeY-18);ctx.stroke();
+  ctx.strokeStyle='#22c55e';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(rx,pipeY+pistonOffset-12);ctx.lineTo(rx,pipeY+pistonOffset-40);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(rx-6,pipeY+pistonOffset-34);ctx.lineTo(rx,pipeY+pistonOffset-40);ctx.lineTo(rx+6,pipeY+pistonOffset-34);ctx.stroke();
+  // 重物
+  if(s.forceOut>=800){
+    ctx.fillStyle='#f59e0b';ctx.fillRect(rx-25,pipeY-50+pistonOffset,50,30);
+    ctx.fillStyle=isDark?'#fff':'#333';ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+    ctx.fillText('重物',rx,pipeY-30+pistonOffset);
+  }else{
+    ctx.fillStyle='#888';ctx.fillRect(rx-25,pipeY-50,50,30);
+    ctx.fillStyle=isDark?'#fff':'#333';ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+    ctx.fillText('重物',rx,pipeY-30);
+  }
+  // 标注
+  ctx.fillStyle='#ef4444';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`F₁ = ${s.forceIn}N`,lx,pipeY-50);
+  ctx.fillStyle='#22c55e';
+  ctx.fillText(`F₂ = ${s.forceOut.toFixed(0)}N`,rx,pipeY+pistonOffset-55);
+  ctx.fillStyle=isDark?'#aaa':'#555';ctx.font='12px sans-serif';
+  ctx.fillText(`A₁ = ${s.areaIn} cm²`,lx,baseY+20);
+  ctx.fillText(`A₂ = ${s.areaOut} cm²`,rx,baseY+20);
+  ctx.fillStyle='#f59e0b';ctx.font='bold 16px sans-serif';
+  ctx.fillText(`面积比 = ${s.ratio.toFixed(1)}x`,cx,A.y+30);
+}
+
+function drawLevel2(s,A,cx,cy){
+  // 浮力场景
+  const wTop=A.y+A.h*s.waterLevel,wBot=A.y+A.h-20,wLeft=A.x+60,wRight=A.x+A.w-60;
+  // 水体
+  const wGrd=ctx.createLinearGradient(0,wTop,0,wBot);
+  wGrd.addColorStop(0,'rgba(100,180,255,0.3)');wGrd.addColorStop(1,'rgba(30,80,180,0.5)');
+  ctx.fillStyle=wGrd;ctx.fillRect(wLeft,wTop,wRight-wLeft,wBot-wTop);
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(wLeft,wTop);ctx.lineTo(wRight,wTop);ctx.stroke();
+  // 物体 - objY 范围 0~1 映射到画布
+  const objSize=40;
+  const areaTop=A.y+40,areaBot=A.y+A.h-40;
+  const objActualY=areaTop+s.objY*(areaBot-areaTop);
+  const hue=s.objDensity<1000?200:(s.objDensity>1000?0:60);
+  ctx.fillStyle=`hsla(${hue},70%,50%,0.8)`;
+  ctx.fillRect(cx-objSize/2,objActualY-objSize/2,objSize,objSize);
+  ctx.strokeStyle=`hsla(${hue},70%,40%,1)`;ctx.lineWidth=2;
+  ctx.strokeRect(cx-objSize/2,objActualY-objSize/2,objSize,objSize);
+  // 力箭头
+  const rhoW=1000,g=9.81,V=0.001;
+  const Fb=rhoW*g*V,Fg=s.objDensity*g*V;
+  // 浮力（向上）
+  const fbLen=Math.min(Fb/5,60);
+  ctx.strokeStyle='#22c55e';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(cx,objActualY+objSize/2);ctx.lineTo(cx,objActualY+objSize/2-fbLen);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-5,objActualY+objSize/2-fbLen+8);ctx.lineTo(cx,objActualY+objSize/2-fbLen);ctx.lineTo(cx+5,objActualY+objSize/2-fbLen+8);ctx.stroke();
+  // 重力（向下）
+  const fgLen=Math.min(Fg/5,80);
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(cx,objActualY-objSize/2);ctx.lineTo(cx,objActualY-objSize/2+fgLen);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-5,objActualY-objSize/2+fgLen-8);ctx.lineTo(cx,objActualY-objSize/2+fgLen);ctx.lineTo(cx+5,objActualY-objSize/2+fgLen-8);ctx.stroke();
+  // 标注
+  ctx.fillStyle='#22c55e';ctx.font='bold 13px sans-serif';ctx.textAlign='left';
+  ctx.fillText(`F浮 = ${Fb.toFixed(1)}N`,cx+objSize,objActualY-10);
+  ctx.fillStyle='#ef4444';
+  ctx.fillText(`F重 = ${Fg.toFixed(1)}N`,cx+objSize,objActualY+15);
+  // 状态
+  ctx.fillStyle='#f59e0b';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  const stateText=s.objDensity<1000?'漂浮 ↑':(s.objDensity>1000?'下沉 ↓':'悬浮 ≈');
+  ctx.fillText(stateText,cx,A.y+30);
+  ctx.fillStyle=isDark?'#aaa':'#555';ctx.font='13px sans-serif';
+  ctx.fillText(`物体密度: ${s.objDensity} kg/m³ | 水密度: 1000 kg/m³`,cx,A.y+50);
+}
+
+function drawLevel3(s,A,cx,cy){
+  // 伯努利管道
+  const pipeTop=cy-80,pipeBot=cy+80,pLeft=A.x+60,pRight=A.x+A.w-60;
+  const pMid=cx,narrowW=40+s.d2/s.d1*60;
+  const wideW=100;
+  // 宽管
+  ctx.fillStyle='rgba(100,180,255,0.15)';
+  ctx.fillRect(pLeft,cy-wideW/2,pMid-pLeft-40,wideW);
+  ctx.fillRect(pMid+40,cy-wideW/2,pRight-pMid-40,wideW);
+  // 窄管
+  ctx.fillStyle='rgba(100,180,255,0.25)';
+  ctx.beginPath();
+  ctx.moveTo(pMid-40,cy-wideW/2);ctx.lineTo(pMid-10,cy-narrowW/2);
+  ctx.lineTo(pMid+10,cy-narrowW/2);ctx.lineTo(pMid+40,cy-wideW/2);
+  ctx.lineTo(pMid+40,cy+wideW/2);ctx.lineTo(pMid+10,cy+narrowW/2);
+  ctx.lineTo(pMid-10,cy+narrowW/2);ctx.lineTo(pMid-40,cy+wideW/2);
+  ctx.closePath();ctx.fill();
+  // 管壁
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(pLeft,cy-wideW/2);ctx.lineTo(pMid-40,cy-wideW/2);ctx.lineTo(pMid-10,cy-narrowW/2);
+  ctx.lineTo(pMid+10,cy-narrowW/2);ctx.lineTo(pMid+40,cy-wideW/2);ctx.lineTo(pRight,cy-wideW/2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(pLeft,cy+wideW/2);ctx.lineTo(pMid-40,cy+wideW/2);ctx.lineTo(pMid-10,cy+narrowW/2);
+  ctx.lineTo(pMid+10,cy+narrowW/2);ctx.lineTo(pMid+40,cy+wideW/2);ctx.lineTo(pRight,cy+wideW/2);
+  ctx.stroke();
+  // 流线粒子
+  s.flowParticles.forEach(p=>{
+    const px=pLeft+p.x*(pRight-pLeft);
+    let localW=wideW;
+    if(px>pMid-40&&px<pMid+40){
+      const t2=1-Math.abs(px-pMid)/40;
+      localW=wideW+(narrowW-wideW)*t2;
+    }
+    const py=cy+(p.y-0.5)*localW*0.8;
+    const speed=px>pMid-30&&px<pMid+30?s.v2/s.v1:1;
+    const hue=speed>1.5?0:(speed>1?60:200);
+    ctx.fillStyle=`hsla(${hue},80%,60%,0.7)`;
+    ctx.beginPath();ctx.arc(px,py,2+speed,0,Math.PI*2);ctx.fill();
+  });
+  // 压强标注
+  ctx.fillStyle='#3b82f6';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`P₁ = ${s.p1.toFixed(1)} kPa`,A.x+A.w*0.25,cy-wideW/2-20);
+  ctx.fillText(`v₁ = ${s.v1.toFixed(1)} m/s`,A.x+A.w*0.25,cy-wideW/2-40);
+  const p2Color=s.p2<s.p1?'#ef4444':'#3b82f6';
+  ctx.fillStyle=p2Color;
+  ctx.fillText(`P₂ = ${s.p2.toFixed(1)} kPa`,A.x+A.w*0.75,cy-wideW/2-20);
+  ctx.fillStyle='#f59e0b';
+  ctx.fillText(`v₂ = ${s.v2.toFixed(1)} m/s`,A.x+A.w*0.75,cy-wideW/2-40);
+}
+
+function drawLevel4(s,A,cx,cy){
+  // 粘性与层流 - 管道截面速度分布
+  const pipeLeft=A.x+80,pipeRight=A.x+A.w-80;
+  const pipeTop=cy-100,pipeBot=cy+100,pipeH=200;
+  // 管壁
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(pipeLeft,pipeTop);ctx.lineTo(pipeRight,pipeTop);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(pipeLeft,pipeBot);ctx.lineTo(pipeRight,pipeBot);ctx.stroke();
+  // 速度分布曲线
+  const maxV=s.fluid==='water'?5:(s.fluid==='oil'?3:1);
+  const n=s.fluid==='honey'?4:2;// 幂律指数
+  ctx.strokeStyle='#22c55e';ctx.lineWidth=3;ctx.beginPath();
+  for(let i=0;i<=40;i++){
+    const frac=i/40;// 0=top wall, 1=bottom wall
+    const r=Math.abs(frac-0.5)*2;// 0=center, 1=wall
+    const v=maxV*(1-Math.pow(r,n));
+    const yy=pipeTop+frac*pipeH;
+    const xx=pipeLeft+60+v/maxV*(pipeRight-pipeLeft-120);
+    if(i===0)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy);
+  }
+  ctx.stroke();
+  // 速度箭头
+  for(let i=1;i<8;i++){
+    const frac=i/8;
+    const r=Math.abs(frac-0.5)*2;
+    const v=maxV*(1-Math.pow(r,n));
+    const yy=pipeTop+frac*pipeH;
+    const arrowLen=v/maxV*(pipeRight-pipeLeft-120)*0.6;
+    ctx.strokeStyle=`hsla(${120+v/maxV*80},70%,50%,0.6)`;ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(pipeLeft+60,yy);ctx.lineTo(pipeLeft+60+arrowLen,yy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(pipeLeft+55+arrowLen,yy-4);ctx.lineTo(pipeLeft+60+arrowLen,yy);ctx.lineTo(pipeLeft+55+arrowLen,yy+4);ctx.stroke();
+  }
+  // 标注
+  ctx.fillStyle=isDark?'#aaa':'#555';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('管壁',pipeLeft+30,pipeTop-5);ctx.fillText('管壁',pipeLeft+30,pipeBot+15);
+  ctx.fillText('管道中心',pipeLeft+30,cy+4);
+  ctx.fillStyle='#f59e0b';ctx.font='bold 16px sans-serif';
+  const fluidName=s.fluid==='water'?'水 (μ=0.001 Pa·s)':(s.fluid==='oil'?'机油 (μ=0.1 Pa·s)':'蜂蜜 (μ=10 Pa·s)');
+  ctx.fillText(fluidName,cx,A.y+30);
+  ctx.fillStyle='#22c55e';ctx.font='13px sans-serif';
+  ctx.fillText(s.fluid==='honey'?'速度分布较平坦（高粘度）':'速度分布呈抛物线（低粘度）',cx,A.y+50);
+}
+
+function drawLevel5(s,A,cx,cy){
+  // 雷诺数 - 层流到湍流
+  const pipeTop=cy-80,pipeBot=cy+80,pLeft=A.x+60,pRight=A.x+A.w-60;
+  // 管壁
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(pLeft,pipeTop);ctx.lineTo(pRight,pipeTop);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(pLeft,pipeBot);ctx.lineTo(pRight,pipeBot);ctx.stroke();
+  // 流线
+  const isTurb=s.re>2300;
+  s.streamlines.forEach((sl,i)=>{
+    const baseY=pipeTop+sl.y*(pipeBot-pipeTop);
+    ctx.strokeStyle=isTurb?`hsla(${(i*30+time*50)%360},70%,60%,0.7)`:'rgba(100,200,255,0.6)';
+    ctx.lineWidth=2;ctx.beginPath();
+    for(let x=0;x<=1;x+=0.01){
+      const px=pLeft+x*(pRight-pLeft);
+      let py=baseY;
+      if(isTurb){
+        py+=Math.sin(x*20+sl.phase+time*3)*15*(s.re/5000);
+        py+=Math.sin(x*40+sl.phase*2+time*5)*8*(s.re/5000);
+        py+=Math.random()*4*(s.re/5000);
+      }else{
+        py+=Math.sin(x*6+sl.phase)*2;
+      }
+      py=Math.max(pipeTop+5,Math.min(pipeBot-5,py));
+      if(x===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+  });
+  // 染料注入效果
+  if(isTurb){
+    for(let i=0;i<5;i++){
+      const px=pLeft+Math.random()*(pRight-pLeft);
+      const py=pipeTop+Math.random()*(pipeBot-pipeTop);
+      ctx.fillStyle=`hsla(${Math.random()*360},60%,60%,0.3)`;
+      ctx.beginPath();ctx.arc(px,py,3+Math.random()*5,0,Math.PI*2);ctx.fill();
+    }
+  }
+  // 标注
+  const reColor=s.re>2300?'#ef4444':'#22c55e';
+  ctx.fillStyle=reColor;ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`Re = ${s.re.toFixed(0)}`,cx,A.y+30);
+  ctx.fillStyle=isDark?'#aaa':'#555';ctx.font='14px sans-serif';
+  ctx.fillText(isTurb?'湍流状态 (Re > 2300)':'层流状态 (Re < 2300)',cx,A.y+52);
+  // 临界线
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;ctx.setLineDash([5,5]);
+  const critX=pLeft+(2300/Math.max(s.re*1.5,4600))*(pRight-pLeft);
+  ctx.beginPath();ctx.moveTo(critX,pipeTop-20);ctx.lineTo(critX,pipeBot+20);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';
+  ctx.fillText('Re=2300',critX,pipeBot+35);
+}
+
+function drawLevel6(s,A,cx,cy){
+  // 升力 - 机翼截面
+  const wingX=cx,wingY=cy;
+  const chord=160,aRad=s.angle*Math.PI/180;
+  // 风场流线
+  ctx.save();ctx.translate(wingX,wingY);
+  for(let i=-5;i<=5;i++){
+    const baseY=i*30;
+    ctx.strokeStyle=isDark?'rgba(100,180,255,0.3)':'rgba(50,100,200,0.3)';
+    ctx.lineWidth=1;ctx.beginPath();
+    for(let x=-chord*1.5;x<=chord*1.5;x+=4){
+      let yOff=baseY;
+      const dist=Math.sqrt(x*x+(baseY)**2);
+      if(dist<chord*0.8){
+        const deflect=baseY<0?-15*Math.sin(aRad):10*Math.sin(aRad);
+        yOff+=deflect*Math.exp(-x*x/(chord*chord*0.5));
+      }
+      if(x===-chord*1.5)ctx.moveTo(x,yOff);else ctx.lineTo(x,yOff);
+    }
+    ctx.stroke();
+  }
+  // 机翼形状
+  ctx.rotate(-aRad);
+  ctx.fillStyle='rgba(100,100,120,0.8)';
+  ctx.beginPath();
+  ctx.moveTo(-chord/2,0);
+  // 上表面（弧形）
+  ctx.quadraticCurveTo(-chord/4,-20,0,-18);
+  ctx.quadraticCurveTo(chord/4,-12,chord/2,0);
+  // 下表面（较平）
+  ctx.quadraticCurveTo(chord/4,6,0,5);
+  ctx.quadraticCurveTo(-chord/4,4,-chord/2,0);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;ctx.stroke();
+  ctx.rotate(aRad);
+  // 升力箭头
+  if(s.lift>0){
+    const liftLen=Math.min(s.lift/20,120);
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=4;
+    ctx.beginPath();ctx.moveTo(0,20);ctx.lineTo(0,20-liftLen);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-8,20-liftLen+12);ctx.lineTo(0,20-liftLen);ctx.lineTo(8,20-liftLen+12);ctx.stroke();
+    ctx.fillStyle='#22c55e';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`升力 ${s.lift.toFixed(0)}N`,0,-liftLen+5);
+  }
+  // 阻力箭头
+  if(s.drag>0){
+    const dragLen=Math.min(s.drag/10,80);
+    ctx.strokeStyle='#ef4444';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(-20,0);ctx.lineTo(-20+dragLen,0);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-20+dragLen-8,-5);ctx.lineTo(-20+dragLen,0);ctx.lineTo(-20+dragLen-8,5);ctx.stroke();
+  }
+  ctx.restore();
+  // 数值
+  ctx.fillStyle='#f59e0b';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  const ldR=s.drag>0?(s.lift/s.drag).toFixed(1):'--';
+  ctx.fillText(`攻角: ${s.angle}° | 风速: ${s.windSpeed} m/s`,cx,A.y+30);
+  ctx.fillStyle=isDark?'#aaa':'#555';ctx.font='14px sans-serif';
+  ctx.fillText(`升力: ${s.lift.toFixed(0)}N | 阻力: ${s.drag.toFixed(0)}N | 升阻比: ${ldR}`,cx,A.y+52);
+  if(s.angle>15){ctx.fillStyle='#ef4444';ctx.font='bold 14px sans-serif';ctx.fillText('⚠️ 攻角过大，接近失速！',cx,A.y+75)}
+}
+
+// === 面板渲染 ===
+function renderPanel(){
+  const L=LEVELS[currentLevel],s=levelState;
+  document.getElementById('lpTitle').textContent=`${L.icon} ${L.title}`;
+  document.getElementById('lpStep').textContent=`${currentLevel+1}/${TOTAL}`;
+  let h='';
+  // stage-nav
+  h+='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<TOTAL;i++){
+    const cls=quizPassed.has(i)?'done':(i===currentLevel?'cur':'');
+    h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;
+  }
+  h+=`</div><div class="sn-info">第 ${currentLevel+1} / ${TOTAL} 关</div></div>`;
+  // 任务描述
+  h+='<div class="mission">';
+  h+=`<div class="m-title">${L.title}</div>`;
+  h+=`<div class="m-desc">${L.desc}</div>`;
+  // 目标
+  h+='<div style="margin-top:8px">';
+  L.goals.forEach(g=>{
+    const done=g.check(s);
+    h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text" style="${done?'color:var(--goal-done)':''}">${g.label}</span></div>`;
+  });
+  h+='</div></div>';
+  // 提示
+  h+=`<div class="hint-b">💡 ${L.hint}</div>`;
+  // 控件
+  h+='<div class="act-section">';
+  h+=renderControls(currentLevel,s);
+  h+='</div>';
+  // quiz
+  if(isLevelDone(currentLevel)){
+    h+=renderQuiz(currentLevel);
+  }
+  document.getElementById('lp-body').innerHTML=h;
+}
+
+function renderControls(idx,s){
+  let h='';
+  switch(idx){
+    case 0:
+      h+=`<div class="slider-wrap"><label>深度 h: <span class="sv">${s.depth.toFixed(1)} m</span></label>`;
+      h+=`<input type="range" min="0" max="20" step="0.1" value="${s.depth}" oninput="levelState.depth=+this.value;this.previousElementSibling.querySelector('.sv').textContent=this.value+' m';renderPanel()"></div>`;
+      h+=`<div style="padding:8px;background:var(--concept-bg);border-radius:6px;font-size:12px;color:var(--concept-text);margin-top:8px">`;
+      h+=`压强 P = <span style="color:#ef4444;font-weight:700">${s.pressure.toFixed(1)} kPa</span><br>`;
+      h+=`= 大气压(101.3) + ρgh = 101.3 + 1000×9.81×${s.depth.toFixed(1)}/1000</div>`;
+      break;
+    case 1:
+      h+=`<div class="slider-wrap"><label>输入力 F₁: <span class="sv">${s.forceIn} N</span></label>`;
+      h+=`<input type="range" min="10" max="500" step="10" value="${s.forceIn}" oninput="levelState.forceIn=+this.value;renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>大活塞面积 A₂: <span class="sv">${s.areaOut} cm²</span></label>`;
+      h+=`<input type="range" min="10" max="200" step="5" value="${s.areaOut}" oninput="levelState.areaOut=+this.value;renderPanel()"></div>`;
+      h+=`<div style="padding:8px;background:var(--concept-bg);border-radius:6px;font-size:12px;color:var(--concept-text);margin-top:8px">`;
+      h+=`小活塞面积 A₁ = ${s.areaIn} cm²<br>`;
+      h+=`面积比 = <span style="color:#f59e0b;font-weight:700">${s.ratio.toFixed(1)}</span><br>`;
+      h+=`输出力 F₂ = <span style="color:#22c55e;font-weight:700">${s.forceOut.toFixed(0)} N</span></div>`;
+      break;
+    case 2:
+      h+=`<div class="slider-wrap"><label>物体密度: <span class="sv">${s.objDensity} kg/m³</span></label>`;
+      h+=`<input type="range" min="100" max="3000" step="50" value="${s.objDensity}" oninput="levelState.objDensity=+this.value;renderPanel()"></div>`;
+      h+=`<div style="padding:8px;background:var(--concept-bg);border-radius:6px;font-size:12px;color:var(--concept-text);margin-top:8px">`;
+      h+=`水密度 ρ水 = 1000 kg/m³<br>`;
+      h+=`状态: <span style="color:${s.objDensity<1000?'#22c55e':(s.objDensity>1000?'#ef4444':'#f59e0b')};font-weight:700">${s.objDensity<1000?'漂浮':(s.objDensity>1000?'下沉':'悬浮')}</span></div>`;
+      break;
+    case 3:
+      h+=`<div class="slider-wrap"><label>入口流速 v₁: <span class="sv">${s.v1.toFixed(1)} m/s</span></label>`;
+      h+=`<input type="range" min="1" max="10" step="0.1" value="${s.v1}" oninput="levelState.v1=+this.value;renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>窄管直径 d₂: <span class="sv">${(s.d2*100).toFixed(0)} cm</span></label>`;
+      h+=`<input type="range" min="0.02" max="0.1" step="0.005" value="${s.d2}" oninput="levelState.d2=+this.value;renderPanel()"></div>`;
+      h+=`<div style="padding:8px;background:var(--concept-bg);border-radius:6px;font-size:12px;color:var(--concept-text);margin-top:8px">`;
+      h+=`宽管直径 d₁ = ${(s.d1*100).toFixed(0)} cm<br>`;
+      h+=`窄管流速 v₂ = <span style="color:#f59e0b;font-weight:700">${s.v2.toFixed(1)} m/s</span><br>`;
+      h+=`窄管压强 P₂ = <span style="color:${s.p2<s.p1?'#ef4444':'#3b82f6'};font-weight:700">${s.p2.toFixed(1)} kPa</span></div>`;
+      break;
+    case 4:
+      h+=`<div style="display:flex;gap:6px;flex-wrap:wrap">`;
+      ['water','oil','honey'].forEach(f=>{
+        const name=f==='water'?'水':f==='oil'?'机油':'蜂蜜';
+        const active=s.fluid===f;
+        h+=`<button style="flex:1;padding:10px;border-radius:8px;border:2px solid ${active?'#3b82f6':'var(--concept-border)'};background:${active?'var(--btn-bg)':'var(--concept-bg)'};color:var(--text);cursor:pointer;font-weight:${active?'700':'400'}" onclick="levelState.fluid='${f}';if('${f}'!=='water')levelState.compared=true;if('${f}'==='honey')levelState.seenFlat=true;renderPanel()">${name}</button>`;
+      });
+      h+=`</div>`;
+      h+=`<div style="padding:8px;background:var(--concept-bg);border-radius:6px;font-size:12px;color:var(--concept-text);margin-top:8px">`;
+      h+=`当前流体: <span style="color:var(--sv);font-weight:700">${s.fluid==='water'?'水':s.fluid==='oil'?'机油':'蜂蜜'}</span><br>`;
+      h+=`粘度 μ = ${s.viscosity} Pa·s<br>`;
+      h+=`特征: ${s.fluid==='water'?'低粘度，抛物线速度分布':s.fluid==='oil'?'中等粘度，分布稍平坦':'高粘度，速度分布很平坦'}</div>`;
+      break;
+    case 5:
+      h+=`<div class="slider-wrap"><label>流速 v: <span class="sv">${s.velocity.toFixed(2)} m/s</span></label>`;
+      h+=`<input type="range" min="0.01" max="5" step="0.01" value="${s.velocity}" oninput="levelState.velocity=+this.value;renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>管径 D: <span class="sv">${(s.diameter*100).toFixed(1)} cm</span></label>`;
+      h+=`<input type="range" min="0.01" max="0.2" step="0.005" value="${s.diameter}" oninput="levelState.diameter=+this.value;renderPanel()"></div>`;
+      h+=`<div style="padding:8px;background:var(--concept-bg);border-radius:6px;font-size:12px;color:var(--concept-text);margin-top:8px">`;
+      h+=`Re = ρvD/μ = ${s.density}×${s.velocity.toFixed(2)}×${s.diameter.toFixed(3)}/${s.viscosity}<br>`;
+      h+=`= <span style="color:${s.re>2300?'#ef4444':'#22c55e'};font-weight:700;font-size:16px">${s.re.toFixed(0)}</span><br>`;
+      h+=`状态: <span style="color:${s.re>2300?'#ef4444':'#22c55e'};font-weight:700">${s.re>2300?'湍流 (Re>2300)':'层流 (Re<2300)'}</span></div>`;
+      break;
+    case 6:
+      h+=`<div class="slider-wrap"><label>攻角 α: <span class="sv">${s.angle}°</span></label>`;
+      h+=`<input type="range" min="-5" max="25" step="1" value="${s.angle}" oninput="levelState.angle=+this.value;renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>风速: <span class="sv">${s.windSpeed} m/s</span></label>`;
+      h+=`<input type="range" min="5" max="80" step="1" value="${s.windSpeed}" oninput="levelState.windSpeed=+this.value;renderPanel()"></div>`;
+      h+=`<div style="padding:8px;background:var(--concept-bg);border-radius:6px;font-size:12px;color:var(--concept-text);margin-top:8px">`;
+      h+=`升力 = <span style="color:#22c55e;font-weight:700">${s.lift.toFixed(0)} N</span><br>`;
+      h+=`阻力 = <span style="color:#ef4444;font-weight:700">${s.drag.toFixed(0)} N</span><br>`;
+      const ldR2=s.drag>0?(s.lift/s.drag).toFixed(1):'--';
+      h+=`升阻比 = <span style="color:#f59e0b;font-weight:700">${ldR2}</span> ${s.bestRatio?'✅ 找到最佳!':''}</div>`;
+      break;
+  }
+  return h;
+}
+
+// === Quiz ===
+function renderQuiz(idx){
+  const qd=LEVELS[idx].quiz;if(!qd)return '';
+  let h='<div class="quiz-box"><div class="quiz-q">📝 通关测验：'+qd.q+'</div>';
+  qd.opts.forEach((opt,i)=>{
+    const cls=quizPassed.has(idx)?(i===qd.ans?'correct':''):'';
+    h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${idx},${i})">${opt}</div>`;
+  });
+  if(quizPassed.has(idx))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过</div>';
+  h+='</div>';
+  if(quizPassed.has(idx)&&idx<TOTAL-1){
+    h+=`<div class="act-section"><button class="act-btn green" onclick="goLevel(${idx+1})">下一关 →</button></div>`;
+  }
+  return h;
+}
+function answerQuiz(idx,optIdx){
+  if(quizLocked||quizPassed.has(idx))return;
+  quizLocked=true;
+  const qd=LEVELS[idx].quiz;
+  const opts=document.querySelectorAll('.quiz-opt');
+  opts.forEach((el,i)=>{el.classList.add(i===qd.ans?'correct':'wrong')});
+  if(optIdx===qd.ans){
+    quizPassed.add(idx);playSound('success');
+    setTimeout(()=>{quizLocked=false;if(idx<TOTAL-1)goLevel(idx+1);else showResult()},800);
+  }else{
+    playSound('fail');
+    setTimeout(()=>{quizLocked=false;renderPanel()},1000);
+  }
+}
+
+// === 关卡切换 ===
+function goLevel(idx){
+  if(idx<0||idx>=TOTAL)return;
+  currentLevel=idx;initLevel(idx);renderPanel();
+}
+
+// === 结果页 ===
+function showResult(){
+  gameState='result';
+  document.getElementById('lp').style.display='none';
+  document.getElementById('bottom-bar').style.display='none';
+  let h=`<div style="font-size:48px;margin-bottom:10px">🎉</div>`;
+  h+=`<div style="font-size:22px;font-weight:700;margin-bottom:8px;color:var(--title-color)">恭喜通关！</div>`;
+  h+=`<div style="font-size:13px;color:var(--text-sub);margin-bottom:16px">你已掌握流体力学的 7 个核心概念</div>`;
+  h+=`<div style="text-align:left;background:var(--concept-bg);border-radius:8px;padding:12px;font-size:12px;color:var(--concept-text);line-height:1.8;margin-bottom:16px">`;
+  h+=`<b style="color:var(--sv)">你学到了：</b><br>`;
+  h+=`💧 压强与深度的线性关系 P=ρgh<br>`;
+  h+=`⚙️ 帕斯卡原理与液压放大<br>`;
+  h+=`🛟 阿基米德浮力原理<br>`;
+  h+=`🌬️ 伯努利方程与文丘里效应<br>`;
+  h+=`🫗 粘性对速度分布的影响<br>`;
+  h+=`🌀 雷诺数与层流-湍流转变<br>`;
+  h+=`✈️ 机翼升力原理与失速</div>`;
+  h+=`<button style="padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:#3b82f6;color:#fff" onclick="location.reload()">再玩一次</button>`;
+  document.getElementById('resultBox').innerHTML=h;
+  document.getElementById('resultModal').classList.remove('hidden');
+}
+
+// === 启动 ===
+function startGame(){
+  playSound('click');
+  document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('lp').style.display='flex';
+  document.getElementById('bottom-bar').style.display='flex';
+  gameState='play';
+  goLevel(0);
+  requestAnimationFrame(mainLoop);
+}
+
+// === 主循环 ===
+let lastTime=0;
+function mainLoop(ts){
+  requestAnimationFrame(mainLoop);
+  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;time+=dt;
+  drawBg();
+  if(gameState==='play'){
+    updateLevel(currentLevel,dt);
+    drawLevel(currentLevel);
+    updateParticles(dt);drawParticles();
+  }
+  document.getElementById('bbLeft').textContent=`关卡 ${currentLevel+1}/${TOTAL} — ${LEVELS[currentLevel].title}`;
+  document.getElementById('bbRight').textContent=`已通过: ${quizPassed.size}/${TOTAL}`;
+}
+</script>
+</body>
+</html>
