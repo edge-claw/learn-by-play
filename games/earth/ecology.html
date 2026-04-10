@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生态系统探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;--slider-label:#888;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --sel-bg:#1a1a4a;--sel-border:#444;--sel-text:#aaa;--sel-active-bg:#1a1a4a;--sel-active-border:#3b82f6;--sel-active-text:#60a5fa;
+  --sel-correct-bg:#0a2a1a;--sel-correct-border:#22c55e;--sel-correct-text:#4ade80;
+  --sel-wrong-bg:#2a0a0a;--sel-wrong-border:#ef4444;--sel-wrong-text:#f87171;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);--slider-label:#888;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --sel-bg:#eef2ff;--sel-border:#c7d2fe;--sel-text:#64748b;--sel-active-bg:#e0e7ff;--sel-active-border:#6366f1;--sel-active-text:#4338ca;
+  --sel-correct-bg:#ecfdf5;--sel-correct-border:#6ee7b7;--sel-correct-text:#059669;
+  --sel-wrong-bg:#fef2f2;--sel-wrong-border:#fca5a5;--sel-wrong-text:#dc2626;
+}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(100vh - 36px)}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100vh - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;display:none;padding-bottom:24px}
+.panel h2{font-size:15px;color:var(--title-color);margin:8px 0 4px;font-weight:bold}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:14px;cursor:pointer;text-align:center}
+.act-btn:hover{background:var(--btn-hover)}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--hint-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:13px;line-height:1.8;color:var(--learn-text)}
+.sv{color:var(--sv);font-weight:bold}.desc{font-size:13px;color:var(--text-sub);line-height:1.6;margin:6px 0}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:var(--slider-label);display:block;margin-bottom:4px}
+.slider-wrap input[type=range]{width:100%;accent-color:#3b82f6}.slider-val{font-size:13px;color:var(--sv);font-weight:bold}
+.sel-row{display:flex;gap:4px;margin:4px 0;flex-wrap:wrap}
+.sel-btn{padding:5px 10px;border-radius:8px;font-size:11px;cursor:pointer;border:1px solid var(--sel-border);background:var(--sel-bg);color:var(--sel-text)}
+.sel-btn.active{border-color:var(--sel-active-border);background:var(--sel-active-bg);color:var(--sel-active-text)}
+.sel-btn.correct{border-color:var(--sel-correct-border);background:var(--sel-correct-bg);color:var(--sel-correct-text)}
+.sel-btn.wrong{border-color:var(--sel-wrong-border);background:var(--sel-wrong-bg);color:var(--sel-wrong-text)}
+.goal-item{font-size:12px;color:var(--goal-text);margin:2px 0}.goal-item.done{color:var(--goal-done);text-decoration:line-through}
+#infobar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:flex;align-items:center;padding:0 16px 0 332px;font-size:12px;color:#666;z-index:10}
+#infobar .sep{margin:0 12px;color:#333}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .hl{color:#22c55e}
+.start-box .sub{font-size:17px;color:var(--sub-color);margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#22c55e,#4ade80);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+.desc-hl{background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:6px;padding:6px 8px;margin:4px 0}
+.species-btn{display:inline-block;padding:4px 8px;margin:2px;border-radius:6px;font-size:11px;cursor:pointer;border:1px solid var(--sel-border);background:var(--sel-bg);color:var(--sel-text);transition:all .2s}
+.species-btn:hover{border-color:var(--sel-active-border)}
+.species-btn.present{border-color:#22c55e;background:var(--sel-correct-bg);color:var(--sel-correct-text)}
+.species-btn.extinct{border-color:#ef4444;background:var(--sel-wrong-bg);color:var(--sel-wrong-text);text-decoration:line-through}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="infobar"><span id="ib-level">关卡 1/7</span><span class="sep">|</span><span id="ib-title">食物链</span><span class="sep">|</span><span id="ib-status">进行中</span></div>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🌿 <span class="hl">生态系统</span>探险</h1>
+  <div class="sub">7 个关卡，探索生命之间的奇妙联系</div>
+  <button class="start-btn" onclick="startGame()">开始探索</button>
+  <div class="features">
+    <div class="feat"><div class="fi">🔗</div>食物链</div>
+    <div class="feat"><div class="fi">🔺</div>能量金字塔</div>
+    <div class="feat"><div class="fi">♻️</div>碳循环</div>
+    <div class="feat"><div class="fi">⚗️</div>氮循环</div>
+    <div class="feat"><div class="fi">📈</div>种群增长</div>
+    <div class="feat"><div class="fi">🦋</div>生物多样性</div>
+    <div class="feat"><div class="fi">⚖️</div>生态平衡</div>
+  </div>
+</div>
+</div>
+<script>
+let isDark=true;
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel()}
+function t(){return isDark?{bg:'#0a0a2e',grid:'rgba(99,102,241,0.06)',text:'#fff',sub:'rgba(255,255,255,0.6)'}:{bg:'#e8edf5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',sub:'rgba(30,41,59,0.6)'}}
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+let CW,CH;function resize(){const r=cv.getBoundingClientRect();CW=cv.width=r.width;CH=cv.height=r.height}
+resize();window.addEventListener('resize',()=>{resize();draw()});
+let audioCtx;function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function playSound(tp){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(tp==='ok'){o.frequency.value=523;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else if(tp==='no'){o.frequency.value=300;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}else{o.frequency.value=800;g.gain.value=0.08;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}}
+
+const LEVELS=[{name:'食物链与食物网',icon:'🔗'},{name:'能量金字塔',icon:'🔺'},{name:'碳循环',icon:'♻️'},{name:'氮循环',icon:'⚗️'},{name:'种群增长',icon:'📈'},{name:'生物多样性',icon:'🦋'},{name:'生态平衡',icon:'⚖️'}];
+let cur=0,gameState='title',S={},done=new Array(7).fill(false);
+
+/* Species database */
+const SPECIES={
+  grass:{name:'草',icon:'🌿',level:0,color:'#22c55e',energy:10000},
+  tree:{name:'树',icon:'🌳',level:0,color:'#15803d',energy:15000},
+  rabbit:{name:'兔',icon:'🐰',level:1,color:'#f59e0b',energy:1000},
+  deer:{name:'鹿',icon:'🦌',level:1,color:'#d97706',energy:1200},
+  mouse:{name:'鼠',icon:'🐭',level:1,color:'#a3a3a3',energy:500},
+  snake:{name:'蛇',icon:'🐍',level:2,color:'#7c3aed',energy:100},
+  fox:{name:'狐',icon:'🦊',level:2,color:'#ea580c',energy:120},
+  hawk:{name:'鹰',icon:'🦅',level:2,color:'#6366f1',energy:80},
+  wolf:{name:'狼',icon:'🐺',level:3,color:'#dc2626',energy:15},
+  lion:{name:'狮',icon:'🦁',level:3,color:'#b45309',energy:10}
+};
+const FOOD_WEB={grass:['rabbit','deer','mouse'],tree:['deer'],rabbit:['fox','hawk','wolf'],deer:['wolf','lion'],mouse:['snake','hawk','fox'],snake:['hawk'],fox:['wolf'],hawk:[],wolf:[],lion:[]};
+
+function initLevel(i){
+  S={phase:0,obj:[false,false,false],anim:0};
+  switch(i){
+    case 0:S.chain=[];S.webSpecies=new Set(['grass','tree']);S.showWeb=false;S.chainBuilt=false;S.webComplete=false;break;
+    case 1:S.producers=10000;S.primary=1000;S.secondary=100;S.tertiary=10;S.transferRate=10;S.showRule=false;break;
+    case 2:S.atmosphere=400;S.ocean=200;S.biomass=100;S.fossil=500;S.photosynthesis=50;S.respiration=30;S.burning=0;break;
+    case 3:S.atmosN=78;S.soilN=20;S.plantN=10;S.fixation=5;S.denitrify=3;S.fertilizer=0;S.runoff=0;break;
+    case 4:S.pop=10;S.K=500;S.r=0.1;S.time=0;S.history=[];S.running=false;S.overshoot=false;break;
+    case 5:S.species=new Set(['grass','tree','rabbit','deer','mouse','snake','fox','hawk','wolf','lion']);S.removed=new Set();S.biodiversity=100;S.cascadeMsg='';break;
+    case 6:S.hunting=0;S.habitat=100;S.invasive=0;S.conservation=0;S.balance=50;S.ecosystem='stable';break;
+  }
+}
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  LEVELS.forEach((_,i)=>{const c=i<cur?'done':i===cur?'cur':'';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`});
+  h+=`</div><div class="sn-info">第 ${cur+1}/7 关 — ${LEVELS[cur].name}</div><div class="sn-hint">${done.filter(Boolean).length}/7 已完成</div></div>`;return h;
+}
+let _panelBusy=false;
+function renderPanel(){
+  if(_panelBusy)return;_panelBusy=true;
+  const p=document.getElementById('panel');let h=renderStageNav();
+  h+=`<h2>${LEVELS[cur].icon} ${LEVELS[cur].name}</h2>`;
+  h+=renderLevelPanel(cur);
+  if(done[cur]&&cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
+  if(done.every(Boolean)){
+    h+=`<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握生态系统的核心知识</div>`;
+    h+=`<div class="summary-keys"><div>🔗 食物链连接生产者→消费者→顶级捕食者</div><div>🔺 每级营养级只传递约10%的能量</div><div>♻️ 碳在大气、海洋、生物和化石燃料间循环</div><div>⚗️ 氮循环依赖固氮菌和反硝化细菌</div><div>📈 种群增长受环境容纳量K限制</div><div>🦋 物种消失会引发级联效应</div><div>⚖️ 生态平衡需要人类主动保护</div></div></div>`;
+  }
+  p.innerHTML=h;_panelBusy=false;
+}
+function sliderDrag(){updateSliderLabels();checkObj();draw()}
+function updateSliderLabels(){
+  switch(cur){
+    case 1:{
+      const ts=document.getElementById('sl-transfer');
+      if(ts){S.transferRate=+ts.value;document.getElementById('vl-transfer').textContent=S.transferRate+'%'}
+      S.primary=S.producers*S.transferRate/100;S.secondary=S.primary*S.transferRate/100;S.tertiary=S.secondary*S.transferRate/100;
+    }break;
+    case 2:{
+      const ps=document.getElementById('sl-photo'),rs=document.getElementById('sl-resp'),bs=document.getElementById('sl-burn');
+      if(ps){S.photosynthesis=+ps.value;document.getElementById('vl-photo').textContent=S.photosynthesis}
+      if(rs){S.respiration=+rs.value;document.getElementById('vl-resp').textContent=S.respiration}
+      if(bs){S.burning=+bs.value;document.getElementById('vl-burn').textContent=S.burning}
+      S.atmosphere=400-S.photosynthesis*2+S.respiration*1.5+S.burning*3;S.biomass=100+S.photosynthesis-S.respiration;S.ocean=200+S.atmosphere*0.1;
+    }break;
+    case 3:{
+      const fs=document.getElementById('sl-fix'),ds=document.getElementById('sl-deni'),fe=document.getElementById('sl-fert');
+      if(fs){S.fixation=+fs.value;document.getElementById('vl-fix').textContent=S.fixation}
+      if(ds){S.denitrify=+ds.value;document.getElementById('vl-deni').textContent=S.denitrify}
+      if(fe){S.fertilizer=+fe.value;document.getElementById('vl-fert').textContent=S.fertilizer}
+      S.soilN=20+S.fixation*2+S.fertilizer*3-S.denitrify;S.plantN=10+S.soilN*0.3;S.runoff=Math.max(0,S.fertilizer*2-5);
+    }break;
+    case 4:{
+      const rs=document.getElementById('sl-r'),ks=document.getElementById('sl-k');
+      if(rs){S.r=+rs.value;document.getElementById('vl-r').textContent=S.r.toFixed(2)}
+      if(ks){S.K=+ks.value;document.getElementById('vl-k').textContent=S.K}
+    }break;
+    case 6:{
+      const hs=document.getElementById('sl-hunt'),ha=document.getElementById('sl-hab'),iv=document.getElementById('sl-inv'),cs=document.getElementById('sl-cons');
+      if(hs){S.hunting=+hs.value;document.getElementById('vl-hunt').textContent=S.hunting}
+      if(ha){S.habitat=+ha.value;document.getElementById('vl-hab').textContent=S.habitat+'%'}
+      if(iv){S.invasive=+iv.value;document.getElementById('vl-inv').textContent=S.invasive}
+      if(cs){S.conservation=+cs.value;document.getElementById('vl-cons').textContent=S.conservation}
+      S.balance=Math.max(0,Math.min(100,50-S.hunting*0.3+S.habitat*0.3-S.invasive*0.4+S.conservation*0.5));
+      S.ecosystem=S.balance>70?'stable':S.balance>40?'stressed':'collapsing';
+    }break;
+  }
+}
+function completeObj(idx){if(S.obj[idx])return;S.obj[idx]=true;playSound('ok');if(idx===0)S.phase=1;if(idx===2){done[cur]=true;document.getElementById('ib-status').textContent='已完成'}renderPanel()}
+function checkObj(){
+  switch(cur){
+    case 0:if(!S.obj[0]&&S.chain.length>=3)completeObj(0);if(!S.obj[1]&&S.webSpecies.size>=6)completeObj(1);if(!S.obj[2]&&S.webSpecies.size>=8)completeObj(2);break;
+    case 1:if(!S.obj[0]&&S.transferRate<=15)completeObj(0);if(!S.obj[1]&&S.transferRate===10)completeObj(1);if(!S.obj[2]&&S.obj[1])completeObj(2);break;
+    case 2:if(!S.obj[0]&&S.photosynthesis>=70)completeObj(0);if(!S.obj[1]&&S.burning>=50)completeObj(1);if(!S.obj[2]&&Math.abs(S.photosynthesis-S.respiration-S.burning)<10&&S.photosynthesis>40)completeObj(2);break;
+    case 3:if(!S.obj[0]&&S.fixation>=15)completeObj(0);if(!S.obj[1]&&S.fertilizer>=30)completeObj(1);if(!S.obj[2]&&S.runoff>40)completeObj(2);break;
+    case 4:if(!S.obj[0]&&S.history.length>50)completeObj(0);if(!S.obj[1]&&S.pop>S.K*0.9)completeObj(1);if(!S.obj[2]&&S.overshoot)completeObj(2);break;
+    case 5:if(!S.obj[0]&&S.removed.size>=1)completeObj(0);if(!S.obj[1]&&S.removed.size>=3)completeObj(1);if(!S.obj[2]&&S.biodiversity<30)completeObj(2);break;
+    case 6:if(!S.obj[0]&&S.ecosystem==='stressed')completeObj(0);if(!S.obj[1]&&S.ecosystem==='collapsing')completeObj(1);if(!S.obj[2]&&S.balance>80)completeObj(2);break;
+  }
+}
+function goalHTML(goals){return goals.map((g,i)=>`<div class="goal-item${S.obj[i]?' done':''}">• ${g}</div>`).join('')}
+
+function toggleSpecies(sp){
+  if(cur===0){
+    if(S.webSpecies.has(sp))S.webSpecies.delete(sp);else S.webSpecies.add(sp);
+    checkObj();renderPanel();draw();
+  }
+}
+function removeSpecies(sp){
+  if(cur===5&&S.species.has(sp)){
+    S.species.delete(sp);S.removed.add(sp);
+    // cascade: remove species that lost all food sources
+    let changed=true;
+    while(changed){changed=false;for(const [prey,preds] of Object.entries(FOOD_WEB)){if(!S.species.has(prey))continue;const isProducer=SPECIES[prey].level===0;if(isProducer)continue;const foodSources=Object.entries(FOOD_WEB).filter(([src])=>S.species.has(src)&&FOOD_WEB[src].includes(prey));if(foodSources.length===0){S.species.delete(prey);S.removed.add(prey);S.cascadeMsg=`${SPECIES[prey].icon}${SPECIES[prey].name} 因食物来源消失而灭绝！`;changed=true}}}
+    S.biodiversity=(S.species.size/10)*100;checkObj();renderPanel();draw();
+  }
+}
+function restoreSpecies(sp){
+  if(cur===5&&S.removed.has(sp)){S.removed.delete(sp);S.species.add(sp);S.biodiversity=(S.species.size/10)*100;S.cascadeMsg='';checkObj();renderPanel();draw()}
+}
+function addToChain(sp){
+  if(cur===0){
+    if(S.chain.length===0){if(SPECIES[sp].level===0){S.chain.push(sp);checkObj();renderPanel();draw()}}
+    else{const last=S.chain[S.chain.length-1];if(FOOD_WEB[last]&&FOOD_WEB[last].includes(sp)){S.chain.push(sp);checkObj();renderPanel();draw()}else{playSound('no')}}
+  }
+}
+function clearChain(){S.chain=[];renderPanel();draw()}
+function toggleSim(){
+  if(cur===4){S.running=!S.running;renderPanel()}
+}
+function renderLevelPanel(i){
+  let h='';
+  switch(i){
+    case 0:{
+      h+=`<div class="desc desc-hl">画布上有多种生物。点击物种按钮构建一条食物链（从生产者开始），然后添加更多物种构建食物网。</div>`;
+      h+=`<h2>构建食物链</h2><div class="sel-row">`;
+      Object.entries(SPECIES).forEach(([k,v])=>{h+=`<span class="sel-btn${S.chain.includes(k)?' active':''}" onclick="addToChain('${k}')">${v.icon}${v.name}</span>`});
+      h+=`</div>`;
+      if(S.chain.length>0)h+=`<div class="concept-box">当前链: ${S.chain.map(s=>SPECIES[s].icon+SPECIES[s].name).join(' → ')}</div>`;
+      h+=`<button class="act-btn" onclick="clearChain()">清空食物链</button>`;
+      h+=`<h2>构建食物网</h2><div class="sel-row">`;
+      Object.entries(SPECIES).forEach(([k,v])=>{h+=`<span class="species-btn${S.webSpecies.has(k)?' present':''}" onclick="toggleSpecies('${k}')">${v.icon}${v.name}</span>`});
+      h+=`</div>`;
+      h+=`<div class="concept-box">食物网物种数: <span class="sv">${S.webSpecies.size}/10</span></div>`;
+      if(S.phase>=1)h+=`<div class="learn-box">💡 食物链是单线的"谁吃谁"关系。食物网是多条食物链交织而成的网络，更真实地反映生态系统中的能量流动。</div>`;
+      h+=goalHTML(['构建一条3环以上的食物链','添加6种以上物种到食物网','让食物网包含8种以上物种']);
+      if(!S.obj[0])h+=`<div class="hint-box">💡 先点一个生产者（草/树），再依次点它的消费者</div>`;
+    }break;
+    case 1:{
+      h+=`<div class="desc desc-hl">画布上是一个能量金字塔。调节能量传递效率，观察每一级营养级能获得多少能量。</div>`;
+      h+=`<div class="slider-wrap"><label>能量传递效率</label><input type="range" id="sl-transfer" min="1" max="30" value="${S.transferRate}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-transfer">${S.transferRate}%</span></div>`;
+      h+=`<div class="concept-box">🌿 生产者: <span class="sv">${S.producers.toFixed(0)}</span> kcal<br>🐰 初级消费者: <span class="sv">${S.primary.toFixed(0)}</span> kcal<br>🦊 次级消费者: <span class="sv">${S.secondary.toFixed(1)}</span> kcal<br>🐺 顶级捕食者: <span class="sv">${S.tertiary.toFixed(2)}</span> kcal</div>`;
+      if(S.phase>=1)h+=`<div class="learn-box">💡 林德曼十分之一定律：每个营养级只能将约10%的能量传递给下一级。其余90%用于自身代谢、散热等。这就是为什么顶级捕食者数量总是很少。</div>`;
+      h+=goalHTML(['将传递效率调到15%以下','找到经典的10%传递率','理解为什么顶级捕食者稀少']);
+    }break;
+    case 2:{
+      h+=`<div class="desc desc-hl">碳在大气、海洋、生物体和化石燃料之间不断循环。调节光合作用、呼吸和燃烧，观察碳库变化。</div>`;
+      h+=`<div class="slider-wrap"><label>光合作用强度</label><input type="range" id="sl-photo" min="0" max="100" value="${S.photosynthesis}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-photo">${S.photosynthesis}</span></div>`;
+      h+=`<div class="slider-wrap"><label>呼吸作用强度</label><input type="range" id="sl-resp" min="0" max="100" value="${S.respiration}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-resp">${S.respiration}</span></div>`;
+      h+=`<div class="slider-wrap"><label>化石燃料燃烧</label><input type="range" id="sl-burn" min="0" max="100" value="${S.burning}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-burn">${S.burning}</span></div>`;
+      h+=`<div class="concept-box">大气CO₂: <span style="color:${S.atmosphere>500?'#ef4444':'#4ade80'}">${S.atmosphere.toFixed(0)} ppm</span><br>生物量碳: <span class="sv">${S.biomass.toFixed(0)}</span><br>海洋碳: <span class="sv">${S.ocean.toFixed(0)}</span></div>`;
+      if(S.phase>=1)h+=`<div class="learn-box">💡 光合作用从大气吸收CO₂固定到生物体；呼吸和分解释放CO₂回大气；燃烧化石燃料将地质封存的碳快速释放，打破平衡。</div>`;
+      h+=goalHTML(['增强光合作用到70以上','增加燃烧到50以上观察CO₂飙升','尝试平衡碳收支（光合≈呼吸+燃烧）']);
+    }break;
+    case 3:{
+      h+=`<div class="desc desc-hl">氮是生命必需元素，但大气中的N₂不能被植物直接利用。调节固氮、反硝化和施肥，观察氮在系统中的流动。</div>`;
+      h+=`<div class="slider-wrap"><label>生物固氮</label><input type="range" id="sl-fix" min="0" max="30" value="${S.fixation}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-fix">${S.fixation}</span></div>`;
+      h+=`<div class="slider-wrap"><label>反硝化作用</label><input type="range" id="sl-deni" min="0" max="30" value="${S.denitrify}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-deni">${S.denitrify}</span></div>`;
+      h+=`<div class="slider-wrap"><label>化肥施用</label><input type="range" id="sl-fert" min="0" max="60" value="${S.fertilizer}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-fert">${S.fertilizer}</span></div>`;
+      h+=`<div class="concept-box">土壤氮: <span class="sv">${S.soilN.toFixed(0)}</span><br>植物可用氮: <span class="sv">${S.plantN.toFixed(0)}</span><br>径流流失: <span style="color:${S.runoff>20?'#ef4444':'#4ade80'}">${S.runoff.toFixed(0)}</span></div>`;
+      if(S.phase>=1)h+=`<div class="learn-box">💡 固氮菌（根瘤菌等）将N₂转化为NH₃；硝化细菌将NH₃→NO₃⁻供植物吸收；反硝化细菌将NO₃⁻还原回N₂。过量施肥导致氮流失到水体，引起富营养化。</div>`;
+      h+=goalHTML(['增加固氮到15以上','施肥到30以上观察土壤氮变化','让径流流失超过40（过量施肥后果）']);
+    }break;
+    case 4:{
+      h+=`<div class="desc desc-hl">一个种群在有限环境中如何增长？调节增长率r和环境容纳量K，点击"运行"观察逻辑斯蒂增长曲线。</div>`;
+      h+=`<div class="slider-wrap"><label>增长率 r</label><input type="range" id="sl-r" min="0.01" max="0.5" step="0.01" value="${S.r}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-r">${S.r.toFixed(2)}</span></div>`;
+      h+=`<div class="slider-wrap"><label>环境容纳量 K</label><input type="range" id="sl-k" min="100" max="1000" step="10" value="${S.K}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-k">${S.K}</span></div>`;
+      h+=`<button class="act-btn" onclick="toggleSim()">${S.running?'⏸ 暂停':'▶ 运行模拟'}</button>`;
+      h+=`<button class="act-btn" onclick="S.pop=10;S.time=0;S.history=[];S.overshoot=false;S.running=false;renderPanel();draw()">🔄 重置</button>`;
+      h+=`<div class="concept-box">种群数量: <span class="sv">${S.pop.toFixed(0)}</span><br>时间步: <span class="sv">${S.time}</span><br>公式: dN/dt = rN(1-N/K)</div>`;
+      if(S.phase>=1)h+=`<div class="learn-box">💡 逻辑斯蒂模型：种群初期指数增长，接近K时增速放缓，最终稳定在K附近。r越大，增长越快但也越容易超调（overshoot）。</div>`;
+      h+=goalHTML(['运行模拟超过50步','让种群接近容纳量K','观察到种群超调现象（r>0.3）']);
+      if(!S.obj[2])h+=`<div class="hint-box">💡 把 r 调到 0.3 以上，K 调小，观察种群是否超过K后回落</div>`;
+    }break;
+    case 5:{
+      h+=`<div class="desc desc-hl">画布上是一个完整的生态系统。点击"移除"按钮删除物种，观察级联效应如何影响整个生态系统。</div>`;
+      h+=`<h2>现存物种</h2><div class="sel-row">`;
+      Object.entries(SPECIES).forEach(([k,v])=>{
+        if(S.species.has(k))h+=`<span class="species-btn present" onclick="removeSpecies('${k}')">${v.icon}${v.name} ✕</span>`;
+      });
+      h+=`</div>`;
+      if(S.removed.size>0){h+=`<h2>已灭绝</h2><div class="sel-row">`;S.removed.forEach(k=>{const v=SPECIES[k];h+=`<span class="species-btn extinct" onclick="restoreSpecies('${k}')">${v.icon}${v.name} ↩</span>`});h+=`</div>`}
+      h+=`<div class="concept-box">生物多样性: <span style="color:${S.biodiversity>60?'#4ade80':S.biodiversity>30?'#f59e0b':'#ef4444'}">${S.biodiversity.toFixed(0)}%</span></div>`;
+      if(S.cascadeMsg)h+=`<div class="hint-box">⚠️ ${S.cascadeMsg}</div>`;
+      if(S.phase>=1)h+=`<div class="learn-box">💡 关键种的消失会引发级联灭绝。例如移除草→兔和鹿失去食物→狐和狼也受影响。生物多样性越高，生态系统越稳定。</div>`;
+      h+=goalHTML(['移除1个物种观察影响','移除3个物种触发级联','让生物多样性降到30%以下']);
+    }break;
+    case 6:{
+      h+=`<div class="desc desc-hl">人类活动从多方面影响生态平衡。调节各项因素，先破坏再修复，理解保护的重要性。</div>`;
+      h+=`<div class="slider-wrap"><label>过度捕猎</label><input type="range" id="sl-hunt" min="0" max="100" value="${S.hunting}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-hunt">${S.hunting}</span></div>`;
+      h+=`<div class="slider-wrap"><label>栖息地面积</label><input type="range" id="sl-hab" min="0" max="100" value="${S.habitat}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-hab">${S.habitat}%</span></div>`;
+      h+=`<div class="slider-wrap"><label>入侵物种</label><input type="range" id="sl-inv" min="0" max="100" value="${S.invasive}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-inv">${S.invasive}</span></div>`;
+      h+=`<div class="slider-wrap"><label>保护力度</label><input type="range" id="sl-cons" min="0" max="100" value="${S.conservation}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-cons">${S.conservation}</span></div>`;
+      const ecoColor=S.ecosystem==='stable'?'#4ade80':S.ecosystem==='stressed'?'#f59e0b':'#ef4444';
+      h+=`<div class="concept-box">生态平衡: <span style="color:${ecoColor};font-weight:bold">${S.balance.toFixed(0)}% — ${S.ecosystem==='stable'?'稳定':S.ecosystem==='stressed'?'受压':'崩溃中'}</span></div>`;
+      if(S.phase>=1)h+=`<div class="learn-box">💡 过度捕猎减少顶级捕食者→中层爆发→植被退化。栖息地破碎化是物种灭绝的首要原因。入侵物种竞争本地种。保护区和法律是恢复平衡的关键。</div>`;
+      h+=goalHTML(['让生态系统进入"受压"状态','让生态系统"崩溃"','通过保护措施恢复到80%以上']);
+    }break;
+  }
+  return h;
+}
+function draw(){
+  const c=t();ctx.fillStyle=c.bg;ctx.fillRect(0,0,CW,CH);
+  S.anim=(S.anim||0)+0.016;
+  switch(cur){
+    case 0:drawFoodWeb(c);break;
+    case 1:drawEnergyPyramid(c);break;
+    case 2:drawCarbonCycle(c);break;
+    case 3:drawNitrogenCycle(c);break;
+    case 4:drawPopulation(c);break;
+    case 5:drawBiodiversity(c);break;
+    case 6:drawBalance(c);break;
+  }
+}
+function drawFoodWeb(c){
+  const levelY=[CH*0.8,CH*0.55,CH*0.35,CH*0.15];
+  const levelNames=['生产者','初级消费者','次级消费者','顶级捕食者'];
+  // level labels
+  ctx.font='11px system-ui';ctx.fillStyle=c.sub;ctx.textAlign='left';
+  levelNames.forEach((n,i)=>{ctx.fillText(n,10,levelY[i]+5)});
+  // draw species nodes
+  const positions={};
+  const byLevel=[[],[],[],[]];
+  const activeSpecies=S.showWeb?S.webSpecies:new Set(S.chain);
+  Object.entries(SPECIES).forEach(([k,v])=>{byLevel[v.level].push(k)});
+  byLevel.forEach((lvl,li)=>{
+    const count=lvl.length;lvl.forEach((sp,si)=>{
+      const x=CW*0.15+si*(CW*0.7/(Math.max(1,count-1)||1));const y=levelY[li];
+      positions[sp]={x,y};
+      const active=activeSpecies.has(sp);
+      ctx.beginPath();ctx.arc(x,y,active?22:16,0,Math.PI*2);
+      ctx.fillStyle=active?SPECIES[sp].color+'44':'rgba(100,100,100,0.2)';ctx.fill();
+      ctx.strokeStyle=active?SPECIES[sp].color:'#444';ctx.lineWidth=active?2:1;ctx.stroke();
+      ctx.font=`${active?20:14}px system-ui`;ctx.textAlign='center';ctx.fillStyle=c.text;
+      ctx.fillText(SPECIES[sp].icon,x,y+6);
+      ctx.font='10px system-ui';ctx.fillStyle=active?SPECIES[sp].color:c.sub;ctx.fillText(SPECIES[sp].name,x,y+22);
+    });
+  });
+  // draw connections
+  if(S.chain.length>1){
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=3;ctx.setLineDash([]);
+    for(let i=0;i<S.chain.length-1;i++){
+      const a=positions[S.chain[i]],b=positions[S.chain[i+1]];
+      if(a&&b){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+        // arrow
+        const angle=Math.atan2(b.y-a.y,b.x-a.x);const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+        ctx.beginPath();ctx.moveTo(mx+Math.cos(angle)*8,my+Math.sin(angle)*8);ctx.lineTo(mx+Math.cos(angle+2.5)*8,my+Math.sin(angle+2.5)*8);ctx.lineTo(mx+Math.cos(angle-2.5)*8,my+Math.sin(angle-2.5)*8);ctx.fill();
+      }
+    }
+  }
+  // food web connections
+  if(S.webSpecies.size>1){
+    ctx.strokeStyle='rgba(99,102,241,0.3)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    S.webSpecies.forEach(sp=>{
+      if(FOOD_WEB[sp]){FOOD_WEB[sp].forEach(pred=>{
+        if(S.webSpecies.has(pred)&&positions[sp]&&positions[pred]){ctx.beginPath();ctx.moveTo(positions[sp].x,positions[sp].y);ctx.lineTo(positions[pred].x,positions[pred].y);ctx.stroke()}
+      })}
+    });ctx.setLineDash([]);
+  }
+}
+function drawEnergyPyramid(c){
+  const cx=CW/2,baseY=CH*0.8,topY=CH*0.1;
+  const levels=[{name:'生产者',val:S.producers,color:'#22c55e',icon:'🌿'},{name:'初级消费者',val:S.primary,color:'#f59e0b',icon:'🐰'},{name:'次级消费者',val:S.secondary,color:'#7c3aed',icon:'🦊'},{name:'顶级捕食者',val:S.tertiary,color:'#dc2626',icon:'🐺'}];
+  const totalH=baseY-topY;const layerH=totalH/4;
+  levels.forEach((lv,i)=>{
+    const y=baseY-i*layerH;const w=CW*0.7*(1-i*0.2);
+    ctx.fillStyle=lv.color+'88';ctx.beginPath();
+    ctx.moveTo(cx-w/2,y);ctx.lineTo(cx+w/2,y);ctx.lineTo(cx+w/2*(1-0.2),y-layerH);ctx.lineTo(cx-w/2*(1-0.2),y-layerH);ctx.closePath();ctx.fill();
+    ctx.strokeStyle=lv.color;ctx.lineWidth=2;ctx.stroke();
+    ctx.font='14px system-ui';ctx.fillStyle=c.text;ctx.textAlign='center';
+    ctx.fillText(`${lv.icon} ${lv.name}: ${lv.val.toFixed(lv.val<1?2:0)} kcal`,cx,y-layerH/2+5);
+  });
+  // transfer arrows
+  ctx.font='12px system-ui';ctx.fillStyle='#f59e0b';
+  for(let i=0;i<3;i++){
+    const y=baseY-(i+0.5)*layerH;
+    ctx.fillText(`↑ ${S.transferRate}%`,cx+CW*0.3,y);
+    ctx.fillStyle='#ef4444';ctx.fillText(`→ ${100-S.transferRate}% 散失`,cx+CW*0.3,y+16);ctx.fillStyle='#f59e0b';
+  }
+}
+function drawCarbonCycle(c){
+  const pools=[
+    {name:'大气 CO₂',val:S.atmosphere,x:CW*0.5,y:CH*0.12,r:50,color:'#94a3b8',unit:'ppm'},
+    {name:'生物量',val:S.biomass,x:CW*0.25,y:CH*0.55,r:40,color:'#22c55e',unit:''},
+    {name:'海洋',val:S.ocean,x:CW*0.75,y:CH*0.55,r:45,color:'#3b82f6',unit:''},
+    {name:'化石燃料',val:S.fossil,x:CW*0.5,y:CH*0.85,r:35,color:'#78716c',unit:''}
+  ];
+  // draw pools
+  pools.forEach(p=>{
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r);
+    g.addColorStop(0,p.color+'66');g.addColorStop(1,p.color+'22');ctx.fillStyle=g;ctx.fill();
+    ctx.strokeStyle=p.color;ctx.lineWidth=2;ctx.stroke();
+    ctx.font='13px system-ui';ctx.fillStyle=c.text;ctx.textAlign='center';
+    ctx.fillText(p.name,p.x,p.y-5);ctx.font='11px system-ui';ctx.fillStyle=p.color;
+    ctx.fillText(p.val.toFixed(0)+(p.unit?' '+p.unit:''),p.x,p.y+12);
+  });
+  // arrows: photosynthesis (atmo→bio), respiration (bio→atmo), burning (fossil→atmo)
+  function drawArrow(x1,y1,x2,y2,color,label,val){
+    ctx.strokeStyle=color;ctx.lineWidth=1+val/30;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    const mx=(x1+x2)/2,my=(y1+y2)/2;ctx.font='10px system-ui';ctx.fillStyle=color;ctx.textAlign='center';ctx.fillText(label,mx+15,my);
+  }
+  drawArrow(CW*0.5,CH*0.17,CW*0.25,CH*0.5,'#22c55e','光合',S.photosynthesis);
+  drawArrow(CW*0.25,CH*0.5,CW*0.5,CH*0.17,'#f59e0b','呼吸',S.respiration);
+  drawArrow(CW*0.5,CH*0.82,CW*0.5,CH*0.17,'#ef4444','燃烧',S.burning);
+  drawArrow(CW*0.55,CH*0.15,CW*0.75,CH*0.5,'#3b82f6','溶解',10);
+  // CO2 warning
+  if(S.atmosphere>500){ctx.font='16px system-ui';ctx.fillStyle='#ef4444';ctx.textAlign='center';ctx.fillText('⚠️ CO₂ 浓度过高！',CW*0.5,CH*0.35)}
+}
+function drawNitrogenCycle(c){
+  const pools=[
+    {name:'大气 N₂ (78%)',x:CW*0.5,y:CH*0.1,r:45,color:'#6366f1'},
+    {name:'土壤氮',x:CW*0.3,y:CH*0.5,r:40,color:'#a16207',val:S.soilN},
+    {name:'植物氮',x:CW*0.7,y:CH*0.5,r:35,color:'#22c55e',val:S.plantN},
+    {name:'水体',x:CW*0.5,y:CH*0.85,r:30,color:'#3b82f6',val:S.runoff}
+  ];
+  pools.forEach(p=>{
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=p.color+'33';ctx.fill();ctx.strokeStyle=p.color;ctx.lineWidth=2;ctx.stroke();
+    ctx.font='12px system-ui';ctx.fillStyle=c.text;ctx.textAlign='center';ctx.fillText(p.name,p.x,p.y-5);
+    if(p.val!==undefined){ctx.font='11px system-ui';ctx.fillStyle=p.color;ctx.fillText(p.val.toFixed(0),p.x,p.y+12)}
+  });
+  // process arrows
+  function arrow(x1,y1,x2,y2,col,lbl){ctx.strokeStyle=col;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.font='10px system-ui';ctx.fillStyle=col;ctx.textAlign='center';ctx.fillText(lbl,(x1+x2)/2-20,(y1+y2)/2)}
+  arrow(CW*0.45,CH*0.15,CW*0.3,CH*0.45,'#a16207',`固氮 ${S.fixation}`);
+  arrow(CW*0.3,CH*0.45,CW*0.45,CH*0.15,'#6366f1',`反硝化 ${S.denitrify}`);
+  arrow(CW*0.35,CH*0.5,CW*0.65,CH*0.5,'#22c55e','吸收');
+  arrow(CW*0.35,CH*0.55,CW*0.5,CH*0.82,'#3b82f6',`流失 ${S.runoff.toFixed(0)}`);
+  // fertilizer
+  if(S.fertilizer>0){ctx.font='12px system-ui';ctx.fillStyle='#f59e0b';ctx.textAlign='center';ctx.fillText(`🧪 化肥 +${S.fertilizer}`,CW*0.15,CH*0.4)}
+  if(S.runoff>20){ctx.font='14px system-ui';ctx.fillStyle='#ef4444';ctx.textAlign='center';ctx.fillText('⚠️ 富营养化风险！',CW*0.5,CH*0.75)}
+}
+function drawPopulation(c){
+  const padL=60,padR=30,padT=40,padB=50;
+  const gw=CW-padL-padR,gh=CH-padT-padB;
+  // axes
+  ctx.strokeStyle=c.sub;ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(padL,padT);ctx.lineTo(padL,padT+gh);ctx.lineTo(padL+gw,padT+gh);ctx.stroke();
+  // K line
+  const maxPop=Math.max(S.K*1.3,S.pop*1.1,100);
+  const ky=padT+gh-(S.K/maxPop)*gh;
+  ctx.setLineDash([5,5]);ctx.strokeStyle='#ef4444';ctx.beginPath();ctx.moveTo(padL,ky);ctx.lineTo(padL+gw,ky);ctx.stroke();ctx.setLineDash([]);
+  ctx.font='11px system-ui';ctx.fillStyle='#ef4444';ctx.textAlign='left';ctx.fillText(`K = ${S.K}`,padL+gw+5,ky+4);
+  // axis labels
+  ctx.font='11px system-ui';ctx.fillStyle=c.sub;ctx.textAlign='center';ctx.fillText('时间',padL+gw/2,padT+gh+35);
+  ctx.save();ctx.translate(15,padT+gh/2);ctx.rotate(-Math.PI/2);ctx.fillText('种群数量',0,0);ctx.restore();
+  // plot history
+  if(S.history.length>1){
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=2;ctx.beginPath();
+    const maxT=Math.max(S.history.length,100);
+    S.history.forEach((v,i)=>{
+      const x=padL+(i/maxT)*gw;const y=padT+gh-(v/maxPop)*gh;
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    });ctx.stroke();
+    // current point
+    const lastX=padL+((S.history.length-1)/maxT)*gw;
+    const lastY=padT+gh-(S.history[S.history.length-1]/maxPop)*gh;
+    ctx.beginPath();ctx.arc(lastX,lastY,5,0,Math.PI*2);ctx.fillStyle='#22c55e';ctx.fill();
+  }
+  // formula
+  ctx.font='14px system-ui';ctx.fillStyle=c.text;ctx.textAlign='center';
+  ctx.fillText(`N = ${S.pop.toFixed(0)}  |  r = ${S.r.toFixed(2)}  |  K = ${S.K}`,CW/2,25);
+  if(S.overshoot){ctx.fillStyle='#f59e0b';ctx.fillText('📈 种群超调！',CW/2,CH-15)}
+}
+function drawBiodiversity(c){
+  const species=Object.entries(SPECIES);
+  const cols=5,rows=2;
+  const cellW=CW/(cols+1),cellH=CH/(rows+1);
+  species.forEach(([k,v],idx)=>{
+    const col=idx%cols,row=Math.floor(idx/cols);
+    const x=(col+0.5)*cellW+cellW*0.3,y=(row+0.5)*cellH+cellH*0.2;
+    const alive=S.species.has(k);
+    // habitat circle
+    ctx.beginPath();ctx.arc(x,y,cellW*0.3,0,Math.PI*2);
+    if(alive){
+      const g=ctx.createRadialGradient(x,y,0,x,y,cellW*0.3);
+      g.addColorStop(0,v.color+'44');g.addColorStop(1,v.color+'11');ctx.fillStyle=g;
+    }else{ctx.fillStyle='rgba(100,100,100,0.1)'}
+    ctx.fill();ctx.strokeStyle=alive?v.color:'#444';ctx.lineWidth=alive?2:1;ctx.stroke();
+    // icon
+    ctx.font=`${alive?36:24}px system-ui`;ctx.textAlign='center';ctx.globalAlpha=alive?1:0.3;
+    ctx.fillText(v.icon,x,y+10);ctx.globalAlpha=1;
+    // name
+    ctx.font='12px system-ui';ctx.fillStyle=alive?c.text:'#666';ctx.fillText(v.name,x,y+cellW*0.3+15);
+    // level label
+    const lvlNames=['生产者','初级消费者','次级消费者','顶级捕食者'];
+    ctx.font='9px system-ui';ctx.fillStyle=alive?v.color:'#555';ctx.fillText(lvlNames[v.level],x,y+cellW*0.3+28);
+    // X mark if extinct
+    if(!alive){ctx.strokeStyle='#ef4444';ctx.lineWidth=3;const s=15;ctx.beginPath();ctx.moveTo(x-s,y-s);ctx.lineTo(x+s,y+s);ctx.moveTo(x+s,y-s);ctx.lineTo(x-s,y+s);ctx.stroke()}
+  });
+  // biodiversity bar
+  const bw=CW*0.6,bx=CW*0.2,by=CH-40;
+  ctx.fillStyle='rgba(255,255,255,0.1)';ctx.fillRect(bx,by,bw,15);
+  const bColor=S.biodiversity>60?'#22c55e':S.biodiversity>30?'#f59e0b':'#ef4444';
+  ctx.fillStyle=bColor;ctx.fillRect(bx,by,bw*S.biodiversity/100,15);
+  ctx.font='12px system-ui';ctx.fillStyle=c.text;ctx.textAlign='center';ctx.fillText(`生物多样性 ${S.biodiversity.toFixed(0)}%`,CW/2,by-8);
+  // connections between alive species
+  const positions={};
+  species.forEach(([k],idx)=>{const col=idx%cols,row=Math.floor(idx/cols);positions[k]={x:(col+0.5)*cellW+cellW*0.3,y:(row+0.5)*cellH+cellH*0.2}});
+  ctx.strokeStyle='rgba(99,102,241,0.15)';ctx.lineWidth=1;
+  Object.entries(FOOD_WEB).forEach(([prey,preds])=>{
+    if(!S.species.has(prey))return;
+    preds.forEach(pred=>{if(!S.species.has(pred))return;const a=positions[prey],b=positions[pred];if(a&&b){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}});
+  });
+}
+function drawBalance(c){
+  const groundY=CH*0.6;
+  // sky
+  const skyG=ctx.createLinearGradient(0,0,0,groundY);
+  const skyHealth=S.balance/100;
+  skyG.addColorStop(0,isDark?`rgba(10,${Math.floor(16+skyHealth*30)},${Math.floor(30+skyHealth*20)},1)`:`rgba(${Math.floor(135+skyHealth*50)},${Math.floor(206+skyHealth*30)},${Math.floor(235+skyHealth*20)},1)`);
+  skyG.addColorStop(1,isDark?'#1a2050':'#B0E0E6');ctx.fillStyle=skyG;ctx.fillRect(0,0,CW,groundY);
+  // ground
+  const greenness=S.habitat/100;
+  ctx.fillStyle=isDark?`rgb(${Math.floor(20+greenness*20)},${Math.floor(40+greenness*60)},${Math.floor(10+greenness*20)})`:`rgb(${Math.floor(100+greenness*40)},${Math.floor(140+greenness*60)},${Math.floor(80+greenness*20)})`;
+  ctx.fillRect(0,groundY,CW,CH-groundY);
+  // trees based on habitat
+  const treeCount=Math.floor(S.habitat/8);
+  for(let i=0;i<treeCount;i++){
+    const tx=20+i*(CW-40)/Math.max(1,treeCount);const ty=groundY-5;
+    ctx.fillStyle='#22c55e';ctx.beginPath();ctx.arc(tx,ty-25,12+Math.sin(S.anim+i)*2,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#8B4513';ctx.fillRect(tx-3,ty-13,6,18);
+  }
+  // animals based on balance
+  const animalCount=Math.floor(S.balance/15);
+  const animals=['🐰','🦌','🦊','🐺','🦅'];
+  for(let i=0;i<animalCount;i++){
+    const ax=CW*0.1+i*(CW*0.8/Math.max(1,animalCount));
+    ctx.font='20px system-ui';ctx.textAlign='center';ctx.fillText(animals[i%animals.length],ax+Math.sin(S.anim*2+i*1.5)*10,groundY-50+Math.cos(S.anim+i)*5);
+  }
+  // invasive species
+  if(S.invasive>30){const invCount=Math.floor(S.invasive/15);for(let i=0;i<invCount;i++){ctx.font='18px system-ui';ctx.fillText('🐀',CW*0.2+i*40+Math.sin(S.anim*3+i)*5,groundY-10)}}
+  // hunting effects
+  if(S.hunting>40){for(let i=0;i<S.hunting/20;i++){ctx.font='14px system-ui';ctx.fillText('💥',CW*0.3+i*60,groundY-70+Math.random()*20)}}
+  // conservation
+  if(S.conservation>40){ctx.strokeStyle='rgba(34,197,94,0.3)';ctx.lineWidth=3;ctx.setLineDash([10,5]);ctx.strokeRect(CW*0.05,groundY*0.3,CW*0.9,groundY*0.65);ctx.setLineDash([]);ctx.font='12px system-ui';ctx.fillStyle='#22c55e';ctx.textAlign='center';ctx.fillText('🛡️ 保护区',CW/2,groundY*0.28)}
+  // balance meter
+  const mw=CW*0.5,mx=CW*0.25,my=25;
+  ctx.fillStyle='rgba(255,255,255,0.1)';ctx.fillRect(mx,my,mw,14);
+  const bColor=S.ecosystem==='stable'?'#22c55e':S.ecosystem==='stressed'?'#f59e0b':'#ef4444';
+  ctx.fillStyle=bColor;ctx.fillRect(mx,my,mw*S.balance/100,14);
+  ctx.font='13px system-ui';ctx.fillStyle=c.text;ctx.textAlign='center';
+  ctx.fillText(`生态平衡 ${S.balance.toFixed(0)}% — ${S.ecosystem==='stable'?'稳定':S.ecosystem==='stressed'?'受压':'崩溃'}`,CW/2,my+30);
+}
+
+function goLevel(i){if(i>LEVELS.length-1)return;cur=i;initLevel(i);gameState='play';document.getElementById('panel').style.display='block';document.getElementById('ib-level').textContent=`关卡 ${i+1}/7`;document.getElementById('ib-title').textContent=LEVELS[i].name;document.getElementById('ib-status').textContent=done[i]?'已完成':'进行中';renderPanel();draw()}
+function startGame(){document.getElementById('startScreen').classList.add('hidden');goLevel(0)}
+function handleClick(x,y){}
+cv.addEventListener('click',e=>{if(gameState!=='play')return;const r=cv.getBoundingClientRect();handleClick(e.clientX-r.left,e.clientY-r.top)});
+
+let lastTime=0;
+function gameLoop(ts){
+  const dt=(ts-lastTime)/1000;lastTime=ts;
+  if(gameState==='play'){
+    // population simulation
+    if(cur===4&&S.running){
+      const dN=S.r*S.pop*(1-S.pop/S.K);S.pop=Math.max(1,S.pop+dN);S.time++;S.history.push(S.pop);
+      if(S.pop>S.K*1.05)S.overshoot=true;
+      if(S.time%10===0)renderPanel();
+    }
+    updateSliderLabels();checkObj();draw();
+  }
+  requestAnimationFrame(gameLoop);
+}
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

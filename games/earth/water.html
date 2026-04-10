@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>水循环探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;--slider-label:#888;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --sel-bg:#1a1a4a;--sel-border:#444;--sel-text:#aaa;--sel-active-bg:#1a1a4a;--sel-active-border:#3b82f6;--sel-active-text:#60a5fa;
+  --sel-correct-bg:#0a2a1a;--sel-correct-border:#22c55e;--sel-correct-text:#4ade80;
+  --sel-wrong-bg:#2a0a0a;--sel-wrong-border:#ef4444;--sel-wrong-text:#f87171;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);--slider-label:#888;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --sel-bg:#eef2ff;--sel-border:#c7d2fe;--sel-text:#64748b;--sel-active-bg:#e0e7ff;--sel-active-border:#6366f1;--sel-active-text:#4338ca;
+  --sel-correct-bg:#ecfdf5;--sel-correct-border:#6ee7b7;--sel-correct-text:#059669;
+  --sel-wrong-bg:#fef2f2;--sel-wrong-border:#fca5a5;--sel-wrong-text:#dc2626;
+}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(100vh - 36px)}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100vh - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;display:none;padding-bottom:24px}
+.panel h2{font-size:15px;color:var(--title-color);margin:8px 0 4px;font-weight:bold}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:14px;cursor:pointer;text-align:center}
+.act-btn:hover{background:var(--btn-hover)}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--hint-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:13px;line-height:1.8;color:var(--learn-text)}
+.sv{color:var(--sv);font-weight:bold}.desc{font-size:13px;color:var(--text-sub);line-height:1.6;margin:6px 0}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:var(--slider-label);display:block;margin-bottom:4px}
+.slider-wrap input[type=range]{width:100%;accent-color:#3b82f6}.slider-val{font-size:13px;color:var(--sv);font-weight:bold}
+.sel-row{display:flex;gap:4px;margin:4px 0;flex-wrap:wrap}
+.sel-btn{padding:5px 10px;border-radius:8px;font-size:11px;cursor:pointer;border:1px solid var(--sel-border);background:var(--sel-bg);color:var(--sel-text)}
+.sel-btn.active{border-color:var(--sel-active-border);background:var(--sel-active-bg);color:var(--sel-active-text)}
+.sel-btn.correct{border-color:var(--sel-correct-border);background:var(--sel-correct-bg);color:var(--sel-correct-text)}
+.sel-btn.wrong{border-color:var(--sel-wrong-border);background:var(--sel-wrong-bg);color:var(--sel-wrong-text)}
+.goal-item{font-size:12px;color:var(--goal-text);margin:2px 0}.goal-item.done{color:var(--goal-done);text-decoration:line-through}
+#infobar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:flex;align-items:center;padding:0 16px 0 332px;font-size:12px;color:#666;z-index:10}
+#infobar .sep{margin:0 12px;color:#333}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .hl{color:#3b82f6}
+.start-box .sub{font-size:17px;color:var(--sub-color);margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+.desc-hl{background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:6px;padding:6px 8px;margin:4px 0}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="infobar"><span id="ib-level">关卡 1/7</span><span class="sep">|</span><span id="ib-title">蒸发与凝结</span><span class="sep">|</span><span id="ib-status">进行中</span></div>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>💧 <span class="hl">水循环</span>探险</h1>
+  <div class="sub">7 个关卡，追踪水分子的奇妙旅程</div>
+  <button class="start-btn" onclick="startGame()">开始探索</button>
+  <div class="features">
+    <div class="feat"><div class="fi">☀️</div>蒸发凝结</div>
+    <div class="feat"><div class="fi">☁️</div>云的形成</div>
+    <div class="feat"><div class="fi">🌧️</div>降水类型</div>
+    <div class="feat"><div class="fi">🏞️</div>地表径流</div>
+    <div class="feat"><div class="fi">🕳️</div>地下水</div>
+    <div class="feat"><div class="fi">🏔️</div>冰川水库</div>
+    <div class="feat"><div class="fi">🏭</div>人类影响</div>
+  </div>
+</div>
+</div>
+<script>
+let isDark=true;
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel()}
+function t(){return isDark?{bg:'#0a0a2e',grid:'rgba(99,102,241,0.06)',text:'#fff',sub:'rgba(255,255,255,0.6)',water:'#1e40af',sky:'#0a0a2e',ground:'#3d2b1f',snow:'#e0e8ff'}:{bg:'#e8edf5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',sub:'rgba(30,41,59,0.6)',water:'#3b82f6',sky:'#dbeafe',ground:'#8B7355',snow:'#f0f4ff'}}
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+let CW,CH;function resize(){const r=cv.getBoundingClientRect();CW=cv.width=r.width;CH=cv.height=r.height}
+resize();window.addEventListener('resize',()=>{resize();draw()});
+let audioCtx;function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function playSound(tp){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(tp==='ok'){o.frequency.value=523;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else if(tp==='no'){o.frequency.value=300;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}else{o.frequency.value=800;g.gain.value=0.08;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}}
+
+const LEVELS=[{name:'蒸发与凝结',icon:'☀️'},{name:'云的形成',icon:'☁️'},{name:'降水类型',icon:'🌧️'},{name:'地表径流',icon:'🏞️'},{name:'地下水与含水层',icon:'🕳️'},{name:'冰川与水库',icon:'🏔️'},{name:'人类活动影响',icon:'🏭'}];
+let cur=0,gameState='title',S={},done=new Array(7).fill(false),particles=[];
+
+function initLevel(i){
+  S={phase:0,obj:[false,false,false],anim:0};particles=[];
+  switch(i){
+    case 0:S.temp=15;S.humidity=30;S.evapRate=0;S.condensePt=0;S.vapors=[];S.droplets=[];break;
+    case 1:S.altitude=500;S.airTemp=25;S.dewPoint=15;S.lapse=6.5;S.cloudBase=0;S.cloudDrops=[];S.rising=false;break;
+    case 2:S.cloudTemp=5;S.windShear=0;S.updraft=0;S.precipType='none';S.drops=[];break;
+    case 3:S.slope=20;S.soilPerm=50;S.vegetation=50;S.rainfall=60;S.runoffPct=0;S.waterParts=[];break;
+    case 4:S.porosity=30;S.wellDepth=50;S.pumpRate=0;S.waterTable=70;S.aquiferFlow=[];break;
+    case 5:S.globalTemp=0;S.glacierMass=100;S.seaLevel=0;S.snowfall=50;S.meltRate=0;break;
+    case 6:S.pollution=0;S.damLevel=0;S.irrigation=0;S.deforest=0;S.impactScore=0;break;
+  }
+}
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  LEVELS.forEach((_,i)=>{const c=i<cur?'done':i===cur?'cur':'';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`});
+  h+=`</div><div class="sn-info">第 ${cur+1}/7 关 — ${LEVELS[cur].name}</div><div class="sn-hint">${done.filter(Boolean).length}/7 已完成</div></div>`;return h;
+}
+let _panelBusy=false;
+function renderPanel(){
+  if(_panelBusy)return;_panelBusy=true;
+  const p=document.getElementById('panel');let h=renderStageNav();
+  h+=`<h2>${LEVELS[cur].icon} ${LEVELS[cur].name}</h2>`;
+  h+=renderLevelPanel(cur);
+  if(done[cur]&&cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
+  if(done.every(Boolean)){
+    h+=`<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握水循环的核心知识</div>`;
+    h+=`<div class="summary-keys"><div>☀️ 太阳能驱动蒸发，温度降低引起凝结</div><div>☁️ 气团上升绝热冷却到露点形成云</div><div>🌧️ 雨/雪/冰雹取决于云内温度与气流</div><div>🏞️ 坡度、土壤和植被决定径流比例</div><div>🕳️ 地下水储存在含水层孔隙中</div><div>🏔️ 冰川是地球最大淡水储库</div><div>🏭 人类活动深刻改变水循环每个环节</div></div></div>`;
+  }
+  p.innerHTML=h;_panelBusy=false;
+}
+function sliderDrag(){
+  updateSliderLabels();checkObj();draw();
+}
+function updateSliderLabels(){
+  switch(cur){
+    case 0:{
+      const ts=document.getElementById('sl-temp'),hs=document.getElementById('sl-hum');
+      if(ts){S.temp=+ts.value;const tl=document.getElementById('vl-temp');if(tl)tl.textContent=S.temp+'°C'}
+      if(hs){S.humidity=+hs.value;const hl=document.getElementById('vl-hum');if(hl)hl.textContent=S.humidity+'%'}
+      S.evapRate=Math.max(0,(S.temp-10)/40);S.condensePt=S.humidity>60&&S.temp<20?1:0;
+    }break;
+    case 1:{
+      const as=document.getElementById('sl-alt');
+      if(as){S.altitude=+as.value;const al=document.getElementById('vl-alt');if(al)al.textContent=S.altitude+'m'}
+      S.airTemp=25-S.altitude/1000*S.lapse;S.cloudBase=S.airTemp<=S.dewPoint?1:0;
+    }break;
+    case 2:{
+      const ts=document.getElementById('sl-ctemp'),ws=document.getElementById('sl-wind'),us=document.getElementById('sl-updraft');
+      if(ts){S.cloudTemp=+ts.value;const tl=document.getElementById('vl-ctemp');if(tl)tl.textContent=S.cloudTemp+'°C'}
+      if(ws){S.windShear=+ws.value;const wl=document.getElementById('vl-wind');if(wl)wl.textContent=S.windShear}
+      if(us){S.updraft=+us.value;const ul=document.getElementById('vl-updraft');if(ul)ul.textContent=S.updraft}
+      if(S.cloudTemp>2)S.precipType='rain';else if(S.cloudTemp>-5&&S.cloudTemp<=2)S.precipType='sleet';else if(S.cloudTemp<=-5&&S.updraft<50)S.precipType='snow';else if(S.cloudTemp<=-5&&S.updraft>=50)S.precipType='hail';else S.precipType='rain';
+    }break;
+    case 3:{
+      const ss=document.getElementById('sl-slope'),ps=document.getElementById('sl-perm'),vs=document.getElementById('sl-veg'),rs=document.getElementById('sl-rain');
+      if(ss){S.slope=+ss.value;document.getElementById('vl-slope').textContent=S.slope+'°'}
+      if(ps){S.soilPerm=+ps.value;document.getElementById('vl-perm').textContent=S.soilPerm+'%'}
+      if(vs){S.vegetation=+vs.value;document.getElementById('vl-veg').textContent=S.vegetation+'%'}
+      if(rs){S.rainfall=+rs.value;document.getElementById('vl-rain').textContent=S.rainfall+'mm/h'}
+      S.runoffPct=Math.min(100,Math.max(0,S.slope*0.8+(100-S.soilPerm)*0.4+(100-S.vegetation)*0.3+S.rainfall*0.3-30));
+    }break;
+    case 4:{
+      const ps=document.getElementById('sl-poro'),ws=document.getElementById('sl-well'),rs=document.getElementById('sl-pump');
+      if(ps){S.porosity=+ps.value;document.getElementById('vl-poro').textContent=S.porosity+'%'}
+      if(ws){S.wellDepth=+ws.value;document.getElementById('vl-well').textContent=S.wellDepth+'m'}
+      if(rs){S.pumpRate=+rs.value;document.getElementById('vl-pump').textContent=S.pumpRate}
+      S.waterTable=70-S.pumpRate*0.3+S.porosity*0.2;
+    }break;
+    case 5:{
+      const ts=document.getElementById('sl-gtemp'),ss=document.getElementById('sl-snow');
+      if(ts){S.globalTemp=+ts.value;document.getElementById('vl-gtemp').textContent=(S.globalTemp>=0?'+':'')+S.globalTemp+'°C'}
+      if(ss){S.snowfall=+ss.value;document.getElementById('vl-snow').textContent=S.snowfall+'mm'}
+      S.meltRate=Math.max(0,S.globalTemp*15);S.glacierMass=Math.max(0,Math.min(100,100-S.meltRate+S.snowfall*0.3));
+      S.seaLevel=Math.max(0,(100-S.glacierMass)*0.7);
+    }break;
+    case 6:{
+      const ps=document.getElementById('sl-poll'),ds=document.getElementById('sl-dam'),is=document.getElementById('sl-irr'),fs=document.getElementById('sl-defor');
+      if(ps){S.pollution=+ps.value;document.getElementById('vl-poll').textContent=S.pollution}
+      if(ds){S.damLevel=+ds.value;document.getElementById('vl-dam').textContent=S.damLevel}
+      if(is){S.irrigation=+is.value;document.getElementById('vl-irr').textContent=S.irrigation}
+      if(fs){S.deforest=+fs.value;document.getElementById('vl-defor').textContent=S.deforest+'%'}
+      S.impactScore=(S.pollution+S.damLevel+S.irrigation+S.deforest)/4;
+    }break;
+  }
+}
+function completeObj(idx){if(S.obj[idx])return;S.obj[idx]=true;playSound('ok');if(idx===0)S.phase=1;if(idx===2){done[cur]=true;document.getElementById('ib-status').textContent='已完成'}renderPanel()}
+function checkObj(){
+  switch(cur){
+    case 0:if(!S.obj[0]&&S.temp>=30&&S.evapRate>0.4)completeObj(0);if(!S.obj[1]&&S.humidity>=70&&S.temp<=15)completeObj(1);if(!S.obj[2]&&S.obj[1]&&S.evapRate>0.3&&S.condensePt>0)completeObj(2);break;
+    case 1:if(!S.obj[0]&&S.altitude>=2000)completeObj(0);if(!S.obj[1]&&S.cloudBase>0)completeObj(1);if(!S.obj[2]&&S.altitude>=3000&&S.cloudBase>0)completeObj(2);break;
+    case 2:if(!S.obj[0]&&S.precipType==='rain')completeObj(0);if(!S.obj[1]&&S.precipType==='snow')completeObj(1);if(!S.obj[2]&&S.precipType==='hail')completeObj(2);break;
+    case 3:if(!S.obj[0]&&S.runoffPct>60)completeObj(0);if(!S.obj[1]&&S.runoffPct<20)completeObj(1);if(!S.obj[2]&&S.obj[0]&&S.obj[1])completeObj(2);break;
+    case 4:if(!S.obj[0]&&S.porosity>=50)completeObj(0);if(!S.obj[1]&&S.pumpRate>=60&&S.waterTable<50)completeObj(1);if(!S.obj[2]&&S.obj[0]&&S.obj[1])completeObj(2);break;
+    case 5:if(!S.obj[0]&&S.globalTemp>=3)completeObj(0);if(!S.obj[1]&&S.glacierMass<40)completeObj(1);if(!S.obj[2]&&S.seaLevel>30)completeObj(2);break;
+    case 6:if(!S.obj[0]&&S.impactScore>50)completeObj(0);if(!S.obj[1]&&S.pollution>=70)completeObj(1);if(!S.obj[2]&&S.impactScore>70)completeObj(2);break;
+  }
+}
+function goalHTML(goals){return goals.map((g,i)=>`<div class="goal-item${S.obj[i]?' done':''}">• ${g}</div>`).join('')}
+
+function renderLevelPanel(i){
+  let h='';
+  switch(i){
+    case 0:{
+      h+=`<div class="desc desc-hl">画布上是一片水面和天空。调节温度和湿度，观察水分子如何在液态和气态之间转换。</div>`;
+      h+=`<div class="slider-wrap"><label>温度</label><input type="range" id="sl-temp" min="0" max="45" value="${S.temp}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-temp">${S.temp}°C</span></div>`;
+      h+=`<div class="slider-wrap"><label>空气湿度</label><input type="range" id="sl-hum" min="0" max="100" value="${S.humidity}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-hum">${S.humidity}%</span></div>`;
+      h+=`<div class="concept-box">蒸发速率: <span class="sv">${(S.evapRate*100).toFixed(0)}%</span><br>凝结: <span style="color:${S.condensePt?'#4ade80':'#ef4444'}">${S.condensePt?'发生中':'未发生'}</span></div>`;
+      if(S.phase>=1)h+=`<div class="learn-box">💡 温度越高，水分子动能越大，蒸发越快。当空气湿度高且温度降低时，水蒸气凝结成小水滴。</div>`;
+      h+=goalHTML(['提高温度到30°C以上，加速蒸发','降温+加湿，触发凝结','同时维持蒸发和凝结']);
+      if(!S.obj[0])h+=`<div class="hint-box">💡 把温度拖到 30°C 以上</div>`;
+    }break;
+    case 1:{
+      h+=`<div class="desc desc-hl">一团暖湿空气正在上升。调节海拔高度，观察气温如何随高度下降，以及云何时形成。</div>`;
+      h+=`<div class="slider-wrap"><label>海拔高度</label><input type="range" id="sl-alt" min="0" max="5000" step="100" value="${S.altitude}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-alt">${S.altitude}m</span></div>`;
+      h+=`<div class="concept-box">气温: <span class="sv">${S.airTemp.toFixed(1)}°C</span> (递减率 ${S.lapse}°C/km)<br>露点: <span class="sv">${S.dewPoint}°C</span><br>云底: <span style="color:${S.cloudBase?'#4ade80':'#ef4444'}">${S.cloudBase?'已形成':'未达到'}</span></div>`;
+      if(S.phase>=1)h+=`<div class="learn-box">💡 气团每上升1000m，温度下降约6.5°C（干绝热递减率）。当气温降到露点以下，水蒸气凝结成云滴。</div>`;
+      h+=goalHTML(['将气团升到2000m以上','让气温降到露点以下形成云','继续上升到3000m观察云层发展']);
+      if(!S.obj[0])h+=`<div class="hint-box">💡 拖动海拔滑块向上</div>`;
+    }break;
+    case 2:{
+      h+=`<div class="desc desc-hl">云已经形成，现在调节云内温度、风切变和上升气流，观察不同类型的降水如何产生。</div>`;
+      h+=`<div class="slider-wrap"><label>云内温度</label><input type="range" id="sl-ctemp" min="-20" max="20" value="${S.cloudTemp}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-ctemp">${S.cloudTemp}°C</span></div>`;
+      h+=`<div class="slider-wrap"><label>风切变强度</label><input type="range" id="sl-wind" min="0" max="100" value="${S.windShear}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-wind">${S.windShear}</span></div>`;
+      h+=`<div class="slider-wrap"><label>上升气流</label><input type="range" id="sl-updraft" min="0" max="100" value="${S.updraft}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-updraft">${S.updraft}</span></div>`;
+      const typeNames={rain:'🌧️ 雨',snow:'❄️ 雪',sleet:'🌨️ 雨夹雪',hail:'🧊 冰雹',none:'无'};
+      h+=`<div class="concept-box">降水类型: <span class="sv">${typeNames[S.precipType]||'无'}</span></div>`;
+      if(S.phase>=1)h+=`<div class="learn-box">💡 云温>0°C→雨；-5~2°C→雨夹雪；<-5°C+弱气流→雪；<-5°C+强上升气流→冰雹（水滴反复升降冻结）。</div>`;
+      h+=goalHTML(['产生降雨（云温>2°C）','产生降雪（云温<-5°C，弱气流）','产生冰雹（云温<-5°C，强上升气流≥50）']);
+    }break;
+    case 3:{
+      h+=`<div class="desc desc-hl">雨水落到地面后，一部分沿地表流走（径流），一部分渗入土壤。调节地形和植被，观察径流比例变化。</div>`;
+      h+=`<div class="slider-wrap"><label>地面坡度</label><input type="range" id="sl-slope" min="0" max="60" value="${S.slope}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-slope">${S.slope}°</span></div>`;
+      h+=`<div class="slider-wrap"><label>土壤渗透性</label><input type="range" id="sl-perm" min="0" max="100" value="${S.soilPerm}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-perm">${S.soilPerm}%</span></div>`;
+      h+=`<div class="slider-wrap"><label>植被覆盖</label><input type="range" id="sl-veg" min="0" max="100" value="${S.vegetation}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-veg">${S.vegetation}%</span></div>`;
+      h+=`<div class="slider-wrap"><label>降雨强度</label><input type="range" id="sl-rain" min="10" max="120" value="${S.rainfall}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-rain">${S.rainfall}mm/h</span></div>`;
+      h+=`<div class="concept-box">地表径流: <span class="sv">${S.runoffPct.toFixed(0)}%</span> | 渗透: <span class="sv">${(100-S.runoffPct).toFixed(0)}%</span></div>`;
+      if(S.phase>=1)h+=`<div class="learn-box">💡 陡坡+低渗透+少植被=高径流→洪水风险。缓坡+高渗透+多植被=低径流→地下水补给。</div>`;
+      h+=goalHTML(['制造高径流（>60%）','制造低径流（<20%）','理解径流与渗透的平衡']);
+    }break;
+    case 4:{
+      h+=`<div class="desc desc-hl">地下有多层岩石，水渗入后储存在含水层的孔隙中。调节岩石孔隙率和抽水速率，观察地下水位变化。</div>`;
+      h+=`<div class="slider-wrap"><label>岩石孔隙率</label><input type="range" id="sl-poro" min="5" max="60" value="${S.porosity}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-poro">${S.porosity}%</span></div>`;
+      h+=`<div class="slider-wrap"><label>水井深度</label><input type="range" id="sl-well" min="10" max="100" value="${S.wellDepth}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-well">${S.wellDepth}m</span></div>`;
+      h+=`<div class="slider-wrap"><label>抽水速率</label><input type="range" id="sl-pump" min="0" max="100" value="${S.pumpRate}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-pump">${S.pumpRate}</span></div>`;
+      h+=`<div class="concept-box">地下水位: <span class="sv">${S.waterTable.toFixed(0)}m</span><br>含水层状态: <span style="color:${S.waterTable>50?'#4ade80':'#ef4444'}">${S.waterTable>50?'健康':'过度开采'}</span></div>`;
+      if(S.phase>=1)h+=`<div class="learn-box">💡 含水层是多孔岩石层，孔隙率越高储水越多。过度抽取会导致水位下降、地面沉降。</div>`;
+      h+=goalHTML(['提高孔隙率到50%以上','过度抽水使水位降到50m以下','理解含水层补给与消耗的平衡']);
+    }break;
+    case 5:{
+      h+=`<div class="desc desc-hl">冰川是地球上最大的淡水储库。调节全球温度和降雪量，观察冰川质量和海平面如何响应。</div>`;
+      h+=`<div class="slider-wrap"><label>全球温度变化</label><input type="range" id="sl-gtemp" min="-2" max="6" step="0.5" value="${S.globalTemp}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-gtemp">${(S.globalTemp>=0?'+':'')+S.globalTemp}°C</span></div>`;
+      h+=`<div class="slider-wrap"><label>年降雪量</label><input type="range" id="sl-snow" min="0" max="100" value="${S.snowfall}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-snow">${S.snowfall}mm</span></div>`;
+      h+=`<div class="concept-box">冰川质量: <span class="sv">${S.glacierMass.toFixed(0)}%</span><br>海平面上升: <span style="color:${S.seaLevel>20?'#ef4444':'#4ade80'}">${S.seaLevel.toFixed(1)}cm</span><br>融化速率: <span class="sv">${S.meltRate.toFixed(0)}%/年</span></div>`;
+      if(S.phase>=1)h+=`<div class="learn-box">💡 冰川质量平衡=降雪积累-融化消融。全球变暖加速融化，冰川退缩导致海平面上升。</div>`;
+      h+=goalHTML(['升温3°C以上观察融化加速','让冰川质量降到40%以下','观察海平面上升超过30cm']);
+    }break;
+    case 6:{
+      h+=`<div class="desc desc-hl">人类活动从多个方面改变了自然水循环。调节各项人类活动强度，观察对水循环的综合影响。</div>`;
+      h+=`<div class="slider-wrap"><label>水污染程度</label><input type="range" id="sl-poll" min="0" max="100" value="${S.pollution}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-poll">${S.pollution}</span></div>`;
+      h+=`<div class="slider-wrap"><label>水坝建设</label><input type="range" id="sl-dam" min="0" max="100" value="${S.damLevel}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-dam">${S.damLevel}</span></div>`;
+      h+=`<div class="slider-wrap"><label>灌溉用水</label><input type="range" id="sl-irr" min="0" max="100" value="${S.irrigation}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-irr">${S.irrigation}</span></div>`;
+      h+=`<div class="slider-wrap"><label>森林砍伐</label><input type="range" id="sl-defor" min="0" max="100" value="${S.deforest}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-defor">${S.deforest}%</span></div>`;
+      const rating=S.impactScore>70?'严重破坏':S.impactScore>40?'中度影响':'轻微影响';
+      const rColor=S.impactScore>70?'#ef4444':S.impactScore>40?'#f59e0b':'#4ade80';
+      h+=`<div class="concept-box">综合影响: <span style="color:${rColor};font-weight:bold">${rating} (${S.impactScore.toFixed(0)}%)</span></div>`;
+      if(S.phase>=1)h+=`<div class="learn-box">💡 水坝改变河流流量节律；灌溉消耗地下水；砍伐减少蒸腾和水土保持；污染降低水质。每项都深刻改变水循环。</div>`;
+      h+=goalHTML(['让综合影响超过50%','将污染拉到70以上','让综合影响超过70%']);
+    }break;
+  }
+  return h;
+}
+function draw(){
+  const c=t();ctx.fillStyle=c.bg;ctx.fillRect(0,0,CW,CH);
+  S.anim=(S.anim||0)+0.016;
+  switch(cur){
+    case 0:drawEvaporation(c);break;
+    case 1:drawCloudFormation(c);break;
+    case 2:drawPrecipitation(c);break;
+    case 3:drawRunoff(c);break;
+    case 4:drawGroundwater(c);break;
+    case 5:drawGlacier(c);break;
+    case 6:drawHumanImpact(c);break;
+  }
+}
+function drawEvaporation(c){
+  const waterY=CH*0.65;
+  // sky gradient
+  const skyG=ctx.createLinearGradient(0,0,0,waterY);
+  skyG.addColorStop(0,isDark?'#0a1030':'#87CEEB');skyG.addColorStop(1,isDark?'#1a2050':'#B0E0E6');
+  ctx.fillStyle=skyG;ctx.fillRect(0,0,CW,waterY);
+  // sun
+  const sunX=CW*0.85,sunY=CH*0.12,sunR=30+S.temp*0.5;
+  ctx.beginPath();ctx.arc(sunX,sunY,sunR,0,Math.PI*2);
+  const sg=ctx.createRadialGradient(sunX,sunY,0,sunX,sunY,sunR);
+  sg.addColorStop(0,'#ffdd00');sg.addColorStop(1,'rgba(255,200,0,0.2)');ctx.fillStyle=sg;ctx.fill();
+  // water
+  const wg=ctx.createLinearGradient(0,waterY,0,CH);
+  wg.addColorStop(0,'#1e40af');wg.addColorStop(1,'#0a1a4a');ctx.fillStyle=wg;ctx.fillRect(0,waterY,CW,CH-waterY);
+  // waves
+  ctx.strokeStyle='rgba(96,165,250,0.3)';ctx.lineWidth=2;
+  for(let w=0;w<3;w++){ctx.beginPath();for(let x=0;x<CW;x+=4){ctx.lineTo(x,waterY+Math.sin(x*0.02+S.anim*2+w)*4+w*8)}ctx.stroke()}
+  // vapor particles rising
+  if(S.evapRate>0.1){
+    if(Math.random()<S.evapRate*0.3)S.vapors.push({x:Math.random()*CW,y:waterY,vy:-1-Math.random()*2,life:1,size:2+Math.random()*3});
+  }
+  S.vapors=S.vapors.filter(v=>{v.y+=v.vy;v.x+=Math.sin(S.anim*3+v.x*0.01)*0.5;v.life-=0.008;return v.life>0&&v.y>0});
+  S.vapors.forEach(v=>{ctx.beginPath();ctx.arc(v.x,v.y,v.size,0,Math.PI*2);ctx.fillStyle=`rgba(135,206,250,${v.life*0.6})`;ctx.fill()});
+  // condensation droplets
+  if(S.condensePt>0){
+    if(Math.random()<0.15)S.droplets.push({x:Math.random()*CW,y:CH*0.15+Math.random()*CH*0.2,life:1,size:1+Math.random()*2});
+  }
+  S.droplets=S.droplets.filter(d=>{d.life-=0.01;d.y+=0.3;return d.life>0});
+  S.droplets.forEach(d=>{ctx.beginPath();ctx.arc(d.x,d.y,d.size,0,Math.PI*2);ctx.fillStyle=`rgba(200,220,255,${d.life*0.8})`;ctx.fill()});
+  // labels
+  ctx.font='14px system-ui';ctx.fillStyle=c.text;ctx.textAlign='center';
+  ctx.fillText(`温度 ${S.temp}°C → 蒸发率 ${(S.evapRate*100).toFixed(0)}%`,CW/2,CH*0.08);
+  if(S.condensePt)ctx.fillText('💧 凝结发生中',CW/2,CH*0.14);
+}
+function drawCloudFormation(c){
+  const groundY=CH*0.85;
+  // sky with altitude gradient
+  const skyG=ctx.createLinearGradient(0,0,0,groundY);
+  skyG.addColorStop(0,isDark?'#050520':'#4a90d9');skyG.addColorStop(1,isDark?'#1a2050':'#87CEEB');
+  ctx.fillStyle=skyG;ctx.fillRect(0,0,CW,groundY);
+  // ground
+  ctx.fillStyle=isDark?'#2a1a0a':'#8B7355';ctx.fillRect(0,groundY,CW,CH-groundY);
+  // altitude scale
+  ctx.strokeStyle=`${c.text}33`;ctx.lineWidth=1;ctx.font='11px system-ui';ctx.fillStyle=c.sub;ctx.textAlign='right';
+  for(let a=0;a<=5000;a+=1000){const y=groundY-(a/5000)*groundY*0.9;ctx.beginPath();ctx.moveTo(CW*0.05,y);ctx.lineTo(CW*0.95,y);ctx.stroke();ctx.fillText(a+'m',CW*0.04,y+4)}
+  // air parcel
+  const parcelY=groundY-(S.altitude/5000)*groundY*0.9;
+  const parcelR=30;
+  ctx.beginPath();ctx.arc(CW*0.5,parcelY,parcelR,0,Math.PI*2);
+  ctx.fillStyle=S.cloudBase?'rgba(200,220,255,0.8)':'rgba(135,206,250,0.4)';ctx.fill();
+  ctx.strokeStyle='#60a5fa';ctx.lineWidth=2;ctx.stroke();
+  // temperature label on parcel
+  ctx.font='12px system-ui';ctx.fillStyle=c.text;ctx.textAlign='center';
+  ctx.fillText(`${S.airTemp.toFixed(1)}°C`,CW*0.5,parcelY-parcelR-8);
+  // cloud if formed
+  if(S.cloudBase){
+    for(let i=0;i<5;i++){
+      const cx=CW*0.5+(i-2)*40+Math.sin(S.anim+i)*5;
+      const cy=parcelY-10+Math.cos(S.anim*0.7+i)*3;
+      ctx.beginPath();ctx.arc(cx,cy,20+i*3,0,Math.PI*2);ctx.fillStyle='rgba(220,230,255,0.6)';ctx.fill();
+    }
+    ctx.font='13px system-ui';ctx.fillStyle='#4ade80';ctx.fillText('☁️ 云层形成！',CW*0.5,parcelY-50);
+  }
+  // dew point line
+  const dpAlt=((25-S.dewPoint)/S.lapse)*1000;
+  const dpY=groundY-(dpAlt/5000)*groundY*0.9;
+  ctx.setLineDash([5,5]);ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(CW*0.1,dpY);ctx.lineTo(CW*0.9,dpY);ctx.stroke();ctx.setLineDash([]);
+  ctx.font='11px system-ui';ctx.fillStyle='#f59e0b';ctx.textAlign='left';ctx.fillText(`露点线 (${dpAlt.toFixed(0)}m)`,CW*0.1,dpY-6);
+}
+function drawPrecipitation(c){
+  const cloudY=CH*0.15,groundY=CH*0.85;
+  // sky
+  ctx.fillStyle=isDark?'#0a0a2e':'#b0c4de';ctx.fillRect(0,0,CW,groundY);
+  ctx.fillStyle=isDark?'#2a1a0a':'#8B7355';ctx.fillRect(0,groundY,CW,CH-groundY);
+  // cloud
+  ctx.fillStyle=isDark?'rgba(100,120,160,0.7)':'rgba(180,190,210,0.9)';
+  for(let i=0;i<7;i++){ctx.beginPath();ctx.arc(CW*0.3+i*50,cloudY+Math.sin(i)*10,35,0,Math.PI*2);ctx.fill()}
+  // temperature indicator in cloud
+  ctx.font='14px system-ui';ctx.fillStyle=S.cloudTemp<0?'#93c5fd':'#f59e0b';ctx.textAlign='center';
+  ctx.fillText(`云温 ${S.cloudTemp}°C`,CW*0.5,cloudY-30);
+  // precipitation particles
+  const types={rain:{color:'#3b82f6',shape:'drop'},snow:{color:'#e0e8ff',shape:'flake'},sleet:{color:'#94a3b8',shape:'mix'},hail:{color:'#cbd5e1',shape:'ball'}};
+  const pt=types[S.precipType]||types.rain;
+  if(S.precipType!=='none'){
+    if(Math.random()<0.4)S.drops.push({x:CW*0.15+Math.random()*CW*0.7,y:cloudY+40,vy:2+Math.random()*3,size:S.precipType==='hail'?5:S.precipType==='snow'?4:2,type:S.precipType});
+  }
+  S.drops=S.drops.filter(d=>{d.y+=d.vy;if(d.type==='snow'){d.x+=Math.sin(S.anim*3+d.x*0.01)*1.5;d.vy=1+Math.random()}return d.y<groundY});
+  S.drops.forEach(d=>{
+    ctx.fillStyle=pt.color;
+    if(d.type==='snow'){ctx.font=`${d.size*3}px system-ui`;ctx.fillText('❄',d.x,d.y)}
+    else if(d.type==='hail'){ctx.beginPath();ctx.arc(d.x,d.y,d.size,0,Math.PI*2);ctx.fillStyle='rgba(200,210,230,0.8)';ctx.fill();ctx.strokeStyle='#94a3b8';ctx.lineWidth=1;ctx.stroke()}
+    else{ctx.beginPath();ctx.ellipse(d.x,d.y,d.size*0.6,d.size*1.5,0,0,Math.PI*2);ctx.fill()}
+  });
+  // updraft arrows
+  if(S.updraft>30){ctx.strokeStyle='rgba(239,68,68,0.4)';ctx.lineWidth=2;for(let i=0;i<3;i++){const ax=CW*0.3+i*CW*0.2;ctx.beginPath();ctx.moveTo(ax,groundY-20);ctx.lineTo(ax,cloudY+60);ctx.stroke();ctx.beginPath();ctx.moveTo(ax-8,cloudY+75);ctx.lineTo(ax,cloudY+60);ctx.lineTo(ax+8,cloudY+75);ctx.stroke()}}
+  // type label
+  const typeNames={rain:'🌧️ 雨',snow:'❄️ 雪',sleet:'🌨️ 雨夹雪',hail:'🧊 冰雹',none:'无降水'};
+  ctx.font='18px system-ui';ctx.fillStyle=c.text;ctx.textAlign='center';ctx.fillText(typeNames[S.precipType],CW*0.5,groundY+30);
+}
+function drawRunoff(c){
+  const groundY=CH*0.4;
+  // sky
+  const skyG=ctx.createLinearGradient(0,0,0,groundY);
+  skyG.addColorStop(0,isDark?'#0a1030':'#87CEEB');skyG.addColorStop(1,isDark?'#1a2050':'#B0E0E6');
+  ctx.fillStyle=skyG;ctx.fillRect(0,0,CW,groundY);
+  // sloped ground
+  const slopeRad=S.slope*Math.PI/180;
+  const gx1=0,gy1=groundY,gx2=CW,gy2=groundY+Math.tan(slopeRad)*CW*0.3;
+  ctx.fillStyle=isDark?'#3d2b1f':'#8B7355';ctx.beginPath();ctx.moveTo(gx1,gy1);ctx.lineTo(gx2,Math.min(gy2,CH));ctx.lineTo(CW,CH);ctx.lineTo(0,CH);ctx.closePath();ctx.fill();
+  // vegetation
+  if(S.vegetation>20){const treeCount=Math.floor(S.vegetation/10);for(let i=0;i<treeCount;i++){const tx=CW*0.1+i*(CW*0.8/treeCount);const ty=groundY+Math.tan(slopeRad)*(tx)*0.3-15;ctx.fillStyle='#22c55e';ctx.beginPath();ctx.arc(tx,ty-15,10+S.vegetation*0.05,0,Math.PI*2);ctx.fill();ctx.fillStyle='#8B4513';ctx.fillRect(tx-2,ty-5,4,20)}}
+  // rain
+  for(let i=0;i<S.rainfall/5;i++){const rx=Math.random()*CW,ry=Math.random()*groundY;ctx.strokeStyle='rgba(59,130,246,0.4)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rx,ry);ctx.lineTo(rx-2,ry+8);ctx.stroke()}
+  // runoff water flow
+  const runoffAlpha=S.runoffPct/100;
+  if(runoffAlpha>0.1){ctx.strokeStyle=`rgba(59,130,246,${runoffAlpha})`;ctx.lineWidth=3+runoffAlpha*5;ctx.beginPath();ctx.moveTo(CW*0.1,groundY+5);ctx.quadraticCurveTo(CW*0.5,groundY+Math.tan(slopeRad)*CW*0.15+10,CW*0.9,Math.min(gy2,CH)-5);ctx.stroke()}
+  // infiltration arrows
+  const infiltAlpha=(100-S.runoffPct)/100;
+  if(infiltAlpha>0.1){ctx.strokeStyle=`rgba(34,197,94,${infiltAlpha*0.6})`;ctx.lineWidth=2;for(let i=0;i<5;i++){const ax=CW*0.2+i*CW*0.15;const ay=groundY+Math.tan(slopeRad)*(ax)*0.3+10;ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax,ay+30);ctx.stroke();ctx.beginPath();ctx.moveTo(ax-5,ay+25);ctx.lineTo(ax,ay+30);ctx.lineTo(ax+5,ay+25);ctx.stroke()}}
+  // labels
+  ctx.font='14px system-ui';ctx.fillStyle=c.text;ctx.textAlign='center';
+  ctx.fillText(`径流 ${S.runoffPct.toFixed(0)}% | 渗透 ${(100-S.runoffPct).toFixed(0)}%`,CW/2,30);
+}
+function drawGroundwater(c){
+  const surfaceY=CH*0.25,tableY=surfaceY+CH*(1-S.waterTable/100)*0.5;
+  // sky
+  ctx.fillStyle=isDark?'#0a1030':'#87CEEB';ctx.fillRect(0,0,CW,surfaceY);
+  // soil layers
+  const layers=[{y:surfaceY,h:CH*0.15,color:isDark?'#5c4033':'#a0845c',name:'表土层'},{y:surfaceY+CH*0.15,h:CH*0.2,color:isDark?'#4a3728':'#8B7355',name:'不饱和带'},{y:surfaceY+CH*0.35,h:CH*0.3,color:isDark?'#3d2b1f':'#6B5B4F',name:'含水层'}];
+  layers.forEach(l=>{ctx.fillStyle=l.color;ctx.fillRect(0,l.y,CW,l.h);ctx.font='11px system-ui';ctx.fillStyle=c.sub;ctx.textAlign='left';ctx.fillText(l.name,10,l.y+15)});
+  // porosity dots
+  const dotCount=S.porosity*2;
+  for(let i=0;i<dotCount;i++){const dx=Math.random()*CW,dy=surfaceY+CH*0.35+Math.random()*CH*0.3;ctx.beginPath();ctx.arc(dx,dy,1.5,0,Math.PI*2);ctx.fillStyle=dy>tableY?'rgba(59,130,246,0.5)':'rgba(139,115,85,0.3)';ctx.fill()}
+  // water table line
+  ctx.setLineDash([6,4]);ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,tableY);ctx.lineTo(CW,tableY);ctx.stroke();ctx.setLineDash([]);
+  ctx.font='12px system-ui';ctx.fillStyle='#3b82f6';ctx.textAlign='right';ctx.fillText(`水位 ${S.waterTable.toFixed(0)}m`,CW-10,tableY-6);
+  // saturated zone fill
+  ctx.fillStyle='rgba(30,64,175,0.15)';ctx.fillRect(0,tableY,CW,CH-tableY);
+  // well
+  const wellX=CW*0.6;ctx.fillStyle='#666';ctx.fillRect(wellX-4,surfaceY-20,8,tableY-surfaceY+20+(S.wellDepth/100)*CH*0.2);
+  if(S.pumpRate>0){ctx.strokeStyle='rgba(59,130,246,0.6)';ctx.lineWidth=2;for(let i=0;i<3;i++){const wy=tableY-i*15-S.anim*20%30;ctx.beginPath();ctx.arc(wellX,wy,4,0,Math.PI*2);ctx.stroke()}}
+  // labels
+  ctx.font='14px system-ui';ctx.fillStyle=c.text;ctx.textAlign='center';
+  ctx.fillText(`孔隙率 ${S.porosity}% | 抽水 ${S.pumpRate}`,CW/2,20);
+}
+function drawGlacier(c){
+  const groundY=CH*0.7,seaY=groundY+S.seaLevel*0.5;
+  // sky
+  const skyG=ctx.createLinearGradient(0,0,0,groundY);
+  skyG.addColorStop(0,isDark?'#0a0a30':'#87CEEB');skyG.addColorStop(1,isDark?'#1a1a50':'#B0E0E6');
+  ctx.fillStyle=skyG;ctx.fillRect(0,0,CW,CH);
+  // mountain
+  ctx.fillStyle=isDark?'#3d3d5c':'#8B8B9B';ctx.beginPath();ctx.moveTo(CW*0.2,groundY);ctx.lineTo(CW*0.5,groundY*0.2);ctx.lineTo(CW*0.8,groundY);ctx.closePath();ctx.fill();
+  // glacier on mountain
+  const gSize=S.glacierMass/100;
+  ctx.fillStyle='rgba(200,220,255,0.8)';ctx.beginPath();
+  ctx.moveTo(CW*0.35,groundY*0.5);ctx.lineTo(CW*0.5,groundY*0.2);ctx.lineTo(CW*0.65,groundY*0.5);
+  ctx.quadraticCurveTo(CW*0.6,groundY*0.5+gSize*80,CW*0.5,groundY*0.5+gSize*100);
+  ctx.quadraticCurveTo(CW*0.4,groundY*0.5+gSize*80,CW*0.35,groundY*0.5);ctx.closePath();ctx.fill();
+  // sea
+  ctx.fillStyle='rgba(30,64,175,0.5)';ctx.fillRect(0,seaY,CW,CH-seaY);
+  // ground
+  ctx.fillStyle=isDark?'#2a1a0a':'#8B7355';ctx.fillRect(0,groundY,CW,CH-groundY);
+  // melt water stream
+  if(S.meltRate>5){ctx.strokeStyle=`rgba(59,130,246,${Math.min(1,S.meltRate/50)})`;ctx.lineWidth=2+S.meltRate/20;ctx.beginPath();ctx.moveTo(CW*0.5,groundY*0.5+gSize*100);ctx.quadraticCurveTo(CW*0.6,groundY*0.7,CW*0.75,groundY);ctx.stroke()}
+  // snowfall
+  if(S.snowfall>20){for(let i=0;i<S.snowfall/5;i++){const sx=Math.random()*CW,sy=Math.random()*groundY*0.5;ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='8px system-ui';ctx.fillText('❄',sx+Math.sin(S.anim*2+sx)*3,sy)}}
+  // labels
+  ctx.font='14px system-ui';ctx.fillStyle=c.text;ctx.textAlign='center';
+  ctx.fillText(`冰川 ${S.glacierMass.toFixed(0)}% | 海平面 +${S.seaLevel.toFixed(1)}cm`,CW/2,25);
+  // thermometer
+  ctx.fillStyle=S.globalTemp>2?'#ef4444':'#3b82f6';ctx.font='16px system-ui';ctx.textAlign='right';
+  ctx.fillText(`${S.globalTemp>=0?'+':''}${S.globalTemp}°C`,CW-20,25);
+}
+function drawHumanImpact(c){
+  const groundY=CH*0.5,waterY=CH*0.7;
+  // sky
+  const pollAlpha=S.pollution/200;
+  ctx.fillStyle=isDark?`rgba(10,10,30,${1-pollAlpha})`:'#87CEEB';ctx.fillRect(0,0,CW,groundY);
+  if(S.pollution>30){ctx.fillStyle=`rgba(100,80,60,${pollAlpha})`;ctx.fillRect(0,0,CW,groundY)}
+  // ground
+  const greenness=Math.max(0,1-S.deforest/100);
+  ctx.fillStyle=isDark?`rgb(${42+S.deforest*0.5},${27+greenness*30},${15})`:`rgb(${139-greenness*30},${115+greenness*20},${85})`;
+  ctx.fillRect(0,groundY,CW,waterY-groundY);
+  // river
+  const riverWidth=Math.max(5,30-S.damLevel*0.2);
+  ctx.fillStyle=S.pollution>50?`rgba(100,80,40,0.7)`:'rgba(30,64,175,0.6)';
+  ctx.fillRect(CW*0.1,waterY,CW*0.8,riverWidth);
+  // dam
+  if(S.damLevel>20){const dh=S.damLevel*0.5;ctx.fillStyle='#888';ctx.fillRect(CW*0.48,waterY-dh,CW*0.04,dh+riverWidth);ctx.fillStyle='rgba(30,64,175,0.4)';ctx.fillRect(CW*0.1,waterY-dh*0.5,CW*0.38,dh*0.5)}
+  // trees (reduced by deforestation)
+  const treeCount=Math.floor((100-S.deforest)/10);
+  for(let i=0;i<treeCount;i++){const tx=CW*0.05+i*(CW*0.9/Math.max(1,treeCount));ctx.fillStyle='#22c55e';ctx.beginPath();ctx.arc(tx,groundY-20,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#8B4513';ctx.fillRect(tx-2,groundY-12,4,12)}
+  // irrigation sprinklers
+  if(S.irrigation>30){for(let i=0;i<3;i++){const ix=CW*0.2+i*CW*0.3;ctx.strokeStyle='rgba(59,130,246,0.4)';ctx.lineWidth=1;for(let j=0;j<5;j++){const angle=-Math.PI*0.3+j*Math.PI*0.15;ctx.beginPath();ctx.moveTo(ix,groundY);ctx.lineTo(ix+Math.cos(angle)*30,groundY+Math.sin(angle)*30);ctx.stroke()}}}
+  // pollution particles
+  if(S.pollution>20){for(let i=0;i<S.pollution/10;i++){const px=Math.random()*CW,py=waterY+Math.random()*riverWidth;ctx.beginPath();ctx.arc(px,py,2,0,Math.PI*2);ctx.fillStyle='rgba(139,69,19,0.5)';ctx.fill()}}
+  // factory smoke
+  if(S.pollution>40){ctx.fillStyle='#666';ctx.fillRect(CW*0.8,groundY-40,20,40);for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(CW*0.81+i*5,groundY-45-i*12+Math.sin(S.anim*2+i)*3,5+i*2,0,Math.PI*2);ctx.fillStyle=`rgba(100,100,100,${0.3-i*0.08})`;ctx.fill()}}
+  // impact meter
+  const mw=CW*0.6,mx=CW*0.2,my=30;
+  ctx.fillStyle='rgba(255,255,255,0.1)';ctx.fillRect(mx,my,mw,12);
+  const impColor=S.impactScore>70?'#ef4444':S.impactScore>40?'#f59e0b':'#4ade80';
+  ctx.fillStyle=impColor;ctx.fillRect(mx,my,mw*S.impactScore/100,12);
+  ctx.font='12px system-ui';ctx.fillStyle=c.text;ctx.textAlign='center';ctx.fillText(`综合影响 ${S.impactScore.toFixed(0)}%`,CW/2,my+25);
+}
+
+function goLevel(i){if(i>LEVELS.length-1)return;cur=i;initLevel(i);gameState='play';document.getElementById('panel').style.display='block';document.getElementById('ib-level').textContent=`关卡 ${i+1}/7`;document.getElementById('ib-title').textContent=LEVELS[i].name;document.getElementById('ib-status').textContent=done[i]?'已完成':'进行中';renderPanel();draw()}
+function startGame(){document.getElementById('startScreen').classList.add('hidden');goLevel(0)}
+function handleClick(x,y){}
+cv.addEventListener('click',e=>{if(gameState!=='play')return;const r=cv.getBoundingClientRect();handleClick(e.clientX-r.left,e.clientY-r.top)});
+
+let lastTime=0;
+function gameLoop(ts){
+  const dt=(ts-lastTime)/1000;lastTime=ts;
+  if(gameState==='play'){updateSliderLabels();checkObj();draw()}
+  requestAnimationFrame(gameLoop);
+}
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
