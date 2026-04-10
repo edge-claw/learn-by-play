@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>市场经济探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --result-learn-bg:#0e0e20;--result-learn-text:#93c5fd;
+  --retry-bg:#2a2a5a;--retry-text:#ccc;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --slider-label:#888;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --result-learn-bg:#f0f4ff;--result-learn-text:#1e40af;
+  --retry-bg:#e2e8f0;--retry-text:#475569;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --slider-label:#888;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;width:100vw}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;color:#10b981;margin-bottom:8px;text-shadow:0 0 30px rgba(16,185,129,0.4)}
+.overlay .sub{font-size:18px;color:var(--sub-color);margin-bottom:32px}
+.overlay .desc{max-width:520px;color:var(--text-muted);font-size:14px;line-height:1.8;margin-bottom:36px}
+.overlay .start-btn{background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;padding:14px 48px;font-size:18px;border-radius:12px;cursor:pointer;transition:all .3s}
+.overlay .start-btn:hover{transform:scale(1.05);box-shadow:0 0 24px rgba(16,185,129,0.5)}
+.panel{position:fixed;left:0;top:0;bottom:36px;width:320px;background:var(--panel-bg);border-right:1px solid rgba(16,185,129,0.2);overflow-y:auto;padding:16px;display:none;z-index:10;padding-bottom:24px}
+.panel h2{color:var(--title-color);font-size:18px;margin-bottom:6px}
+.panel .level-title{color:#6ee7b7;font-size:13px;margin-bottom:12px}
+.panel .desc-text{color:var(--text-muted);font-size:13px;line-height:1.7;margin-bottom:14px}
+.panel .obj-list{list-style:none;margin-bottom:14px}
+.panel .obj-list li{font-size:13px;padding:4px 0;color:var(--goal-text)}
+.panel .obj-list li.done{color:var(--goal-done)}
+.panel .obj-list li::before{content:'○ ';color:var(--text-sub)}
+.panel .obj-list li.done::before{content:'● ';color:#4ade80}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:1px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.1);color:#6ee7b7;border-radius:8px;cursor:pointer;font-size:15px;transition:all .2s}
+.act-btn:hover{background:rgba(16,185,129,0.25)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:var(--learn-text);line-height:1.8}
+.learn-box b{color:#4ade80}
+canvas{position:fixed;left:320px;top:0;background:var(--bg)}
+.bar{position:fixed;left:0;bottom:0;right:0;height:36px;background:var(--bar-bg);border-top:1px solid rgba(16,185,129,0.2);display:none;z-index:10;padding:0 16px;align-items:center;font-size:13px}
+.bar-inner{display:flex;align-items:center;height:100%;gap:8px}
+.slider-row{display:flex;align-items:center;gap:8px;margin:6px 0;font-variant-numeric:tabular-nums}
+.slider-row label{font-size:12px;color:var(--text-muted);min-width:60px}
+.slider-row input[type=range]{flex:1;accent-color:#10b981}
+.slider-row .val{font-size:12px;color:#6ee7b7;min-width:36px;text-align:right}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
+.quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg)}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="overlay">
+<h1>📈 市场经济探险</h1>
+<div class="sub">Market Economics Adventure</div>
+<div class="desc">
+从供需曲线到市场失灵，7个关卡带你探索市场经济的核心机制。<br>
+拖动曲线、调节税率、设置价格管制，亲手感受看不见的手。
+</div>
+<button class="start-btn" onclick="startGame()">开始探索 →</button>
+<div class="features">
+<div class="feat"><div class="fi">📊</div>供给需求</div>
+<div class="feat"><div class="fi">📐</div>价格弹性</div>
+<div class="feat"><div class="fi">💰</div>消费者剩余</div>
+<div class="feat"><div class="fi">⚖️</div>价格管制</div>
+<div class="feat"><div class="fi">🏛️</div>税收效应</div>
+<div class="feat"><div class="fi">🏭</div>垄断竞争</div>
+<div class="feat"><div class="fi">🌍</div>外部性</div>
+</div>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"><div class="bar-inner" id="barInner"></div></div>
+<script>
+// === Theme ===
+let isDark=true;
+const TH={
+  dark:{bg1:'#0a0a2e',bg2:'#0d0d1a',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',axis:'#888',curve1:'#3b82f6',curve2:'#ef4444',fill1:'rgba(59,130,246,0.2)',fill2:'rgba(239,68,68,0.2)',eq:'#22c55e',surplus1:'rgba(59,130,246,0.25)',surplus2:'rgba(239,68,68,0.25)',deadweight:'rgba(245,158,11,0.3)',tax:'rgba(168,85,247,0.3)'},
+  light:{bg1:'#e8edf5',bg2:'#f0f2f5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',axis:'#666',curve1:'#2563eb',curve2:'#dc2626',fill1:'rgba(37,99,235,0.15)',fill2:'rgba(220,38,38,0.15)',eq:'#16a34a',surplus1:'rgba(37,99,235,0.2)',surplus2:'rgba(220,38,38,0.2)',deadweight:'rgba(245,158,11,0.25)',tax:'rgba(168,85,247,0.25)'}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{renderPanel();draw()}catch(e){}}
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const panel=document.getElementById('panel'),bar=document.getElementById('bar'),barInner=document.getElementById('barInner');
+let W,H,curLevel=0;
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+let LD={};
+
+function resize(){W=window.innerWidth-320;H=window.innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';draw()}
+window.addEventListener('resize',resize);
+
+function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
+function goLevel(n){if(n<0||n>=7){showSummary();return}curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
+function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
+function allDone(li){return levelObjs[li].every(Boolean)}
+
+// === Audio ===
+let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function playSound(type){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}}
+
+// === Level Info ===
+const levelInfo=[
+  {title:'供给与需求',sub:'曲线交叉决定价格',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心：</b>需求曲线向右下倾斜，供给曲线向右上倾斜，交点 = 均衡</div>画布上有<span style="color:#3b82f6">蓝色需求曲线</span>和<span style="color:#ef4444">红色供给曲线</span>。拖动滑块改变曲线斜率和截距，让两条曲线交叉找到均衡点。',objs:['调整需求曲线观察价格变化','调整供给曲线观察数量变化','让均衡价格落在 40-60 之间'],learn:'<b>供给与需求</b>是市场经济的基石。需求定律：价格↑ → 需求量↓；供给定律：价格↑ → 供给量↑。两条曲线的交点决定了市场均衡价格和数量。'},
+  {title:'价格弹性',sub:'需求对价格的敏感度',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>公式：</b>Ed = (%ΔQ) / (%ΔP)</div>调整需求曲线的斜率，观察弹性值如何变化。陡峭 = 缺乏弹性（必需品），平坦 = 富有弹性（奢侈品）。',objs:['创建弹性需求（|Ed| > 1）','创建非弹性需求（|Ed| < 1）','观察单位弹性（|Ed| ≈ 1）'],learn:'<b>价格弹性</b>衡量需求量对价格变化的敏感程度。|Ed|>1 富有弹性（奢侈品），|Ed|<1 缺乏弹性（必需品如食盐），|Ed|=1 单位弹性。弹性决定了涨价是增收还是减收。'},
+  {title:'消费者与生产者剩余',sub:'交易创造的价值',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>概念：</b>消费者剩余 = 愿付价格 − 实际价格<br>生产者剩余 = 实际价格 − 最低接受价格</div>观察<span style="color:#3b82f6">蓝色区域</span>（消费者剩余）和<span style="color:#ef4444">红色区域</span>（生产者剩余），调整曲线看总剩余如何变化。',objs:['识别消费者剩余区域','识别生产者剩余区域','最大化总社会剩余'],learn:'<b>消费者剩余</b>是买家愿意支付的最高价与实际价格之差的总和。<b>生产者剩余</b>是实际价格与卖家最低接受价之差的总和。自由市场均衡使总剩余最大化。'},
+  {title:'价格管制',sub:'天花板价与地板价',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>管制：</b>价格上限（天花板）→ 短缺<br>价格下限（地板）→ 过剩</div>拖动<span style="color:#f59e0b">橙色虚线</span>设置价格上限或下限，观察市场出现短缺或过剩。',objs:['设置价格上限造成短缺','设置价格下限造成过剩','观察无谓损失区域'],learn:'<b>价格上限</b>（如房租管制）低于均衡价时造成短缺。<b>价格下限</b>（如最低工资）高于均衡价时造成过剩。两者都会产生无谓损失，降低市场效率。'},
+  {title:'税收与无谓损失',sub:'税收的效率代价',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>原理：</b>税收 = 楔子插入供需之间<br>无谓损失 ∝ 税率²</div>调整税率滑块，观察<span style="color:#a855f7">紫色税收收入</span>和<span style="color:#f59e0b">橙色无谓损失</span>三角形的变化。',objs:['设置小额税收观察效果','增大税率看无谓损失扩大','找到税收收入最大化的税率'],learn:'<b>税收</b>在供需之间插入一个楔子，使交易量减少。<b>无谓损失</b>（黄色三角形）随税率的平方增长——税率翻倍，无谓损失翻四倍。拉弗曲线说明存在一个使税收收入最大化的税率。'},
+  {title:'垄断与完全竞争',sub:'市场结构对比',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>对比：</b>完全竞争 P=MC → 效率最优<br>垄断 MR=MC → 价高量少</div>切换市场结构，对比完全竞争和垄断下的价格、产量和社会福利。',objs:['观察完全竞争均衡','切换到垄断观察价格上升','比较两种结构的无谓损失'],learn:'<b>完全竞争</b>下企业是价格接受者，P=MC，社会福利最大。<b>垄断</b>企业面对整条需求曲线，MR=MC 决定产量，P>MC，产生无谓损失。这就是反垄断法存在的原因。'},
+  {title:'外部性与市场失灵',sub:'看不见的手失灵了',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>外部性：</b>负外部性 → 社会成本 > 私人成本<br>正外部性 → 社会收益 > 私人收益</div>调整外部性大小，观察市场均衡偏离社会最优的程度。用庇古税/补贴纠正。',objs:['观察负外部性导致过度生产','观察正外部性导致生产不足','用庇古税/补贴纠正到社会最优'],learn:'<b>外部性</b>是市场交易对第三方的影响。工厂污染（负外部性）使社会成本高于私人成本，市场过度生产。教育（正外部性）使社会收益高于私人收益，市场生产不足。庇古税/补贴可以内化外部性。'}
+];
+
+// === Level State Init ===
+function initLevel(idx){
+  LD={};
+  switch(idx){
+    case 0: LD={dIntercept:100,dSlope:-0.8,sIntercept:10,sSlope:0.7,adjD:false,adjS:false};break;
+    case 1: LD={slope:-0.5,intercept:100,pChange:20};break;
+    case 2: LD={dInt:120,dSl:-1,sInt:10,sSl:0.8,showCS:true,showPS:true};break;
+    case 3: LD={dInt:120,dSl:-1,sInt:10,sSl:0.8,ceiling:0,floor:0,ceilingOn:false,floorOn:false};break;
+    case 4: LD={dInt:120,dSl:-1,sInt:10,sSl:0.8,taxRate:0};break;
+    case 5: LD={mode:'perfect',mcSlope:0.8,mcInt:10,dInt:120,dSl:-1};break;
+    case 6: LD={extType:'negative',extSize:15,pigouvian:0,dInt:100,dSl:-0.8,sInt:20,sSl:0.7};break;
+  }
+}
+
+// === Equilibrium helpers ===
+function eqPoint(dInt,dSl,sInt,sSl){let q=(dInt-sInt)/(sSl-dSl);let p=dInt+dSl*q;return{q:Math.max(0,q),p:Math.max(0,p)}}
+function demandP(q,dInt,dSl){return dInt+dSl*q}
+function supplyP(q,sInt,sSl){return sInt+sSl*q}
+
+// === Slider helper ===
+function sliderHTML(id,label,min,max,step,val,color){
+  return `<div class="slider-row"><label>${label}</label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}" oninput="sliderDrag('${id}')" onchange="this.blur();renderPanel()"><span class="val" style="color:${color||'#6ee7b7'}">${val}</span></div>`;
+}
+function sliderDrag(id){
+  const el=document.getElementById(id);if(!el)return;
+  const span=el.parentElement.querySelector('.val');if(span)span.textContent=parseFloat(el.value).toFixed(el.step<1?1:0);
+  readSliders();draw();
+}
+function readSliders(){
+  switch(curLevel){
+    case 0:{
+      const d=document.getElementById('sl_dInt'),s=document.getElementById('sl_sInt'),ds=document.getElementById('sl_dSl'),ss=document.getElementById('sl_sSl');
+      if(d)LD.dIntercept=+d.value;if(s)LD.sIntercept=+s.value;if(ds)LD.dSlope=-(+ds.value);if(ss)LD.sSlope=+(+ss.value);
+      if(d&&!LD.adjD){LD.adjD=true;completeObj(0,0)}
+      if(s&&!LD.adjS){LD.adjS=true;completeObj(0,1)}
+      let eq=eqPoint(LD.dIntercept,LD.dSlope,LD.sIntercept,LD.sSlope);
+      if(eq.p>=40&&eq.p<=60)completeObj(0,2);
+    }break;
+    case 1:{
+      const sl=document.getElementById('sl_slope'),si=document.getElementById('sl_int');
+      if(sl)LD.slope=-(+sl.value);if(si)LD.intercept=+si.value;
+      let q1=50,q2=50+LD.pChange;let p1=LD.intercept+LD.slope*q1,p2=LD.intercept+LD.slope*q2;
+      let pctQ=(q2-q1)/q1*100,pctP=(p2-p1)/p1*100;
+      LD.elasticity=pctP!==0?pctQ/pctP:0;
+      if(Math.abs(LD.elasticity)>1)completeObj(1,0);
+      if(Math.abs(LD.elasticity)<1&&Math.abs(LD.elasticity)>0)completeObj(1,1);
+      if(Math.abs(Math.abs(LD.elasticity)-1)<0.15)completeObj(1,2);
+    }break;
+    case 2:{
+      const d=document.getElementById('sl_dInt2'),s=document.getElementById('sl_sInt2');
+      if(d)LD.dInt=+d.value;if(s)LD.sInt=+s.value;
+      completeObj(2,0);completeObj(2,1);
+      let eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+      let cs=0.5*eq.q*(LD.dInt-eq.p),ps=0.5*eq.q*(eq.p-LD.sInt);
+      if(cs+ps>2000)completeObj(2,2);
+    }break;
+    case 3:{
+      const c=document.getElementById('sl_ceil'),f=document.getElementById('sl_floor');
+      LD.ceilingOn=document.getElementById('ck_ceil')?.checked||false;
+      LD.floorOn=document.getElementById('ck_floor')?.checked||false;
+      if(c)LD.ceiling=+c.value;if(f)LD.floor=+f.value;
+      let eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+      if(LD.ceilingOn&&LD.ceiling<eq.p)completeObj(3,0);
+      if(LD.floorOn&&LD.floor>eq.p)completeObj(3,1);
+      if((LD.ceilingOn&&LD.ceiling<eq.p)||(LD.floorOn&&LD.floor>eq.p))completeObj(3,2);
+    }break;
+    case 4:{
+      const tx=document.getElementById('sl_tax');
+      if(tx)LD.taxRate=+tx.value;
+      if(LD.taxRate>0&&LD.taxRate<=10)completeObj(4,0);
+      if(LD.taxRate>20)completeObj(4,1);
+      // Laffer: revenue = tax * q_after_tax
+      let eq0=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+      let eqT=eqPoint(LD.dInt,LD.dSl,LD.sInt+LD.taxRate,LD.sSl);
+      if(LD.taxRate>0){
+        let rev=LD.taxRate*eqT.q;
+        // check if near max
+        let maxRev=0,bestT=0;
+        for(let tt=1;tt<=60;tt++){let e2=eqPoint(LD.dInt,LD.dSl,LD.sInt+tt,LD.sSl);let r2=tt*e2.q;if(r2>maxRev){maxRev=r2;bestT=tt}}
+        if(Math.abs(LD.taxRate-bestT)<=3)completeObj(4,2);
+      }
+    }break;
+    case 5:{
+      const md=document.getElementById('sl_mode');
+      if(md)LD.mode=md.value==='0'?'perfect':'monopoly';
+      completeObj(5,0);
+      if(LD.mode==='monopoly')completeObj(5,1);
+      if(levelObjs[5][0]&&levelObjs[5][1])completeObj(5,2);
+    }break;
+    case 6:{
+      const et=document.getElementById('sl_extType'),es=document.getElementById('sl_extSize'),pg=document.getElementById('sl_pigou');
+      if(et)LD.extType=et.value==='0'?'negative':'positive';
+      if(es)LD.extSize=+es.value;if(pg)LD.pigouvian=+pg.value;
+      if(LD.extType==='negative')completeObj(6,0);
+      if(LD.extType==='positive')completeObj(6,1);
+      // check correction
+      if(LD.extType==='negative'&&Math.abs(LD.pigouvian-LD.extSize)<=3)completeObj(6,2);
+      if(LD.extType==='positive'&&Math.abs(LD.pigouvian-LD.extSize)<=3)completeObj(6,2);
+    }break;
+  }
+}
+
+// === Stage Nav ===
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<7;i++){let cls=allDone(i)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="playSound('click');goLevel(${i})"></div>`}
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关 · ${levelInfo[curLevel].title}</div>`;
+  h+=`<div class="sn-hint">${levelInfo[curLevel].sub}</div></div>`;return h;
+}
+
+// === Panel ===
+let _patchLock=false;
+function renderPanel(){
+  if(_patchLock)return;_patchLock=true;setTimeout(()=>{_patchLock=false},50);
+  let info=levelInfo[curLevel];
+  let h=renderStageNav();
+  h+=`<h2>${info.title}</h2><div class="level-title">${info.sub}</div>`;
+  h+=`<div class="desc-text">${info.desc}</div>`;
+  h+=`<ul class="obj-list">${info.objs.map((o,i)=>`<li class="${levelObjs[curLevel][i]?'done':''}">${o}</li>`).join('')}</ul>`;
+
+  switch(curLevel){
+    case 0:
+      h+=sliderHTML('sl_dInt','需求截距',60,150,1,LD.dIntercept,'#3b82f6');
+      h+=sliderHTML('sl_dSl','需求斜率',0.3,2,0.1,Math.abs(LD.dSlope),'#3b82f6');
+      h+=sliderHTML('sl_sInt','供给截距',0,50,1,LD.sIntercept,'#ef4444');
+      h+=sliderHTML('sl_sSl','供给斜率',0.3,2,0.1,LD.sSlope,'#ef4444');
+      {let eq=eqPoint(LD.dIntercept,LD.dSlope,LD.sIntercept,LD.sSlope);
+      h+=`<div style="margin-top:8px;font-size:13px;color:var(--text-muted)">均衡价格: <span style="color:#22c55e;font-weight:bold">${eq.p.toFixed(1)}</span> | 均衡数量: <span style="color:#22c55e;font-weight:bold">${eq.q.toFixed(1)}</span></div>`}
+      break;
+    case 1:
+      h+=sliderHTML('sl_slope','曲线斜率',0.1,3,0.1,Math.abs(LD.slope),'#3b82f6');
+      h+=sliderHTML('sl_int','截距',60,150,1,LD.intercept,'#3b82f6');
+      {let q1=50,q2=50+LD.pChange;let p1=LD.intercept+LD.slope*q1,p2=LD.intercept+LD.slope*q2;
+      let pctQ=(q2-q1)/q1*100,pctP=p1!==0?(p2-p1)/p1*100:0;
+      let ed=pctP!==0?pctQ/pctP:0;
+      h+=`<div style="margin-top:8px;font-size:13px;color:var(--text-muted)">弹性 |Ed| = <span style="color:#f59e0b;font-weight:bold">${Math.abs(ed).toFixed(2)}</span> ${Math.abs(ed)>1?'(富有弹性)':Math.abs(ed)<1?'(缺乏弹性)':'(单位弹性)'}</div>`}
+      break;
+    case 2:
+      h+=sliderHTML('sl_dInt2','需求截距',80,160,1,LD.dInt,'#3b82f6');
+      h+=sliderHTML('sl_sInt2','供给截距',0,40,1,LD.sInt,'#ef4444');
+      {let eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+      let cs=0.5*eq.q*(LD.dInt-eq.p),ps=0.5*eq.q*(eq.p-LD.sInt);
+      h+=`<div style="margin-top:8px;font-size:13px"><span style="color:#3b82f6">消费者剩余: ${cs.toFixed(0)}</span> | <span style="color:#ef4444">生产者剩余: ${ps.toFixed(0)}</span><br>总剩余: <span style="color:#22c55e;font-weight:bold">${(cs+ps).toFixed(0)}</span></div>`}
+      break;
+    case 3:
+      h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-muted)"><input type="checkbox" id="ck_ceil" ${LD.ceilingOn?'checked':''} onchange="readSliders();renderPanel();draw()"> 启用价格上限</label></div>`;
+      if(LD.ceilingOn)h+=sliderHTML('sl_ceil','价格上限',10,100,1,LD.ceiling||40,'#f59e0b');
+      h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-muted)"><input type="checkbox" id="ck_floor" ${LD.floorOn?'checked':''} onchange="readSliders();renderPanel();draw()"> 启用价格下限</label></div>`;
+      if(LD.floorOn)h+=sliderHTML('sl_floor','价格下限',10,100,1,LD.floor||70,'#f59e0b');
+      {let eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+      h+=`<div style="margin-top:8px;font-size:12px;color:var(--text-muted)">均衡价格: ${eq.p.toFixed(1)}</div>`}
+      break;
+    case 4:
+      h+=sliderHTML('sl_tax','税率',0,60,1,LD.taxRate,'#a855f7');
+      {let eq0=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+      let eqT=eqPoint(LD.dInt,LD.dSl,LD.sInt+LD.taxRate,LD.sSl);
+      let rev=LD.taxRate*eqT.q;
+      let dwl=0.5*LD.taxRate*(eq0.q-eqT.q);
+      h+=`<div style="margin-top:8px;font-size:13px"><span style="color:#a855f7">税收收入: ${rev.toFixed(0)}</span> | <span style="color:#f59e0b">无谓损失: ${dwl.toFixed(0)}</span></div>`}
+      break;
+    case 5:
+      h+=`<div class="slider-row"><label>市场结构</label><select id="sl_mode" onchange="readSliders();renderPanel();draw()" style="flex:1;padding:4px;border-radius:4px;background:var(--btn-bg);color:var(--btn-text);border:1px solid var(--btn-border)"><option value="0" ${LD.mode==='perfect'?'selected':''}>完全竞争</option><option value="1" ${LD.mode==='monopoly'?'selected':''}>垄断</option></select></div>`;
+      {let eq;
+      if(LD.mode==='perfect'){eq=eqPoint(LD.dInt,LD.dSl,LD.mcInt,LD.mcSlope);h+=`<div style="margin-top:8px;font-size:13px;color:var(--text-muted)">完全竞争: P=MC<br>价格: <span style="color:#22c55e">${eq.p.toFixed(1)}</span> 产量: <span style="color:#22c55e">${eq.q.toFixed(1)}</span></div>`}
+      else{
+        // MR has double slope: MR = dInt + 2*dSl*q
+        let qm=(LD.dInt-LD.mcInt)/(LD.mcSlope-2*LD.dSl);let pm=LD.dInt+LD.dSl*qm;
+        let qc=(LD.dInt-LD.mcInt)/(LD.mcSlope-LD.dSl);let pc=LD.dInt+LD.dSl*qc;
+        let dwl=0.5*(pm-supplyP(qm,LD.mcInt,LD.mcSlope))*(qc-qm);
+        h+=`<div style="margin-top:8px;font-size:13px;color:var(--text-muted)">垄断: MR=MC<br>价格: <span style="color:#ef4444">${pm.toFixed(1)}</span> 产量: <span style="color:#ef4444">${qm.toFixed(1)}</span><br>无谓损失: <span style="color:#f59e0b">${dwl.toFixed(0)}</span></div>`}
+      }
+      break;
+    case 6:
+      h+=`<div class="slider-row"><label>外部性类型</label><select id="sl_extType" onchange="readSliders();renderPanel();draw()" style="flex:1;padding:4px;border-radius:4px;background:var(--btn-bg);color:var(--btn-text);border:1px solid var(--btn-border)"><option value="0" ${LD.extType==='negative'?'selected':''}>负外部性（污染）</option><option value="1" ${LD.extType==='positive'?'selected':''}>正外部性（教育）</option></select></div>`;
+      h+=sliderHTML('sl_extSize','外部性大小',0,40,1,LD.extSize,'#f59e0b');
+      h+=sliderHTML('sl_pigou','庇古税/补贴',0,40,1,LD.pigouvian,'#a855f7');
+      {let diff=Math.abs(LD.pigouvian-LD.extSize);
+      h+=`<div style="margin-top:8px;font-size:13px;color:var(--text-muted)">纠正偏差: <span style="color:${diff<=3?'#22c55e':'#f59e0b'}">${diff.toFixed(0)}</span> ${diff<=3?'✓ 已纠正':'— 继续调整'}</div>`}
+      break;
+  }
+
+  if(allDone(curLevel)){
+    h+=`<div class="learn-box">${info.learn}</div>`;
+    if(curLevel<6)h+=`<button class="act-btn" onclick="playSound('click');goLevel(${curLevel+1})">下一关 →</button>`;
+    else h+=`<button class="act-btn" onclick="showSummary()">查看总结 →</button>`;
+  }
+  panel.innerHTML=h;
+}
+
+function renderBar(){barInner.innerHTML=`<span style="color:var(--text-muted)">📈 ${levelInfo[curLevel].title}</span><span style="margin-left:auto;color:var(--text-muted);font-size:12px">第 ${curLevel+1}/7 关</span>`}
+
+// === Drawing ===
+function draw(){
+  if(!W)return;
+  ctx.clearRect(0,0,W,H);
+  // bg
+  const th=t();
+  const bgG=ctx.createLinearGradient(0,0,0,H);bgG.addColorStop(0,th.bg1);bgG.addColorStop(1,th.bg2);
+  ctx.fillStyle=bgG;ctx.fillRect(0,0,W,H);
+  // grid
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+
+  const m=60,gw=W-120,gh=H-120;
+  // axes
+  ctx.strokeStyle=th.axis;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(m,m);ctx.lineTo(m,H-m);ctx.lineTo(W-m,H-m);ctx.stroke();
+  ctx.fillStyle=th.text;ctx.font='13px sans-serif';ctx.textAlign='center';
+  ctx.fillText('数量 Q',W/2,H-m+35);
+  ctx.save();ctx.translate(m-35,H/2);ctx.rotate(-Math.PI/2);ctx.fillText('价格 P',0,0);ctx.restore();
+
+  function toX(q,maxQ){return m+q/maxQ*gw}
+  function toY(p,maxP){return H-m-p/maxP*gh}
+
+  switch(curLevel){
+    case 0:{
+      let maxQ=130,maxP=130;
+      // demand
+      ctx.strokeStyle=th.curve1;ctx.lineWidth=3;ctx.beginPath();
+      for(let q=0;q<=maxQ;q+=1){let p=LD.dIntercept+LD.dSlope*q;if(p<0)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
+      // supply
+      ctx.strokeStyle=th.curve2;ctx.lineWidth=3;ctx.beginPath();
+      for(let q=0;q<=maxQ;q+=1){let p=LD.sIntercept+LD.sSlope*q;if(p>maxP)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
+      // eq point
+      let eq=eqPoint(LD.dIntercept,LD.dSlope,LD.sIntercept,LD.sSlope);
+      if(eq.q>0&&eq.p>0){
+        ctx.fillStyle=th.eq;ctx.beginPath();ctx.arc(toX(eq.q,maxQ),toY(eq.p,maxP),8,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=th.text;ctx.font='bold 14px sans-serif';ctx.textAlign='left';
+        ctx.fillText(`均衡 (${eq.q.toFixed(0)}, ${eq.p.toFixed(0)})`,toX(eq.q,maxQ)+14,toY(eq.p,maxP)-8);
+      }
+      // labels
+      ctx.font='13px sans-serif';ctx.fillStyle=th.curve1;ctx.fillText('需求 D',toX(5,maxQ),toY(LD.dIntercept+LD.dSlope*5,maxP)-10);
+      ctx.fillStyle=th.curve2;ctx.fillText('供给 S',toX(maxQ*0.7,maxQ),toY(LD.sIntercept+LD.sSlope*maxQ*0.7,maxP)-10);
+    }break;
+    case 1:{
+      let maxQ=120,maxP=160;
+      ctx.strokeStyle=th.curve1;ctx.lineWidth=3;ctx.beginPath();
+      for(let q=0;q<=maxQ;q++){let p=LD.intercept+LD.slope*q;if(p<0)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
+      // show elasticity band
+      let q1=50,q2=50+LD.pChange;let p1=LD.intercept+LD.slope*q1,p2=LD.intercept+LD.slope*q2;
+      ctx.setLineDash([5,5]);ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(toX(q1,maxQ),toY(0,maxP));ctx.lineTo(toX(q1,maxQ),toY(p1,maxP));ctx.lineTo(toX(0,maxQ),toY(p1,maxP));ctx.stroke();
+      ctx.beginPath();ctx.moveTo(toX(q2,maxQ),toY(0,maxP));ctx.lineTo(toX(q2,maxQ),toY(p2,maxP));ctx.lineTo(toX(0,maxQ),toY(p2,maxP));ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(toX(q1,maxQ),toY(p1,maxP),6,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(toX(q2,maxQ),toY(p2,maxP),6,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=th.text;ctx.font='12px sans-serif';ctx.textAlign='left';
+      ctx.fillText(`A(${q1},${p1.toFixed(0)})`,toX(q1,maxQ)+10,toY(p1,maxP)-6);
+      ctx.fillText(`B(${q2},${p2.toFixed(0)})`,toX(q2,maxQ)+10,toY(p2,maxP)-6);
+    }break;
+    case 2:{
+      let maxQ=130,maxP=140;let eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+      // CS fill
+      ctx.fillStyle=th.surplus1;ctx.beginPath();ctx.moveTo(toX(0,maxQ),toY(LD.dInt,maxP));ctx.lineTo(toX(eq.q,maxQ),toY(eq.p,maxP));ctx.lineTo(toX(0,maxQ),toY(eq.p,maxP));ctx.closePath();ctx.fill();
+      // PS fill
+      ctx.fillStyle=th.surplus2;ctx.beginPath();ctx.moveTo(toX(0,maxQ),toY(LD.sInt,maxP));ctx.lineTo(toX(eq.q,maxQ),toY(eq.p,maxP));ctx.lineTo(toX(0,maxQ),toY(eq.p,maxP));ctx.closePath();ctx.fill();
+      // curves
+      ctx.strokeStyle=th.curve1;ctx.lineWidth=3;ctx.beginPath();for(let q=0;q<=maxQ;q++){let p=LD.dInt+LD.dSl*q;if(p<0)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
+      ctx.strokeStyle=th.curve2;ctx.lineWidth=3;ctx.beginPath();for(let q=0;q<=maxQ;q++){let p=LD.sInt+LD.sSl*q;if(p>maxP)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
+      ctx.fillStyle=th.eq;ctx.beginPath();ctx.arc(toX(eq.q,maxQ),toY(eq.p,maxP),8,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=th.curve1;ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('消费者剩余',toX(eq.q*0.3,maxQ),toY((LD.dInt+eq.p)/2,maxP));
+      ctx.fillStyle=th.curve2;ctx.fillText('生产者剩余',toX(eq.q*0.3,maxQ),toY((LD.sInt+eq.p)/2,maxP));
+    }break;
+    case 3:{
+      let maxQ=130,maxP=140;let eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+      // curves
+      ctx.strokeStyle=th.curve1;ctx.lineWidth=3;ctx.beginPath();for(let q=0;q<=maxQ;q++){let p=LD.dInt+LD.dSl*q;if(p<0)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
+      ctx.strokeStyle=th.curve2;ctx.lineWidth=3;ctx.beginPath();for(let q=0;q<=maxQ;q++){let p=LD.sInt+LD.sSl*q;if(p>maxP)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
+      ctx.fillStyle=th.eq;ctx.beginPath();ctx.arc(toX(eq.q,maxQ),toY(eq.p,maxP),6,0,Math.PI*2);ctx.fill();
+      // ceiling
+      if(LD.ceilingOn){
+        ctx.setLineDash([8,4]);ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(m,toY(LD.ceiling,maxP));ctx.lineTo(W-m,toY(LD.ceiling,maxP));ctx.stroke();ctx.setLineDash([]);
+        ctx.fillStyle='#f59e0b';ctx.font='12px sans-serif';ctx.textAlign='right';ctx.fillText(`价格上限 = ${LD.ceiling}`,W-m-10,toY(LD.ceiling,maxP)-8);
+        if(LD.ceiling<eq.p){
+          let qd=(LD.ceiling-LD.dInt)/LD.dSl,qs=(LD.ceiling-LD.sInt)/LD.sSl;
+          ctx.fillStyle='rgba(239,68,68,0.15)';ctx.fillRect(toX(qs,maxQ),toY(LD.ceiling,maxP),toX(qd,maxQ)-toX(qs,maxQ),20);
+          ctx.fillStyle='#ef4444';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText(`短缺 = ${(qd-qs).toFixed(0)}`,toX((qd+qs)/2,maxQ),toY(LD.ceiling,maxP)+35);
+        }
+      }
+      // floor
+      if(LD.floorOn){
+        ctx.setLineDash([8,4]);ctx.strokeStyle='#a855f7';ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(m,toY(LD.floor,maxP));ctx.lineTo(W-m,toY(LD.floor,maxP));ctx.stroke();ctx.setLineDash([]);
+        ctx.fillStyle='#a855f7';ctx.font='12px sans-serif';ctx.textAlign='right';ctx.fillText(`价格下限 = ${LD.floor}`,W-m-10,toY(LD.floor,maxP)-8);
+        if(LD.floor>eq.p){
+          let qd=(LD.floor-LD.dInt)/LD.dSl,qs=(LD.floor-LD.sInt)/LD.sSl;
+          ctx.fillStyle='rgba(168,85,247,0.15)';ctx.fillRect(toX(qd,maxQ),toY(LD.floor,maxP)-20,toX(qs,maxQ)-toX(qd,maxQ),20);
+          ctx.fillStyle='#a855f7';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText(`过剩 = ${(qs-qd).toFixed(0)}`,toX((qd+qs)/2,maxQ),toY(LD.floor,maxP)-25);
+        }
+      }
+    }break;
+    case 4:{
+      let maxQ=130,maxP=160;
+      let eq0=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+      let sIntT=LD.sInt+LD.taxRate;
+      let eqT=eqPoint(LD.dInt,LD.dSl,sIntT,LD.sSl);
+      // original supply (dashed)
+      ctx.setLineDash([5,5]);ctx.strokeStyle='rgba(239,68,68,0.4)';ctx.lineWidth=2;ctx.beginPath();
+      for(let q=0;q<=maxQ;q++){let p=LD.sInt+LD.sSl*q;if(p>maxP)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();ctx.setLineDash([]);
+      // shifted supply
+      ctx.strokeStyle=th.curve2;ctx.lineWidth=3;ctx.beginPath();
+      for(let q=0;q<=maxQ;q++){let p=sIntT+LD.sSl*q;if(p>maxP)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
+      // demand
+      ctx.strokeStyle=th.curve1;ctx.lineWidth=3;ctx.beginPath();
+      for(let q=0;q<=maxQ;q++){let p=LD.dInt+LD.dSl*q;if(p<0)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
+      // tax revenue rect
+      if(LD.taxRate>0&&eqT.q>0){
+        let pb=eqT.p,ps2=eqT.p-LD.taxRate;
+        ctx.fillStyle=th.tax;ctx.fillRect(toX(0,maxQ),toY(pb,maxP),toX(eqT.q,maxQ)-m,toY(ps2,maxP)-toY(pb,maxP));
+        // DWL triangle
+        ctx.fillStyle=th.deadweight;ctx.beginPath();
+        ctx.moveTo(toX(eqT.q,maxQ),toY(eqT.p,maxP));
+        ctx.lineTo(toX(eq0.q,maxQ),toY(eq0.p,maxP));
+        ctx.lineTo(toX(eqT.q,maxQ),toY(eqT.p-LD.taxRate,maxP));
+        ctx.closePath();ctx.fill();
+        ctx.fillStyle='#a855f7';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('税收',toX(eqT.q/2,maxQ),toY((pb+ps2)/2,maxP)+4);
+        ctx.fillStyle='#f59e0b';ctx.fillText('DWL',toX((eqT.q+eq0.q)/2,maxQ),toY(eq0.p,maxP));
+      }
+    }break;
+    case 5:{
+      let maxQ=130,maxP=160;
+      // demand
+      ctx.strokeStyle=th.curve1;ctx.lineWidth=3;ctx.beginPath();
+      for(let q=0;q<=maxQ;q++){let p=LD.dInt+LD.dSl*q;if(p<0)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
+      // MC
+      ctx.strokeStyle=th.curve2;ctx.lineWidth=3;ctx.beginPath();
+      for(let q=0;q<=maxQ;q++){let p=LD.mcInt+LD.mcSlope*q;if(p>maxP)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
+      ctx.fillStyle=th.curve1;ctx.font='12px sans-serif';ctx.textAlign='left';ctx.fillText('D (需求)',toX(5,maxQ),toY(LD.dInt+LD.dSl*5,maxP)-8);
+      ctx.fillStyle=th.curve2;ctx.fillText('MC (边际成本)',toX(maxQ*0.6,maxQ),toY(LD.mcInt+LD.mcSlope*maxQ*0.6,maxP)-8);
+      if(LD.mode==='monopoly'){
+        // MR line
+        ctx.strokeStyle='#a855f7';ctx.lineWidth=2;ctx.setLineDash([5,3]);ctx.beginPath();
+        for(let q=0;q<=maxQ;q++){let p=LD.dInt+2*LD.dSl*q;if(p<0)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();ctx.setLineDash([]);
+        ctx.fillStyle='#a855f7';ctx.fillText('MR',toX(20,maxQ),toY(LD.dInt+2*LD.dSl*20,maxP)-8);
+        let qm=(LD.dInt-LD.mcInt)/(LD.mcSlope-2*LD.dSl);let pm=LD.dInt+LD.dSl*qm;
+        let qc=(LD.dInt-LD.mcInt)/(LD.mcSlope-LD.dSl);let pc=LD.dInt+LD.dSl*qc;
+        // DWL
+        ctx.fillStyle=th.deadweight;ctx.beginPath();
+        ctx.moveTo(toX(qm,maxQ),toY(pm,maxP));ctx.lineTo(toX(qc,maxQ),toY(pc,maxP));
+        ctx.lineTo(toX(qm,maxQ),toY(LD.mcInt+LD.mcSlope*qm,maxP));ctx.closePath();ctx.fill();
+        ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(toX(qm,maxQ),toY(pm,maxP),8,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=th.text;ctx.font='bold 12px sans-serif';ctx.fillText(`垄断 (${qm.toFixed(0)},${pm.toFixed(0)})`,toX(qm,maxQ)+12,toY(pm,maxP)-8);
+      }else{
+        let eq=eqPoint(LD.dInt,LD.dSl,LD.mcInt,LD.mcSlope);
+        ctx.fillStyle=th.eq;ctx.beginPath();ctx.arc(toX(eq.q,maxQ),toY(eq.p,maxP),8,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=th.text;ctx.font='bold 12px sans-serif';ctx.fillText(`竞争 (${eq.q.toFixed(0)},${eq.p.toFixed(0)})`,toX(eq.q,maxQ)+12,toY(eq.p,maxP)-8);
+      }
+    }break;
+    case 6:{
+      let maxQ=130,maxP=140;
+      // private supply
+      ctx.strokeStyle=th.curve2;ctx.lineWidth=3;ctx.beginPath();
+      for(let q=0;q<=maxQ;q++){let p=LD.sInt+LD.sSl*q;if(p>maxP)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
+      // social cost/benefit
+      let socInt=LD.extType==='negative'?LD.sInt+LD.extSize:LD.sInt;
+      let socDInt=LD.extType==='positive'?LD.dInt+LD.extSize:LD.dInt;
+      ctx.setLineDash([6,4]);ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.beginPath();
+      if(LD.extType==='negative'){for(let q=0;q<=maxQ;q++){let p=socInt+LD.sSl*q;if(p>maxP)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}}
+      else{for(let q=0;q<=maxQ;q++){let p=socDInt+LD.dSl*q;if(p<0)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}}
+      ctx.stroke();ctx.setLineDash([]);
+      // corrected supply (with pigouvian)
+      if(LD.pigouvian>0){
+        let corrInt=LD.extType==='negative'?LD.sInt+LD.pigouvian:LD.sInt;
+        let corrDInt=LD.extType==='positive'?LD.dInt+LD.pigouvian:LD.dInt;
+        ctx.strokeStyle='#22c55e';ctx.lineWidth=2;ctx.setLineDash([3,3]);ctx.beginPath();
+        if(LD.extType==='negative'){for(let q=0;q<=maxQ;q++){let p=corrInt+LD.sSl*q;if(p>maxP)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}}
+        else{for(let q=0;q<=maxQ;q++){let p=corrDInt+LD.dSl*q;if(p<0)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}}
+        ctx.stroke();ctx.setLineDash([]);
+      }
+      // demand
+      ctx.strokeStyle=th.curve1;ctx.lineWidth=3;ctx.beginPath();
+      for(let q=0;q<=maxQ;q++){let p=LD.dInt+LD.dSl*q;if(p<0)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
+      // labels
+      ctx.fillStyle=th.curve2;ctx.font='12px sans-serif';ctx.textAlign='left';ctx.fillText('私人供给',toX(maxQ*0.65,maxQ),toY(LD.sInt+LD.sSl*maxQ*0.65,maxP)-8);
+      ctx.fillStyle='#f59e0b';ctx.fillText(LD.extType==='negative'?'社会成本':'社会收益',toX(maxQ*0.5,maxQ),toY((LD.extType==='negative'?socInt:socDInt)+(LD.extType==='negative'?LD.sSl:LD.dSl)*maxQ*0.5,maxP)-8);
+      // eq points
+      let eqPriv=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+      let eqSoc=LD.extType==='negative'?eqPoint(LD.dInt,LD.dSl,socInt,LD.sSl):eqPoint(socDInt,LD.dSl,LD.sInt,LD.sSl);
+      ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(toX(eqPriv.q,maxQ),toY(eqPriv.p,maxP),6,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#22c55e';ctx.beginPath();ctx.arc(toX(eqSoc.q,maxQ),toY(eqSoc.p,maxP),6,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=th.text;ctx.font='11px sans-serif';
+      ctx.fillText('市场均衡',toX(eqPriv.q,maxQ)+10,toY(eqPriv.p,maxP)-6);
+      ctx.fillText('社会最优',toX(eqSoc.q,maxQ)+10,toY(eqSoc.p,maxP)+14);
+    }break;
+  }
+}
+
+// === Summary ===
+function showSummary(){
+  let done=levelObjs.flat().filter(Boolean).length;
+  panel.innerHTML=`<div class="summary-box"><div class="summary-title">🎉 市场经济探险完成！</div><div class="summary-sub">你已掌握市场经济的核心机制</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标完成</div></div><div class="summary-stat"><div class="num">7</div><div class="label">关卡通关</div></div></div><div class="summary-keys"><div>📊 供给与需求决定均衡价格</div><div>📐 弹性衡量价格敏感度</div><div>💰 自由市场最大化总剩余</div><div>⚖️ 价格管制造成短缺或过剩</div><div>🏛️ 税收产生无谓损失</div><div>🏭 垄断导致效率损失</div><div>🌍 外部性需要政府干预</div></div></div><button class="act-btn" style="margin-top:12px" onclick="location.reload()">再玩一次</button>`;
+}
+
+// === Animation loop ===
+function mainLoop(){requestAnimationFrame(mainLoop);draw()}
+requestAnimationFrame(mainLoop);
+</script>
+</body>
+</html>
+

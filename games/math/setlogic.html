@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>集合与逻辑探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --slider-label:#888;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --slider-label:#888;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;width:100vw}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;color:#14b8a6;margin-bottom:8px;text-shadow:0 0 30px rgba(20,184,166,0.4)}
+.overlay .sub{font-size:18px;color:var(--sub-color);margin-bottom:32px}
+.overlay .desc{max-width:520px;color:var(--text-muted);font-size:14px;line-height:1.8;margin-bottom:36px}
+.overlay .start-btn{background:linear-gradient(135deg,#14b8a6,#0d9488);color:#fff;border:none;padding:14px 48px;font-size:18px;border-radius:12px;cursor:pointer;transition:all .3s}
+.overlay .start-btn:hover{transform:scale(1.05);box-shadow:0 0 24px rgba(20,184,166,0.5)}
+.panel{position:fixed;left:0;top:0;bottom:36px;width:320px;background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;padding:16px;display:none;z-index:10;padding-bottom:24px}
+.panel h2{color:var(--title-color);font-size:18px;margin-bottom:6px}
+.panel .level-title{color:#5eead4;font-size:13px;margin-bottom:12px}
+.panel .desc-text{color:var(--text-muted);font-size:13px;line-height:1.7;margin-bottom:14px}
+.panel .obj-list{list-style:none;margin-bottom:14px}
+.panel .obj-list li{font-size:13px;padding:4px 0;color:var(--goal-text)}
+.panel .obj-list li.done{color:var(--goal-done)}
+.panel .obj-list li::before{content:'○ ';color:var(--text-sub)}
+.panel .obj-list li.done::before{content:'● ';color:var(--goal-done)}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);border-radius:8px;cursor:pointer;font-size:14px;transition:all .2s}
+.act-btn:hover{background:var(--btn-hover)}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:13px;color:var(--learn-text);line-height:1.8}
+.learn-box b{color:#5eead4}
+canvas{position:fixed;left:320px;top:0;background:var(--bg)}
+.bar{position:fixed;left:0;bottom:0;right:0;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:none;z-index:10;padding:0 16px;align-items:center;font-size:13px}
+.bar-inner{display:flex;align-items:center;height:100%;gap:8px}
+.bar .progress{margin-left:auto;color:var(--text-muted);font-size:12px}
+.slider-row{display:flex;align-items:center;gap:8px;margin:6px 0}
+.slider-row label{font-size:12px;color:var(--slider-label);min-width:60px}
+.slider-row input[type=range]{flex:1;accent-color:#14b8a6}
+.slider-row .val{font-size:12px;color:var(--sv);min-width:36px;text-align:right}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#14b8a6;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
+.quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg)}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="overlay">
+<h1>🔗 集合与逻辑探险</h1>
+<div class="sub">Sets & Logic Adventure</div>
+<div class="desc">
+从韦恩图到悖论，7个关卡带你探索集合论与数理逻辑。<br>
+拖动元素、连接逻辑门、构建真值表，动手操作理解逻辑之美。
+</div>
+<button class="start-btn" onclick="startGame()">开始探索 →</button>
+<div class="features">
+<div class="feat"><div class="fi">⭕</div>集合运算</div>
+<div class="feat"><div class="fi">🔀</div>逻辑命题</div>
+<div class="feat"><div class="fi">📋</div>真值表</div>
+<div class="feat"><div class="fi">⚡</div>逻辑门</div>
+<div class="feat"><div class="fi">🔄</div>德摩根</div>
+<div class="feat"><div class="fi">📐</div>数学归纳</div>
+<div class="feat"><div class="fi">🌀</div>悖论自指</div>
+</div>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"><div class="bar-inner" id="barInner"></div></div>
+<script>
+'use strict';
+let isDark=true;
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel();draw()}
+function t(){return isDark?{bg:'#0a0a2e',grid:'rgba(20,184,166,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)'}:{bg:'#f0f2f5',grid:'rgba(20,184,166,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)'}}
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const panel=document.getElementById('panel'),bar=document.getElementById('bar'),barInner=document.getElementById('barInner');
+let W,H,curLevel=0;
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+
+function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';draw()}
+window.addEventListener('resize',resize);
+function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
+function goLevel(n){curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
+function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
+
+const LI=[
+  {title:'集合运算',sub:'韦恩图',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>运算：</b>A∩B（交集）/ A∪B（并集）/ A\'（补集）</div>画布上有两个集合的韦恩图。选择不同的运算，观察高亮区域的变化。',objs:['观察交集 A∩B','观察并集 A∪B','观察补集 A\''],learn:'<b>集合运算</b>：交集 A∩B 包含同时属于A和B的元素；并集 A∪B 包含属于A或B的元素；补集 A\' 包含不属于A的元素。韦恩图是可视化集合关系的经典工具。'},
+  {title:'逻辑命题',sub:'与/或/非',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>运算：</b>P∧Q（与）/ P∨Q（或）/ ¬P（非）</div>设置命题P和Q的真假值，观察逻辑运算的结果。',objs:['理解"与"运算(P∧Q)','理解"或"运算(P∨Q)','理解"非"运算(¬P)'],learn:'<b>命题逻辑</b>：P∧Q 仅当P和Q都为真时为真；P∨Q 当P或Q至少一个为真时为真；¬P 取反。这三个运算是所有逻辑运算的基础。'},
+  {title:'真值表',sub:'Truth Table',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>方法：</b>列出所有输入组合，计算每种情况的输出</div>选择一个逻辑表达式，画布上会显示完整的真值表。填写缺失的值来验证理解。',objs:['完成"与"运算真值表','完成"蕴含"运算真值表','完成"异或"运算真值表'],learn:'<b>真值表</b>是验证逻辑等价的系统方法。n个变量有2^n行。蕴含 P→Q 等价于 ¬P∨Q。异或 P⊕Q 表示"恰好一个为真"。'},
+  {title:'逻辑门电路',sub:'Logic Gates',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>基础门：</b>AND门 / OR门 / NOT门 / XOR门</div>画布上有逻辑门电路。切换输入信号（0/1），观察输出如何变化。',objs:['测试AND门的所有输入','测试OR门的所有输入','用NAND门构建NOT门'],learn:'<b>逻辑门</b>是数字电路的基础。AND、OR、NOT对应逻辑运算∧、∨、¬。NAND门是"万能门"——任何逻辑函数都可以仅用NAND门实现。这是计算机硬件的基石。'},
+  {title:'德摩根定律',sub:'De Morgan\'s Laws',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>定律：</b>¬(A∧B) = ¬A∨¬B / ¬(A∨B) = ¬A∧¬B</div>通过韦恩图和真值表双重验证德摩根定律。',objs:['验证 ¬(A∧B) = ¬A∨¬B','验证 ¬(A∨B) = ¬A∧¬B','用真值表确认两条定律'],learn:'<b>德摩根定律</b>：¬(A∧B) = ¬A∨¬B，¬(A∨B) = ¬A∧¬B。"非(且)" = "或(非)"，"非(或)" = "且(非)"。在电路设计中，这允许用NOT和OR替代AND，反之亦然。'},
+  {title:'数学归纳法',sub:'Mathematical Induction',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>步骤：</b>①基础步(n=1成立) ②归纳步(假设n=k成立→证n=k+1)</div>用多米诺骨牌类比理解数学归纳法。验证 1+2+...+n = n(n+1)/2。',objs:['验证基础步 n=1','理解归纳假设 n=k','完成归纳步 n=k+1'],learn:'<b>数学归纳法</b>像推倒多米诺骨牌：①第一块倒下（基础步）②每块倒下会推倒下一块（归纳步）→ 所有骨牌都会倒。这是证明对所有自然数成立的命题的标准方法。'},
+  {title:'悖论与自指',sub:'Russell\'s Paradox',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>悖论：</b>R = {x | x ∉ x}，则 R ∈ R ⟺ R ∉ R</div>探索罗素悖论、说谎者悖论等经典自指悖论。理解它们如何推动了数学基础的发展。',objs:['理解罗素悖论','探索说谎者悖论','了解悖论对数学基础的影响'],learn:'<b>罗素悖论</b>（1901）：设 R 是"所有不包含自身的集合"的集合。R∈R 吗？如果是，则R不应包含自身；如果不是，则R应包含自身。这个悖论摧毁了朴素集合论，催生了ZFC公理化集合论。'}
+];
+
+const quizData=[
+  {q:'A={1,2,3}, B={2,3,4}, A∩B=?',opts:['{1,2,3,4}','{2,3}','{1,4}','{2}'],ans:1},
+  {q:'P为假,Q为真,则P∧Q=?',opts:['真','假','不确定','无意义'],ans:1},
+  {q:'P→Q 等价于？',opts:['P∧Q','¬P∨Q','P∨Q','¬P∧Q'],ans:1},
+  {q:'NAND门被称为"万能门"因为？',opts:['速度最快','可实现任何逻辑函数','最便宜','最简单'],ans:1},
+  {q:'¬(A∨B) 等于？',opts:['¬A∨¬B','¬A∧¬B','A∧B','A∨B'],ans:1},
+  {q:'数学归纳法的归纳步是？',opts:['证n=1','证n=k','假设n=k证n=k+1','证所有n'],ans:2},
+  {q:'罗素悖论导致了什么？',opts:['微积分发展','公理化集合论','概率论','拓扑学'],ans:1}
+];
+let quizPassed=new Set(),quizLocked=false;
+
+// ===== Level states =====
+let L1={op:'intersection',setA:new Set([1,2,3,5,7]),setB:new Set([2,3,4,6,8])};
+let L2={P:true,Q:false};
+let L3={expr:'and',answers:{},completed:{and:false,implies:false,xor:false}};
+let L4={inputA:0,inputB:0,gate:'AND',tested:{AND:new Set(),OR:new Set(),NAND:new Set()}};
+let L5={law:1,verified:[false,false],truthDone:false};
+let L6={n:1,verified:[false,false,false]};
+let L7={paradox:'russell',explored:{russell:false,liar:false,impact:false}};
+
+function initLevel(n){
+  switch(n){
+    case 0:L1={op:'intersection',setA:new Set([1,2,3,5,7]),setB:new Set([2,3,4,6,8])};break;
+    case 1:L2={P:true,Q:false};break;
+    case 2:L3={expr:'and',answers:{},completed:{and:false,implies:false,xor:false}};break;
+    case 3:L4={inputA:0,inputB:0,gate:'AND',tested:{AND:new Set(),OR:new Set(),NAND:new Set()}};break;
+    case 4:L5={law:1,verified:[false,false],truthDone:false};break;
+    case 5:L6={n:1,verified:[false,false,false]};break;
+    case 6:L7={paradox:'russell',explored:{russell:false,liar:false,impact:false}};break;
+  }
+}
+
+// L1: Set operations
+function setOp(op){L1.op=op;
+  if(op==='intersection')completeObj(0,0);
+  if(op==='union')completeObj(0,1);
+  if(op==='complement')completeObj(0,2);
+  renderPanel();draw();
+}
+
+// L2: Logic propositions
+function toggleP(){L2.P=!L2.P;completeObj(1,2);renderPanel();draw()}
+function toggleQ(){L2.Q=!L2.Q;renderPanel();draw()}
+function showLogicOp(op){
+  if(op==='and')completeObj(1,0);
+  if(op==='or')completeObj(1,1);
+  renderPanel();draw();
+}
+
+// L3: Truth tables
+function setExpr(e){L3.expr=e;renderPanel();draw()}
+function checkTruth(row,val){
+  let key=L3.expr+'_'+row;L3.answers[key]=val;
+  // check if all rows correct
+  let ops={and:(a,b)=>a&&b,implies:(a,b)=>!a||b,xor:(a,b)=>a!==b};
+  let fn=ops[L3.expr];let allCorrect=true;
+  for(let r=0;r<4;r++){let a=!!(r&2),b=!!(r&1);let expected=fn(a,b)?1:0;
+    if(L3.answers[L3.expr+'_'+r]!==expected)allCorrect=false}
+  if(allCorrect){L3.completed[L3.expr]=true;
+    if(L3.expr==='and')completeObj(2,0);
+    if(L3.expr==='implies')completeObj(2,1);
+    if(L3.expr==='xor')completeObj(2,2);
+  }
+  renderPanel();draw();
+}
+
+// L4: Logic gates
+function setGate(g){L4.gate=g;renderPanel();draw()}
+function toggleInput(which){
+  if(which==='A')L4.inputA=1-L4.inputA;else L4.inputB=1-L4.inputB;
+  let key=L4.inputA+''+L4.inputB;
+  if(L4.tested[L4.gate])L4.tested[L4.gate].add(key);
+  if(L4.tested.AND&&L4.tested.AND.size>=4)completeObj(3,0);
+  if(L4.tested.OR&&L4.tested.OR.size>=4)completeObj(3,1);
+  if(L4.tested.NAND&&L4.tested.NAND.size>=2)completeObj(3,2);
+  renderPanel();draw();
+}
+
+// L5: De Morgan
+function verifyDM(law){L5.verified[law-1]=true;completeObj(4,law-1);renderPanel();draw()}
+function verifyDMTruth(){L5.truthDone=true;completeObj(4,2);renderPanel();draw()}
+
+// L6: Induction
+function verifyBase(){
+  if(L6.n===1){let lhs=1,rhs=1*(1+1)/2;if(lhs===rhs){L6.verified[0]=true;completeObj(5,0)}}
+  renderPanel();draw();
+}
+function showHypothesis(){L6.verified[1]=true;completeObj(5,1);renderPanel();draw()}
+function verifyStep(){L6.verified[2]=true;completeObj(5,2);renderPanel();draw()}
+
+// L7: Paradoxes
+function exploreParadox(p){
+  L7.paradox=p;L7.explored[p]=true;
+  if(p==='russell')completeObj(6,0);
+  if(p==='liar')completeObj(6,1);
+  if(p==='impact')completeObj(6,2);
+  renderPanel();draw();
+}
+
+// ===== Rendering =====
+function renderBar(){barInner.innerHTML='<span style="color:var(--text-muted)">🔗 '+LI[curLevel].title+'</span><span class="progress">'+levelObjs.flat().filter(Boolean).length+'/'+levelObjs.flat().length+'</span>'}
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<7;i++){let cls=levelObjs[i].every(Boolean)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`}
+  h+='</div><div class="sn-info">第 '+(curLevel+1)+'/7 关 — '+LI[curLevel].title+'</div><div class="sn-hint">'+LI[curLevel].sub+'</div></div>';return h;
+}
+function renderQuiz(li){
+  let qd=quizData[li];if(!qd)return '';
+  let h='<div class="quiz-box"><div class="quiz-q">📝 '+qd.q+'</div>';
+  qd.opts.forEach((o,i)=>{let cls=quizPassed.has(li)?(i===qd.ans?'correct':''):'';h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${o}</div>`});
+  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过</div>';
+  h+='</div>';return h;
+}
+function answerQuiz(li,oi){
+  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  let qd=quizData[li],opts=panel.querySelectorAll('.quiz-opt');
+  opts.forEach((el,i)=>el.classList.add(i===qd.ans?'correct':'wrong'));
+  if(oi===qd.ans){quizPassed.add(li);setTimeout(()=>{quizLocked=false;if(curLevel<6)goLevel(curLevel+1);else showResult()},800)}
+  else setTimeout(()=>{quizLocked=false;renderPanel()},1000);
+}
+
+function renderPanel(){
+  let li=LI[curLevel],done=levelObjs[curLevel].every(Boolean);
+  let h=renderStageNav();
+  h+='<h2>'+li.title+'</h2><div class="level-title">'+li.sub+'</div>';
+  h+='<div class="desc-text">'+li.desc+'</div>';
+  h+='<ul class="obj-list">';li.objs.forEach((o,i)=>h+='<li class="'+(levelObjs[curLevel][i]?'done':'')+'">'+o+'</li>');h+='</ul>';
+  switch(curLevel){
+    case 0:h+=`<div style="margin:6px 0"><button class="act-btn${L1.op==='intersection'?' green':''}" onclick="setOp('intersection')">A∩B 交集</button><button class="act-btn${L1.op==='union'?' green':''}" onclick="setOp('union')">A∪B 并集</button><button class="act-btn${L1.op==='complement'?' green':''}" onclick="setOp('complement')">A' 补集</button></div>`;
+      let result;
+      if(L1.op==='intersection')result=[...L1.setA].filter(x=>L1.setB.has(x));
+      else if(L1.op==='union')result=[...new Set([...L1.setA,...L1.setB])];
+      else result=[1,2,3,4,5,6,7,8,9,10].filter(x=>!L1.setA.has(x));
+      h+=`<div style="font-size:12px;color:var(--sv);margin:4px 0">结果: {${result.sort((a,b)=>a-b).join(', ')}}</div>`;break;
+    case 1:h+=`<div style="margin:6px 0"><button class="act-btn" onclick="toggleP()">P = ${L2.P?'真':'假'} (点击切换)</button><button class="act-btn" onclick="toggleQ()">Q = ${L2.Q?'真':'假'} (点击切换)</button></div>`;
+      h+=`<div style="font-size:13px;color:var(--text-muted);margin:6px 0">`;
+      h+=`P∧Q = <span style="color:${L2.P&&L2.Q?'#22c55e':'#ef4444'}">${L2.P&&L2.Q?'真':'假'}</span><br>`;
+      h+=`P∨Q = <span style="color:${L2.P||L2.Q?'#22c55e':'#ef4444'}">${L2.P||L2.Q?'真':'假'}</span><br>`;
+      h+=`¬P = <span style="color:${!L2.P?'#22c55e':'#ef4444'}">${!L2.P?'真':'假'}</span></div>`;
+      h+=`<button class="act-btn" onclick="showLogicOp('and')">探索"与"</button><button class="act-btn" onclick="showLogicOp('or')">探索"或"</button>`;break;
+    case 2:h+=`<div style="margin:6px 0"><button class="act-btn${L3.expr==='and'?' green':''}" onclick="setExpr('and')">P∧Q</button><button class="act-btn${L3.expr==='implies'?' green':''}" onclick="setExpr('implies')">P→Q</button><button class="act-btn${L3.expr==='xor'?' green':''}" onclick="setExpr('xor')">P⊕Q</button></div>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted)">点击画布上的"?"填写真值表</div>`;
+      if(L3.completed[L3.expr])h+=`<div style="color:var(--quiz-correct-text);font-size:12px;margin:4px 0">✅ ${L3.expr} 真值表已完成</div>`;break;
+    case 3:h+=`<div style="margin:6px 0"><button class="act-btn${L4.gate==='AND'?' green':''}" onclick="setGate('AND')">AND门</button><button class="act-btn${L4.gate==='OR'?' green':''}" onclick="setGate('OR')">OR门</button><button class="act-btn${L4.gate==='NAND'?' green':''}" onclick="setGate('NAND')">NAND门</button><button class="act-btn${L4.gate==='XOR'?' green':''}" onclick="setGate('XOR')">XOR门</button></div>`;
+      h+=`<button class="act-btn" onclick="toggleInput('A')">输入A: ${L4.inputA}</button><button class="act-btn" onclick="toggleInput('B')">输入B: ${L4.inputB}</button>`;
+      let gateOut;
+      if(L4.gate==='AND')gateOut=L4.inputA&L4.inputB;
+      else if(L4.gate==='OR')gateOut=L4.inputA|L4.inputB;
+      else if(L4.gate==='NAND')gateOut=1-(L4.inputA&L4.inputB);
+      else gateOut=L4.inputA^L4.inputB;
+      h+=`<div style="font-size:16px;color:var(--sv);margin:8px 0;text-align:center">输出: ${gateOut}</div>`;break;
+    case 4:h+=`<button class="act-btn green" onclick="verifyDM(1)">验证 ¬(A∧B) = ¬A∨¬B</button><button class="act-btn green" onclick="verifyDM(2)">验证 ¬(A∨B) = ¬A∧¬B</button><button class="act-btn" onclick="verifyDMTruth()">用真值表确认</button>`;
+      if(L5.verified[0])h+=`<div style="color:var(--quiz-correct-text);font-size:12px">✅ 第一定律已验证</div>`;
+      if(L5.verified[1])h+=`<div style="color:var(--quiz-correct-text);font-size:12px">✅ 第二定律已验证</div>`;break;
+    case 5:h+=`<div class="slider-row"><label>n 值</label><input type="range" min="1" max="20" value="${L6.n}" oninput="L6.n=+this.value;renderPanel();draw()"><span class="val">${L6.n}</span></div>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted);margin:4px 0">1+2+...+${L6.n} = ${L6.n*(L6.n+1)/2}</div>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted)">n(n+1)/2 = ${L6.n}×${L6.n+1}/2 = ${L6.n*(L6.n+1)/2}</div>`;
+      h+=`<button class="act-btn green" onclick="verifyBase()">验证基础步 (n=1)</button>`;
+      h+=`<button class="act-btn" onclick="showHypothesis()">理解归纳假设</button>`;
+      h+=`<button class="act-btn" onclick="verifyStep()">完成归纳步</button>`;break;
+    case 6:h+=`<div style="margin:6px 0"><button class="act-btn${L7.paradox==='russell'?' green':''}" onclick="exploreParadox('russell')">罗素悖论</button><button class="act-btn${L7.paradox==='liar'?' green':''}" onclick="exploreParadox('liar')">说谎者悖论</button><button class="act-btn${L7.paradox==='impact'?' green':''}" onclick="exploreParadox('impact')">对数学的影响</button></div>`;break;
+  }
+  if(done){h+=renderQuiz(curLevel);
+    if(quizPassed.has(curLevel)&&curLevel<6)h+=`<button class="act-btn green" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+    h+='<div class="learn-box">'+li.learn+'</div>';
+  }
+  panel.innerHTML=h;
+}
+
+function showResult(){
+  panel.style.display='none';bar.style.display='none';
+  let ov=document.getElementById('overlay');
+  ov.innerHTML='<div style="text-align:center"><div style="font-size:48px;margin-bottom:12px">🎉</div><h1 style="color:#14b8a6;font-size:28px;margin-bottom:8px">恭喜通关！</h1><div style="color:var(--text-muted);margin-bottom:16px">你已掌握集合与逻辑的核心概念</div><button class="start-btn" onclick="location.reload()">再玩一次</button></div>';
+  ov.style.display='flex';
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);let th=t();
+  ctx.fillStyle=th.bg;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  switch(curLevel){case 0:drawL1();break;case 1:drawL2();break;case 2:drawL3();break;case 3:drawL4();break;case 4:drawL5();break;case 5:drawL6();break;case 6:drawL7();break}
+}
+
+function drawL1(){
+  let cx=W/2,cy=H/2,r=120,offset=60;
+  // Venn diagram circles
+  let ax=cx-offset,bx=cx+offset;
+  // highlight based on operation
+  ctx.save();
+  if(L1.op==='intersection'){
+    ctx.beginPath();ctx.arc(ax,cy,r,0,Math.PI*2);ctx.clip();
+    ctx.beginPath();ctx.arc(bx,cy,r,0,Math.PI*2);ctx.fillStyle='rgba(20,184,166,0.3)';ctx.fill();
+    ctx.restore();ctx.save();
+  } else if(L1.op==='union'){
+    ctx.beginPath();ctx.arc(ax,cy,r,0,Math.PI*2);ctx.fillStyle='rgba(20,184,166,0.2)';ctx.fill();
+    ctx.beginPath();ctx.arc(bx,cy,r,0,Math.PI*2);ctx.fill();
+  } else {
+    ctx.fillStyle='rgba(239,68,68,0.15)';ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation='destination-out';
+    ctx.beginPath();ctx.arc(ax,cy,r,0,Math.PI*2);ctx.fill();
+    ctx.globalCompositeOperation='source-over';
+  }
+  ctx.restore();
+  // circle outlines
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.beginPath();ctx.arc(ax,cy,r,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='#ec4899';ctx.beginPath();ctx.arc(bx,cy,r,0,Math.PI*2);ctx.stroke();
+  // labels
+  ctx.fillStyle=th.text;ctx.font='16px sans-serif';ctx.textAlign='center';
+  ctx.fillText('A',ax-r/2,cy-r-10);ctx.fillText('B',bx+r/2,cy-r-10);
+  // elements
+  ctx.font='14px sans-serif';
+  let allNums=[1,2,3,4,5,6,7,8];
+  allNums.forEach(n=>{
+    let inA=L1.setA.has(n),inB=L1.setB.has(n);
+    let x,y;
+    if(inA&&inB){x=cx;y=cy-20+(n%3)*25}
+    else if(inA){x=ax-40;y=cy-30+(n%4)*20}
+    else if(inB){x=bx+40;y=cy-30+(n%4)*20}
+    else{x=cx;y=cy+r+20}
+    ctx.fillStyle=th.text;ctx.fillText(n,x,y);
+  });
+  // operation label
+  ctx.font='18px sans-serif';ctx.fillStyle='#14b8a6';
+  let opNames={intersection:'A ∩ B',union:'A ∪ B',complement:"A'"};
+  ctx.fillText(opNames[L1.op],cx,40);
+}
+
+function drawL2(){
+  let cx=W/2,cy=H/2;
+  ctx.fillStyle=th=t().text;ctx.font='24px sans-serif';ctx.textAlign='center';
+  ctx.fillText('命题逻辑',cx,50);
+  // P and Q boxes
+  let bw=120,bh=80,gap=60;
+  [{label:'P',val:L2.P,x:cx-bw-gap/2},{label:'Q',val:L2.Q,x:cx+gap/2}].forEach(item=>{
+    ctx.fillStyle=item.val?'rgba(34,197,94,0.2)':'rgba(239,68,68,0.2)';
+    ctx.fillRect(item.x,cy-bh/2,bw,bh);
+    ctx.strokeStyle=item.val?'#22c55e':'#ef4444';ctx.lineWidth=2;ctx.strokeRect(item.x,cy-bh/2,bw,bh);
+    ctx.fillStyle=t().text;ctx.font='20px sans-serif';ctx.textAlign='center';
+    ctx.fillText(item.label+' = '+(item.val?'T':'F'),item.x+bw/2,cy+6);
+  });
+  // results
+  let y=cy+bh/2+40;ctx.font='16px sans-serif';
+  let ops=[
+    {label:'P ∧ Q (与)',val:L2.P&&L2.Q},
+    {label:'P ∨ Q (或)',val:L2.P||L2.Q},
+    {label:'¬P (非)',val:!L2.P},
+    {label:'P → Q (蕴含)',val:!L2.P||L2.Q}
+  ];
+  ops.forEach((op,i)=>{
+    ctx.fillStyle=op.val?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.15)';
+    ctx.fillRect(cx-150,y+i*35,300,28);
+    ctx.fillStyle=t().text;ctx.textAlign='left';ctx.fillText(op.label,cx-140,y+i*35+19);
+    ctx.fillStyle=op.val?'#22c55e':'#ef4444';ctx.textAlign='right';ctx.fillText(op.val?'真':'假',cx+140,y+i*35+19);
+  });
+}
+
+function drawL3(){
+  let cx=W/2,cy=60;
+  let exprNames={and:'P ∧ Q',implies:'P → Q',xor:'P ⊕ Q'};
+  ctx.fillStyle=t().text;ctx.font='20px sans-serif';ctx.textAlign='center';
+  ctx.fillText('真值表: '+exprNames[L3.expr],cx,35);
+  let ops={and:(a,b)=>a&&b,implies:(a,b)=>!a||b,xor:(a,b)=>a!==b};
+  let fn=ops[L3.expr];
+  let cw=80,ch=35,ox=cx-cw*1.5;
+  // header
+  ctx.fillStyle='rgba(20,184,166,0.2)';ctx.fillRect(ox,cy,cw*3,ch);
+  ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('P',ox+cw/2,cy+ch/2+5);ctx.fillText('Q',ox+cw+cw/2,cy+ch/2+5);
+  ctx.fillText(exprNames[L3.expr],ox+cw*2+cw/2,cy+ch/2+5);
+  // rows
+  for(let r=0;r<4;r++){
+    let a=!!(r&2),b=!!(r&1),expected=fn(a,b)?1:0;
+    let y=cy+ch*(r+1);
+    ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.strokeRect(ox,y,cw*3,ch);
+    ctx.fillStyle=t().text;ctx.fillText(a?'T':'F',ox+cw/2,y+ch/2+5);
+    ctx.fillText(b?'T':'F',ox+cw+cw/2,y+ch/2+5);
+    let key=L3.expr+'_'+r;
+    if(L3.answers[key]!==undefined){
+      let correct=L3.answers[key]===expected;
+      ctx.fillStyle=correct?'rgba(34,197,94,0.2)':'rgba(239,68,68,0.2)';ctx.fillRect(ox+cw*2,y,cw,ch);
+      ctx.fillStyle=correct?'#22c55e':'#ef4444';ctx.fillText(L3.answers[key]?'T':'F',ox+cw*2+cw/2,y+ch/2+5);
+    } else {
+      ctx.fillStyle='rgba(245,158,11,0.3)';ctx.fillRect(ox+cw*2,y,cw,ch);
+      ctx.fillStyle='#f59e0b';ctx.fillText('?',ox+cw*2+cw/2,y+ch/2+5);
+    }
+  }
+}
+
+// Click handler for truth table
+cv.addEventListener('click',e=>{
+  if(curLevel!==2)return;
+  let rect=cv.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  let cx=W/2,cy=60,cw=80,ch=35,ox=cx-cw*1.5;
+  for(let r=0;r<4;r++){
+    let y=cy+ch*(r+1);
+    if(mx>=ox+cw*2&&mx<=ox+cw*3&&my>=y&&my<=y+ch){
+      let key=L3.expr+'_'+r;
+      let current=L3.answers[key];
+      if(current===undefined)checkTruth(r,1);
+      else if(current===1)checkTruth(r,0);
+      else checkTruth(r,1);
+      break;
+    }
+  }
+});
+
+function drawL4(){
+  let cx=W/2,cy=H/2;
+  // gate symbol
+  let gw=120,gh=80;
+  ctx.strokeStyle='#14b8a6';ctx.lineWidth=3;
+  ctx.fillStyle=t().text;ctx.font='18px sans-serif';ctx.textAlign='center';
+  ctx.fillText(L4.gate+' 门',cx,50);
+  // inputs
+  let inAy=cy-20,inBy=cy+20;
+  ctx.fillStyle=L4.inputA?'#22c55e':'#ef4444';
+  ctx.beginPath();ctx.arc(cx-gw,inAy,12,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.fillText('A='+L4.inputA,cx-gw-40,inAy+5);
+  ctx.fillStyle=L4.inputB?'#22c55e':'#ef4444';
+  ctx.beginPath();ctx.arc(cx-gw,inBy,12,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=t().text;ctx.fillText('B='+L4.inputB,cx-gw-40,inBy+5);
+  // gate body
+  ctx.strokeStyle='#14b8a6';ctx.lineWidth=2;
+  ctx.strokeRect(cx-gw/2,cy-gh/2,gw,gh);
+  ctx.fillStyle=t().text;ctx.font='16px sans-serif';ctx.fillText(L4.gate,cx,cy+5);
+  // wires
+  ctx.strokeStyle='rgba(20,184,166,0.5)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx-gw+12,inAy);ctx.lineTo(cx-gw/2,inAy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-gw+12,inBy);ctx.lineTo(cx-gw/2,inBy);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx+gw/2,cy);ctx.lineTo(cx+gw,cy);ctx.stroke();
+  // output
+  let out;
+  if(L4.gate==='AND')out=L4.inputA&L4.inputB;
+  else if(L4.gate==='OR')out=L4.inputA|L4.inputB;
+  else if(L4.gate==='NAND')out=1-(L4.inputA&L4.inputB);
+  else out=L4.inputA^L4.inputB;
+  ctx.fillStyle=out?'#22c55e':'#ef4444';
+  ctx.beginPath();ctx.arc(cx+gw,cy,15,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=t().text;ctx.font='20px sans-serif';ctx.fillText(out,cx+gw+40,cy+6);
+}
+
+function drawL5(){
+  let cx=W/2,cy=H*0.3;
+  ctx.fillStyle=t().text;ctx.font='20px sans-serif';ctx.textAlign='center';
+  ctx.fillText('德摩根定律',cx,40);
+  // Venn diagram verification
+  let r=80,offset=40,ax=cx-offset-100,bx=cx+offset-100;
+  // Law 1: NOT(A AND B) = NOT A OR NOT B
+  ctx.font='14px sans-serif';ctx.fillText('¬(A∧B)',cx-100,cy-r-20);
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.beginPath();ctx.arc(ax,cy,r,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='#ec4899';ctx.beginPath();ctx.arc(bx,cy,r,0,Math.PI*2);ctx.stroke();
+  if(L5.verified[0]){ctx.fillStyle='rgba(20,184,166,0.15)';ctx.fillRect(ax-r-10,cy-r-10,r*2+offset*2+20,r*2+20);
+    ctx.save();ctx.beginPath();ctx.arc(ax,cy,r,0,Math.PI*2);ctx.clip();ctx.beginPath();ctx.arc(bx,cy,r,0,Math.PI*2);
+    ctx.fillStyle=t().bg;ctx.fill();ctx.restore();
+    ctx.fillStyle='#22c55e';ctx.font='12px sans-serif';ctx.fillText('✓ 已验证',cx-100,cy+r+25);
+  }
+  // Law 2
+  let ax2=cx-offset+200,bx2=cx+offset+200;
+  ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.fillText('¬(A∨B)',cx+200,cy-r-20);
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.beginPath();ctx.arc(ax2,cy,r,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle='#ec4899';ctx.beginPath();ctx.arc(bx2,cy,r,0,Math.PI*2);ctx.stroke();
+  if(L5.verified[1]){ctx.fillStyle='rgba(239,68,68,0.1)';ctx.fillRect(ax2-r-10,cy-r-10,r*2+offset*2+20,r*2+20);
+    ctx.save();ctx.beginPath();ctx.arc(ax2,cy,r,0,Math.PI*2);ctx.fillStyle=t().bg;ctx.fill();
+    ctx.beginPath();ctx.arc(bx2,cy,r,0,Math.PI*2);ctx.fill();ctx.restore();
+    ctx.fillStyle='#22c55e';ctx.font='12px sans-serif';ctx.fillText('✓ 已验证',cx+200,cy+r+25);
+  }
+  // Truth table if done
+  if(L5.truthDone){
+    let y=cy+r+50;ctx.font='13px sans-serif';ctx.fillStyle=t().text;ctx.textAlign='center';
+    ctx.fillText('真值表确认: 两条定律对所有输入组合成立 ✓',cx,y);
+  }
+}
+
+function drawL6(){
+  let cx=W/2,n=L6.n;
+  ctx.fillStyle=t().text;ctx.font='18px sans-serif';ctx.textAlign='center';
+  ctx.fillText('数学归纳法: 1+2+...+n = n(n+1)/2',cx,35);
+  // domino visualization
+  let dw=30,dh=60,gap=5,startX=40,startY=80;
+  for(let i=1;i<=Math.min(n,15);i++){
+    let x=startX+(i-1)*(dw+gap),y=startY;
+    let fallen=i<=n;
+    if(fallen){
+      ctx.fillStyle='rgba(20,184,166,0.3)';ctx.fillRect(x,y,dw,dh);
+      ctx.strokeStyle='#14b8a6';
+    } else {
+      ctx.fillStyle='rgba(255,255,255,0.05)';ctx.fillRect(x,y,dw,dh);
+      ctx.strokeStyle='rgba(255,255,255,0.2)';
+    }
+    ctx.lineWidth=1;ctx.strokeRect(x,y,dw,dh);
+    ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText(i,x+dw/2,y+dh/2+4);
+  }
+  // formula verification
+  let y=startY+dh+40;
+  let sum=n*(n+1)/2;
+  ctx.font='16px sans-serif';ctx.fillStyle=t().text;ctx.textAlign='center';
+  ctx.fillText('n = '+n,cx,y);
+  ctx.fillText('左边: 1+2+...+'+n+' = '+sum,cx,y+30);
+  ctx.fillText('右边: '+n+'×'+(n+1)+'/2 = '+sum,cx,y+60);
+  ctx.fillStyle='#22c55e';ctx.fillText('左边 = 右边 ✓',cx,y+90);
+  // induction step
+  if(L6.verified[1]){
+    ctx.fillStyle='#f59e0b';ctx.font='14px sans-serif';
+    ctx.fillText('归纳假设: 假设 1+2+...+k = k(k+1)/2 成立',cx,y+130);
+    ctx.fillText('则 1+2+...+k+(k+1) = k(k+1)/2 + (k+1) = (k+1)(k+2)/2 ✓',cx,y+155);
+  }
+}
+
+function drawL7(){
+  let cx=W/2,cy=H/2;
+  ctx.fillStyle=t().text;ctx.font='20px sans-serif';ctx.textAlign='center';
+  if(L7.paradox==='russell'){
+    ctx.fillText('罗素悖论',cx,50);
+    // self-referential set visualization
+    let r=100;
+    ctx.strokeStyle='#14b8a6';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle=t().text;ctx.font='16px sans-serif';
+    ctx.fillText('R = { x | x ∉ x }',cx,cy-20);
+    ctx.fillStyle='#f59e0b';ctx.font='14px sans-serif';
+    ctx.fillText('R ∈ R ?',cx,cy+10);
+    ctx.fillStyle='#ef4444';ctx.fillText('若 R∈R → R不应在R中 → R∉R',cx,cy+40);
+    ctx.fillStyle='#3b82f6';ctx.fillText('若 R∉R → R应在R中 → R∈R',cx,cy+65);
+    ctx.fillStyle='#ec4899';ctx.font='18px sans-serif';ctx.fillText('矛盾！',cx,cy+100);
+    // loop arrow
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(cx,cy+80,20,0,Math.PI*1.5);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx+20,cy+80);ctx.lineTo(cx+15,cy+72);ctx.lineTo(cx+25,cy+76);ctx.fillStyle='#f59e0b';ctx.fill();
+  } else if(L7.paradox==='liar'){
+    ctx.fillText('说谎者悖论',cx,50);
+    ctx.font='24px sans-serif';ctx.fillStyle='#14b8a6';
+    ctx.fillText('"这句话是假的"',cx,cy-20);
+    ctx.font='14px sans-serif';ctx.fillStyle='#f59e0b';
+    ctx.fillText('如果这句话是真的 → 它说自己是假的 → 它是假的',cx,cy+20);
+    ctx.fillText('如果这句话是假的 → 它说自己是假的是假的 → 它是真的',cx,cy+45);
+    ctx.fillStyle='#ec4899';ctx.font='18px sans-serif';ctx.fillText('无限循环！',cx,cy+80);
+  } else {
+    ctx.fillText('悖论对数学基础的影响',cx,50);
+    let items=[
+      {y:100,text:'1901: 罗素发现悖论，朴素集合论崩塌',color:'#ef4444'},
+      {y:150,text:'1908: 策梅洛提出公理化集合论(ZF)',color:'#f59e0b'},
+      {y:200,text:'1931: 哥德尔不完备定理',color:'#3b82f6'},
+      {y:250,text:'1963: 科恩证明连续统假设独立于ZFC',color:'#14b8a6'},
+      {y:300,text:'今天: ZFC是数学的标准基础',color:'#22c55e'}
+    ];
+    items.forEach(item=>{
+      ctx.fillStyle=item.color;ctx.beginPath();ctx.arc(cx-200,item.y,6,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle=item.color+'44';ctx.lineWidth=2;
+      if(item.y<300){ctx.beginPath();ctx.moveTo(cx-200,item.y+6);ctx.lineTo(cx-200,item.y+44);ctx.stroke()}
+      ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.textAlign='left';ctx.fillText(item.text,cx-180,item.y+5);
+    });
+  }
+}
+</script>
+</body>
+</html>

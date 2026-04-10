@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>数论探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --slider-label:#888;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --slider-label:#888;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;width:100vw}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;color:#f59e0b;margin-bottom:8px;text-shadow:0 0 30px rgba(245,158,11,0.4)}
+.overlay .sub{font-size:18px;color:var(--sub-color);margin-bottom:32px}
+.overlay .desc{max-width:520px;color:var(--text-muted);font-size:14px;line-height:1.8;margin-bottom:36px}
+.overlay .start-btn{background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;padding:14px 48px;font-size:18px;border-radius:12px;cursor:pointer;transition:all .3s}
+.overlay .start-btn:hover{transform:scale(1.05);box-shadow:0 0 24px rgba(245,158,11,0.5)}
+.panel{position:fixed;left:0;top:0;bottom:36px;width:320px;background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;padding:16px;display:none;z-index:10;padding-bottom:24px}
+.panel h2{color:var(--title-color);font-size:18px;margin-bottom:6px}
+.panel .level-title{color:#fbbf24;font-size:13px;margin-bottom:12px}
+.panel .desc-text{color:var(--text-muted);font-size:13px;line-height:1.7;margin-bottom:14px}
+.panel .obj-list{list-style:none;margin-bottom:14px}
+.panel .obj-list li{font-size:13px;padding:4px 0;color:var(--goal-text)}
+.panel .obj-list li.done{color:var(--goal-done)}
+.panel .obj-list li::before{content:'○ ';color:var(--text-sub)}
+.panel .obj-list li.done::before{content:'● ';color:var(--goal-done)}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);border-radius:8px;cursor:pointer;font-size:14px;transition:all .2s}
+.act-btn:hover{background:var(--btn-hover)}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:13px;color:var(--learn-text);line-height:1.8}
+.learn-box b{color:#fbbf24}
+canvas{position:fixed;left:320px;top:0;background:var(--bg)}
+.bar{position:fixed;left:0;bottom:0;right:0;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:none;z-index:10;padding:0 16px;align-items:center;font-size:13px}
+.bar-inner{display:flex;align-items:center;height:100%;gap:8px}
+.bar .progress{margin-left:auto;color:var(--text-muted);font-size:12px}
+.slider-row{display:flex;align-items:center;gap:8px;margin:6px 0;font-variant-numeric:tabular-nums}
+.slider-row label{font-size:12px;color:var(--slider-label);min-width:60px}
+.slider-row input[type=range]{flex:1;accent-color:#f59e0b}
+.slider-row .val{font-size:12px;color:var(--sv);min-width:36px;text-align:right}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#f59e0b;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
+.quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg)}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="overlay">
+<h1>🔢 数论探险</h1>
+<div class="sub">Number Theory Adventure</div>
+<div class="desc">
+从素数筛法到RSA加密，7个关卡带你探索数论的核心概念。<br>
+每一关都有交互式可视化，动手操作理解数字之美。
+</div>
+<button class="start-btn" onclick="startGame()">开始探索 →</button>
+<div class="features">
+<div class="feat"><div class="fi">🔍</div>素数筛法</div>
+<div class="feat"><div class="fi">🔄</div>辗转相除</div>
+<div class="feat"><div class="fi">🕐</div>模运算</div>
+<div class="feat"><div class="fi">📐</div>费马定理</div>
+<div class="feat"><div class="fi">🔐</div>RSA加密</div>
+<div class="feat"><div class="fi">💎</div>完全数</div>
+<div class="feat"><div class="fi">🧩</div>哥德巴赫</div>
+</div>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"><div class="bar-inner" id="barInner"></div></div>
+<script>
+'use strict';
+let isDark=true;
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel();draw()}
+function t(){return isDark?{bg:'#0a0a2e',grid:'rgba(245,158,11,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)'}:{bg:'#f0f2f5',grid:'rgba(245,158,11,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)'}}
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const panel=document.getElementById('panel'),bar=document.getElementById('bar'),barInner=document.getElementById('barInner');
+let W,H,curLevel=0;
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+
+function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';draw()}
+window.addEventListener('resize',resize);
+function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
+function goLevel(n){curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
+function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
+
+function isPrime(n){if(n<2)return false;for(let i=2;i*i<=n;i++)if(n%i===0)return false;return true}
+function gcd(a,b){return b===0?a:gcd(b,a%b)}
+function modPow(base,exp,mod){let r=1;base%=mod;while(exp>0){if(exp%2===1)r=r*base%mod;exp=Math.floor(exp/2);base=base*base%mod}return r}
+
+const LI=[
+  {title:'素数与合数',sub:'埃拉托斯特尼筛法',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>筛法：</b>从2开始，划掉每个素数的倍数，剩下的就是素数</div>画布上有1到100的数字网格。点击一个素数，它的所有倍数会被标记为合数。',objs:['筛掉2的倍数','筛掉3和5的倍数','完成筛法找出所有素数'],learn:'<b>埃拉托斯特尼筛法</b>是最古老的素数查找算法。从最小的素数2开始，划掉它的所有倍数；然后找下一个未被划掉的数（3），划掉它的倍数……重复直到√n。时间复杂度 O(n log log n)。'},
+  {title:'最大公约数',sub:'辗转相除法',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>算法：</b>gcd(a,b) = gcd(b, a mod b)，直到 b=0</div>输入两个数，观察辗转相除法的每一步如何逐步求出最大公约数。',objs:['计算 gcd(48,18)','计算 gcd(252,105)','观察3组不同数对的过程'],learn:'<b>辗转相除法（欧几里得算法）</b>：gcd(a,b) = gcd(b, a mod b)。这是已知最古老的算法之一（约公元前300年）。时间复杂度 O(log min(a,b))。'},
+  {title:'模运算与同余',sub:'时钟算术',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>定义：</b>a ≡ b (mod m) 表示 m | (a−b)</div>画布上有一个时钟。调整数字和模数，观察同余关系在时钟上的表现。',objs:['理解 17 mod 12 = 5','探索模加法规律','探索模乘法规律'],learn:'<b>模运算</b>是数论的基础。a mod m 就是 a 除以 m 的余数。同余关系 a ≡ b (mod m) 意味着 a 和 b 除以 m 的余数相同。时钟就是 mod 12 的直观模型。'},
+  {title:'费马小定理',sub:'Fermat\'s Little Theorem',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>定理：</b>若 p 为素数且 gcd(a,p)=1，则 a^(p−1) ≡ 1 (mod p)</div>选择不同的 a 和素数 p，验证费马小定理。',objs:['验证 2^6 ≡ 1 (mod 7)','验证 3^10 ≡ 1 (mod 11)','用3组不同参数验证定理'],learn:'<b>费马小定理</b>：若 p 是素数，a 不是 p 的倍数，则 a^(p−1) ≡ 1 (mod p)。这是 RSA 加密的数学基础之一。费马素性检验就是基于此定理的逆否命题。'},
+  {title:'RSA加密原理',sub:'数论的实际应用',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>流程：</b>选素数p,q → n=pq → φ=(p−1)(q−1) → 选e → 求d</div>选择两个小素数，一步步构建 RSA 密钥对，加密和解密一条消息。',objs:['选择素数生成密钥对','加密一个数字消息','解密验证结果正确'],learn:'<b>RSA加密</b>基于大数分解的困难性。公钥(n,e)加密：c = m^e mod n。私钥d解密：m = c^d mod n。安全性依赖于：已知 n=pq，很难分解出 p 和 q。'},
+  {title:'完全数与梅森素数',sub:'Perfect Numbers',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>定义：</b>完全数 = 所有真因子之和等于自身（如 6=1+2+3）</div>探索完全数的规律，发现它们与梅森素数 2^p−1 的关系。',objs:['验证6是完全数','验证28是完全数','发现完全数公式 2^(p-1)(2^p-1)'],learn:'<b>完全数</b>等于其所有真因子之和。前4个完全数：6, 28, 496, 8128。欧拉证明了所有偶完全数都有形式 2^(p−1)(2^p−1)，其中 2^p−1 是梅森素数。是否存在奇完全数至今未知。'},
+  {title:'哥德巴赫猜想',sub:'Goldbach\'s Conjecture',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>猜想：</b>每个大于2的偶数都可以表示为两个素数之和</div>输入偶数，找出所有可能的素数对分解。观察分解方式的数量随数字增大的趋势。',objs:['分解10=3+7=5+5','分解100的所有素数对','观察分解数量的增长趋势'],learn:'<b>哥德巴赫猜想</b>（1742年）：每个大于2的偶数都能表示为两个素数之和。这是数论中最著名的未解决问题之一。已验证到 4×10^18，但至今未被证明。陈景润证明了"1+2"（大偶数=素数+半素数）。'}
+];
+
+const quizData=[
+  {q:'100以内有多少个素数？',opts:['20','25','30','35'],ans:1},
+  {q:'gcd(84,36) 等于？',opts:['6','12','18','4'],ans:1},
+  {q:'23 mod 7 等于？',opts:['1','2','3','4'],ans:1},
+  {q:'费马小定理要求 p 必须是？',opts:['偶数','奇数','素数','合数'],ans:2},
+  {q:'RSA的安全性基于什么困难问题？',opts:['离散对数','大数分解','背包问题','图着色'],ans:1},
+  {q:'第三个完全数是？',opts:['120','496','512','1024'],ans:1},
+  {q:'哥德巴赫猜想至今的状态是？',opts:['已证明','已证伪','未解决','部分证明'],ans:2}
+];
+let quizPassed=new Set(),quizLocked=false;
+
+// ===== Level states =====
+let L1={sieved:new Set(),limit:100,step:0};
+let L2={a:48,b:18,steps:[],computed:0};
+let L3={num:17,mod:12};
+let L4={a:2,p:7,verified:0};
+let L5={p:5,q:11,e:0,d:0,n:0,phi:0,msg:0,encrypted:0,decrypted:0,keyGenerated:false,msgEncrypted:false,msgDecrypted:false};
+let L6={checked:new Set()};
+let L7={num:10,pairs:[]};
+
+function initLevel(n){
+  switch(n){
+    case 0:L1={sieved:new Set(),limit:100,step:0};break;
+    case 1:L2={a:48,b:18,steps:[],computed:0};computeGCD();break;
+    case 2:L3={num:17,mod:12};break;
+    case 3:L4={a:2,p:7,verified:0};break;
+    case 4:L5={p:5,q:11,e:0,d:0,n:0,phi:0,msg:7,encrypted:0,decrypted:0,keyGenerated:false,msgEncrypted:false,msgDecrypted:false};break;
+    case 5:L6={checked:new Set()};break;
+    case 6:L7={num:10,pairs:[]};computeGoldbach();break;
+  }
+}
+
+function sievePrime(p){
+  if(!isPrime(p)||L1.sieved.has(p))return;
+  for(let i=p*2;i<=L1.limit;i+=p)L1.sieved.add(i);
+  L1.sieved.add(-p); // mark as sieved prime
+  L1.step++;
+  if(L1.step>=1)completeObj(0,0);
+  if(L1.step>=3)completeObj(0,1);
+  // check if all composites found
+  let allDone=true;
+  for(let i=2;i<=L1.limit;i++){if(!isPrime(i)&&!L1.sieved.has(i)){allDone=false;break}}
+  if(allDone)completeObj(0,2);
+  renderPanel();draw();
+}
+
+function computeGCD(){
+  L2.steps=[];let a=L2.a,b=L2.b;
+  while(b>0){L2.steps.push({a,b,r:a%b});let tmp=b;b=a%b;a=tmp}
+  L2.steps.push({a,b:0,r:0});
+}
+function runGCD(){computeGCD();L2.computed++;
+  if(L2.a===48&&L2.b===18)completeObj(1,0);
+  if(L2.a===252&&L2.b===105)completeObj(1,1);
+  if(L2.computed>=3)completeObj(1,2);
+  renderPanel();draw();
+}
+
+function updateMod(){completeObj(2,0);renderPanel();draw()}
+function testModAdd(){completeObj(2,1);renderPanel();draw()}
+function testModMul(){completeObj(2,2);renderPanel();draw()}
+
+function verifyFermat(){
+  let r=modPow(L4.a,L4.p-1,L4.p);
+  L4.verified++;
+  if(L4.a===2&&L4.p===7)completeObj(3,0);
+  if(L4.a===3&&L4.p===11)completeObj(3,1);
+  if(L4.verified>=3)completeObj(3,2);
+  renderPanel();draw();
+}
+
+function generateRSAKey(){
+  L5.n=L5.p*L5.q;L5.phi=(L5.p-1)*(L5.q-1);
+  // find e coprime to phi
+  for(let e=3;e<L5.phi;e++){if(gcd(e,L5.phi)===1){L5.e=e;break}}
+  // find d: e*d ≡ 1 (mod phi)
+  for(let d=2;d<L5.phi;d++){if((L5.e*d)%L5.phi===1){L5.d=d;break}}
+  L5.keyGenerated=true;completeObj(4,0);renderPanel();draw();
+}
+function encryptRSA(){
+  if(!L5.keyGenerated)return;
+  L5.encrypted=modPow(L5.msg,L5.e,L5.n);L5.msgEncrypted=true;completeObj(4,1);renderPanel();draw();
+}
+function decryptRSA(){
+  if(!L5.msgEncrypted)return;
+  L5.decrypted=modPow(L5.encrypted,L5.d,L5.n);L5.msgDecrypted=true;completeObj(4,2);renderPanel();draw();
+}
+
+function getDivisors(n){let d=[];for(let i=1;i<n;i++)if(n%i===0)d.push(i);return d}
+function checkPerfect(n){
+  let divs=getDivisors(n),sum=divs.reduce((a,b)=>a+b,0);
+  L6.checked.add(n);
+  if(n===6)completeObj(5,0);
+  if(n===28)completeObj(5,1);
+  if(L6.checked.has(6)&&L6.checked.has(28)&&L6.checked.has(496))completeObj(5,2);
+  renderPanel();draw();
+}
+
+function computeGoldbach(){
+  L7.pairs=[];
+  for(let i=2;i<=L7.num/2;i++){if(isPrime(i)&&isPrime(L7.num-i))L7.pairs.push([i,L7.num-i])}
+}
+function updateGoldbach(){
+  computeGoldbach();
+  if(L7.num===10)completeObj(6,0);
+  if(L7.num===100)completeObj(6,1);
+  if(L7.num>=50)completeObj(6,2);
+  renderPanel();draw();
+}
+
+// ===== Rendering =====
+function renderBar(){barInner.innerHTML='<span style="color:var(--text-muted)">🔢 '+LI[curLevel].title+'</span><span class="progress">'+levelObjs.flat().filter(Boolean).length+'/'+levelObjs.flat().length+'</span>'}
+
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<7;i++){let cls=levelObjs[i].every(Boolean)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`}
+  h+='</div><div class="sn-info">第 '+(curLevel+1)+'/7 关 — '+LI[curLevel].title+'</div>';
+  h+='<div class="sn-hint">'+LI[curLevel].sub+'</div></div>';return h;
+}
+
+function renderQuiz(li){
+  let qd=quizData[li];if(!qd)return '';
+  let h='<div class="quiz-box"><div class="quiz-q">📝 '+qd.q+'</div>';
+  qd.opts.forEach((o,i)=>{let cls=quizPassed.has(li)?(i===qd.ans?'correct':''):'';h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${o}</div>`});
+  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过</div>';
+  h+='</div>';return h;
+}
+function answerQuiz(li,oi){
+  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  let qd=quizData[li],opts=panel.querySelectorAll('.quiz-opt');
+  opts.forEach((el,i)=>el.classList.add(i===qd.ans?'correct':'wrong'));
+  if(oi===qd.ans){quizPassed.add(li);setTimeout(()=>{quizLocked=false;if(curLevel<6)goLevel(curLevel+1);else showResult()},800)}
+  else setTimeout(()=>{quizLocked=false;renderPanel()},1000);
+}
+
+function renderPanel(){
+  let li=LI[curLevel],done=levelObjs[curLevel].every(Boolean);
+  let h=renderStageNav();
+  h+='<h2>'+li.title+'</h2><div class="level-title">'+li.sub+'</div>';
+  h+='<div class="desc-text">'+li.desc+'</div>';
+  h+='<ul class="obj-list">';li.objs.forEach((o,i)=>h+='<li class="'+(levelObjs[curLevel][i]?'done':'')+'">'+o+'</li>');h+='</ul>';
+  switch(curLevel){
+    case 0:h+=`<div style="font-size:12px;color:var(--text-muted)">💡 点击画布上的素数来筛掉它的倍数</div><div style="font-size:12px;color:var(--text-muted);margin-top:4px">已筛步骤: <span style="color:var(--sv)">${L1.step}</span></div>`;break;
+    case 1:h+=`<div class="slider-row"><label>数 a</label><input type="number" value="${L2.a}" onchange="L2.a=+this.value" style="width:60px;background:var(--btn-bg);color:var(--text);border:1px solid var(--btn-border);border-radius:4px;padding:4px;font-size:13px"></div>`;
+      h+=`<div class="slider-row"><label>数 b</label><input type="number" value="${L2.b}" onchange="L2.b=+this.value" style="width:60px;background:var(--btn-bg);color:var(--text);border:1px solid var(--btn-border);border-radius:4px;padding:4px;font-size:13px"></div>`;
+      h+=`<button class="act-btn green" onclick="runGCD()">计算 GCD</button>`;
+      if(L2.steps.length>0){h+='<div style="font-size:12px;color:var(--text-muted);margin-top:6px">';L2.steps.forEach(s=>h+=`gcd(${s.a}, ${s.b}) → 余 ${s.r}<br>`);h+='<b style="color:var(--sv)">GCD = '+L2.steps[L2.steps.length-1].a+'</b></div>'}break;
+    case 2:h+=`<div class="slider-row"><label>数字</label><input type="range" min="1" max="100" value="${L3.num}" oninput="L3.num=+this.value;updateMod();draw()"><span class="val">${L3.num}</span></div>`;
+      h+=`<div class="slider-row"><label>模数</label><input type="range" min="2" max="24" value="${L3.mod}" oninput="L3.mod=+this.value;updateMod();draw()"><span class="val">${L3.mod}</span></div>`;
+      h+=`<div style="font-size:14px;color:var(--sv);margin:8px 0">${L3.num} mod ${L3.mod} = ${L3.num%L3.mod}</div>`;
+      h+=`<button class="act-btn" onclick="testModAdd()">探索模加法</button><button class="act-btn" onclick="testModMul()">探索模乘法</button>`;break;
+    case 3:h+=`<div class="slider-row"><label>底数 a</label><input type="range" min="2" max="20" value="${L4.a}" oninput="L4.a=+this.value;renderPanel()"><span class="val">${L4.a}</span></div>`;
+      h+=`<div class="slider-row"><label>素数 p</label><input type="range" min="2" max="23" value="${L4.p}" oninput="L4.p=+this.value;while(!isPrime(L4.p)&&L4.p<23)L4.p++;this.value=L4.p;renderPanel()"><span class="val">${L4.p}</span></div>`;
+      h+=`<button class="act-btn green" onclick="verifyFermat()">验证 a^(p-1) mod p</button>`;
+      h+=`<div style="font-size:13px;color:var(--sv);margin:6px 0">${L4.a}^${L4.p-1} mod ${L4.p} = ${modPow(L4.a,L4.p-1,L4.p)}</div>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted)">已验证: ${L4.verified} 组</div>`;break;
+    case 4:h+=`<div style="font-size:12px;color:var(--text-muted)">素数 p=${L5.p}, q=${L5.q}</div>`;
+      h+=`<button class="act-btn green" onclick="generateRSAKey()">生成密钥对</button>`;
+      if(L5.keyGenerated){h+=`<div style="font-size:12px;color:var(--text-muted);margin:6px 0">n=${L5.n}, φ=${L5.phi}<br>公钥 e=${L5.e}, 私钥 d=${L5.d}</div>`;
+        h+=`<div style="font-size:12px;color:var(--text-muted)">明文 m=${L5.msg}</div>`;
+        h+=`<button class="act-btn" onclick="encryptRSA()">加密: c = m^e mod n</button>`;
+        if(L5.msgEncrypted){h+=`<div style="font-size:12px;color:#ef4444;margin:4px 0">密文 c=${L5.encrypted}</div>`;
+          h+=`<button class="act-btn" onclick="decryptRSA()">解密: m = c^d mod n</button>`}
+        if(L5.msgDecrypted)h+=`<div style="font-size:12px;color:#22c55e;margin:4px 0">解密结果=${L5.decrypted} ${L5.decrypted===L5.msg?'✅ 正确！':'❌'}</div>`}break;
+    case 5:h+=`<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">点击下方数字检查是否为完全数：</div>`;
+      [6,28,12,496,8128].forEach(n=>{let divs=getDivisors(n),sum=divs.reduce((a,b)=>a+b,0);
+        h+=`<button class="act-btn${sum===n?' green':''}" onclick="checkPerfect(${n})" style="display:inline-block;width:auto;padding:6px 12px;margin:2px">${n}${L6.checked.has(n)?(sum===n?' ✅':' ❌'):''}</button>`});
+      if(L6.checked.size>0){let n=Array.from(L6.checked).pop();let divs=getDivisors(n);h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:8px">${n} 的因子: ${divs.join('+')} = ${divs.reduce((a,b)=>a+b,0)}</div>`}break;
+    case 6:h+=`<div class="slider-row"><label>偶数</label><input type="range" min="4" max="200" step="2" value="${L7.num}" oninput="L7.num=+this.value;updateGoldbach()"><span class="val">${L7.num}</span></div>`;
+      h+=`<div style="font-size:13px;color:var(--sv);margin:6px 0">${L7.num} 的素数对分解 (${L7.pairs.length}种):</div>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted);max-height:120px;overflow-y:auto">`;
+      L7.pairs.forEach(p=>h+=p[0]+' + '+p[1]+'<br>');h+='</div>';break;
+  }
+  if(done){h+=renderQuiz(curLevel);
+    if(quizPassed.has(curLevel)&&curLevel<6)h+=`<button class="act-btn green" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+    h+='<div class="learn-box">'+li.learn+'</div>';
+  }
+  panel.innerHTML=h;
+}
+
+function showResult(){
+  panel.style.display='none';bar.style.display='none';
+  let ov=document.getElementById('overlay');
+  ov.innerHTML='<div style="text-align:center"><div style="font-size:48px;margin-bottom:12px">🎉</div><h1 style="color:#f59e0b;font-size:28px;margin-bottom:8px">恭喜通关！</h1><div style="color:var(--text-muted);margin-bottom:16px">你已掌握数论的核心概念</div><button class="start-btn" onclick="location.reload()">再玩一次</button></div>';
+  ov.style.display='flex';
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);let th=t();
+  ctx.fillStyle=th.bg;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  switch(curLevel){case 0:drawL1();break;case 1:drawL2();break;case 2:drawL3();break;case 3:drawL4();break;case 4:drawL5();break;case 5:drawL6();break;case 6:drawL7();break}
+}
+
+function drawL1(){
+  let cols=10,rows=10,cw=Math.min(W/(cols+1),H/(rows+1),50),m=20;
+  let ox=(W-cols*cw)/2,oy=(H-rows*cw)/2;
+  ctx.font=(cw*0.4)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  for(let i=1;i<=100;i++){
+    let r=Math.floor((i-1)/cols),c=(i-1)%cols;
+    let x=ox+c*cw,y=oy+r*cw;
+    let prime=isPrime(i),sieved=L1.sieved.has(i);
+    if(sieved){ctx.fillStyle='rgba(239,68,68,0.2)';ctx.fillRect(x+1,y+1,cw-2,cw-2)}
+    else if(prime&&L1.sieved.has(-i)){ctx.fillStyle='rgba(34,197,94,0.3)';ctx.fillRect(x+1,y+1,cw-2,cw-2)}
+    else if(prime){ctx.fillStyle='rgba(245,158,11,0.2)';ctx.fillRect(x+1,y+1,cw-2,cw-2)}
+    ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.strokeRect(x,y,cw,cw);
+    ctx.fillStyle=sieved?'rgba(255,255,255,0.3)':prime?'#f59e0b':t().text;
+    ctx.fillText(i,x+cw/2,y+cw/2);
+  }
+}
+
+function drawL2(){
+  if(L2.steps.length===0)return;
+  let cx=W/2,y=60;
+  ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillStyle=t().text;
+  ctx.fillText('辗转相除法: gcd('+L2.a+', '+L2.b+')',cx,30);
+  L2.steps.forEach((s,i)=>{
+    let barW=Math.min(s.a/Math.max(L2.a,L2.b)*W*0.6,W*0.6);
+    let barH=30;
+    ctx.fillStyle='rgba(59,130,246,0.3)';ctx.fillRect(cx-barW/2,y,barW,barH);
+    ctx.strokeStyle='#3b82f6';ctx.strokeRect(cx-barW/2,y,barW,barH);
+    if(s.b>0){let bW=s.b/Math.max(L2.a,L2.b)*W*0.6;ctx.fillStyle='rgba(245,158,11,0.3)';ctx.fillRect(cx-barW/2,y,bW,barH)}
+    ctx.fillStyle=t().text;ctx.font='13px sans-serif';
+    ctx.fillText(`${s.a} = ${Math.floor(s.a/Math.max(s.b,1))} × ${s.b} + ${s.r}`,cx,y+barH/2+4);
+    y+=barH+15;
+  });
+  ctx.font='18px sans-serif';ctx.fillStyle='#22c55e';
+  ctx.fillText('GCD = '+L2.steps[L2.steps.length-1].a,cx,y+10);
+}
+
+function drawL3(){
+  let cx=W/2,cy=H/2,r=Math.min(W,H)*0.35;
+  // clock face
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle='rgba(245,158,11,0.3)';ctx.lineWidth=2;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,r+5,0,Math.PI*2);ctx.strokeStyle='rgba(245,158,11,0.1)';ctx.stroke();
+  // ticks
+  for(let i=0;i<L3.mod;i++){
+    let a=i*2*Math.PI/L3.mod-Math.PI/2;
+    let x1=cx+Math.cos(a)*(r-10),y1=cy+Math.sin(a)*(r-10);
+    let x2=cx+Math.cos(a)*r,y2=cy+Math.sin(a)*r;
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(i,cx+Math.cos(a)*(r-25),cy+Math.sin(a)*(r-25));
+  }
+  // highlight result
+  let result=L3.num%L3.mod;
+  let a=result*2*Math.PI/L3.mod-Math.PI/2;
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*(r-35),cy+Math.sin(a)*(r-35));
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=3;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx+Math.cos(a)*(r-35),cy+Math.sin(a)*(r-35),8,0,Math.PI*2);
+  ctx.fillStyle='#ef4444';ctx.fill();
+  ctx.fillStyle=t().text;ctx.font='20px sans-serif';ctx.textAlign='center';
+  ctx.fillText(L3.num+' mod '+L3.mod+' = '+result,cx,40);
+}
+
+function drawL4(){
+  let cx=W/2,cy=H/2;
+  ctx.fillStyle=t().text;ctx.font='24px sans-serif';ctx.textAlign='center';
+  ctx.fillText('费马小定理验证',cx,50);
+  ctx.font='18px sans-serif';
+  let result=modPow(L4.a,L4.p-1,L4.p);
+  ctx.fillText(L4.a+'^'+(L4.p-1)+' mod '+L4.p+' = '+result,cx,cy-20);
+  ctx.fillStyle=result===1?'#22c55e':'#ef4444';ctx.font='22px sans-serif';
+  ctx.fillText(result===1?'≡ 1 (mod '+L4.p+') ✓':'≠ 1 — a是p的倍数',cx,cy+20);
+  // show computation steps
+  let y=cy+60;ctx.font='14px sans-serif';ctx.fillStyle=t().textSec;
+  let steps=[];let base=L4.a%L4.p,exp=L4.p-1,r=1;
+  let tmpBase=base,tmpExp=exp;
+  while(tmpExp>0){
+    if(tmpExp%2===1)steps.push(r+'×'+tmpBase+' mod '+L4.p+' = '+(r*tmpBase%L4.p));
+    r=r*tmpBase%L4.p;tmpBase=tmpBase*tmpBase%L4.p;tmpExp=Math.floor(tmpExp/2);
+  }
+}
+
+function drawL5(){
+  let cx=W/2,cy=H/2;
+  ctx.fillStyle=t().text;ctx.font='20px sans-serif';ctx.textAlign='center';
+  ctx.fillText('RSA 加密流程',cx,40);
+  let y=80;ctx.font='14px sans-serif';
+  let items=[
+    {label:'选择素数',val:`p=${L5.p}, q=${L5.q}`,done:true},
+    {label:'计算 n=p×q',val:L5.keyGenerated?`n=${L5.n}`:'?',done:L5.keyGenerated},
+    {label:'计算 φ=(p-1)(q-1)',val:L5.keyGenerated?`φ=${L5.phi}`:'?',done:L5.keyGenerated},
+    {label:'公钥 e',val:L5.keyGenerated?`e=${L5.e}`:'?',done:L5.keyGenerated},
+    {label:'私钥 d',val:L5.keyGenerated?`d=${L5.d}`:'?',done:L5.keyGenerated},
+    {label:'加密 c=m^e mod n',val:L5.msgEncrypted?`${L5.msg}^${L5.e} mod ${L5.n} = ${L5.encrypted}`:'?',done:L5.msgEncrypted},
+    {label:'解密 m=c^d mod n',val:L5.msgDecrypted?`${L5.encrypted}^${L5.d} mod ${L5.n} = ${L5.decrypted}`:'?',done:L5.msgDecrypted}
+  ];
+  items.forEach((item,i)=>{
+    let bx=cx-200,by=y+i*50;
+    ctx.fillStyle=item.done?'rgba(34,197,94,0.2)':'rgba(255,255,255,0.05)';
+    ctx.fillRect(bx,by,400,40);ctx.strokeStyle=item.done?'#22c55e':'rgba(255,255,255,0.1)';ctx.strokeRect(bx,by,400,40);
+    ctx.fillStyle=item.done?'#22c55e':t().textSec;ctx.textAlign='left';ctx.fillText(item.label,bx+10,by+16);
+    ctx.fillStyle=t().text;ctx.textAlign='right';ctx.fillText(item.val,bx+390,by+16);
+    if(i<items.length-1){ctx.beginPath();ctx.moveTo(cx,by+40);ctx.lineTo(cx,by+50);ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.stroke()}
+  });
+}
+
+function drawL6(){
+  let cx=W/2,cy=H/2;
+  ctx.fillStyle=t().text;ctx.font='20px sans-serif';ctx.textAlign='center';
+  ctx.fillText('完全数探索',cx,40);
+  let perfects=[6,28,496,8128];
+  let y=80;
+  perfects.forEach((n,i)=>{
+    let divs=getDivisors(n),sum=divs.reduce((a,b)=>a+b,0);
+    let checked=L6.checked.has(n);
+    ctx.fillStyle=checked?'rgba(34,197,94,0.15)':'rgba(255,255,255,0.05)';
+    let bw=Math.min(W-40,500),bx=cx-bw/2;
+    ctx.fillRect(bx,y,bw,50);ctx.strokeStyle=checked?'#22c55e':'rgba(255,255,255,0.1)';ctx.strokeRect(bx,y,bw,50);
+    ctx.fillStyle=t().text;ctx.font='16px sans-serif';ctx.textAlign='left';
+    ctx.fillText(n+' = '+divs.join(' + ')+' = '+sum,bx+10,y+20);
+    ctx.fillStyle=sum===n?'#22c55e':'#ef4444';ctx.font='13px sans-serif';
+    ctx.fillText(sum===n?'✓ 完全数':'✗ 非完全数',bx+10,y+40);
+    // formula
+    let p=[2,3,5,7][i];
+    ctx.fillStyle='#f59e0b';ctx.textAlign='right';ctx.font='12px sans-serif';
+    ctx.fillText('2^'+(p-1)+'×(2^'+p+'-1) = '+n,bx+bw-10,y+30);
+    y+=65;
+  });
+}
+
+function drawL7(){
+  let cx=W/2;
+  ctx.fillStyle=t().text;ctx.font='20px sans-serif';ctx.textAlign='center';
+  ctx.fillText('哥德巴赫猜想: '+L7.num+' 的素数对分解',cx,40);
+  if(L7.pairs.length===0)return;
+  let barW=Math.min(W-60,600),barH=20,ox=cx-barW/2,y=70;
+  L7.pairs.forEach((p,i)=>{
+    let r1=p[0]/L7.num,r2=p[1]/L7.num;
+    ctx.fillStyle='rgba(59,130,246,0.4)';ctx.fillRect(ox,y,barW*r1,barH);
+    ctx.fillStyle='rgba(245,158,11,0.4)';ctx.fillRect(ox+barW*r1,y,barW*r2,barH);
+    ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.strokeRect(ox,y,barW,barH);
+    ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';
+    ctx.fillText(p[0],ox+barW*r1/2,y+barH/2+4);
+    ctx.fillText(p[1],ox+barW*r1+barW*r2/2,y+barH/2+4);
+    y+=barH+8;
+    if(y>H-40)return;
+  });
+}
+
+// ===== Click handler for sieve =====
+cv.addEventListener('click',e=>{
+  if(curLevel!==0)return;
+  let rect=cv.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+  let cols=10,cw=Math.min(W/(cols+1),H/(cols+1),50);
+  let ox=(W-cols*cw)/2,oy=(H-cols*cw)/2;
+  let c=Math.floor((mx-ox)/cw),r=Math.floor((my-oy)/cw);
+  if(c>=0&&c<10&&r>=0&&r<10){let num=r*10+c+1;if(isPrime(num))sievePrime(num)}
+});
+</script>
+</body>
+</html>

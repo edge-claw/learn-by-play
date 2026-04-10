@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>DNA与基因表达 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden;height:100vh}
+canvas{display:block}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;background:linear-gradient(135deg,#6366f1,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.overlay .sub{color:var(--text-sub);font-size:17px;margin-bottom:32px}
+.overlay .start-btn{padding:14px 48px;font-size:18px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:transform .2s}
+.overlay .start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.features .feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px}
+.features .feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:fixed;left:0;top:0;width:320px;height:calc(100% - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;display:none;padding:16px;font-size:15px;line-height:1.7;padding-bottom:24px}
+.panel h2{font-size:20px;color:var(--title-color);margin-bottom:6px}
+.panel h3{font-size:16px;color:var(--title-color);margin:10px 0 4px}
+.panel .obj{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:14px}
+.panel .obj .dot{width:14px;height:14px;border-radius:50%;border:2px solid #6366f1;flex-shrink:0}
+.panel .obj .dot.done{background:#6366f1}
+.panel .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:var(--learn-text);line-height:1.8}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#6366f1;color:#fff;font-size:15px;cursor:pointer;transition:background .2s}
+.act-btn:hover{background:#4f46e5}
+.bar{position:fixed;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--panel-border);display:none;z-index:10;padding:0 16px;font-size:13px;align-items:center}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#c7d2fe;border-radius:2px}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="ov">
+<h1>🧬 DNA与基因表达</h1>
+<p class="sub">Gene Expression — 从碱基配对到蛋白质合成</p>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="fi">🔗</div>双螺旋</div>
+<div class="feat"><div class="fi">📝</div>转录</div>
+<div class="feat"><div class="fi">🏭</div>翻译</div>
+<div class="feat"><div class="fi">🎛️</div>基因调控</div>
+<div class="feat"><div class="fi">⚡</div>突变</div>
+<div class="feat"><div class="fi">🔒</div>表观遗传</div>
+<div class="feat"><div class="fi">🔄</div>中心法则</div>
+</div>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"></div>
+<script>
+let isDark=true;
+const TH={dark:{bg1:'#0a0a2e',bg2:'#0d0d1a',bg3:'#0a0a1a',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)'},light:{bg1:'#e8edf5',bg2:'#f0f2f5',bg3:'#e0e7f0',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)'}};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{renderPanel()}catch(e){}}
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),ov=document.getElementById('ov');
+let W,H,curLevel=0,tick=0,mouse={x:0,y:0,down:false};
+const PL=320;
+const levelNames=['DNA双螺旋','转录','翻译','基因调控','突变类型','表观遗传','中心法则'];
+const levelDescs=[
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>规则：</b>A-T 配对（2个氢键）/ G-C 配对（3个氢键）</div>画布上显示一条DNA单链，将正确的碱基拖到对应位置完成配对，构建双螺旋结构。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>过程：</b>RNA聚合酶沿DNA模板链 3\'→5\' 合成mRNA</div>观察RNA聚合酶如何识别启动子，沿模板链移动，将DNA信息转录为mRNA。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>密码子：</b>每3个碱基编码1个氨基酸（AUG=起始/Met）</div>拖动核糖体沿mRNA移动，观察tRNA如何识别密码子并添加氨基酸，合成蛋白质链。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>模型：</b>操纵子 = 启动子 + 操纵基因 + 结构基因</div>模拟lac操纵子：当乳糖存在时，阻遏蛋白脱落，RNA聚合酶可以转录结构基因。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>类型：</b>点突变（替换）/ 插入突变 / 缺失突变</div>观察三种突变如何改变DNA序列和蛋白质产物，理解移码突变的严重后果。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>机制：</b>DNA甲基化 → 基因沉默（不改变序列）</div>在CpG岛上添加甲基基团，观察基因表达如何被关闭，理解表观遗传的可逆性。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>法则：</b>DNA → RNA → 蛋白质（信息单向流动）</div>完成中心法则的全流程：从DNA复制到转录再到翻译，理解遗传信息的流动方向。'
+];
+const levelObjTexts=[
+['正确配对至少4个碱基','完成全部8个碱基配对','观察双螺旋3D旋转'],
+['启动RNA聚合酶','完成mRNA链合成','识别起始密码子AUG'],
+['将核糖体移到起始位','翻译至少3个密码子','合成完整多肽链'],
+['添加乳糖激活操纵子','观察阻遏蛋白脱落','完成结构基因转录'],
+['触发点突变观察效果','触发插入突变','触发缺失突变观察移码'],
+['在3个CpG位点添加甲基','观察基因沉默效果','去甲基化恢复表达'],
+['完成DNA→RNA转录','完成RNA→蛋白质翻译','连接全流程']
+];
+const learnTexts=[
+'💡 DNA双螺旋由Watson和Crick于1953年发现。两条反向平行的多核苷酸链通过碱基配对连接：腺嘌呤(A)与胸腺嘧啶(T)形成2个氢键，鸟嘌呤(G)与胞嘧啶(C)形成3个氢键。螺旋每转一圈约10个碱基对(3.4nm)，直径2nm。GC含量高的DNA更稳定(熔解温度更高)。',
+'💡 转录由RNA聚合酶催化：识别启动子(TATA box)→解开DNA双链→以模板链3\'→5\'方向合成mRNA(5\'→3\')→遇到终止信号停止。真核生物mRNA还需加工：5\'加帽(7-甲基鸟苷)、3\'加polyA尾、剪接去除内含子。一个基因可通过选择性剪接产生多种mRNA。',
+'💡 翻译在核糖体上进行：小亚基识别mRNA的5\'帽和起始密码子AUG，大亚基加入形成完整核糖体。tRNA的反密码子与mRNA密码子配对，将氨基酸添加到多肽链。64个密码子编码20种氨基酸+3个终止密码子(UAA/UAG/UGA)。翻译速度约15-20个氨基酸/秒。',
+'💡 lac操纵子是原核基因调控的经典模型(Jacob & Monod, 1961)。无乳糖时：阻遏蛋白结合操纵基因，阻止转录。有乳糖时：异构乳糖(别构效应物)使阻遏蛋白构象改变脱落，RNA聚合酶可转录lacZ/Y/A基因。真核调控更复杂：增强子、沉默子、转录因子等多层调控。',
+'💡 点突变(替换)分为：同义突变(密码子简并性，蛋白不变)、错义突变(氨基酸改变，如镰刀形贫血)、无义突变(产生终止密码子，蛋白截短)。插入/缺失若非3的倍数则导致移码突变，下游所有氨基酸改变，通常是灾难性的。突变率约10⁻⁹/碱基/复制。',
+'💡 表观遗传修饰不改变DNA序列但影响基因表达。DNA甲基化：甲基转移酶在CpG二核苷酸的胞嘧啶5位加甲基基团，招募甲基化结合蛋白→组蛋白去乙酰化→染色质紧缩→基因沉默。这是可逆的：去甲基化酶(TET)可移除甲基。X染色体失活、基因组印记都依赖甲基化。',
+'💡 中心法则(Crick, 1958)：遗传信息从DNA→RNA→蛋白质单向流动。DNA复制(DNA→DNA)保证遗传信息传递；转录(DNA→RNA)将信息转为可移动形式；翻译(RNA→蛋白质)将信息转为功能分子。例外：逆转录(RNA→DNA，如HIV)、RNA复制(RNA→RNA，如流感病毒)。'
+];
+let levelObjs=levelObjTexts.map(a=>a.map(()=>false));
+let L={};
+const BASES={A:{pair:'T',color:'#ef4444',rna:'U'},T:{pair:'A',color:'#3b82f6',rna:'A'},G:{pair:'C',color:'#22c55e',rna:'C'},C:{pair:'G',color:'#f59e0b',rna:'G'}};
+const CODON_TABLE={AUG:'Met',UUU:'Phe',UUC:'Phe',UUA:'Leu',UUG:'Leu',UCU:'Ser',UCC:'Ser',UCA:'Ser',UCG:'Ser',UAU:'Tyr',UAC:'Tyr',UGU:'Cys',UGC:'Cys',UGG:'Trp',CUU:'Leu',CUC:'Leu',CUA:'Leu',CUG:'Leu',CCU:'Pro',CCC:'Pro',CCA:'Pro',CCG:'Pro',CAU:'His',CAC:'His',CAA:'Gln',CAG:'Gln',CGU:'Arg',CGC:'Arg',CGA:'Arg',CGG:'Arg',AUU:'Ile',AUC:'Ile',AUA:'Ile',ACU:'Thr',ACC:'Thr',ACA:'Thr',ACG:'Thr',AAU:'Asn',AAC:'Asn',AAA:'Lys',AAG:'Lys',AGU:'Ser',AGC:'Ser',AGA:'Arg',AGG:'Arg',GUU:'Val',GUC:'Val',GUA:'Val',GUG:'Val',GCU:'Ala',GCC:'Ala',GCA:'Ala',GCG:'Ala',GAU:'Asp',GAC:'Asp',GAA:'Glu',GAG:'Glu',GGU:'Gly',GGC:'Gly',GGA:'Gly',GGG:'Gly',UAA:'STOP',UAG:'STOP',UGA:'STOP'};
+function resetLevel(li){
+  L={};levelObjs[li]=levelObjs[li].map(()=>false);
+  if(li===0){L.template=['A','T','G','C','A','G','T','C'];L.paired=new Array(8).fill(null);L.pairCount=0;L.helixAngle=0;L.showHelix=false;L.selectedBase=null;}
+  if(li===1){L.started=false;L.polyPos=0;L.mRNA='';L.template='TACGAATTC';L.done=false;}
+  if(li===2){L.mRNA='AUGUCUAAAGCUGAA';L.riboPos=0;L.peptide=[];L.done=false;L.codonsRead=0;}
+  if(li===3){L.lactose=false;L.repressorOn=true;L.transcribing=false;L.transcribed=false;}
+  if(li===4){L.original='ATGCGATCG';L.current=L.original;L.mutType=null;L.mutations=new Set();}
+  if(li===5){L.cpgSites=[{pos:0.25,methylated:false},{pos:0.5,methylated:false},{pos:0.75,methylated:false}];L.silenced=false;L.restored=false;L.methylCount=0;}
+  if(li===6){L.dnaToRna=false;L.rnaToProtein=false;L.connected=false;L.animPhase=0;}
+}
+function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight-36;}
+window.onresize=resize;resize();
+cv.onmousemove=e=>{const r=cv.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;};
+cv.onmousedown=e=>{mouse.down=true;const r=cv.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;handleClick(mouse.x,mouse.y);};
+cv.onmouseup=()=>{mouse.down=false;};
+function cx(r){return PL+(W-PL)*r;}
+function cy(r){return H*r;}
+function startGame(){ov.style.display='none';panel.style.display='block';bar.style.display='flex';resetLevel(0);renderPanel();renderBar();}
+function goLevel(li){if(li<0||li>6)return;curLevel=li;resetLevel(li);renderPanel();renderBar();}
+window.goLevel=goLevel;
+function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel();renderBar();}}
+function renderBar(){bar.innerHTML='<span style="color:var(--text-muted)">🧬 '+levelNames[curLevel]+'</span>';}
+function _stageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<7;i++){let cls=levelObjs[i].every(v=>v)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;}
+  h+=`</div><div class="sn-info">第${curLevel+1}/7关 · ${levelNames[curLevel]}</div></div>`;return h;
+}
+function _summaryHTML(){
+  let done=levelObjs.filter(a=>a.every(v=>v)).length;
+  let h='<div class="summary-box"><div class="summary-title">🎉 全部通关！</div>';
+  h+=`<div class="summary-sub">你已掌握基因表达的核心知识</div>`;
+  h+=`<div class="summary-stats"><div class="summary-stat"><div class="num">${done}</div><div class="label">完成关卡</div></div>`;
+  h+=`<div class="summary-stat"><div class="num">${done*3}</div><div class="label">达成目标</div></div></div>`;
+  h+=`<div class="summary-keys"><div>🔗 碱基配对：A-T(2氢键) G-C(3氢键)</div><div>📝 转录：DNA→mRNA，RNA聚合酶催化</div><div>🏭 翻译：mRNA→蛋白质，核糖体+tRNA</div><div>🔄 中心法则：DNA→RNA→蛋白质</div></div></div>`;
+  return h;
+}
+function handleClick(mx,my){
+  if(curLevel===0){
+    let bases=['A','T','G','C'];
+    for(let i=0;i<4;i++){
+      let bx=cx(0.1+i*0.2),by=cy(0.88);
+      if(Math.abs(mx-bx)<20&&Math.abs(my-by)<20){L.selectedBase=bases[i];renderPanel();return;}
+    }
+    if(L.selectedBase){
+      for(let i=0;i<8;i++){
+        if(L.paired[i])continue;
+        let px=cx(0.65),py=cy(0.1+i*0.09);
+        if(Math.abs(mx-px)<25&&Math.abs(my-py)<15){
+          let expected=BASES[L.template[i]].pair;
+          if(L.selectedBase===expected){L.paired[i]=L.selectedBase;L.pairCount++;
+            if(L.pairCount>=4)completeObj(0);if(L.pairCount>=8){completeObj(1);L.showHelix=true;completeObj(2);}
+          }
+          L.selectedBase=null;renderPanel();return;
+        }
+      }
+    }
+  }
+  if(curLevel===5){
+    L.cpgSites.forEach((s,i)=>{
+      let sx=cx(s.pos),sy=cy(0.5);
+      if(Math.abs(mx-sx)<20&&Math.abs(my-sy)<20){
+        if(!s.methylated){s.methylated=true;L.methylCount++;
+          if(L.methylCount>=3){completeObj(0);L.silenced=true;completeObj(1);}
+        }else{s.methylated=false;L.methylCount--;
+          if(L.methylCount===0&&L.silenced){L.restored=true;completeObj(2);}
+        }
+        renderPanel();
+      }
+    });
+  }
+}
+function renderPanel(){
+  let li=curLevel,h=_stageNav();
+  h+=`<h2>${levelNames[li]}</h2>`;
+  h+=`<p style="color:var(--text-sub);font-size:14px;margin:6px 0 10px">${levelDescs[li]}</p>`;
+  h+=`<h3>🎯 目标</h3>`;
+  for(let i=0;i<3;i++){let d=levelObjs[li][i]?'done':'';h+=`<div class="obj"><div class="dot ${d}"></div>${levelObjTexts[li][i]}</div>`;}
+  if(li===0){
+    h+=`<h3>操作</h3><p style="color:var(--text-sub);font-size:13px">先点击底部碱基选择，再点击右侧空位配对</p>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px">已选: <span style="color:#f59e0b;font-weight:bold">${L.selectedBase||'无'}</span> | 已配对: ${L.pairCount}/8</p>`;
+  }
+  if(li===1){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="startTranscription()" ${L.started?'disabled':''}>🔬 启动RNA聚合酶</button>`;
+    h+=`<button class="act-btn" onclick="advanceTranscription()" ${!L.started||L.done?'disabled':''}>➡️ 推进转录 (${L.polyPos}/${L.template.length})</button>`;
+    if(L.mRNA)h+=`<p style="color:#22c55e;font-size:12px;margin-top:4px">mRNA: 5'-${L.mRNA}-3'</p>`;
+  }
+  if(li===2){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="moveRibosome()">🔬 移动核糖体 →</button>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px;margin-top:4px">密码子: ${L.codonsRead} | 多肽: ${L.peptide.join('-')||'(空)'}</p>`;
+  }
+  if(li===3){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="addLactose()" ${L.lactose?'disabled':''}>${L.lactose?'✅ 乳糖已添加':'🥛 添加乳糖'}</button>`;
+    h+=`<button class="act-btn" onclick="transcribeOperon()" ${!L.lactose||L.transcribed?'disabled':''}>📝 转录结构基因</button>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px;margin-top:4px">阻遏蛋白: ${L.repressorOn?'🔴 结合中':'🟢 已脱落'}</p>`;
+  }
+  if(li===4){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="mutate('point')">🔴 点突变(替换)</button>`;
+    h+=`<button class="act-btn" onclick="mutate('insert')">🟡 插入突变</button>`;
+    h+=`<button class="act-btn" onclick="mutate('delete')">🔵 缺失突变</button>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px;margin-top:4px">原始: ${L.original} | 当前: ${L.current}</p>`;
+  }
+  if(li===5){
+    h+=`<h3>操作</h3><p style="color:var(--text-sub);font-size:13px">点击画布上的CpG位点添加/移除甲基</p>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px">甲基化: ${L.methylCount}/3 | 基因: ${L.silenced?(L.restored?'✅ 已恢复':'🔴 沉默'):'🟢 活跃'}</p>`;
+  }
+  if(li===6){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="centralStep(0)" ${L.dnaToRna?'disabled':''}>📝 DNA → RNA 转录</button>`;
+    h+=`<button class="act-btn" onclick="centralStep(1)" ${!L.dnaToRna||L.rnaToProtein?'disabled':''}>🏭 RNA → 蛋白质 翻译</button>`;
+    h+=`<button class="act-btn" onclick="centralStep(2)" ${!L.rnaToProtein||L.connected?'disabled':''}>🔗 连接全流程</button>`;
+  }
+  if(levelObjs[li].every(v=>v)){
+    h+=`<div class="learn-box">${learnTexts[li]}</div>`;
+    if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+    if(li===6)h+=_summaryHTML();
+  }
+  panel.innerHTML=h;
+}
+// Action handlers
+window.startTranscription=function(){L.started=true;completeObj(0);renderPanel();};
+window.advanceTranscription=function(){
+  if(L.polyPos<L.template.length){
+    let base=L.template[L.polyPos];let rnaBase=BASES[base]?BASES[base].rna||(base==='A'?'U':base==='T'?'A':base==='G'?'C':'G'):'N';
+    L.mRNA+=rnaBase;L.polyPos++;
+    if(L.polyPos>=L.template.length){L.done=true;completeObj(1);
+      if(L.mRNA.indexOf('AUG')>=0)completeObj(2);}
+    renderPanel();
+  }
+};
+window.moveRibosome=function(){
+  if(L.riboPos+3<=L.mRNA.length){
+    let codon=L.mRNA.substr(L.riboPos,3);let aa=CODON_TABLE[codon]||'?';
+    if(aa==='STOP'){L.done=true;completeObj(2);}
+    else{L.peptide.push(aa);L.codonsRead++;
+      if(L.riboPos===0)completeObj(0);if(L.codonsRead>=3)completeObj(1);}
+    L.riboPos+=3;renderPanel();
+  }
+};
+window.addLactose=function(){L.lactose=true;L.repressorOn=false;completeObj(0);completeObj(1);renderPanel();};
+window.transcribeOperon=function(){L.transcribing=true;setTimeout(()=>{L.transcribed=true;completeObj(2);renderPanel();},800);renderPanel();};
+window.mutate=function(type){
+  L.mutType=type;L.mutations.add(type);
+  if(type==='point'){let arr=L.original.split('');let i=Math.floor(Math.random()*arr.length);let bases='ATGC'.replace(arr[i],'');arr[i]=bases[Math.floor(Math.random()*3)];L.current=arr.join('');completeObj(0);}
+  if(type==='insert'){let i=Math.floor(Math.random()*L.original.length);L.current=L.original.slice(0,i)+'[X]'+L.original.slice(i);completeObj(1);}
+  if(type==='delete'){let i=Math.floor(Math.random()*(L.original.length-1));L.current=L.original.slice(0,i)+'_'+L.original.slice(i+1);completeObj(2);}
+  renderPanel();
+};
+window.centralStep=function(step){
+  if(step===0){L.dnaToRna=true;L.animPhase=1;completeObj(0);}
+  if(step===1){L.rnaToProtein=true;L.animPhase=2;completeObj(1);}
+  if(step===2){L.connected=true;L.animPhase=3;completeObj(2);}
+  renderPanel();
+};
+// Drawing
+function drawBg(){
+  const th=t();const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,th.bg1);g.addColorStop(0.5,th.bg2);g.addColorStop(1,th.bg3);
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let x=PL;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(W,y);ctx.stroke();}
+}
+function drawBase(x,y,base,size,highlight){
+  let color=BASES[base]?BASES[base].color:'#888';
+  ctx.beginPath();ctx.arc(x,y,size,0,Math.PI*2);
+  ctx.fillStyle=highlight?color:color+'66';ctx.fill();
+  ctx.strokeStyle=color;ctx.lineWidth=highlight?3:1.5;ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font=`bold ${size}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(base,x,y);
+}
+function drawLevel0(){
+  let midX=cx(0.4),startY=cy(0.08);
+  ctx.fillStyle=t().text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('模板链',midX-40,startY);ctx.fillText('配对链',cx(0.65),startY);
+  for(let i=0;i<8;i++){
+    let y=startY+30+i*((H*0.7)/8);
+    drawBase(midX-40,y,L.template[i],14,true);
+    if(L.paired[i]){
+      drawBase(cx(0.65),y,L.paired[i],14,true);
+      ctx.strokeStyle='#ffffff44';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.moveTo(midX-25,y);ctx.lineTo(cx(0.65)-15,y);ctx.stroke();ctx.setLineDash([]);
+      let bonds=L.template[i]==='G'||L.template[i]==='C'?3:2;
+      ctx.fillStyle=t().textMut;ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(bonds+'H',midX+20,y);
+    }else{
+      ctx.strokeStyle='#ffffff22';ctx.lineWidth=1;ctx.strokeRect(cx(0.65)-14,y-14,28,28);
+    }
+  }
+  let bases=['A','T','G','C'];
+  for(let i=0;i<4;i++){
+    let bx=cx(0.1+i*0.22),by=cy(0.9);
+    drawBase(bx,by,bases[i],16,L.selectedBase===bases[i]);
+  }
+  if(L.showHelix){
+    let hx=cx(0.85),hy=cy(0.5),hr=40;
+    for(let i=0;i<40;i++){
+      let a=i*0.3+tick*0.03;let y=hy-100+i*5;
+      let x1=hx+Math.cos(a)*hr,x2=hx+Math.cos(a+Math.PI)*hr;
+      ctx.beginPath();ctx.arc(x1,y,4,0,Math.PI*2);ctx.fillStyle='#ef4444';ctx.fill();
+      ctx.beginPath();ctx.arc(x2,y,4,0,Math.PI*2);ctx.fillStyle='#3b82f6';ctx.fill();
+      if(i%3===0){ctx.strokeStyle='#ffffff22';ctx.beginPath();ctx.moveTo(x1,y);ctx.lineTo(x2,y);ctx.stroke();}
+    }
+    ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('双螺旋 3D',hx,hy+120);
+  }
+}
+function drawLevel1(){
+  let midX=cx(0.5),startY=cy(0.15);
+  ctx.fillStyle=t().text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('DNA模板链 (3\'→5\')',midX,startY-20);
+  for(let i=0;i<L.template.length;i++){
+    let x=midX-((L.template.length-1)/2-i)*40;
+    drawBase(x,startY+20,L.template[i],14,i<L.polyPos);
+    if(i<L.polyPos&&L.mRNA[i]){
+      drawBase(x,startY+70,L.mRNA[i],14,true);
+      ctx.strokeStyle='#22c55e44';ctx.beginPath();ctx.moveTo(x,startY+35);ctx.lineTo(x,startY+55);ctx.stroke();
+    }
+  }
+  if(L.mRNA){ctx.fillStyle='#22c55e';ctx.font='bold 14px sans-serif';ctx.fillText('mRNA (5\'→3\')',midX,startY+100);}
+  if(L.started){
+    let px=midX-((L.template.length-1)/2-Math.min(L.polyPos,L.template.length-1))*40;
+    ctx.fillStyle='#f59e0b';ctx.font='20px sans-serif';ctx.fillText('🔬',px,startY+45);
+    ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';ctx.fillText('RNA聚合酶',px,startY+130);
+  }
+}
+function drawLevel2(){
+  let midX=cx(0.5),startY=cy(0.2);
+  ctx.fillStyle=t().text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('mRNA',midX,startY-20);
+  for(let i=0;i<L.mRNA.length;i++){
+    let x=midX-((L.mRNA.length-1)/2-i)*30;let inCodon=i>=L.riboPos&&i<L.riboPos+3;
+    drawBase(x,startY,L.mRNA[i],12,inCodon);
+    if(i%3===0&&i<L.mRNA.length-2){
+      let codon=L.mRNA.substr(i,3);let aa=CODON_TABLE[codon]||'?';
+      if(i<L.riboPos){ctx.fillStyle='#22c55e';ctx.font='10px sans-serif';ctx.fillText(aa,x+30,startY+30);}
+    }
+  }
+  let rx=midX-((L.mRNA.length-1)/2-L.riboPos)*30;
+  ctx.fillStyle='#8b5cf644';ctx.fillRect(rx-20,startY-25,80,50);ctx.strokeStyle='#8b5cf6';ctx.strokeRect(rx-20,startY-25,80,50);
+  ctx.fillStyle='#8b5cf6';ctx.font='11px sans-serif';ctx.fillText('核糖体',rx+20,startY-30);
+  if(L.peptide.length>0){
+    ctx.fillStyle=t().text;ctx.font='bold 14px sans-serif';ctx.fillText('多肽链',midX,cy(0.55));
+    let chain=L.peptide.join(' - ');ctx.fillStyle='#22c55e';ctx.font='13px monospace';ctx.fillText(chain,midX,cy(0.62));
+  }
+}
+function drawLevel3(){
+  let midX=cx(0.5),midY=cy(0.4);
+  let parts=[{name:'启动子',x:0.2,w:60,color:'#3b82f6'},{name:'操纵基因',x:0.4,w:60,color:'#f59e0b'},{name:'lacZ',x:0.6,w:50,color:'#22c55e'},{name:'lacY',x:0.75,w:40,color:'#22c55e'},{name:'lacA',x:0.87,w:40,color:'#22c55e'}];
+  parts.forEach(p=>{
+    let px=cx(p.x);ctx.fillStyle=p.color+'44';ctx.fillRect(px-p.w/2,midY-15,p.w,30);
+    ctx.strokeStyle=p.color;ctx.strokeRect(px-p.w/2,midY-15,p.w,30);
+    ctx.fillStyle=p.color;ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText(p.name,px,midY+4);
+  });
+  if(L.repressorOn){
+    ctx.fillStyle='#ef4444';ctx.font='24px sans-serif';ctx.textAlign='center';ctx.fillText('🚫',cx(0.4),midY-35);
+    ctx.fillStyle='#ef4444';ctx.font='11px sans-serif';ctx.fillText('阻遏蛋白',cx(0.4),midY-50);
+  }
+  if(L.lactose){
+    ctx.fillStyle='#f59e0b';ctx.font='20px sans-serif';ctx.fillText('🥛',cx(0.15),midY-40);
+    ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';ctx.fillText('乳糖',cx(0.15),midY-55);
+  }
+  if(L.transcribed){
+    ctx.fillStyle='#22c55e';ctx.font='bold 14px sans-serif';ctx.fillText('✅ 结构基因转录中...',midX,midY+60);
+    for(let i=0;i<3;i++){let px=cx(0.6+i*0.15);ctx.fillStyle='#22c55e44';ctx.fillRect(px-20,midY+70,40,20);ctx.fillStyle='#22c55e';ctx.font='10px sans-serif';ctx.fillText('mRNA',px,midY+83);}
+  }
+}
+function drawLevel4(){
+  let midX=cx(0.5),y1=cy(0.25),y2=cy(0.55);
+  ctx.fillStyle=t().text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('原始序列',midX,y1-20);
+  for(let i=0;i<L.original.length;i++){let x=midX+(i-4)*35;drawBase(x,y1,L.original[i],14,false);}
+  ctx.fillText('突变后',midX,y2-20);
+  for(let i=0;i<L.current.length;i++){
+    let x=midX+(i-4)*35;let ch=L.current[i];
+    if(ch==='['){ctx.fillStyle='#f59e0b';ctx.font='bold 14px monospace';ctx.textAlign='center';ctx.fillText('[X]',x+17,y2);i+=2;continue;}
+    if(ch===']')continue;
+    let changed=i<L.original.length&&ch!==L.original[i];
+    if(ch==='_'){ctx.strokeStyle='#ef4444';ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(x-12,y2);ctx.lineTo(x+12,y2);ctx.stroke();ctx.setLineDash([]);}
+    else{drawBase(x,y2,ch,14,changed);}
+  }
+  if(L.mutType){
+    let labels={point:'点突变：一个碱基被替换',insert:'插入突变：额外碱基插入，后续移码',delete:'缺失突变：碱基丢失，后续移码'};
+    ctx.fillStyle='#f59e0b';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText(labels[L.mutType],midX,cy(0.8));
+  }
+}
+function drawLevel5(){
+  let midX=cx(0.5),midY=cy(0.45);
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(cx(0.1),midY);ctx.lineTo(cx(0.9),midY);ctx.stroke();
+  ctx.fillStyle=t().text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('DNA链 (CpG岛)',midX,midY-40);
+  L.cpgSites.forEach(s=>{
+    let sx=cx(s.pos),sy=midY;
+    ctx.beginPath();ctx.arc(sx,sy,15,0,Math.PI*2);
+    ctx.fillStyle=s.methylated?'#ef4444':'#22c55e';ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(s.methylated?'CH₃':'CpG',sx,sy);
+    if(s.methylated){ctx.fillStyle='#ef4444';ctx.font='10px sans-serif';ctx.textBaseline='top';ctx.fillText('甲基化',sx,sy+20);}
+  });
+  let geneY=cy(0.7);ctx.fillStyle=L.silenced&&!L.restored?'#ef444444':'#22c55e44';
+  ctx.fillRect(cx(0.2),geneY,cx(0.6),30);ctx.strokeStyle=L.silenced&&!L.restored?'#ef4444':'#22c55e';ctx.strokeRect(cx(0.2),geneY,cx(0.6),30);
+  ctx.fillStyle=L.silenced&&!L.restored?'#ef4444':'#22c55e';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(L.silenced&&!L.restored?'🔴 基因沉默':'🟢 基因活跃',midX,geneY+15);
+}
+function drawLevel6(){
+  let midX=cx(0.5),y=cy(0.3);
+  let steps=[{label:'DNA',x:0.2,color:'#3b82f6',done:true},{label:'转录',x:0.4,color:'#f59e0b',done:L.dnaToRna},{label:'RNA',x:0.5,color:'#22c55e',done:L.dnaToRna},{label:'翻译',x:0.7,color:'#f59e0b',done:L.rnaToProtein},{label:'蛋白质',x:0.85,color:'#8b5cf6',done:L.rnaToProtein}];
+  steps.forEach((s,i)=>{
+    let sx=cx(s.x);ctx.beginPath();ctx.arc(sx,y,25,0,Math.PI*2);
+    ctx.fillStyle=s.done?s.color+'66':s.color+'22';ctx.fill();ctx.strokeStyle=s.color;ctx.lineWidth=s.done?3:1;ctx.stroke();
+    ctx.fillStyle=s.done?'#fff':t().textMut;ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(s.label,sx,y);
+    if(i<steps.length-1){
+      let nx=cx(steps[i+1].x);ctx.strokeStyle=s.done&&steps[i+1].done?'#22c55e':'#ffffff22';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(sx+28,y);ctx.lineTo(nx-28,y);ctx.stroke();
+      if(s.done&&steps[i+1].done){ctx.fillStyle='#22c55e';ctx.font='16px sans-serif';ctx.fillText('→',(sx+nx)/2,y);}
+    }
+  });
+  if(L.connected){
+    ctx.fillStyle='#22c55e';ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+    ctx.fillText('🎉 中心法则：DNA → RNA → 蛋白质',midX,cy(0.6));
+    ctx.fillStyle=t().textSec;ctx.font='13px sans-serif';
+    ctx.fillText('遗传信息单向流动（例外：逆转录病毒 RNA→DNA）',midX,cy(0.68));
+  }
+}
+function mainLoop(){
+  requestAnimationFrame(mainLoop);tick++;ctx.clearRect(0,0,W,H);drawBg();
+  if(curLevel===0)drawLevel0();else if(curLevel===1)drawLevel1();else if(curLevel===2)drawLevel2();
+  else if(curLevel===3)drawLevel3();else if(curLevel===4)drawLevel4();else if(curLevel===5)drawLevel5();
+  else if(curLevel===6)drawLevel6();
+}
+requestAnimationFrame(mainLoop);
+</script>
+</body>
+</html>

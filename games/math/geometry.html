@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>几何变换探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --slider-label:#888;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --slider-label:#888;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;width:100vw}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;color:#6366f1;margin-bottom:8px;text-shadow:0 0 30px rgba(99,102,241,0.4)}
+.overlay .sub{font-size:18px;color:var(--sub-color);margin-bottom:32px}
+.overlay .desc{max-width:520px;color:var(--text-muted);font-size:14px;line-height:1.8;margin-bottom:36px}
+.overlay .start-btn{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:14px 48px;font-size:18px;border-radius:12px;cursor:pointer;transition:all .3s}
+.overlay .start-btn:hover{transform:scale(1.05);box-shadow:0 0 24px rgba(99,102,241,0.5)}
+.panel{position:fixed;left:0;top:0;bottom:36px;width:320px;background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;padding:16px;display:none;z-index:10;padding-bottom:24px}
+.panel h2{color:var(--title-color);font-size:18px;margin-bottom:6px}
+.panel .level-title{color:#a78bfa;font-size:13px;margin-bottom:12px}
+.panel .desc-text{color:var(--text-muted);font-size:13px;line-height:1.7;margin-bottom:14px}
+.panel .obj-list{list-style:none;margin-bottom:14px}
+.panel .obj-list li{font-size:13px;padding:4px 0;color:var(--goal-text)}
+.panel .obj-list li.done{color:var(--goal-done)}
+.panel .obj-list li::before{content:'○ ';color:var(--text-sub)}
+.panel .obj-list li.done::before{content:'● ';color:var(--goal-done)}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);border-radius:8px;cursor:pointer;font-size:14px;transition:all .2s}
+.act-btn:hover{background:var(--btn-hover)}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:13px;color:var(--learn-text);line-height:1.8}
+.learn-box b{color:#a78bfa}
+canvas{position:fixed;left:320px;top:0;background:var(--bg)}
+.bar{position:fixed;left:0;bottom:0;right:0;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:none;z-index:10;padding:0 16px;align-items:center;font-size:13px}
+.bar-inner{display:flex;align-items:center;height:100%;gap:8px}
+.bar .progress{margin-left:auto;color:var(--text-muted);font-size:12px}
+.slider-row{display:flex;align-items:center;gap:8px;margin:6px 0;font-variant-numeric:tabular-nums}
+.slider-row label{font-size:12px;color:var(--slider-label);min-width:60px}
+.slider-row input[type=range]{flex:1;accent-color:#6366f1}
+.slider-row .val{font-size:12px;color:var(--sv);min-width:36px;text-align:right}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
+.quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg)}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="overlay">
+<h1>📐 几何变换探险</h1>
+<div class="sub">Geometric Transformations Adventure</div>
+<div class="desc">
+从平移到分形，7个关卡带你探索几何变换的核心概念。<br>
+拖动图形、旋转角度、拼接图案，动手操作理解几何之美。
+</div>
+<button class="start-btn" onclick="startGame()">开始探索 →</button>
+<div class="features">
+<div class="feat"><div class="fi">➡️</div>平移变换</div>
+<div class="feat"><div class="fi">🔄</div>旋转变换</div>
+<div class="feat"><div class="fi">🪞</div>对称变换</div>
+<div class="feat"><div class="fi">🔍</div>缩放相似</div>
+<div class="feat"><div class="fi">🧩</div>镶嵌铺砌</div>
+<div class="feat"><div class="fi">🔷</div>欧拉公式</div>
+<div class="feat"><div class="fi">❄️</div>分形几何</div>
+</div>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"><div class="bar-inner" id="barInner"></div></div>
+<script>
+'use strict';
+let isDark=true;
+const TH={
+  dark:{bg:'#0a0a2e',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',accent:'#818cf8'},
+  light:{bg:'#f0f2f5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',accent:'#6366f1'}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel();draw()}
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const panel=document.getElementById('panel'),bar=document.getElementById('bar'),barInner=document.getElementById('barInner');
+let W,H,curLevel=0;
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+let LD={};
+
+function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';draw()}
+window.addEventListener('resize',resize);
+
+function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
+function goLevel(n){curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
+function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
+
+const LI=[
+  {title:'平移变换',sub:'Translation',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>概念：</b>平移 = 每个点沿同一方向移动相同距离</div>画布上有一个<span style="color:#3b82f6">蓝色三角形</span>和一个<span style="color:#22c55e">绿色目标框</span>。拖动三角形使其与目标重合。',objs:['拖动三角形到目标位置','完成3次不同方向的平移','理解平移向量(dx,dy)'],learn:'<b>平移变换</b>将图形上每个点 (x,y) 变为 (x+dx, y+dy)。平移不改变图形的形状和大小，只改变位置。平移向量 (dx,dy) 完全决定了变换。'},
+  {title:'旋转变换',sub:'Rotation',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>公式：</b>x\'=x·cosθ−y·sinθ, y\'=x·sinθ+y·cosθ</div>画布上有一个<span style="color:#3b82f6">蓝色图形</span>，拖动角度滑块使其旋转到<span style="color:#22c55e">绿色目标</span>位置。',objs:['旋转图形到目标角度','完成3次不同角度的旋转','观察旋转中心的作用'],learn:'<b>旋转变换</b>围绕一个中心点，将每个点旋转角度 θ。旋转保持距离和角度不变（等距变换）。旋转矩阵 R(θ) 是正交矩阵。'},
+  {title:'对称变换',sub:'Reflection & Symmetry',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>类型：</b>轴对称（沿直线翻转）/ 点对称（绕点旋转180°）</div>画布上有一个<span style="color:#3b82f6">蓝色图形</span>和一条<span style="color:#f59e0b">对称轴</span>。点击按钮观察翻转效果。',objs:['完成一次轴对称变换','完成一次点对称变换','判断图形的对称类型'],learn:'<b>轴对称</b>沿一条直线翻转，每个点到对称轴的距离不变。<b>点对称</b>等价于绕中心旋转 180°。正多边形有多条对称轴。'},
+  {title:'缩放与相似',sub:'Scaling & Similarity',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>概念：</b>缩放比 k：每个点到中心的距离乘以 k</div>拖动缩放滑块，观察图形如何放大或缩小。注意角度保持不变。',objs:['将图形缩放到目标大小','观察缩放前后角度不变','完成2次不同比例的缩放'],learn:'<b>相似变换</b>保持角度不变，边长按比例缩放。两个图形相似 ⟺ 可以通过缩放+旋转+平移从一个变到另一个。缩放比 k>1 放大，0<k<1 缩小。'},
+  {title:'镶嵌与铺砌',sub:'Tessellation',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>条件：</b>正多边形内角之和 = 360° 才能铺满平面</div>选择不同的正多边形，观察哪些能无缝铺满平面。',objs:['用正三角形铺满区域','用正方形铺满区域','发现正六边形也能铺满'],learn:'<b>正多边形镶嵌</b>：只有正三角形(60°×6)、正方形(90°×4)、正六边形(120°×3)能单独铺满平面，因为它们的内角能整除 360°。'},
+  {title:'欧拉公式',sub:'V − E + F = 2',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>公式：</b>V − E + F = 2（顶点−边+面=2）</div>画布上展示多面体。点击计数顶点、边、面，验证欧拉公式。',objs:['验证正四面体的欧拉公式','验证正方体的欧拉公式','验证正十二面体的欧拉公式'],learn:'<b>欧拉公式 V−E+F=2</b> 对所有凸多面体成立。正四面体(4−6+4=2)，正方体(8−12+6=2)，正十二面体(20−30+12=2)。这是拓扑学的基础定理。'},
+  {title:'分形几何入门',sub:'Fractal Geometry',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>特征：</b>自相似性 — 局部与整体具有相同结构</div>调整迭代次数，观察科赫雪花和谢尔宾斯基三角形的生成过程。',objs:['生成科赫雪花到第3层','生成谢尔宾斯基三角形到第4层','观察分形维数的概念'],learn:'<b>分形</b>具有自相似性：放大局部后与整体结构相同。科赫曲线的分形维数 = log4/log3 ≈ 1.26，介于线(1维)和面(2维)之间。'}
+];
+
+const quizData=[
+  {q:'平移变换改变了图形的什么？',opts:['形状','大小','位置','角度'],ans:2},
+  {q:'旋转变换的不变量是什么？',opts:['位置','到旋转中心的距离','面积和周长','B和C都对'],ans:3},
+  {q:'点对称等价于旋转多少度？',opts:['90°','120°','180°','360°'],ans:2},
+  {q:'相似变换保持什么不变？',opts:['边长','面积','角度','周长'],ans:2},
+  {q:'以下哪种正多边形不能单独铺满平面？',opts:['正三角形','正方形','正五边形','正六边形'],ans:2},
+  {q:'正方体的 V−E+F 等于？',opts:['0','1','2','3'],ans:2},
+  {q:'科赫曲线的分形维数约为？',opts:['1.0','1.26','1.5','2.0'],ans:1}
+];
+let quizPassed=new Set(),quizLocked=false;
+
+// ===== Level 1: Translation =====
+let L1={shape:[],target:{x:0,y:0},dragging:false,dx:0,dy:0,completed:0,ox:0,oy:0};
+function initL1(){
+  L1={shape:[{x:0,y:-30},{x:-26,y:15},{x:26,y:15}],cx:W*0.3,cy:H*0.5,dragging:false,completed:0,ox:0,oy:0};
+  newTarget1();
+}
+function newTarget1(){L1.tx=W*0.3+((Math.random()-0.5)*W*0.5);L1.ty=H*0.3+(Math.random()*H*0.4)}
+function checkL1(){
+  let d=Math.hypot(L1.cx-L1.tx,L1.cy-L1.ty);
+  if(d<20){L1.completed++;L1.cx=L1.tx;L1.cy=L1.ty;
+    if(L1.completed>=1)completeObj(0,0);
+    if(L1.completed>=3){completeObj(0,1);completeObj(0,2)}
+    else newTarget1();
+    renderPanel();
+  }
+}
+
+// ===== Level 2: Rotation =====
+let L2={angle:0,targetAngle:0,completed:0,sides:5};
+function initL2(){L2={angle:0,targetAngle:30+Math.floor(Math.random()*6)*30,completed:0,sides:5}}
+function checkL2(){
+  let diff=Math.abs(((L2.angle-L2.targetAngle)%360+360)%360);
+  if(diff<8||diff>352){L2.completed++;
+    if(L2.completed>=1)completeObj(1,0);
+    if(L2.completed>=3){completeObj(1,1);completeObj(1,2)}
+    else{L2.targetAngle=(L2.targetAngle+60+Math.floor(Math.random()*5)*30)%360}
+    renderPanel();
+  }
+}
+
+// ===== Level 3: Symmetry =====
+let L3={mode:'axis',axisAngle:0,shape:[],reflected:false,pointDone:false,judged:false};
+function initL3(){
+  L3={mode:'axis',axisAngle:90,reflected:false,pointDone:false,judged:false};
+  L3.shape=[{x:-40,y:-20},{x:0,y:-50},{x:30,y:-10},{x:10,y:30},{x:-30,y:20}];
+}
+function doReflect(){
+  if(L3.mode==='axis'){L3.reflected=true;completeObj(2,0)}
+  else{L3.pointDone=true;completeObj(2,1)}
+  renderPanel();draw();
+}
+function judgeSymmetry(){L3.judged=true;completeObj(2,2);renderPanel()}
+
+// ===== Level 4: Scaling =====
+let L4={scale:1,targetScale:2,completed:0};
+function initL4(){L4={scale:1,targetScale:1.5+Math.random(),completed:0}}
+function checkL4(){
+  if(Math.abs(L4.scale-L4.targetScale)<0.15){L4.completed++;
+    if(L4.completed>=1)completeObj(3,0);
+    completeObj(3,1);
+    if(L4.completed>=2)completeObj(3,2);
+    else L4.targetScale=0.5+Math.random()*2;
+    renderPanel();
+  }
+}
+
+// ===== Level 5: Tessellation =====
+let L5={poly:3,filled:{3:false,4:false,6:false}};
+function initL5(){L5={poly:3,filled:{3:false,4:false,6:false}}}
+function setPoly(n){L5.poly=n;draw();renderPanel()}
+function fillTess(){
+  L5.filled[L5.poly]=true;
+  if(L5.filled[3])completeObj(4,0);
+  if(L5.filled[4])completeObj(4,1);
+  if(L5.filled[6])completeObj(4,2);
+  renderPanel();draw();
+}
+
+// ===== Level 6: Euler Formula =====
+let L6={solid:0,verified:[false,false,false]};
+const solids=[
+  {name:'正四面体',V:4,E:6,F:4,verts:[[0,-1,0],[-0.94,0.5,0],[0.47,0.5,0.82],[0.47,0.5,-0.82]],edges:[[0,1],[0,2],[0,3],[1,2],[2,3],[3,1]]},
+  {name:'正方体',V:8,E:12,F:6,verts:[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]],edges:[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]]},
+  {name:'正十二面体',V:20,E:30,F:12,verts:[],edges:[]}
+];
+function initL6(){L6={solid:0,verified:[false,false,false],userV:'',userE:'',userF:''}}
+function setSolid(i){L6.solid=i;L6.userV='';L6.userE='';L6.userF='';renderPanel();draw()}
+function verifyEuler(){
+  let s=solids[L6.solid];
+  let uv=parseInt(L6.userV),ue=parseInt(L6.userE),uf=parseInt(L6.userF);
+  if(uv===s.V&&ue===s.E&&uf===s.F){L6.verified[L6.solid]=true;completeObj(5,L6.solid);renderPanel();draw()}
+}
+
+// ===== Level 7: Fractals =====
+let L7={type:'koch',depth:0,maxDepth:6};
+function initL7(){L7={type:'koch',depth:0,maxDepth:6}}
+function setFracType(t){L7.type=t;L7.depth=0;renderPanel();draw()}
+function setDepth(d){
+  L7.depth=d;
+  if(L7.type==='koch'&&d>=3)completeObj(6,0);
+  if(L7.type==='sierpinski'&&d>=4)completeObj(6,1);
+  if(d>=3)completeObj(6,2);
+  renderPanel();draw();
+}
+
+function initLevel(n){
+  LD={};
+  switch(n){case 0:initL1();break;case 1:initL2();break;case 2:initL3();break;case 3:initL4();break;case 4:initL5();break;case 5:initL6();break;case 6:initL7();break}
+}
+
+// ===== Rendering =====
+function renderBar(){barInner.innerHTML='<span style="color:var(--text-muted)">📐 '+LI[curLevel].title+'</span><span class="progress">'+levelObjs.flat().filter(Boolean).length+'/'+levelObjs.flat().length+'</span>'}
+
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<7;i++){let cls=levelObjs[i].every(Boolean)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`}
+  h+='</div><div class="sn-info">第 '+(curLevel+1)+'/7 关 — '+LI[curLevel].title+'</div>';
+  h+='<div class="sn-hint">'+LI[curLevel].sub+'</div></div>';return h;
+}
+
+function renderQuiz(li){
+  let qd=quizData[li];if(!qd)return '';
+  let h='<div class="quiz-box"><div class="quiz-q">📝 '+qd.q+'</div>';
+  qd.opts.forEach((o,i)=>{let cls=quizPassed.has(li)?(i===qd.ans?'correct':''):'';h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${o}</div>`});
+  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过</div>';
+  h+='</div>';return h;
+}
+function answerQuiz(li,oi){
+  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  let qd=quizData[li],opts=panel.querySelectorAll('.quiz-opt');
+  opts.forEach((el,i)=>el.classList.add(i===qd.ans?'correct':'wrong'));
+  if(oi===qd.ans){quizPassed.add(li);setTimeout(()=>{quizLocked=false;if(curLevel<6)goLevel(curLevel+1);else showResult()},800)}
+  else setTimeout(()=>{quizLocked=false;renderPanel()},1000);
+}
+
+function renderPanel(){
+  let li=LI[curLevel],done=levelObjs[curLevel].every(Boolean);
+  let h=renderStageNav();
+  h+='<h2>'+li.title+'</h2><div class="level-title">'+li.sub+'</div>';
+  h+='<div class="desc-text">'+li.desc+'</div>';
+  h+='<ul class="obj-list">';
+  li.objs.forEach((o,i)=>h+='<li class="'+(levelObjs[curLevel][i]?'done':'')+'">'+o+'</li>');
+  h+='</ul>';
+  // per-level controls
+  switch(curLevel){
+    case 0:h+=`<div style="font-size:12px;color:var(--text-muted)">已完成平移: <span style="color:var(--sv)">${L1.completed}/3</span></div><div style="font-size:12px;color:var(--text-muted);margin-top:4px">💡 拖动蓝色三角形到绿色目标位置</div>`;break;
+    case 1:h+=`<div class="slider-row"><label>旋转角度</label><input type="range" min="0" max="360" value="${L2.angle}" oninput="L2.angle=+this.value;document.getElementById('rotVal').textContent=this.value+'°';draw()" onchange="this.blur();checkL2();renderPanel()"><span class="val" id="rotVal">${L2.angle}°</span></div><div style="font-size:12px;color:var(--text-muted)">目标角度: <span style="color:#22c55e">${L2.targetAngle}°</span> | 已完成: <span style="color:var(--sv)">${L2.completed}/3</span></div>`;break;
+    case 2:h+=`<div style="margin:6px 0"><button class="act-btn" onclick="L3.mode='axis';renderPanel();draw()" style="${L3.mode==='axis'?'border-color:#6366f1':''}">轴对称</button><button class="act-btn" onclick="L3.mode='point';renderPanel();draw()" style="${L3.mode==='point'?'border-color:#6366f1':''}">点对称</button></div>`;
+      if(L3.mode==='axis')h+=`<div class="slider-row"><label>对称轴角度</label><input type="range" min="0" max="180" value="${L3.axisAngle}" oninput="L3.axisAngle=+this.value;draw()" onchange="this.blur()"><span class="val">${L3.axisAngle}°</span></div>`;
+      h+=`<button class="act-btn green" onclick="doReflect()">执行${L3.mode==='axis'?'轴':'点'}对称变换</button>`;
+      if(L3.reflected&&L3.pointDone)h+=`<button class="act-btn" onclick="judgeSymmetry()">判断对称类型 ✓</button>`;break;
+    case 3:h+=`<div class="slider-row"><label>缩放比例</label><input type="range" min="20" max="300" value="${Math.round(L4.scale*100)}" oninput="L4.scale=this.value/100;document.getElementById('scaleVal').textContent=L4.scale.toFixed(2);draw()" onchange="this.blur();checkL4();renderPanel()"><span class="val" id="scaleVal">${L4.scale.toFixed(2)}</span></div><div style="font-size:12px;color:var(--text-muted)">目标比例: <span style="color:#22c55e">${L4.targetScale.toFixed(2)}</span> | 已完成: <span style="color:var(--sv)">${L4.completed}/2</span></div>`;break;
+    case 4:h+=`<div style="margin:6px 0"><button class="act-btn" onclick="setPoly(3)" style="${L5.poly===3?'border-color:#6366f1':''}">正三角形</button><button class="act-btn" onclick="setPoly(4)" style="${L5.poly===4?'border-color:#6366f1':''}">正方形</button><button class="act-btn" onclick="setPoly(5)" style="${L5.poly===5?'border-color:#6366f1':''}">正五边形</button><button class="act-btn" onclick="setPoly(6)" style="${L5.poly===6?'border-color:#6366f1':''}">正六边形</button></div>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted);margin:6px 0">内角: <span style="color:var(--sv)">${((L5.poly-2)*180/L5.poly).toFixed(0)}°</span> × <span style="color:var(--sv)">${(360/((L5.poly-2)*180/L5.poly)).toFixed(2)}</span> ${(360%((L5.poly-2)*180/L5.poly)===0)?'= 360° ✅':'≠ 360° ❌'}</div>`;
+      if([3,4,6].includes(L5.poly))h+=`<button class="act-btn green" onclick="fillTess()">铺满平面</button>`;
+      else h+=`<div style="font-size:12px;color:#ef4444;margin:6px 0">⚠️ 正${L5.poly}边形无法单独铺满平面</div>`;break;
+    case 5:h+=`<div style="margin:6px 0">${solids.map((s,i)=>`<button class="act-btn" onclick="setSolid(${i})" style="${L6.solid===i?'border-color:#6366f1':''}">${s.name}</button>`).join('')}</div>`;
+      h+=`<div style="font-size:13px;color:var(--text-muted);margin:8px 0">数一数 <b>${solids[L6.solid].name}</b> 的顶点、边、面：</div>`;
+      h+=`<div class="slider-row"><label>顶点 V</label><input type="number" min="0" max="99" value="${L6.userV}" oninput="L6.userV=this.value" style="width:50px;background:var(--btn-bg);color:var(--text);border:1px solid var(--btn-border);border-radius:4px;padding:4px;font-size:13px"></div>`;
+      h+=`<div class="slider-row"><label>边 E</label><input type="number" min="0" max="99" value="${L6.userE}" oninput="L6.userE=this.value" style="width:50px;background:var(--btn-bg);color:var(--text);border:1px solid var(--btn-border);border-radius:4px;padding:4px;font-size:13px"></div>`;
+      h+=`<div class="slider-row"><label>面 F</label><input type="number" min="0" max="99" value="${L6.userF}" oninput="L6.userF=this.value" style="width:50px;background:var(--btn-bg);color:var(--text);border:1px solid var(--btn-border);border-radius:4px;padding:4px;font-size:13px"></div>`;
+      h+=`<button class="act-btn green" onclick="verifyEuler()">验证 V−E+F=2</button>`;
+      if(L6.verified[L6.solid])h+=`<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ ${solids[L6.solid].V}−${solids[L6.solid].E}+${solids[L6.solid].F}=2 正确！</div>`;break;
+    case 6:h+=`<div style="margin:6px 0"><button class="act-btn" onclick="setFracType('koch')" style="${L7.type==='koch'?'border-color:#6366f1':''}">科赫雪花</button><button class="act-btn" onclick="setFracType('sierpinski')" style="${L7.type==='sierpinski'?'border-color:#6366f1':''}">谢尔宾斯基三角形</button></div>`;
+      h+=`<div class="slider-row"><label>迭代层数</label><input type="range" min="0" max="${L7.type==='koch'?5:7}" value="${L7.depth}" oninput="setDepth(+this.value)"><span class="val">${L7.depth}</span></div>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted);margin:4px 0">💡 增加迭代层数观察自相似结构</div>`;break;
+  }
+  if(done){h+=renderQuiz(curLevel);
+    if(quizPassed.has(curLevel)&&curLevel<6)h+=`<button class="act-btn green" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+    h+='<div class="learn-box">'+li.learn+'</div>';
+  }
+  panel.innerHTML=h;
+}
+
+function showResult(){
+  panel.style.display='none';bar.style.display='none';
+  let ov=document.getElementById('overlay');
+  ov.innerHTML='<div style="text-align:center"><div style="font-size:48px;margin-bottom:12px">🎉</div><h1 style="color:#6366f1;font-size:28px;margin-bottom:8px">恭喜通关！</h1><div style="color:var(--text-muted);margin-bottom:16px">你已掌握几何变换的核心概念</div><button class="start-btn" onclick="location.reload()">再玩一次</button></div>';
+  ov.style.display='flex';
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  let th=t();
+  // background
+  ctx.fillStyle=th.bg;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  switch(curLevel){case 0:drawL1();break;case 1:drawL2();break;case 2:drawL3();break;case 3:drawL4();break;case 4:drawL5();break;case 5:drawL6();break;case 6:drawL7();break}
+}
+
+function drawPoly(cx,cy,pts,color,fill){
+  ctx.beginPath();ctx.moveTo(cx+pts[0].x,cy+pts[0].y);
+  for(let i=1;i<pts.length;i++)ctx.lineTo(cx+pts[i].x,cy+pts[i].y);
+  ctx.closePath();
+  if(fill){ctx.fillStyle=color;ctx.globalAlpha=0.3;ctx.fill();ctx.globalAlpha=1}
+  ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();
+}
+
+function drawL1(){
+  // target
+  ctx.setLineDash([6,4]);drawPoly(L1.tx,L1.ty,L1.shape,'#22c55e',true);ctx.setLineDash([]);
+  // shape
+  drawPoly(L1.cx,L1.cy,L1.shape,'#3b82f6',true);
+  // vector arrow
+  if(L1.completed>0){ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(L1.cx,L1.cy);ctx.lineTo(L1.tx,L1.ty);ctx.stroke();ctx.setLineDash([])}
+  ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('dx='+(L1.tx-L1.cx).toFixed(0)+', dy='+(L1.ty-L1.cy).toFixed(0),W/2,30);
+}
+
+function drawL2(){
+  let cx=W/2,cy=H/2,r=80;
+  // target
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(L2.targetAngle*Math.PI/180);
+  ctx.beginPath();for(let i=0;i<L2.sides;i++){let a=i*2*Math.PI/L2.sides-Math.PI/2;ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r)}
+  ctx.closePath();ctx.strokeStyle='#22c55e';ctx.setLineDash([6,4]);ctx.lineWidth=2;ctx.stroke();ctx.setLineDash([]);ctx.restore();
+  // shape
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(L2.angle*Math.PI/180);
+  ctx.beginPath();for(let i=0;i<L2.sides;i++){let a=i*2*Math.PI/L2.sides-Math.PI/2;ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r)}
+  ctx.closePath();ctx.fillStyle='rgba(59,130,246,0.2)';ctx.fill();ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.stroke();
+  // mark first vertex
+  let a0=-Math.PI/2;ctx.beginPath();ctx.arc(Math.cos(a0)*r,Math.sin(a0)*r,5,0,Math.PI*2);ctx.fillStyle='#ef4444';ctx.fill();
+  ctx.restore();
+  // center dot
+  ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);ctx.fillStyle='#f59e0b';ctx.fill();
+}
+
+function drawL3(){
+  let cx=W/2,cy=H/2;
+  // original
+  drawPoly(cx,cy,L3.shape,'#3b82f6',true);
+  if(L3.mode==='axis'){
+    // axis line
+    let ang=L3.axisAngle*Math.PI/180;
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.setLineDash([8,4]);
+    ctx.beginPath();ctx.moveTo(cx-Math.cos(ang)*200,cy-Math.sin(ang)*200);ctx.lineTo(cx+Math.cos(ang)*200,cy+Math.sin(ang)*200);ctx.stroke();ctx.setLineDash([]);
+    if(L3.reflected){
+      let ang2=L3.axisAngle*Math.PI/180;
+      let ref=L3.shape.map(p=>{let dx=p.x,dy=p.y;let c=Math.cos(2*ang2),s=Math.sin(2*ang2);return{x:dx*c+dy*s,y:dx*s-dy*c}});
+      drawPoly(cx,cy,ref,'#22c55e',true);
+    }
+  } else {
+    ctx.beginPath();ctx.arc(cx,cy,5,0,Math.PI*2);ctx.fillStyle='#f59e0b';ctx.fill();
+    if(L3.pointDone){
+      let ref=L3.shape.map(p=>({x:-p.x,y:-p.y}));
+      drawPoly(cx,cy,ref,'#22c55e',true);
+    }
+  }
+}
+
+function drawL4(){
+  let cx=W/2,cy=H/2,base=60;
+  // target outline
+  let ts=L4.targetScale;
+  ctx.setLineDash([6,4]);ctx.strokeStyle='#22c55e';ctx.lineWidth=2;
+  ctx.strokeRect(cx-base*ts,cy-base*ts,base*2*ts,base*2*ts);ctx.setLineDash([]);
+  // scaled shape
+  let s=L4.scale;
+  ctx.fillStyle='rgba(59,130,246,0.2)';ctx.fillRect(cx-base*s,cy-base*s,base*2*s,base*2*s);
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.strokeRect(cx-base*s,cy-base*s,base*2*s,base*2*s);
+  // diagonal to show angle preserved
+  ctx.strokeStyle='rgba(99,102,241,0.5)';ctx.beginPath();ctx.moveTo(cx-base*s,cy-base*s);ctx.lineTo(cx+base*s,cy+base*s);ctx.stroke();
+  // labels
+  ctx.fillStyle=t().text;ctx.font='13px sans-serif';ctx.textAlign='center';
+  ctx.fillText('缩放比: '+s.toFixed(2),cx,cy+base*Math.max(s,ts)+30);
+}
+
+function drawL5(){
+  let n=L5.poly,cx=W/2,cy=H/2;
+  if(!L5.filled[n]){
+    // single polygon
+    let r=50,pts=[];
+    for(let i=0;i<n;i++){let a=i*2*Math.PI/n-Math.PI/2;pts.push({x:Math.cos(a)*r,y:Math.sin(a)*r})}
+    drawPoly(cx,cy,pts,'#3b82f6',true);
+    ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('内角: '+((n-2)*180/n).toFixed(0)+'°',cx,cy+r+30);
+  } else {
+    // tessellation
+    drawTessellation(n);
+  }
+}
+
+function drawTessellation(n){
+  ctx.lineWidth=1;
+  if(n===3){let s=50,h=s*Math.sqrt(3)/2;for(let row=-4;row<8;row++)for(let col=-4;col<Math.ceil(W/s)+4;col++){let x=col*s+(row%2?s/2:0),y=row*h;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+s/2,y+h);ctx.lineTo(x-s/2,y+h);ctx.closePath();ctx.fillStyle=`hsla(${(row*30+col*60)%360},60%,60%,0.3)`;ctx.fill();ctx.strokeStyle='rgba(99,102,241,0.4)';ctx.stroke();ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+s,y);ctx.lineTo(x+s/2,y+h);ctx.closePath();ctx.fillStyle=`hsla(${(row*30+col*60+180)%360},60%,60%,0.3)`;ctx.fill();ctx.stroke()}}
+  else if(n===4){let s=50;for(let row=-1;row<Math.ceil(H/s)+1;row++)for(let col=-1;col<Math.ceil(W/s)+1;col++){ctx.fillStyle=`hsla(${(row*40+col*50)%360},50%,60%,0.3)`;ctx.fillRect(col*s,row*s,s,s);ctx.strokeStyle='rgba(99,102,241,0.4)';ctx.strokeRect(col*s,row*s,s,s)}}
+  else if(n===6){let r=30,dx=r*1.5,dy=r*Math.sqrt(3);for(let row=-2;row<Math.ceil(H/dy)+2;row++)for(let col=-2;col<Math.ceil(W/dx)+2;col++){let cx=col*dx,cy=row*dy+(col%2?dy/2:0);ctx.beginPath();for(let i=0;i<6;i++){let a=i*Math.PI/3;ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r)}ctx.closePath();ctx.fillStyle=`hsla(${(row*50+col*70)%360},50%,60%,0.3)`;ctx.fill();ctx.strokeStyle='rgba(99,102,241,0.4)';ctx.stroke()}}
+}
+
+function drawL6(){
+  let s=solids[L6.solid],cx=W/2,cy=H/2,sc=100;
+  ctx.fillStyle=t().text;ctx.font='20px sans-serif';ctx.textAlign='center';
+  ctx.fillText(s.name,cx,40);
+  ctx.font='16px sans-serif';
+  ctx.fillText('V='+s.V+'  E='+s.E+'  F='+s.F+'  →  V−E+F='+( s.V-s.E+s.F),cx,H-30);
+  // draw wireframe with rotation
+  let time=Date.now()/3000,ca=Math.cos(time),sa=Math.sin(time);
+  let cb=Math.cos(0.3),sb=Math.sin(0.3);
+  function proj(v){let x=v[0],y=v[1],z=v[2];let x2=x*ca-z*sa,z2=x*sa+z*ca;let y2=y*cb-z2*sb;return[cx+x2*sc,cy+y2*sc]}
+  if(s.verts.length>0){
+    ctx.strokeStyle='#6366f1';ctx.lineWidth=2;
+    s.edges.forEach(e=>{let a=proj(s.verts[e[0]]),b=proj(s.verts[e[1]]);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()});
+    s.verts.forEach(v=>{let p=proj(v);ctx.beginPath();ctx.arc(p[0],p[1],4,0,Math.PI*2);ctx.fillStyle='#f59e0b';ctx.fill()});
+  } else {
+    // dodecahedron - draw simplified
+    let phi=(1+Math.sqrt(5))/2,verts=[];
+    [[-1,-1,-1],[-1,-1,1],[-1,1,-1],[-1,1,1],[1,-1,-1],[1,-1,1],[1,1,-1],[1,1,1]].forEach(v=>verts.push(v));
+    [[0,-phi,-1/phi],[0,-phi,1/phi],[0,phi,-1/phi],[0,phi,1/phi]].forEach(v=>verts.push(v));
+    [[-1/phi,0,-phi],[1/phi,0,-phi],[-1/phi,0,phi],[1/phi,0,phi]].forEach(v=>verts.push(v));
+    [[-phi,-1/phi,0],[-phi,1/phi,0],[phi,-1/phi,0],[phi,1/phi,0]].forEach(v=>verts.push(v));
+    let sc2=70;function proj2(v){let x=v[0],y=v[1],z=v[2];let x2=x*ca-z*sa,z2=x*sa+z*ca;let y2=y*cb-z2*sb;return[cx+x2*sc2,cy+y2*sc2]}
+    // draw edges by proximity
+    ctx.strokeStyle='#6366f1';ctx.lineWidth=1.5;
+    for(let i=0;i<verts.length;i++)for(let j=i+1;j<verts.length;j++){
+      let d=Math.hypot(verts[i][0]-verts[j][0],verts[i][1]-verts[j][1],verts[i][2]-verts[j][2]);
+      if(d<2.2){let a=proj2(verts[i]),b=proj2(verts[j]);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
+    }
+    verts.forEach(v=>{let p=proj2(v);ctx.beginPath();ctx.arc(p[0],p[1],3,0,Math.PI*2);ctx.fillStyle='#f59e0b';ctx.fill()});
+  }
+  requestAnimationFrame(()=>{if(curLevel===5)draw()});
+}
+
+function drawL7(){
+  ctx.strokeStyle='#6366f1';ctx.lineWidth=1.5;
+  if(L7.type==='koch')drawKoch();
+  else drawSierpinski();
+  ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.textAlign='center';
+  ctx.fillText((L7.type==='koch'?'科赫雪花':'谢尔宾斯基三角形')+' — 迭代层数: '+L7.depth,W/2,H-20);
+}
+
+function drawKoch(){
+  let cx=W/2,cy=H/2,r=Math.min(W,H)*0.35;
+  let pts=[];
+  for(let i=0;i<3;i++){let a=i*2*Math.PI/3-Math.PI/2;pts.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r})}
+  for(let d=0;d<L7.depth;d++){
+    let np=[];
+    for(let i=0;i<pts.length;i++){
+      let a=pts[i],b=pts[(i+1)%pts.length];
+      let dx=b.x-a.x,dy=b.y-a.y;
+      let p1={x:a.x+dx/3,y:a.y+dy/3};
+      let p2={x:a.x+dx/2-dy*Math.sqrt(3)/6,y:a.y+dy/2+dx*Math.sqrt(3)/6};
+      let p3={x:a.x+2*dx/3,y:a.y+2*dy/3};
+      np.push(a,p1,p2,p3);
+    }
+    pts=np;
+  }
+  ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+  for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);
+  ctx.closePath();ctx.fillStyle='rgba(99,102,241,0.15)';ctx.fill();ctx.stroke();
+}
+
+function drawSierpinski(){
+  let cx=W/2,cy=H/2,r=Math.min(W,H)*0.4;
+  let a={x:cx,y:cy-r},b={x:cx-r*Math.sqrt(3)/2,y:cy+r/2},c={x:cx+r*Math.sqrt(3)/2,y:cy+r/2};
+  function tri(p1,p2,p3,d){
+    if(d===0){ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.lineTo(p3.x,p3.y);ctx.closePath();ctx.fillStyle=`hsla(${260+d*20},60%,60%,0.4)`;ctx.fill();ctx.stroke();return}
+    let m12={x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2},m23={x:(p2.x+p3.x)/2,y:(p2.y+p3.y)/2},m13={x:(p1.x+p3.x)/2,y:(p1.y+p3.y)/2};
+    tri(p1,m12,m13,d-1);tri(m12,p2,m23,d-1);tri(m13,m23,p3,d-1);
+  }
+  tri(a,b,c,L7.depth);
+}
+
+// ===== Mouse interaction =====
+let dragStart=null;
+cv.addEventListener('mousedown',e=>{
+  if(curLevel===0){
+    let rect=cv.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+    if(Math.hypot(mx-L1.cx,my-L1.cy)<50){dragStart={x:mx-L1.cx,y:my-L1.cy};L1.dragging=true}
+  }
+});
+cv.addEventListener('mousemove',e=>{
+  if(curLevel===0&&L1.dragging){
+    let rect=cv.getBoundingClientRect(),mx=e.clientX-rect.left,my=e.clientY-rect.top;
+    L1.cx=mx-dragStart.x;L1.cy=my-dragStart.y;draw();
+  }
+});
+cv.addEventListener('mouseup',()=>{
+  if(curLevel===0&&L1.dragging){L1.dragging=false;checkL1()}
+});
+
+// touch support
+cv.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  if(curLevel===0){
+    let rect=cv.getBoundingClientRect(),mx=e.touches[0].clientX-rect.left,my=e.touches[0].clientY-rect.top;
+    if(Math.hypot(mx-L1.cx,my-L1.cy)<50){dragStart={x:mx-L1.cx,y:my-L1.cy};L1.dragging=true}
+  }
+},{passive:false});
+cv.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(curLevel===0&&L1.dragging){
+    let rect=cv.getBoundingClientRect(),mx=e.touches[0].clientX-rect.left,my=e.touches[0].clientY-rect.top;
+    L1.cx=mx-dragStart.x;L1.cy=my-dragStart.y;draw();
+  }
+},{passive:false});
+cv.addEventListener('touchend',()=>{if(curLevel===0&&L1.dragging){L1.dragging=false;checkL1()}});
+</script>
+</body>
+</html>

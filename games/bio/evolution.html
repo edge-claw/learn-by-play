@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>进化与自然选择 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;
+  --btn-bg:#1a1a4a;--btn-text:#60a5fa;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;
+  --btn-bg:#eef2ff;--btn-text:#4338ca;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden;height:100vh}
+canvas{display:block}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;background:linear-gradient(135deg,#f59e0b,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.overlay .sub{color:var(--text-sub);font-size:17px;margin-bottom:32px}
+.overlay .start-btn{padding:14px 48px;font-size:18px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:transform .2s}
+.overlay .start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.features .feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px}
+.features .feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:fixed;left:0;top:0;width:320px;height:calc(100% - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;display:none;padding:16px;font-size:15px;line-height:1.7;padding-bottom:24px}
+.panel h2{font-size:20px;color:var(--title-color);margin-bottom:6px}
+.panel h3{font-size:16px;color:var(--title-color);margin:10px 0 4px}
+.panel .obj{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:14px}
+.panel .obj .dot{width:14px;height:14px;border-radius:50%;border:2px solid #f59e0b;flex-shrink:0}
+.panel .obj .dot.done{background:#f59e0b}
+.panel .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:var(--learn-text);line-height:1.8}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#f59e0b;color:#fff;font-size:15px;cursor:pointer;transition:background .2s}
+.act-btn:hover{background:#d97706}
+.bar{position:fixed;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--panel-border);display:none;z-index:10;padding:0 16px;font-size:13px;align-items:center}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#c7d2fe;border-radius:2px}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="ov">
+<h1>🦎 进化与自然选择</h1>
+<p class="sub">Evolution — 从变异到物种形成</p>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="fi">🐦</div>变异遗传</div>
+<div class="feat"><div class="fi">🦁</div>自然选择</div>
+<div class="feat"><div class="fi">💪</div>适者生存</div>
+<div class="feat"><div class="fi">🎲</div>遗传漂变</div>
+<div class="feat"><div class="fi">🏔️</div>物种形成</div>
+<div class="feat"><div class="fi">🌳</div>系统发育</div>
+<div class="feat"><div class="fi">🧑</div>人类进化</div>
+</div>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"></div>
+<script>
+let isDark=true;
+const TH={dark:{bg1:'#0a1a0a',bg2:'#0d1a0d',bg3:'#0a0a1a',grid:'rgba(245,158,11,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)'},light:{bg1:'#f5f0e0',bg2:'#f0f2f0',bg3:'#e8ede0',grid:'rgba(245,158,11,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)'}};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{renderPanel()}catch(e){}}
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),ov=document.getElementById('ov');
+let W,H,curLevel=0,tick=0,mouse={x:0,y:0};
+const PL=320;
+const levelNames=['变异与遗传','自然选择模拟','适者生存','遗传漂变','物种形成','分子钟与系统发育','人类进化时间线'];
+const levelDescs=[
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>达尔文雀：</b>不同岛屿的雀鸟喙形各异，适应不同食物</div>画布上展示了不同喙形的达尔文雀。调节食物类型，观察哪种喙形最适合当前环境。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>模拟：</b>捕食者-猎物互动，颜色伪装 vs 被发现</div>猎物有不同体色，点击画布"捕食"你能看到的猎物。与背景色接近的猎物更难被发现，存活率更高。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>压力：</b>改变环境参数（温度/食物/天敌），观察种群适应</div>调节环境压力参数，观察种群特征如何在多代中发生变化，理解选择压力的作用。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>随机：</b>小种群中等位基因频率随机波动（非适应性变化）</div>比较大种群和小种群中等位基因频率的变化。小种群中随机事件影响更大，可能导致等位基因固定或丢失。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>隔离：</b>地理屏障 → 基因流中断 → 独立进化 → 新物种</div>在两个种群之间放置地理屏障，观察它们如何独立进化，最终形成生殖隔离的新物种。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>工具：</b>DNA序列差异 ∝ 分化时间 → 构建进化树</div>比较不同物种的DNA序列差异，利用分子钟原理估算分化时间，构建系统发育树。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>历程：</b>700万年前 → 南方古猿 → 直立人 → 智人</div>沿时间线探索人类进化的关键节点：直立行走、工具使用、脑容量增大、语言出现。'
+];
+const levelObjTexts=[
+['观察3种不同喙形','匹配喙形与食物类型','理解变异的遗传基础'],
+['捕食10只猎物','观察3代后的种群变化','发现伪装色的优势'],
+['调节温度观察适应','调节食物观察变化','运行5代以上模拟'],
+['运行大种群模拟(100)','运行小种群模拟(10)','观察等位基因固定现象'],
+['放置地理屏障','运行50代独立进化','观察生殖隔离形成'],
+['比较3对物种DNA差异','构建系统发育树','估算分化时间'],
+['探索至少3个时间节点','识别关键进化特征','完成时间线全览']
+];
+const learnTexts=[
+'💡 达尔文在加拉帕戈斯群岛观察到13种雀鸟，喙形各异：大地雀的粗壮喙适合压碎硬种子，仙人掌雀的细长喙适合探入花朵取蜜，啄木雀用工具(仙人掌刺)挖出昆虫。变异来源：基因突变(随机)和有性生殖的重组。BMP4基因的表达差异决定喙的宽度和深度。',
+'💡 自然选择的三个条件：①变异(个体间存在差异)②遗传(差异可传给后代)③差异繁殖(某些变异在特定环境中更有利)。经典案例：英国胡椒蛾——工业革命前浅色型占优(树皮浅色)，工业污染后深色型占优(树皮变黑)，清洁空气法案后浅色型又恢复。这是方向性选择的教科书案例。',
+'💡 适应是自然选择的结果，不是目的。环境变化时，已有的变异中适合新环境的个体存活率更高。北极熊的白色毛皮、骆驼的驼峰、仙人掌的针状叶都是长期选择的结果。注意：个体不会"为了适应"而改变，是种群中已有的有利变异被选择保留。拉马克的"用进废退"已被否定。',
+'💡 遗传漂变是等位基因频率的随机变化，在小种群中效应显著。瓶颈效应：种群骤减后幸存者的基因不代表原种群(如猎豹遗传多样性极低)。建立者效应：少数个体建立新种群(如阿米什人的Ellis-van Creveld综合征高发)。漂变是非适应性的，可能固定有害等位基因。',
+'💡 物种形成最常见的模式是异域物种形成：地理屏障(山脉、河流、海洋)隔断基因流→两个种群独立积累突变→生殖隔离形成(合子前：行为/时间/机械隔离；合子后：杂种不活/不育)→新物种。同域物种形成也存在：如多倍体(植物常见)、生态位分化(如非洲慈鲷)。',
+'💡 分子钟假说：DNA突变以大致恒定的速率积累，序列差异与分化时间成正比。人与黑猩猩DNA差异约1.2%，分化约600-700万年前。系统发育树用最大似然法或贝叶斯方法构建，反映物种间的进化关系。注意：分子钟不是完美的钟——不同基因、不同谱系的突变速率有差异。',
+'💡 人类进化关键节点：700万年前与黑猩猩分化→400万年前南方古猿(Lucy，直立行走)→250万年前能人(最早石器)→180万年前直立人(走出非洲，用火)→30万年前智人(非洲起源)→7万年前走出非洲→1万年前农业革命。脑容量：400ml(南方古猿)→900ml(直立人)→1400ml(智人)。'
+];
+let levelObjs=levelObjTexts.map(a=>a.map(()=>false));
+let L={};
+function resetLevel(li){
+  L={};levelObjs[li]=levelObjs[li].map(()=>false);
+  if(li===0){L.beakType=0;L.foodType=0;L.beaksSeen=new Set();L.matched=new Set();
+    L.beaks=[{name:'粗壮喙',food:'硬种子',shape:'thick',color:'#ef4444'},{name:'细长喙',food:'花蜜',shape:'thin',color:'#3b82f6'},{name:'尖锐喙',food:'昆虫',shape:'sharp',color:'#22c55e'}];
+    L.foods=['硬种子','花蜜','昆虫'];}
+  if(li===1){L.prey=[];L.gen=0;L.caught=0;L.bgColor='#4a7c3a';
+    for(let i=0;i<30;i++){let hue=Math.random()*360;L.prey.push({x:Math.random(),y:Math.random(),hue:hue,alive:true,fitness:0});}
+    updateFitness();}
+  if(li===2){L.temp=20;L.food=50;L.gen=0;L.popSize=50;L.avgTrait=50;L.history=[];}
+  if(li===3){L.bigPop=[];L.smallPop=[];L.bigFreq=0.5;L.smallFreq=0.5;L.bigHist=[0.5];L.smallHist=[0.5];L.gen=0;L.fixed=false;}
+  if(li===4){L.barrier=false;L.gen=0;L.pop1Trait=50;L.pop2Trait=50;L.divergence=0;L.isolated=false;}
+  if(li===5){L.compared=new Set();L.treeBuilt=false;L.timesEstimated=false;
+    L.species=[{name:'人类',seq:'ATGCGATCGA'},{name:'黑猩猩',seq:'ATGCGATCGC'},{name:'大猩猩',seq:'ATGCGATTGA'},{name:'猩猩',seq:'ATGCGCTCGA'},{name:'猕猴',seq:'ATGCGCTCGC'}];}
+  if(li===6){L.explored=new Set();L.features=new Set();L.allViewed=false;
+    L.events=[
+      {year:-7000000,name:'人猿分化',desc:'与黑猩猩共同祖先分化',icon:'🐒',trait:'直立行走前兆'},
+      {year:-4000000,name:'南方古猿',desc:'Lucy，直立行走，脑容量400ml',icon:'🦴',trait:'直立行走'},
+      {year:-2500000,name:'能人',desc:'最早石器工具(奥尔杜万)',icon:'🪨',trait:'工具使用'},
+      {year:-1800000,name:'直立人',desc:'走出非洲，用火，脑容量900ml',icon:'🔥',trait:'用火'},
+      {year:-300000,name:'智人出现',desc:'非洲起源，脑容量1400ml',icon:'🧠',trait:'语言能力'},
+      {year:-70000,name:'走出非洲',desc:'智人扩散到全球',icon:'🌍',trait:'文化传播'},
+      {year:-10000,name:'农业革命',desc:'定居、驯化动植物',icon:'🌾',trait:'文明基础'}
+    ];}
+}
+function updateFitness(){
+  let bgH=100;
+  L.prey.forEach(p=>{if(p.alive){let diff=Math.abs(p.hue-bgH);if(diff>180)diff=360-diff;p.fitness=1-diff/180;}});
+}
+function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight-36;}
+window.onresize=resize;resize();
+cv.onmousemove=e=>{const r=cv.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;};
+cv.onmousedown=e=>{const r=cv.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;
+  if(curLevel===1){
+    L.prey.forEach(p=>{if(!p.alive)return;let px=cx(p.x),py=cy(p.y);if(Math.abs(mouse.x-px)<15&&Math.abs(mouse.y-py)<15){p.alive=false;L.caught++;if(L.caught>=10)completeObj(0);renderPanel();}});
+  }
+  if(curLevel===6){
+    L.events.forEach((ev,i)=>{let ex=cx(0.1+i*0.12),ey=cy(0.5);if(Math.abs(mouse.x-ex)<20&&Math.abs(mouse.y-ey)<30){L.explored.add(i);L.features.add(ev.trait);if(L.explored.size>=3)completeObj(0);if(L.features.size>=3)completeObj(1);if(L.explored.size>=7){L.allViewed=true;completeObj(2);}renderPanel();}});
+  }
+};
+function cx(r){return PL+(W-PL)*r;}
+function cy(r){return H*r;}
+function startGame(){ov.style.display='none';panel.style.display='block';bar.style.display='flex';resetLevel(0);renderPanel();renderBar();}
+function goLevel(li){if(li<0||li>6)return;curLevel=li;resetLevel(li);renderPanel();renderBar();}
+window.goLevel=goLevel;
+function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel();renderBar();}}
+function renderBar(){bar.innerHTML='<span style="color:var(--text-muted)">🦎 '+levelNames[curLevel]+'</span>';}
+function _stageNav(){let h='<div class="stage-nav"><div class="sn-bar">';for(let i=0;i<7;i++){let cls=levelObjs[i].every(v=>v)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;}h+=`</div><div class="sn-info">第${curLevel+1}/7关 · ${levelNames[curLevel]}</div></div>`;return h;}
+function _summaryHTML(){let done=levelObjs.filter(a=>a.every(v=>v)).length;let h='<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握进化论的核心知识</div><div class="summary-stats"><div class="summary-stat"><div class="num">'+done+'</div><div class="label">完成关卡</div></div><div class="summary-stat"><div class="num">'+(done*3)+'</div><div class="label">达成目标</div></div></div><div class="summary-keys"><div>🐦 变异+遗传+差异繁殖=自然选择</div><div>🎲 遗传漂变：小种群随机效应</div><div>🏔️ 地理隔离→生殖隔离→新物种</div><div>🧑 人类进化：700万年的旅程</div></div></div>';return h;}
+function renderPanel(){
+  let li=curLevel,h=_stageNav();
+  h+=`<h2>${levelNames[li]}</h2><p style="color:var(--text-sub);font-size:14px;margin:6px 0 10px">${levelDescs[li]}</p>`;
+  h+=`<h3>🎯 目标</h3>`;
+  for(let i=0;i<3;i++){let d=levelObjs[li][i]?'done':'';h+=`<div class="obj"><div class="dot ${d}"></div>${levelObjTexts[li][i]}</div>`;}
+  if(li===0){
+    h+=`<h3>操作</h3>`;
+    L.beaks.forEach((b,i)=>{h+=`<button class="act-btn" onclick="viewBeak(${i})">🐦 ${b.name} → ${b.food}</button>`;});
+    h+=`<p style="color:var(--text-sub);font-size:12px;margin-top:4px">已观察: ${L.beaksSeen.size}/3 种喙形</p>`;
+  }
+  if(li===1){
+    h+=`<h3>操作</h3><p style="color:var(--text-sub);font-size:13px">点击画布上的猎物来捕食（与背景色接近的更难发现）</p>`;
+    h+=`<button class="act-btn" onclick="nextGenPrey()">🔄 繁殖下一代 (第${L.gen}代)</button>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px">已捕食: ${L.caught} | 存活: ${L.prey.filter(p=>p.alive).length}</p>`;
+  }
+  if(li===2){
+    h+=`<h3>操作</h3>`;
+    h+=`<div style="margin:6px 0"><label style="font-size:13px;color:var(--text-sub)">温度: ${L.temp}°C</label><br><input type="range" min="-20" max="50" value="${L.temp}" style="width:100%" oninput="L.temp=+this.value;renderPanel()"></div>`;
+    h+=`<div style="margin:6px 0"><label style="font-size:13px;color:var(--text-sub)">食物丰度: ${L.food}%</label><br><input type="range" min="0" max="100" value="${L.food}" style="width:100%" oninput="L.food=+this.value;renderPanel()"></div>`;
+    h+=`<button class="act-btn" onclick="runAdaptGen()">⏩ 运行一代 (第${L.gen}代)</button>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px">种群特征均值: ${L.avgTrait.toFixed(1)}</p>`;
+  }
+  if(li===3){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="driftGen('big')">🔵 大种群(100)繁殖一代</button>`;
+    h+=`<button class="act-btn" onclick="driftGen('small')">🔴 小种群(10)繁殖一代</button>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px">代数: ${L.gen} | 大种群A频率: ${L.bigFreq.toFixed(2)} | 小种群A频率: ${L.smallFreq.toFixed(2)}</p>`;
+  }
+  if(li===4){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="placeBarrier()" ${L.barrier?'disabled':''}>${L.barrier?'✅ 屏障已放置':'🏔️ 放置地理屏障'}</button>`;
+    h+=`<button class="act-btn" onclick="evolveSpeciation()" ${!L.barrier?'disabled':''}>⏩ 进化10代 (已${L.gen}代)</button>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px">种群1特征: ${L.pop1Trait.toFixed(1)} | 种群2特征: ${L.pop2Trait.toFixed(1)} | 差异: ${L.divergence.toFixed(1)}</p>`;
+  }
+  if(li===5){
+    h+=`<h3>操作</h3>`;
+    for(let i=0;i<L.species.length-1;i++){for(let j=i+1;j<L.species.length;j++){
+      let key=i+'-'+j;let done=L.compared.has(key);
+      if(i<2&&j<3)h+=`<button class="act-btn" onclick="compareDNA(${i},${j})" ${done?'disabled':''}>${done?'✅':'🔬'} ${L.species[i].name} vs ${L.species[j].name}</button>`;
+    }}
+    h+=`<button class="act-btn" onclick="buildTree()" ${L.compared.size<3?'disabled':''}>🌳 构建系统发育树</button>`;
+    h+=`<button class="act-btn" onclick="estimateTime()" ${!L.treeBuilt?'disabled':''}>⏰ 估算分化时间</button>`;
+  }
+  if(li===6){
+    h+=`<h3>操作</h3><p style="color:var(--text-sub);font-size:13px">点击画布上的时间节点探索人类进化历程</p>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px">已探索: ${L.explored.size}/7 个节点</p>`;
+  }
+  if(levelObjs[li].every(v=>v)){
+    h+=`<div class="learn-box">${learnTexts[li]}</div>`;
+    if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+    if(li===6)h+=_summaryHTML();
+  }
+  panel.innerHTML=h;
+}
+// Actions
+window.viewBeak=function(i){L.beakType=i;L.beaksSeen.add(i);if(L.beaksSeen.size>=3){completeObj(0);completeObj(1);completeObj(2);}renderPanel();};
+window.nextGenPrey=function(){
+  let survivors=L.prey.filter(p=>p.alive);if(survivors.length===0)return;
+  L.prey=[];for(let i=0;i<30;i++){let parent=survivors[Math.floor(Math.random()*survivors.length)];
+    L.prey.push({x:Math.random(),y:Math.random(),hue:parent.hue+(Math.random()-0.5)*20,alive:true,fitness:0});}
+  L.gen++;updateFitness();if(L.gen>=3){completeObj(1);completeObj(2);}renderPanel();
+};
+window.runAdaptGen=function(){
+  let pressure=(L.temp-20)/30;L.avgTrait=Math.max(10,Math.min(90,L.avgTrait+pressure*5+(L.food-50)*0.1));
+  L.gen++;L.history.push(L.avgTrait);
+  if(Math.abs(L.temp-20)>10)completeObj(0);if(Math.abs(L.food-50)>20)completeObj(1);if(L.gen>=5)completeObj(2);renderPanel();
+};
+window.driftGen=function(type){
+  L.gen++;
+  if(type==='big'){let n=100;let a=Math.round(L.bigFreq*n);let newA=0;for(let i=0;i<n;i++)if(Math.random()<a/n)newA++;L.bigFreq=newA/n;L.bigHist.push(L.bigFreq);completeObj(0);}
+  else{let n=10;let a=Math.round(L.smallFreq*n);let newA=0;for(let i=0;i<n;i++)if(Math.random()<a/n)newA++;L.smallFreq=newA/n;L.smallHist.push(L.smallFreq);completeObj(1);
+    if(L.smallFreq<=0||L.smallFreq>=1){L.fixed=true;completeObj(2);}}
+  renderPanel();
+};
+window.placeBarrier=function(){L.barrier=true;completeObj(0);renderPanel();};
+window.evolveSpeciation=function(){
+  for(let i=0;i<10;i++){L.pop1Trait+=(Math.random()-0.5)*3;L.pop2Trait+=(Math.random()-0.5)*3;}
+  L.gen+=10;L.divergence=Math.abs(L.pop1Trait-L.pop2Trait);
+  if(L.gen>=50){completeObj(1);if(L.divergence>20){L.isolated=true;completeObj(2);}}renderPanel();
+};
+window.compareDNA=function(i,j){let key=i+'-'+j;L.compared.add(key);if(L.compared.size>=3)completeObj(0);renderPanel();};
+window.buildTree=function(){L.treeBuilt=true;completeObj(1);renderPanel();};
+window.estimateTime=function(){L.timesEstimated=true;completeObj(2);renderPanel();};
+function drawBg(){const th=t();const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,th.bg1);g.addColorStop(0.5,th.bg2);g.addColorStop(1,th.bg3);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.strokeStyle=th.grid;ctx.lineWidth=1;for(let x=PL;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(W,y);ctx.stroke();}}
+function drawBird(x,y,size,beakType,color){
+  ctx.save();ctx.translate(x,y);
+  ctx.beginPath();ctx.arc(0,0,size,0,Math.PI*2);ctx.fillStyle=color+'88';ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();
+  ctx.beginPath();ctx.arc(-size*0.3,-size*0.3,size*0.15,0,Math.PI*2);ctx.fillStyle='#111';ctx.fill();
+  if(beakType==='thick'){ctx.beginPath();ctx.moveTo(size*0.5,0);ctx.lineTo(size*1.2,-size*0.2);ctx.lineTo(size*1.2,size*0.2);ctx.closePath();ctx.fillStyle='#f59e0b';ctx.fill();}
+  else if(beakType==='thin'){ctx.beginPath();ctx.moveTo(size*0.5,0);ctx.lineTo(size*1.5,-size*0.05);ctx.lineTo(size*1.5,size*0.05);ctx.closePath();ctx.fillStyle='#f59e0b';ctx.fill();}
+  else{ctx.beginPath();ctx.moveTo(size*0.5,-size*0.1);ctx.lineTo(size*1.3,0);ctx.lineTo(size*0.5,size*0.1);ctx.closePath();ctx.fillStyle='#f59e0b';ctx.fill();}
+  ctx.restore();
+}
+function drawLevel0(){
+  let b=L.beaks[L.beakType];
+  drawBird(cx(0.5),cy(0.35),40,b.shape,b.color);
+  ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  ctx.fillText(b.name+' — 适合: '+b.food,cx(0.5),cy(0.55));
+  L.beaks.forEach((bk,i)=>{drawBird(cx(0.2+i*0.3),cy(0.75),25,bk.shape,L.beaksSeen.has(i)?bk.color:'#666');
+    ctx.fillStyle=L.beaksSeen.has(i)?bk.color:t().textMut;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText(bk.name,cx(0.2+i*0.3),cy(0.85));});
+}
+function drawLevel1(){
+  ctx.fillStyle=L.bgColor;ctx.fillRect(PL,0,W-PL,H);
+  L.prey.forEach(p=>{if(!p.alive)return;let px=cx(p.x),py=cy(p.y);
+    ctx.beginPath();ctx.arc(px,py,8,0,Math.PI*2);ctx.fillStyle=`hsl(${p.hue},60%,50%)`;ctx.fill();});
+  ctx.fillStyle=t().text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`第${L.gen}代 | 存活: ${L.prey.filter(p=>p.alive).length}/30`,cx(0.5),cy(0.06));
+}
+function drawLevel2(){
+  let midX=cx(0.5),midY=cy(0.4);
+  ctx.fillStyle=t().text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`环境: ${L.temp}°C, 食物${L.food}% | 第${L.gen}代`,midX,cy(0.08));
+  let barW=(W-PL)*0.6,barH=30,barX=cx(0.2),barY=midY;
+  ctx.fillStyle='#333';ctx.fillRect(barX,barY,barW,barH);
+  let fillW=barW*(L.avgTrait/100);ctx.fillStyle='#f59e0b';ctx.fillRect(barX,barY,fillW,barH);
+  ctx.fillStyle=t().text;ctx.font='13px sans-serif';ctx.fillText('种群特征: '+L.avgTrait.toFixed(1),midX,barY-10);
+  if(L.history.length>1){
+    ctx.beginPath();ctx.strokeStyle='#22c55e';ctx.lineWidth=2;
+    L.history.forEach((v,i)=>{let x=barX+i*(barW/Math.max(L.history.length-1,1)),y=cy(0.65)+(1-v/100)*100;
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();
+    ctx.fillStyle=t().textSec;ctx.font='11px sans-serif';ctx.fillText('特征变化趋势',midX,cy(0.85));
+  }
+}
+function drawLevel3(){
+  let midX=cx(0.5),graphY=cy(0.15),graphH=H*0.35,graphW=(W-PL)*0.8;
+  ctx.fillStyle=t().text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('等位基因A频率变化',midX,graphY-10);
+  ctx.strokeStyle='#ffffff22';ctx.strokeRect(cx(0.1),graphY,graphW,graphH);
+  if(L.bigHist.length>1){ctx.beginPath();ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;
+    L.bigHist.forEach((v,i)=>{let x=cx(0.1)+i*(graphW/Math.max(L.bigHist.length-1,1)),y=graphY+graphH*(1-v);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();}
+  if(L.smallHist.length>1){ctx.beginPath();ctx.strokeStyle='#ef4444';ctx.lineWidth=2;
+    L.smallHist.forEach((v,i)=>{let x=cx(0.1)+i*(graphW/Math.max(L.smallHist.length-1,1)),y=graphY+graphH*(1-v);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();}
+  ctx.fillStyle='#3b82f6';ctx.font='12px sans-serif';ctx.textAlign='left';ctx.fillText('🔵 大种群(N=100)',cx(0.1),graphY+graphH+20);
+  ctx.fillStyle='#ef4444';ctx.fillText('🔴 小种群(N=10)',cx(0.1),graphY+graphH+38);
+  if(L.fixed){ctx.fillStyle='#f59e0b';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('⚠️ 小种群等位基因已固定！',midX,cy(0.85));}
+}
+function drawLevel4(){
+  let midX=cx(0.5),midY=cy(0.4),r=60;
+  ctx.beginPath();ctx.arc(cx(0.3),midY,r,0,Math.PI*2);ctx.fillStyle='#3b82f644';ctx.fill();ctx.strokeStyle='#3b82f6';ctx.stroke();
+  ctx.beginPath();ctx.arc(cx(0.7),midY,r,0,Math.PI*2);ctx.fillStyle='#ef444444';ctx.fill();ctx.strokeStyle='#ef4444';ctx.stroke();
+  ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('种群1: '+L.pop1Trait.toFixed(1),cx(0.3),midY+r+20);ctx.fillText('种群2: '+L.pop2Trait.toFixed(1),cx(0.7),midY+r+20);
+  if(L.barrier){ctx.fillStyle='#78716c';ctx.fillRect(midX-5,midY-r-20,10,r*2+40);ctx.fillStyle='#f59e0b';ctx.font='12px sans-serif';ctx.fillText('🏔️ 地理屏障',midX,midY-r-30);}
+  if(L.isolated){ctx.fillStyle='#22c55e';ctx.font='bold 16px sans-serif';ctx.fillText('🎉 生殖隔离形成！两个新物种！',midX,cy(0.85));}
+}
+function drawLevel5(){
+  let midX=cx(0.5);
+  if(L.treeBuilt){
+    let treeY=cy(0.15);ctx.strokeStyle='#22c55e';ctx.lineWidth=2;
+    let sp=L.species;let xs=sp.map((_,i)=>cx(0.15+i*0.17));
+    sp.forEach((s,i)=>{ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText(s.name,xs[i],treeY);});
+    ctx.beginPath();ctx.moveTo(xs[0],treeY+15);ctx.lineTo(xs[0],treeY+50);ctx.lineTo(xs[1],treeY+50);ctx.lineTo(xs[1],treeY+15);ctx.stroke();
+    ctx.beginPath();ctx.moveTo((xs[0]+xs[1])/2,treeY+50);ctx.lineTo((xs[0]+xs[1])/2,treeY+90);ctx.lineTo(xs[2],treeY+90);ctx.lineTo(xs[2],treeY+15);ctx.stroke();
+    ctx.beginPath();ctx.moveTo((xs[0]+xs[2])/2,treeY+90);ctx.lineTo((xs[0]+xs[2])/2,treeY+130);ctx.lineTo(xs[3],treeY+130);ctx.lineTo(xs[3],treeY+15);ctx.stroke();
+    ctx.beginPath();ctx.moveTo((xs[0]+xs[3])/2,treeY+130);ctx.lineTo((xs[0]+xs[3])/2,treeY+170);ctx.lineTo(xs[4],treeY+170);ctx.lineTo(xs[4],treeY+15);ctx.stroke();
+    if(L.timesEstimated){ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';
+      ctx.fillText('~600万年',xs[0]+30,treeY+45);ctx.fillText('~900万年',(xs[0]+xs[2])/2+30,treeY+85);
+      ctx.fillText('~1400万年',(xs[0]+xs[3])/2+30,treeY+125);ctx.fillText('~2500万年',(xs[0]+xs[4])/2+30,treeY+165);}
+  }else{
+    L.species.forEach((s,i)=>{ctx.fillStyle=t().text;ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText(s.name+': '+s.seq,midX,cy(0.15+i*0.12));});
+  }
+}
+function drawLevel6(){
+  let lineY=cy(0.5),lineX1=cx(0.05),lineX2=cx(0.95);
+  ctx.strokeStyle='#f59e0b44';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(lineX1,lineY);ctx.lineTo(lineX2,lineY);ctx.stroke();
+  L.events.forEach((ev,i)=>{
+    let ex=cx(0.05+i*0.13),ey=lineY;let explored=L.explored.has(i);
+    ctx.beginPath();ctx.arc(ex,ey,explored?18:12,0,Math.PI*2);ctx.fillStyle=explored?'#f59e0b':'#f59e0b44';ctx.fill();
+    ctx.fillStyle=explored?'#fff':t().textMut;ctx.font=explored?'16px sans-serif':'12px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(ev.icon,ex,ey);
+    ctx.textBaseline='top';ctx.fillStyle=explored?t().text:t().textMut;ctx.font='10px sans-serif';
+    let yearStr=ev.year<=-1000000?(ev.year/1000000)+'百万年前':(ev.year/1000)+'千年前';
+    ctx.fillText(yearStr,ex,ey+25);
+    if(explored){ctx.fillStyle='#f59e0b';ctx.font='bold 11px sans-serif';ctx.fillText(ev.name,ex,ey-30);ctx.fillStyle=t().textSec;ctx.font='10px sans-serif';ctx.fillText(ev.desc,ex,ey+40);}
+  });
+}
+function mainLoop(){requestAnimationFrame(mainLoop);tick++;ctx.clearRect(0,0,W,H);drawBg();
+  if(curLevel===0)drawLevel0();else if(curLevel===1)drawLevel1();else if(curLevel===2)drawLevel2();
+  else if(curLevel===3)drawLevel3();else if(curLevel===4)drawLevel4();else if(curLevel===5)drawLevel5();
+  else if(curLevel===6)drawLevel6();}
+requestAnimationFrame(mainLoop);
+</script>
+</body>
+</html>

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>生态与食物网 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden;height:100vh}
+canvas{display:block}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;background:linear-gradient(135deg,#22c55e,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.overlay .sub{color:var(--text-sub);font-size:17px;margin-bottom:32px}
+.overlay .start-btn{padding:14px 48px;font-size:18px;background:linear-gradient(135deg,#22c55e,#059669);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:transform .2s}
+.overlay .start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.features .feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px}
+.features .feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:fixed;left:0;top:0;width:320px;height:calc(100% - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;display:none;padding:16px;font-size:15px;line-height:1.7;padding-bottom:24px}
+.panel h2{font-size:20px;color:var(--title-color);margin-bottom:6px}
+.panel h3{font-size:16px;color:var(--title-color);margin:10px 0 4px}
+.panel .obj{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:14px}
+.panel .obj .dot{width:14px;height:14px;border-radius:50%;border:2px solid #22c55e;flex-shrink:0}
+.panel .obj .dot.done{background:#22c55e}
+.panel .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:var(--learn-text);line-height:1.8}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-size:15px;cursor:pointer;transition:background .2s}
+.act-btn:hover{background:#16a34a}
+.bar{position:fixed;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--panel-border);display:none;z-index:10;padding:0 16px;font-size:13px;align-items:center}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#c7d2fe;border-radius:2px}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="ov">
+<h1>🌿 生态与食物网</h1>
+<p class="sub">Ecosystem — 从食物链到生物多样性</p>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="fi">🌱</div>生产者</div>
+<div class="feat"><div class="fi">🔗</div>食物链</div>
+<div class="feat"><div class="fi">🕸️</div>食物网</div>
+<div class="feat"><div class="fi">📊</div>生态金字塔</div>
+<div class="feat"><div class="fi">📈</div>种群动态</div>
+<div class="feat"><div class="fi">🌳</div>生态演替</div>
+<div class="feat"><div class="fi">🦋</div>生物多样性</div>
+</div>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"></div>
+<script>
+let isDark=true;
+const TH={dark:{bg1:'#0a1a0a',bg2:'#0d1a0d',bg3:'#0a0a1a',grid:'rgba(34,197,94,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)'},light:{bg1:'#e8f5e8',bg2:'#f0f5f0',bg3:'#e0f0e0',grid:'rgba(34,197,94,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)'}};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{renderPanel()}catch(e){}}
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),ov=document.getElementById('ov');
+let W,H,curLevel=0,tick=0,mouse={x:0,y:0};
+const PL=320;
+const levelNames=['生产者/消费者/分解者','食物链与能量流','食物网','生态金字塔','种群动态','生态演替','生物多样性热点'];
+const levelDescs=[
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>角色：</b>生产者(光合作用) → 消费者(取食) → 分解者(分解)</div>画布上展示了一个生态系统。点击不同生物识别它们的营养级角色。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>规律：</b>能量沿食物链传递，每级损失约90%</div>构建一条食物链，观察能量如何从生产者流向顶级消费者，理解10%定律。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>复杂：</b>多条食物链交织成网，物种间相互依赖</div>添加和移除物种，观察食物网如何变化，理解关键种的重要性。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>三种：</b>能量金字塔 / 数量金字塔 / 生物量金字塔</div>切换不同类型的生态金字塔，观察各营养级的数值差异。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>模型：</b>Lotka-Volterra 捕食者-猎物振荡模型</div>调节参数观察猎物和捕食者种群的周期性振荡，理解种群动态平衡。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>过程：</b>初生演替(裸岩→地衣→苔藓→草→灌→乔) / 次生演替</div>推进演替阶段，观察群落如何从裸地发展为成熟森林。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>热点：</b>全球34个生物多样性热点区域，占地表2.3%却拥有50%物种</div>探索全球生物多样性热点地图，了解物种丰富度和威胁因素。'
+];
+const levelObjTexts=[
+['识别3个生产者','识别2个消费者','识别1个分解者'],
+['构建完整食物链(3级)','观察能量传递效率','理解10%定律'],
+['添加至少5个物种到食物网','移除1个物种观察影响','识别关键种'],
+['查看能量金字塔','查看数量金字塔','查看生物量金字塔'],
+['运行Lotka-Volterra模拟','观察种群振荡周期','调节参数改变振荡'],
+['推进到苔藓阶段','推进到灌木阶段','完成演替到成熟森林'],
+['探索3个热点区域','了解威胁因素','完成全球热点总览']
+];
+const learnTexts=[
+'💡 生态系统的三大功能群：生产者(自养生物)通过光合作用将太阳能转化为化学能，是能量的入口(植物、藻类、蓝藻)；消费者(异养生物)通过取食获取能量，分为初级(草食)、次级(肉食)、三级消费者；分解者(细菌、真菌)分解有机残体，将营养物质归还土壤，完成物质循环。',
+'💡 能量沿食物链单向流动，每个营养级只能利用上一级约10%的能量(Lindeman效率)。1000kcal植物→100kcal草食动物→10kcal肉食动物→1kcal顶级捕食者。这就是为什么食物链通常不超过4-5级，也是为什么素食比肉食更"节能"。能量最终以热能形式散失，不可循环利用。',
+'💡 食物网比食物链更真实地反映生态系统中的营养关系。关键种(keystone species)对生态系统影响远超其生物量比例——如海獭控制海胆数量，保护海藻林；狼控制鹿群，防止过度啃食。移除关键种可导致营养级联(trophic cascade)，整个生态系统结构崩溃。',
+'💡 三种生态金字塔：①能量金字塔永远是正金字塔(热力学第二定律)；②数量金字塔可能倒置(如1棵大树养活数千昆虫)；③生物量金字塔在海洋中可能倒置(浮游植物生物量<浮游动物，因为浮游植物周转率极高)。能量金字塔是最可靠的生态系统结构指标。',
+'💡 Lotka-Volterra模型描述捕食者-猎物动态：猎物增长率=r·N-a·N·P，捕食者增长率=b·N·P-m·P。结果是两个种群的周期性振荡，猎物峰值领先捕食者约1/4周期。经典案例：加拿大猞猁与雪兔的10年周期。实际生态系统更复杂：密度依赖、时滞、空间异质性等。',
+'💡 初生演替从裸岩开始：地衣(先锋种)→苔藓→草本→灌木→乔木(顶极群落)，耗时数百年。次生演替从已有土壤开始(如火灾后)，速度快得多(数十年)。演替的驱动力：物种改变环境→为后续物种创造条件(促进模型)。顶极群落与气候匹配：热带→雨林，温带→落叶林，寒带→针叶林。',
+'💡 全球34个生物多样性热点区域标准：①至少1500种特有维管植物②原始栖息地丧失≥70%。热点区域仅占地表2.3%，却拥有约50%的维管植物和42%的陆生脊椎动物。主要威胁：栖息地破坏(首要)、外来入侵种、过度利用、气候变化、污染。保护策略：建立保护区、生态廊道、可持续利用。'
+];
+let levelObjs=levelObjTexts.map(a=>a.map(()=>false));
+let L={};
+function resetLevel(li){
+  L={};levelObjs[li]=levelObjs[li].map(()=>false);
+  if(li===0){L.identified={producers:new Set(),consumers:new Set(),decomposers:new Set()};
+    L.organisms=[
+      {name:'草',icon:'🌱',type:'producer',x:0.2,y:0.7},{name:'树',icon:'🌳',type:'producer',x:0.4,y:0.6},{name:'藻类',icon:'🌿',type:'producer',x:0.6,y:0.75},
+      {name:'兔子',icon:'🐰',type:'consumer',x:0.3,y:0.4},{name:'鹰',icon:'🦅',type:'consumer',x:0.5,y:0.2},
+      {name:'蘑菇',icon:'🍄',type:'decomposer',x:0.7,y:0.5}
+    ];}
+  if(li===1){L.chain=[];L.chainSpecies=['🌱 草','🐰 兔子','🦊 狐狸','🦅 鹰'];L.energyShown=false;L.ruleShown=false;}
+  if(li===2){L.webSpecies=[{name:'草',icon:'🌱',level:0},{name:'树',icon:'🌳',level:0}];
+    L.allSpecies=[{name:'兔子',icon:'🐰',level:1,eats:['草']},{name:'鹿',icon:'🦌',level:1,eats:['草','树']},{name:'虫',icon:'🐛',level:1,eats:['树']},
+      {name:'狐狸',icon:'🦊',level:2,eats:['兔子','虫']},{name:'狼',icon:'🐺',level:2,eats:['兔子','鹿']},{name:'鹰',icon:'🦅',level:3,eats:['兔子','虫','狐狸']}];
+    L.removed=null;L.keystone=false;}
+  if(li===3){L.pyramidType=0;L.typesSeen=new Set();}
+  if(li===4){L.prey=100;L.pred=20;L.preyHist=[100];L.predHist=[20];L.gen=0;L.r=0.1;L.a=0.01;L.b=0.005;L.m=0.1;L.paramChanged=false;}
+  if(li===5){L.stage=0;L.stages=['裸岩','地衣','苔藓','草本','灌木','乔木(顶极)'];L.stageColors=['#78716c','#a3a3a3','#86efac','#22c55e','#15803d','#14532d'];}
+  if(li===6){L.explored=new Set();L.threats=false;L.allViewed=false;
+    L.hotspots=[
+      {name:'马达加斯加',x:0.62,y:0.65,species:12000,endemic:80,threat:'森林砍伐'},
+      {name:'巽他群岛',x:0.78,y:0.6,species:25000,endemic:60,threat:'棕榈油种植'},
+      {name:'地中海盆地',x:0.52,y:0.35,species:22500,endemic:52,threat:'城市化'},
+      {name:'加勒比群岛',x:0.25,y:0.45,species:12000,endemic:70,threat:'飓风+入侵种'},
+      {name:'安第斯热带',x:0.22,y:0.58,species:30000,endemic:50,threat:'采矿'},
+      {name:'西高止山脉',x:0.7,y:0.5,species:5000,endemic:45,threat:'茶园扩张'}
+    ];}
+}
+function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight-36;}
+window.onresize=resize;resize();
+cv.onmousemove=e=>{const r=cv.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;};
+cv.onmousedown=e=>{const r=cv.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;
+  if(curLevel===0){L.organisms.forEach(o=>{let ox=cx(o.x),oy=cy(o.y);if(Math.abs(mouse.x-ox)<25&&Math.abs(mouse.y-oy)<25){
+    if(o.type==='producer'){L.identified.producers.add(o.name);if(L.identified.producers.size>=3)completeObj(0);}
+    if(o.type==='consumer'){L.identified.consumers.add(o.name);if(L.identified.consumers.size>=2)completeObj(1);}
+    if(o.type==='decomposer'){L.identified.decomposers.add(o.name);completeObj(2);}
+    renderPanel();}});}
+  if(curLevel===6){L.hotspots.forEach((h,i)=>{let hx=cx(h.x),hy=cy(h.y);if(Math.abs(mouse.x-hx)<20&&Math.abs(mouse.y-hy)<20){
+    L.explored.add(i);L.threats=true;if(L.explored.size>=3){completeObj(0);completeObj(1);}if(L.explored.size>=6){L.allViewed=true;completeObj(2);}renderPanel();}});}
+};
+function cx(r){return PL+(W-PL)*r;}
+function cy(r){return H*r;}
+function startGame(){ov.style.display='none';panel.style.display='block';bar.style.display='flex';resetLevel(0);renderPanel();renderBar();}
+function goLevel(li){if(li<0||li>6)return;curLevel=li;resetLevel(li);renderPanel();renderBar();}
+window.goLevel=goLevel;
+function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel();renderBar();}}
+function renderBar(){bar.innerHTML='<span style="color:var(--text-muted)">🌿 '+levelNames[curLevel]+'</span>';}
+function _stageNav(){let h='<div class="stage-nav"><div class="sn-bar">';for(let i=0;i<7;i++){let cls=levelObjs[i].every(v=>v)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;}h+=`</div><div class="sn-info">第${curLevel+1}/7关 · ${levelNames[curLevel]}</div></div>`;return h;}
+function _summaryHTML(){let done=levelObjs.filter(a=>a.every(v=>v)).length;return '<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握生态学的核心知识</div><div class="summary-stats"><div class="summary-stat"><div class="num">'+done+'</div><div class="label">完成关卡</div></div><div class="summary-stat"><div class="num">'+(done*3)+'</div><div class="label">达成目标</div></div></div><div class="summary-keys"><div>🔗 能量单向流动，每级损失90%</div><div>🕸️ 食物网中关键种维持生态平衡</div><div>📈 Lotka-Volterra：捕食者-猎物振荡</div><div>🦋 生物多样性热点：2.3%面积，50%物种</div></div></div>';}
+function renderPanel(){
+  let li=curLevel,h=_stageNav();
+  h+=`<h2>${levelNames[li]}</h2><p style="color:var(--text-sub);font-size:14px;margin:6px 0 10px">${levelDescs[li]}</p>`;
+  h+=`<h3>🎯 目标</h3>`;
+  for(let i=0;i<3;i++){let d=levelObjs[li][i]?'done':'';h+=`<div class="obj"><div class="dot ${d}"></div>${levelObjTexts[li][i]}</div>`;}
+  if(li===0){
+    h+=`<h3>操作</h3><p style="color:var(--text-sub);font-size:13px">点击画布上的生物来识别它们的角色</p>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px">生产者: ${L.identified.producers.size}/3 | 消费者: ${L.identified.consumers.size}/2 | 分解者: ${L.identified.decomposers.size}/1</p>`;
+  }
+  if(li===1){
+    h+=`<h3>操作</h3>`;
+    L.chainSpecies.forEach((s,i)=>{let added=L.chain.includes(i);h+=`<button class="act-btn" onclick="addToChain(${i})" ${added?'disabled':''}>${added?'✅ ':''}${s}</button>`;});
+    if(L.chain.length>=3&&!L.energyShown)h+=`<button class="act-btn" onclick="showEnergy()">⚡ 显示能量传递</button>`;
+  }
+  if(li===2){
+    h+=`<h3>操作</h3>`;
+    L.allSpecies.forEach((s,i)=>{let inWeb=L.webSpecies.find(w=>w.name===s.name);
+      h+=`<button class="act-btn" onclick="toggleWebSpecies('${s.name}')">${inWeb?'❌ 移除':'➕ 添加'} ${s.icon} ${s.name}</button>`;});
+  }
+  if(li===3){
+    h+=`<h3>操作</h3>`;
+    ['能量金字塔','数量金字塔','生物量金字塔'].forEach((n,i)=>{
+      h+=`<button class="act-btn" onclick="showPyramid(${i})">${L.pyramidType===i?'👁️ ':''}${n}</button>`;});
+  }
+  if(li===4){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="runLV()">⏩ 运行10步 (步数:${L.gen})</button>`;
+    h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-sub)">猎物增长率r: ${L.r.toFixed(2)}</label><br><input type="range" min="1" max="30" value="${Math.round(L.r*100)}" style="width:100%" oninput="L.r=+this.value/100;L.paramChanged=true;renderPanel()"></div>`;
+    h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-sub)">捕食者死亡率m: ${L.m.toFixed(2)}</label><br><input type="range" min="1" max="30" value="${Math.round(L.m*100)}" style="width:100%" oninput="L.m=+this.value/100;L.paramChanged=true;renderPanel()"></div>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px">猎物: ${Math.round(L.prey)} | 捕食者: ${Math.round(L.pred)}</p>`;
+  }
+  if(li===5){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="advanceSuccession()">🌱 推进演替 → ${L.stages[Math.min(L.stage+1,5)]||'完成'}</button>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px">当前阶段: ${L.stages[L.stage]}</p>`;
+  }
+  if(li===6){
+    h+=`<h3>操作</h3><p style="color:var(--text-sub);font-size:13px">点击地图上的热点区域探索</p>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px">已探索: ${L.explored.size}/6 个热点</p>`;
+    if(L.explored.size>0){let last=L.hotspots[[...L.explored].pop()];h+=`<div style="background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:6px;padding:8px;margin-top:6px;font-size:12px"><b>${last.name}</b><br>物种数: ${last.species} | 特有率: ${last.endemic}%<br>主要威胁: ${last.threat}</div>`;}
+  }
+  if(levelObjs[li].every(v=>v)){
+    h+=`<div class="learn-box">${learnTexts[li]}</div>`;
+    if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+    if(li===6)h+=_summaryHTML();
+  }
+  panel.innerHTML=h;
+}
+// Actions
+window.addToChain=function(i){if(!L.chain.includes(i)){L.chain.push(i);if(L.chain.length>=3)completeObj(0);}renderPanel();};
+window.showEnergy=function(){L.energyShown=true;completeObj(1);L.ruleShown=true;completeObj(2);renderPanel();};
+window.toggleWebSpecies=function(name){
+  let idx=L.webSpecies.findIndex(w=>w.name===name);
+  if(idx>=0){L.webSpecies.splice(idx,1);L.removed=name;if(L.webSpecies.length>=5)completeObj(1);
+    let isKey=name==='狼'||name==='鹰';if(isKey){L.keystone=true;completeObj(2);}
+  }else{let sp=L.allSpecies.find(s=>s.name===name);if(sp)L.webSpecies.push(sp);if(L.webSpecies.length>=7)completeObj(0);}
+  renderPanel();
+};
+window.showPyramid=function(i){L.pyramidType=i;L.typesSeen.add(i);
+  if(L.typesSeen.has(0))completeObj(0);if(L.typesSeen.has(1))completeObj(1);if(L.typesSeen.has(2))completeObj(2);renderPanel();};
+window.runLV=function(){
+  for(let i=0;i<10;i++){
+    let dN=L.r*L.prey-L.a*L.prey*L.pred;let dP=L.b*L.prey*L.pred-L.m*L.pred;
+    L.prey=Math.max(1,L.prey+dN);L.pred=Math.max(1,L.pred+dP);
+    L.preyHist.push(L.prey);L.predHist.push(L.pred);L.gen++;
+  }
+  completeObj(0);if(L.gen>=30)completeObj(1);if(L.paramChanged)completeObj(2);renderPanel();
+};
+window.advanceSuccession=function(){
+  if(L.stage<5){L.stage++;
+    if(L.stage>=2)completeObj(0);if(L.stage>=4)completeObj(1);if(L.stage>=5)completeObj(2);}
+  renderPanel();
+};
+function drawBg(){const th=t();const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,th.bg1);g.addColorStop(0.5,th.bg2);g.addColorStop(1,th.bg3);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.strokeStyle=th.grid;ctx.lineWidth=1;for(let x=PL;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(W,y);ctx.stroke();}}
+function drawLevel0(){
+  L.organisms.forEach(o=>{
+    let ox=cx(o.x),oy=cy(o.y);
+    let identified=L.identified.producers.has(o.name)||L.identified.consumers.has(o.name)||L.identified.decomposers.has(o.name);
+    ctx.font='32px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(o.icon,ox,oy);
+    if(identified){
+      let typeLabel=o.type==='producer'?'生产者':o.type==='consumer'?'消费者':'分解者';
+      let typeColor=o.type==='producer'?'#22c55e':o.type==='consumer'?'#ef4444':'#f59e0b';
+      ctx.fillStyle=typeColor;ctx.font='bold 12px sans-serif';ctx.textBaseline='top';ctx.fillText(o.name+' ('+typeLabel+')',ox,oy+22);
+    }else{ctx.fillStyle=t().textMut;ctx.font='12px sans-serif';ctx.textBaseline='top';ctx.fillText('点击识别',ox,oy+22);}
+  });
+}
+function drawLevel1(){
+  let midX=cx(0.5),startY=cy(0.2),gap=80;
+  L.chain.forEach((ci,i)=>{
+    let y=startY+i*gap;ctx.font='28px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(L.chainSpecies[ci].split(' ')[0],midX,y);
+    ctx.fillStyle=t().text;ctx.font='13px sans-serif';ctx.fillText(L.chainSpecies[ci],midX,y+25);
+    if(i>0){ctx.strokeStyle='#22c55e';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(midX,y-35);ctx.lineTo(midX,startY+(i-1)*gap+20);ctx.stroke();
+      ctx.fillStyle='#22c55e';ctx.font='12px sans-serif';ctx.fillText('→',midX+15,y-25);}
+    if(L.energyShown){
+      let energy=10000/Math.pow(10,i);ctx.fillStyle='#f59e0b';ctx.font='bold 12px sans-serif';ctx.textAlign='left';
+      ctx.fillText(energy+'kcal',midX+50,y);
+      let barW=energy/100;ctx.fillStyle='#f59e0b44';ctx.fillRect(midX+50,y+8,barW,8);ctx.fillStyle='#f59e0b';ctx.fillRect(midX+50,y+8,barW,8);
+    }
+  });
+  if(L.ruleShown){ctx.fillStyle='#f59e0b';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('📐 10%定律：每级仅传递10%能量',midX,cy(0.85));}
+}
+function drawLevel2(){
+  let midX=cx(0.5);
+  L.webSpecies.forEach((sp,i)=>{
+    let angle=i*(Math.PI*2/L.webSpecies.length)-Math.PI/2;let r=Math.min(W-PL,H)*0.3;
+    let sx=midX+Math.cos(angle)*r,sy=cy(0.5)+Math.sin(angle)*r;sp._x=sx;sp._y=sy;
+    ctx.font='24px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(sp.icon,sx,sy);
+    ctx.fillStyle=t().text;ctx.font='10px sans-serif';ctx.textBaseline='top';ctx.fillText(sp.name,sx,sy+16);
+  });
+  L.webSpecies.forEach(sp=>{
+    if(sp.eats){sp.eats.forEach(prey=>{
+      let target=L.webSpecies.find(w=>w.name===prey);
+      if(target&&target._x){ctx.strokeStyle='#22c55e44';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(sp._x,sp._y);ctx.lineTo(target._x,target._y);ctx.stroke();}
+    });}
+  });
+  if(L.removed){ctx.fillStyle='#ef4444';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('移除了: '+L.removed+(L.keystone?' (关键种!)':''),midX,cy(0.92));}
+}
+function drawLevel3(){
+  let midX=cx(0.5),baseY=cy(0.8),pyramidH=H*0.6;
+  let data;
+  if(L.pyramidType===0)data=[{label:'生产者',value:10000,unit:'kcal/m²/yr'},{label:'初级消费者',value:1000,unit:'kcal'},{label:'次级消费者',value:100,unit:'kcal'},{label:'顶级消费者',value:10,unit:'kcal'}];
+  else if(L.pyramidType===1)data=[{label:'生产者',value:500,unit:'个体'},{label:'初级消费者',value:2000,unit:'个体'},{label:'次级消费者',value:50,unit:'个体'},{label:'顶级消费者',value:5,unit:'个体'}];
+  else data=[{label:'生产者',value:800,unit:'g/m²'},{label:'初级消费者',value:120,unit:'g/m²'},{label:'次级消费者',value:15,unit:'g/m²'},{label:'顶级消费者',value:2,unit:'g/m²'}];
+  let maxVal=Math.max(...data.map(d=>d.value));
+  let colors=['#22c55e','#3b82f6','#f59e0b','#ef4444'];
+  data.forEach((d,i)=>{
+    let w=(W-PL)*0.7*(d.value/maxVal);let h=pyramidH/data.length*0.8;let y=baseY-i*(pyramidH/data.length)-h;
+    ctx.fillStyle=colors[i]+'66';ctx.fillRect(midX-w/2,y,w,h);ctx.strokeStyle=colors[i];ctx.strokeRect(midX-w/2,y,w,h);
+    ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText(d.label+': '+d.value+' '+d.unit,midX,y+h/2+4);
+  });
+  let titles=['能量金字塔 (永远正金字塔)','数量金字塔 (可能倒置)','生物量金字塔'];
+  ctx.fillStyle=t().text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(titles[L.pyramidType],midX,cy(0.08));
+}
+function drawLevel4(){
+  let midX=cx(0.5),graphX=cx(0.08),graphW=(W-PL)*0.84,graphY=cy(0.1),graphH=H*0.75;
+  ctx.strokeStyle='#ffffff22';ctx.strokeRect(graphX,graphY,graphW,graphH);
+  let maxVal=Math.max(...L.preyHist,...L.predHist,1);
+  if(L.preyHist.length>1){
+    ctx.beginPath();ctx.strokeStyle='#22c55e';ctx.lineWidth=2;
+    L.preyHist.forEach((v,i)=>{let x=graphX+i*(graphW/Math.max(L.preyHist.length-1,1)),y=graphY+graphH*(1-v/maxVal);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();
+    ctx.beginPath();ctx.strokeStyle='#ef4444';ctx.lineWidth=2;
+    L.predHist.forEach((v,i)=>{let x=graphX+i*(graphW/Math.max(L.predHist.length-1,1)),y=graphY+graphH*(1-v/maxVal);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();
+  }
+  ctx.fillStyle='#22c55e';ctx.font='12px sans-serif';ctx.textAlign='left';ctx.fillText('🟢 猎物: '+Math.round(L.prey),graphX,graphY+graphH+18);
+  ctx.fillStyle='#ef4444';ctx.fillText('🔴 捕食者: '+Math.round(L.pred),graphX+150,graphY+graphH+18);
+}
+function drawLevel5(){
+  let midX=cx(0.5),groundY=cy(0.85);
+  ctx.fillStyle='#78716c';ctx.fillRect(PL,groundY,W-PL,H-groundY);
+  let stageDraws=[
+    ()=>{ctx.fillStyle='#a3a3a3';for(let i=0;i<8;i++){ctx.beginPath();ctx.arc(cx(0.1+i*0.12),groundY-5,8+Math.random()*5,0,Math.PI*2);ctx.fill();}},
+    ()=>{ctx.fillStyle='#d4d4d4';for(let i=0;i<12;i++){ctx.beginPath();ctx.arc(cx(0.08+i*0.08),groundY-8,5,0,Math.PI*2);ctx.fill();}},
+    ()=>{ctx.fillStyle='#86efac';for(let i=0;i<15;i++){let x=cx(0.05+i*0.065);ctx.fillRect(x-2,groundY-15-Math.random()*10,4,15+Math.random()*10);}},
+    ()=>{ctx.fillStyle='#22c55e';for(let i=0;i<10;i++){let x=cx(0.08+i*0.09),h=30+Math.random()*30;ctx.fillRect(x-3,groundY-h,6,h);ctx.beginPath();ctx.arc(x,groundY-h,8,0,Math.PI*2);ctx.fill();}},
+    ()=>{ctx.fillStyle='#15803d';for(let i=0;i<7;i++){let x=cx(0.1+i*0.12),h=60+Math.random()*40;ctx.fillRect(x-5,groundY-h,10,h);ctx.beginPath();ctx.arc(x,groundY-h,20,0,Math.PI*2);ctx.fill();}},
+    ()=>{ctx.fillStyle='#14532d';for(let i=0;i<5;i++){let x=cx(0.1+i*0.18),h=100+Math.random()*60;ctx.fillRect(x-8,groundY-h,16,h);ctx.beginPath();ctx.arc(x,groundY-h,35,0,Math.PI*2);ctx.fill();ctx.fillStyle='#166534';ctx.beginPath();ctx.arc(x-15,groundY-h+20,20,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(x+15,groundY-h+20,20,0,Math.PI*2);ctx.fill();ctx.fillStyle='#14532d';}}
+  ];
+  for(let i=0;i<=L.stage;i++)stageDraws[i]();
+  ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('演替阶段: '+L.stages[L.stage],midX,cy(0.06));
+  L.stages.forEach((s,i)=>{let x=cx(0.08+i*0.15);ctx.fillStyle=i<=L.stage?L.stageColors[i]:'#555';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText(s,x,cy(0.12));
+    if(i<5){ctx.fillStyle=i<L.stage?'#22c55e':'#555';ctx.fillText('→',x+((W-PL)*0.15)/2,cy(0.12));}});
+}
+function drawLevel6(){
+  let midX=cx(0.5),midY=cy(0.45);
+  ctx.fillStyle='#1a3a1a';ctx.fillRect(PL,0,W-PL,H);
+  ctx.strokeStyle='#22c55e22';ctx.lineWidth=1;
+  for(let lat=0;lat<6;lat++){ctx.beginPath();ctx.moveTo(PL,cy(lat/6));ctx.lineTo(W,cy(lat/6));ctx.stroke();}
+  for(let lon=0;lon<8;lon++){ctx.beginPath();ctx.moveTo(cx(lon/8),0);ctx.lineTo(cx(lon/8),H);ctx.stroke();}
+  L.hotspots.forEach((h,i)=>{
+    let hx=cx(h.x),hy=cy(h.y);let explored=L.explored.has(i);
+    ctx.beginPath();ctx.arc(hx,hy,explored?16:10,0,Math.PI*2);ctx.fillStyle=explored?'#ef4444':'#ef444466';ctx.fill();
+    if(explored){ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.textBaseline='bottom';ctx.fillText(h.name,hx,hy-18);
+      ctx.fillStyle='#f59e0b';ctx.font='9px sans-serif';ctx.textBaseline='top';ctx.fillText(h.species+'种',hx,hy+18);}
+  });
+  ctx.fillStyle=t().text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('🌍 全球生物多样性热点',midX,cy(0.05));
+}
+function mainLoop(){requestAnimationFrame(mainLoop);tick++;ctx.clearRect(0,0,W,H);drawBg();
+  if(curLevel===0)drawLevel0();else if(curLevel===1)drawLevel1();else if(curLevel===2)drawLevel2();
+  else if(curLevel===3)drawLevel3();else if(curLevel===4)drawLevel4();else if(curLevel===5)drawLevel5();
+  else if(curLevel===6)drawLevel6();}
+requestAnimationFrame(mainLoop);
+</script>
+</body>
+</html>

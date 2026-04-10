@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>拍卖与机制设计</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --slider-label:#888;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --slider-label:#888;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;width:100vw}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;color:#10b981;margin-bottom:8px;text-shadow:0 0 30px rgba(16,185,129,0.4)}
+.overlay .sub{font-size:18px;color:var(--sub-color);margin-bottom:32px}
+.overlay .desc{max-width:520px;color:var(--text-muted);font-size:14px;line-height:1.8;margin-bottom:36px}
+.overlay .start-btn{background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;padding:14px 48px;font-size:18px;border-radius:12px;cursor:pointer;transition:all .3s}
+.overlay .start-btn:hover{transform:scale(1.05);box-shadow:0 0 24px rgba(16,185,129,0.5)}
+.panel{position:fixed;left:0;top:0;bottom:36px;width:320px;background:var(--panel-bg);border-right:1px solid rgba(16,185,129,0.2);overflow-y:auto;padding:16px;display:none;z-index:10;padding-bottom:24px}
+.panel h2{color:var(--title-color);font-size:18px;margin-bottom:6px}
+.panel .level-title{color:#6ee7b7;font-size:13px;margin-bottom:12px}
+.panel .desc-text{color:var(--text-muted);font-size:13px;line-height:1.7;margin-bottom:14px}
+.panel .obj-list{list-style:none;margin-bottom:14px}
+.panel .obj-list li{font-size:13px;padding:4px 0;color:var(--goal-text)}
+.panel .obj-list li.done{color:var(--goal-done)}
+.panel .obj-list li::before{content:'○ ';color:var(--text-sub)}
+.panel .obj-list li.done::before{content:'● ';color:#4ade80}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:1px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.1);color:#6ee7b7;border-radius:8px;cursor:pointer;font-size:15px;transition:all .2s}
+.act-btn:hover{background:rgba(16,185,129,0.25)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:var(--learn-text);line-height:1.8}
+.learn-box b{color:#4ade80}
+canvas{position:fixed;left:320px;top:0;background:var(--bg)}
+.bar{position:fixed;left:0;bottom:0;right:0;height:36px;background:var(--bar-bg);border-top:1px solid rgba(16,185,129,0.2);display:none;z-index:10;padding:0 16px;align-items:center;font-size:13px}
+.bar-inner{display:flex;align-items:center;height:100%;gap:8px}
+.slider-row{display:flex;align-items:center;gap:8px;margin:6px 0;font-variant-numeric:tabular-nums}
+.slider-row label{font-size:12px;color:var(--text-muted);min-width:60px}
+.slider-row input[type=range]{flex:1;accent-color:#10b981}
+.slider-row .val{font-size:12px;color:#6ee7b7;min-width:36px;text-align:right}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+.bid-btn{display:inline-block;padding:6px 14px;margin:3px;font-size:12px;border:1px solid var(--btn-border);border-radius:6px;background:var(--btn-bg);color:var(--btn-text);cursor:pointer}
+.bid-btn:hover{background:var(--btn-hover)}
+.bid-btn.active{background:rgba(16,185,129,0.3);border-color:#22c55e;color:#4ade80}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="overlay">
+<h1>🔨 拍卖与机制设计</h1>
+<div class="sub">Auction & Mechanism Design</div>
+<div class="desc">
+从英式拍卖到机制设计，7个关卡带你探索拍卖理论的精妙世界。<br>
+选择出价策略、参与多轮竞拍，理解不同拍卖机制下的最优行为。
+</div>
+<button class="start-btn" onclick="startGame()">开始探索 →</button>
+<div class="features">
+<div class="feat"><div class="fi">🔼</div>英式拍卖</div>
+<div class="feat"><div class="fi">🔽</div>荷式拍卖</div>
+<div class="feat"><div class="fi">📝</div>密封一价</div>
+<div class="feat"><div class="fi">🏆</div>维克里拍卖</div>
+<div class="feat"><div class="fi">⚖️</div>收益等价</div>
+<div class="feat"><div class="fi">📦</div>组合拍卖</div>
+<div class="feat"><div class="fi">⚙️</div>机制设计</div>
+</div>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"><div class="bar-inner" id="barInner"></div></div>
+<script>
+// === Theme ===
+let isDark=true;
+const TH={
+  dark:{bg1:'#0a0a2e',bg2:'#0d0d1a',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',axis:'#888',bid:'#3b82f6',rival:'#ef4444',win:'#22c55e',highlight:'#f59e0b'},
+  light:{bg1:'#e8edf5',bg2:'#f0f2f5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',axis:'#666',bid:'#2563eb',rival:'#dc2626',win:'#16a34a',highlight:'#d97706'}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{renderPanel();draw()}catch(e){}}
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const panel=document.getElementById('panel'),bar=document.getElementById('bar'),barInner=document.getElementById('barInner');
+let W,H,curLevel=0;
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+let LD={};
+
+function resize(){W=window.innerWidth-320;H=window.innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';draw()}
+window.addEventListener('resize',resize);
+function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
+function goLevel(n){if(n<0||n>=7){showSummary();return}curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
+function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
+function allDone(li){return levelObjs[li].every(Boolean)}
+
+let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function playSound(type){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}}
+
+// === Level Info ===
+const levelInfo=[
+  {title:'英式拍卖',sub:'公开递增竞价',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>规则：</b>价格从低到高递增，最后一个出价者赢得物品</div>你和 3 个 AI 竞拍者争夺一件物品。你的估值是随机的，决定何时退出竞拍。',objs:['参与一轮英式拍卖','以低于估值的价格赢得拍卖','观察赢家支付 = 第二高估值'],learn:'<b>英式拍卖</b>中，最优策略是一直出价直到价格达到你的估值。赢家支付的价格接近第二高估值，而非自己的估值。这与维克里拍卖的结果等价。'},
+  {title:'荷式拍卖',sub:'价格递减拍卖',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>规则：</b>价格从高到低递减，第一个喊停的人赢得物品并支付当前价格</div>观察价格指针从高处下降，选择最佳时机喊停。太早 = 多付钱，太晚 = 被别人抢走。',objs:['参与荷式拍卖并喊停','以低于估值的价格赢得','体验"等太久被抢"的风险'],learn:'<b>荷式拍卖</b>等价于密封第一价格拍卖——你需要在"少付钱"和"赢不到"之间权衡。最优出价低于真实估值，具体取决于竞争者数量。'},
+  {title:'密封第一价格',sub:'出价最高者赢，支付自己的出价',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>规则：</b>所有人同时密封出价，最高出价者赢并支付自己的出价</div>设置你的出价金额。出价太高 = 赢了但利润少，出价太低 = 可能输。',objs:['提交一次密封出价','赢得拍卖并获得正利润','找到利润最大化的出价策略'],learn:'<b>密封第一价格拍卖</b>中，理性出价 = 估值 × (n-1)/n（n 为竞拍者数量）。这叫"出价遮蔽"——你故意出低于估值的价格来获取利润。'},
+  {title:'维克里拍卖',sub:'密封第二价格——说真话是最优策略',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>规则：</b>最高出价者赢，但只支付第二高的出价</div>在维克里拍卖中，无论别人怎么出价，报出真实估值永远是最优策略。',objs:['以真实估值出价并赢得拍卖','尝试虚报（高于估值）观察风险','确认真实报价是占优策略'],learn:'<b>维克里拍卖</b>（密封第二价格）的天才之处：赢家支付第二高价，所以报真实估值是占优策略。你不会因为报高而多付，也不会因为报低而错失。这是<b>激励相容</b>的经典案例。'},
+  {title:'收益等价定理',sub:'四种拍卖，同样的期望收益',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>定理：</b>在对称独立私人估值下，四种标准拍卖的期望收益相同</div>运行大量模拟，比较四种拍卖机制的平均卖方收益。',objs:['模拟 100 轮四种拍卖','观察平均收益趋于一致','理解收益等价的条件'],learn:'<b>收益等价定理</b>（Revenue Equivalence）：在对称、独立私人估值、风险中性的条件下，英式、荷式、密封一价、维克里四种拍卖给卖方带来相同的期望收益。这是拍卖理论最优美的结果之一。'},
+  {title:'组合拍卖',sub:'多物品同时拍卖',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>场景：</b>3 件物品同时拍卖，物品之间可能互补或替代</div>为不同物品组合出价。互补品（如左鞋+右鞋）组合价值 > 单独价值之和。',objs:['为单个物品出价','为物品组合出价','利用互补性赢得最优组合'],learn:'<b>组合拍卖</b>允许对物品组合出价，解决了"暴露问题"——当物品互补时，单独拍卖可能导致买家只赢得一只鞋。FCC 频谱拍卖就采用组合拍卖机制。'},
+  {title:'机制设计',sub:'激励相容与个体理性',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>目标：</b>设计一个机制，让每个人说真话是最优策略（激励相容）</div>你是机制设计者。选择分配规则和支付规则，让参与者自愿说真话。',objs:['设计一个分配规则','选择支付规则实现激励相容','验证个体理性约束满足'],learn:'<b>机制设计</b>是"逆博弈论"——不是分析给定规则下的行为，而是设计规则来实现目标。<b>激励相容</b>：说真话是最优策略。<b>个体理性</b>：参与不会亏损。VCG 机制同时满足两者。'}
+];
+
+// === Level Init ===
+function initLevel(idx){
+  LD={};
+  switch(idx){
+    case 0:{
+      let myVal=60+Math.floor(Math.random()*40);
+      let rivals=[50+Math.floor(Math.random()*40),45+Math.floor(Math.random()*35),40+Math.floor(Math.random()*30)];
+      LD={myVal,rivals,price:10,running:false,won:false,lost:false,history:[],round:0,maxRival:Math.max(...rivals)};
+    }break;
+    case 1:{
+      let myVal=60+Math.floor(Math.random()*40);
+      let rivals=[50+Math.floor(Math.random()*40),45+Math.floor(Math.random()*35),40+Math.floor(Math.random()*30)];
+      LD={myVal,rivals,price:100,running:false,won:false,snatched:false,stopped:false,maxRival:Math.max(...rivals)};
+    }break;
+    case 2:{
+      let myVal=60+Math.floor(Math.random()*40);
+      let n=4;let rivals=[];for(let i=0;i<n-1;i++)rivals.push(40+Math.floor(Math.random()*50));
+      LD={myVal,rivals,myBid:0,submitted:false,won:false,profit:0,n};
+    }break;
+    case 3:{
+      let myVal=60+Math.floor(Math.random()*40);
+      let rivals=[];for(let i=0;i<3;i++)rivals.push(40+Math.floor(Math.random()*50));
+      LD={myVal,rivals,myBid:0,submitted:false,won:false,payment:0,triedTrue:false,triedHigh:false};
+    }break;
+    case 4:{
+      LD={simCount:0,results:{english:[],dutch:[],fp:[],vickrey:[]},running:false};
+    }break;
+    case 5:{
+      LD={items:['频谱A','频谱B','频谱C'],values:{A:30+Math.floor(Math.random()*20),B:25+Math.floor(Math.random()*20),C:20+Math.floor(Math.random()*15),AB:80+Math.floor(Math.random()*20),AC:60+Math.floor(Math.random()*15),BC:55+Math.floor(Math.random()*15),ABC:120+Math.floor(Math.random()*20)},bids:{},submitted:false,result:null};
+    }break;
+    case 6:{
+      LD={agents:[{name:'甲',trueVal:80,reportedVal:0},{name:'乙',trueVal:60,reportedVal:0},{name:'丙',trueVal:40,reportedVal:0}],allocRule:'highest',payRule:'first',designed:false,icOk:false,irOk:false};
+    }break;
+  }
+}
+
+// === Actions ===
+// L0: English auction
+function startEnglish(){
+  LD.running=true;LD.price=10;LD.history=[];LD.won=false;LD.lost=false;LD.round=0;
+  runEnglishRound();
+}
+function runEnglishRound(){
+  if(!LD.running)return;
+  LD.price+=2+Math.floor(Math.random()*3);LD.round++;
+  let active=LD.rivals.filter(v=>v>=LD.price).length;
+  LD.history.push({price:LD.price,bidders:active+1});
+  if(active===0){LD.won=true;LD.running=false;playSound('success');completeObj(0,0);if(LD.price<LD.myVal)completeObj(0,1);if(Math.abs(LD.price-LD.maxRival)<8)completeObj(0,2);renderPanel();draw();return}
+  renderPanel();draw();
+}
+function bidEnglish(){if(!LD.running)return;if(LD.price>=LD.myVal){LD.lost=true;LD.running=false;renderPanel();draw();return}runEnglishRound()}
+function passEnglish(){LD.lost=true;LD.running=false;completeObj(0,0);renderPanel();draw()}
+
+// L1: Dutch auction
+function startDutch(){LD.running=true;LD.price=100;LD.won=false;LD.snatched=false;LD.stopped=false;runDutchTick()}
+function runDutchTick(){
+  if(!LD.running||LD.stopped)return;
+  LD.price-=2;
+  if(LD.price<=LD.maxRival&&!LD.snatched){LD.snatched=true;LD.running=false;completeObj(1,0);completeObj(1,2);renderPanel();draw();return}
+  if(LD.price<=10){LD.running=false;renderPanel();draw();return}
+  renderPanel();draw();
+  setTimeout(runDutchTick,400);
+}
+function stopDutch(){
+  if(!LD.running)return;LD.stopped=true;LD.running=false;LD.won=true;
+  playSound('success');completeObj(1,0);if(LD.price<LD.myVal)completeObj(1,1);renderPanel();draw();
+}
+
+// L2: First-price sealed
+function submitFP(){
+  let el=document.getElementById('sl_bid');if(!el)return;
+  LD.myBid=+el.value;LD.submitted=true;
+  let maxRival=Math.max(...LD.rivals);
+  LD.won=LD.myBid>=maxRival;LD.profit=LD.won?LD.myVal-LD.myBid:0;
+  completeObj(2,0);if(LD.won&&LD.profit>0)completeObj(2,1);
+  let optBid=LD.myVal*(LD.n-1)/LD.n;
+  if(LD.won&&Math.abs(LD.myBid-optBid)<8)completeObj(2,2);
+  renderPanel();draw();
+}
+
+// L3: Vickrey
+function submitVickrey(){
+  let el=document.getElementById('sl_vbid');if(!el)return;
+  LD.myBid=+el.value;LD.submitted=true;
+  let allBids=[LD.myBid,...LD.rivals].sort((a,b)=>b-a);
+  LD.won=LD.myBid>=allBids[0]||(LD.myBid===allBids[0]);
+  // actually: won if myBid is highest
+  let sorted=[{v:LD.myBid,me:true},...LD.rivals.map(v=>({v,me:false}))].sort((a,b)=>b.v-a.v);
+  LD.won=sorted[0].me;LD.payment=LD.won?sorted[1].v:0;
+  if(Math.abs(LD.myBid-LD.myVal)<3)LD.triedTrue=true;
+  if(LD.myBid>LD.myVal+5)LD.triedHigh=true;
+  completeObj(3,0);
+  if(LD.triedTrue&&LD.won)completeObj(3,0);
+  if(LD.triedHigh)completeObj(3,1);
+  if(LD.triedTrue)completeObj(3,2);
+  renderPanel();draw();
+}
+function resetVickrey(){LD.submitted=false;LD.myBid=0;renderPanel();draw()}
+
+// L4: Revenue equivalence simulation
+function runSim(n){
+  for(let i=0;i<n;i++){
+    let vals=[];for(let j=0;j<4;j++)vals.push(Math.random()*100);
+    vals.sort((a,b)=>b-a);
+    // English: winner pays ~2nd highest
+    LD.results.english.push(vals[1]);
+    // Dutch ≈ FP: winner bids val*(n-1)/n
+    LD.results.dutch.push(vals[0]*3/4);
+    // FP: same
+    LD.results.fp.push(vals[0]*3/4);
+    // Vickrey: 2nd price
+    LD.results.vickrey.push(vals[1]);
+    LD.simCount++;
+  }
+  if(LD.simCount>=100)completeObj(4,0);
+  let avg=k=>LD.results[k].reduce((a,b)=>a+b,0)/LD.results[k].length;
+  if(LD.simCount>=50){let avgs=[avg('english'),avg('dutch'),avg('fp'),avg('vickrey')];let mx=Math.max(...avgs),mn=Math.min(...avgs);if(mx-mn<5)completeObj(4,1)}
+  if(LD.simCount>=100)completeObj(4,2);
+  renderPanel();draw();
+}
+
+// L5: Combinatorial
+function placeComboBid(combo,val){LD.bids[combo]=val;completeObj(5,0);if(combo.length>1)completeObj(5,1);renderPanel();draw()}
+function submitCombo(){
+  // simple winner determination
+  let best={combo:'',profit:0};
+  for(let k in LD.bids){if(LD.bids[k]>0){let profit=LD.values[k]-LD.bids[k];if(profit>best.profit)best={combo:k,profit}}}
+  LD.result=best;LD.submitted=true;
+  if(best.combo.length>1)completeObj(5,2);
+  renderPanel();draw();
+}
+
+// L6: Mechanism design
+function setAllocRule(r){LD.allocRule=r;completeObj(6,0);checkMechanism();renderPanel();draw()}
+function setPayRule(r){LD.payRule=r;completeObj(6,1);checkMechanism();renderPanel();draw()}
+function checkMechanism(){
+  // IC: truthful reporting is optimal → need second-price payment
+  LD.icOk=(LD.allocRule==='highest'&&LD.payRule==='second');
+  // IR: winner surplus ≥ 0
+  LD.irOk=(LD.allocRule==='highest');
+  if(LD.icOk&&LD.irOk){completeObj(6,1);completeObj(6,2)}
+  LD.designed=true;
+}
+
+// === Stage Nav ===
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<7;i++){let cls=allDone(i)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="playSound('click');goLevel(${i})"></div>`}
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关 · ${levelInfo[curLevel].title}</div>`;
+  h+=`<div class="sn-hint">${levelInfo[curLevel].sub}</div></div>`;return h;
+}
+
+// === Panel ===
+let _patchLock=false;
+function renderPanel(){
+  if(_patchLock)return;_patchLock=true;setTimeout(()=>{_patchLock=false},50);
+  let info=levelInfo[curLevel];
+  let h=renderStageNav();
+  h+=`<h2>${info.title}</h2><div class="level-title">${info.sub}</div>`;
+  h+=`<div class="desc-text">${info.desc}</div>`;
+  h+=`<ul class="obj-list">${info.objs.map((o,i)=>`<li class="${levelObjs[curLevel][i]?'done':''}">${o}</li>`).join('')}</ul>`;
+
+  switch(curLevel){
+    case 0:
+      h+=`<div style="font-size:13px;margin-bottom:8px">你的估值: <span style="color:#22c55e;font-weight:bold">${LD.myVal}</span></div>`;
+      if(!LD.running&&!LD.won&&!LD.lost)h+=`<button class="act-btn" onclick="startEnglish()">开始拍卖</button>`;
+      if(LD.running)h+=`<div style="font-size:14px;margin:8px 0">当前价格: <span style="color:#f59e0b;font-weight:bold;font-size:18px">${LD.price}</span></div><button class="act-btn" onclick="bidEnglish()">继续出价 (+${2+Math.floor(Math.random()*3)})</button><button class="act-btn" style="border-color:#ef4444;color:#f87171;background:rgba(239,68,68,0.1)" onclick="passEnglish()">退出</button>`;
+      if(LD.won)h+=`<div style="color:#22c55e;font-size:14px;margin:8px 0">🎉 你赢了！支付 ${LD.price}</div>`;
+      if(LD.lost)h+=`<div style="color:#ef4444;font-size:14px;margin:8px 0">你退出了拍卖</div>`;
+      if(LD.won||LD.lost)h+=`<button class="act-btn" onclick="initLevel(0);renderPanel();draw()">重新拍卖</button>`;
+      break;
+    case 1:
+      h+=`<div style="font-size:13px;margin-bottom:8px">你的估值: <span style="color:#22c55e;font-weight:bold">${LD.myVal}</span></div>`;
+      if(!LD.running&&!LD.won&&!LD.snatched)h+=`<button class="act-btn" onclick="startDutch()">开始拍卖</button>`;
+      if(LD.running)h+=`<div style="font-size:14px;margin:8px 0">当前价格: <span style="color:#f59e0b;font-weight:bold;font-size:18px">${LD.price}</span></div><button class="act-btn" onclick="stopDutch()">喊停！我要买</button>`;
+      if(LD.won)h+=`<div style="color:#22c55e;font-size:14px;margin:8px 0">🎉 你以 ${LD.price} 赢得拍卖！利润: ${LD.myVal-LD.price}</div>`;
+      if(LD.snatched&&!LD.won)h+=`<div style="color:#ef4444;font-size:14px;margin:8px 0">被对手以 ${LD.maxRival} 抢走了！</div>`;
+      if(LD.won||LD.snatched)h+=`<button class="act-btn" onclick="initLevel(1);renderPanel();draw()">重新拍卖</button>`;
+      break;
+    case 2:
+      h+=`<div style="font-size:13px;margin-bottom:8px">你的估值: <span style="color:#22c55e;font-weight:bold">${LD.myVal}</span> | 竞拍者: ${LD.n} 人</div>`;
+      if(!LD.submitted){
+        h+=`<div class="slider-row"><label>你的出价</label><input type="range" id="sl_bid" min="0" max="100" step="1" value="${LD.myBid}" oninput="document.getElementById('sl_bid_v').textContent=this.value"><span class="val" id="sl_bid_v">${LD.myBid}</span></div>`;
+        h+=`<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">理论最优: 估值×(n-1)/n = ${(LD.myVal*(LD.n-1)/LD.n).toFixed(0)}</div>`;
+        h+=`<button class="act-btn" onclick="submitFP()">提交出价</button>`;
+      }else{
+        h+=`<div style="font-size:13px;margin:6px 0">你出价: <span style="color:#3b82f6;font-weight:bold">${LD.myBid}</span> | 对手最高: <span style="color:#ef4444;font-weight:bold">${Math.max(...LD.rivals)}</span></div>`;
+        h+=LD.won?`<div style="color:#22c55e;font-size:14px">🎉 赢了！利润: ${LD.profit}</div>`:`<div style="color:#ef4444;font-size:14px">输了</div>`;
+        h+=`<button class="act-btn" onclick="initLevel(2);renderPanel();draw()">再试一次</button>`;
+      }
+      break;
+    case 3:
+      h+=`<div style="font-size:13px;margin-bottom:8px">你的估值: <span style="color:#22c55e;font-weight:bold">${LD.myVal}</span></div>`;
+      if(!LD.submitted){
+        h+=`<div class="slider-row"><label>你的出价</label><input type="range" id="sl_vbid" min="0" max="120" step="1" value="${LD.myBid}" oninput="document.getElementById('sl_vbid_v').textContent=this.value"><span class="val" id="sl_vbid_v">${LD.myBid}</span></div>`;
+        h+=`<div style="font-size:11px;color:var(--text-muted)">提示: 试试报真实估值 ${LD.myVal}</div>`;
+        h+=`<button class="act-btn" onclick="submitVickrey()">提交出价</button>`;
+      }else{
+        h+=`<div style="font-size:13px;margin:6px 0">你出价: <span style="color:#3b82f6">${LD.myBid}</span> | 支付: <span style="color:#f59e0b">${LD.payment}</span></div>`;
+        h+=LD.won?`<div style="color:#22c55e;font-size:14px">🎉 赢了！利润: ${LD.myVal-LD.payment}</div>`:`<div style="color:#ef4444;font-size:14px">输了</div>`;
+        h+=`<button class="act-btn" onclick="resetVickrey()">换个出价试试</button>`;
+        h+=`<button class="act-btn" onclick="initLevel(3);renderPanel();draw()">新一轮</button>`;
+      }
+      break;
+    case 4:
+      h+=`<div style="font-size:13px;margin-bottom:8px">已模拟: <span style="color:#22c55e;font-weight:bold">${LD.simCount}</span> 轮</div>`;
+      h+=`<button class="act-btn" onclick="runSim(10)">模拟 10 轮</button>`;
+      h+=`<button class="act-btn" onclick="runSim(50)">模拟 50 轮</button>`;
+      h+=`<button class="act-btn" onclick="runSim(100)">模拟 100 轮</button>`;
+      if(LD.simCount>0){
+        let avg=k=>LD.results[k].length?LD.results[k].reduce((a,b)=>a+b,0)/LD.results[k].length:0;
+        h+=`<div style="margin-top:8px;font-size:12px;line-height:1.8"><span style="color:#3b82f6">英式: ${avg('english').toFixed(1)}</span><br><span style="color:#ef4444">荷式: ${avg('dutch').toFixed(1)}</span><br><span style="color:#f59e0b">密封一价: ${avg('fp').toFixed(1)}</span><br><span style="color:#a855f7">维克里: ${avg('vickrey').toFixed(1)}</span></div>`;
+      }
+      break;
+    case 5:
+      h+=`<div style="font-size:12px;margin-bottom:6px;line-height:1.8">你的估值:<br>`;
+      for(let k of ['A','B','C','AB','AC','BC','ABC'])h+=`${k}: <span style="color:#22c55e">${LD.values[k]}</span> `;
+      h+=`</div>`;
+      if(!LD.submitted){
+        for(let k of ['A','B','C','AB','AC','BC','ABC']){
+          h+=`<div class="slider-row"><label>${k}</label><input type="range" min="0" max="150" step="1" value="${LD.bids[k]||0}" oninput="placeComboBid('${k}',+this.value);this.nextElementSibling.textContent=this.value"><span class="val">${LD.bids[k]||0}</span></div>`;
+        }
+        h+=`<button class="act-btn" onclick="submitCombo()">提交组合出价</button>`;
+      }else{
+        h+=`<div style="color:#22c55e;font-size:14px;margin:8px 0">赢得: ${LD.result.combo||'无'} | 利润: ${LD.result.profit.toFixed(0)}</div>`;
+        h+=`<button class="act-btn" onclick="initLevel(5);renderPanel();draw()">重新出价</button>`;
+      }
+      break;
+    case 6:
+      h+=`<div style="font-size:12px;margin-bottom:6px;line-height:1.8">参与者真实估值: 甲=${LD.agents[0].trueVal} 乙=${LD.agents[1].trueVal} 丙=${LD.agents[2].trueVal}</div>`;
+      h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-muted)">分配规则:</label><br>`;
+      h+=`<button class="bid-btn ${LD.allocRule==='highest'?'active':''}" onclick="setAllocRule('highest')">最高报价者得</button>`;
+      h+=`<button class="bid-btn ${LD.allocRule==='random'?'active':''}" onclick="setAllocRule('random')">随机分配</button></div>`;
+      h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-muted)">支付规则:</label><br>`;
+      h+=`<button class="bid-btn ${LD.payRule==='first'?'active':''}" onclick="setPayRule('first')">支付自己报价</button>`;
+      h+=`<button class="bid-btn ${LD.payRule==='second'?'active':''}" onclick="setPayRule('second')">支付第二高价</button>`;
+      h+=`<button class="bid-btn ${LD.payRule==='zero'?'active':''}" onclick="setPayRule('zero')">免费</button></div>`;
+      if(LD.designed){
+        h+=`<div style="margin-top:8px;font-size:13px;line-height:1.8">激励相容: <span style="color:${LD.icOk?'#22c55e':'#ef4444'}">${LD.icOk?'✓ 满足':'✗ 不满足'}</span><br>个体理性: <span style="color:${LD.irOk?'#22c55e':'#ef4444'}">${LD.irOk?'✓ 满足':'✗ 不满足'}</span></div>`;
+      }
+      break;
+  }
+
+  if(allDone(curLevel)){
+    h+=`<div class="learn-box">${info.learn}</div>`;
+    if(curLevel<6)h+=`<button class="act-btn" onclick="playSound('click');goLevel(${curLevel+1})">下一关 →</button>`;
+    else h+=`<button class="act-btn" onclick="showSummary()">查看总结 →</button>`;
+  }
+  panel.innerHTML=h;
+}
+
+function renderBar(){barInner.innerHTML=`<span style="color:var(--text-muted)">🔨 ${levelInfo[curLevel].title}</span><span style="margin-left:auto;color:var(--text-muted);font-size:12px">第 ${curLevel+1}/7 关</span>`}
+
+// === Drawing ===
+function draw(){
+  if(!W)return;
+  ctx.clearRect(0,0,W,H);
+  const th=t();
+  const bgG=ctx.createLinearGradient(0,0,0,H);bgG.addColorStop(0,th.bg1);bgG.addColorStop(1,th.bg2);
+  ctx.fillStyle=bgG;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+
+  const cx=W/2,cy=H/2;
+
+  switch(curLevel){
+    case 0:case 1:{
+      // Price gauge
+      let price=curLevel===0?LD.price:LD.price;
+      let maxP=120;
+      let barW=W*0.6,barH=40,bx=(W-barW)/2,by=H*0.4;
+      ctx.fillStyle='rgba(255,255,255,0.05)';ctx.fillRect(bx,by,barW,barH);
+      ctx.strokeStyle=th.axis;ctx.lineWidth=1;ctx.strokeRect(bx,by,barW,barH);
+      let fillW=Math.min(price/maxP,1)*barW;
+      let grad=ctx.createLinearGradient(bx,0,bx+fillW,0);
+      grad.addColorStop(0,'#22c55e');grad.addColorStop(0.5,'#f59e0b');grad.addColorStop(1,'#ef4444');
+      ctx.fillStyle=grad;ctx.fillRect(bx,by,fillW,barH);
+      ctx.fillStyle=th.text;ctx.font='bold 24px sans-serif';ctx.textAlign='center';
+      ctx.fillText(`价格: ${price}`,cx,by-20);
+      // Your value line
+      let valX=bx+(LD.myVal/maxP)*barW;
+      ctx.strokeStyle='#22c55e';ctx.lineWidth=2;ctx.setLineDash([4,4]);
+      ctx.beginPath();ctx.moveTo(valX,by-10);ctx.lineTo(valX,by+barH+10);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='#22c55e';ctx.font='12px sans-serif';ctx.fillText(`你的估值: ${LD.myVal}`,valX,by+barH+25);
+      // Bidders
+      let bidders=curLevel===0?LD.rivals:LD.rivals;
+      let y2=H*0.65;
+      ctx.font='14px sans-serif';
+      for(let i=0;i<bidders.length;i++){
+        let active=bidders[i]>=price;
+        ctx.fillStyle=active?th.rival:'rgba(255,255,255,0.2)';
+        ctx.fillText(`对手${i+1} ${active?'🙋':'❌'}`,cx-100+i*80,y2);
+      }
+      ctx.fillStyle=th.bid;ctx.fillText('你 🙋',cx-100+bidders.length*80,y2);
+      // Title
+      ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';
+      ctx.fillText(curLevel===0?'英式拍卖 — 价格递增':'荷式拍卖 — 价格递减',cx,60);
+    }break;
+    case 2:case 3:{
+      // Sealed bid visualization
+      let title=curLevel===2?'密封第一价格拍卖':'维克里拍卖（密封第二价格）';
+      ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText(title,cx,50);
+      // Envelopes
+      let envW=80,envH=100,gap=30;
+      let total=curLevel===2?LD.n:4;
+      let startX=cx-(total*(envW+gap)-gap)/2;
+      for(let i=0;i<total;i++){
+        let x=startX+i*(envW+gap),y=H*0.3;
+        ctx.fillStyle=i===0?'rgba(59,130,246,0.2)':'rgba(239,68,68,0.15)';
+        ctx.strokeStyle=i===0?th.bid:th.rival;ctx.lineWidth=2;
+        ctx.fillRect(x,y,envW,envH);ctx.strokeRect(x,y,envW,envH);
+        // flap
+        ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+envW/2,y+30);ctx.lineTo(x+envW,y);ctx.stroke();
+        ctx.fillStyle=th.text;ctx.font='12px sans-serif';
+        ctx.fillText(i===0?'你':(`对手${i}`),x+envW/2,y+envH+20);
+        if(LD.submitted){
+          let val=i===0?LD.myBid:(curLevel===2?LD.rivals[i-1]:LD.rivals[i-1]);
+          if(val!==undefined){ctx.fillStyle=i===0?th.bid:th.rival;ctx.font='bold 18px sans-serif';ctx.fillText(val,x+envW/2,y+envH/2+8)}
+        }else{ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='24px sans-serif';ctx.fillText('?',x+envW/2,y+envH/2+8)}
+      }
+      if(LD.submitted&&curLevel===3){
+        ctx.fillStyle='#f59e0b';ctx.font='bold 14px sans-serif';
+        ctx.fillText(`赢家支付第二高价: ${LD.payment}`,cx,H*0.75);
+      }
+    }break;
+    case 4:{
+      // Revenue comparison bar chart
+      ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('四种拍卖平均卖方收益对比',cx,50);
+      if(LD.simCount===0){ctx.fillStyle=th.textSec;ctx.font='14px sans-serif';ctx.fillText('点击"模拟"按钮开始',cx,cy);break}
+      let avg=k=>LD.results[k].length?LD.results[k].reduce((a,b)=>a+b,0)/LD.results[k].length:0;
+      let avgs=[{name:'英式',val:avg('english'),color:'#3b82f6'},{name:'荷式',val:avg('dutch'),color:'#ef4444'},{name:'密封一价',val:avg('fp'),color:'#f59e0b'},{name:'维克里',val:avg('vickrey'),color:'#a855f7'}];
+      let maxV=Math.max(...avgs.map(a=>a.val),1);
+      let bw=60,gap2=40,startX2=cx-(4*(bw+gap2)-gap2)/2;
+      let baseY=H*0.8,topY=100;
+      for(let i=0;i<4;i++){
+        let x=startX2+i*(bw+gap2),h2=(avgs[i].val/maxV)*(baseY-topY);
+        ctx.fillStyle=avgs[i].color;ctx.fillRect(x,baseY-h2,bw,h2);
+        ctx.fillStyle=th.text;ctx.font='12px sans-serif';ctx.textAlign='center';
+        ctx.fillText(avgs[i].name,x+bw/2,baseY+18);
+        ctx.fillText(avgs[i].val.toFixed(1),x+bw/2,baseY-h2-8);
+      }
+    }break;
+    case 5:{
+      ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('组合拍卖 — 频谱分配',cx,50);
+      // Draw items as circles
+      let items=[{name:'A',x:cx-120,y:cy-40},{name:'B',x:cx,y:cy-40},{name:'C',x:cx+120,y:cy-40}];
+      for(let it of items){
+        ctx.fillStyle='rgba(59,130,246,0.2)';ctx.strokeStyle=th.bid;ctx.lineWidth=2;
+        ctx.beginPath();ctx.arc(it.x,it.y,40,0,Math.PI*2);ctx.fill();ctx.stroke();
+        ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';ctx.fillText(it.name,it.x,it.y+6);
+        ctx.font='11px sans-serif';ctx.fillStyle=th.textSec;ctx.fillText(`估值:${LD.values[it.name]}`,it.x,it.y+24);
+      }
+      // Combo values
+      ctx.font='12px sans-serif';ctx.fillStyle=th.highlight;
+      ctx.fillText(`AB=${LD.values.AB}  AC=${LD.values.AC}  BC=${LD.values.BC}  ABC=${LD.values.ABC}`,cx,cy+60);
+      if(LD.submitted&&LD.result){
+        ctx.fillStyle='#22c55e';ctx.font='bold 18px sans-serif';
+        ctx.fillText(`赢得: ${LD.result.combo} | 利润: ${LD.result.profit.toFixed(0)}`,cx,cy+110);
+      }
+    }break;
+    case 6:{
+      ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('机制设计工作台',cx,50);
+      // Agents
+      let agents=LD.agents;let y3=H*0.3;
+      for(let i=0;i<agents.length;i++){
+        let ax=cx-120+i*120;
+        ctx.fillStyle='rgba(59,130,246,0.15)';ctx.strokeStyle=th.bid;ctx.lineWidth=2;
+        ctx.beginPath();ctx.arc(ax,y3,35,0,Math.PI*2);ctx.fill();ctx.stroke();
+        ctx.fillStyle=th.text;ctx.font='bold 14px sans-serif';ctx.fillText(agents[i].name,ax,y3-5);
+        ctx.font='11px sans-serif';ctx.fillStyle=th.textSec;ctx.fillText(`估值:${agents[i].trueVal}`,ax,y3+15);
+      }
+      // Mechanism box
+      let bx2=cx-100,by2=H*0.55,bw2=200,bh2=80;
+      ctx.fillStyle='rgba(168,85,247,0.1)';ctx.strokeStyle='#a855f7';ctx.lineWidth=2;
+      ctx.fillRect(bx2,by2,bw2,bh2);ctx.strokeRect(bx2,by2,bw2,bh2);
+      ctx.fillStyle=th.text;ctx.font='bold 13px sans-serif';ctx.fillText('机制',cx,by2+20);
+      ctx.font='11px sans-serif';ctx.fillStyle=th.textSec;
+      ctx.fillText(`分配: ${LD.allocRule==='highest'?'最高报价者得':'随机'}`,cx,by2+40);
+      ctx.fillText(`支付: ${LD.payRule==='first'?'自己报价':LD.payRule==='second'?'第二高价':'免费'}`,cx,by2+56);
+      // Result indicators
+      let ry=H*0.82;
+      ctx.font='bold 14px sans-serif';
+      ctx.fillStyle=LD.icOk?'#22c55e':'#ef4444';ctx.fillText(`激励相容: ${LD.icOk?'✓':'✗'}`,cx-80,ry);
+      ctx.fillStyle=LD.irOk?'#22c55e':'#ef4444';ctx.fillText(`个体理性: ${LD.irOk?'✓':'✗'}`,cx+80,ry);
+    }break;
+  }
+}
+
+// === Summary ===
+function showSummary(){
+  let done=levelObjs.flat().filter(Boolean).length;
+  panel.innerHTML=`<div class="summary-box"><div class="summary-title">🎉 拍卖与机制设计完成！</div><div class="summary-sub">你已掌握拍卖理论的核心概念</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标完成</div></div><div class="summary-stat"><div class="num">7</div><div class="label">关卡通关</div></div></div><div class="summary-keys"><div>🔼 英式拍卖: 出价到估值为止</div><div>🔽 荷式拍卖: 权衡价格与风险</div><div>📝 密封一价: 出价遮蔽策略</div><div>🏆 维克里拍卖: 说真话是最优</div><div>⚖️ 收益等价: 四种机制期望收益相同</div><div>📦 组合拍卖: 解决互补品问题</div><div>⚙️ 机制设计: 激励相容+个体理性</div></div></div><button class="act-btn" style="margin-top:12px" onclick="location.reload()">再玩一次</button>`;
+}
+
+function mainLoop(){requestAnimationFrame(mainLoop);draw()}
+requestAnimationFrame(mainLoop);
+</script>
+</body>
+</html>

@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>国际贸易探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --slider-label:#888;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --slider-label:#888;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;width:100vw}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;color:#10b981;margin-bottom:8px;text-shadow:0 0 30px rgba(16,185,129,0.4)}
+.overlay .sub{font-size:18px;color:var(--sub-color);margin-bottom:32px}
+.overlay .desc{max-width:520px;color:var(--text-muted);font-size:14px;line-height:1.8;margin-bottom:36px}
+.overlay .start-btn{background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;padding:14px 48px;font-size:18px;border-radius:12px;cursor:pointer;transition:all .3s}
+.overlay .start-btn:hover{transform:scale(1.05);box-shadow:0 0 24px rgba(16,185,129,0.5)}
+.panel{position:fixed;left:0;top:0;bottom:36px;width:320px;background:var(--panel-bg);border-right:1px solid rgba(16,185,129,0.2);overflow-y:auto;padding:16px;display:none;z-index:10;padding-bottom:24px}
+.panel h2{color:var(--title-color);font-size:18px;margin-bottom:6px}
+.panel .level-title{color:#6ee7b7;font-size:13px;margin-bottom:12px}
+.panel .desc-text{color:var(--text-muted);font-size:13px;line-height:1.7;margin-bottom:14px}
+.panel .obj-list{list-style:none;margin-bottom:14px}
+.panel .obj-list li{font-size:13px;padding:4px 0;color:var(--goal-text)}
+.panel .obj-list li.done{color:var(--goal-done)}
+.panel .obj-list li::before{content:'○ ';color:var(--text-sub)}
+.panel .obj-list li.done::before{content:'● ';color:#4ade80}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:1px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.1);color:#6ee7b7;border-radius:8px;cursor:pointer;font-size:15px;transition:all .2s}
+.act-btn:hover{background:rgba(16,185,129,0.25)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:var(--learn-text);line-height:1.8}
+.learn-box b{color:#4ade80}
+canvas{position:fixed;left:320px;top:0;background:var(--bg)}
+.bar{position:fixed;left:0;bottom:0;right:0;height:36px;background:var(--bar-bg);border-top:1px solid rgba(16,185,129,0.2);display:none;z-index:10;padding:0 16px;align-items:center;font-size:13px}
+.bar-inner{display:flex;align-items:center;height:100%;gap:8px}
+.slider-row{display:flex;align-items:center;gap:8px;margin:6px 0;font-variant-numeric:tabular-nums}
+.slider-row label{font-size:12px;color:var(--text-muted);min-width:60px}
+.slider-row input[type=range]{flex:1;accent-color:#10b981}
+.slider-row .val{font-size:12px;color:#6ee7b7;min-width:36px;text-align:right}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="overlay">
+<h1>🌍 国际贸易探险</h1>
+<div class="sub">International Trade Adventure</div>
+<div class="desc">
+从绝对优势到全球化，7个关卡带你探索国际贸易的核心理论。<br>
+调节生产分配、设置关税、观察汇率变动，理解贸易如何创造共赢。
+</div>
+<button class="start-btn" onclick="startGame()">开始探索 →</button>
+<div class="features">
+<div class="feat"><div class="fi">💪</div>绝对优势</div>
+<div class="feat"><div class="fi">🔄</div>比较优势</div>
+<div class="feat"><div class="fi">📐</div>生产可能性</div>
+<div class="feat"><div class="fi">🤝</div>贸易利得</div>
+<div class="feat"><div class="fi">🏛️</div>关税效应</div>
+<div class="feat"><div class="fi">💱</div>汇率市场</div>
+<div class="feat"><div class="fi">🌐</div>全球化</div>
+</div>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"><div class="bar-inner" id="barInner"></div></div>
+<script>
+// === Theme ===
+let isDark=true;
+const TH={
+  dark:{bg1:'#0a0a2e',bg2:'#0d0d1a',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',axis:'#888',countryA:'#3b82f6',countryB:'#ef4444',trade:'#22c55e',tariff:'#f59e0b',ppf:'#a855f7'},
+  light:{bg1:'#e8edf5',bg2:'#f0f2f5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',axis:'#666',countryA:'#2563eb',countryB:'#dc2626',trade:'#16a34a',tariff:'#d97706',ppf:'#7c3aed'}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{renderPanel();draw()}catch(e){}}
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const panel=document.getElementById('panel'),bar=document.getElementById('bar'),barInner=document.getElementById('barInner');
+let W,H,curLevel=0;
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+let LD={};
+
+function resize(){W=window.innerWidth-320;H=window.innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';draw()}
+window.addEventListener('resize',resize);
+function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
+function goLevel(n){if(n<0||n>=7){showSummary();return}curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
+function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
+function allDone(li){return levelObjs[li].every(Boolean)}
+
+let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function playSound(type){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}}
+
+// === Level Info ===
+const levelInfo=[
+  {title:'绝对优势',sub:'亚当·斯密的贸易理论',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>概念：</b>一个国家在某种商品上的生产效率高于另一国 → 绝对优势</div><span style="color:#3b82f6">A 国</span>和<span style="color:#ef4444">B 国</span>各生产两种商品。调整劳动力分配，观察谁在哪种商品上有绝对优势。',objs:['观察两国的生产效率差异','让 A 国专注优势商品','通过专业化提高总产出'],learn:'<b>绝对优势</b>（亚当·斯密）：如果 A 国生产布匹效率高于 B 国，A 国就有布匹的绝对优势。两国各自专注于有绝对优势的商品，再通过贸易交换，总产出增加。'},
+  {title:'比较优势',sub:'李嘉图的核心洞见',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键：</b>即使一国在所有商品上都有绝对优势，贸易仍然互利——看机会成本！</div>A 国两种商品都比 B 国强，但机会成本不同。找出各自的比较优势。',objs:['计算两国的机会成本','找出各自的比较优势商品','按比较优势专业化后总产出增加'],learn:'<b>比较优势</b>（李嘉图）：关键不是"谁更强"，而是"谁放弃的更少"。即使中国在所有商品上都比越南效率高，只要机会成本不同，专业化+贸易就能让双方都受益。这是经济学最反直觉也最深刻的洞见之一。'},
+  {title:'生产可能性边界',sub:'PPF 曲线与机会成本',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>PPF：</b>在资源有限时，两种商品最大产出的组合轨迹</div>拖动生产点在 PPF 曲线上移动，观察机会成本如何变化。贸易可以让消费点超越 PPF。',objs:['在 PPF 上移动生产点','观察边际机会成本递增','通过贸易消费到 PPF 之外'],learn:'<b>生产可能性边界</b>（PPF）展示了资源约束下的最大产出组合。PPF 上的点是有效率的，内部的点是低效的。贸易的魔力在于：让消费点突破 PPF 的限制。'},
+  {title:'贸易条件与贸易利得',sub:'交换比率决定利益分配',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>贸易条件：</b>出口价格 / 进口价格<br>必须在两国机会成本之间</div>调整贸易条件（交换比率），观察两国的贸易利得如何变化。',objs:['设置贸易条件在两国机会成本之间','观察两国都获得贸易利得','找到使利得均等的贸易条件'],learn:'<b>贸易条件</b>（Terms of Trade）是出口品与进口品的交换比率。它必须在两国的机会成本之间，否则一方不愿贸易。贸易条件越接近对方的机会成本，你获得的利得越大。'},
+  {title:'关税效应',sub:'保护主义的代价',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关税：</b>对进口商品征税 → 国内价格↑ → 消费者受损，生产者受益</div>调整关税税率，观察国内价格、进口量、消费者剩余和生产者剩余的变化。',objs:['设置小额关税观察效果','增大关税看进口量减少','观察关税的无谓损失'],learn:'<b>关税</b>提高了进口品价格，保护了国内生产者，但损害了消费者。关税收入归政府，但总有两个三角形的无谓损失——生产扭曲和消费扭曲。这就是保护主义的效率代价。'},
+  {title:'汇率与外汇市场',sub:'货币的价格',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>汇率：</b>一种货币兑换另一种货币的比率<br>由外汇市场供需决定</div>调整影响汇率的因素（利率、通胀、贸易差额），观察汇率如何变动。',objs:['调整利率差观察汇率变化','调整贸易差额观察影响','理解汇率对进出口的反馈'],learn:'<b>汇率</b>由外汇市场的供需决定。利率↑ → 资本流入 → 本币升值。贸易顺差 → 外汇供给增加 → 本币升值。但本币升值又会抑制出口，形成自动调节机制。'},
+  {title:'全球化与产业链',sub:'分工深化与相互依赖',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>全球价值链：</b>一件产品的设计、零件、组装分布在不同国家</div>模拟一条全球产业链，调整各环节的分布，观察效率与风险的权衡。',objs:['构建一条跨国产业链','优化产业链降低总成本','模拟供应链中断观察风险'],learn:'<b>全球化</b>使产业链跨越国界——iPhone 在美国设计、韩国/日本供应芯片和屏幕、中国组装。这提高了效率但增加了脆弱性。新冠疫情和地缘政治让"供应链安全"成为热词，各国在效率与韧性之间寻找平衡。'}
+];
+
+// === Level Init ===
+function initLevel(idx){
+  LD={};
+  switch(idx){
+    case 0:// Absolute advantage: A better at cloth, B better at wine
+      LD={aCloth:10,aWine:5,bCloth:4,bWine:8,aLabCloth:50,bLabCloth:50,totalLab:100};break;
+    case 1:// Comparative advantage: A better at both, but different opp costs
+      LD={aCloth:10,aWine:8,bCloth:3,bWine:4,aLabCloth:50,bLabCloth:50,totalLab:100,calcDone:false};break;
+    case 2:// PPF
+      LD={maxCloth:100,maxWine:80,prodPoint:50,trading:false,tradeCloth:0,tradeWine:0};break;
+    case 3:// Terms of trade
+      LD={aOppCost:0.5,bOppCost:2,tot:1,aGain:0,bGain:0,aClothProd:80,aWineProd:0,bClothProd:0,bWineProd:60,tradeQty:20};break;
+    case 4:// Tariff
+      LD={worldPrice:30,domesticD:120,domesticDSl:-1,domesticS:10,domesticSSl:0.6,tariff:0};break;
+    case 5:// Exchange rate
+      LD={baseRate:7.0,interestDiff:0,tradeBal:0,inflation:0};break;
+    case 6:// Global supply chain
+      LD={nodes:[{name:'设计',country:'美国',cost:30},{name:'芯片',country:'韩国',cost:25},{name:'屏幕',country:'日本',cost:20},{name:'组装',country:'中国',cost:10},{name:'销售',country:'全球',cost:15}],disrupted:-1,optimized:false};break;
+  }
+}
+
+// === Slider helper ===
+function sliderHTML(id,label,min,max,step,val,color){
+  return `<div class="slider-row"><label>${label}</label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}" oninput="sliderDrag('${id}')" onchange="this.blur();renderPanel()"><span class="val" style="color:${color||'#6ee7b7'}">${parseFloat(val).toFixed(step<1?1:0)}</span></div>`;
+}
+function sliderDrag(id){
+  const el=document.getElementById(id);if(!el)return;
+  const span=el.parentElement.querySelector('.val');if(span)span.textContent=parseFloat(el.value).toFixed(el.step<1?1:0);
+  readSliders();draw();
+}
+function readSliders(){
+  switch(curLevel){
+    case 0:{
+      const a=document.getElementById('sl_aLab'),b=document.getElementById('sl_bLab');
+      if(a)LD.aLabCloth=+a.value;if(b)LD.bLabCloth=+b.value;
+      let aClothOut=LD.aLabCloth/100*LD.aCloth,aWineOut=(100-LD.aLabCloth)/100*LD.aWine;
+      let bClothOut=LD.bLabCloth/100*LD.bCloth,bWineOut=(100-LD.bLabCloth)/100*LD.bWine;
+      completeObj(0,0);
+      if(LD.aLabCloth>70)completeObj(0,1);
+      let totalBefore=50/100*LD.aCloth+50/100*LD.aWine+50/100*LD.bCloth+50/100*LD.bWine;
+      let totalAfter=aClothOut+aWineOut+bClothOut+bWineOut;
+      if(totalAfter>totalBefore)completeObj(0,2);
+    }break;
+    case 1:{
+      const a=document.getElementById('sl_aLab2'),b=document.getElementById('sl_bLab2');
+      if(a)LD.aLabCloth=+a.value;if(b)LD.bLabCloth=+b.value;
+      // opp cost: A cloth = aWine/aCloth, B cloth = bWine/bCloth
+      LD.aOppCloth=LD.aWine/LD.aCloth;LD.bOppCloth=LD.bWine/LD.bCloth;
+      LD.calcDone=true;completeObj(1,0);
+      // A has comp adv in cloth if aOppCloth < bOppCloth
+      if(LD.aOppCloth<LD.bOppCloth&&LD.aLabCloth>70)completeObj(1,1);
+      if(LD.aOppCloth>=LD.bOppCloth&&LD.bLabCloth<30)completeObj(1,1);
+      let totalBefore=50/100*LD.aCloth+50/100*LD.aWine+50/100*LD.bCloth+50/100*LD.bWine;
+      let aClothOut=LD.aLabCloth/100*LD.aCloth,aWineOut=(100-LD.aLabCloth)/100*LD.aWine;
+      let bClothOut=LD.bLabCloth/100*LD.bCloth,bWineOut=(100-LD.bLabCloth)/100*LD.bWine;
+      if(aClothOut+aWineOut+bClothOut+bWineOut>totalBefore)completeObj(1,2);
+    }break;
+    case 2:{
+      const p=document.getElementById('sl_prod');
+      if(p)LD.prodPoint=+p.value;
+      completeObj(2,0);
+      if(LD.prodPoint>20&&LD.prodPoint<80)completeObj(2,1);
+      if(LD.trading)completeObj(2,2);
+    }break;
+    case 3:{
+      const tt=document.getElementById('sl_tot'),tq=document.getElementById('sl_tq');
+      if(tt)LD.tot=+tt.value;if(tq)LD.tradeQty=+tq.value;
+      if(LD.tot>LD.aOppCost&&LD.tot<LD.bOppCost)completeObj(3,0);
+      LD.aGain=(LD.tot-LD.aOppCost)*LD.tradeQty;
+      LD.bGain=(LD.bOppCost-LD.tot)*LD.tradeQty;
+      if(LD.aGain>0&&LD.bGain>0)completeObj(3,1);
+      if(Math.abs(LD.aGain-LD.bGain)<5&&LD.aGain>0)completeObj(3,2);
+    }break;
+    case 4:{
+      const tf=document.getElementById('sl_tariff');
+      if(tf)LD.tariff=+tf.value;
+      if(LD.tariff>0&&LD.tariff<=10)completeObj(4,0);
+      if(LD.tariff>20)completeObj(4,1);
+      if(LD.tariff>5)completeObj(4,2);
+    }break;
+    case 5:{
+      const ir=document.getElementById('sl_ir'),tb=document.getElementById('sl_tb'),inf=document.getElementById('sl_inf');
+      if(ir)LD.interestDiff=+ir.value;if(tb)LD.tradeBal=+tb.value;if(inf)LD.inflation=+inf.value;
+      completeObj(5,0);
+      if(Math.abs(LD.tradeBal)>20)completeObj(5,1);
+      let rate=LD.baseRate-LD.interestDiff*0.3-LD.tradeBal*0.02+LD.inflation*0.2;
+      if(rate<LD.baseRate)completeObj(5,2);// appreciation
+    }break;
+    case 6:break;
+  }
+}
+
+// L2 trade toggle
+function toggleTrade(){LD.trading=!LD.trading;completeObj(2,2);renderPanel();draw()}
+// L6 actions
+function optimizeChain(){
+  LD.nodes[3].cost=8;LD.optimized=true;completeObj(6,0);completeObj(6,1);renderPanel();draw();
+}
+function disruptNode(i){LD.disrupted=i;completeObj(6,2);renderPanel();draw()}
+function resetChain(){LD.disrupted=-1;LD.nodes[3].cost=10;LD.optimized=false;initLevel(6);renderPanel();draw()}
+
+// === Stage Nav ===
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<7;i++){let cls=allDone(i)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="playSound('click');goLevel(${i})"></div>`}
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关 · ${levelInfo[curLevel].title}</div>`;
+  h+=`<div class="sn-hint">${levelInfo[curLevel].sub}</div></div>`;return h;
+}
+
+// === Panel ===
+let _patchLock=false;
+function renderPanel(){
+  if(_patchLock)return;_patchLock=true;setTimeout(()=>{_patchLock=false},50);
+  let info=levelInfo[curLevel];
+  let h=renderStageNav();
+  h+=`<h2>${info.title}</h2><div class="level-title">${info.sub}</div>`;
+  h+=`<div class="desc-text">${info.desc}</div>`;
+  h+=`<ul class="obj-list">${info.objs.map((o,i)=>`<li class="${levelObjs[curLevel][i]?'done':''}">${o}</li>`).join('')}</ul>`;
+
+  switch(curLevel){
+    case 0:
+      h+=`<div style="font-size:12px;line-height:1.8;margin-bottom:6px"><span style="color:#3b82f6">A 国</span>: 布匹 ${LD.aCloth}/人, 葡萄酒 ${LD.aWine}/人<br><span style="color:#ef4444">B 国</span>: 布匹 ${LD.bCloth}/人, 葡萄酒 ${LD.bWine}/人</div>`;
+      h+=sliderHTML('sl_aLab','A 国布匹劳动%',0,100,1,LD.aLabCloth,'#3b82f6');
+      h+=sliderHTML('sl_bLab','B 国布匹劳动%',0,100,1,LD.bLabCloth,'#ef4444');
+      {let ac=LD.aLabCloth/100*LD.aCloth,aw=(100-LD.aLabCloth)/100*LD.aWine;
+      let bc=LD.bLabCloth/100*LD.bCloth,bw=(100-LD.bLabCloth)/100*LD.bWine;
+      h+=`<div style="margin-top:6px;font-size:12px;line-height:1.8">产出: A(布${ac.toFixed(1)},酒${aw.toFixed(1)}) B(布${bc.toFixed(1)},酒${bw.toFixed(1)})<br>总计: 布<span style="color:#22c55e">${(ac+bc).toFixed(1)}</span> 酒<span style="color:#22c55e">${(aw+bw).toFixed(1)}</span></div>`}
+      break;
+    case 1:
+      h+=`<div style="font-size:12px;line-height:1.8;margin-bottom:6px"><span style="color:#3b82f6">A 国</span>: 布匹 ${LD.aCloth}/人, 葡萄酒 ${LD.aWine}/人<br><span style="color:#ef4444">B 国</span>: 布匹 ${LD.bCloth}/人, 葡萄酒 ${LD.bWine}/人<br>A 布匹机会成本: ${(LD.aWine/LD.aCloth).toFixed(2)} 酒<br>B 布匹机会成本: ${(LD.bWine/LD.bCloth).toFixed(2)} 酒</div>`;
+      h+=sliderHTML('sl_aLab2','A 国布匹劳动%',0,100,1,LD.aLabCloth,'#3b82f6');
+      h+=sliderHTML('sl_bLab2','B 国布匹劳动%',0,100,1,LD.bLabCloth,'#ef4444');
+      {let ac=LD.aLabCloth/100*LD.aCloth,aw=(100-LD.aLabCloth)/100*LD.aWine;
+      let bc=LD.bLabCloth/100*LD.bCloth,bw=(100-LD.bLabCloth)/100*LD.bWine;
+      h+=`<div style="margin-top:6px;font-size:12px">总产出: 布<span style="color:#22c55e">${(ac+bc).toFixed(1)}</span> 酒<span style="color:#22c55e">${(aw+bw).toFixed(1)}</span></div>`}
+      break;
+    case 2:
+      h+=sliderHTML('sl_prod','生产点位置',0,100,1,LD.prodPoint,'#a855f7');
+      {let cloth=LD.prodPoint/100*LD.maxCloth,wine=(1-LD.prodPoint/100)*LD.maxWine;
+      h+=`<div style="font-size:12px;margin:6px 0">布匹: ${cloth.toFixed(0)} | 葡萄酒: ${wine.toFixed(0)}</div>`}
+      h+=`<button class="act-btn" onclick="toggleTrade()">${LD.trading?'关闭贸易':'开启贸易'}</button>`;
+      if(LD.trading)h+=`<div style="font-size:12px;color:#22c55e;margin-top:4px">贸易使消费点超越 PPF！</div>`;
+      break;
+    case 3:
+      h+=`<div style="font-size:12px;margin-bottom:6px">A 机会成本: ${LD.aOppCost} | B 机会成本: ${LD.bOppCost}</div>`;
+      h+=sliderHTML('sl_tot','贸易条件',LD.aOppCost,LD.bOppCost,0.1,LD.tot,'#22c55e');
+      h+=sliderHTML('sl_tq','贸易数量',0,40,1,LD.tradeQty,'#f59e0b');
+      h+=`<div style="margin-top:6px;font-size:12px;line-height:1.8"><span style="color:#3b82f6">A 国利得: ${LD.aGain.toFixed(1)}</span><br><span style="color:#ef4444">B 国利得: ${LD.bGain.toFixed(1)}</span></div>`;
+      break;
+    case 4:
+      h+=sliderHTML('sl_tariff','关税税率',0,50,1,LD.tariff,'#f59e0b');
+      {let pDom=LD.worldPrice+LD.tariff;
+      let qd=(LD.domesticD-pDom)/Math.abs(LD.domesticDSl);
+      let qs=(pDom-LD.domesticS)/LD.domesticSSl;
+      let imports=Math.max(0,qd-qs);
+      let rev=LD.tariff*imports;
+      h+=`<div style="margin-top:6px;font-size:12px;line-height:1.8">国内价格: <span style="color:#f59e0b">${pDom}</span><br>进口量: ${imports.toFixed(0)}<br>关税收入: ${rev.toFixed(0)}</div>`}
+      break;
+    case 5:
+      h+=sliderHTML('sl_ir','利率差(%)',-5,5,0.5,LD.interestDiff,'#3b82f6');
+      h+=sliderHTML('sl_tb','贸易差额',-50,50,1,LD.tradeBal,'#22c55e');
+      h+=sliderHTML('sl_inf','通胀差(%)',-3,3,0.5,LD.inflation,'#ef4444');
+      {let rate=LD.baseRate-LD.interestDiff*0.3-LD.tradeBal*0.02+LD.inflation*0.2;
+      h+=`<div style="margin-top:6px;font-size:13px">汇率: 1 USD = <span style="color:#f59e0b;font-weight:bold;font-size:16px">${rate.toFixed(2)}</span> CNY</div>`}
+      break;
+    case 6:
+      {let total=LD.nodes.reduce((s,n)=>s+(LD.disrupted===LD.nodes.indexOf(n)?n.cost*3:n.cost),0);
+      h+=`<div style="font-size:12px;line-height:1.8;margin-bottom:6px">`;
+      LD.nodes.forEach((n,i)=>{
+        let dis=LD.disrupted===i;
+        h+=`<span style="color:${dis?'#ef4444':'#22c55e'}">${n.name}(${n.country}): ${dis?n.cost*3:n.cost}</span> `;
+      });
+      h+=`<br>总成本: <span style="color:#f59e0b;font-weight:bold">${total}</span></div>`;
+      h+=`<button class="act-btn" onclick="optimizeChain()">优化产业链</button>`;
+      h+=`<div style="font-size:11px;color:var(--text-muted);margin:4px 0">模拟中断:</div>`;
+      LD.nodes.forEach((n,i)=>{h+=`<button class="act-btn" style="font-size:12px;padding:6px" onclick="disruptNode(${i})">中断: ${n.name}</button>`});
+      h+=`<button class="act-btn" style="border-color:#ef4444;color:#f87171" onclick="resetChain()">重置</button>`}
+      break;
+  }
+
+  if(allDone(curLevel)){
+    h+=`<div class="learn-box">${info.learn}</div>`;
+    if(curLevel<6)h+=`<button class="act-btn" onclick="playSound('click');goLevel(${curLevel+1})">下一关 →</button>`;
+    else h+=`<button class="act-btn" onclick="showSummary()">查看总结 →</button>`;
+  }
+  panel.innerHTML=h;
+}
+
+function renderBar(){barInner.innerHTML=`<span style="color:var(--text-muted)">🌍 ${levelInfo[curLevel].title}</span><span style="margin-left:auto;color:var(--text-muted);font-size:12px">第 ${curLevel+1}/7 关</span>`}
+
+// === Drawing ===
+function draw(){
+  if(!W)return;
+  ctx.clearRect(0,0,W,H);
+  const th=t();
+  const bgG=ctx.createLinearGradient(0,0,0,H);bgG.addColorStop(0,th.bg1);bgG.addColorStop(1,th.bg2);
+  ctx.fillStyle=bgG;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+
+  const m=60,gw=W-120,gh=H-120;
+  function toX(v,maxV){return m+v/maxV*gw}
+  function toY(v,maxV){return H-m-v/maxV*gh}
+
+  switch(curLevel){
+    case 0:case 1:{
+      // Bar chart: production output
+      let ac=LD.aLabCloth/100*LD.aCloth,aw=(100-LD.aLabCloth)/100*LD.aWine;
+      let bc=LD.bLabCloth/100*LD.bCloth,bw=(100-LD.bLabCloth)/100*LD.bWine;
+      let maxV=Math.max(ac,aw,bc,bw,LD.aCloth,LD.bWine)+2;
+      let bw2=50,gap=20,groups=[
+        {label:'A 布匹',val:ac,color:th.countryA},{label:'A 葡萄酒',val:aw,color:th.countryA},
+        {label:'B 布匹',val:bc,color:th.countryB},{label:'B 葡萄酒',val:bw,color:th.countryB}
+      ];
+      let startX=W/2-(groups.length*(bw2+gap)-gap)/2;
+      let baseY=H-m;
+      ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+      ctx.fillText(curLevel===0?'绝对优势 — 生产分配':'比较优势 — 机会成本决定专业化',W/2,40);
+      // axes
+      ctx.strokeStyle=th.axis;ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(m,m);ctx.lineTo(m,baseY);ctx.lineTo(W-m,baseY);ctx.stroke();
+      for(let i=0;i<groups.length;i++){
+        let x=startX+i*(bw2+gap),h2=groups[i].val/maxV*(baseY-m-20);
+        ctx.fillStyle=groups[i].color;ctx.globalAlpha=i%2===0?0.8:0.5;
+        ctx.fillRect(x,baseY-h2,bw2,h2);ctx.globalAlpha=1;
+        ctx.fillStyle=th.text;ctx.font='11px sans-serif';
+        ctx.fillText(groups[i].label,x+bw2/2,baseY+16);
+        ctx.fillText(groups[i].val.toFixed(1),x+bw2/2,baseY-h2-6);
+      }
+      // total line
+      ctx.fillStyle=th.trade;ctx.font='bold 14px sans-serif';
+      ctx.fillText(`总布匹: ${(ac+bc).toFixed(1)} | 总葡萄酒: ${(aw+bw).toFixed(1)}`,W/2,H-15);
+      if(curLevel===1){
+        ctx.fillStyle=th.tariff;ctx.font='12px sans-serif';
+        ctx.fillText(`A 布匹机会成本: ${(LD.aWine/LD.aCloth).toFixed(2)} 酒 | B: ${(LD.bWine/LD.bCloth).toFixed(2)} 酒`,W/2,70);
+      }
+    }break;
+    case 2:{
+      // PPF curve
+      let maxC=LD.maxCloth+20,maxW=LD.maxWine+20;
+      ctx.strokeStyle=th.axis;ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(m,m);ctx.lineTo(m,H-m);ctx.lineTo(W-m,H-m);ctx.stroke();
+      ctx.fillStyle=th.text;ctx.font='13px sans-serif';ctx.textAlign='center';
+      ctx.fillText('布匹',W/2,H-m+35);
+      ctx.save();ctx.translate(m-35,H/2);ctx.rotate(-Math.PI/2);ctx.fillText('葡萄酒',0,0);ctx.restore();
+      // PPF line
+      ctx.strokeStyle=th.ppf;ctx.lineWidth=3;ctx.beginPath();
+      ctx.moveTo(toX(0,maxC),toY(LD.maxWine,maxW));
+      ctx.lineTo(toX(LD.maxCloth,maxC),toY(0,maxW));ctx.stroke();
+      // fill under PPF
+      ctx.fillStyle='rgba(168,85,247,0.08)';ctx.beginPath();
+      ctx.moveTo(toX(0,maxC),toY(0,maxW));ctx.lineTo(toX(0,maxC),toY(LD.maxWine,maxW));
+      ctx.lineTo(toX(LD.maxCloth,maxC),toY(0,maxW));ctx.closePath();ctx.fill();
+      // production point
+      let cloth=LD.prodPoint/100*LD.maxCloth,wine=(1-LD.prodPoint/100)*LD.maxWine;
+      ctx.fillStyle=th.countryA;ctx.beginPath();ctx.arc(toX(cloth,maxC),toY(wine,maxW),8,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=th.text;ctx.font='12px sans-serif';ctx.textAlign='left';
+      ctx.fillText(`生产 (${cloth.toFixed(0)}, ${wine.toFixed(0)})`,toX(cloth,maxC)+12,toY(wine,maxW)-8);
+      // trade consumption point
+      if(LD.trading){
+        let tc=cloth+15,tw=wine+12;
+        ctx.fillStyle=th.trade;ctx.beginPath();ctx.arc(toX(tc,maxC),toY(tw,maxW),8,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=th.trade;ctx.font='bold 12px sans-serif';
+        ctx.fillText(`消费 (${tc.toFixed(0)}, ${tw.toFixed(0)}) — 超越PPF!`,toX(tc,maxC)+12,toY(tw,maxW)-8);
+        ctx.setLineDash([4,4]);ctx.strokeStyle=th.trade;ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(toX(cloth,maxC),toY(wine,maxW));ctx.lineTo(toX(tc,maxC),toY(tw,maxW));ctx.stroke();ctx.setLineDash([]);
+      }
+      ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('生产可能性边界 (PPF)',W/2,40);
+    }break;
+    case 3:{
+      // Terms of trade visualization
+      let cx=W/2,cy=H/2;
+      ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('贸易条件与贸易利得',cx,40);
+      // Two countries
+      let aX=cx-150,bX=cx+150,cY=cy-30;
+      ctx.fillStyle='rgba(59,130,246,0.15)';ctx.strokeStyle=th.countryA;ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(aX,cY,50,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle='rgba(239,68,68,0.15)';ctx.strokeStyle=th.countryB;
+      ctx.beginPath();ctx.arc(bX,cY,50,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.fillStyle=th.text;ctx.font='bold 14px sans-serif';
+      ctx.fillText('A 国',aX,cY-5);ctx.fillText('B 国',bX,cY-5);
+      ctx.font='11px sans-serif';ctx.fillStyle=th.textSec;
+      ctx.fillText(`机会成本: ${LD.aOppCost}`,aX,cY+15);ctx.fillText(`机会成本: ${LD.bOppCost}`,bX,cY+15);
+      // Trade arrow
+      ctx.strokeStyle=th.trade;ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(aX+55,cY);ctx.lineTo(bX-55,cY);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(bX-60,cY-5);ctx.lineTo(bX-55,cY);ctx.lineTo(bX-60,cY+5);ctx.fill();
+      ctx.fillStyle=th.trade;ctx.font='bold 13px sans-serif';
+      ctx.fillText(`贸易条件: ${LD.tot.toFixed(1)}`,cx,cY-15);
+      // Gains bars
+      let barY=cy+60,barH=30,maxGain=30;
+      ctx.fillStyle=th.countryA;ctx.fillRect(cx-120,barY,Math.max(0,LD.aGain/maxGain*100),barH);
+      ctx.fillStyle=th.countryB;ctx.fillRect(cx-120,barY+40,Math.max(0,LD.bGain/maxGain*100),barH);
+      ctx.fillStyle=th.text;ctx.font='12px sans-serif';ctx.textAlign='left';
+      ctx.fillText(`A 利得: ${LD.aGain.toFixed(1)}`,cx-120,barY-6);
+      ctx.fillText(`B 利得: ${LD.bGain.toFixed(1)}`,cx-120,barY+34);
+    }break;
+    case 4:{
+      // Tariff diagram
+      let maxQ=130,maxP=140;
+      let pW=LD.worldPrice,pD=pW+LD.tariff;
+      ctx.strokeStyle=th.axis;ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(m,m);ctx.lineTo(m,H-m);ctx.lineTo(W-m,H-m);ctx.stroke();
+      ctx.fillStyle=th.text;ctx.font='13px sans-serif';ctx.textAlign='center';
+      ctx.fillText('数量',W/2,H-m+35);
+      ctx.save();ctx.translate(m-35,H/2);ctx.rotate(-Math.PI/2);ctx.fillText('价格',0,0);ctx.restore();
+      // Demand
+      ctx.strokeStyle=th.countryA;ctx.lineWidth=3;ctx.beginPath();
+      for(let q=0;q<=maxQ;q++){let p=LD.domesticD+LD.domesticDSl*q;if(p<0)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
+      // Supply
+      ctx.strokeStyle=th.countryB;ctx.lineWidth=3;ctx.beginPath();
+      for(let q=0;q<=maxQ;q++){let p=LD.domesticS+LD.domesticSSl*q;if(p>maxP)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
+      // World price
+      ctx.setLineDash([6,4]);ctx.strokeStyle=th.trade;ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(m,toY(pW,maxP));ctx.lineTo(W-m,toY(pW,maxP));ctx.stroke();
+      ctx.fillStyle=th.trade;ctx.font='11px sans-serif';ctx.textAlign='right';ctx.fillText(`世界价格 = ${pW}`,W-m-5,toY(pW,maxP)-6);
+      // Domestic price with tariff
+      if(LD.tariff>0){
+        ctx.strokeStyle=th.tariff;ctx.beginPath();ctx.moveTo(m,toY(pD,maxP));ctx.lineTo(W-m,toY(pD,maxP));ctx.stroke();
+        ctx.fillStyle=th.tariff;ctx.fillText(`国内价格 = ${pD}`,W-m-5,toY(pD,maxP)-6);
+        // tariff revenue
+        let qd=(LD.domesticD-pD)/Math.abs(LD.domesticDSl);
+        let qs=(pD-LD.domesticS)/LD.domesticSSl;
+        let imports=Math.max(0,qd-qs);
+        ctx.fillStyle='rgba(245,158,11,0.2)';
+        ctx.fillRect(toX(qs,maxQ),toY(pD,maxP),toX(qd,maxQ)-toX(qs,maxQ),toY(pW,maxP)-toY(pD,maxP));
+        ctx.fillStyle=th.tariff;ctx.font='bold 11px sans-serif';ctx.textAlign='center';
+        ctx.fillText('关税收入',toX((qs+qd)/2,maxQ),(toY(pD,maxP)+toY(pW,maxP))/2+4);
+      }
+      ctx.setLineDash([]);
+      ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('关税效应分析',W/2,40);
+    }break;
+    case 5:{
+      // Exchange rate gauge
+      let rate=LD.baseRate-LD.interestDiff*0.3-LD.tradeBal*0.02+LD.inflation*0.2;
+      let cx2=W/2,cy2=H/2-20;
+      ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('汇率决定机制',cx2,40);
+      // Gauge
+      let r=Math.min(W,H)*0.3;
+      ctx.strokeStyle=th.axis;ctx.lineWidth=4;
+      ctx.beginPath();ctx.arc(cx2,cy2,r,-Math.PI,-0);ctx.stroke();
+      // Ticks
+      for(let i=0;i<=10;i++){
+        let angle=-Math.PI+i*Math.PI/10;
+        let x1=cx2+Math.cos(angle)*(r-10),y1=cy2+Math.sin(angle)*(r-10);
+        let x2=cx2+Math.cos(angle)*(r+5),y2=cy2+Math.sin(angle)*(r+5);
+        ctx.strokeStyle=th.axis;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+        ctx.fillStyle=th.textSec;ctx.font='10px sans-serif';
+        ctx.fillText((5+i*0.5).toFixed(1),cx2+Math.cos(angle)*(r+20),cy2+Math.sin(angle)*(r+20));
+      }
+      // Needle
+      let norm=(rate-5)/5;norm=Math.max(0,Math.min(1,norm));
+      let angle=-Math.PI+norm*Math.PI;
+      ctx.strokeStyle=th.tariff;ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(cx2,cy2);ctx.lineTo(cx2+Math.cos(angle)*(r-20),cy2+Math.sin(angle)*(r-20));ctx.stroke();
+      ctx.fillStyle=th.tariff;ctx.beginPath();ctx.arc(cx2,cy2,6,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=th.text;ctx.font='bold 24px sans-serif';
+      ctx.fillText(`${rate.toFixed(2)} CNY/USD`,cx2,cy2+50);
+      // Factor arrows
+      let factors=[
+        {name:'利率↑→升值',val:LD.interestDiff,y:cy2+90,color:th.countryA},
+        {name:'顺差→升值',val:LD.tradeBal,y:cy2+115,color:th.trade},
+        {name:'通胀↑→贬值',val:LD.inflation,y:cy2+140,color:th.countryB}
+      ];
+      for(let f of factors){
+        ctx.fillStyle=f.color;ctx.font='12px sans-serif';ctx.textAlign='center';
+        ctx.fillText(`${f.name}: ${f.val>0?'+':''}${f.val.toFixed(1)}`,cx2,f.y);
+      }
+    }break;
+    case 6:{
+      // Supply chain visualization
+      ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('全球产业链',W/2,40);
+      let nodes=LD.nodes;let nw=80,nh=60,gap=30;
+      let startX=W/2-(nodes.length*(nw+gap)-gap)/2;
+      let ny=H/2-30;
+      for(let i=0;i<nodes.length;i++){
+        let x=startX+i*(nw+gap);
+        let dis=LD.disrupted===i;
+        ctx.fillStyle=dis?'rgba(239,68,68,0.2)':'rgba(59,130,246,0.15)';
+        ctx.strokeStyle=dis?th.countryB:th.countryA;ctx.lineWidth=2;
+        ctx.fillRect(x,ny,nw,nh);ctx.strokeRect(x,ny,nw,nh);
+        ctx.fillStyle=th.text;ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+        ctx.fillText(nodes[i].name,x+nw/2,ny+20);
+        ctx.font='10px sans-serif';ctx.fillStyle=th.textSec;
+        ctx.fillText(nodes[i].country,x+nw/2,ny+35);
+        ctx.fillStyle=dis?th.countryB:th.trade;
+        ctx.fillText(`$${dis?nodes[i].cost*3:nodes[i].cost}`,x+nw/2,ny+50);
+        // Arrow
+        if(i<nodes.length-1){
+          ctx.strokeStyle=dis||LD.disrupted===i+1?th.countryB:th.trade;ctx.lineWidth=2;
+          ctx.beginPath();ctx.moveTo(x+nw,ny+nh/2);ctx.lineTo(x+nw+gap,ny+nh/2);ctx.stroke();
+          ctx.beginPath();ctx.moveTo(x+nw+gap-5,ny+nh/2-4);ctx.lineTo(x+nw+gap,ny+nh/2);ctx.lineTo(x+nw+gap-5,ny+nh/2+4);ctx.fill();
+        }
+      }
+      let total=nodes.reduce((s,n,i)=>s+(LD.disrupted===i?n.cost*3:n.cost),0);
+      ctx.fillStyle=th.text;ctx.font='bold 14px sans-serif';
+      ctx.fillText(`总成本: $${total}`,W/2,ny+nh+40);
+      if(LD.disrupted>=0){ctx.fillStyle=th.countryB;ctx.font='bold 13px sans-serif';ctx.fillText(`⚠ ${nodes[LD.disrupted].name} 环节中断！成本 ×3`,W/2,ny+nh+65)}
+    }break;
+  }
+}
+
+// === Summary ===
+function showSummary(){
+  let done=levelObjs.flat().filter(Boolean).length;
+  panel.innerHTML=`<div class="summary-box"><div class="summary-title">🎉 国际贸易探险完成！</div><div class="summary-sub">你已掌握国际贸易的核心理论</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标完成</div></div><div class="summary-stat"><div class="num">7</div><div class="label">关卡通关</div></div></div><div class="summary-keys"><div>💪 绝对优势: 效率高者专业化</div><div>🔄 比较优势: 机会成本决定分工</div><div>📐 PPF: 贸易突破生产边界</div><div>🤝 贸易条件: 在机会成本之间</div><div>🏛️ 关税: 保护主义有代价</div><div>💱 汇率: 供需决定货币价格</div><div>🌐 全球化: 效率与韧性的权衡</div></div></div><button class="act-btn" style="margin-top:12px" onclick="location.reload()">再玩一次</button>`;
+}
+
+function mainLoop(){requestAnimationFrame(mainLoop);draw()}
+requestAnimationFrame(mainLoop);
+</script>
+</body>
+</html>
+</style>

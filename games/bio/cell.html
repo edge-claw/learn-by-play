@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>细胞分裂 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden;height:100vh}
+canvas{display:block}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;background:linear-gradient(135deg,#22c55e,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.overlay .sub{color:var(--text-sub);font-size:17px;margin-bottom:32px}
+.overlay .start-btn{padding:14px 48px;font-size:18px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:transform .2s}
+.overlay .start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.features .feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px}
+.features .feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:fixed;left:0;top:0;width:320px;height:calc(100% - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;display:none;padding:16px;font-size:15px;line-height:1.7;padding-bottom:24px}
+.panel h2{font-size:20px;color:var(--title-color);margin-bottom:6px}
+.panel h3{font-size:16px;color:var(--title-color);margin:10px 0 4px}
+.panel .obj{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:14px}
+.panel .obj .dot{width:14px;height:14px;border-radius:50%;border:2px solid #22c55e;flex-shrink:0}
+.panel .obj .dot.done{background:#22c55e}
+.panel .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:var(--learn-text);line-height:1.8}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-size:15px;cursor:pointer;transition:background .2s}
+.act-btn:hover{background:#16a34a}
+.bar{position:fixed;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--panel-border);display:none;z-index:10;padding:0 16px;font-size:13px;align-items:center;justify-content:space-between}
+.bar .levels{display:flex;gap:4px;align-items:center}
+.bar .lbtn{width:28px;height:24px;border:1px solid #c7d2fe;background:transparent;color:var(--text-sub);border-radius:4px;cursor:pointer;font-size:13px}
+.bar .lbtn.cur{background:#22c55e;color:#fff;border-color:#22c55e}
+.bar .lbtn.done{background:var(--btn-bg);color:#16a34a}
+.bar .info{color:var(--text-muted)}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:#c7d2fe;border-radius:2px}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="ov">
+<h1>🧬 细胞分裂 探险</h1>
+<p class="sub">Cell Division — 从DNA复制到减数分裂</p>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="fi">🔬</div>细胞结构</div>
+<div class="feat"><div class="fi">🧬</div>DNA复制</div>
+<div class="feat"><div class="fi">🔄</div>有丝分裂</div>
+<div class="feat"><div class="fi">🎭</div>减数分裂I</div>
+<div class="feat"><div class="fi">✂️</div>减数分裂II</div>
+<div class="feat"><div class="fi">⚖️</div>对比分析</div>
+<div class="feat"><div class="fi">🛡️</div>周期调控</div>
+</div>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"></div>
+<script>
+let isDark=true;
+const TH={
+  dark:{bg1:'#0a1a0a',bg2:'#0d1a0d',bg3:'#0a0a1a',grid:'rgba(34,197,94,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)'},
+  light:{bg1:'#e8f5e8',bg2:'#f0f5f0',bg3:'#e0f0e0',grid:'rgba(34,197,94,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)'}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{renderPanel()}catch(e){}}
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),ov=document.getElementById('ov');
+let W,H,curLevel=0,tick=0,mouse={x:0,y:0,down:false,clicked:false,dragIdx:-1};
+const PL=320;
+const levelNames=['细胞结构','DNA复制','有丝分裂','减数分裂I','减数分裂II','有丝vs减数对比','细胞周期调控'];
+const levelDescs=[
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>结构：</b>细胞膜 / 细胞核 / 线粒体 / 内质网</div>画布上展示了一个动物细胞的横截面。点击各个细胞器来识别它们的名称和功能。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>步骤：</b>解旋 → 引物 → 延伸 → 连接</div>DNA双链正在等待复制。按顺序触发四个步骤，观察DNA复制的完整过程。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>四期：</b>前期 → 中期 → 后期 → 末期</div>控制有丝分裂的四个阶段：染色质凝缩、纺锤体形成、着丝点分裂、细胞质分裂。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>特点：</b>同源配对 + 交叉互换 → 遗传多样性</div>减数分裂第一次分裂：同源染色体配对形成四分体，发生交叉互换，然后分离到两极。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>结果：</b>姐妹染色单体分离 → 4个单倍体细胞</div>减数分裂第二次分裂类似有丝分裂：着丝点分裂，姐妹染色单体分离，最终产生4个单倍体配子。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>对比：</b>有丝分裂(2n→2n) vs 减数分裂(2n→n)</div>拖动标签到正确的分裂类型下方，比较两种分裂方式在染色体数目、分裂次数、产物等方面的差异。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>调控：</b>G1/S/G2/M 检查点 + CDK-Cyclin 复合物</div>细胞周期有多个检查点防止异常分裂。调节CDK和Cyclin水平，让细胞通过各个检查点完成正常分裂。'
+];
+const levelObjTexts=[
+['点击识别4个细胞器','观察每个细胞器的功能动画','完成细胞器功能配对'],
+['触发DNA解旋酶','完成引物合成和链延伸','连接冈崎片段完成复制'],
+['推进前期：染色质凝缩','推进中期+后期：排列与分离','完成末期：细胞质分裂'],
+['完成同源染色体配对','触发交叉互换','分离同源染色体到两极'],
+['排列染色体在赤道板','分离姐妹染色单体','形成4个单倍体细胞'],
+['正确分类至少4个特征','完成全部6个特征分类','回答对比测验问题'],
+['调节G1检查点通过','调节S期和G2检查点','完成M期检查点进入分裂']
+];
+const learnTexts=[
+'💡 细胞是生命的基本单位。细胞膜(磷脂双分子层)控制物质进出；细胞核含有遗传物质DNA，是细胞的控制中心；线粒体是"动力工厂"，通过氧化磷酸化产生ATP；内质网分为粗面(附着核糖体，合成蛋白质)和滑面(合成脂质)。每个细胞约含1000-2000个线粒体。',
+'💡 DNA复制是半保留复制：解旋酶解开双链，引物酶合成RNA引物，DNA聚合酶III沿5\'→3\'方向延伸新链。前导链连续合成，后随链形成冈崎片段(100-200bp)，最后由DNA连接酶连接。复制叉速度约1000bp/s，人类基因组(32亿bp)约8小时完成复制。',
+'💡 有丝分裂保证子细胞获得与母细胞相同的染色体。前期：染色质凝缩为染色体，中心体移向两极；中期：染色体排列在赤道板，纺锤丝连接着丝点；后期：着丝点分裂，姐妹染色单体被拉向两极；末期：核膜重建，胞质分裂。整个过程约1-2小时。',
+'💡 减数分裂I是减数分裂的关键：同源染色体配对形成四分体(联会)，非姐妹染色单体间发生交叉互换(重组频率约1-2次/染色体)，产生新的基因组合。这是遗传多样性的重要来源。分裂后染色体数目减半(2n→n)，但每条染色体仍由两条姐妹染色单体组成。',
+'💡 减数分裂II与有丝分裂相似，但起始细胞是单倍体(n)。着丝点分裂，姐妹染色单体分离到两极。最终一个2n细胞产生4个n配子。精子发生产生4个精子，卵子发生产生1个卵子+3个极体。减数分裂的错误(如不分离)可导致唐氏综合征(21三体)等。',
+'💡 有丝分裂：1次分裂→2个2n子细胞，用于生长和修复；减数分裂：2次分裂→4个n配子，用于有性生殖。关键区别：减数分裂I有同源配对和交叉互换(有丝分裂没有)，减数分裂使染色体数目减半(有丝分裂不变)。两者都需要纺锤体，都经历PMAT阶段。',
+'💡 细胞周期由CDK(周期蛋白依赖性激酶)和Cyclin(周期蛋白)调控。G1检查点(限制点)检查细胞大小和DNA损伤；S期检查DNA复制完整性；G2检查点确认复制完成；M检查点(纺锤体组装检查点)确保所有染色体正确连接纺锤丝。p53是"基因组卫士"，检测到损伤时阻止细胞周期进行。'
+];
+let levelObjs=levelObjTexts.map(a=>a.map(()=>false));
+let L={};
+function resetLevel(li){
+  L={};levelObjs[li]=levelObjs[li].map(()=>false);
+  if(li===0){L.identified=new Set();L.animOrg=null;L.animT=0;L.matched=new Set();L.matchMode=false;L.matchTarget=null;
+    L.organelles=[
+      {id:'membrane',x:0.5,y:0.5,r:0.35,name:'细胞膜',desc:'磷脂双分子层，控制物质进出',color:'#3b82f6'},
+      {id:'nucleus',x:0.5,y:0.45,r:0.12,name:'细胞核',desc:'含DNA，细胞控制中心',color:'#8b5cf6'},
+      {id:'mito',x:0.68,y:0.35,r:0.06,name:'线粒体',desc:'氧化磷酸化产生ATP',color:'#ef4444'},
+      {id:'er',x:0.35,y:0.6,r:0.08,name:'内质网',desc:'蛋白质合成与脂质代谢',color:'#f59e0b'}
+    ];
+  }
+  if(li===1){L.step=0;L.animT=0;L.helixAngle=0;L.replicating=false;}
+  if(li===2){L.phase=0;L.phaseNames=['前期','中期','后期','末期'];L.animT=0;L.chroms=[];initMitosisChroms();}
+  if(li===3){L.paired=false;L.crossed=false;L.separated=false;L.animT=0;L.crossT=0;L.sepT=0;}
+  if(li===4){L.aligned=false;L.splitDone=false;L.fourCells=false;L.animT=0;}
+  if(li===5){L.labels=[
+    {text:'2次分裂',ans:'meiosis',placed:null},{text:'1次分裂',ans:'mitosis',placed:null},
+    {text:'4个子细胞',ans:'meiosis',placed:null},{text:'2个子细胞',ans:'mitosis',placed:null},
+    {text:'有交叉互换',ans:'meiosis',placed:null},{text:'无交叉互换',ans:'mitosis',placed:null}
+  ];L.correct=0;L.quizDone=false;L.dragLabel=-1;}
+  if(li===6){L.g1Pass=false;L.sPass=false;L.g2Pass=false;L.mPass=false;L.cdkLevel=30;L.cyclinLevel=20;L.phase='G1';L.animT=0;}
+}
+function initMitosisChroms(){L.chroms=[];for(let i=0;i<4;i++){L.chroms.push({x:0.5+(Math.random()-0.5)*0.15,y:0.5+(Math.random()-0.5)*0.15,tx:0.5,ty:0.5,color:i<2?'#ef4444':'#3b82f6'});}}
+function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight-36;}
+window.onresize=resize;resize();
+cv.onmousemove=e=>{const r=cv.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;};
+cv.onmousedown=e=>{mouse.down=true;mouse.clicked=true;const r=cv.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;handleClick(mouse.x,mouse.y);};
+cv.onmouseup=()=>{mouse.down=false;mouse.dragIdx=-1;};
+function cx(r){return PL+(W-PL)*r;}
+function cy(r){return H*r;}
+function startGame(){ov.style.display='none';panel.style.display='block';bar.style.display='flex';resetLevel(0);renderPanel();renderBar();}
+function goLevel(li){if(li<0||li>6)return;curLevel=li;resetLevel(li);renderPanel();renderBar();}
+window.goLevel=goLevel;
+function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel();renderBar();}}
+function renderBar(){bar.innerHTML='<span style="color:var(--text-muted)">🧬 '+levelNames[curLevel]+'</span>';}
+function _stageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<7;i++){let cls=levelObjs[i].every(v=>v)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;}
+  h+=`</div><div class="sn-info">第${curLevel+1}/7关 · ${levelNames[curLevel]}</div></div>`;return h;
+}
+function _summaryHTML(){
+  let done=levelObjs.filter(a=>a.every(v=>v)).length;
+  let h='<div class="summary-box"><div class="summary-title">🎉 全部通关！</div>';
+  h+=`<div class="summary-sub">你已掌握细胞分裂的核心知识</div>`;
+  h+=`<div class="summary-stats"><div class="summary-stat"><div class="num">${done}</div><div class="label">完成关卡</div></div>`;
+  h+=`<div class="summary-stat"><div class="num">${done*3}</div><div class="label">达成目标</div></div></div>`;
+  h+=`<div class="summary-keys"><div>🧬 DNA半保留复制：解旋→引物→延伸→连接</div><div>🔄 有丝分裂：2n→2n，用于生长修复</div><div>🎭 减数分裂：2n→n，产生配子，交叉互换增加多样性</div><div>🛡️ 细胞周期检查点：G1/S/G2/M，p53守护基因组</div></div></div>`;
+  return h;
+}
+function renderPanel(){
+  let li=curLevel,h=_stageNav();
+  h+=`<h2>${levelNames[li]}</h2>`;
+  h+=`<p style="color:var(--text-sub);font-size:14px;margin:6px 0 10px">${levelDescs[li]}</p>`;
+  h+=`<h3>🎯 目标</h3>`;
+  for(let i=0;i<3;i++){let d=levelObjs[li][i]?'done':'';h+=`<div class="obj"><div class="dot ${d}"></div>${levelObjTexts[li][i]}</div>`;}
+  if(li===0){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="startMatch()">🔗 开始功能配对</button>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px;margin-top:4px">已识别: ${L.identified?L.identified.size:0}/4 个细胞器</p>`;
+  }
+  if(li===1){
+    h+=`<h3>操作</h3>`;
+    const steps=['🔓 解旋酶解开双链','🧩 引物酶合成引物','📏 DNA聚合酶延伸','🔗 连接酶连接片段'];
+    steps.forEach((s,i)=>{let dis=i>L.step?'opacity:0.4;pointer-events:none':'';h+=`<button class="act-btn" style="${dis}" onclick="dnaStep(${i})">${s}</button>`;});
+    h+=`<p style="color:var(--text-sub);font-size:12px;margin-top:4px">当前步骤: ${L.step+1}/4</p>`;
+  }
+  if(li===2){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="advanceMitosis()">⏩ 推进到${L.phaseNames[Math.min(L.phase,3)]||'完成'}</button>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px;margin-top:4px">当前: ${L.phase<4?L.phaseNames[L.phase]:'已完成'}</p>`;
+  }
+  if(li===3){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="pairHomologs()" ${L.paired?'disabled':''}>${L.paired?'✅ 已配对':'🤝 同源染色体配对'}</button>`;
+    h+=`<button class="act-btn" onclick="crossOver()" ${!L.paired||L.crossed?'disabled':''}>${L.crossed?'✅ 已交换':'🔀 交叉互换'}</button>`;
+    h+=`<button class="act-btn" onclick="separateHomologs()" ${!L.crossed||L.separated?'disabled':''}>${L.separated?'✅ 已分离':'↔️ 分离到两极'}</button>`;
+  }
+  if(li===4){
+    h+=`<h3>操作</h3>`;
+    h+=`<button class="act-btn" onclick="alignMeio2()" ${L.aligned?'disabled':''}>📐 排列在赤道板</button>`;
+    h+=`<button class="act-btn" onclick="splitSisters()" ${!L.aligned||L.splitDone?'disabled':''}>✂️ 分离姐妹染色单体</button>`;
+    h+=`<button class="act-btn" onclick="formFourCells()" ${!L.splitDone||L.fourCells?'disabled':''}>🔬 形成4个单倍体</button>`;
+  }
+  if(li===5){
+    h+=`<h3>操作</h3>`;
+    h+=`<p style="color:var(--text-sub);font-size:13px">点击画布上的标签，拖到正确的分类区域</p>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px;margin-top:4px">已正确分类: ${L.correct}/6</p>`;
+    if(L.correct>=6&&!L.quizDone)h+=`<button class="act-btn" onclick="quizCompare()">📝 回答对比测验</button>`;
+  }
+  if(li===6){
+    h+=`<h3>操作</h3>`;
+    h+=`<p style="color:var(--text-sub);font-size:13px">调节CDK和Cyclin水平让细胞通过检查点</p>`;
+    h+=`<div style="margin:8px 0"><label style="font-size:13px;color:var(--text-sub)">CDK: ${L.cdkLevel}%</label><br><input type="range" min="0" max="100" value="${L.cdkLevel}" style="width:100%" oninput="L.cdkLevel=+this.value;checkCheckpoints();renderPanel()"></div>`;
+    h+=`<div style="margin:8px 0"><label style="font-size:13px;color:var(--text-sub)">Cyclin: ${L.cyclinLevel}%</label><br><input type="range" min="0" max="100" value="${L.cyclinLevel}" style="width:100%" oninput="L.cyclinLevel=+this.value;checkCheckpoints();renderPanel()"></div>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px">阶段: <span style="color:#22c55e;font-weight:bold">${L.phase}</span></p>`;
+  }
+  if(levelObjs[li].every(v=>v)){
+    h+=`<div class="learn-box">${learnTexts[li]}</div>`;
+    if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+    if(li===6)h+=_summaryHTML();
+  }
+  panel.innerHTML=h;
+}
+// Level 0 actions
+window.startMatch=function(){L.matchMode=true;L.matchTarget=0;renderPanel();};
+function handleClick(mx,my){
+  if(curLevel===0&&L.organelles){
+    L.organelles.forEach(o=>{
+      let dx=mx-cx(o.x),dy=my-cy(o.y);
+      if(Math.sqrt(dx*dx+dy*dy)<(o.r*(W-PL)*0.5)){
+        L.identified.add(o.id);L.animOrg=o.id;L.animT=60;
+        if(L.identified.size>=4)completeObj(0);
+        if(L.matchMode){L.matched.add(o.id);if(L.matched.size>=4)completeObj(2);}
+        renderPanel();
+      }
+    });
+    if(L.identified.size>=2)completeObj(1);
+  }
+  if(curLevel===5){
+    let cw=W-PL,lw=120,lh=30;
+    L.labels.forEach((lb,i)=>{
+      if(lb.placed!==null)return;
+      let lx=cx(0.3)-lw/2,ly=cy(0.15)+i*40;
+      if(mx>lx&&mx<lx+lw&&my>ly&&my<ly+lh){L.dragLabel=i;mouse.dragIdx=i;}
+    });
+  }
+}
+cv.addEventListener('mouseup',e=>{
+  if(curLevel===5&&L.dragLabel>=0){
+    let mx=mouse.x,lb=L.labels[L.dragLabel];
+    let mitX=cx(0.25),meiX=cx(0.75);
+    if(mx<cx(0.5)){lb.placed='mitosis';if(lb.ans==='mitosis'){L.correct++;if(L.correct>=4)completeObj(0);if(L.correct>=6)completeObj(1);}}
+    else{lb.placed='meiosis';if(lb.ans==='meiosis'){L.correct++;if(L.correct>=4)completeObj(0);if(L.correct>=6)completeObj(1);}}
+    L.dragLabel=-1;renderPanel();
+  }
+});
+// Level 1 actions
+window.dnaStep=function(i){
+  if(i===L.step||i===L.step+1){L.step=Math.max(L.step,i+1);L.animT=60;L.replicating=true;
+    if(i===0)completeObj(0);if(i>=2)completeObj(1);if(i>=3)completeObj(2);renderPanel();}
+};
+// Level 2 actions
+window.advanceMitosis=function(){
+  if(L.phase<4){
+    if(L.phase===0)completeObj(0);
+    if(L.phase===1||L.phase===2)completeObj(1);
+    if(L.phase===3)completeObj(2);
+    L.phase++;L.animT=60;renderPanel();
+  }
+};
+// Level 3 actions
+window.pairHomologs=function(){L.paired=true;L.animT=60;completeObj(0);renderPanel();};
+window.crossOver=function(){L.crossed=true;L.crossT=60;completeObj(1);renderPanel();};
+window.separateHomologs=function(){L.separated=true;L.sepT=60;completeObj(2);renderPanel();};
+// Level 4 actions
+window.alignMeio2=function(){L.aligned=true;L.animT=60;completeObj(0);renderPanel();};
+window.splitSisters=function(){L.splitDone=true;L.animT=60;completeObj(1);renderPanel();};
+window.formFourCells=function(){L.fourCells=true;L.animT=60;completeObj(2);renderPanel();};
+// Level 5 actions
+window.quizCompare=function(){L.quizDone=true;completeObj(2);renderPanel();};
+// Level 6 actions
+window.checkCheckpoints=function(){
+  let cdk=L.cdkLevel,cyc=L.cyclinLevel;
+  if(cdk>40&&cyc>30&&!L.g1Pass){L.g1Pass=true;L.phase='S';completeObj(0);}
+  if(L.g1Pass&&cdk>60&&cyc>50&&!L.sPass){L.sPass=true;L.phase='G2';completeObj(1);}
+  if(L.sPass&&cdk>80&&cyc>70&&!L.g2Pass){L.g2Pass=true;L.phase='M';completeObj(2);}
+};
+// Drawing
+function drawBg(){
+  const th=t();
+  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,th.bg1);g.addColorStop(0.5,th.bg2);g.addColorStop(1,th.bg3);
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let x=PL;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(W,y);ctx.stroke();}
+}
+function drawCell(x,y,r,color,alpha){
+  ctx.save();ctx.globalAlpha=alpha||1;
+  ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+  let g=ctx.createRadialGradient(x-r*0.2,y-r*0.2,r*0.1,x,y,r);
+  g.addColorStop(0,color+'44');g.addColorStop(1,color+'11');
+  ctx.fillStyle=g;ctx.fill();ctx.strokeStyle=color;ctx.lineWidth=3;ctx.stroke();
+  ctx.restore();
+}
+function drawChromosome(x,y,size,color,split){
+  ctx.save();ctx.translate(x,y);
+  if(split){
+    ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(-size*0.3,-size);ctx.quadraticCurveTo(-size*0.5,0,-size*0.3,size);ctx.lineTo(-size*0.1,size);ctx.quadraticCurveTo(0,0,-size*0.1,-size);ctx.closePath();ctx.fill();
+    ctx.beginPath();ctx.moveTo(size*0.1,-size);ctx.quadraticCurveTo(0,0,size*0.1,size);ctx.lineTo(size*0.3,size);ctx.quadraticCurveTo(size*0.5,0,size*0.3,-size);ctx.closePath();ctx.fill();
+  }else{
+    ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(-size*0.2,-size);ctx.quadraticCurveTo(-size*0.4,0,-size*0.2,size);ctx.lineTo(size*0.2,size);ctx.quadraticCurveTo(size*0.4,0,size*0.2,-size);ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(-size*0.02,-size*0.1,size*0.04,size*0.2);
+  }
+  ctx.restore();
+}
+function drawLevel0(){
+  let midX=cx(0.5),midY=cy(0.5),cellR=Math.min(W-PL,H)*0.35;
+  drawCell(midX,midY,cellR,'#3b82f6',0.8);
+  L.organelles.forEach(o=>{
+    let ox=cx(o.x),oy=cy(o.y),or=o.r*(W-PL)*0.15;
+    let highlight=L.identified.has(o.id);
+    ctx.beginPath();ctx.arc(ox,oy,or,0,Math.PI*2);
+    ctx.fillStyle=highlight?o.color+'88':o.color+'33';ctx.fill();
+    ctx.strokeStyle=highlight?o.color:o.color+'66';ctx.lineWidth=highlight?3:1.5;ctx.stroke();
+    if(highlight||L.animOrg===o.id){
+      ctx.fillStyle=t().text;ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+      ctx.fillText(o.name,ox,oy-or-8);ctx.font='11px sans-serif';ctx.fillStyle=t().textSec;
+      ctx.fillText(o.desc,ox,oy+or+14);
+    }
+  });
+  if(L.identified.has('nucleus')){
+    let nx=cx(0.5),ny=cy(0.45),nr=0.12*(W-PL)*0.15;
+    for(let i=0;i<3;i++){let a=tick*0.02+i*2.1;drawChromosome(nx+Math.cos(a)*nr*0.5,ny+Math.sin(a)*nr*0.5,nr*0.4,'#c084fc',false);}
+  }
+}
+function drawLevel1(){
+  let midX=cx(0.5),midY=cy(0.5),w=300,h=200;
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;
+  for(let i=0;i<20;i++){
+    let x1=midX-w/2+i*(w/20),y1=midY-h/4+Math.sin(i*0.5+tick*0.05)*20;
+    let x2=x1,y2=midY+h/4+Math.sin(i*0.5+tick*0.05+Math.PI)*20;
+    if(L.step>=1&&i<L.step*5){ctx.strokeStyle='#22c55e';ctx.lineWidth=3;}else{ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;}
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    let bases=['A','T','G','C'];ctx.fillStyle=L.step>=2?'#f59e0b':'#60a5fa';ctx.font='10px monospace';ctx.textAlign='center';
+    ctx.fillText(bases[i%4],x1,y1-5);ctx.fillText(bases[(i+2)%4],x2,y2+12);
+  }
+  if(L.step>=1){ctx.fillStyle='#ef4444';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('🔓 解旋中...',midX,midY-h/2-20);}
+  if(L.step>=3){ctx.fillStyle='#22c55e';ctx.font='bold 14px sans-serif';ctx.fillText('✅ 复制完成！',midX,midY+h/2+30);}
+  let labels=['解旋酶','引物酶','DNA聚合酶','连接酶'];
+  for(let i=0;i<4;i++){
+    let lx=midX-w/2+i*(w/3),ly=midY-h/2-50;
+    ctx.fillStyle=i<L.step?'#22c55e':i===L.step?'#f59e0b':'#666';
+    ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText((i<L.step?'✅ ':'')+(i+1)+'. '+labels[i],lx+w/6,ly);
+  }
+}
+function drawLevel2(){
+  let midX=cx(0.5),midY=cy(0.5),r=Math.min(W-PL,H)*0.25;
+  drawCell(midX,midY,r*1.3,'#8b5cf6',0.3);
+  if(L.phase===0){
+    for(let i=0;i<4;i++){let a=tick*0.01+i*1.57;let cr=r*0.3;drawChromosome(midX+Math.cos(a)*cr,midY+Math.sin(a)*cr,20,'#ef4444',false);}
+    ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('前期：染色质凝缩',midX,midY-r-20);
+  }else if(L.phase===1){
+    for(let i=0;i<4;i++){drawChromosome(midX+(i-1.5)*30,midY,20,i<2?'#ef4444':'#3b82f6',false);}
+    ctx.strokeStyle='#22c55e44';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(midX-r,midY);ctx.lineTo(midX+r,midY);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('中期：排列赤道板',midX,midY-r-20);
+  }else if(L.phase===2){
+    for(let i=0;i<4;i++){let ty=i<2?midY-r*0.6:midY+r*0.6;drawChromosome(midX+(i%2-0.5)*30,ty,15,i<2?'#ef4444':'#3b82f6',true);}
+    ctx.strokeStyle='#f59e0b44';for(let i=0;i<4;i++){let sy=i<2?midY:midY;let ey=i<2?midY-r*0.6:midY+r*0.6;ctx.beginPath();ctx.moveTo(midX+(i%2-0.5)*30,sy);ctx.lineTo(midX+(i%2-0.5)*30,ey);ctx.lineWidth=1;ctx.stroke();}
+    ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('后期：染色体分离',midX,midY-r-20);
+  }else if(L.phase>=3){
+    drawCell(midX-r*0.5,midY,r*0.5,'#22c55e',0.5);drawCell(midX+r*0.5,midY,r*0.5,'#22c55e',0.5);
+    for(let i=0;i<2;i++){drawChromosome(midX-r*0.5+(i-0.5)*15,midY,12,'#ef4444',false);}
+    for(let i=0;i<2;i++){drawChromosome(midX+r*0.5+(i-0.5)*15,midY,12,'#3b82f6',false);}
+    ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('末期：两个子细胞(2n)',midX,midY-r-20);
+  }
+}
+function drawLevel3(){
+  let midX=cx(0.5),midY=cy(0.5),r=Math.min(W-PL,H)*0.25;
+  drawCell(midX,midY,r*1.3,'#c084fc',0.3);
+  if(!L.paired){
+    drawChromosome(midX-60,midY-20,25,'#ef4444',false);drawChromosome(midX+60,midY-20,25,'#ef444488',false);
+    drawChromosome(midX-60,midY+30,25,'#3b82f6',false);drawChromosome(midX+60,midY+30,25,'#3b82f688',false);
+    ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('同源染色体等待配对',midX,midY-r-10);
+  }else if(!L.crossed){
+    drawChromosome(midX-10,midY-20,25,'#ef4444',false);drawChromosome(midX+10,midY-20,25,'#ef444488',false);
+    drawChromosome(midX-10,midY+30,25,'#3b82f6',false);drawChromosome(midX+10,midY+30,25,'#3b82f688',false);
+    ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('四分体形成，准备交叉互换',midX,midY-r-10);
+  }else if(!L.separated){
+    drawChromosome(midX-10,midY-20,25,'#ef4444',false);drawChromosome(midX+10,midY-20,25,'#3b82f6',false);
+    drawChromosome(midX-10,midY+30,25,'#3b82f6',false);drawChromosome(midX+10,midY+30,25,'#ef4444',false);
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(midX-10,midY);ctx.lineTo(midX+10,midY);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#f59e0b';ctx.font='12px sans-serif';ctx.fillText('× 交叉互换',midX,midY+5);
+    ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.fillText('交叉互换完成，基因重组',midX,midY-r-10);
+  }else{
+    drawCell(midX-r*0.6,midY,r*0.5,'#c084fc',0.4);drawCell(midX+r*0.6,midY,r*0.5,'#c084fc',0.4);
+    drawChromosome(midX-r*0.6,midY,20,'#ef4444',false);drawChromosome(midX+r*0.6,midY,20,'#3b82f6',false);
+    ctx.fillStyle=t().text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('减数分裂I完成：2个n细胞',midX,midY-r-10);
+  }
+}
+function drawLevel4(){
+  let midX=cx(0.5),midY=cy(0.5),r=Math.min(W-PL,H)*0.2;
+  if(!L.aligned){
+    drawCell(midX-r*1.2,midY,r,'#06b6d4',0.3);drawCell(midX+r*1.2,midY,r,'#06b6d4',0.3);
+    drawChromosome(midX-r*1.2,midY,18,'#ef4444',false);drawChromosome(midX+r*1.2,midY,18,'#3b82f6',false);
+    ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('两个单倍体细胞准备第二次分裂',midX,midY-r*1.5);
+  }else if(!L.splitDone){
+    drawCell(midX-r*1.2,midY,r,'#06b6d4',0.3);drawCell(midX+r*1.2,midY,r,'#06b6d4',0.3);
+    ctx.strokeStyle='#22c55e44';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(midX-r*1.2,midY-r);ctx.lineTo(midX-r*1.2,midY+r);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(midX+r*1.2,midY-r);ctx.lineTo(midX+r*1.2,midY+r);ctx.stroke();ctx.setLineDash([]);
+    drawChromosome(midX-r*1.2,midY,18,'#ef4444',false);drawChromosome(midX+r*1.2,midY,18,'#3b82f6',false);
+    ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('染色体排列在赤道板',midX,midY-r*1.5);
+  }else if(!L.fourCells){
+    drawCell(midX-r*1.2,midY,r,'#06b6d4',0.3);drawCell(midX+r*1.2,midY,r,'#06b6d4',0.3);
+    drawChromosome(midX-r*1.2-15,midY,14,'#ef4444',true);drawChromosome(midX-r*1.2+15,midY,14,'#ef4444',true);
+    drawChromosome(midX+r*1.2-15,midY,14,'#3b82f6',true);drawChromosome(midX+r*1.2+15,midY,14,'#3b82f6',true);
+    ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('姐妹染色单体已分离',midX,midY-r*1.5);
+  }else{
+    let positions=[{x:0.3,y:0.35},{x:0.7,y:0.35},{x:0.3,y:0.65},{x:0.7,y:0.65}];
+    let colors=['#ef4444','#ef444488','#3b82f6','#3b82f688'];
+    positions.forEach((p,i)=>{drawCell(cx(p.x),cy(p.y),r*0.5,'#22c55e',0.5);drawChromosome(cx(p.x),cy(p.y),12,colors[i],true);});
+    ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('🎉 4个单倍体配子(n)',midX,cy(0.12));
+  }
+}
+function drawLevel5(){
+  let midX=cx(0.5),lw=120,lh=28;
+  ctx.fillStyle=t().text;ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+  ctx.fillText('有丝分裂',cx(0.25),cy(0.08));ctx.fillText('减数分裂',cx(0.75),cy(0.08));
+  ctx.strokeStyle='#3b82f644';ctx.lineWidth=2;
+  ctx.strokeRect(cx(0.05),cy(0.1),cx(0.45)-cx(0.05),cy(0.85));
+  ctx.strokeStyle='#c084fc44';ctx.strokeRect(cx(0.55),cy(0.1),cx(0.95)-cx(0.55),cy(0.85));
+  L.labels.forEach((lb,i)=>{
+    if(lb.placed!==null){
+      let tx=lb.placed==='mitosis'?cx(0.25):cx(0.75);
+      let ty=cy(0.2)+i*40;let ok=lb.placed===lb.ans;
+      ctx.fillStyle=ok?'#22c55e44':'#ef444444';ctx.fillRect(tx-lw/2,ty,lw,lh);
+      ctx.strokeStyle=ok?'#22c55e':'#ef4444';ctx.strokeRect(tx-lw/2,ty,lw,lh);
+      ctx.fillStyle=ok?'#22c55e':'#ef4444';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText(lb.text+(ok?' ✓':' ✗'),tx,ty+19);
+    }else if(i===L.dragLabel&&mouse.down){
+      ctx.fillStyle='#f59e0b44';ctx.fillRect(mouse.x-lw/2,mouse.y-lh/2,lw,lh);
+      ctx.strokeStyle='#f59e0b';ctx.strokeRect(mouse.x-lw/2,mouse.y-lh/2,lw,lh);
+      ctx.fillStyle='#f59e0b';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText(lb.text,mouse.x,mouse.y+5);
+    }else{
+      let lx=cx(0.5)-lw/2,ly=cy(0.15)+i*40;
+      ctx.fillStyle='#60a5fa22';ctx.fillRect(lx,ly,lw,lh);ctx.strokeStyle='#60a5fa';ctx.strokeRect(lx,ly,lw,lh);
+      ctx.fillStyle='#60a5fa';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText(lb.text,cx(0.5),ly+19);
+    }
+  });
+}
+function drawLevel6(){
+  let midX=cx(0.5),midY=cy(0.5),r=Math.min(W-PL,H)*0.3;
+  let phases=['G1','S','G2','M'];let angles=[-Math.PI/2,-Math.PI/2+Math.PI/2,-Math.PI/2+Math.PI,-Math.PI/2+Math.PI*1.5];
+  let phaseColors=['#3b82f6','#22c55e','#f59e0b','#ef4444'];
+  for(let i=0;i<4;i++){
+    let a1=angles[i],a2=angles[(i+1)%4]||(angles[0]+Math.PI*2);if(i===3)a2=angles[0]+Math.PI*2;
+    ctx.beginPath();ctx.moveTo(midX,midY);ctx.arc(midX,midY,r,a1,a2);ctx.closePath();
+    let active=L.phase===phases[i];ctx.fillStyle=active?phaseColors[i]+'66':phaseColors[i]+'22';ctx.fill();
+    ctx.strokeStyle=phaseColors[i];ctx.lineWidth=active?3:1;ctx.stroke();
+    let la=(a1+a2)/2;ctx.fillStyle=active?'#fff':t().textSec;ctx.font=active?'bold 16px sans-serif':'14px sans-serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(phases[i],midX+Math.cos(la)*r*0.6,midY+Math.sin(la)*r*0.6);
+  }
+  let checkpoints=[{name:'G1检查点',a:-Math.PI/2,pass:L.g1Pass},{name:'S检查点',a:0,pass:L.sPass},{name:'G2检查点',a:Math.PI/2,pass:L.g2Pass},{name:'M检查点',a:Math.PI,pass:L.mPass}];
+  checkpoints.forEach(cp=>{
+    let px=midX+Math.cos(cp.a)*r*1.15,py=midY+Math.sin(cp.a)*r*1.15;
+    ctx.beginPath();ctx.arc(px,py,10,0,Math.PI*2);ctx.fillStyle=cp.pass?'#22c55e':'#ef4444';ctx.fill();
+    ctx.fillStyle=t().text;ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText(cp.name,px,py+20);
+  });
+  ctx.fillStyle='#60a5fa';ctx.font='13px sans-serif';ctx.textAlign='left';
+  ctx.fillText('CDK: '+L.cdkLevel+'%',cx(0.05),cy(0.92));ctx.fillText('Cyclin: '+L.cyclinLevel+'%',cx(0.35),cy(0.92));
+}
+// Main loop
+function mainLoop(){
+  requestAnimationFrame(mainLoop);tick++;
+  ctx.clearRect(0,0,W,H);drawBg();
+  if(curLevel===0)drawLevel0();
+  else if(curLevel===1)drawLevel1();
+  else if(curLevel===2)drawLevel2();
+  else if(curLevel===3)drawLevel3();
+  else if(curLevel===4)drawLevel4();
+  else if(curLevel===5)drawLevel5();
+  else if(curLevel===6)drawLevel6();
+  if(L.animT>0)L.animT--;
+}
+requestAnimationFrame(mainLoop);
+</script>
+</body>
+</html>

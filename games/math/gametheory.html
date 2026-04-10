@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>博弈论探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --slider-label:#888;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --slider-label:#888;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;width:100vw}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;color:#ec4899;margin-bottom:8px;text-shadow:0 0 30px rgba(236,72,153,0.4)}
+.overlay .sub{font-size:18px;color:var(--sub-color);margin-bottom:32px}
+.overlay .desc{max-width:520px;color:var(--text-muted);font-size:14px;line-height:1.8;margin-bottom:36px}
+.overlay .start-btn{background:linear-gradient(135deg,#ec4899,#be185d);color:#fff;border:none;padding:14px 48px;font-size:18px;border-radius:12px;cursor:pointer;transition:all .3s}
+.overlay .start-btn:hover{transform:scale(1.05);box-shadow:0 0 24px rgba(236,72,153,0.5)}
+.panel{position:fixed;left:0;top:0;bottom:36px;width:320px;background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;padding:16px;display:none;z-index:10;padding-bottom:24px}
+.panel h2{color:var(--title-color);font-size:18px;margin-bottom:6px}
+.panel .level-title{color:#f472b6;font-size:13px;margin-bottom:12px}
+.panel .desc-text{color:var(--text-muted);font-size:13px;line-height:1.7;margin-bottom:14px}
+.panel .obj-list{list-style:none;margin-bottom:14px}
+.panel .obj-list li{font-size:13px;padding:4px 0;color:var(--goal-text)}
+.panel .obj-list li.done{color:var(--goal-done)}
+.panel .obj-list li::before{content:'○ ';color:var(--text-sub)}
+.panel .obj-list li.done::before{content:'● ';color:var(--goal-done)}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);border-radius:8px;cursor:pointer;font-size:14px;transition:all .2s}
+.act-btn:hover{background:var(--btn-hover)}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:13px;color:var(--learn-text);line-height:1.8}
+.learn-box b{color:#f472b6}
+canvas{position:fixed;left:320px;top:0;background:var(--bg)}
+.bar{position:fixed;left:0;bottom:0;right:0;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:none;z-index:10;padding:0 16px;align-items:center;font-size:13px}
+.bar-inner{display:flex;align-items:center;height:100%;gap:8px}
+.bar .progress{margin-left:auto;color:var(--text-muted);font-size:12px}
+.slider-row{display:flex;align-items:center;gap:8px;margin:6px 0;font-variant-numeric:tabular-nums}
+.slider-row label{font-size:12px;color:var(--slider-label);min-width:60px}
+.slider-row input[type=range]{flex:1;accent-color:#ec4899}
+.slider-row .val{font-size:12px;color:var(--sv);min-width:36px;text-align:right}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#ec4899;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
+.quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg)}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="overlay">
+<h1>🎯 博弈论探险</h1>
+<div class="sub">Game Theory Adventure</div>
+<div class="desc">
+从囚徒困境到演化博弈，7个关卡带你探索策略与决策的数学。<br>
+选择策略、观察结果、调节参数，理解博弈论的核心思想。
+</div>
+<button class="start-btn" onclick="startGame()">开始探索 →</button>
+<div class="features">
+<div class="feat"><div class="fi">🔒</div>囚徒困境</div>
+<div class="feat"><div class="fi">⚖️</div>纳什均衡</div>
+<div class="feat"><div class="fi">✊</div>零和博弈</div>
+<div class="feat"><div class="fi">🔄</div>重复博弈</div>
+<div class="feat"><div class="fi">🔨</div>拍卖机制</div>
+<div class="feat"><div class="fi">🏛️</div>公共品博弈</div>
+<div class="feat"><div class="fi">🧬</div>演化策略</div>
+</div>
+</div>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar"><div class="bar-inner" id="barInner"></div></div>
+<script>
+'use strict';
+let isDark=true;
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel();draw()}
+function t(){return isDark?{bg:'#0a0a2e',grid:'rgba(236,72,153,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)'}:{bg:'#f0f2f5',grid:'rgba(236,72,153,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)'}}
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+const panel=document.getElementById('panel'),bar=document.getElementById('bar'),barInner=document.getElementById('barInner');
+let W,H,curLevel=0;
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+
+function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';draw()}
+window.addEventListener('resize',resize);
+function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
+function goLevel(n){curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
+function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
+
+const LI=[
+  {title:'囚徒困境',sub:'Prisoner\'s Dilemma',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>场景：</b>两个囚犯各自选择合作或背叛，支付矩阵决定结果</div>你是囚犯A。选择合作或背叛，观察不同策略组合的收益。',objs:['体验合作-合作的结果','体验背叛-背叛的结果','发现背叛是占优策略'],learn:'<b>囚徒困境</b>：每个人的理性选择（背叛）导致集体次优结果。合作-合作(−1,−1)优于背叛-背叛(−3,−3)，但背叛是占优策略。这揭示了个体理性与集体理性的冲突。'},
+  {title:'纳什均衡',sub:'Nash Equilibrium',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>定义：</b>没有任何玩家能通过单方面改变策略来提高收益</div>在2×2博弈矩阵中，找出纳什均衡点。调整支付值观察均衡如何变化。',objs:['找到纯策略纳什均衡','调整支付矩阵改变均衡','理解混合策略均衡'],learn:'<b>纳什均衡</b>：在均衡点上，没有玩家有动机单方面偏离。纯策略均衡不一定存在，但纳什证明了混合策略均衡一定存在（纳什定理，1950年诺贝尔经济学奖）。'},
+  {title:'零和博弈',sub:'石头剪刀布',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>特征：</b>一方的收益 = 另一方的损失，总和为零</div>与电脑玩石头剪刀布。观察长期统计，发现最优混合策略。',objs:['玩10局石头剪刀布','观察胜率趋近1/3','理解混合策略均衡(1/3,1/3,1/3)'],learn:'<b>零和博弈</b>中一方所得即另一方所失。石头剪刀布的唯一纳什均衡是混合策略：各出1/3概率。冯·诺伊曼的极小极大定理证明了零和博弈总有均衡解。'},
+  {title:'重复博弈与合作',sub:'以牙还牙策略',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>发现：</b>重复博弈中，合作可以通过"以牙还牙"策略维持</div>选择策略与电脑对弈多轮囚徒困境。观察不同策略的长期表现。',objs:['用"总是合作"策略玩20轮','用"以牙还牙"策略玩20轮','比较不同策略的总收益'],learn:'<b>以牙还牙(TFT)</b>策略：第一轮合作，之后模仿对手上一轮的选择。阿克塞尔罗德的计算机锦标赛证明TFT在重复囚徒困境中表现最优。关键特性：善良、可激怒、宽容、清晰。'},
+  {title:'拍卖机制',sub:'英式/荷式/密封拍卖',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>类型：</b>英式（升价）/ 荷式（降价）/ 密封第一价 / 密封第二价</div>参与不同类型的拍卖，观察出价策略和最终价格的差异。',objs:['参与英式拍卖','参与荷式拍卖','参与密封第二价拍卖'],learn:'<b>收益等价定理</b>：在一定条件下，四种标准拍卖的期望收益相同。密封第二价（维克里拍卖）中，真实出价是占优策略。这是机制设计理论的基础。'},
+  {title:'公共品博弈',sub:'搭便车问题',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>困境：</b>每人投入的钱翻倍后平分，但不投入也能分到</div>决定投入多少到公共池。观察搭便车行为如何导致公共品供给不足。',objs:['全额投入观察最优结果','零投入观察搭便车收益','调整乘数观察合作条件'],learn:'<b>公共品博弈</b>：N人各有10元，投入公共池的钱乘以M后平分。若M>1但M<N，搭便车（不投入）是占优策略，但全员合作才是社会最优。惩罚机制可以促进合作。'},
+  {title:'演化稳定策略',sub:'ESS',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>概念：</b>一个策略如果不能被少数突变者入侵，就是演化稳定的</div>设置鹰鸽博弈的参数，观察种群中策略比例的演化过程。',objs:['观察纯鹰种群的演化','观察鹰鸽混合均衡','调整收益参数改变ESS'],learn:'<b>演化稳定策略(ESS)</b>：梅纳德·史密斯提出。鹰鸽博弈中，若争斗代价V<C，ESS是混合策略p*=V/C。种群会自然演化到这个比例。ESS是纳什均衡的生物学对应。'}
+];
+
+const quizData=[
+  {q:'囚徒困境中的占优策略是？',opts:['合作','背叛','随机','交替'],ans:1},
+  {q:'纳什均衡的核心特征是？',opts:['总收益最大','无人能单方面获益','所有人合作','零和'],ans:1},
+  {q:'石头剪刀布的纳什均衡是？',opts:['总出石头','总出剪刀','各1/3概率','交替出'],ans:2},
+  {q:'以牙还牙策略第一轮选择？',opts:['背叛','随机','合作','观望'],ans:2},
+  {q:'维克里拍卖中的占优策略是？',opts:['出低价','出高价','真实出价','不出价'],ans:2},
+  {q:'公共品博弈中搭便车指？',opts:['多投入','不投入但享受收益','退出博弈','惩罚他人'],ans:1},
+  {q:'ESS不能被什么入侵？',opts:['多数者','少数突变者','外来物种','随机策略'],ans:1}
+];
+let quizPassed=new Set(),quizLocked=false;
+
+// ===== Level states =====
+let L1={myChoice:'',oppChoice:'',history:[],round:0};
+let L2={matrix:[[3,0],[5,1]],found:false,mixed:false};
+let L3={wins:0,losses:0,draws:0,rounds:0,history:[]};
+let L4={strategy:'tft',rounds:0,myScore:0,oppScore:0,history:[],oppStrategy:'tft'};
+let L5={type:'english',bid:0,value:50,price:0,done:{english:false,dutch:false,vickrey:false}};
+let L6={invest:10,multiplier:2,players:5,results:[]};
+let L7={hawkRatio:0.5,V:4,C:6,history:[],gen:0};
+
+function initLevel(n){
+  switch(n){
+    case 0:L1={myChoice:'',oppChoice:'',history:[],round:0};break;
+    case 1:L2={matrix:[[3,0],[5,1]],found:false,mixed:false};break;
+    case 2:L3={wins:0,losses:0,draws:0,rounds:0,history:[]};break;
+    case 3:L4={strategy:'tft',rounds:0,myScore:0,oppScore:0,history:[],oppStrategy:'tft'};break;
+    case 4:L5={type:'english',bid:0,value:Math.floor(30+Math.random()*40),price:0,done:{english:false,dutch:false,vickrey:false}};break;
+    case 5:L6={invest:10,multiplier:2,players:5,results:[]};break;
+    case 6:L7={hawkRatio:0.5,V:4,C:6,history:[],gen:0};break;
+  }
+}
+
+// L1: Prisoner's Dilemma
+function pdChoose(choice){
+  L1.myChoice=choice;L1.oppChoice=Math.random()<0.5?'C':'D';
+  let payoffs={CC:[-1,-1],CD:[-5,0],DC:[0,-5],DD:[-3,-3]};
+  let key=L1.myChoice+L1.oppChoice;
+  L1.history.push({my:L1.myChoice,opp:L1.oppChoice,pay:payoffs[key]});L1.round++;
+  if(L1.myChoice==='C'&&L1.oppChoice==='C')completeObj(0,0);
+  if(L1.myChoice==='D'&&L1.oppChoice==='D')completeObj(0,1);
+  if(L1.round>=4)completeObj(0,2);
+  renderPanel();draw();
+}
+
+// L2: Nash Equilibrium
+function findNash(){L2.found=true;completeObj(1,0);renderPanel();draw()}
+function adjustMatrix(r,c,v){L2.matrix[r][c]=v;completeObj(1,1);renderPanel();draw()}
+function showMixed(){L2.mixed=true;completeObj(1,2);renderPanel();draw()}
+
+// L3: Rock Paper Scissors
+function rpsPlay(choice){
+  let moves=['R','P','S'];let opp=moves[Math.floor(Math.random()*3)];
+  let result=(choice===opp)?0:((choice==='R'&&opp==='S')||(choice==='P'&&opp==='R')||(choice==='S'&&opp==='P'))?1:-1;
+  if(result===1)L3.wins++;else if(result===-1)L3.losses++;else L3.draws++;
+  L3.rounds++;L3.history.push({my:choice,opp,result});
+  if(L3.rounds>=10)completeObj(2,0);
+  if(L3.rounds>=20){let wr=L3.wins/L3.rounds;if(Math.abs(wr-1/3)<0.15)completeObj(2,1)}
+  if(L3.rounds>=15)completeObj(2,2);
+  renderPanel();draw();
+}
+
+// L4: Repeated Game
+function playRepeated(){
+  let myMove,oppMove;
+  if(L4.strategy==='always_c')myMove='C';
+  else if(L4.strategy==='always_d')myMove='D';
+  else if(L4.strategy==='tft')myMove=L4.history.length===0?'C':L4.history[L4.history.length-1].opp;
+  else myMove=Math.random()<0.5?'C':'D';
+  // opponent uses tft
+  oppMove=L4.history.length===0?'C':L4.history[L4.history.length-1].my==='C'?'C':'D';
+  let pay={CC:[3,3],CD:[0,5],DC:[5,0],DD:[1,1]};
+  let key=myMove+oppMove;
+  L4.myScore+=pay[key][0];L4.oppScore+=pay[key][1];
+  L4.history.push({my:myMove,opp:oppMove,pay:pay[key]});L4.rounds++;
+  renderPanel();draw();
+}
+function playN(n){for(let i=0;i<n;i++)playRepeated();
+  if(L4.strategy==='always_c'&&L4.rounds>=20)completeObj(3,0);
+  if(L4.strategy==='tft'&&L4.rounds>=20)completeObj(3,1);
+  if(L4.rounds>=20)completeObj(3,2);
+  renderPanel();draw();
+}
+
+// L5: Auctions
+function runAuction(){
+  let bots=[Math.floor(Math.random()*60)+10,Math.floor(Math.random()*60)+10,Math.floor(Math.random()*60)+10];
+  if(L5.type==='english'){L5.price=Math.max(...bots);if(L5.bid>L5.price)L5.price=L5.bid;L5.done.english=true;completeObj(4,0)}
+  else if(L5.type==='dutch'){L5.price=L5.bid;L5.done.dutch=true;completeObj(4,1)}
+  else{let sorted=[...bots,L5.bid].sort((a,b)=>b-a);L5.price=sorted[1];L5.done.vickrey=true;completeObj(4,2)}
+  renderPanel();draw();
+}
+
+// L6: Public Goods
+function runPublicGoods(){
+  L6.results=[];let total=L6.invest;
+  for(let i=1;i<L6.players;i++){let inv=Math.floor(Math.random()*11);total+=inv;L6.results.push(inv)}
+  let pool=total*L6.multiplier;let share=pool/L6.players;
+  L6.results.unshift(L6.invest);L6.poolTotal=pool;L6.share=share;L6.myProfit=(10-L6.invest)+share;
+  if(L6.invest===10)completeObj(5,0);
+  if(L6.invest===0)completeObj(5,1);
+  completeObj(5,2);
+  renderPanel();draw();
+}
+
+// L7: Evolutionary
+function evolve(steps){
+  for(let s=0;s<steps;s++){
+    let pH=L7.hawkRatio;
+    let fitH=pH*(L7.V-L7.C)/2+(1-pH)*L7.V;
+    let fitD=pH*0+(1-pH)*L7.V/2;
+    let avgFit=pH*fitH+(1-pH)*fitD;
+    L7.hawkRatio=Math.max(0,Math.min(1,pH+pH*(fitH-avgFit)*0.05));
+    L7.history.push(L7.hawkRatio);L7.gen++;
+  }
+  if(L7.gen>=10)completeObj(6,0);
+  if(L7.gen>=30)completeObj(6,1);
+  if(L7.gen>=20)completeObj(6,2);
+  renderPanel();draw();
+}
+
+// ===== Rendering =====
+function renderBar(){barInner.innerHTML='<span style="color:var(--text-muted)">🎯 '+LI[curLevel].title+'</span><span class="progress">'+levelObjs.flat().filter(Boolean).length+'/'+levelObjs.flat().length+'</span>'}
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<7;i++){let cls=levelObjs[i].every(Boolean)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`}
+  h+='</div><div class="sn-info">第 '+(curLevel+1)+'/7 关 — '+LI[curLevel].title+'</div><div class="sn-hint">'+LI[curLevel].sub+'</div></div>';return h;
+}
+function renderQuiz(li){
+  let qd=quizData[li];if(!qd)return '';
+  let h='<div class="quiz-box"><div class="quiz-q">📝 '+qd.q+'</div>';
+  qd.opts.forEach((o,i)=>{let cls=quizPassed.has(li)?(i===qd.ans?'correct':''):'';h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${o}</div>`});
+  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过</div>';
+  h+='</div>';return h;
+}
+function answerQuiz(li,oi){
+  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  let qd=quizData[li],opts=panel.querySelectorAll('.quiz-opt');
+  opts.forEach((el,i)=>el.classList.add(i===qd.ans?'correct':'wrong'));
+  if(oi===qd.ans){quizPassed.add(li);setTimeout(()=>{quizLocked=false;if(curLevel<6)goLevel(curLevel+1);else showResult()},800)}
+  else setTimeout(()=>{quizLocked=false;renderPanel()},1000);
+}
+
+function renderPanel(){
+  let li=LI[curLevel],done=levelObjs[curLevel].every(Boolean);
+  let h=renderStageNav();
+  h+='<h2>'+li.title+'</h2><div class="level-title">'+li.sub+'</div>';
+  h+='<div class="desc-text">'+li.desc+'</div>';
+  h+='<ul class="obj-list">';li.objs.forEach((o,i)=>h+='<li class="'+(levelObjs[curLevel][i]?'done':'')+'">'+o+'</li>');h+='</ul>';
+  switch(curLevel){
+    case 0:h+=`<div style="margin:6px 0"><button class="act-btn" onclick="pdChoose('C')">🤝 合作</button><button class="act-btn" onclick="pdChoose('D')">🗡️ 背叛</button></div>`;
+      if(L1.history.length>0){let last=L1.history[L1.history.length-1];h+=`<div style="font-size:12px;color:var(--text-muted)">你: ${last.my==='C'?'合作':'背叛'} | 对手: ${last.opp==='C'?'合作':'背叛'}<br>收益: 你${last.pay[0]}, 对手${last.pay[1]}</div>`}
+      h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">已玩 ${L1.round} 轮</div>`;break;
+    case 1:h+=`<div style="font-size:12px;color:var(--text-muted);margin-bottom:6px">2×2 支付矩阵（玩家A的收益）:</div>`;
+      h+=`<table style="font-size:12px;color:var(--text);border-collapse:collapse;width:100%"><tr><td></td><td style="padding:4px;text-align:center;color:#ec4899">B合作</td><td style="padding:4px;text-align:center;color:#ec4899">B背叛</td></tr>`;
+      h+=`<tr><td style="color:#3b82f6">A合作</td><td style="padding:4px;text-align:center">${L2.matrix[0][0]}</td><td style="padding:4px;text-align:center">${L2.matrix[0][1]}</td></tr>`;
+      h+=`<tr><td style="color:#3b82f6">A背叛</td><td style="padding:4px;text-align:center">${L2.matrix[1][0]}</td><td style="padding:4px;text-align:center">${L2.matrix[1][1]}</td></tr></table>`;
+      h+=`<button class="act-btn green" onclick="findNash()">找纳什均衡</button>`;
+      h+=`<button class="act-btn" onclick="adjustMatrix(0,0,Math.floor(Math.random()*6));adjustMatrix(1,1,Math.floor(Math.random()*6))">随机调整矩阵</button>`;
+      h+=`<button class="act-btn" onclick="showMixed()">显示混合策略</button>`;break;
+    case 2:h+=`<div style="margin:6px 0"><button class="act-btn" onclick="rpsPlay('R')">✊ 石头</button><button class="act-btn" onclick="rpsPlay('P')">✋ 布</button><button class="act-btn" onclick="rpsPlay('S')">✌️ 剪刀</button></div>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted)">胜: <span style="color:#22c55e">${L3.wins}</span> 负: <span style="color:#ef4444">${L3.losses}</span> 平: <span style="color:var(--sv)">${L3.draws}</span> (${L3.rounds}轮)</div>`;
+      if(L3.rounds>0)h+=`<div style="font-size:12px;color:var(--text-muted)">胜率: ${(L3.wins/L3.rounds*100).toFixed(1)}%</div>`;break;
+    case 3:h+=`<div style="margin:6px 0"><button class="act-btn${L4.strategy==='always_c'?' green':''}" onclick="L4.strategy='always_c';L4.history=[];L4.rounds=0;L4.myScore=0;L4.oppScore=0;renderPanel()">总是合作</button>`;
+      h+=`<button class="act-btn${L4.strategy==='tft'?' green':''}" onclick="L4.strategy='tft';L4.history=[];L4.rounds=0;L4.myScore=0;L4.oppScore=0;renderPanel()">以牙还牙</button>`;
+      h+=`<button class="act-btn${L4.strategy==='always_d'?' green':''}" onclick="L4.strategy='always_d';L4.history=[];L4.rounds=0;L4.myScore=0;L4.oppScore=0;renderPanel()">总是背叛</button></div>`;
+      h+=`<button class="act-btn green" onclick="playN(20)">对弈20轮</button>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">轮数: ${L4.rounds} | 我: ${L4.myScore} | 对手: ${L4.oppScore}</div>`;break;
+    case 4:h+=`<div style="margin:6px 0"><button class="act-btn${L5.type==='english'?' green':''}" onclick="L5.type='english';renderPanel()">英式拍卖</button>`;
+      h+=`<button class="act-btn${L5.type==='dutch'?' green':''}" onclick="L5.type='dutch';renderPanel()">荷式拍卖</button>`;
+      h+=`<button class="act-btn${L5.type==='vickrey'?' green':''}" onclick="L5.type='vickrey';renderPanel()">密封第二价</button></div>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted)">你的估值: <span style="color:var(--sv)">${L5.value}</span></div>`;
+      h+=`<div class="slider-row"><label>出价</label><input type="range" min="0" max="100" value="${L5.bid}" oninput="L5.bid=+this.value;document.getElementById('bidVal').textContent=this.value"><span class="val" id="bidVal">${L5.bid}</span></div>`;
+      h+=`<button class="act-btn green" onclick="runAuction()">参与拍卖</button>`;
+      if(L5.price>0)h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">成交价: ${L5.price} | ${L5.bid>=L5.price?'你赢了！利润='+(L5.value-L5.price):'未中标'}</div>`;break;
+    case 5:h+=`<div class="slider-row"><label>你的投入</label><input type="range" min="0" max="10" value="${L6.invest}" oninput="L6.invest=+this.value;document.getElementById('invVal').textContent=this.value"><span class="val" id="invVal">${L6.invest}</span></div>`;
+      h+=`<div class="slider-row"><label>乘数 M</label><input type="range" min="1" max="5" step="0.5" value="${L6.multiplier}" oninput="L6.multiplier=+this.value;document.getElementById('mulVal').textContent=this.value"><span class="val" id="mulVal">${L6.multiplier}</span></div>`;
+      h+=`<button class="act-btn green" onclick="runPublicGoods()">开始博弈</button>`;
+      if(L6.results.length>0)h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">公共池: ${L6.poolTotal.toFixed(0)} | 人均: ${L6.share.toFixed(1)} | 你的利润: ${L6.myProfit.toFixed(1)}</div>`;break;
+    case 6:h+=`<div class="slider-row"><label>鹰比例</label><input type="range" min="0" max="100" value="${Math.round(L7.hawkRatio*100)}" oninput="L7.hawkRatio=this.value/100;L7.history=[];L7.gen=0;renderPanel();draw()"><span class="val">${(L7.hawkRatio*100).toFixed(0)}%</span></div>`;
+      h+=`<div class="slider-row"><label>资源 V</label><input type="range" min="1" max="10" value="${L7.V}" oninput="L7.V=+this.value;renderPanel()"><span class="val">${L7.V}</span></div>`;
+      h+=`<div class="slider-row"><label>代价 C</label><input type="range" min="1" max="10" value="${L7.C}" oninput="L7.C=+this.value;renderPanel()"><span class="val">${L7.C}</span></div>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted)">ESS鹰比例: ${L7.V<L7.C?(L7.V/L7.C*100).toFixed(0)+'%':'100% (V≥C)'}</div>`;
+      h+=`<button class="act-btn green" onclick="evolve(10)">演化10代</button>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">当前代数: ${L7.gen} | 鹰: ${(L7.hawkRatio*100).toFixed(1)}%</div>`;break;
+  }
+  if(done){h+=renderQuiz(curLevel);
+    if(quizPassed.has(curLevel)&&curLevel<6)h+=`<button class="act-btn green" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+    h+='<div class="learn-box">'+li.learn+'</div>';
+  }
+  panel.innerHTML=h;
+}
+
+function showResult(){
+  panel.style.display='none';bar.style.display='none';
+  let ov=document.getElementById('overlay');
+  ov.innerHTML='<div style="text-align:center"><div style="font-size:48px;margin-bottom:12px">🎉</div><h1 style="color:#ec4899;font-size:28px;margin-bottom:8px">恭喜通关！</h1><div style="color:var(--text-muted);margin-bottom:16px">你已掌握博弈论的核心概念</div><button class="start-btn" onclick="location.reload()">再玩一次</button></div>';
+  ov.style.display='flex';
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);let th=t();
+  ctx.fillStyle=th.bg;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  switch(curLevel){case 0:drawL1();break;case 1:drawL2();break;case 2:drawL3();break;case 3:drawL4();break;case 4:drawL5();break;case 5:drawL6();break;case 6:drawL7();break}
+}
+
+function drawL1(){
+  let cx=W/2,cy=H/2;
+  // payoff matrix
+  let cw=120,ch=60,ox=cx-cw,oy=cy-ch;
+  ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillStyle=th=t().text;
+  ctx.fillText('对手',cx,oy-30);ctx.save();ctx.translate(ox-30,cy);ctx.rotate(-Math.PI/2);ctx.fillText('你',0,0);ctx.restore();
+  ctx.fillStyle='rgba(236,72,153,0.1)';
+  ['合作','背叛'].forEach((l,i)=>{ctx.fillStyle=t().text;ctx.fillText(l,ox+cw/2+i*cw,oy-10);ctx.fillText(l,ox-15,oy+ch/2+i*ch+4)});
+  let pays=[['−1,−1','−5, 0'],[' 0,−5','−3,−3']];
+  let colors=[['#22c55e','#ef4444'],['#3b82f6','#f59e0b']];
+  for(let r=0;r<2;r++)for(let c=0;c<2;c++){
+    ctx.fillStyle=colors[r][c]+'33';ctx.fillRect(ox+c*cw,oy+r*ch,cw,ch);
+    ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.strokeRect(ox+c*cw,oy+r*ch,cw,ch);
+    ctx.fillStyle=t().text;ctx.font='16px sans-serif';ctx.fillText(pays[r][c],ox+c*cw+cw/2,oy+r*ch+ch/2+5);
+  }
+  // history
+  if(L1.history.length>0){
+    let y=oy+ch*2+30;ctx.font='12px sans-serif';ctx.textAlign='left';ctx.fillStyle=t().textSec;
+    L1.history.slice(-8).forEach((h,i)=>{ctx.fillText(`轮${i+1}: 你${h.my==='C'?'合作':'背叛'} vs 对手${h.opp==='C'?'合作':'背叛'} → (${h.pay[0]},${h.pay[1]})`,ox-cw,y+i*18)});
+  }
+}
+
+function drawL2(){
+  let cx=W/2,cy=H/2,cw=140,ch=70,ox=cx-cw,oy=cy-ch;
+  ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillStyle=t().text;
+  ctx.fillText('支付矩阵',cx,40);
+  for(let r=0;r<2;r++)for(let c=0;c<2;c++){
+    let isNash=(r===1&&c===1); // simplified
+    ctx.fillStyle=isNash&&L2.found?'rgba(34,197,94,0.2)':'rgba(255,255,255,0.05)';
+    ctx.fillRect(ox+c*cw,oy+r*ch,cw,ch);
+    ctx.strokeStyle=isNash&&L2.found?'#22c55e':'rgba(255,255,255,0.2)';ctx.strokeRect(ox+c*cw,oy+r*ch,cw,ch);
+    ctx.fillStyle=t().text;ctx.fillText(L2.matrix[r][c],ox+c*cw+cw/2,oy+r*ch+ch/2+5);
+  }
+  if(L2.found){ctx.fillStyle='#22c55e';ctx.font='14px sans-serif';ctx.fillText('★ 纳什均衡',ox+cw+cw/2,oy+ch+ch+25)}
+  if(L2.mixed){ctx.fillStyle='#f59e0b';ctx.font='13px sans-serif';ctx.fillText('混合策略: 各以一定概率随机选择',cx,oy+ch*2+50)}
+}
+
+function drawL3(){
+  let cx=W/2,cy=H*0.3;
+  // last round display
+  if(L3.history.length>0){
+    let last=L3.history[L3.history.length-1];
+    let names={R:'✊',P:'✋',S:'✌️'};
+    ctx.font='60px sans-serif';ctx.textAlign='center';
+    ctx.fillText(names[last.my],cx-80,cy);ctx.fillText('vs',cx,cy-5);ctx.fillText(names[last.opp],cx+80,cy);
+    ctx.font='20px sans-serif';ctx.fillStyle=last.result===1?'#22c55e':last.result===-1?'#ef4444':'#f59e0b';
+    ctx.fillText(last.result===1?'你赢了！':last.result===-1?'你输了':'平局',cx,cy+40);
+  }
+  // stats bar chart
+  let total=Math.max(L3.rounds,1),bw=60,bh=150,ox=cx-90,oy=H*0.55;
+  ctx.fillStyle=t().text;ctx.font='13px sans-serif';ctx.textAlign='center';
+  ['胜','负','平'].forEach((l,i)=>{
+    let vals=[L3.wins,L3.losses,L3.draws];
+    let h=vals[i]/total*bh;
+    let colors=['#22c55e','#ef4444','#f59e0b'];
+    ctx.fillStyle=colors[i]+'66';ctx.fillRect(ox+i*(bw+15),oy+bh-h,bw,h);
+    ctx.strokeStyle=colors[i];ctx.strokeRect(ox+i*(bw+15),oy+bh-h,bw,h);
+    ctx.fillStyle=t().text;ctx.fillText(l+' '+vals[i],ox+i*(bw+15)+bw/2,oy+bh+18);
+    ctx.fillText((vals[i]/total*100).toFixed(0)+'%',ox+i*(bw+15)+bw/2,oy+bh-h-8);
+  });
+}
+
+function drawL4(){
+  if(L4.history.length===0){ctx.fillStyle=t().text;ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText('选择策略后点击"对弈20轮"',W/2,H/2);return}
+  let cx=W/2,bw=Math.min(W-40,600),ox=cx-bw/2,oy=40;
+  ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillStyle=t().text;
+  ctx.fillText('策略: '+L4.strategy+' | 我: '+L4.myScore+' | 对手(TFT): '+L4.oppScore,cx,25);
+  let barH=16,gap=2;
+  L4.history.forEach((h,i)=>{
+    let y=oy+i*(barH+gap);if(y>H-30)return;
+    ctx.fillStyle=h.my==='C'?'rgba(34,197,94,0.3)':'rgba(239,68,68,0.3)';ctx.fillRect(ox,y,bw/2-2,barH);
+    ctx.fillStyle=h.opp==='C'?'rgba(59,130,246,0.3)':'rgba(245,158,11,0.3)';ctx.fillRect(ox+bw/2+2,y,bw/2-2,barH);
+    ctx.fillStyle=t().text;ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText('你:'+h.my+' (+'+h.pay[0]+')',ox+bw/4,y+barH/2+3);
+    ctx.fillText('对手:'+h.opp+' (+'+h.pay[1]+')',ox+bw*3/4,y+barH/2+3);
+  });
+}
+
+function drawL5(){
+  let cx=W/2,cy=H/2;
+  ctx.fillStyle=t().text;ctx.font='20px sans-serif';ctx.textAlign='center';
+  let typeNames={english:'英式拍卖（升价）',dutch:'荷式拍卖（降价）',vickrey:'密封第二价（维克里）'};
+  ctx.fillText(typeNames[L5.type],cx,40);
+  // value and bid visualization
+  let bw=300,bh=200,ox=cx-bw/2,oy=cy-bh/2;
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.strokeRect(ox,oy,bw,bh);
+  // your value
+  let vh=L5.value/100*bh;
+  ctx.fillStyle='rgba(59,130,246,0.3)';ctx.fillRect(ox+20,oy+bh-vh,80,vh);
+  ctx.fillStyle='#3b82f6';ctx.font='13px sans-serif';ctx.fillText('估值:'+L5.value,ox+60,oy+bh-vh-8);
+  // your bid
+  let bidH=L5.bid/100*bh;
+  ctx.fillStyle='rgba(236,72,153,0.3)';ctx.fillRect(ox+110,oy+bh-bidH,80,bidH);
+  ctx.fillStyle='#ec4899';ctx.fillText('出价:'+L5.bid,ox+150,oy+bh-bidH-8);
+  // price
+  if(L5.price>0){let pH=L5.price/100*bh;ctx.fillStyle='rgba(34,197,94,0.3)';ctx.fillRect(ox+200,oy+bh-pH,80,pH);ctx.fillStyle='#22c55e';ctx.fillText('成交:'+L5.price,ox+240,oy+bh-pH-8)}
+}
+
+function drawL6(){
+  if(L6.results.length===0){ctx.fillStyle=t().text;ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText('设置投入金额后点击"开始博弈"',W/2,H/2);return}
+  let cx=W/2,bw=50,gap=10,ox=cx-(L6.players*(bw+gap))/2,oy=60;
+  ctx.fillStyle=t().text;ctx.font='16px sans-serif';ctx.textAlign='center';
+  ctx.fillText('公共品博弈 — 公共池: '+L6.poolTotal.toFixed(0)+' | 人均: '+L6.share.toFixed(1),cx,35);
+  L6.results.forEach((inv,i)=>{
+    let x=ox+i*(bw+gap),h=inv/10*200;
+    ctx.fillStyle=i===0?'rgba(236,72,153,0.4)':'rgba(59,130,246,0.3)';
+    ctx.fillRect(x,oy+200-h,bw,h);ctx.strokeStyle=i===0?'#ec4899':'#3b82f6';ctx.strokeRect(x,oy+200-h,bw,h);
+    ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';
+    ctx.fillText(i===0?'你':'Bot'+i,x+bw/2,oy+220);ctx.fillText(inv,x+bw/2,oy+200-h-8);
+  });
+}
+
+function drawL7(){
+  let cx=W/2;
+  ctx.fillStyle=t().text;ctx.font='16px sans-serif';ctx.textAlign='center';
+  ctx.fillText('鹰鸽博弈演化 — V='+L7.V+', C='+L7.C,cx,30);
+  if(L7.history.length===0){ctx.fillText('点击"演化10代"开始',cx,H/2);return}
+  // plot hawk ratio over generations
+  let m=50,gw=W-m*2,gh=H-m*2-20;
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.strokeRect(m,m,gw,gh);
+  // ESS line
+  let ess=L7.V<L7.C?L7.V/L7.C:1;
+  let essY=m+gh*(1-ess);
+  ctx.setLineDash([6,4]);ctx.strokeStyle='#f59e0b';ctx.beginPath();ctx.moveTo(m,essY);ctx.lineTo(m+gw,essY);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#f59e0b';ctx.font='12px sans-serif';ctx.textAlign='left';ctx.fillText('ESS='+(ess*100).toFixed(0)+'%',m+gw+5,essY+4);
+  // plot
+  ctx.beginPath();ctx.strokeStyle='#ec4899';ctx.lineWidth=2;
+  L7.history.forEach((h,i)=>{let x=m+i/Math.max(L7.history.length-1,1)*gw,y=m+gh*(1-h);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});
+  ctx.stroke();ctx.lineWidth=1;
+  // axes labels
+  ctx.fillStyle=t().textSec;ctx.font='11px sans-serif';ctx.textAlign='center';
+  ctx.fillText('代数',cx,m+gh+30);ctx.save();ctx.translate(15,m+gh/2);ctx.rotate(-Math.PI/2);ctx.fillText('鹰比例',0,0);ctx.restore();
+}
+</script>
+</body>
+</html>
