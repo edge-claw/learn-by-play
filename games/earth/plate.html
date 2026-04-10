@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>板块构造探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --slider-label:#888;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --slider-label:#888;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(100vh - 36px)}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100vh - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none;padding-bottom:24px}
+.panel h2{font-size:15px;color:var(--title-color);margin:8px 0 4px;font-weight:bold}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:14px;cursor:pointer;text-align:center}
+.act-btn:hover{background:var(--btn-hover)}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--hint-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:13px;line-height:1.8;color:var(--learn-text)}
+.sv{color:var(--sv);font-weight:bold}
+.desc{font-size:13px;color:var(--text-sub);line-height:1.6;margin:6px 0}
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:11px;color:var(--slider-label);display:block;margin-bottom:4px}
+.slider-wrap input[type=range]{width:100%;accent-color:#3b82f6}
+.slider-val{font-size:13px;color:var(--sv);font-weight:bold}
+.sel-row{display:flex;gap:4px;margin:4px 0;flex-wrap:wrap}
+.sel-btn{padding:5px 10px;border-radius:8px;font-size:11px;cursor:pointer;border:1px solid #444;background:var(--btn-bg);color:#aaa}
+.sel-btn.active{border-color:#3b82f6;background:#1a1a4a;color:#60a5fa}
+.sel-btn.correct{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.sel-btn.wrong{border-color:#ef4444;background:#2a0a0a;color:#f87171}
+#infobar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:flex;align-items:center;padding:0 16px 0 332px;font-size:12px;color:#666;z-index:10}
+#infobar .sep{margin:0 12px;color:#333}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .hl{color:#4ade80}
+.start-box .sub{font-size:17px;color:var(--sub-color);margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#22c55e,#4ade80);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="infobar">
+<span id="ib-level">关卡 1/7</span><span class="sep">|</span>
+<span id="ib-title">地球内部结构</span><span class="sep">|</span>
+<span id="ib-status">进行中</span>
+</div>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🌍 <span class="hl">板块构造</span>探险</h1>
+  <div class="sub">7 个关卡，从地球内部到板块运动与地震带</div>
+  <button class="start-btn" onclick="startGame()">开始探索</button>
+  <div class="features">
+    <div class="feat"><div class="fi">🌐</div>地球内部</div>
+    <div class="feat"><div class="fi">🗺️</div>大陆漂移</div>
+    <div class="feat"><div class="fi">🔀</div>板块边界</div>
+    <div class="feat"><div class="fi">🌊</div>海底扩张</div>
+    <div class="feat"><div class="fi">⬇️</div>俯冲带</div>
+    <div class="feat"><div class="fi">⛰️</div>造山运动</div>
+    <div class="feat"><div class="fi">📍</div>地震带</div>
+  </div>
+</div>
+</div>
+<script>
+/* === 主题 === */
+let isDark=true;
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel()}
+function t(){return isDark?{bg:'#0a0a2e',grid:'rgba(99,102,241,0.06)',text:'#fff',sub:'rgba(255,255,255,0.6)',mut:'rgba(255,255,255,0.4)'}:{bg:'#e8edf5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',sub:'rgba(30,41,59,0.6)',mut:'rgba(30,41,59,0.4)'}}
+
+/* === Canvas === */
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+let CW,CH;
+function resize(){const r=cv.getBoundingClientRect();CW=cv.width=r.width;CH=cv.height=r.height}
+resize();window.addEventListener('resize',()=>{resize();draw()});
+
+/* === 音效 === */
+let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function playSound(type){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='ok'){o.frequency.value=523;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else if(type==='no'){o.frequency.value=300;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}else{o.frequency.value=800;g.gain.value=0.08;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}}
+
+/* === 关卡数据 === */
+const LEVELS=[
+  {name:'地球内部结构',icon:'🌐'},
+  {name:'大陆漂移',icon:'🗺️'},
+  {name:'板块边界类型',icon:'🔀'},
+  {name:'海底扩张',icon:'🌊'},
+  {name:'俯冲带',icon:'⬇️'},
+  {name:'造山运动',icon:'⛰️'},
+  {name:'地震带分布',icon:'📍'}
+];
+let cur=0,gameState='title',S={},done=new Array(7).fill(false);
+
+/* === 关卡初始化 === */
+function initLevel(i){
+  S={phase:0,obj:[false,false,false],anim:0,sel:-1,drag:false,dx:0,dy:0,val:0,items:[],correct:0,attempts:0};
+  switch(i){
+    case 0:S.layers=[
+      {name:'内核',r:0.12,color:'#ff4444',temp:'5000°C',desc:'固态铁镍，极高压'},
+      {name:'外核',r:0.28,color:'#ff8800',temp:'4000°C',desc:'液态铁镍，产生磁场'},
+      {name:'下地幔',r:0.55,color:'#cc6600',temp:'2000°C',desc:'固态硅酸盐，缓慢对流'},
+      {name:'上地幔',r:0.72,color:'#aa8844',temp:'1000°C',desc:'部分熔融，软流圈'},
+      {name:'地壳',r:0.82,color:'#668844',temp:'0-100°C',desc:'最薄外层，5-70km'}
+    ];S.selLayer=-1;S.revealed=0;break;
+    case 1:S.continents=[
+      {x:0.3,y:0.4,w:0.12,h:0.15,name:'南美',color:'#4ade80',tx:0.3,ty:0.4},
+      {x:0.55,y:0.35,w:0.15,h:0.2,name:'非洲',color:'#f59e0b',tx:0.55,ty:0.35},
+      {x:0.2,y:0.2,w:0.14,h:0.12,name:'北美',color:'#3b82f6',tx:0.2,ty:0.2},
+      {x:0.6,y:0.15,w:0.18,h:0.15,name:'欧亚',color:'#ef4444',tx:0.6,ty:0.15},
+      {x:0.7,y:0.55,w:0.12,h:0.12,name:'澳洲',color:'#8b5cf6',tx:0.7,ty:0.55},
+      {x:0.35,y:0.7,w:0.2,h:0.1,name:'南极',color:'#06b6d4',tx:0.35,ty:0.7}
+    ];S.merged=false;S.dragIdx=-1;S.fitCount=0;break;
+    case 2:S.boundaries=[
+      {type:'divergent',label:'离散型',desc:'板块分离，岩浆上涌',color:'#ef4444',x:0.25,y:0.5},
+      {type:'convergent',label:'汇聚型',desc:'板块碰撞，俯冲或造山',color:'#3b82f6',x:0.5,y:0.5},
+      {type:'transform',label:'转换型',desc:'板块水平错动，地震频发',color:'#f59e0b',x:0.75,y:0.5}
+    ];S.matched=new Set();S.selBound=-1;break;
+    case 3:S.ridgeX=0.5;S.spreadRate=0;S.age=[];for(let j=0;j<40;j++)S.age.push({x:0.5+(j-20)*0.02,a:Math.abs(j-20)*2,color:j<20?'#3b82f6':'#ef4444'});S.spreading=false;break;
+    case 4:S.angle=30;S.depth=0;S.volcDist=0;S.trenchDepth=0;S.showMelt=false;break;
+    case 5:S.compression=0;S.height=0;S.foldAngle=0;S.layers=[];for(let j=0;j<8;j++)S.layers.push({y:0.5+j*0.04,color:`hsl(${j*30+20},60%,${40+j*5}%)`});break;
+    case 6:S.quakes=[];S.placed=[];S.zones=['环太平洋','大西洋中脊','阿尔卑斯-喜马拉雅'];S.zoneIdx=0;
+      for(let j=0;j<60;j++){const a=Math.random()*Math.PI*2,r=0.3+Math.random()*0.15;S.quakes.push({x:0.5+Math.cos(a)*r,y:0.5+Math.sin(a)*r,mag:3+Math.random()*5})}break;
+  }
+}
+
+/* === 面板渲染 === */
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  LEVELS.forEach((_,i)=>{const c=i<cur?'done':i===cur?'cur':'';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`});
+  h+=`</div><div class="sn-info">第 ${cur+1}/${LEVELS.length} 关 — ${LEVELS[cur].name}</div>`;
+  h+=`<div class="sn-hint">${done.filter(Boolean).length}/${LEVELS.length} 已完成</div></div>`;
+  return h;
+}
+function renderPanel(){
+  const p=document.getElementById('panel');
+  let h=renderStageNav();
+  h+=`<h2>${LEVELS[cur].icon} ${LEVELS[cur].name}</h2>`;
+  h+=renderLevelPanel(cur);
+  if(done[cur]&&cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
+  if(done.every(Boolean))h+=renderSummary();
+  p.innerHTML=h;
+}
+function renderLevelPanel(i){
+  let h='';
+  switch(i){
+    case 0:
+      h+=`<div class="concept-box">地球由多层同心圆结构组成，从外到内依次是<b>地壳、上地幔、下地幔、外核、内核</b>。每层的温度、密度和物质状态各不相同。</div>`;
+      h+=`<div class="desc">画布上显示了地球的剖面图。点击不同的圈层来探索每一层的特性。</div>`;
+      if(S.selLayer>=0){const l=S.layers[S.selLayer];h+=`<div class="learn-box"><b>${l.name}</b><br>温度: <span class="sv">${l.temp}</span><br>${l.desc}</div>`}
+      h+=`<div class="hint-box">💡 点击地球剖面的不同颜色区域，了解每层结构</div>`;
+      if(S.revealed>=5&&!S.obj[0]){S.obj[0]=true}
+      if(S.obj[0])h+=`<button class="act-btn" onclick="startQuiz0()">开始测验</button>`;
+      break;
+    case 1:
+      h+=`<div class="concept-box">1912年魏格纳提出<b>大陆漂移假说</b>：各大陆曾连为一体（盘古大陆），后逐渐分裂漂移到现在的位置。证据包括海岸线吻合、化石分布和岩层对比。</div>`;
+      h+=`<div class="desc">画布上散布着各大陆碎片。把它们拖回中央拼合成盘古大陆。</div>`;
+      h+=`<div class="hint-box">💡 拖动大陆碎片到画布中央，让海岸线相互吻合</div>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted);margin:6px 0">已拼合: <span class="sv">${S.fitCount}/6</span></div>`;
+      break;
+    case 2:
+      h+=`<div class="concept-box">板块边界分三种：<b>离散型</b>（板块分离）、<b>汇聚型</b>（板块碰撞）、<b>转换型</b>（板块水平错动）。不同边界产生不同的地质现象。</div>`;
+      h+=`<div class="desc">画布上展示了三种板块边界的动画。点击每种边界观察其运动方式，然后正确匹配名称。</div>`;
+      S.boundaries.forEach((b,j)=>{
+        const m=S.matched.has(j);
+        h+=`<div class="sel-btn ${m?'correct':S.selBound===j?'active':''}" onclick="selBoundary(${j})" style="display:block;margin:4px 0;padding:8px;width:100%">${b.label} — ${m?'✅ '+b.desc:'点击查看'}</div>`;
+      });
+      break;
+    case 3:
+      h+=`<div class="concept-box"><b>海底扩张学说</b>：大洋中脊处岩浆不断涌出，推动两侧海底向外扩张。离中脊越远的岩石年龄越老，形成对称的磁异常条带。</div>`;
+      h+=`<div class="desc">拖动滑块控制扩张速率，观察新地壳如何在中脊处形成并向两侧推移。</div>`;
+      h+=`<div class="slider-wrap"><label>扩张速率: <span class="slider-val">${S.spreadRate.toFixed(1)} cm/年</span></label><input type="range" min="0" max="10" step="0.5" value="${S.spreadRate}" oninput="S.spreadRate=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.spreadRate.toFixed(1)+' cm/年';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<button class="act-btn" onclick="toggleSpread()">${S.spreading?'⏸ 暂停':'▶ 开始扩张'}</button>`;
+      break;
+    case 4:
+      h+=`<div class="concept-box"><b>俯冲带</b>是大洋板块向大陆板块下方俯冲的区域。俯冲过程形成海沟、火山弧和贝尼奥夫带（地震带）。俯冲角度影响火山与海沟的距离。</div>`;
+      h+=`<div class="desc">调整俯冲角度，观察海沟深度、岩浆生成位置和火山弧距离的变化。</div>`;
+      h+=`<div class="slider-wrap"><label>俯冲角度: <span class="slider-val">${S.angle}°</span></label><input type="range" min="10" max="80" step="1" value="${S.angle}" oninput="S.angle=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.angle+'°';calcSubduction();draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted);margin:4px 0">海沟深度: <span class="sv">${S.trenchDepth.toFixed(0)} km</span> | 火山弧距离: <span class="sv">${S.volcDist.toFixed(0)} km</span></div>`;
+      h+=`<div class="hint-box">💡 角度越陡，海沟越深但火山弧越近；角度越缓，火山弧越远</div>`;
+      break;
+    case 5:
+      h+=`<div class="concept-box"><b>造山运动</b>是板块汇聚挤压导致地壳褶皱隆起形成山脉的过程。喜马拉雅山就是印度板块与欧亚板块碰撞的产物，至今仍在升高。</div>`;
+      h+=`<div class="desc">拖动滑块增加挤压力，观察岩层如何褶皱隆起形成山脉。</div>`;
+      h+=`<div class="slider-wrap"><label>挤压力: <span class="slider-val">${(S.compression*100).toFixed(0)}%</span></label><input type="range" min="0" max="100" step="1" value="${S.compression*100}" oninput="S.compression=+this.value/100;this.previousElementSibling.querySelector('.slider-val').textContent=(S.compression*100).toFixed(0)+'%';calcMountain();draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted);margin:4px 0">山脉高度: <span class="sv">${S.height.toFixed(0)} m</span> | 褶皱角度: <span class="sv">${S.foldAngle.toFixed(0)}°</span></div>`;
+      break;
+    case 6:
+      h+=`<div class="concept-box">全球地震并非随机分布，而是集中在<b>板块边界</b>上，形成三大地震带：<b>环太平洋地震带</b>（最活跃，75%地震）、<b>大西洋中脊地震带</b>和<b>阿尔卑斯-喜马拉雅地震带</b>。</div>`;
+      h+=`<div class="desc">画布上显示了全球地震分布点。点击地震密集区域，识别三大地震带。</div>`;
+      h+=`<div style="font-size:12px;margin:6px 0">已识别: <span class="sv">${S.placed.length}/3</span></div>`;
+      S.zones.forEach((z,j)=>{const f=S.placed.includes(j);h+=`<div class="sel-btn ${f?'correct':''}" style="display:block;margin:4px 0;padding:8px;width:100%">${f?'✅ ':''} ${z}</div>`});
+      break;
+  }
+  return h;
+}
+
+function renderSummary(){
+  return `<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握板块构造的核心知识</div><div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡完成</div></div><div class="summary-stat"><div class="num">100%</div><div class="label">完成率</div></div></div><div class="summary-keys"><div>🌐 地球由地壳、地幔、外核、内核组成</div><div>🗺️ 大陆曾连为盘古大陆后分裂漂移</div><div>🔀 三种板块边界：离散、汇聚、转换</div><div>🌊 海底在大洋中脊处不断扩张</div><div>⬇️ 俯冲带形成海沟和火山弧</div><div>⛰️ 板块碰撞挤压形成褶皱山脉</div><div>📍 地震集中在板块边界形成地震带</div></div></div>`;
+}
+/* === 关卡逻辑 === */
+function calcSubduction(){S.trenchDepth=4+S.angle*0.1;S.volcDist=300-S.angle*2.5;S.showMelt=S.angle>20;if(S.angle>=20&&S.angle<=70&&!S.obj[0]){S.obj[0]=true;done[4]=true;playSound('ok')}}
+function calcMountain(){S.height=S.compression*8848;S.foldAngle=S.compression*75;if(S.compression>=0.8&&!S.obj[0]){S.obj[0]=true;done[5]=true;playSound('ok')}}
+function toggleSpread(){S.spreading=!S.spreading;renderPanel()}
+function selBoundary(j){S.selBound=j;S.matched.add(j);if(S.matched.size>=3&&!done[2]){done[2]=true;playSound('ok')}renderPanel();draw()}
+function startQuiz0(){if(S.revealed>=5){done[0]=true;playSound('ok');renderPanel()}}
+
+/* === 绘制 === */
+function draw(){
+  ctx.clearRect(0,0,CW,CH);
+  const th=t();
+  // 背景
+  ctx.fillStyle=th.bg;ctx.fillRect(0,0,CW,CH);
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let x=0;x<CW;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke()}
+  for(let y=0;y<CH;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke()}
+
+  switch(cur){
+    case 0:drawEarthLayers();break;
+    case 1:drawContinents();break;
+    case 2:drawBoundaries();break;
+    case 3:drawSeafloor();break;
+    case 4:drawSubduction();break;
+    case 5:drawMountain();break;
+    case 6:drawQuakeMap();break;
+  }
+}
+
+function drawEarthLayers(){
+  const cx=CW/2,cy=CH/2,maxR=Math.min(CW,CH)*0.4;
+  for(let i=S.layers.length-1;i>=0;i--){
+    const l=S.layers[i];
+    ctx.beginPath();ctx.arc(cx,cy,maxR*l.r/ 0.82,0,Math.PI*2);
+    ctx.fillStyle=i===S.selLayer?l.color+'cc':l.color+'88';ctx.fill();
+    ctx.strokeStyle='#fff3';ctx.lineWidth=1;ctx.stroke();
+    if(i<=S.revealed||S.selLayer===i){
+      ctx.fillStyle='#fff';ctx.font='bold 12px system-ui';ctx.textAlign='center';
+      ctx.fillText(l.name,cx,cy-maxR*l.r/0.82+15);
+    }
+  }
+  ctx.beginPath();ctx.arc(cx,cy,maxR,0,Math.PI*2);ctx.strokeStyle='#4ade80';ctx.lineWidth=2;ctx.stroke();
+}
+
+function drawContinents(){
+  S.continents.forEach((c,i)=>{
+    const x=c.x*CW,y=c.y*CH,w=c.w*CW,h=c.h*CH;
+    ctx.fillStyle=c.color+'aa';
+    ctx.beginPath();
+    // 简化大陆形状
+    ctx.moveTo(x,y);ctx.lineTo(x+w*0.3,y-h*0.1);ctx.lineTo(x+w*0.7,y+h*0.05);ctx.lineTo(x+w,y+h*0.3);
+    ctx.lineTo(x+w*0.9,y+h*0.7);ctx.lineTo(x+w*0.5,y+h);ctx.lineTo(x+w*0.1,y+h*0.8);ctx.closePath();
+    ctx.fill();ctx.strokeStyle='#fff4';ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font='bold 13px system-ui';ctx.textAlign='center';
+    ctx.fillText(c.name,x+w/2,y+h/2+4);
+  });
+  if(S.merged){ctx.fillStyle='#4ade8066';ctx.fillRect(CW*0.3,CH*0.25,CW*0.4,CH*0.5);ctx.fillStyle='#4ade80';ctx.font='bold 18px system-ui';ctx.textAlign='center';ctx.fillText('盘古大陆 Pangaea',CW/2,CH*0.22)}
+}
+
+function drawBoundaries(){
+  const th=t();
+  S.boundaries.forEach((b,i)=>{
+    const x=b.x*CW,y=b.y*CH,w=CW*0.2,h=CH*0.3;
+    ctx.fillStyle=b.color+'22';ctx.fillRect(x-w/2,y-h/2,w,h);
+    ctx.strokeStyle=b.color;ctx.lineWidth=2;ctx.strokeRect(x-w/2,y-h/2,w,h);
+    // 动画箭头
+    const t2=Date.now()/1000;
+    ctx.strokeStyle=b.color;ctx.lineWidth=3;
+    if(b.type==='divergent'){
+      const off=Math.sin(t2*2)*8;
+      drawArrow(x-20-off,y,x-40-off,y,b.color);drawArrow(x+20+off,y,x+40+off,y,b.color);
+    }else if(b.type==='convergent'){
+      const off=Math.sin(t2*2)*8;
+      drawArrow(x-40+off,y,x-15+off,y,b.color);drawArrow(x+40-off,y,x+15-off,y,b.color);
+    }else{
+      const off=Math.sin(t2*2)*8;
+      drawArrow(x-30,y-15+off,x+30,y-15+off,b.color);drawArrow(x+30,y+15-off,x-30,y+15-off,b.color);
+    }
+    ctx.fillStyle=S.matched.has(i)?'#4ade80':th.text;ctx.font='bold 14px system-ui';ctx.textAlign='center';
+    ctx.fillText(b.label,x,y-h/2-10);
+  });
+}
+
+function drawArrow(x1,y1,x2,y2,color){
+  ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  const a=Math.atan2(y2-y1,x2-x1);
+  ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-10*Math.cos(a-0.4),y2-10*Math.sin(a-0.4));ctx.lineTo(x2-10*Math.cos(a+0.4),y2-10*Math.sin(a+0.4));ctx.closePath();ctx.fillStyle=color;ctx.fill();
+}
+
+function drawSeafloor(){
+  const cx=CW/2,y0=CH*0.3,h=CH*0.4;
+  // 中脊
+  ctx.fillStyle='#ef444466';ctx.fillRect(cx-3,y0,6,h);
+  ctx.fillStyle='#ef4444';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText('大洋中脊',cx,y0-8);
+  // 岩石条带
+  S.age.forEach(a=>{
+    const x=a.x*CW,w=CW*0.018;
+    const alpha=Math.min(1,a.a/30);
+    ctx.fillStyle=a.color+Math.floor(alpha*200+55).toString(16).padStart(2,'0');
+    ctx.fillRect(x-w/2,y0,w,h);
+  });
+  // 年龄标注
+  ctx.fillStyle=t().text;ctx.font='11px system-ui';ctx.textAlign='center';
+  ctx.fillText('← 老岩石',CW*0.15,y0+h+20);ctx.fillText('新岩石 →',CW*0.85,y0+h+20);
+  ctx.fillText(`扩张速率: ${S.spreadRate.toFixed(1)} cm/年`,cx,y0+h+20);
+  if(S.spreadRate>=3&&!done[3]){done[3]=true;playSound('ok')}
+}
+
+function drawSubduction(){
+  const cx=CW/2,cy=CH/2;
+  // 海平面
+  ctx.fillStyle='#3b82f633';ctx.fillRect(0,cy-40,CW,80);
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(CW,cy);ctx.stroke();
+  // 大陆板块（右）
+  ctx.fillStyle='#aa884488';ctx.fillRect(cx,cy-30,CW/2,60);
+  ctx.fillStyle=t().text;ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillText('大陆板块',cx+CW/4,cy-35);
+  // 大洋板块（左）+ 俯冲
+  const rad=S.angle*Math.PI/180;
+  ctx.save();ctx.translate(cx,cy);
+  ctx.fillStyle='#3b82f644';ctx.beginPath();ctx.moveTo(-CW/2,0);ctx.lineTo(0,0);
+  const subLen=200;ctx.lineTo(-Math.cos(rad)*subLen,Math.sin(rad)*subLen);ctx.lineTo(-CW/2,30);ctx.closePath();ctx.fill();
+  // 海沟
+  ctx.fillStyle='#1a1a4a';ctx.beginPath();ctx.arc(0,0,15,0,Math.PI);ctx.fill();
+  ctx.fillStyle='#ef4444';ctx.font='11px system-ui';ctx.textAlign='center';ctx.fillText('海沟',0,25);
+  // 火山
+  if(S.showMelt){
+    const vx=S.volcDist*0.5;
+    ctx.fillStyle='#ef4444';ctx.beginPath();ctx.moveTo(vx,-30);ctx.lineTo(vx-20,0);ctx.lineTo(vx+20,0);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#ff6600';ctx.font='11px system-ui';ctx.fillText('🌋',vx,-35);
+  }
+  ctx.restore();
+  ctx.fillStyle=t().text;ctx.font='12px system-ui';ctx.textAlign='left';ctx.fillText('大洋板块',50,cy-35);
+}
+
+function drawMountain(){
+  const cx=CW/2,baseY=CH*0.7;
+  // 挤压箭头
+  const off=S.compression*50;
+  drawArrow(50+off,baseY,cx-100+off,baseY,'#ef4444');
+  drawArrow(CW-50-off,baseY,cx+100-off,baseY,'#3b82f6');
+  // 岩层褶皱
+  S.layers.forEach((l,i)=>{
+    ctx.strokeStyle=l.color;ctx.lineWidth=3;ctx.beginPath();
+    for(let x=0;x<=CW;x+=5){
+      const nx=(x-cx)/CW;
+      const fold=S.foldAngle*Math.sin(nx*Math.PI*4)*Math.exp(-nx*nx*8);
+      const lift=S.height/8848*CH*0.3*Math.exp(-nx*nx*6);
+      const y=baseY+i*8-fold-lift;
+      if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  });
+  // 山峰标注
+  if(S.height>1000){
+    ctx.fillStyle=t().text;ctx.font='bold 14px system-ui';ctx.textAlign='center';
+    ctx.fillText(`⛰️ ${S.height.toFixed(0)}m`,cx,baseY-S.height/8848*CH*0.3-20);
+  }
+}
+
+function drawQuakeMap(){
+  // 简化世界地图轮廓
+  ctx.strokeStyle=t().sub;ctx.lineWidth=1;
+  ctx.strokeRect(CW*0.05,CH*0.05,CW*0.9,CH*0.9);
+  // 地震点
+  S.quakes.forEach(q=>{
+    const x=q.x*CW,y=q.y*CH,r=q.mag*0.5;
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fillStyle=q.mag>6?'#ef444488':q.mag>4?'#f59e0b88':'#3b82f688';ctx.fill();
+  });
+  // 已识别区域
+  S.placed.forEach(zi=>{
+    ctx.fillStyle='#4ade8033';ctx.strokeStyle='#4ade80';ctx.lineWidth=2;
+    if(zi===0){ctx.beginPath();ctx.ellipse(CW*0.2,CH*0.5,CW*0.15,CH*0.35,0,0,Math.PI*2);ctx.fill();ctx.stroke()}
+    else if(zi===1){ctx.fillRect(CW*0.45,CH*0.1,CW*0.1,CH*0.8);ctx.strokeRect(CW*0.45,CH*0.1,CW*0.1,CH*0.8)}
+    else{ctx.beginPath();ctx.ellipse(CW*0.6,CH*0.35,CW*0.2,CH*0.08,0.2,0,Math.PI*2);ctx.fill();ctx.stroke()}
+    ctx.fillStyle='#4ade80';ctx.font='bold 12px system-ui';ctx.textAlign='center';
+    const labels=['环太平洋','大西洋中脊','阿尔卑斯-喜马拉雅'];
+    const lx=[CW*0.2,CW*0.5,CW*0.6],ly=[CH*0.15,CH*0.08,CH*0.28];
+    ctx.fillText(labels[zi],lx[zi],ly[zi]);
+  });
+  ctx.fillStyle=t().text;ctx.font='11px system-ui';ctx.textAlign='left';
+  ctx.fillText('点击地震密集区域识别地震带',10,CH-10);
+}
+
+/* === 交互 === */
+cv.addEventListener('click',e=>{
+  if(gameState!=='play')return;
+  const rect=cv.getBoundingClientRect();
+  const mx=(e.clientX-rect.left)*(CW/rect.width),my=(e.clientY-rect.top)*(CH/rect.height);
+  switch(cur){
+    case 0:{
+      const cx2=CW/2,cy2=CH/2,maxR=Math.min(CW,CH)*0.4;
+      const dist=Math.hypot(mx-cx2,my-cy2);
+      for(let i=0;i<S.layers.length;i++){
+        const r=maxR*S.layers[i].r/0.82;
+        const rPrev=i>0?maxR*S.layers[i-1].r/0.82:0;
+        if(dist<=r&&dist>=rPrev){S.selLayer=i;if(i>=S.revealed)S.revealed=i+1;playSound('click');renderPanel();draw();break}
+      }
+      break;
+    }
+    case 6:{
+      const nx=mx/CW,ny=my/CH;
+      if(!S.placed.includes(0)&&nx<0.35&&ny>0.15&&ny<0.85){S.placed.push(0);playSound('ok');if(S.placed.length>=3)done[6]=true;renderPanel();draw()}
+      else if(!S.placed.includes(1)&&nx>0.4&&nx<0.6){S.placed.push(1);playSound('ok');if(S.placed.length>=3)done[6]=true;renderPanel();draw()}
+      else if(!S.placed.includes(2)&&nx>0.4&&ny>0.25&&ny<0.45){S.placed.push(2);playSound('ok');if(S.placed.length>=3)done[6]=true;renderPanel();draw()}
+      break;
+    }
+  }
+});
+
+let dragCont=-1;
+cv.addEventListener('mousedown',e=>{
+  if(cur!==1||gameState!=='play')return;
+  const rect=cv.getBoundingClientRect();
+  const mx=(e.clientX-rect.left)*(CW/rect.width),my=(e.clientY-rect.top)*(CH/rect.height);
+  S.continents.forEach((c,i)=>{
+    if(mx>c.x*CW&&mx<(c.x+c.w)*CW&&my>c.y*CH&&my<(c.y+c.h)*CH){dragCont=i;S.dx=mx-c.x*CW;S.dy=my-c.y*CH}
+  });
+});
+cv.addEventListener('mousemove',e=>{
+  if(dragCont<0)return;
+  const rect=cv.getBoundingClientRect();
+  const mx=(e.clientX-rect.left)*(CW/rect.width),my=(e.clientY-rect.top)*(CH/rect.height);
+  S.continents[dragCont].x=(mx-S.dx)/CW;S.continents[dragCont].y=(my-S.dy)/CH;draw();
+});
+cv.addEventListener('mouseup',()=>{
+  if(dragCont>=0&&cur===1){
+    const c=S.continents[dragCont];
+    if(Math.abs(c.x-0.4)<0.15&&Math.abs(c.y-0.4)<0.15){
+      c.x=0.38+dragCont*0.03;c.y=0.35+dragCont*0.04;
+      if(!c.fitted){c.fitted=true;S.fitCount++;playSound('ok');if(S.fitCount>=6){S.merged=true;done[1]=true}}
+    }
+    dragCont=-1;renderPanel();draw();
+  }
+  dragCont=-1;
+});
+
+/* === 游戏流程 === */
+function goLevel(i){if(i<0||i>=7)return;cur=i;initLevel(i);renderPanel();draw();updateInfobar();playSound('click')}
+function startGame(){
+  playSound('click');document.getElementById('startScreen').classList.add('hidden');
+  document.getElementById('panel').style.display='block';gameState='play';
+  goLevel(0);anim();
+}
+function updateInfobar(){
+  document.getElementById('ib-level').textContent=`关卡 ${cur+1}/7`;
+  document.getElementById('ib-title').textContent=LEVELS[cur].name;
+  document.getElementById('ib-status').textContent=done[cur]?'✅ 已完成':'进行中';
+}
+
+/* === 动画循环 === */
+let lastT=0;
+function anim(ts){
+  requestAnimationFrame(anim);
+  if(!ts)return;
+  const dt=(ts-lastT)/1000;lastT=ts;
+  if(gameState!=='play')return;
+  S.anim=(S.anim||0)+dt;
+  if(cur===3&&S.spreading){
+    S.age.forEach(a=>{
+      if(a.x<0.5)a.x-=S.spreadRate*0.0001*dt*60;
+      else a.x+=S.spreadRate*0.0001*dt*60;
+      a.a=Math.abs(a.x-0.5)*100;
+    });
+  }
+  draw();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>酸碱与滴定 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;width:100vw}
+#overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+#overlay h1{font-size:36px;color:#14b8a6;text-shadow:0 0 30px rgba(20,184,166,0.5);margin-bottom:8px}
+#overlay h2{font-size:18px;color:#5eead4;margin-bottom:30px;font-weight:normal}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px;padding:8px;background:var(--feat-bg);border:1px solid var(--feat-border);border-radius:8px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.start-btn{padding:14px 48px;font-size:20px;background:linear-gradient(135deg,#14b8a6,#0d9488);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:all .3s;box-shadow:0 0 20px rgba(20,184,166,0.3)}
+.start-btn:hover{transform:scale(1.05);box-shadow:0 0 30px rgba(20,184,166,0.5)}
+#wrap{display:none;width:100vw;height:100vh;position:relative}
+#panel{position:absolute;left:0;top:0;width:320px;height:calc(100% - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;padding:16px;z-index:10;display:none}
+#panel h3{color:#14b8a6;font-size:16px;margin-bottom:8px}
+#panel .obj{display:flex;align-items:center;gap:6px;margin:4px 0;font-size:14px;color:var(--text-muted)}
+#panel .obj.done{color:#4ade80}
+#panel .obj::before{content:'○';color:var(--text-sub);font-size:14px}
+#panel .obj.done::before{content:'●';color:#4ade80}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;background:rgba(20,184,166,0.15);color:#5eead4;border:1px solid rgba(20,184,166,0.3);border-radius:6px;cursor:pointer;font-size:15px;transition:all .2s;text-align:center}
+.act-btn:hover{background:rgba(20,184,166,0.3)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;line-height:1.8;color:var(--learn-text)}
+.learn-box b{color:#5eead4}
+#bar{position:absolute;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:none;align-items:center;padding:0 12px;gap:8px;z-index:10}
+#bar .prog{margin-left:auto;font-size:12px;color:var(--text-muted)}
+canvas{position:absolute;left:320px;top:0;background:var(--bg)}
+.desc{font-size:12px;color:var(--text-muted);line-height:1.6;margin:8px 0}
+.sub{font-size:13px;color:var(--sub-color);margin:6px 0 4px;font-weight:600}
+input[type=range].ctl{width:100%;accent-color:#14b8a6;margin:4px 0}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div id="overlay">
+<h1>🧪 酸碱与滴定</h1>
+<h2>从 pH 值到水质检测，7 关掌握酸碱化学</h2>
+<button class="start-btn" onclick="startGame()">开始探索 🔬</button>
+<div class="features">
+<div class="feat"><div class="fi">🌈</div>pH指示剂</div>
+<div class="feat"><div class="fi">⚡</div>强酸强碱</div>
+<div class="feat"><div class="fi">🔄</div>弱酸弱碱</div>
+<div class="feat"><div class="fi">🛡️</div>缓冲溶液</div>
+<div class="feat"><div class="fi">📈</div>滴定曲线</div>
+<div class="feat"><div class="fi">⚗️</div>氧化还原</div>
+<div class="feat"><div class="fi">💧</div>水质检测</div>
+</div>
+</div>
+<div id="wrap">
+<div id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="bar"></div>
+</div>
+<script>
+let isDark=true;
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel();}
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay'),wrap=document.getElementById('wrap');
+let W,H,curLevel=0,time=0,unlocked=[true,false,false,false,false,false,false];
+let levelObjs=[[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false]];
+
+const LEVEL_NAMES=['pH值与指示剂','强酸强碱','弱酸弱碱','缓冲溶液','酸碱滴定曲线','氧化还原滴定','水质检测应用'];
+const LEVEL_ICONS=['🌈','⚡','🔄','🛡️','📈','⚗️','💧'];
+
+// pH color mapping
+function phColor(pH){
+  if(pH<2)return'#ef4444';if(pH<4)return'#f97316';if(pH<6)return'#eab308';
+  if(pH<7.5)return'#22c55e';if(pH<9)return'#14b8a6';if(pH<11)return'#3b82f6';return'#8b5cf6';
+}
+function phName(pH){if(pH<3)return'强酸性';if(pH<6)return'弱酸性';if(pH<8)return'中性附近';if(pH<11)return'弱碱性';return'强碱性';}
+
+// === Level 0: pH & indicators ===
+let l0pH=7,l0indicator=0;
+const INDICATORS=[
+  {name:'石蕊',ranges:[{lo:0,hi:5,color:'#ef4444',label:'红'},{lo:5,hi:8,color:'#8b5cf6',label:'紫'},{lo:8,hi:14,color:'#3b82f6',label:'蓝'}]},
+  {name:'酚酞',ranges:[{lo:0,hi:8.2,color:'transparent',label:'无色'},{lo:8.2,hi:10,color:'#ec4899',label:'浅红'},{lo:10,hi:14,color:'#be185d',label:'深红'}]},
+  {name:'甲基橙',ranges:[{lo:0,hi:3.1,color:'#ef4444',label:'红'},{lo:3.1,hi:4.4,color:'#f97316',label:'橙'},{lo:4.4,hi:14,color:'#eab308',label:'黄'}]},
+  {name:'溴百里酚蓝',ranges:[{lo:0,hi:6,color:'#eab308',label:'黄'},{lo:6,hi:7.6,color:'#22c55e',label:'绿'},{lo:7.6,hi:14,color:'#3b82f6',label:'蓝'}]}
+];
+let l0viewed=new Set();
+
+// === Level 1: Strong acid/base ===
+let l1conc=1,l1type=0; // 0=HCl, 1=NaOH, 2=H2SO4
+const STRONG_AB=[
+  {name:'HCl 盐酸',type:'酸',formula:'HCl → H⁺ + Cl⁻',desc:'一元强酸，完全电离'},
+  {name:'NaOH 氢氧化钠',type:'碱',formula:'NaOH → Na⁺ + OH⁻',desc:'一元强碱，完全电离'},
+  {name:'H₂SO₄ 硫酸',type:'酸',formula:'H₂SO₄ → 2H⁺ + SO₄²⁻',desc:'二元强酸，完全电离'}
+];
+
+// === Level 2: Weak acid/base ===
+let l2conc=0.1,l2type=0;
+const WEAK_AB=[
+  {name:'CH₃COOH 醋酸',Ka:1.8e-5,type:'弱酸',desc:'部分电离，存在电离平衡'},
+  {name:'NH₃·H₂O 氨水',Kb:1.8e-5,type:'弱碱',desc:'部分电离，存在电离平衡'},
+  {name:'H₂CO₃ 碳酸',Ka:4.3e-7,type:'弱酸',desc:'二元弱酸，分步电离'}
+];
+
+// === Level 3: Buffer ===
+let l3addVol=0,l3bufferType=0;
+const BUFFERS=[
+  {name:'醋酸/醋酸钠',acid:'CH₃COOH',base:'CH₃COONa',pKa:4.74,desc:'弱酸+其共轭碱'},
+  {name:'NH₃·H₂O/NH₄Cl',acid:'NH₄Cl',base:'NH₃·H₂O',pKa:9.25,desc:'弱碱+其共轭酸'},
+  {name:'碳酸氢钠/碳酸钠',acid:'NaHCO₃',base:'Na₂CO₃',pKa:10.33,desc:'两性缓冲对'}
+];
+
+// === Level 4: Titration curve ===
+let l4vol=0,l4speed=1,l4points=[],l4titType=0;
+const TITRATIONS=[
+  {name:'强酸-强碱',acid:'HCl',base:'NaOH',ep:7,desc:'等当量点pH=7'},
+  {name:'弱酸-强碱',acid:'CH₃COOH',base:'NaOH',ep:8.72,desc:'等当量点pH>7'},
+  {name:'强酸-弱碱',acid:'HCl',base:'NH₃·H₂O',ep:5.28,desc:'等当量点pH<7'}
+];
+
+// === Level 5: Redox titration ===
+let l5vol=0,l5type=0;
+const REDOX_TIT=[
+  {name:'KMnO₄滴定Fe²⁺',oxidant:'KMnO₄',reductant:'FeSO₄',color1:'#8b5cf6',color2:'#f59e0b',eq:'MnO₄⁻+5Fe²⁺+8H⁺→Mn²⁺+5Fe³⁺+4H₂O',desc:'高锰酸钾自身指示剂'},
+  {name:'碘量法测Vc',oxidant:'I₂',reductant:'维生素C',color1:'#92400e',color2:'transparent',eq:'C₆H₈O₆+I₂→C₆H₆O₆+2HI',desc:'淀粉指示剂变蓝'}
+];
+
+// === Level 6: Water quality ===
+let l6sample=0,l6tested=new Set();
+const WATER_SAMPLES=[
+  {name:'自来水',pH:7.2,hardness:120,chlorine:0.3,desc:'经过消毒处理，含少量余氯'},
+  {name:'矿泉水',pH:7.5,hardness:200,chlorine:0,desc:'含矿物质，硬度较高'},
+  {name:'雨水',pH:5.6,hardness:10,chlorine:0,desc:'溶解CO₂呈弱酸性'},
+  {name:'酸雨',pH:4.2,hardness:15,chlorine:0,desc:'含SO₂/NOₓ，pH<5.6'},
+  {name:'泳池水',pH:7.4,hardness:150,chlorine:1.5,desc:'需维持pH 7.2-7.8，余氯0.3-1.0'}
+];
+
+function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';}
+window.addEventListener('resize',()=>{resize();draw();});
+
+function startGame(){overlay.style.display='none';wrap.style.display='block';panel.style.display='block';bar.style.display='flex';resize();goLevel(0);animate();}
+function goLevel(n){if(n>6)return;curLevel=n;if(!unlocked[n])unlocked[n]=true;initLevel(n);renderPanel();draw();}
+function checkObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;if(levelObjs[li].every(v=>v)&&li<6)unlocked[li+1]=true;renderPanel();}}
+
+function initLevel(n){
+  switch(n){
+    case 0:l0pH=7;l0indicator=0;l0viewed.clear();break;
+    case 1:l1conc=1;l1type=0;break;
+    case 2:l2conc=0.1;l2type=0;break;
+    case 3:l3addVol=0;l3bufferType=0;break;
+    case 4:l4vol=0;l4speed=1;l4points=[];l4titType=0;buildTitrationCurve();break;
+    case 5:l5vol=0;l5type=0;break;
+    case 6:l6sample=0;l6tested.clear();break;
+  }
+}
+
+function buildTitrationCurve(){
+  l4points=[];const t=TITRATIONS[l4titType];
+  for(let v=0;v<=50;v+=0.2){
+    let pH;const f=v/25;// fraction of equivalence
+    if(t.name==='强酸-强碱'){
+      if(f<0.99)pH=1-Math.log10(1-f+0.001);
+      else if(f<1.01)pH=7;
+      else pH=7+Math.log10((f-1)*0.1+0.001)+2;
+    } else if(t.name==='弱酸-强碱'){
+      if(f<0.01)pH=2.87;
+      else if(f<0.99)pH=4.74+Math.log10(f/(1-f+0.001));
+      else if(f<1.01)pH=t.ep;
+      else pH=t.ep+Math.log10((f-1)*0.1+0.001)+2;
+    } else {
+      if(f<0.99)pH=12+Math.log10(1-f+0.001);
+      else if(f<1.01)pH=t.ep;
+      else pH=t.ep-Math.log10((f-1)*0.1+0.001)-2;
+    }
+    pH=Math.max(0,Math.min(14,pH));
+    l4points.push({v,pH});
+  }
+}
+
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  LEVEL_NAMES.forEach((_,i)=>{const cls=i<curLevel?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})" title="${LEVEL_NAMES[i]}"></div>`;});
+  h+=`</div><div class="sn-info">${LEVEL_ICONS[curLevel]} ${curLevel+1}/${LEVEL_NAMES.length} ${LEVEL_NAMES[curLevel]}</div></div>`;
+  return h;
+}
+function summaryHTML(){
+  const done=levelObjs.flat().filter(v=>v).length,total=levelObjs.flat().length;
+  return `<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握酸碱化学与滴定分析的核心知识</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}/${total}</div><div class="label">目标完成</div></div><div class="summary-stat"><div class="num">7</div><div class="label">关卡通关</div></div></div><div class="summary-keys"><div>🌈 pH值范围0-14，指示剂变色判断酸碱</div><div>⚡ 强酸强碱完全电离</div><div>🔄 弱酸弱碱部分电离，存在平衡</div><div>🛡️ 缓冲溶液抵抗pH变化</div><div>📈 滴定曲线的等当量点</div><div>⚗️ 氧化还原滴定的终点判断</div><div>💧 水质检测的实际应用</div></div></div>`;
+}
+function renderPanel(){
+  let h=renderStageNav();
+  switch(curLevel){case 0:h+=renderP0();break;case 1:h+=renderP1();break;case 2:h+=renderP2();break;case 3:h+=renderP3();break;case 4:h+=renderP4();break;case 5:h+=renderP5();break;case 6:h+=renderP6();break;}
+  if(levelObjs[curLevel].every(v=>v)&&curLevel<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+  if(levelObjs[curLevel].every(v=>v)&&curLevel===6)h+=summaryHTML();
+  panel.innerHTML=h;
+  bar.innerHTML=`<span style="color:var(--text-muted)">🧪 ${LEVEL_NAMES[curLevel]}</span><span class="prog">${levelObjs.flat().filter(v=>v).length}/${levelObjs.flat().length} 目标</span>`;
+}
+
+function renderP0(){
+  let h=`<h3>pH值与指示剂</h3>`;
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>pH = -log[H⁺]，范围0-14，7为中性。指示剂在不同pH下变色</div>`;
+  h+=`<p class="desc">画布上有一个烧杯，拖动滑块改变溶液pH值，观察<span style="color:${phColor(l0pH)}">溶液颜色</span>和指示剂的变色反应。</p>`;
+  h+=`<div class="obj ${levelObjs[0][0]?'done':''}">将pH调到强酸性(pH<3)</div>`;
+  h+=`<div class="obj ${levelObjs[0][1]?'done':''}">将pH调到强碱性(pH>11)</div>`;
+  h+=`<div class="obj ${levelObjs[0][2]?'done':''}">查看至少3种指示剂</div>`;
+  h+=`<p class="sub">当前 pH: <span style="color:${phColor(l0pH)}">${l0pH.toFixed(1)}</span> (${phName(l0pH)})</p>`;
+  h+=`<input type="range" class="ctl" min="0" max="14" step="0.1" value="${l0pH}" oninput="setpH(+this.value)" onchange="this.blur();renderPanel()">`;
+  h+=`<p class="sub">指示剂选择:</p>`;
+  for(let i=0;i<INDICATORS.length;i++){
+    const ind=INDICATORS[i],sel=i===l0indicator?'background:rgba(20,184,166,0.3);':'';
+    h+=`<button class="act-btn" style="${sel}" onclick="setIndicator(${i})">${ind.name}</button>`;
+  }
+  const ind=INDICATORS[l0indicator],range=ind.ranges.find(r=>l0pH>=r.lo&&l0pH<r.hi)||ind.ranges[ind.ranges.length-1];
+  h+=`<div class="learn-box"><b>${ind.name}</b>在pH ${l0pH.toFixed(1)} 下显<b style="color:${range.color==='transparent'?'#888':range.color}">${range.label}</b>色<br>变色范围: ${ind.ranges.map(r=>`${r.label}(${r.lo}-${r.hi})`).join(' → ')}</div>`;
+  return h;
+}
+function setpH(v){l0pH=v;if(v<3)checkObj(0,0);if(v>11)checkObj(0,1);draw();const el=panel.querySelector('.sub span');if(el){el.style.color=phColor(v);el.textContent=v.toFixed(1);}}
+function setIndicator(i){l0indicator=i;l0viewed.add(i);if(l0viewed.size>=3)checkObj(0,2);renderPanel();draw();}
+
+function renderP1(){
+  let h=`<h3>强酸强碱</h3>`;
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>强酸强碱在水中完全电离，[H⁺]或[OH⁻]等于初始浓度</div>`;
+  h+=`<p class="desc">画布上展示强酸/强碱的电离过程。切换物质并调节浓度，观察离子浓度和pH的变化。</p>`;
+  h+=`<div class="obj ${levelObjs[1][0]?'done':''}">查看至少2种强电解质</div>`;
+  h+=`<div class="obj ${levelObjs[1][1]?'done':''}">将浓度调到0.01 mol/L</div>`;
+  h+=`<div class="obj ${levelObjs[1][2]?'done':''}">理解浓度与pH的关系</div>`;
+  for(let i=0;i<STRONG_AB.length;i++){
+    const s=STRONG_AB[i],sel=i===l1type?'background:rgba(20,184,166,0.3);':'';
+    h+=`<button class="act-btn" style="${sel}" onclick="setStrong(${i})">${s.name}</button>`;
+  }
+  h+=`<p class="sub">浓度: <span style="color:var(--sv)">${l1conc.toFixed(3)} mol/L</span></p>`;
+  h+=`<input type="range" class="ctl" min="-3" max="0" step="0.1" value="${Math.log10(l1conc)}" oninput="setConc1(Math.pow(10,+this.value))" onchange="this.blur();renderPanel()">`;
+  const s=STRONG_AB[l1type],pH1=s.type==='酸'?(s.name.includes('H₂SO₄')?-Math.log10(l1conc*2):-Math.log10(l1conc)):14+Math.log10(l1conc);
+  h+=`<div class="learn-box"><b>${s.name}</b><br>${s.formula}<br>${s.desc}<br>pH = <b>${pH1.toFixed(2)}</b></div>`;
+  return h;
+}
+let l1viewed=new Set();
+function setStrong(i){l1type=i;l1viewed.add(i);if(l1viewed.size>=2)checkObj(1,0);renderPanel();draw();}
+function setConc1(v){l1conc=Math.max(0.001,Math.min(1,v));if(Math.abs(l1conc-0.01)<0.003)checkObj(1,1);if(l1viewed.size>=1&&Math.abs(l1conc-0.01)<0.003)checkObj(1,2);draw();}
+
+function renderP2(){
+  let h=`<h3>弱酸弱碱</h3>`;
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>弱电解质部分电离，存在电离平衡。电离度随浓度降低而增大</div>`;
+  h+=`<p class="desc">画布上展示弱酸/弱碱的电离平衡。切换物质并调节浓度，观察电离度的变化。</p>`;
+  h+=`<div class="obj ${levelObjs[2][0]?'done':''}">查看至少2种弱电解质</div>`;
+  h+=`<div class="obj ${levelObjs[2][1]?'done':''}">观察稀释时电离度增大</div>`;
+  h+=`<div class="obj ${levelObjs[2][2]?'done':''}">比较强弱电解质的区别</div>`;
+  for(let i=0;i<WEAK_AB.length;i++){
+    const w=WEAK_AB[i],sel=i===l2type?'background:rgba(20,184,166,0.3);':'';
+    h+=`<button class="act-btn" style="${sel}" onclick="setWeak(${i})">${w.name}</button>`;
+  }
+  h+=`<p class="sub">浓度: <span style="color:var(--sv)">${l2conc.toFixed(4)} mol/L</span></p>`;
+  h+=`<input type="range" class="ctl" min="-4" max="-0.5" step="0.1" value="${Math.log10(l2conc)}" oninput="setConc2(Math.pow(10,+this.value))" onchange="this.blur();renderPanel()">`;
+  const w=WEAK_AB[l2type],Ka=w.Ka||w.Kb,x=(-Ka+Math.sqrt(Ka*Ka+4*Ka*l2conc))/2,alpha=(x/l2conc*100);
+  const pH2=w.type==='弱酸'?-Math.log10(x):14+Math.log10(x);
+  h+=`<div class="learn-box"><b>${w.name}</b><br>${w.desc}<br>电离度: <b>${alpha.toFixed(1)}%</b><br>pH = <b>${pH2.toFixed(2)}</b><br>Ka/Kb = ${Ka.toExponential(1)}</div>`;
+  return h;
+}
+let l2viewed=new Set(),l2prevAlpha=0;
+function setWeak(i){l2type=i;l2viewed.add(i);if(l2viewed.size>=2){checkObj(2,0);checkObj(2,2);}renderPanel();draw();}
+function setConc2(v){
+  const old=l2conc;l2conc=Math.max(0.0001,Math.min(0.3,v));
+  const w=WEAK_AB[l2type],Ka=w.Ka||w.Kb;
+  const xOld=(-Ka+Math.sqrt(Ka*Ka+4*Ka*old))/2,xNew=(-Ka+Math.sqrt(Ka*Ka+4*Ka*l2conc))/2;
+  if(l2conc<old&&(xNew/l2conc)>(xOld/old)*1.05)checkObj(2,1);
+  draw();
+}
+
+function renderP3(){
+  let h=`<h3>缓冲溶液</h3>`;
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>缓冲溶液由弱酸+共轭碱（或弱碱+共轭酸）组成，能抵抗少量酸碱引起的pH变化</div>`;
+  h+=`<p class="desc">画布上左边是<span style="color:#14b8a6">缓冲溶液</span>，右边是<span style="color:#3b82f6">纯水</span>。拖动滑块向两者加入等量强酸/强碱，对比pH变化。</p>`;
+  h+=`<div class="obj ${levelObjs[3][0]?'done':''}">向缓冲液加入酸(滑块左拖)</div>`;
+  h+=`<div class="obj ${levelObjs[3][1]?'done':''}">向缓冲液加入碱(滑块右拖)</div>`;
+  h+=`<div class="obj ${levelObjs[3][2]?'done':''}">观察缓冲液vs纯水的pH差异</div>`;
+  for(let i=0;i<BUFFERS.length;i++){
+    const b=BUFFERS[i],sel=i===l3bufferType?'background:rgba(20,184,166,0.3);':'';
+    h+=`<button class="act-btn" style="${sel}" onclick="l3bufferType=${i};renderPanel();draw()">${b.name}</button>`;
+  }
+  h+=`<p class="sub">加入量: <span style="color:var(--sv)">${l3addVol>0?'+'+l3addVol.toFixed(1)+' mL NaOH':l3addVol<0?l3addVol.toFixed(1)+' mL HCl':'0 (未加入)'}</span></p>`;
+  h+=`<input type="range" class="ctl" min="-5" max="5" step="0.1" value="${l3addVol}" oninput="setBuffer(+this.value)" onchange="this.blur();renderPanel()">`;
+  const b=BUFFERS[l3bufferType],bufpH=b.pKa+l3addVol*0.05,waterpH=7+l3addVol*0.8;
+  h+=`<div class="learn-box"><b>${b.name}</b><br>${b.desc}<br>缓冲液pH: <b>${Math.max(0,Math.min(14,bufpH)).toFixed(2)}</b><br>纯水pH: <b>${Math.max(0,Math.min(14,waterpH)).toFixed(2)}</b><br>Henderson-Hasselbalch方程:<br>pH = pKa + log([A⁻]/[HA])</div>`;
+  return h;
+}
+function setBuffer(v){l3addVol=v;if(v<-1)checkObj(3,0);if(v>1)checkObj(3,1);if(Math.abs(v)>2)checkObj(3,2);draw();}
+
+function renderP4(){
+  let h=`<h3>酸碱滴定曲线</h3>`;
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>滴定曲线记录滴加体积与pH的关系，等当量点附近pH突变</div>`;
+  h+=`<p class="desc">画布上显示滴定曲线和烧杯。拖动滑块控制滴加体积，观察<span style="color:#14b8a6">实时pH曲线</span>的变化。</p>`;
+  h+=`<div class="obj ${levelObjs[4][0]?'done':''}">滴加到等当量点附近(24-26mL)</div>`;
+  h+=`<div class="obj ${levelObjs[4][1]?'done':''}">观察pH突变区域</div>`;
+  h+=`<div class="obj ${levelObjs[4][2]?'done':''}">查看至少2种滴定类型</div>`;
+  for(let i=0;i<TITRATIONS.length;i++){
+    const t=TITRATIONS[i],sel=i===l4titType?'background:rgba(20,184,166,0.3);':'';
+    h+=`<button class="act-btn" style="${sel}" onclick="setTitType(${i})">${t.name}</button>`;
+  }
+  h+=`<p class="sub">滴加体积: <span style="color:var(--sv)">${l4vol.toFixed(1)} mL</span></p>`;
+  h+=`<input type="range" class="ctl" min="0" max="50" step="0.2" value="${l4vol}" oninput="setTitVol(+this.value)" onchange="this.blur();renderPanel()">`;
+  const curPt=l4points.find(p=>p.v>=l4vol)||l4points[l4points.length-1];
+  const t=TITRATIONS[l4titType];
+  h+=`<div class="learn-box"><b>${t.name}滴定</b><br>${t.acid} + ${t.base}<br>当前pH: <b style="color:${phColor(curPt.pH)}">${curPt.pH.toFixed(2)}</b><br>等当量点: ${t.ep.toFixed(2)}<br>${t.desc}</div>`;
+  return h;
+}
+let l4titViewed=new Set();
+function setTitType(i){l4titType=i;l4vol=0;l4titViewed.add(i);buildTitrationCurve();if(l4titViewed.size>=2)checkObj(4,2);renderPanel();draw();}
+function setTitVol(v){l4vol=v;if(v>=24&&v<=26)checkObj(4,0);
+  // Check for pH jump
+  const pts=l4points.filter(p=>p.v>=22&&p.v<=28);
+  if(pts.length>2){const pHs=pts.map(p=>p.pH);const range=Math.max(...pHs)-Math.min(...pHs);if(range>3&&v>=20&&v<=30)checkObj(4,1);}
+  draw();
+}
+
+function renderP5(){
+  let h=`<h3>氧化还原滴定</h3>`;
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>利用氧化还原反应进行定量分析，终点通过颜色变化判断</div>`;
+  h+=`<p class="desc">画布上展示氧化还原滴定过程。拖动滑块控制滴加量，观察溶液颜色变化和终点判断。</p>`;
+  h+=`<div class="obj ${levelObjs[5][0]?'done':''}">滴加到终点(颜色突变)</div>`;
+  h+=`<div class="obj ${levelObjs[5][1]?'done':''}">查看两种氧化还原滴定</div>`;
+  h+=`<div class="obj ${levelObjs[5][2]?'done':''}">理解自身指示剂原理</div>`;
+  for(let i=0;i<REDOX_TIT.length;i++){
+    const r=REDOX_TIT[i],sel=i===l5type?'background:rgba(20,184,166,0.3);':'';
+    h+=`<button class="act-btn" style="${sel}" onclick="setRedox(${i})">${r.name}</button>`;
+  }
+  h+=`<p class="sub">滴加体积: <span style="color:var(--sv)">${l5vol.toFixed(1)} mL</span></p>`;
+  h+=`<input type="range" class="ctl" min="0" max="30" step="0.2" value="${l5vol}" oninput="setRedoxVol(+this.value)" onchange="this.blur();renderPanel()">`;
+  const r=REDOX_TIT[l5type],atEnd=l5vol>=20;
+  h+=`<div class="learn-box"><b>${r.name}</b><br>反应: ${r.eq}<br>${r.desc}<br>状态: <b>${atEnd?'已达终点 ✓':'未达终点'}</b></div>`;
+  return h;
+}
+let l5viewed=new Set();
+function setRedox(i){l5type=i;l5vol=0;l5viewed.add(i);if(l5viewed.size>=2)checkObj(5,1);renderPanel();draw();}
+function setRedoxVol(v){l5vol=v;if(v>=20){checkObj(5,0);checkObj(5,2);}draw();}
+
+function renderP6(){
+  let h=`<h3>水质检测应用</h3>`;
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>水质检测综合运用酸碱滴定、pH测量等技术，保障饮用水安全</div>`;
+  h+=`<p class="desc">画布上展示不同水样的检测结果。切换水样查看pH、硬度、余氯等指标，判断水质是否达标。</p>`;
+  h+=`<div class="obj ${levelObjs[6][0]?'done':''}">检测至少3种水样</div>`;
+  h+=`<div class="obj ${levelObjs[6][1]?'done':''}">找到不达标的水样</div>`;
+  h+=`<div class="obj ${levelObjs[6][2]?'done':''}">检测全部5种水样</div>`;
+  for(let i=0;i<WATER_SAMPLES.length;i++){
+    const w=WATER_SAMPLES[i],sel=i===l6sample?'background:rgba(20,184,166,0.3);':'';
+    h+=`<button class="act-btn" style="${sel}" onclick="setSample(${i})">${w.name}</button>`;
+  }
+  const w=WATER_SAMPLES[l6sample];
+  const phOk=w.pH>=6.5&&w.pH<=8.5,hardOk=w.hardness<=450,clOk=w.chlorine<=2;
+  h+=`<div class="learn-box"><b>${w.name}</b><br>${w.desc}<br><br>pH: <b style="color:${phOk?'#22c55e':'#ef4444'}">${w.pH}</b> (标准: 6.5-8.5) ${phOk?'✓':'✗'}<br>硬度: <b style="color:${hardOk?'#22c55e':'#ef4444'}">${w.hardness} mg/L</b> (标准: ≤450) ${hardOk?'✓':'✗'}<br>余氯: <b style="color:${clOk?'#22c55e':'#ef4444'}">${w.chlorine} mg/L</b> (标准: ≤2.0) ${clOk?'✓':'✗'}</div>`;
+  return h;
+}
+function setSample(i){l6sample=i;l6tested.add(i);if(l6tested.size>=3)checkObj(6,0);
+  const w=WATER_SAMPLES[i];if(w.pH<5.6||w.chlorine>1.0)checkObj(6,1);
+  if(l6tested.size>=5)checkObj(6,2);renderPanel();draw();}
+
+// === DRAW FUNCTIONS ===
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  switch(curLevel){case 0:drawL0();break;case 1:drawL1();break;case 2:drawL2();break;case 3:drawL3();break;case 4:drawL4();break;case 5:drawL5();break;case 6:drawL6();break;}
+}
+
+function drawBeaker(x,y,w,h,color,label){
+  // Beaker body
+  ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+h);ctx.lineTo(x+w,y+h);ctx.lineTo(x+w,y);
+  ctx.strokeStyle=isDark?'#555':'#999';ctx.lineWidth=2;ctx.stroke();
+  // Liquid
+  const lh=h*0.75;
+  ctx.fillStyle=color;ctx.fillRect(x+2,y+h-lh,w-4,lh-2);
+  // Label
+  ctx.fillStyle=isDark?'#aaa':'#666';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText(label,x+w/2,y+h+18);
+}
+
+function drawpHScale(x,y,w,h,currentpH){
+  // pH scale bar
+  const grad=ctx.createLinearGradient(x,y,x+w,y);
+  grad.addColorStop(0,'#ef4444');grad.addColorStop(0.21,'#f97316');grad.addColorStop(0.36,'#eab308');
+  grad.addColorStop(0.5,'#22c55e');grad.addColorStop(0.64,'#14b8a6');grad.addColorStop(0.79,'#3b82f6');grad.addColorStop(1,'#8b5cf6');
+  ctx.fillStyle=grad;ctx.fillRect(x,y,w,h);
+  // Labels
+  ctx.fillStyle=isDark?'#aaa':'#666';ctx.font='10px sans-serif';ctx.textAlign='center';
+  for(let i=0;i<=14;i+=2)ctx.fillText(i,x+i/14*w,y+h+14);
+  // Marker
+  const mx=x+(currentpH/14)*w;
+  ctx.beginPath();ctx.moveTo(mx,y-4);ctx.lineTo(mx-6,y-14);ctx.lineTo(mx+6,y-14);ctx.closePath();
+  ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.fillText(currentpH.toFixed(1),mx,y-18);
+}
+
+// Level 0: pH & indicators
+function drawL0(){
+  const cx=W/2,cy=H/2;
+  const ind=INDICATORS[l0indicator],range=ind.ranges.find(r=>l0pH>=r.lo&&l0pH<r.hi)||ind.ranges[ind.ranges.length-1];
+  const beakerColor=range.color==='transparent'?'rgba(200,200,200,0.1)':range.color+'88';
+  drawBeaker(cx-60,cy-80,120,160,beakerColor,ind.name+'溶液');
+  // pH scale
+  drawpHScale(cx-150,cy+120,300,16,l0pH);
+  // pH value display
+  ctx.fillStyle=phColor(l0pH);ctx.font='bold 28px sans-serif';ctx.textAlign='center';ctx.fillText('pH '+l0pH.toFixed(1),cx,60);
+  ctx.fillStyle=isDark?'#888':'#666';ctx.font='14px sans-serif';ctx.fillText(phName(l0pH),cx,85);
+  // H+ and OH- concentration
+  const hConc=Math.pow(10,-l0pH),ohConc=Math.pow(10,-(14-l0pH));
+  ctx.font='12px sans-serif';ctx.fillStyle=isDark?'#aaa':'#555';
+  ctx.fillText(`[H⁺] = ${hConc.toExponential(1)} mol/L`,cx,cy+170);
+  ctx.fillText(`[OH⁻] = ${ohConc.toExponential(1)} mol/L`,cx,cy+188);
+}
+
+// Level 1: Strong acid/base
+function drawL1(){
+  const cx=W/2,cy=H/2,s=STRONG_AB[l1type];
+  const pH1=s.type==='酸'?(s.name.includes('H₂SO₄')?-Math.log10(l1conc*2):-Math.log10(l1conc)):14+Math.log10(l1conc);
+  ctx.fillStyle=phColor(pH1);ctx.font='bold 28px sans-serif';ctx.textAlign='center';ctx.fillText(s.name,cx,50);
+  // Beaker with ions
+  drawBeaker(cx-70,cy-80,140,160,phColor(pH1)+'44',s.name.split(' ')[0]);
+  // Draw ions floating
+  const ions=s.type==='酸'?['H⁺','Cl⁻']:['Na⁺','OH⁻'];
+  if(s.name.includes('H₂SO₄')){ions[1]='SO₄²⁻';}
+  for(let i=0;i<8;i++){
+    const ix=cx-50+Math.sin(time*2+i*1.3)*40+Math.random()*0.5;
+    const iy=cy-40+Math.cos(time*1.5+i*0.9)*50;
+    ctx.fillStyle=i%2===0?'#ef4444':'#3b82f6';ctx.font='bold 14px sans-serif';
+    ctx.fillText(ions[i%2],ix,iy);
+  }
+  // pH scale
+  drawpHScale(cx-150,cy+120,300,16,pH1);
+  ctx.fillStyle=isDark?'#aaa':'#555';ctx.font='13px sans-serif';
+  ctx.fillText('完全电离: '+s.formula,cx,cy+170);
+  ctx.fillText(`浓度: ${l1conc.toFixed(3)} mol/L → pH = ${pH1.toFixed(2)}`,cx,cy+190);
+}
+
+// Level 2: Weak acid/base
+function drawL2(){
+  const cx=W/2,cy=H/2,w=WEAK_AB[l2type];
+  const Ka=w.Ka||w.Kb,x=(-Ka+Math.sqrt(Ka*Ka+4*Ka*l2conc))/2;
+  const alpha=x/l2conc*100,pH2=w.type==='弱酸'?-Math.log10(x):14+Math.log10(x);
+  ctx.fillStyle=phColor(pH2);ctx.font='bold 24px sans-serif';ctx.textAlign='center';ctx.fillText(w.name,cx,45);
+  // Equilibrium visualization
+  const totalW=300,ionized=totalW*alpha/100,unionized=totalW-ionized;
+  const barY=cy-100;
+  ctx.fillStyle='rgba(20,184,166,0.3)';ctx.fillRect(cx-totalW/2,barY,unionized,30);
+  ctx.fillStyle='rgba(239,68,68,0.5)';ctx.fillRect(cx-totalW/2+unionized,barY,ionized,30);
+  ctx.fillStyle=isDark?'#aaa':'#555';ctx.font='12px sans-serif';
+  ctx.fillText('未电离 '+(100-alpha).toFixed(1)+'%',cx-totalW/4,barY+20);
+  if(alpha>5)ctx.fillText('已电离 '+alpha.toFixed(1)+'%',cx+totalW/2-40,barY+20);
+  // Beaker
+  drawBeaker(cx-60,cy-40,120,140,phColor(pH2)+'44',w.name.split(' ')[0]);
+  // Molecules and ions
+  const nMol=Math.round(8*(1-alpha/100)),nIon=Math.round(8*alpha/100);
+  for(let i=0;i<nMol;i++){
+    const mx=cx-40+Math.sin(time+i*2)*30,my=cy+Math.cos(time*0.8+i)*40;
+    ctx.fillStyle='#14b8a6';ctx.font='12px sans-serif';ctx.fillText('HA',mx,my);
+  }
+  for(let i=0;i<Math.max(1,nIon);i++){
+    const mx=cx+10+Math.sin(time*1.5+i*3)*25,my=cy-10+Math.cos(time+i*2)*35;
+    ctx.fillStyle='#ef4444';ctx.font='12px sans-serif';ctx.fillText('H⁺',mx,my);
+    ctx.fillStyle='#3b82f6';ctx.fillText('A⁻',mx+20,my);
+  }
+  drawpHScale(cx-150,cy+130,300,16,pH2);
+  ctx.fillStyle=isDark?'#aaa':'#555';ctx.font='13px sans-serif';
+  ctx.fillText(`电离度: ${alpha.toFixed(1)}%  pH: ${pH2.toFixed(2)}`,cx,cy+180);
+}
+
+// Level 3: Buffer
+function drawL3(){
+  const cx=W/2,cy=H/2,b=BUFFERS[l3bufferType];
+  const bufpH=Math.max(0,Math.min(14,b.pKa+l3addVol*0.05));
+  const waterpH=Math.max(0,Math.min(14,7+l3addVol*0.8));
+  ctx.fillStyle='#14b8a6';ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillText('缓冲溶液 vs 纯水',cx,35);
+  // Two beakers
+  drawBeaker(cx-160,cy-60,120,130,phColor(bufpH)+'66','缓冲液');
+  drawBeaker(cx+40,cy-60,120,130,phColor(waterpH)+'66','纯水');
+  // pH values
+  ctx.font='bold 22px sans-serif';
+  ctx.fillStyle=phColor(bufpH);ctx.fillText('pH '+bufpH.toFixed(2),cx-100,cy-80);
+  ctx.fillStyle=phColor(waterpH);ctx.fillText('pH '+waterpH.toFixed(2),cx+100,cy-80);
+  // pH change comparison
+  const bufChange=Math.abs(bufpH-b.pKa),waterChange=Math.abs(waterpH-7);
+  ctx.fillStyle=isDark?'#aaa':'#555';ctx.font='13px sans-serif';
+  ctx.fillText(`ΔpH = ${bufChange.toFixed(2)}`,cx-100,cy+90);
+  ctx.fillText(`ΔpH = ${waterChange.toFixed(2)}`,cx+100,cy+90);
+  // Bar chart comparison
+  const barW=60,maxBar=80;
+  ctx.fillStyle='rgba(20,184,166,0.5)';ctx.fillRect(cx-130,cy+110,Math.min(barW,bufChange/5*barW),20);
+  ctx.fillStyle='rgba(59,130,246,0.5)';ctx.fillRect(cx+70,cy+110,Math.min(barW,waterChange/5*barW),20);
+  ctx.fillStyle=isDark?'#888':'#666';ctx.font='11px sans-serif';
+  ctx.fillText('pH变化小 → 缓冲能力强',cx-100,cy+148);
+  ctx.fillText('pH变化大 → 无缓冲能力',cx+100,cy+148);
+}
+
+// Level 4: Titration curve
+function drawL4(){
+  const cx=W/2,cy=H/2,t=TITRATIONS[l4titType];
+  ctx.fillStyle='#14b8a6';ctx.font='bold 18px sans-serif';ctx.textAlign='center';ctx.fillText(t.name+' 滴定曲线',cx,30);
+  // Draw axes
+  const gx=80,gy=50,gw=W-160,gh=H-140;
+  ctx.strokeStyle=isDark?'#444':'#ccc';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(gx,gy);ctx.lineTo(gx,gy+gh);ctx.lineTo(gx+gw,gy+gh);ctx.stroke();
+  // Y axis labels (pH 0-14)
+  ctx.fillStyle=isDark?'#aaa':'#666';ctx.font='11px sans-serif';ctx.textAlign='right';
+  for(let p=0;p<=14;p+=2){const y=gy+gh-(p/14)*gh;ctx.fillText(p,gx-8,y+4);
+    ctx.beginPath();ctx.moveTo(gx,y);ctx.lineTo(gx+gw,y);ctx.strokeStyle=isDark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)';ctx.stroke();
+  }
+  ctx.textAlign='center';ctx.fillText('pH',gx-25,gy+gh/2);
+  // X axis labels (volume)
+  for(let v=0;v<=50;v+=10){const x=gx+(v/50)*gw;ctx.fillText(v+'mL',x,gy+gh+18);}
+  // Draw curve
+  ctx.beginPath();let first=true;
+  l4points.forEach(p=>{
+    const px=gx+(p.v/50)*gw,py=gy+gh-(p.pH/14)*gh;
+    if(p.v<=l4vol){if(first){ctx.moveTo(px,py);first=false;}else ctx.lineTo(px,py);}
+  });
+  ctx.strokeStyle='#14b8a6';ctx.lineWidth=2.5;ctx.stroke();
+  // Full curve (faded)
+  ctx.beginPath();first=true;
+  l4points.forEach(p=>{
+    const px=gx+(p.v/50)*gw,py=gy+gh-(p.pH/14)*gh;
+    if(first){ctx.moveTo(px,py);first=false;}else ctx.lineTo(px,py);
+  });
+  ctx.strokeStyle=isDark?'rgba(20,184,166,0.15)':'rgba(20,184,166,0.1)';ctx.lineWidth=1;ctx.stroke();
+  // Equivalence point marker
+  const epX=gx+(25/50)*gw,epY=gy+gh-(t.ep/14)*gh;
+  ctx.beginPath();ctx.arc(epX,epY,5,0,Math.PI*2);ctx.fillStyle='#f59e0b';ctx.fill();
+  ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';ctx.fillText('等当量点',epX,epY-12);
+  // Current point
+  const curPt=l4points.find(p=>p.v>=l4vol)||l4points[l4points.length-1];
+  const cpx=gx+(l4vol/50)*gw,cpy=gy+gh-(curPt.pH/14)*gh;
+  ctx.beginPath();ctx.arc(cpx,cpy,7,0,Math.PI*2);ctx.fillStyle='#ef4444';ctx.fill();
+  ctx.fillStyle='#ef4444';ctx.font='bold 12px sans-serif';ctx.fillText('pH '+curPt.pH.toFixed(2),cpx+15,cpy-5);
+  // Mini beaker showing color
+  drawBeaker(W-120,50,80,100,phColor(curPt.pH)+'66',curPt.pH.toFixed(1));
+}
+
+// Level 5: Redox titration
+function drawL5(){
+  const cx=W/2,cy=H/2,r=REDOX_TIT[l5type];
+  ctx.fillStyle=r.color1;ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillText(r.name,cx,35);
+  // Burette (top)
+  const bx=cx-15,by=30;
+  ctx.fillStyle=isDark?'#333':'#ddd';ctx.fillRect(bx,by+30,30,120);
+  ctx.fillStyle=r.color1+'aa';ctx.fillRect(bx+3,by+33,24,Math.max(0,114*(1-l5vol/30)));
+  ctx.strokeStyle=isDark?'#555':'#aaa';ctx.lineWidth=1;ctx.strokeRect(bx,by+30,30,120);
+  // Drip
+  if(l5vol<30&&l5vol>0){
+    const dripY=by+155+Math.sin(time*8)*5;
+    ctx.beginPath();ctx.arc(cx,dripY,3,0,Math.PI*2);ctx.fillStyle=r.color1;ctx.fill();
+  }
+  // Beaker
+  const fraction=Math.min(1,l5vol/20);
+  let beakerColor;
+  if(l5type===0){// KMnO4
+    beakerColor=fraction<1?`rgba(249,${Math.round(158*(1-fraction))},${Math.round(11+fraction*100)},0.5)`:'rgba(139,92,246,0.6)';
+  } else {// Iodine
+    beakerColor=fraction<1?'rgba(200,200,200,0.2)':`rgba(146,64,14,${0.3+fraction*0.3})`;
+  }
+  drawBeaker(cx-70,cy+20,140,140,beakerColor,r.reductant);
+  // Status text
+  ctx.fillStyle=isDark?'#aaa':'#555';ctx.font='14px sans-serif';
+  if(l5vol<20){
+    ctx.fillText(`滴加 ${l5vol.toFixed(1)} mL — 反应进行中`,cx,cy+190);
+    ctx.fillText(`${r.reductant} 尚未完全反应`,cx,cy+210);
+  } else {
+    ctx.fillStyle='#22c55e';ctx.font='bold 16px sans-serif';
+    ctx.fillText('终点！溶液颜色突变',cx,cy+190);
+    ctx.fillStyle=isDark?'#aaa':'#555';ctx.font='13px sans-serif';
+    ctx.fillText(l5type===0?'多余KMnO₄使溶液变紫':'淀粉遇I₂变蓝',cx,cy+212);
+  }
+  // Equation
+  ctx.fillStyle=isDark?'#666':'#999';ctx.font='11px sans-serif';ctx.fillText(r.eq,cx,H-15);
+}
+
+// Level 6: Water quality
+function drawL6(){
+  const cx=W/2,cy=H/2,w=WATER_SAMPLES[l6sample];
+  ctx.fillStyle='#14b8a6';ctx.font='bold 20px sans-serif';ctx.textAlign='center';ctx.fillText('水质检测: '+w.name,cx,35);
+  // Sample beaker
+  drawBeaker(cx-60,60,120,100,phColor(w.pH)+'44',w.name);
+  // Test results as gauges
+  const metrics=[
+    {name:'pH值',value:w.pH,min:0,max:14,good:[6.5,8.5],unit:''},
+    {name:'硬度',value:w.hardness,min:0,max:500,good:[0,450],unit:' mg/L'},
+    {name:'余氯',value:w.chlorine,min:0,max:3,good:[0,2],unit:' mg/L'}
+  ];
+  metrics.forEach((m,i)=>{
+    const gx=60,gy=200+i*80,gw=W-120;
+    // Label
+    ctx.fillStyle=isDark?'#aaa':'#555';ctx.font='bold 13px sans-serif';ctx.textAlign='left';
+    ctx.fillText(m.name,gx,gy);
+    // Bar background
+    ctx.fillStyle=isDark?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)';
+    ctx.fillRect(gx,gy+8,gw,20);
+    // Good range
+    const goodStart=gx+(m.good[0]/m.max)*gw,goodEnd=gx+(m.good[1]/m.max)*gw;
+    ctx.fillStyle='rgba(34,197,94,0.15)';ctx.fillRect(goodStart,gy+8,goodEnd-goodStart,20);
+    // Value marker
+    const vx=gx+(m.value/m.max)*gw;
+    const inRange=m.value>=m.good[0]&&m.value<=m.good[1];
+    ctx.beginPath();ctx.arc(vx,gy+18,8,0,Math.PI*2);ctx.fillStyle=inRange?'#22c55e':'#ef4444';ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='bold 9px sans-serif';ctx.textAlign='center';ctx.fillText(inRange?'✓':'✗',vx,gy+21);
+    // Value text
+    ctx.fillStyle=inRange?'#22c55e':'#ef4444';ctx.font='bold 13px sans-serif';
+    ctx.fillText(m.value+m.unit,vx,gy+45);
+    // Range labels
+    ctx.fillStyle=isDark?'#666':'#999';ctx.font='10px sans-serif';
+    ctx.fillText(m.min,gx,gy+45);ctx.textAlign='right';ctx.fillText(m.max+m.unit,gx+gw,gy+45);ctx.textAlign='center';
+    ctx.fillText('达标范围: '+m.good[0]+'-'+m.good[1]+m.unit,(goodStart+goodEnd)/2,gy+5);
+  });
+  // Overall verdict
+  const phOk=w.pH>=6.5&&w.pH<=8.5,hardOk=w.hardness<=450,clOk=w.chlorine<=2;
+  const allOk=phOk&&hardOk&&clOk;
+  ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+  ctx.fillStyle=allOk?'#22c55e':'#ef4444';
+  ctx.fillText(allOk?'水质达标 ✓':'水质不达标 ✗',cx,H-25);
+}
+
+function animate(){time+=0.016;if(curLevel===1||curLevel===2)draw();requestAnimationFrame(animate);}
+resize();
+</script>
+</body>
+</html>

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>火山探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --slider-label:#888;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --slider-label:#888;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(100vh - 36px)}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100vh - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none;padding-bottom:24px}
+.panel h2{font-size:15px;color:var(--title-color);margin:8px 0 4px;font-weight:bold}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:14px;cursor:pointer;text-align:center}
+.act-btn:hover{background:var(--btn-hover)}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--hint-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:13px;line-height:1.8;color:var(--learn-text)}
+.sv{color:var(--sv);font-weight:bold}
+.desc{font-size:13px;color:var(--text-sub);line-height:1.6;margin:6px 0}
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:11px;color:var(--slider-label);display:block;margin-bottom:4px}
+.slider-wrap input[type=range]{width:100%;accent-color:#3b82f6}
+.slider-val{font-size:13px;color:var(--sv);font-weight:bold}
+.sel-btn{display:inline-block;padding:5px 10px;border-radius:8px;font-size:11px;cursor:pointer;border:1px solid #444;background:var(--btn-bg);color:#aaa;margin:2px}
+.sel-btn.correct{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+#infobar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:flex;align-items:center;padding:0 16px 0 332px;font-size:12px;color:#666;z-index:10}
+#infobar .sep{margin:0 12px;color:#333}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .hl{color:#ef4444}
+.start-box .sub{font-size:17px;color:var(--sub-color);margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#ef4444,#ff6b35);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="infobar">
+<span id="ib-level">关卡 1/7</span><span class="sep">|</span>
+<span id="ib-title">岩浆形成</span><span class="sep">|</span>
+<span id="ib-status">进行中</span>
+</div>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🌋 <span class="hl">火山</span>探险</h1>
+  <div class="sub">7 个关卡，从岩浆形成到火山监测</div>
+  <button class="start-btn" onclick="startGame()">开始探索</button>
+  <div class="features">
+    <div class="feat"><div class="fi">🔥</div>岩浆形成</div>
+    <div class="feat"><div class="fi">⛰️</div>火山类型</div>
+    <div class="feat"><div class="fi">💥</div>喷发机制</div>
+    <div class="feat"><div class="fi">🌫️</div>碎屑流</div>
+    <div class="feat"><div class="fi">🌡️</div>气候影响</div>
+    <div class="feat"><div class="fi">🏝️</div>热点火山</div>
+    <div class="feat"><div class="fi">📡</div>监测预警</div>
+  </div>
+</div>
+</div>
+<script>
+let isDark=true;
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel()}
+function t(){return isDark?{bg:'#0a0a2e',grid:'rgba(99,102,241,0.06)',text:'#fff',sub:'rgba(255,255,255,0.6)'}:{bg:'#e8edf5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',sub:'rgba(30,41,59,0.6)'}}
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+let CW,CH;
+function resize(){const r=cv.getBoundingClientRect();CW=cv.width=r.width;CH=cv.height=r.height}
+resize();window.addEventListener('resize',()=>{resize();draw()});
+let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function playSound(type){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='ok'){o.frequency.value=523;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else{o.frequency.value=800;g.gain.value=0.08;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}}
+
+const LEVELS=[
+  {name:'岩浆形成',icon:'🔥'},{name:'火山类型',icon:'⛰️'},{name:'喷发机制',icon:'💥'},
+  {name:'碎屑流',icon:'🌫️'},{name:'气候影响',icon:'🌡️'},{name:'热点火山',icon:'🏝️'},{name:'监测预警',icon:'📡'}
+];
+let cur=0,gameState='title',S={},done=new Array(7).fill(false),particles=[];
+
+function initLevel(i){
+  S={anim:0};particles=[];
+  switch(i){
+    case 0:S.temp=800;S.pressure=1;S.water=5;S.meltPct=0;break;
+    case 1:S.selType=-1;S.types=[
+      {name:'盾状火山',desc:'坡度平缓，玄武岩质熔岩流动性好',slope:0.15,color:'#ef4444',w:0.4},
+      {name:'层状火山',desc:'陡峭锥形，交替的熔岩和火山灰层',slope:0.5,color:'#f59e0b',w:0.25},
+      {name:'火山穹丘',desc:'粘稠岩浆堆积，坡度最陡',slope:0.8,color:'#8b5cf6',w:0.15}
+    ];break;
+    case 2:S.gasContent=2;S.viscosity=50;S.erupting=false;S.eruptType='';S.eruptParticles=[];break;
+    case 3:S.flowSpeed=0;S.flowDist=0;S.temp2=800;S.running=false;break;
+    case 4:S.so2=0;S.ashAlt=0;S.tempDrop=0;S.erupted=false;break;
+    case 5:S.plateX=0;S.hotspotX=0.5;S.islands=[];S.speed=2;break;
+    case 6:S.seismic=0;S.gas=0;S.deform=0;S.alert='green';S.sensors=[];break;
+  }
+}
+
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  LEVELS.forEach((_,i)=>{const c=i<cur?'done':i===cur?'cur':'';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`});
+  h+=`</div><div class="sn-info">第 ${cur+1}/7 关 — ${LEVELS[cur].name}</div>`;
+  h+=`<div class="sn-hint">${done.filter(Boolean).length}/7 已完成</div></div>`;return h;
+}
+function renderPanel(){
+  const p=document.getElementById('panel');let h=renderStageNav();
+  h+=`<h2>${LEVELS[cur].icon} ${LEVELS[cur].name}</h2>`;
+  h+=renderLevelPanel(cur);
+  if(done[cur]&&cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
+  if(done.every(Boolean))h+=`<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握火山的核心知识</div><div class="summary-keys"><div>🔥 减压和加水降低岩石熔点形成岩浆</div><div>⛰️ 盾状、层状、穹丘三种火山形态</div><div>💥 气体含量和粘度决定喷发方式</div><div>🌫️ 碎屑流是最致命的火山灾害</div><div>🌡️ 大喷发可导致全球降温</div><div>🏝️ 热点火山形成岛链记录板块运动</div><div>📡 多参数监测实现火山预警</div></div></div>`;
+  p.innerHTML=h;
+}
+function renderLevelPanel(i){
+  let h='';
+  switch(i){
+    case 0:
+      h+=`<div class="concept-box">岩浆由地幔岩石部分熔融形成。三个关键因素：<b>温度升高</b>、<b>压力降低</b>（减压熔融）、<b>加入水分</b>（降低熔点）。俯冲带的水和洋中脊的减压是最主要的成因。</div>`;
+      h+=`<div class="desc">调整温度、压力和含水量，让岩石达到熔融条件。</div>`;
+      h+=`<div class="slider-wrap"><label>温度: <span class="slider-val">${S.temp}°C</span></label><input type="range" min="600" max="1500" step="10" value="${S.temp}" oninput="S.temp=+this.value;calcMelt();this.previousElementSibling.querySelector('.slider-val').textContent=S.temp+'°C';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>压力: <span class="slider-val">${S.pressure.toFixed(1)} GPa</span></label><input type="range" min="0.1" max="5" step="0.1" value="${S.pressure}" oninput="S.pressure=+this.value;calcMelt();this.previousElementSibling.querySelector('.slider-val').textContent=S.pressure.toFixed(1)+' GPa';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>含水量: <span class="slider-val">${S.water}%</span></label><input type="range" min="0" max="15" step="1" value="${S.water}" oninput="S.water=+this.value;calcMelt();this.previousElementSibling.querySelector('.slider-val').textContent=S.water+'%';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div style="font-size:13px;margin:8px 0">熔融程度: <span class="sv" style="color:${S.meltPct>50?'#ef4444':'#f59e0b'}">${S.meltPct.toFixed(0)}%</span></div>`;
+      break;
+    case 1:
+      h+=`<div class="concept-box">火山按形态分三类：<b>盾状火山</b>（夏威夷型，坡缓）、<b>层状火山</b>（富士山型，锥形）、<b>火山穹丘</b>（粘稠岩浆堆积）。形态由岩浆粘度决定。</div>`;
+      h+=`<div class="desc">点击画布上的三座火山，了解它们的形态差异。</div>`;
+      S.types.forEach((tp,j)=>{
+        h+=`<div class="sel-btn ${S.selType===j?'correct':''}" onclick="S.selType=${j};done[1]=true;playSound('ok');renderPanel();draw()" style="display:block;margin:4px 0;padding:8px;width:100%">${tp.name}${S.selType===j?' — '+tp.desc:''}</div>`;
+      });
+      break;
+    case 2:
+      h+=`<div class="concept-box">喷发方式取决于<b>气体含量</b>和<b>岩浆粘度</b>。低粘度+少气体→宁静溢流（夏威夷式）；高粘度+多气体→猛烈爆发（普林尼式）。气体是驱动喷发的"引擎"。</div>`;
+      h+=`<div class="slider-wrap"><label>气体含量: <span class="slider-val">${S.gasContent}%</span></label><input type="range" min="0.5" max="8" step="0.5" value="${S.gasContent}" oninput="S.gasContent=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.gasContent+'%';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>岩浆粘度: <span class="slider-val">${S.viscosity}</span></label><input type="range" min="10" max="100" step="5" value="${S.viscosity}" oninput="S.viscosity=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.viscosity;draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<button class="act-btn" onclick="erupt()">🌋 触发喷发</button>`;
+      if(S.erupting)h+=`<div class="learn-box">喷发类型: <b>${S.eruptType}</b></div>`;
+      break;
+    case 3:
+      h+=`<div class="concept-box"><b>火山碎屑流</b>是高温气体和碎屑的混合物，沿山坡高速流动（可达700 km/h），温度超过300°C。它是火山喷发中最致命的灾害，几乎无法逃脱。</div>`;
+      h+=`<div class="desc">点击"触发碎屑流"，观察它如何沿山坡高速流下。</div>`;
+      h+=`<button class="act-btn" onclick="triggerFlow()">${S.running?'⏹ 重置':'🌫️ 触发碎屑流'}</button>`;
+      if(S.running)h+=`<div style="font-size:12px;margin:6px 0">速度: <span class="sv">${S.flowSpeed.toFixed(0)} km/h</span> | 距离: <span class="sv">${S.flowDist.toFixed(1)} km</span> | 温度: <span class="sv" style="color:#ef4444">${S.temp2.toFixed(0)}°C</span></div>`;
+      break;
+    case 4:
+      h+=`<div class="concept-box">大规模火山喷发向平流层注入<b>SO₂</b>和火山灰，形成气溶胶层反射阳光，导致全球降温。1815年坦博拉火山喷发导致"无夏之年"，全球降温约0.5°C。</div>`;
+      h+=`<div class="slider-wrap"><label>SO₂排放量: <span class="slider-val">${S.so2} Mt</span></label><input type="range" min="0" max="100" step="5" value="${S.so2}" oninput="S.so2=+this.value;calcClimate();this.previousElementSibling.querySelector('.slider-val').textContent=S.so2+' Mt';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>火山灰高度: <span class="slider-val">${S.ashAlt} km</span></label><input type="range" min="0" max="40" step="1" value="${S.ashAlt}" oninput="S.ashAlt=+this.value;calcClimate();this.previousElementSibling.querySelector('.slider-val').textContent=S.ashAlt+' km';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div style="font-size:13px;margin:8px 0">全球降温: <span class="sv" style="color:#3b82f6">${S.tempDrop.toFixed(1)}°C</span></div>`;
+      break;
+    case 5:
+      h+=`<div class="concept-box"><b>热点火山</b>由地幔深处的热柱驱动，位置相对固定。当板块从热点上方移过时，依次形成火山岛，最终形成岛链（如夏威夷群岛）。岛链方向记录了板块运动方向。</div>`;
+      h+=`<div class="slider-wrap"><label>板块移动速度: <span class="slider-val">${S.speed.toFixed(1)} cm/年</span></label><input type="range" min="0.5" max="10" step="0.5" value="${S.speed}" oninput="S.speed=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.speed.toFixed(1)+' cm/年';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<button class="act-btn" onclick="addIsland()">🏝️ 形成新火山岛</button>`;
+      h+=`<div style="font-size:12px;margin:6px 0">已形成岛屿: <span class="sv">${S.islands.length}</span></div>`;
+      break;
+    case 6:
+      h+=`<div class="concept-box">火山监测通过多种手段预警：<b>地震活动</b>（岩浆运动引起微震）、<b>气体排放</b>（SO₂增加）、<b>地表变形</b>（岩浆膨胀导致地面隆起）。综合分析可提前数天到数周预警。</div>`;
+      h+=`<div class="slider-wrap"><label>地震频率: <span class="slider-val">${S.seismic}/天</span></label><input type="range" min="0" max="100" step="5" value="${S.seismic}" oninput="S.seismic=+this.value;calcAlert();this.previousElementSibling.querySelector('.slider-val').textContent=S.seismic+'/天';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>SO₂排放: <span class="slider-val">${S.gas} t/天</span></label><input type="range" min="0" max="5000" step="100" value="${S.gas}" oninput="S.gas=+this.value;calcAlert();this.previousElementSibling.querySelector('.slider-val').textContent=S.gas+' t/天';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>地表隆起: <span class="slider-val">${S.deform} cm</span></label><input type="range" min="0" max="50" step="1" value="${S.deform}" oninput="S.deform=+this.value;calcAlert();this.previousElementSibling.querySelector('.slider-val').textContent=S.deform+' cm';draw()" onchange="this.blur();renderPanel()"></div>`;
+      const alertColors={green:'#22c55e',yellow:'#f59e0b',orange:'#f97316',red:'#ef4444'};
+      const alertNames={green:'正常',yellow:'注意',orange:'警告',red:'危险'};
+      h+=`<div style="font-size:14px;margin:8px 0;padding:8px;border-radius:8px;background:${alertColors[S.alert]}22;border:1px solid ${alertColors[S.alert]};color:${alertColors[S.alert]}">预警等级: <b>${alertNames[S.alert]}</b></div>`;
+      break;
+  }
+  return h;
+}
+
+/* === 关卡逻辑 === */
+function calcMelt(){const meltT=1200-S.water*30-S.pressure*(-50);S.meltPct=Math.max(0,Math.min(100,(S.temp-meltT+200)/4));if(S.meltPct>60&&!done[0]){done[0]=true;playSound('ok')}}
+function erupt(){S.erupting=true;S.eruptParticles=[];if(S.viscosity>60&&S.gasContent>4){S.eruptType='普林尼式（猛烈爆发）';for(let i=0;i<40;i++)S.eruptParticles.push({x:0.5,y:0.4,vx:(Math.random()-0.5)*0.01,vy:-Math.random()*0.015,life:2+Math.random()*2})}else if(S.viscosity<40){S.eruptType='夏威夷式（宁静溢流）';for(let i=0;i<20;i++)S.eruptParticles.push({x:0.5+(Math.random()-0.5)*0.05,y:0.4,vx:(Math.random()-0.5)*0.003,vy:-Math.random()*0.005,life:3+Math.random()*2})}else{S.eruptType='斯通博利式（间歇爆发）';for(let i=0;i<25;i++)S.eruptParticles.push({x:0.5,y:0.4,vx:(Math.random()-0.5)*0.006,vy:-Math.random()*0.01,life:1.5+Math.random()})}if(!done[2]){done[2]=true;playSound('ok')}renderPanel()}
+function triggerFlow(){S.running=!S.running;if(S.running){S.flowDist=0;S.flowSpeed=0;S.temp2=800;if(!done[3]){done[3]=true;playSound('ok')}}renderPanel()}
+function calcClimate(){S.tempDrop=S.so2*0.005*(S.ashAlt>15?2:1);if(S.tempDrop>0.3&&!done[4]){done[4]=true;playSound('ok')}}
+function addIsland(){S.islands.push({x:S.plateX,age:0});S.plateX+=0.08;if(S.islands.length>=4&&!done[5]){done[5]=true;playSound('ok')}renderPanel();draw()}
+function calcAlert(){const score=S.seismic/100+S.gas/5000+S.deform/50;S.alert=score<0.3?'green':score<0.6?'yellow':score<0.85?'orange':'red';if(S.alert==='red'&&!done[6]){done[6]=true;playSound('ok')}}
+
+/* === 绘制 === */
+function draw(){
+  ctx.clearRect(0,0,CW,CH);const th=t();
+  ctx.fillStyle=th.bg;ctx.fillRect(0,0,CW,CH);
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let x=0;x<CW;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke()}
+  for(let y=0;y<CH;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke()}
+  switch(cur){case 0:drawMagma();break;case 1:drawTypes();break;case 2:drawEruption();break;case 3:drawPyroclastic();break;case 4:drawClimate();break;case 5:drawHotspot();break;case 6:drawMonitor();break}
+}
+
+function drawMagma(){
+  const cx=CW/2,cy=CH/2,r=Math.min(CW,CH)*0.3;
+  // 岩石圈
+  ctx.fillStyle='#88664444';ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+  // 熔融区
+  const mr=r*S.meltPct/100;
+  if(mr>0){const g=ctx.createRadialGradient(cx,cy,0,cx,cy,mr);g.addColorStop(0,'#ff440088');g.addColorStop(0.7,'#ff660044');g.addColorStop(1,'transparent');ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,mr,0,Math.PI*2);ctx.fill()}
+  ctx.fillStyle=th.text;ctx.font='12px system-ui';ctx.textAlign='center';
+  ctx.fillText(`熔融: ${S.meltPct.toFixed(0)}%`,cx,cy+r+25);
+  ctx.fillText(`T=${S.temp}°C  P=${S.pressure.toFixed(1)}GPa  H₂O=${S.water}%`,cx,cy+r+42);
+}
+
+function drawTypes(){
+  const baseY=CH*0.75;
+  S.types.forEach((tp,i)=>{
+    const cx=CW*(0.2+i*0.3),w=CW*tp.w,h=w*tp.slope;
+    ctx.fillStyle=tp.color+'66';ctx.beginPath();ctx.moveTo(cx-w/2,baseY);ctx.lineTo(cx,baseY-h);ctx.lineTo(cx+w/2,baseY);ctx.closePath();ctx.fill();
+    ctx.strokeStyle=tp.color;ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle=i===S.selType?'#4ade80':th.text;ctx.font='bold 13px system-ui';ctx.textAlign='center';
+    ctx.fillText(tp.name,cx,baseY-h-12);
+  });
+}
+
+function drawEruption(){
+  const cx=CW/2,baseY=CH*0.7,h=CH*0.3;
+  // 火山锥
+  ctx.fillStyle='#88664466';ctx.beginPath();ctx.moveTo(cx-CW*0.2,baseY);ctx.lineTo(cx,baseY-h);ctx.lineTo(cx+CW*0.2,baseY);ctx.closePath();ctx.fill();
+  // 喷发粒子
+  if(S.erupting){
+    S.eruptParticles.forEach(p=>{
+      if(p.life>0){
+        const px=p.x*CW,py=p.y*CH,sz=3+p.life*2;
+        ctx.fillStyle=p.life>1?'#ff4444':'#ff880088';ctx.beginPath();ctx.arc(px,py,sz,0,Math.PI*2);ctx.fill();
+      }
+    });
+  }
+  ctx.fillStyle=th.text;ctx.font='12px system-ui';ctx.textAlign='center';
+  ctx.fillText(S.erupting?S.eruptType:'调整参数后点击"触发喷发"',cx,30);
+}
+
+function drawPyroclastic(){
+  const baseY=CH*0.6,cx=CW*0.3;
+  // 火山
+  ctx.fillStyle='#88664466';ctx.beginPath();ctx.moveTo(cx-80,baseY);ctx.lineTo(cx,baseY-120);ctx.lineTo(cx+80,baseY);ctx.closePath();ctx.fill();
+  // 碎屑流
+  if(S.running){
+    const flowEnd=cx+S.flowDist*80;
+    const g=ctx.createLinearGradient(cx,baseY,flowEnd,baseY+40);
+    g.addColorStop(0,'#ff444488');g.addColorStop(0.5,'#ff880066');g.addColorStop(1,'#88888844');
+    ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(cx+80,baseY);ctx.quadraticCurveTo((cx+80+flowEnd)/2,baseY-20,flowEnd,baseY+30);ctx.lineTo(flowEnd,baseY+50);ctx.quadraticCurveTo((cx+80+flowEnd)/2,baseY+60,cx+80,baseY);ctx.fill();
+    ctx.fillStyle=th.text;ctx.font='12px system-ui';ctx.textAlign='center';
+    ctx.fillText(`${S.flowSpeed.toFixed(0)} km/h | ${S.temp2.toFixed(0)}°C`,flowEnd,baseY-10);
+  }
+}
+
+function drawClimate(){
+  const sunY=CH*0.15,earthY=CH*0.7;
+  // 太阳
+  ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(CW/2,sunY,30,0,Math.PI*2);ctx.fill();
+  // 气溶胶层
+  if(S.ashAlt>0){const layerY=earthY-S.ashAlt*CH*0.012;ctx.fillStyle=`rgba(150,150,150,${Math.min(0.6,S.so2*0.006)})`;ctx.fillRect(0,layerY-10,CW,20);ctx.fillStyle=th.text;ctx.font='11px system-ui';ctx.textAlign='right';ctx.fillText(`气溶胶层 ${S.ashAlt}km`,CW-10,layerY-15)}
+  // 地球表面
+  ctx.fillStyle='#22c55e33';ctx.fillRect(0,earthY,CW,CH-earthY);
+  // 温度标注
+  ctx.fillStyle=S.tempDrop>0.3?'#3b82f6':'#ef4444';ctx.font='bold 18px system-ui';ctx.textAlign='center';
+  ctx.fillText(`全球温度变化: -${S.tempDrop.toFixed(1)}°C`,CW/2,earthY+30);
+  // 阳光箭头
+  for(let i=0;i<5;i++){const x=CW*0.2+i*CW*0.15;ctx.strokeStyle='#f59e0b44';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,sunY+35);ctx.lineTo(x,earthY-20);ctx.stroke()}
+}
+
+function drawHotspot(){
+  const baseY=CH*0.6,hotX=CW*0.3;
+  // 板块
+  ctx.fillStyle='#88664433';ctx.fillRect(0,baseY,CW,40);
+  // 热点
+  ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(hotX,baseY+60,15,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#ff660088';ctx.beginPath();ctx.moveTo(hotX,baseY+45);ctx.lineTo(hotX-10,baseY);ctx.lineTo(hotX+10,baseY);ctx.closePath();ctx.fill();
+  ctx.fillStyle=th.text;ctx.font='11px system-ui';ctx.textAlign='center';ctx.fillText('热点(固定)',hotX,baseY+85);
+  // 岛链
+  S.islands.forEach((isl,j)=>{
+    const ix=hotX+isl.x*CW*0.5,iy=baseY-15-j*2;
+    ctx.fillStyle=j===S.islands.length-1?'#ef4444':'#88664488';
+    ctx.beginPath();ctx.moveTo(ix-12,baseY);ctx.lineTo(ix,iy);ctx.lineTo(ix+12,baseY);ctx.closePath();ctx.fill();
+    ctx.fillStyle=th.text;ctx.font='10px system-ui';ctx.fillText(`${j+1}`,ix,iy-5);
+  });
+  // 板块运动方向
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(hotX+20,baseY+20);ctx.lineTo(hotX+80,baseY+20);ctx.stroke();
+  ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.moveTo(hotX+80,baseY+20);ctx.lineTo(hotX+70,baseY+15);ctx.lineTo(hotX+70,baseY+25);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#3b82f6';ctx.font='11px system-ui';ctx.fillText('板块运动方向 →',hotX+100,baseY+24);
+}
+
+function drawMonitor(){
+  const cx=CW/2,baseY=CH*0.65;
+  // 火山
+  ctx.fillStyle='#88664466';ctx.beginPath();ctx.moveTo(cx-100,baseY);ctx.lineTo(cx,baseY-150);ctx.lineTo(cx+100,baseY);ctx.closePath();ctx.fill();
+  // 传感器指示
+  const colors={green:'#22c55e',yellow:'#f59e0b',orange:'#f97316',red:'#ef4444'};
+  const alertC=colors[S.alert];
+  // 地震仪
+  ctx.fillStyle='#3b82f6';ctx.fillRect(cx-150,baseY+10,20,20);ctx.fillStyle=th.text;ctx.font='10px system-ui';ctx.textAlign='center';ctx.fillText('地震仪',cx-140,baseY+45);
+  // 气体检测
+  ctx.fillStyle='#f59e0b';ctx.fillRect(cx+130,baseY+10,20,20);ctx.fillText('气体检测',cx+140,baseY+45);
+  // GPS
+  ctx.fillStyle='#8b5cf6';ctx.fillRect(cx-10,baseY-170,20,20);ctx.fillText('GPS',cx,baseY-175);
+  // 预警灯
+  ctx.fillStyle=alertC;ctx.beginPath();ctx.arc(cx,baseY+80,20,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 14px system-ui';ctx.fillText(S.alert.toUpperCase(),cx,baseY+85);
+}
+
+/* === 交互 === */
+function goLevel(i){if(i<0||i>=7)return;cur=i;initLevel(i);renderPanel();draw();updateInfobar();playSound('click')}
+function startGame(){playSound('click');document.getElementById('startScreen').classList.add('hidden');document.getElementById('panel').style.display='block';gameState='play';goLevel(0);anim()}
+function updateInfobar(){document.getElementById('ib-level').textContent=`关卡 ${cur+1}/7`;document.getElementById('ib-title').textContent=LEVELS[cur].name;document.getElementById('ib-status').textContent=done[cur]?'✅ 已完成':'进行中'}
+
+let lastT=0;
+function anim(ts){
+  requestAnimationFrame(anim);if(!ts)return;
+  const dt=(ts-lastT)/1000;lastT=ts;
+  if(gameState!=='play')return;
+  S.anim=(S.anim||0)+dt;
+  if(cur===2&&S.erupting){S.eruptParticles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.0001;p.life-=dt})}
+  if(cur===3&&S.running){S.flowSpeed=Math.min(700,S.flowSpeed+dt*200);S.flowDist+=S.flowSpeed*dt*0.001;S.temp2=Math.max(200,S.temp2-dt*30);if(S.flowDist>5){S.running=false}renderPanel()}
+  draw();
+}
+</script>
+</body>
+</html>

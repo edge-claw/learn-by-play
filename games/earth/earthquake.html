@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地震波探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --slider-label:#888;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --slider-label:#888;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+}
+body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(100vh - 36px)}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100vh - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none;padding-bottom:24px}
+.panel h2{font-size:15px;color:var(--title-color);margin:8px 0 4px;font-weight:bold}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:14px;cursor:pointer;text-align:center}
+.act-btn:hover{background:var(--btn-hover)}.act-btn:disabled{opacity:.4;cursor:not-allowed}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--hint-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:13px;line-height:1.8;color:var(--learn-text)}
+.sv{color:var(--sv);font-weight:bold}
+.desc{font-size:13px;color:var(--text-sub);line-height:1.6;margin:6px 0}
+.slider-wrap{margin:8px 0}
+.slider-wrap label{font-size:11px;color:var(--slider-label);display:block;margin-bottom:4px}
+.slider-wrap input[type=range]{width:100%;accent-color:#3b82f6}
+.slider-val{font-size:13px;color:var(--sv);font-weight:bold}
+.sel-btn{display:inline-block;padding:5px 10px;border-radius:8px;font-size:11px;cursor:pointer;border:1px solid #444;background:var(--btn-bg);color:#aaa;margin:2px}
+.sel-btn.active{border-color:#3b82f6;color:#60a5fa}
+.sel-btn.correct{border-color:#22c55e;background:#0a2a1a;color:#4ade80}
+.sel-btn.wrong{border-color:#ef4444;background:#2a0a0a;color:#f87171}
+#infobar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:flex;align-items:center;padding:0 16px 0 332px;font-size:12px;color:#666;z-index:10}
+#infobar .sep{margin:0 12px;color:#333}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .hl{color:#ef4444}
+.start-box .sub{font-size:17px;color:var(--sub-color);margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="infobar">
+<span id="ib-level">关卡 1/7</span><span class="sep">|</span>
+<span id="ib-title">弹性回跳</span><span class="sep">|</span>
+<span id="ib-status">进行中</span>
+</div>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🌋 <span class="hl">地震波</span>探险</h1>
+  <div class="sub">7 个关卡，从断层破裂到抗震设计</div>
+  <button class="start-btn" onclick="startGame()">开始探索</button>
+  <div class="features">
+    <div class="feat"><div class="fi">💥</div>弹性回跳</div>
+    <div class="feat"><div class="fi">〰️</div>P波S波</div>
+    <div class="feat"><div class="fi">📊</div>地震仪</div>
+    <div class="feat"><div class="fi">📏</div>震级烈度</div>
+    <div class="feat"><div class="fi">🔍</div>波层析</div>
+    <div class="feat"><div class="fi">🌊</div>海啸</div>
+    <div class="feat"><div class="fi">🏗️</div>抗震设计</div>
+  </div>
+</div>
+</div>
+<script>
+let isDark=true;
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel()}
+function t(){return isDark?{bg:'#0a0a2e',grid:'rgba(99,102,241,0.06)',text:'#fff',sub:'rgba(255,255,255,0.6)'}:{bg:'#e8edf5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',sub:'rgba(30,41,59,0.6)'}}
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+let CW,CH;
+function resize(){const r=cv.getBoundingClientRect();CW=cv.width=r.width;CH=cv.height=r.height}
+resize();window.addEventListener('resize',()=>{resize();draw()});
+let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function playSound(type){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='ok'){o.frequency.value=523;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else if(type==='no'){o.frequency.value=300;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}else{o.frequency.value=800;g.gain.value=0.08;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}}
+
+const LEVELS=[
+  {name:'弹性回跳',icon:'💥'},{name:'P波与S波',icon:'〰️'},{name:'地震仪',icon:'📊'},
+  {name:'震级与烈度',icon:'📏'},{name:'地震波层析',icon:'🔍'},{name:'海啸',icon:'🌊'},{name:'抗震设计',icon:'🏗️'}
+];
+let cur=0,gameState='title',S={},done=new Array(7).fill(false);
+
+function initLevel(i){
+  S={anim:0,phase:0};
+  switch(i){
+    case 0:S.strain=0;S.snapped=false;S.offset=0;S.stress=0;break;
+    case 1:S.pWaveX=0;S.sWaveX=0;S.running=false;S.pSpeed=6;S.sSpeed=3.5;S.elapsed=0;break;
+    case 2:S.amplitude=0;S.frequency=1;S.trace=[];S.recording=false;S.recTime=0;break;
+    case 3:S.magnitude=5;S.intensity=0;S.distance=50;break;
+    case 4:S.rays=[];S.showShadow=false;S.angle=0;
+      for(let j=0;j<12;j++)S.rays.push({a:j*Math.PI/6,bent:false});break;
+    case 5:S.wavePos=0;S.waterH=[];S.depth=4000;S.speed=0;S.running=false;
+      for(let j=0;j<80;j++)S.waterH.push(0);break;
+    case 6:S.shaking=0;S.floors=5;S.damper=false;S.baseIso=false;S.damage=0;S.running=false;break;
+  }
+}
+
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  LEVELS.forEach((_,i)=>{const c=i<cur?'done':i===cur?'cur':'';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`});
+  h+=`</div><div class="sn-info">第 ${cur+1}/7 关 — ${LEVELS[cur].name}</div>`;
+  h+=`<div class="sn-hint">${done.filter(Boolean).length}/7 已完成</div></div>`;return h;
+}
+function renderPanel(){
+  const p=document.getElementById('panel');
+  let h=renderStageNav();
+  h+=`<h2>${LEVELS[cur].icon} ${LEVELS[cur].name}</h2>`;
+  h+=renderLevelPanel(cur);
+  if(done[cur]&&cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
+  if(done.every(Boolean))h+=renderSummary();
+  p.innerHTML=h;
+}
+function renderLevelPanel(i){
+  let h='';
+  switch(i){
+    case 0:
+      h+=`<div class="concept-box"><b>弹性回跳理论</b>：断层两侧岩石受力缓慢变形积累弹性应变能，当应力超过岩石强度时断层突然滑动释放能量，产生地震。就像弯曲的树枝突然折断。</div>`;
+      h+=`<div class="desc">拖动滑块增加应力，观察岩石变形。当应力足够大时，断层会突然断裂释放能量。</div>`;
+      h+=`<div class="slider-wrap"><label>施加应力: <span class="slider-val">${S.strain.toFixed(0)}%</span></label><input type="range" min="0" max="100" step="1" value="${S.strain}" oninput="S.strain=+this.value;S.stress=S.strain/100;if(S.strain>=85&&!S.snapped){S.snapped=true;S.offset=20;done[0]=true;playSound('ok')};draw();this.previousElementSibling.querySelector('.slider-val').textContent=S.strain.toFixed(0)+'%'" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted)">状态: <span class="sv">${S.snapped?'💥 断裂释放！':'积累应变中...'}</span></div>`;
+      if(S.snapped)h+=`<div class="learn-box">断层突然滑动，积累的弹性应变能以<b>地震波</b>的形式向四周传播。这就是地震的本质——弹性回跳。</div>`;
+      break;
+    case 1:
+      h+=`<div class="concept-box"><b>P波</b>（纵波）：粒子沿传播方向振动，速度快（~6 km/s），能穿过固液气。<b>S波</b>（横波）：粒子垂直传播方向振动，速度慢（~3.5 km/s），只能穿过固体。</div>`;
+      h+=`<div class="desc">点击"触发地震"，观察<span style="color:#ef4444">P波（红）</span>和<span style="color:#3b82f6">S波（蓝）</span>的传播速度差异。</div>`;
+      h+=`<button class="act-btn" onclick="triggerWaves()">💥 触发地震</button>`;
+      if(S.running)h+=`<div style="font-size:12px;color:var(--text-muted);margin:6px 0">时间: <span class="sv">${S.elapsed.toFixed(1)}s</span> | P波: <span style="color:#ef4444">${(S.pWaveX*100).toFixed(0)}%</span> | S波: <span style="color:#3b82f6">${(S.sWaveX*100).toFixed(0)}%</span></div>`;
+      h+=`<div class="hint-box">💡 P波总是先到达，S波随后。两者的时间差可用来定位震源。</div>`;
+      break;
+    case 2:
+      h+=`<div class="concept-box"><b>地震仪</b>利用惯性原理记录地面振动。重锤因惯性保持静止，而与地面相连的框架随地震波运动，两者的相对位移被记录为地震图。</div>`;
+      h+=`<div class="desc">调整振幅和频率，观察地震仪如何记录不同强度的地震波形。</div>`;
+      h+=`<div class="slider-wrap"><label>振幅: <span class="slider-val">${S.amplitude.toFixed(1)}</span></label><input type="range" min="0" max="10" step="0.5" value="${S.amplitude}" oninput="S.amplitude=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.amplitude.toFixed(1);draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>频率: <span class="slider-val">${S.frequency.toFixed(1)} Hz</span></label><input type="range" min="0.5" max="5" step="0.5" value="${S.frequency}" oninput="S.frequency=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.frequency.toFixed(1)+' Hz';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<button class="act-btn" onclick="toggleRecord()">${S.recording?'⏹ 停止记录':'⏺ 开始记录'}</button>`;
+      if(S.trace.length>50&&!done[2]){done[2]=true;playSound('ok')}
+      break;
+    case 3:
+      h+=`<div class="concept-box"><b>震级</b>（里氏）衡量地震释放的总能量，全球统一。<b>烈度</b>衡量某地的破坏程度，同一地震不同地点烈度不同——离震中越远烈度越低。</div>`;
+      h+=`<div class="desc">调整震级和距离，观察烈度如何变化。</div>`;
+      h+=`<div class="slider-wrap"><label>震级 (M): <span class="slider-val">${S.magnitude.toFixed(1)}</span></label><input type="range" min="1" max="9" step="0.1" value="${S.magnitude}" oninput="S.magnitude=+this.value;calcIntensity();this.previousElementSibling.querySelector('.slider-val').textContent=S.magnitude.toFixed(1);draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>距震中距离: <span class="slider-val">${S.distance} km</span></label><input type="range" min="1" max="500" step="1" value="${S.distance}" oninput="S.distance=+this.value;calcIntensity();this.previousElementSibling.querySelector('.slider-val').textContent=S.distance+' km';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div style="font-size:13px;margin:8px 0">烈度: <span class="sv">${toRoman(S.intensity)}</span> (${getIntensityDesc(S.intensity)})</div>`;
+      if(S.magnitude>=7&&S.distance<=20&&!done[3]){done[3]=true;playSound('ok')}
+      break;
+    case 4:
+      h+=`<div class="concept-box"><b>地震波层析成像</b>：地震波穿过地球内部时，遇到不同密度的物质会折射和反射。通过分析全球台站记录的波形，可以"透视"地球内部结构，发现<b>P波影区</b>（液态外核阻挡）。</div>`;
+      h+=`<div class="desc">点击"发射地震波"，观察波如何在地球内部传播，以及影区的形成。</div>`;
+      h+=`<button class="act-btn" onclick="fireRays()">🔍 发射地震波</button>`;
+      if(S.showShadow)h+=`<div class="learn-box">103°-143° 范围内没有P波到达，这就是<b>P波影区</b>。它证明了地球外核是液态的——S波完全无法穿过。</div>`;
+      if(S.showShadow&&!done[4]){done[4]=true;playSound('ok')}
+      break;
+    case 5:
+      h+=`<div class="concept-box"><b>海啸</b>由海底地震、火山或滑坡引起。深海中波速极快（~700 km/h）但波高很低；接近海岸时水深变浅，波速降低但波高急剧增大，形成破坏性巨浪。</div>`;
+      h+=`<div class="desc">调整海底深度，观察海啸波速和波高的变化。点击"触发海啸"开始模拟。</div>`;
+      h+=`<div class="slider-wrap"><label>海底深度: <span class="slider-val">${S.depth} m</span></label><input type="range" min="100" max="6000" step="100" value="${S.depth}" oninput="S.depth=+this.value;S.speed=Math.sqrt(9.8*S.depth)*3.6;this.previousElementSibling.querySelector('.slider-val').textContent=S.depth+' m';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted)">波速: <span class="sv">${S.speed.toFixed(0)} km/h</span></div>`;
+      h+=`<button class="act-btn" onclick="triggerTsunami()">${S.running?'⏹ 重置':'🌊 触发海啸'}</button>`;
+      break;
+    case 6:
+      h+=`<div class="concept-box"><b>抗震设计</b>的核心是让建筑能承受地震力而不倒塌。关键技术包括：<b>基础隔震</b>（橡胶支座隔离地面振动）、<b>阻尼器</b>（吸收振动能量）、<b>剪力墙</b>（抵抗水平力）。</div>`;
+      h+=`<div class="desc">为建筑添加抗震措施，然后触发地震测试效果。</div>`;
+      h+=`<div style="margin:8px 0"><label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px"><input type="checkbox" ${S.baseIso?'checked':''} onchange="S.baseIso=this.checked;draw()"> 基础隔震</label></div>`;
+      h+=`<div style="margin:8px 0"><label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px"><input type="checkbox" ${S.damper?'checked':''} onchange="S.damper=this.checked;draw()"> 阻尼器</label></div>`;
+      h+=`<div class="slider-wrap"><label>楼层数: <span class="slider-val">${S.floors}</span></label><input type="range" min="3" max="20" step="1" value="${S.floors}" oninput="S.floors=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.floors;draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<button class="act-btn" onclick="triggerQuake()">💥 触发地震</button>`;
+      if(S.running)h+=`<div style="font-size:12px;margin:6px 0">损伤: <span class="sv" style="color:${S.damage<30?'#4ade80':S.damage<60?'#f59e0b':'#ef4444'}">${S.damage.toFixed(0)}%</span></div>`;
+      if(S.running&&S.damage<30&&!done[6]){done[6]=true;playSound('ok')}
+      break;
+  }
+  return h;
+}
+
+function renderSummary(){
+  return `<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握地震波的核心知识</div><div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡完成</div></div></div><div class="summary-keys"><div>💥 地震源于断层弹性回跳释放能量</div><div>〰️ P波快能穿液体，S波慢只穿固体</div><div>📊 地震仪利用惯性记录地面振动</div><div>📏 震级衡量能量，烈度衡量破坏</div><div>🔍 P波影区证明外核是液态</div><div>🌊 海啸近岸时波高急剧增大</div><div>🏗️ 隔震和阻尼器大幅降低损伤</div></div></div>`;
+}
+/* === 关卡逻辑 === */
+function calcIntensity(){const e=Math.pow(10,1.5*S.magnitude+4.8);const att=Math.max(1,S.distance);S.intensity=Math.min(12,Math.max(1,Math.round(S.magnitude*1.5-Math.log10(att)*2)))}
+function toRoman(n){const r=['','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];return r[Math.min(12,Math.max(0,n))]||n}
+function getIntensityDesc(n){const d=['','无感','微有感','少数有感','多数有感','惊醒','损坏','破坏','严重破坏','建筑倒塌','严重倒塌','毁灭','全面毁灭'];return d[Math.min(12,Math.max(0,n))]||''}
+function triggerWaves(){S.pWaveX=0;S.sWaveX=0;S.running=true;S.elapsed=0;if(!done[1]){done[1]=true;playSound('ok')}renderPanel()}
+function toggleRecord(){S.recording=!S.recording;if(S.recording){S.trace=[];S.recTime=0}renderPanel()}
+function fireRays(){S.showShadow=true;S.angle=0;S.rays.forEach(r=>{r.bent=false;r.progress=0});renderPanel()}
+function triggerTsunami(){S.running=!S.running;if(S.running){S.wavePos=0;S.speed=Math.sqrt(9.8*S.depth)*3.6;for(let j=0;j<80;j++)S.waterH[j]=0;if(!done[5]){done[5]=true;playSound('ok')}}renderPanel()}
+function triggerQuake(){S.running=true;S.shaking=1;S.damage=0;const reduction=(S.baseIso?0.5:1)*(S.damper?0.6:1);S.damage=Math.min(100,S.floors*5*reduction+(1-reduction)*10);renderPanel()}
+
+/* === 绘制 === */
+function draw(){
+  ctx.clearRect(0,0,CW,CH);const th=t();
+  ctx.fillStyle=th.bg;ctx.fillRect(0,0,CW,CH);
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let x=0;x<CW;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke()}
+  for(let y=0;y<CH;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke()}
+  switch(cur){
+    case 0:drawFault();break;case 1:drawWaves();break;case 2:drawSeismograph();break;
+    case 3:drawMagIntensity();break;case 4:drawTomography();break;case 5:drawTsunami();break;case 6:drawBuilding();break;
+  }
+}
+
+function drawFault(){
+  const cx=CW/2,cy=CH/2,w=CW*0.6,h=CH*0.4;
+  const off=S.snapped?S.offset:S.stress*15;
+  // 左侧岩块
+  ctx.fillStyle='#aa884488';ctx.fillRect(cx-w/2,cy-h/2-off,w/2-2,h);
+  // 右侧岩块
+  ctx.fillStyle='#88664488';ctx.fillRect(cx+2,cy-h/2+off,w/2-2,h);
+  // 断层线
+  ctx.strokeStyle=S.snapped?'#ef4444':'#f59e0b';ctx.lineWidth=3;ctx.setLineDash(S.snapped?[]:[5,5]);
+  ctx.beginPath();ctx.moveTo(cx,cy-h/2-30);ctx.lineTo(cx,cy+h/2+30);ctx.stroke();ctx.setLineDash([]);
+  // 应力箭头
+  if(!S.snapped){
+    const aw=S.stress*60;
+    ctx.strokeStyle='#ef4444';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(cx-w/2-20,cy);ctx.lineTo(cx-w/2-20+aw,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx+w/2+20,cy);ctx.lineTo(cx+w/2+20-aw,cy);ctx.stroke();
+  }
+  if(S.snapped){
+    // 震波圈
+    const r=(S.anim%2)*Math.min(CW,CH)*0.4;
+    ctx.strokeStyle='#ef444444';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.fillStyle=th.text;ctx.font='12px system-ui';ctx.textAlign='center';
+  ctx.fillText(S.snapped?'断层滑动 → 地震波释放':'应力积累中...',cx,cy+h/2+50);
+}
+
+function drawWaves(){
+  const y1=CH*0.35,y2=CH*0.65,amp=30;
+  // P波
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=3;ctx.beginPath();
+  for(let x=0;x<CW;x+=3){
+    const px=x/CW;
+    if(px<=S.pWaveX){const wave=Math.sin((px-S.pWaveX)*40)*amp*Math.exp(-(px-S.pWaveX)*(px-S.pWaveX)*100);ctx.lineTo(x,y1+wave)}
+    else{ctx.lineTo(x,y1)}
+  }
+  ctx.stroke();
+  ctx.fillStyle='#ef4444';ctx.font='bold 13px system-ui';ctx.textAlign='left';ctx.fillText('P波（纵波）— 快',10,y1-40);
+  // S波
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=3;ctx.beginPath();
+  for(let x=0;x<CW;x+=3){
+    const px=x/CW;
+    if(px<=S.sWaveX){const wave=Math.sin((px-S.sWaveX)*30)*amp*1.5*Math.exp(-(px-S.sWaveX)*(px-S.sWaveX)*80);ctx.lineTo(x,y2+wave)}
+    else{ctx.lineTo(x,y2)}
+  }
+  ctx.stroke();
+  ctx.fillStyle='#3b82f6';ctx.font='bold 13px system-ui';ctx.fillText('S波（横波）— 慢',10,y2-40);
+  // 震源
+  ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(5,y1,6,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(5,y2,6,0,Math.PI*2);ctx.fill();
+}
+
+function drawSeismograph(){
+  const cx=CW/2,cy=CH*0.3,drumW=CW*0.6,drumH=CH*0.15;
+  // 地震仪框架
+  ctx.strokeStyle=t().sub;ctx.lineWidth=2;ctx.strokeRect(cx-drumW/2,cy-drumH/2,drumW,drumH);
+  // 波形
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=2;ctx.beginPath();
+  const startX=cx-drumW/2+10;
+  S.trace.forEach((v,i)=>{const x=startX+i*(drumW-20)/200,y=cy+v*drumH*0.4;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});
+  ctx.stroke();
+  // 笔
+  if(S.recording){const penX=startX+S.trace.length*(drumW-20)/200;ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(penX,cy,4,0,Math.PI*2);ctx.fill()}
+  // 重锤
+  ctx.fillStyle='#666';ctx.fillRect(cx-15,cy-drumH/2-40,30,30);
+  ctx.fillStyle=t().text;ctx.font='11px system-ui';ctx.textAlign='center';ctx.fillText('惯性重锤',cx,cy-drumH/2-45);
+  // 实时波形预览
+  const preY=CH*0.7;
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.beginPath();
+  for(let x=0;x<CW;x+=2){const wave=S.amplitude*Math.sin(S.anim*S.frequency*Math.PI*2+x*0.02)*20;if(x===0)ctx.moveTo(x,preY+wave);else ctx.lineTo(x,preY+wave)}
+  ctx.stroke();
+  ctx.fillStyle=t().text;ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillText(`振幅: ${S.amplitude.toFixed(1)} | 频率: ${S.frequency.toFixed(1)} Hz`,CW/2,preY+50);
+}
+
+function drawMagIntensity(){
+  const cx=CW/2,cy=CH/2;
+  // 同心圆表示烈度衰减
+  for(let r=5;r>=1;r--){
+    const radius=r*Math.min(CW,CH)*0.08;
+    const alpha=0.1+r*0.05;
+    ctx.fillStyle=r>3?`rgba(239,68,68,${alpha})`:`rgba(245,158,11,${alpha})`;
+    ctx.beginPath();ctx.arc(cx,cy,radius,0,Math.PI*2);ctx.fill();
+  }
+  // 震中
+  ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(cx,cy,8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=t().text;ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText('震中',cx,cy-15);
+  // 观测点
+  const obsX=cx+S.distance*0.8,obsY=cy;
+  ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.arc(obsX,obsY,6,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=t().text;ctx.font='11px system-ui';ctx.fillText(`观测点 (${S.distance}km)`,obsX,obsY-12);
+  // 震级标注
+  ctx.font='bold 24px system-ui';ctx.fillStyle='#ef4444';ctx.fillText(`M ${S.magnitude.toFixed(1)}`,cx,cy+Math.min(CW,CH)*0.45);
+  ctx.font='16px system-ui';ctx.fillStyle='#f59e0b';ctx.fillText(`烈度 ${toRoman(S.intensity)}`,obsX,obsY+30);
+}
+
+function drawTomography(){
+  const cx=CW/2,cy=CH/2,R=Math.min(CW,CH)*0.38;
+  // 地球圈层
+  ctx.fillStyle='#ff444433';ctx.beginPath();ctx.arc(cx,cy,R*0.3,0,Math.PI*2);ctx.fill();// 内核
+  ctx.fillStyle='#ff880022';ctx.beginPath();ctx.arc(cx,cy,R*0.55,0,Math.PI*2);ctx.fill();// 外核
+  ctx.strokeStyle='#fff3';ctx.lineWidth=1;ctx.beginPath();ctx.arc(cx,cy,R*0.55,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,R*0.3,0,Math.PI*2);ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,R,0,Math.PI*2);ctx.stroke();
+  // 射线
+  S.rays.forEach(r=>{
+    const x1=cx+Math.cos(r.a-Math.PI/2)*R,y1=cy+Math.sin(r.a-Math.PI/2)*R;
+    const prog=r.progress||0;
+    if(prog>0){
+      const inShadow=r.a>1.8&&r.a<2.5;
+      ctx.strokeStyle=inShadow?'#ef444466':'#4ade8088';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(cx,cy-R);
+      const x2=cx+Math.cos(r.a-Math.PI/2)*R*prog,y2=cy+Math.sin(r.a-Math.PI/2)*R*prog;
+      ctx.lineTo(x2,y2);ctx.stroke();
+    }
+  });
+  // 影区标注
+  if(S.showShadow){
+    ctx.fillStyle='#ef444433';ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,1.8-Math.PI/2,2.5-Math.PI/2);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#ef4444';ctx.font='bold 12px system-ui';ctx.textAlign='center';ctx.fillText('P波影区 (103°-143°)',cx+R*0.7,cy+R*0.3);
+  }
+  // 标签
+  ctx.fillStyle=t().text;ctx.font='11px system-ui';ctx.textAlign='center';
+  ctx.fillText('内核(固)',cx,cy);ctx.fillText('外核(液)',cx,cy-R*0.42);ctx.fillText('地幔',cx,cy-R*0.78);
+  ctx.fillText('震源 ⭐',cx,cy-R-15);
+}
+
+function drawTsunami(){
+  const seaY=CH*0.4;
+  // 海底地形（浅→深→浅）
+  ctx.fillStyle='#aa884444';ctx.beginPath();ctx.moveTo(0,CH);
+  for(let x=0;x<=CW;x+=5){const depth=S.depth*(0.3+0.7*Math.sin(x/CW*Math.PI));ctx.lineTo(x,seaY+depth*CH*0.00008)}
+  ctx.lineTo(CW,CH);ctx.closePath();ctx.fill();
+  // 海水
+  ctx.fillStyle='#3b82f622';ctx.fillRect(0,seaY,CW,CH*0.5);
+  // 海啸波
+  if(S.running){
+    ctx.strokeStyle='#3b82f6';ctx.lineWidth=3;ctx.beginPath();
+    for(let x=0;x<CW;x+=3){
+      const localDepth=S.depth*(0.3+0.7*Math.sin(x/CW*Math.PI));
+      const amp=Math.max(2,40/Math.sqrt(Math.max(100,localDepth)/100));
+      const wave=amp*Math.sin((x/CW-S.wavePos)*20)*Math.exp(-Math.pow(x/CW-S.wavePos,2)*20);
+      if(x===0)ctx.moveTo(x,seaY+wave);else ctx.lineTo(x,seaY+wave);
+    }
+    ctx.stroke();
+  }
+  // 标注
+  ctx.fillStyle=t().text;ctx.font='12px system-ui';ctx.textAlign='center';
+  ctx.fillText(`深度: ${S.depth}m | 波速: ${S.speed.toFixed(0)} km/h`,CW/2,30);
+  ctx.fillText('深海: 波速快、波高低',CW*0.3,seaY-10);ctx.fillText('浅海: 波速慢、波高大',CW*0.8,seaY-10);
+}
+
+function drawBuilding(){
+  const cx=CW/2,baseY=CH*0.85,floorH=Math.min(30,(CH*0.7)/S.floors);
+  const shake=S.running?Math.sin(S.anim*15)*S.shaking*20*(S.baseIso?0.3:1)*(S.damper?0.5:1):0;
+  // 地面
+  ctx.fillStyle='#aa884433';ctx.fillRect(0,baseY,CW,CH-baseY);
+  // 隔震层
+  if(S.baseIso){ctx.fillStyle='#3b82f644';ctx.fillRect(cx-40+shake*0.2,baseY-10,80,10);ctx.fillStyle='#3b82f6';ctx.font='10px system-ui';ctx.textAlign='center';ctx.fillText('隔震支座',cx,baseY+15)}
+  // 楼层
+  for(let f=0;f<S.floors;f++){
+    const floorShake=shake*(1+f*0.15);
+    const y=baseY-10-(f+1)*floorH;
+    const dmgColor=S.damage>60?'#ef444488':S.damage>30?'#f59e0b88':'#3b82f688';
+    ctx.fillStyle=S.running?dmgColor:'#3b82f644';
+    ctx.fillRect(cx-35+floorShake,y,70,floorH-2);
+    ctx.strokeStyle='#3b82f6';ctx.lineWidth=1;ctx.strokeRect(cx-35+floorShake,y,70,floorH-2);
+    // 阻尼器
+    if(S.damper&&f>0&&f%3===0){ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx-35+floorShake,y);ctx.lineTo(cx+35+floorShake,y+floorH);ctx.stroke();ctx.beginPath();ctx.moveTo(cx+35+floorShake,y);ctx.lineTo(cx-35+floorShake,y+floorH);ctx.stroke()}
+  }
+  ctx.fillStyle=t().text;ctx.font='12px system-ui';ctx.textAlign='center';
+  ctx.fillText(`${S.floors}层建筑 ${S.baseIso?'| 隔震':''} ${S.damper?'| 阻尼器':''}`,cx,baseY-10-S.floors*floorH-15);
+}
+
+/* === 交互 === */
+function goLevel(i){if(i<0||i>=7)return;cur=i;initLevel(i);renderPanel();draw();updateInfobar();playSound('click')}
+function startGame(){playSound('click');document.getElementById('startScreen').classList.add('hidden');document.getElementById('panel').style.display='block';gameState='play';goLevel(0);anim()}
+function updateInfobar(){document.getElementById('ib-level').textContent=`关卡 ${cur+1}/7`;document.getElementById('ib-title').textContent=LEVELS[cur].name;document.getElementById('ib-status').textContent=done[cur]?'✅ 已完成':'进行中'}
+
+let lastT=0;
+function anim(ts){
+  requestAnimationFrame(anim);if(!ts)return;
+  const dt=(ts-lastT)/1000;lastT=ts;
+  if(gameState!=='play')return;
+  S.anim=(S.anim||0)+dt;
+  if(cur===1&&S.running){S.elapsed+=dt;S.pWaveX=Math.min(1,S.pWaveX+S.pSpeed*0.02*dt);S.sWaveX=Math.min(1,S.sWaveX+S.sSpeed*0.02*dt)}
+  if(cur===2&&S.recording){S.recTime+=dt;if(S.trace.length<200)S.trace.push(S.amplitude*Math.sin(S.recTime*S.frequency*Math.PI*2)/10)}
+  if(cur===4&&S.showShadow){S.rays.forEach(r=>{r.progress=Math.min(1,(r.progress||0)+dt*0.5)})}
+  if(cur===5&&S.running){S.wavePos+=dt*0.15;if(S.wavePos>1.2){S.wavePos=0}}
+  if(cur===6&&S.running){S.shaking=Math.max(0,S.shaking-dt*0.3);if(S.shaking<=0)S.running=false}
+  draw();
+}
+</script>
+</body>
+</html>

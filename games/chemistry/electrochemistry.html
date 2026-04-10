@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>电化学探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;width:100vw}
+#overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+#overlay h1{font-size:36px;color:#f59e0b;text-shadow:0 0 30px rgba(245,158,11,0.5);margin-bottom:8px}
+#overlay h2{font-size:18px;color:#fbbf24;margin-bottom:30px;font-weight:normal}
+</style>
+</head>
+<body data-theme="dark">
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px;padding:8px;background:var(--feat-bg);border:1px solid var(--feat-border);border-radius:8px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.start-btn{padding:14px 48px;font-size:20px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:all .3s;box-shadow:0 0 20px rgba(245,158,11,0.3)}
+.start-btn:hover{transform:scale(1.05);box-shadow:0 0 30px rgba(245,158,11,0.5)}
+#wrap{display:none;width:100vw;height:100vh;position:relative}
+#panel{position:absolute;left:0;top:0;width:320px;height:calc(100% - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;padding:16px;z-index:10;display:none}
+#panel h3{color:#f59e0b;font-size:16px;margin-bottom:8px}
+#panel .obj{display:flex;align-items:center;gap:6px;margin:4px 0;font-size:14px;color:var(--text-muted)}
+#panel .obj.done{color:#4ade80}
+#panel .obj::before{content:'○';color:var(--text-sub);font-size:14px}
+#panel .obj.done::before{content:'●';color:#4ade80}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);border-radius:6px;cursor:pointer;font-size:15px;transition:all .2s;text-align:center}
+.act-btn:hover{background:rgba(245,158,11,0.3)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;line-height:1.8;color:var(--learn-text)}
+.learn-box b{color:#f59e0b}
+#bar{position:absolute;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:none;align-items:center;padding:0 12px;gap:8px;z-index:10}
+#bar .prog{margin-left:auto;font-size:12px;color:var(--text-muted)}
+canvas{position:absolute;left:320px;top:0;background:var(--bg)}
+.desc{font-size:12px;color:var(--text-muted);line-height:1.6;margin:8px 0}
+.sub{font-size:13px;color:var(--sub-color);margin:6px 0 4px;font-weight:600}
+input[type=range].ctl{width:100%;accent-color:#f59e0b;margin:4px 0}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#f59e0b}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div id="overlay">
+<h1>⚡ 电化学探险</h1>
+<h2>从氧化还原到锂电池，7 关探索电化学世界</h2>
+<button class="start-btn" onclick="startGame()">开始探索 🔋</button>
+<div class="features">
+<div class="feat"><div class="fi">⚡</div>氧化还原</div>
+<div class="feat"><div class="fi">🔋</div>原电池</div>
+<div class="feat"><div class="fi">📊</div>电极电位</div>
+<div class="feat"><div class="fi">🔌</div>电解原理</div>
+<div class="feat"><div class="fi">⚖️</div>法拉第</div>
+<div class="feat"><div class="fi">🛡️</div>腐蚀防护</div>
+<div class="feat"><div class="fi">🔋</div>锂电池</div>
+</div>
+</div>
+<div id="wrap">
+<div id="panel"></div>
+<canvas id="cv"></canvas>
+<div id="bar"></div>
+</div>
+<script>
+let isDark=true;
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel();draw();}
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay'),wrap=document.getElementById('wrap');
+let W,H,curLevel=0,time=0,unlocked=[true,false,false,false,false,false,false];
+let levelObjs=[[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false]];
+
+const LEVEL_NAMES=['氧化还原反应','原电池(伏打电池)','电极电位','电解原理','法拉第定律','腐蚀与防护','锂电池原理'];
+const LEVEL_ICONS=['⚡','🔋','📊','🔌','⚖️','🛡️','🔋'];
+
+// === Level 0: Redox ===
+let l0oxState=0,l0redState=0,l0connected=false,l0electrons=[];
+// === Level 1: Voltaic Cell ===
+let l1voltage=0,l1wireConnected=false,l1anodeMetal='Zn',l1cathodeMetal='Cu',l1bubbles=[],l1elapsed=0;
+// === Level 2: Electrode Potential ===
+let l2metals=[{name:'Li',E:-3.04},{name:'K',E:-2.93},{name:'Na',E:-2.71},{name:'Mg',E:-2.37},{name:'Al',E:-1.66},{name:'Zn',E:-0.76},{name:'Fe',E:-0.44},{name:'Ni',E:-0.26},{name:'Sn',E:-0.14},{name:'H₂',E:0},{name:'Cu',E:0.34},{name:'Ag',E:0.80},{name:'Au',E:1.50}];
+let l2selected=-1,l2sorted=[],l2sortAttempts=0;
+// === Level 3: Electrolysis ===
+let l3voltage=0,l3current=0,l3gasAnodeH=0,l3gasCathodeH=0,l3bubbles3=[];
+// === Level 4: Faraday ===
+let l4current=2,l4time=10,l4massCalc=0,l4answered=false;
+// === Level 5: Corrosion ===
+let l5method=0,l5rustLevel=100,l5protected=false;
+const PROTECT_METHODS=[{name:'无保护',desc:'铁暴露在潮湿空气中',rust:100},{name:'涂层保护',desc:'涂漆隔绝氧气和水',rust:15},{name:'牺牲阳极',desc:'连接更活泼的锌块',rust:5},{name:'阴极保护',desc:'外加电流使铁作阴极',rust:2}];
+// === Level 6: Li-ion Battery ===
+let l6charging=false,l6soc=20,l6liIons=[],l6cycle=0;
+
+function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';}
+window.addEventListener('resize',()=>{resize();draw();});
+
+function startGame(){overlay.style.display='none';wrap.style.display='block';panel.style.display='block';bar.style.display='flex';resize();goLevel(0);animate();}
+
+function goLevel(n){if(n>6)return;curLevel=n;if(!unlocked[n])unlocked[n]=true;initLevel(n);renderPanel();draw();}
+
+function checkObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;if(levelObjs[li].every(v=>v)&&li<6)unlocked[li+1]=true;renderPanel();}}
+
+function initLevel(n){
+  switch(n){
+    case 0:l0oxState=0;l0redState=0;l0connected=false;l0electrons=[];break;
+    case 1:l1voltage=0;l1wireConnected=false;l1bubbles=[];l1elapsed=0;break;
+    case 2:l2selected=-1;l2sorted=[];l2sortAttempts=0;break;
+    case 3:l3voltage=0;l3current=0;l3gasAnodeH=0;l3gasCathodeH=0;l3bubbles3=[];break;
+    case 4:l4current=2;l4time=10;l4massCalc=0;l4answered=false;break;
+    case 5:l5method=0;l5rustLevel=100;l5protected=false;break;
+    case 6:l6charging=false;l6soc=20;l6liIons=[];l6cycle=0;for(let i=0;i<8;i++)l6liIons.push({x:0.2+Math.random()*0.2,y:0.2+Math.random()*0.6,vx:0,moving:false});break;
+  }
+}
+
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  LEVEL_NAMES.forEach((_,i)=>{const cls=i<curLevel?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})" title="${LEVEL_NAMES[i]}"></div>`;});
+  h+=`</div><div class="sn-info">${LEVEL_ICONS[curLevel]} ${curLevel+1}/${LEVEL_NAMES.length} ${LEVEL_NAMES[curLevel]}</div></div>`;
+  return h;
+}
+
+function summaryHTML(){
+  const done=levelObjs.flat().filter(v=>v).length,total=levelObjs.flat().length;
+  return `<div class="summary-box"><div class="summary-title">🎉 电化学探险完成！</div><div class="summary-sub">你已掌握电化学核心概念</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}</div><div class="label">完成目标</div></div><div class="summary-stat"><div class="num">7</div><div class="label">探索关卡</div></div></div><div class="summary-keys"><div>⚡ 氧化还原：电子转移的本质</div><div>🔋 原电池：化学能→电能</div><div>📊 电极电位：活动性序列</div><div>🔌 电解：电能→化学能</div><div>⚖️ 法拉第定律：定量计算</div><div>🛡️ 腐蚀防护：牺牲阳极/阴极保护</div><div>🔋 锂电池：可逆嵌入脱出</div></div></div>`;
+}
+
+function renderPanel(){
+  let h=renderStageNav();
+  switch(curLevel){
+    case 0:h+=renderP0();break;case 1:h+=renderP1();break;case 2:h+=renderP2();break;
+    case 3:h+=renderP3();break;case 4:h+=renderP4();break;case 5:h+=renderP5();break;case 6:h+=renderP6();break;
+  }
+  if(levelObjs[curLevel].every(v=>v)&&curLevel<6)h+=`<button class="act-btn" style="background:#f59e0b;color:#fff;margin-top:8px" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+  if(levelObjs[curLevel].every(v=>v)&&curLevel===6)h+=summaryHTML();
+  panel.innerHTML=h;
+  bar.innerHTML=`<span style="color:var(--text-muted)">⚡ ${LEVEL_NAMES[curLevel]}</span><span class="prog">${levelObjs.flat().filter(v=>v).length}/${levelObjs.flat().length} 目标</span>`;
+}
+
+function renderP0(){
+  let h=`<h3>氧化还原反应</h3>`;
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>氧化=失去电子(化合价升高)，还原=得到电子(化合价降低)，两者同时发生</div>`;
+  h+=`<p class="desc">画布上有锌(Zn)和铜离子(Cu²⁺)。拖动滑块调节电子转移数量，观察氧化还原过程。</p>`;
+  h+=`<div class="obj ${levelObjs[0][0]?'done':''}">让锌失去电子(氧化)</div>`;
+  h+=`<div class="obj ${levelObjs[0][1]?'done':''}">让铜离子得到电子(还原)</div>`;
+  h+=`<div class="obj ${levelObjs[0][2]?'done':''}">完成完整的氧化还原反应</div>`;
+  h+=`<p class="sub">电子转移: <span style="color:#f59e0b">${l0oxState}</span> 个</p>`;
+  h+=`<input type="range" class="ctl" min="0" max="2" value="${l0oxState}" oninput="setRedox(+this.value)" onchange="this.blur();renderPanel()">`;
+  if(l0oxState>=1)h+=`<div class="learn-box"><b>Zn → Zn²⁺ + 2e⁻</b> (氧化半反应)<br><b>Cu²⁺ + 2e⁻ → Cu</b> (还原半反应)<br><br>锌是<b>还原剂</b>(自身被氧化)，铜离子是<b>氧化剂</b>(自身被还原)。<br>口诀：<b>升失氧，降得还</b></div>`;
+  return h;
+}
+function setRedox(v){l0oxState=v;l0redState=v;if(v>=1){checkObj(0,0);checkObj(0,1);}if(v>=2){l0connected=true;checkObj(0,2);}draw();}
+
+function renderP1(){
+  let h=`<h3>原电池(伏打电池)</h3>`;
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>原电池将化学能转化为电能，需要两种不同活泼性的金属电极和电解质溶液</div>`;
+  h+=`<p class="desc">画布上有锌片和铜片浸在硫酸铜溶液中。点击"连接导线"按钮，观察电流产生过程。</p>`;
+  h+=`<div class="obj ${levelObjs[1][0]?'done':''}">连接导线形成回路</div>`;
+  h+=`<div class="obj ${levelObjs[1][1]?'done':''}">观察电子流动方向</div>`;
+  h+=`<div class="obj ${levelObjs[1][2]?'done':''}">观察电极反应持续5秒</div>`;
+  if(!l1wireConnected)h+=`<button class="act-btn" onclick="connectWire()">🔌 连接导线</button>`;
+  else{h+=`<p class="sub">电压: <span style="color:#f59e0b">${l1voltage.toFixed(2)}V</span></p>`;
+  h+=`<div class="learn-box"><b>锌铜原电池(丹尼尔电池)</b><br>负极(Zn): Zn → Zn²⁺ + 2e⁻<br>正极(Cu): Cu²⁺ + 2e⁻ → Cu<br><br>电子从<b>负极(锌)</b>经导线流向<b>正极(铜)</b><br>电流方向与电子流动方向<b>相反</b><br>理论电压: 1.10V</div>`;}
+  return h;
+}
+function connectWire(){l1wireConnected=true;l1voltage=1.10;checkObj(1,0);checkObj(1,1);renderPanel();draw();}
+
+function renderP2(){
+  let h=`<h3>电极电位</h3>`;
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>标准电极电位(E°)衡量金属失去电子的倾向，E°越负越容易被氧化</div>`;
+  h+=`<p class="desc">画布上显示金属活动性序列。点击金属查看其标准电极电位，按从低到高排列它们。</p>`;
+  h+=`<div class="obj ${levelObjs[2][0]?'done':''}">查看至少5种金属的电位</div>`;
+  h+=`<div class="obj ${levelObjs[2][1]?'done':''}">找到最活泼的金属</div>`;
+  h+=`<div class="obj ${levelObjs[2][2]?'done':''}">理解电位差与电压的关系</div>`;
+  if(l2selected>=0){const m=l2metals[l2selected];h+=`<p class="sub">选中: <span style="color:#f59e0b">${m.name}</span> E°= ${m.E.toFixed(2)}V</p>`;}
+  h+=`<div style="display:flex;flex-wrap:wrap;gap:4px;margin:8px 0">`;
+  l2metals.forEach((m,i)=>{h+=`<button class="act-btn" style="padding:4px 8px;font-size:12px;${l2selected===i?'background:#f59e0b;color:#fff':''}" onclick="selectMetal(${i})">${m.name}</button>`;});
+  h+=`</div>`;
+  let viewCount=l2sorted.length;
+  if(viewCount>=5)checkObj(2,0);
+  if(l2selected===0)checkObj(2,1);
+  if(viewCount>=8)checkObj(2,2);
+  if(levelObjs[2][2])h+=`<div class="learn-box"><b>电极电位应用</b><br>两电极组成原电池时：<br>电压 = E°(正极) - E°(负极)<br><br>例: Cu(+0.34V) - Zn(-0.76V) = <b>1.10V</b><br><br>E°越负 → 越容易失电子 → 越活泼<br>Li(-3.04V)是最活泼的金属</div>`;
+  return h;
+}
+function selectMetal(i){l2selected=i;if(!l2sorted.includes(i))l2sorted.push(i);renderPanel();draw();}
+
+function renderP3(){
+  let h=`<h3>电解原理</h3>`;
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>电解是用电能驱动非自发的化学反应，阳极氧化、阴极还原</div>`;
+  h+=`<p class="desc">画布上有一个电解槽，两根电极浸在氯化钠溶液中。拖动滑块调节外加电压，观察电极上的气泡产生。</p>`;
+  h+=`<div class="obj ${levelObjs[3][0]?'done':''}">施加足够电压启动电解</div>`;
+  h+=`<div class="obj ${levelObjs[3][1]?'done':''}">观察阳极产生氯气</div>`;
+  h+=`<div class="obj ${levelObjs[3][2]?'done':''}">观察阴极产生氢气</div>`;
+  h+=`<p class="sub">外加电压: <span style="color:#f59e0b">${l3voltage.toFixed(1)}V</span></p>`;
+  h+=`<input type="range" class="ctl" min="0" max="5" step="0.1" value="${l3voltage}" oninput="setVoltage(+this.value)" onchange="this.blur();renderPanel()">`;
+  if(l3voltage>=2.2){h+=`<div class="learn-box"><b>电解饱和NaCl溶液</b><br>阳极(+): 2Cl⁻ → Cl₂↑ + 2e⁻<br>阴极(-): 2H₂O + 2e⁻ → H₂↑ + 2OH⁻<br><br>阳极产生<span style="color:#22c55e">黄绿色氯气</span><br>阴极产生<span style="color:#60a5fa">无色氢气</span><br>溶液变碱性(NaOH)</div>`;}
+  return h;
+}
+function setVoltage(v){l3voltage=v;if(v>=2.2){l3current=v/10;checkObj(3,0);checkObj(3,1);checkObj(3,2);}else{l3current=0;}draw();}
+
+function renderP4(){
+  let h=`<h3>法拉第定律</h3>`;
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>电解产物的质量与通过的电荷量成正比，m = (M·I·t)/(n·F)</div>`;
+  h+=`<p class="desc">画布上模拟电解硫酸铜溶液镀铜。调节电流和时间，计算阴极析出铜的质量。</p>`;
+  h+=`<div class="obj ${levelObjs[4][0]?'done':''}">调节电流到3A以上</div>`;
+  h+=`<div class="obj ${levelObjs[4][1]?'done':''}">调节时间到30分钟以上</div>`;
+  h+=`<div class="obj ${levelObjs[4][2]?'done':''}">正确计算析出铜的质量</div>`;
+  h+=`<p class="sub">电流 I: <span style="color:#f59e0b">${l4current.toFixed(1)}A</span></p>`;
+  h+=`<input type="range" class="ctl" min="0.5" max="10" step="0.5" value="${l4current}" oninput="setFaradayCurrent(+this.value)" onchange="this.blur();renderPanel()">`;
+  h+=`<p class="sub">时间 t: <span style="color:#f59e0b">${l4time}分钟</span></p>`;
+  h+=`<input type="range" class="ctl" min="1" max="60" step="1" value="${l4time}" oninput="setFaradayTime(+this.value)" onchange="this.blur();renderPanel()">`;
+  const F=96485,M=64,n=2;
+  const Q=l4current*l4time*60;
+  const mTheory=(M*Q)/(n*F);
+  h+=`<p class="sub">电荷量 Q = I×t = ${Q.toFixed(0)}C</p>`;
+  h+=`<p class="sub">理论质量 m = (M·Q)/(n·F) = <span style="color:#22c55e">${mTheory.toFixed(3)}g</span></p>`;
+  if(l4current>=3)checkObj(4,0);
+  if(l4time>=30)checkObj(4,1);
+  if(l4current>=3&&l4time>=30){checkObj(4,2);
+  h+=`<div class="learn-box"><b>法拉第电解定律</b><br>m = (M·I·t)/(n·F)<br><br>M=64(铜的摩尔质量)<br>n=2(Cu²⁺得2个电子)<br>F=96485 C/mol(法拉第常数)<br><br>1法拉第电荷(96485C)能析出<b>32g铜</b><br>工业电镀就是利用这个原理</div>`;}
+  return h;
+}
+function setFaradayCurrent(v){l4current=v;draw();}
+function setFaradayTime(v){l4time=v;draw();}
+
+function renderP5(){
+  let h=`<h3>腐蚀与防护</h3>`;
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>金属腐蚀本质是电化学反应，可通过涂层、牺牲阳极或外加电流保护</div>`;
+  h+=`<p class="desc">画布上有一根铁管暴露在潮湿环境中。选择不同的防护方法，观察腐蚀程度的变化。</p>`;
+  h+=`<div class="obj ${levelObjs[5][0]?'done':''}">观察无保护时的腐蚀</div>`;
+  h+=`<div class="obj ${levelObjs[5][1]?'done':''}">尝试涂层保护</div>`;
+  h+=`<div class="obj ${levelObjs[5][2]?'done':''}">尝试牺牲阳极保护</div>`;
+  h+=`<p class="sub">防护方法:</p>`;
+  PROTECT_METHODS.forEach((m,i)=>{h+=`<button class="act-btn" style="font-size:12px;${l5method===i?'background:#f59e0b;color:#fff':''}" onclick="setProtect(${i})">${m.name}</button>`;});
+  l5rustLevel=PROTECT_METHODS[l5method].rust;
+  h+=`<p class="sub">腐蚀程度: <span style="color:${l5rustLevel>50?'#ef4444':'#22c55e'}">${l5rustLevel}%</span></p>`;
+  h+=`<p class="desc">${PROTECT_METHODS[l5method].desc}</p>`;
+  if(l5method===0)checkObj(5,0);
+  if(l5method===1)checkObj(5,1);
+  if(l5method>=2)checkObj(5,2);
+  if(levelObjs[5][2])h+=`<div class="learn-box"><b>金属防腐方法</b><br>1. <b>涂层保护</b>：隔绝O₂和H₂O<br>2. <b>牺牲阳极</b>：连接更活泼金属(Zn)，锌先被腐蚀<br>3. <b>阴极保护</b>：外加电流使铁作阴极，不被氧化<br><br>海底管道常用<b>牺牲阳极法</b><br>大型设备常用<b>外加电流法</b></div>`;
+  return h;
+}
+function setProtect(i){l5method=i;renderPanel();draw();}
+
+function renderP6(){
+  let h=`<h3>锂电池原理</h3>`;
+  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>锂离子电池通过Li⁺在正负极材料间可逆嵌入/脱出实现充放电</div>`;
+  h+=`<p class="desc">画布上模拟锂电池内部结构。点击充电/放电按钮，观察锂离子在正负极之间的迁移。</p>`;
+  h+=`<div class="obj ${levelObjs[6][0]?'done':''}">完成一次充电过程</div>`;
+  h+=`<div class="obj ${levelObjs[6][1]?'done':''}">完成一次放电过程</div>`;
+  h+=`<div class="obj ${levelObjs[6][2]?'done':''}">完成一个完整充放电循环</div>`;
+  h+=`<p class="sub">电量: <span style="color:#f59e0b">${l6soc.toFixed(0)}%</span></p>`;
+  h+=`<div style="height:12px;background:var(--stage-bar);border-radius:6px;overflow:hidden;margin:4px 0"><div style="width:${l6soc}%;height:100%;background:${l6soc>20?'#22c55e':'#ef4444'};transition:width 0.3s"></div></div>`;
+  h+=`<button class="act-btn" onclick="toggleCharge(true)">⚡ 充电</button>`;
+  h+=`<button class="act-btn" onclick="toggleCharge(false)">💡 放电</button>`;
+  h+=`<p class="sub">循环次数: ${l6cycle}</p>`;
+  if(levelObjs[6][2])h+=`<div class="learn-box"><b>锂离子电池</b><br>正极: LiCoO₂ (钴酸锂)<br>负极: 石墨 (C₆)<br>电解质: 有机溶剂+LiPF₆<br><br><b>充电</b>: Li⁺从正极脱出→穿过电解质→嵌入负极石墨<br><b>放电</b>: Li⁺从负极脱出→穿过电解质→嵌入正极<br><br>这种"摇椅式"机制使电池可反复充放电数百次</div>`;
+  return h;
+}
+let chargeInterval=null;
+function toggleCharge(isCharge){
+  if(chargeInterval)clearInterval(chargeInterval);
+  l6charging=isCharge;
+  chargeInterval=setInterval(()=>{
+    if(isCharge){l6soc=Math.min(100,l6soc+2);if(l6soc>=95){checkObj(6,0);clearInterval(chargeInterval);chargeInterval=null;}}
+    else{l6soc=Math.max(0,l6soc-2);if(l6soc<=5){checkObj(6,1);if(levelObjs[6][0]){l6cycle++;checkObj(6,2);}clearInterval(chargeInterval);chargeInterval=null;}}
+    l6liIons.forEach(ion=>{if(isCharge){ion.x=Math.min(0.8,ion.x+0.01);}else{ion.x=Math.max(0.2,ion.x-0.01);}});
+    renderPanel();draw();
+  },100);
+}
+
+// === DRAW ===
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const tc=isDark?'#eee':'#1a1a2e';const sc=isDark?'#888':'#64748b';
+  switch(curLevel){
+    case 0:drawL0(tc,sc);break;case 1:drawL1(tc,sc);break;case 2:drawL2(tc,sc);break;
+    case 3:drawL3(tc,sc);break;case 4:drawL4(tc,sc);break;case 5:drawL5(tc,sc);break;case 6:drawL6(tc,sc);break;
+  }
+}
+
+function drawL0(tc,sc){
+  const cx=W/2,cy=H/2;
+  // Zn atom
+  ctx.beginPath();ctx.arc(cx-150,cy,40,0,Math.PI*2);ctx.fillStyle='#64748b';ctx.fill();
+  ctx.fillStyle='#fff';ctx.font='bold 18px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('Zn',cx-150,cy);
+  // Cu2+ ion
+  ctx.beginPath();ctx.arc(cx+150,cy,40,0,Math.PI*2);ctx.fillStyle=l0redState>=2?'#d97706':'#3b82f6';ctx.fill();
+  ctx.fillStyle='#fff';ctx.fillText(l0redState>=2?'Cu':'Cu²⁺',cx+150,cy);
+  // Electrons
+  if(l0oxState>=1){
+    for(let i=0;i<l0oxState;i++){
+      const t=(time*2+i*Math.PI)%(Math.PI*2);
+      const ex=cx-150+300*(t/(Math.PI*2));
+      const ey=cy-30+Math.sin(t*3)*20;
+      ctx.beginPath();ctx.arc(ex,ey,6,0,Math.PI*2);ctx.fillStyle='#f59e0b';ctx.fill();
+      ctx.fillStyle='#000';ctx.font='bold 10px sans-serif';ctx.fillText('e⁻',ex,ey);
+    }
+  }
+  // Labels
+  ctx.fillStyle=tc;ctx.font='14px sans-serif';ctx.textAlign='center';
+  if(l0oxState>=1){ctx.fillText('氧化(失电子)',cx-150,cy+65);ctx.fillText('还原(得电子)',cx+150,cy+65);}
+  // Arrow
+  if(l0oxState>=1){ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(cx-100,cy-40);ctx.lineTo(cx+100,cy-40);ctx.stroke();ctx.setLineDash([]);
+  ctx.beginPath();ctx.moveTo(cx+90,cy-45);ctx.lineTo(cx+100,cy-40);ctx.lineTo(cx+90,cy-35);ctx.stroke();}
+  // Oxidation state labels
+  ctx.font='12px sans-serif';ctx.fillStyle=sc;
+  ctx.fillText(l0oxState>=1?'Zn⁰ → Zn²⁺':'Zn⁰',cx-150,cy+85);
+  ctx.fillText(l0redState>=1?'Cu²⁺ → Cu⁰':'Cu²⁺',cx+150,cy+85);
+}
+
+function drawL1(tc,sc){
+  const cx=W/2,cy=H/2-40;
+  // Beaker
+  ctx.strokeStyle=sc;ctx.lineWidth=2;
+  ctx.strokeRect(cx-180,cy-80,360,200);
+  // Solution
+  ctx.fillStyle='rgba(59,130,246,0.15)';ctx.fillRect(cx-178,cy-20,356,138);
+  ctx.fillStyle=sc;ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('CuSO₄ 溶液',cx,cy+140);
+  // Zn electrode (left)
+  ctx.fillStyle='#94a3b8';ctx.fillRect(cx-140,cy-80,30,140);
+  ctx.fillStyle=tc;ctx.font='bold 14px sans-serif';ctx.fillText('Zn',cx-125,cy-90);
+  ctx.fillStyle=sc;ctx.font='11px sans-serif';ctx.fillText('负极(阳极)',cx-125,cy+80);
+  // Cu electrode (right)
+  ctx.fillStyle='#d97706';ctx.fillRect(cx+110,cy-80,30,140);
+  ctx.fillStyle=tc;ctx.font='bold 14px sans-serif';ctx.fillText('Cu',cx+125,cy-90);
+  ctx.fillStyle=sc;ctx.font='11px sans-serif';ctx.fillText('正极(阴极)',cx+125,cy+80);
+  // Wire
+  if(l1wireConnected){
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=3;ctx.beginPath();
+    ctx.moveTo(cx-125,cy-80);ctx.lineTo(cx-125,cy-120);ctx.lineTo(cx+125,cy-120);ctx.lineTo(cx+125,cy-80);ctx.stroke();
+    // Electron flow arrows
+    const t=time*3;
+    for(let i=0;i<5;i++){
+      const frac=((t/10+i*0.2)%1);
+      const ex=cx-125+250*frac;
+      ctx.beginPath();ctx.arc(ex,cy-120,4,0,Math.PI*2);ctx.fillStyle='#f59e0b';ctx.fill();
+    }
+    ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';ctx.fillText('e⁻ →',cx,cy-132);
+    // Voltmeter
+    ctx.beginPath();ctx.arc(cx,cy-120,18,0,Math.PI*2);ctx.fillStyle=isDark?'#1a1a3a':'#f0f4ff';ctx.fill();ctx.strokeStyle='#f59e0b';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle='#f59e0b';ctx.font='bold 11px sans-serif';ctx.fillText(l1voltage.toFixed(2)+'V',cx,cy-118);
+    // Bubbles at cathode
+    for(let i=0;i<3;i++){
+      const by=cy-20-((time*40+i*30)%60);
+      ctx.beginPath();ctx.arc(cx+125+Math.sin(time+i)*8,by,3+Math.random()*2,0,Math.PI*2);ctx.fillStyle='rgba(245,158,11,0.4)';ctx.fill();
+    }
+  }
+}
+
+function drawL2(tc,sc){
+  const cx=W/2,cy=H/2;
+  // Draw electrode potential scale
+  ctx.strokeStyle=sc;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx,cy-200);ctx.lineTo(cx,cy+200);ctx.stroke();
+  // Scale labels
+  ctx.fillStyle=sc;ctx.font='11px sans-serif';ctx.textAlign='right';
+  for(let v=-3;v<=2;v++){
+    const y=cy-v*60;
+    ctx.beginPath();ctx.moveTo(cx-5,y);ctx.lineTo(cx+5,y);ctx.stroke();
+    ctx.fillText(v.toFixed(0)+'V',cx-10,y+4);
+  }
+  ctx.textAlign='left';ctx.fillText('E° / V',cx+10,cy-210);
+  // H2 reference line
+  const hy=cy;
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(cx-60,hy);ctx.lineTo(cx+200,hy);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';ctx.fillText('H₂/H⁺ (参考)',cx+10,hy-8);
+  // Plot metals
+  l2metals.forEach((m,i)=>{
+    const y=cy-m.E*60;
+    const isSelected=l2selected===i;
+    ctx.beginPath();ctx.arc(cx+80+((i%3)*50),y,isSelected?14:10,0,Math.PI*2);
+    ctx.fillStyle=isSelected?'#f59e0b':m.E<0?'#3b82f6':'#22c55e';ctx.fill();
+    ctx.fillStyle='#fff';ctx.font=`${isSelected?'bold ':''}10px sans-serif`;ctx.textAlign='center';
+    ctx.fillText(m.name,cx+80+((i%3)*50),y+3);
+  });
+  // Title
+  ctx.fillStyle=tc;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  ctx.fillText('标准电极电位表',cx,cy-230);
+  ctx.fillStyle=sc;ctx.font='12px sans-serif';
+  ctx.fillText('越低 → 越活泼(越容易失电子)',cx,cy+230);
+}
+
+function drawL3(tc,sc){
+  const cx=W/2,cy=H/2-20;
+  // Electrolysis cell
+  ctx.strokeStyle=sc;ctx.lineWidth=2;ctx.strokeRect(cx-160,cy-60,320,180);
+  // Solution
+  ctx.fillStyle='rgba(59,130,246,0.1)';ctx.fillRect(cx-158,cy,316,118);
+  ctx.fillStyle=sc;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('饱和NaCl溶液',cx,cy+140);
+  // Electrodes
+  ctx.fillStyle='#64748b';ctx.fillRect(cx-120,cy-60,20,140);ctx.fillRect(cx+100,cy-60,20,140);
+  ctx.fillStyle=tc;ctx.font='bold 12px sans-serif';
+  ctx.fillText('阳极(+)',cx-110,cy-70);ctx.fillText('阴极(-)',cx+110,cy-70);
+  // Power supply
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(cx-110,cy-60);ctx.lineTo(cx-110,cy-100);ctx.lineTo(cx+110,cy-100);ctx.lineTo(cx+110,cy-60);ctx.stroke();
+  // Battery symbol
+  ctx.fillStyle=isDark?'#1a1a3a':'#f0f4ff';ctx.fillRect(cx-25,cy-115,50,30);ctx.strokeStyle='#f59e0b';ctx.lineWidth=1.5;ctx.strokeRect(cx-25,cy-115,50,30);
+  ctx.fillStyle='#f59e0b';ctx.font='bold 12px sans-serif';ctx.fillText(l3voltage.toFixed(1)+'V',cx,cy-97);
+  // Bubbles when voltage is enough
+  if(l3voltage>=2.2){
+    // Anode bubbles (Cl2 - yellow-green)
+    for(let i=0;i<6;i++){
+      const by=cy+80-((time*50+i*20)%80);
+      ctx.beginPath();ctx.arc(cx-110+Math.sin(time*2+i)*6,by,2+Math.random()*3,0,Math.PI*2);ctx.fillStyle='rgba(163,230,53,0.5)';ctx.fill();
+    }
+    ctx.fillStyle='#a3e635';ctx.font='11px sans-serif';ctx.fillText('Cl₂↑',cx-110,cy-10);
+    // Cathode bubbles (H2 - blue)
+    for(let i=0;i<6;i++){
+      const by=cy+80-((time*50+i*20)%80);
+      ctx.beginPath();ctx.arc(cx+110+Math.sin(time*2+i)*6,by,2+Math.random()*3,0,Math.PI*2);ctx.fillStyle='rgba(96,165,250,0.5)';ctx.fill();
+    }
+    ctx.fillStyle='#60a5fa';ctx.font='11px sans-serif';ctx.fillText('H₂↑',cx+110,cy-10);
+    // Current arrow
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(cx-80,cy+50);ctx.lineTo(cx+80,cy+50);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#f59e0b';ctx.font='10px sans-serif';ctx.fillText('Na⁺ →',cx-30,cy+45);ctx.fillText('← Cl⁻',cx+30,cy+45);
+  }
+}
+
+function drawL4(tc,sc){
+  const cx=W/2,cy=H/2-20;
+  // Electroplating setup
+  ctx.strokeStyle=sc;ctx.lineWidth=2;ctx.strokeRect(cx-140,cy-40,280,160);
+  ctx.fillStyle='rgba(59,130,246,0.12)';ctx.fillRect(cx-138,cy+10,276,108);
+  ctx.fillStyle=sc;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('CuSO₄ 溶液',cx,cy+140);
+  // Anode (Cu)
+  ctx.fillStyle='#d97706';ctx.fillRect(cx-110,cy-40,20,110);
+  ctx.fillStyle=tc;ctx.font='bold 12px sans-serif';ctx.fillText('Cu阳极',cx-100,cy-50);
+  // Cathode (workpiece)
+  ctx.fillStyle='#94a3b8';ctx.fillRect(cx+90,cy-40,20,110);
+  // Copper deposit layer
+  const depositW=Math.min(8,l4current*l4time/80);
+  if(depositW>0){ctx.fillStyle='#d97706';ctx.fillRect(cx+90-depositW,cy-30,depositW,90);}
+  ctx.fillStyle=tc;ctx.font='bold 12px sans-serif';ctx.fillText('工件(阴极)',cx+100,cy-50);
+  // Power supply
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(cx-100,cy-40);ctx.lineTo(cx-100,cy-80);ctx.lineTo(cx+100,cy-80);ctx.lineTo(cx+100,cy-40);ctx.stroke();
+  ctx.fillStyle='#f59e0b';ctx.font='bold 14px sans-serif';ctx.fillText('⚡ 电源',cx,cy-88);
+  // Cu2+ ions moving
+  if(l4current>0){
+    for(let i=0;i<4;i++){
+      const frac=((time*0.5+i*0.25)%1);
+      const ix=cx-80+160*frac;
+      ctx.beginPath();ctx.arc(ix,cy+40+Math.sin(time+i)*15,5,0,Math.PI*2);ctx.fillStyle='#3b82f6';ctx.fill();
+      ctx.fillStyle='#fff';ctx.font='8px sans-serif';ctx.fillText('Cu²⁺',ix,cy+42+Math.sin(time+i)*15);
+    }
+  }
+  // Formula display
+  const F=96485,M=64,n=2,Q=l4current*l4time*60,mT=(M*Q)/(n*F);
+  ctx.fillStyle=tc;ctx.font='16px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`m = (M·I·t)/(n·F)`,cx,cy+180);
+  ctx.fillStyle='#f59e0b';ctx.font='bold 18px sans-serif';
+  ctx.fillText(`= ${mT.toFixed(3)} g`,cx,cy+210);
+}
+
+function drawL5(tc,sc){
+  const cx=W/2,cy=H/2;
+  // Iron pipe
+  const rustColor=`rgba(180,80,20,${l5rustLevel/100})`;
+  ctx.fillStyle='#94a3b8';ctx.fillRect(cx-120,cy-30,240,60);
+  ctx.fillStyle=rustColor;ctx.fillRect(cx-120,cy-30,240,60);
+  ctx.strokeStyle=sc;ctx.lineWidth=2;ctx.strokeRect(cx-120,cy-30,240,60);
+  ctx.fillStyle=tc;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('铁管',cx,cy+5);
+  // Environment
+  ctx.fillStyle=sc;ctx.font='12px sans-serif';
+  ctx.fillText('潮湿环境 (O₂ + H₂O)',cx,cy-60);
+  // Water droplets
+  for(let i=0;i<5;i++){
+    ctx.beginPath();ctx.arc(cx-80+i*40,cy-45,3,0,Math.PI*2);ctx.fillStyle='rgba(96,165,250,0.5)';ctx.fill();
+  }
+  // Protection visualization
+  if(l5method===1){
+    // Coating
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=4;ctx.setLineDash([]);
+    ctx.strokeRect(cx-124,cy-34,248,68);
+    ctx.fillStyle='#22c55e';ctx.font='12px sans-serif';ctx.fillText('🛡️ 涂层保护',cx,cy+55);
+  }else if(l5method===2){
+    // Sacrificial anode
+    ctx.fillStyle='#64748b';ctx.fillRect(cx+140,cy-20,30,40);
+    ctx.fillStyle=tc;ctx.font='bold 11px sans-serif';ctx.fillText('Zn',cx+155,cy+5);
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx+120,cy);ctx.lineTo(cx+140,cy);ctx.stroke();
+    ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';ctx.fillText('e⁻ →',cx+130,cy-10);
+    ctx.fillStyle='#22c55e';ctx.font='12px sans-serif';ctx.fillText('🛡️ 牺牲阳极(Zn先腐蚀)',cx,cy+55);
+  }else if(l5method===3){
+    // Cathodic protection
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(cx,cy-30);ctx.lineTo(cx,cy-70);ctx.lineTo(cx+80,cy-70);ctx.stroke();
+    ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';ctx.fillText('⚡ 外加电流',cx+40,cy-78);
+    ctx.fillStyle='#22c55e';ctx.font='12px sans-serif';ctx.fillText('🛡️ 阴极保护(外加电流)',cx,cy+55);
+  }else{
+    // Rust particles
+    for(let i=0;i<8;i++){
+      const rx=cx-100+Math.random()*200,ry=cy-25+Math.random()*50;
+      ctx.beginPath();ctx.arc(rx,ry,2+Math.random()*3,0,Math.PI*2);ctx.fillStyle='rgba(180,80,20,0.6)';ctx.fill();
+    }
+    ctx.fillStyle='#ef4444';ctx.font='12px sans-serif';ctx.fillText('⚠️ 严重腐蚀',cx,cy+55);
+  }
+  // Rust meter
+  ctx.fillStyle=sc;ctx.font='12px sans-serif';ctx.fillText('腐蚀程度',cx,cy+90);
+  ctx.fillStyle=isDark?'#1a1a3a':'#e2e8f0';ctx.fillRect(cx-80,cy+100,160,12);
+  ctx.fillStyle=l5rustLevel>50?'#ef4444':'#22c55e';ctx.fillRect(cx-80,cy+100,160*(l5rustLevel/100),12);
+}
+
+function drawL6(tc,sc){
+  const cx=W/2,cy=H/2;
+  // Battery casing
+  ctx.strokeStyle=sc;ctx.lineWidth=2;ctx.strokeRect(cx-200,cy-100,400,200);
+  // Separator
+  ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(cx,cy-100);ctx.lineTo(cx,cy+100);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('隔膜',cx,cy+115);
+  // Cathode (left - LiCoO2)
+  ctx.fillStyle=isDark?'#1a2a4a':'#dbeafe';ctx.fillRect(cx-198,cy-98,190,196);
+  ctx.fillStyle=tc;ctx.font='bold 13px sans-serif';ctx.fillText('正极 LiCoO₂',cx-100,cy-110);
+  // Anode (right - Graphite)
+  ctx.fillStyle=isDark?'#1a1a2a':'#f1f5f9';ctx.fillRect(cx+8,cy-98,190,196);
+  ctx.fillStyle=tc;ctx.font='bold 13px sans-serif';ctx.fillText('负极 石墨(C₆)',cx+100,cy-110);
+  // Electrolyte label
+  ctx.fillStyle=sc;ctx.font='11px sans-serif';ctx.fillText('电解质(LiPF₆)',cx,cy+135);
+  // Li+ ions
+  l6liIons.forEach(ion=>{
+    const ix=cx-200+ion.x*400;
+    const iy=cy-80+ion.y*160;
+    ctx.beginPath();ctx.arc(ix,iy,7,0,Math.PI*2);ctx.fillStyle='#f59e0b';ctx.fill();
+    ctx.fillStyle='#000';ctx.font='bold 8px sans-serif';ctx.fillText('Li⁺',ix,iy+3);
+  });
+  // Charge state
+  ctx.fillStyle=tc;ctx.font='bold 16px sans-serif';
+  ctx.fillText(l6charging?'⚡ 充电中...':'💡 放电中...',cx,cy-130);
+  // SOC bar
+  ctx.fillStyle=isDark?'#1a1a3a':'#e2e8f0';ctx.fillRect(cx-80,cy+155,160,14);
+  ctx.fillStyle=l6soc>20?'#22c55e':'#ef4444';ctx.fillRect(cx-80,cy+155,160*(l6soc/100),14);
+  ctx.fillStyle=tc;ctx.font='bold 11px sans-serif';ctx.fillText(`${l6soc.toFixed(0)}%`,cx,cy+165);
+  // Direction arrow
+  if(l6charging||l6soc>5){
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+    const dir=l6charging?1:-1;
+    ctx.beginPath();ctx.moveTo(cx-40*dir,cy);ctx.lineTo(cx+40*dir,cy);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(cx+30*dir,cy-6);ctx.lineTo(cx+40*dir,cy);ctx.lineTo(cx+30*dir,cy+6);ctx.stroke();
+    ctx.fillStyle='#f59e0b';ctx.font='10px sans-serif';ctx.fillText(l6charging?'Li⁺ →':'← Li⁺',cx,cy-12);
+  }
+}
+
+function animate(){
+  time+=0.016;
+  if(l1wireConnected){l1elapsed+=0.016;if(l1elapsed>=5)checkObj(1,2);}
+  draw();
+  requestAnimationFrame(animate);
+}
+</script>
+</body>
+</html>
