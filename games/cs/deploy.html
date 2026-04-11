@@ -492,31 +492,8 @@ function selectModel(model, cardEl) {
   btn.onclick = (e) => { e.stopPropagation(); deployModel(model); };
   expandDiv.appendChild(btn);
 
-  // 同步更新右侧监控面板的量化选项
-  const qp = document.getElementById('quant-panel');
-  qp.style.display = 'block';
-  const qoDiv = document.getElementById('quant-options');
-  qoDiv.innerHTML = '';
-  for (let q of quantTypes) {
-    const qData = model.quant[q.key];
-    const fps = estimateFps(model, q.key, currentDevice);
-    const opt2 = document.createElement('div');
-    opt2.className = 'quant-option' + (q.key === currentQuant ? ' selected' : '');
-    opt2.innerHTML = `
-      <div class="qo-dot" style="background:${q.color}"></div>
-      <div>
-        <div>${q.label}</div>
-        <div style="font-size:10px;color:var(--text-muted)">${qData.size}MB · ${model.accLabel} ${qData.acc} · ~${fps.toFixed(1)} FPS</div>
-      </div>
-    `;
-    opt2.onclick = (e) => { e.stopPropagation(); currentQuant = q.key; selectModel(model, cardEl); };
-    qoDiv.appendChild(opt2);
-  }
-  const btn2 = document.createElement('button');
-  btn2.style.cssText = 'width:100%;margin-top:10px;padding:8px;background:#c8943e;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;';
-  btn2.textContent = `🚀 部署 ${model.name} (${currentQuant.toUpperCase()})`;
-  btn2.onclick = (e) => { e.stopPropagation(); deployModel(model); };
-  qoDiv.appendChild(btn2);
+  // 右侧面板只显示模型信息，不重复量化选项和部署按钮
+  document.getElementById('quant-panel').style.display = 'none';
 
   document.getElementById('monModelInfo').innerHTML = `
     <div style="color:#eee;font-weight:600">${model.icon} ${model.name}</div>
@@ -524,6 +501,7 @@ function selectModel(model, cardEl) {
     <div>参数: ${model.params}</div>
     <div>精度: ${model.accLabel} ${model.accuracy}</div>
     <div>FLOPS: ${model.flops} G</div>
+    <div style="margin-top:6px;color:#c8943e;font-size:11px">量化: ${currentQuant.toUpperCase()}</div>
   `;
 }
 
