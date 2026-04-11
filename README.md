@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/games-76-blue?style=flat-square" alt="76 games"/>
-  <img src="https://img.shields.io/badge/levels-500+-green?style=flat-square" alt="500+ levels"/>
+  <img src="https://img.shields.io/badge/games-81-blue?style=flat-square" alt="81 games"/>
+  <img src="https://img.shields.io/badge/levels-560+-green?style=flat-square" alt="560+ levels"/>
   <img src="https://img.shields.io/badge/dependencies-0-orange?style=flat-square" alt="zero dependencies"/>
   <img src="https://img.shields.io/github/license/edge-claw/learn-by-play?style=flat-square" alt="MIT license"/>
 </p>
@@ -21,7 +21,7 @@
 
 | 领域 | 游戏 |
 |------|------|
-| 计算机与AI | 芯片内部可视化 · 边缘AI部署 · 边缘AI挑战 · 神经网络构建 · 密码学与安全 · 编译原理 · 计算机组成原理 · 操作系统原理 · 计算机网络 · 数据结构与算法 · Coding Agent |
+| 计算机与AI | 芯片内部可视化 · 边缘AI部署 · 边缘AI挑战 · 神经网络构建 · 密码学与安全 · 编译原理 · 计算机组成原理 · 操作系统原理 · 计算机网络 · 数据结构与算法 · Coding Agent · **分布式系统** · **计算机图形学** · **并行计算** · **虚拟化技术** · **数据库原理** |
 | 数学 | 微积分可视化 · 线性代数 · 概率与统计 · 图论与算法 · 分形与混沌 · **几何变换** · **数论** · **博弈论** · **集合与逻辑** |
 | 化学 | 原子结构与元素周期表 · 化学反应与动力学 · **有机化学** · **化学键与分子形状** · **酸碱与滴定** · **电化学** · **材料科学** |
 | 区块链 | 比特币原理 · 以太坊原理 |
@@ -33,7 +33,7 @@
 | 电子信息 | 模拟电路 · 数字电路 · 信号与系统 · 微波与天线 · 雷达原理 · 超声原理 |
 | **经济学** | **市场经济** · **拍卖与机制设计** · **国际贸易** |
 
-共 **76 个游戏**，**500+ 个关卡**，覆盖 **11 大领域**。
+共 **81 个游戏**，**560+ 个关卡**，覆盖 **11 大领域**。
 
 ## 特点
 
