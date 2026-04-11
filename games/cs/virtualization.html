@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>虚拟化技术 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --roadmap-text:#a0a0c0;--roadmap-num-bg:#1a1a4a;--roadmap-num-text:#60a5fa;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --roadmap-text:#475569;--roadmap-num-bg:#e0e7ff;--roadmap-num-text:#4f46e5;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(100vh - 36px)}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100vh - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;display:none;padding-bottom:24px}
+.panel h2{color:var(--title-color);font-size:17px;margin-bottom:2px}
+.panel h3{color:var(--title-color);font-size:15px;margin:8px 0 6px}
+.panel p,.panel li{font-size:12px;line-height:1.6;color:var(--text-sub)}
+.panel ul{padding-left:16px;margin-bottom:8px}
+.bar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:var(--bg);border-top:1px solid var(--panel-border);display:flex;align-items:center;padding:0 16px;font-size:13px;color:#666;z-index:20;display:none}
+</style>
+<style>
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6}
+.concept-box b{color:#a78bfa}
+.act-btn{background:linear-gradient(135deg,#8b5cf6,#a78bfa);color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:600;margin:4px 2px;transition:transform .15s}
+.act-btn:hover{transform:scale(1.04)}
+.act-btn.sm{padding:5px 10px;font-size:11px}
+.act-btn.outline{background:none;border:1px solid #8b5cf6;color:#a78bfa}
+.hint-box{background:var(--hint-bg);border-left:3px solid #8b5cf6;border-radius:0 8px 8px 0;padding:8px 10px;margin:8px 0;font-size:11px;color:var(--hint-text);line-height:1.5}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin:8px 0;font-size:14px;color:var(--learn-text);line-height:1.8;display:none}
+.learn-box .sv{color:var(--sv);font-weight:700}
+.obj-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px}
+.obj-row .dot{width:14px;height:14px;border-radius:50%;border:2px solid #444;display:flex;align-items:center;justify-content:center;font-size:9px}
+.obj-row .dot.done{border-color:#2aaa5a;background:#2aaa5a;color:#fff}
+.obj-row .dot.done::after{content:'✓'}
+.obj-row span{color:var(--text-sub)}
+select,.num-input{background:var(--concept-bg);border:1px solid var(--concept-border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:12px;margin:2px}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:520px}
+.start-box h1{font-size:36px;color:#a78bfa;margin-bottom:8px;letter-spacing:2px}
+.start-box .subtitle{font-size:15px;color:#888;margin-bottom:28px}
+.start-box .features{display:flex;flex-wrap:wrap;gap:16px;margin:24px 0;justify-content:center}
+.start-box .feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px;background:var(--feat-bg);border:1px solid var(--feat-border);border-radius:8px;padding:8px 4px}
+.start-box .feat .fi{font-size:26px;margin-bottom:4px}
+.start-btn{background:linear-gradient(135deg,#8b5cf6,#a78bfa);color:#fff;border:none;padding:14px 48px;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.desc-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.desc-box b{color:#a78bfa}
+.ctrl-row{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin:4px 0}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:13px;margin:2px}
+.tag.r{background:#ff444430;color:#ff6666}.tag.g{background:#2aaa5a30;color:#6dca88}.tag.b{background:#4d96ff30;color:#8ab4ff}.tag.y{background:#f0a03030;color:#f0c060}.tag.p{background:#8b5cf630;color:#a78bfa}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
+.quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg)}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+input[type=range]{width:100%;margin:4px 0}
+.slider-label{font-size:11px;color:var(--text-sub)}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+<h1>🖥️ 虚拟化技术 探险</h1>
+<p class="subtitle">7 个关卡，从虚拟机到云编排</p>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="fi">💻</div>虚拟机</div>
+<div class="feat"><div class="fi">⚙️</div>Hypervisor</div>
+<div class="feat"><div class="fi">🔧</div>CPU虚拟化</div>
+<div class="feat"><div class="fi">🧠</div>内存虚拟化</div>
+<div class="feat"><div class="fi">🔌</div>I/O虚拟化</div>
+<div class="feat"><div class="fi">📦</div>容器技术</div>
+<div class="feat"><div class="fi">☁️</div>云编排</div>
+</div>
+</div>
+</div>
+<canvas id="cv"></canvas>
+<div class="panel" id="panel"></div>
+<div class="bar" id="bar"><span id="barText"></span></div>
+<script>
+// === Theme ===
+let isDark=true;
+const TH={
+  dark:{bg1:'#0a0a2e',bg2:'#0d0d1a',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)'},
+  light:{bg1:'#e8edf5',bg2:'#f0f2f5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)'}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel()}
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),barText=document.getElementById('barText');
+let W,H,curLevel=0,animId,mouse={x:0,y:0},dragging=null,dragOffX=0,dragOffY=0;
+function resize(){cv.width=W=cv.offsetWidth;cv.height=H=cv.offsetHeight}
+window.addEventListener('resize',resize);
+
+const TOTAL=7;
+const levelObjs=Array.from({length:TOTAL},()=>[false,false,false]);
+const levelNames=['什么是虚拟化','Hypervisor','CPU 虚拟化','内存虚拟化','I/O 虚拟化','容器技术','云计算编排'];
+const levelIcons=['💻','⚙️','🔧','🧠','🔌','📦','☁️'];
+const objTexts=[
+  ['创建一个虚拟机','观察资源隔离效果','理解物理机与虚拟机的区别'],
+  ['体验 Type 1 裸金属模式','体验 Type 2 宿主型模式','比较两种 Hypervisor 的性能'],
+  ['触发特权指令陷入','启用 VT-x 硬件辅助','观察陷入-模拟开销降低'],
+  ['完成虚拟地址到物理地址翻译','观察影子页表更新','启用 EPT 二级翻译'],
+  ['体验全虚拟化 I/O','切换到半虚拟化模式','启用 SR-IOV 直通'],
+  ['创建 namespace 隔离','设置 cgroup 资源限制','构建分层镜像'],
+  ['调度 VM 到物理机','执行热迁移','编排 Kubernetes Pod']
+];
+const quizData=[
+  {q:'虚拟化的核心目标是什么？',opts:['让电脑变快','在一台物理机上运行多个隔离环境','替代操作系统','加密数据'],ans:1},
+  {q:'Type 1 Hypervisor 的特点是？',opts:['运行在宿主 OS 之上','直接运行在硬件上，无需宿主 OS','只能运行 Linux','不支持多 VM'],ans:1},
+  {q:'VT-x 硬件辅助虚拟化的主要好处是？',opts:['增加内存容量','减少特权指令陷入的软件模拟开销','提高网络速度','简化磁盘管理'],ans:1},
+  {q:'EPT（扩展页表）解决了什么问题？',opts:['网络延迟','减少影子页表维护开销，硬件完成二级地址翻译','文件系统碎片','CPU 过热'],ans:1},
+  {q:'SR-IOV 的优势是什么？',opts:['完全软件模拟','VM 直接访问硬件 VF，接近原生性能','不需要网卡','只支持存储设备'],ans:1},
+  {q:'Docker 容器与虚拟机的关键区别是？',opts:['容器有独立内核','容器共享宿主内核，通过 namespace/cgroup 隔离','容器更安全','容器不能联网'],ans:1},
+  {q:'Kubernetes 中 Pod 的作用是？',opts:['物理服务器','最小调度单元，包含一组紧密关联的容器','数据库','网络交换机'],ans:1}
+];
+
+function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel()}}
+function startGame(){document.getElementById('startScreen').classList.add('hidden');panel.style.display='block';bar.style.display='flex';resize();goLevel(0);requestAnimationFrame(loop)}
+function goLevel(i){if(i>=TOTAL){showResult();return}curLevel=i;barText.textContent=levelIcons[i]+' '+levelNames[i];initLevel(i);renderPanel()}
+
+// === Stage Nav ===
+function stageNavHTML(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<TOTAL;i++){const c=i<curLevel?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`}
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/${TOTAL} 关 · ${levelNames[curLevel]}</div></div>`;
+  return h;
+}
+function objHTML(li){return levelObjs[li].map((v,i)=>`<div class="obj-row"><div class="dot${v?' done':''}"></div><span>${objTexts[li][i]}</span></div>`).join('')}
+
+// === Quiz ===
+const quizPassed=new Set();let quizLocked=false,totalScore=0;
+const levelScores=new Array(TOTAL).fill(0);
+function renderQuiz(li){
+  const qd=quizData[li];if(!qd)return '';
+  let h='<div class="quiz-box"><div class="quiz-q">📝 '+qd.q+'</div>';
+  qd.opts.forEach((o,i)=>{const c=quizPassed.has(li)?(i===qd.ans?'correct':''):'';h+=`<div class="quiz-opt ${c}" onclick="ansQuiz(${li},${i})">${o}</div>`});
+  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过</div>';
+  h+='</div>';return h;
+}
+function ansQuiz(li,oi){
+  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  const qd=quizData[li];const opts=panel.querySelectorAll('.quiz-opt');
+  opts.forEach((el,i)=>el.classList.add(i===qd.ans?'correct':'wrong'));
+  if(oi===qd.ans){quizPassed.add(li);levelScores[li]+=10;totalScore+=10;setTimeout(()=>{quizLocked=false;goLevel(curLevel+1)},800)}
+  else{setTimeout(()=>{quizLocked=false;renderPanel()},1000)}
+}
+
+// === Result ===
+function showResult(){
+  panel.style.display='none';bar.style.display='none';
+  const ov=document.getElementById('startScreen');ov.classList.remove('hidden');
+  let h='<div class="start-box"><h1>🎉 恭喜通关！</h1><p class="subtitle">你已掌握虚拟化技术的核心概念</p>';
+  h+='<div class="summary-box"><div class="summary-title">学习总结</div>';
+  h+='<div class="summary-stats"><div class="summary-stat"><div class="num">'+totalScore+'</div><div class="label">总分</div></div>';
+  h+='<div class="summary-stat"><div class="num">'+quizPassed.size+'/'+TOTAL+'</div><div class="label">通过</div></div></div>';
+  h+='<div class="summary-keys"><div>🖥️ 虚拟化 = 一台物理机运行多个隔离环境</div><div>⚙️ Hypervisor 是虚拟化的核心管理层</div><div>📦 容器共享内核，比 VM 更轻量</div><div>☁️ Kubernetes 实现大规模容器编排</div></div></div>';
+  h+='<button class="start-btn" onclick="location.reload()" style="margin-top:20px">再玩一次</button></div>';
+  ov.innerHTML=h;
+}
+
+// === Level State ===
+let LS={};
+// ===== Level 0: What is Virtualization =====
+function initL0(){LS={vms:[],nextId:1,physCPU:100,physMem:100,showIsolation:false}}
+function createVM(){
+  if(LS.vms.length>=4)return;
+  const vm={id:LS.nextId++,cpu:20+Math.random()*20|0,mem:15+Math.random()*20|0,x:0,y:0,color:['#4d96ff','#f0c060','#2aaa5a','#ff6666'][LS.vms.length]};
+  LS.vms.push(vm);completeObj(0,0);renderPanel();
+}
+function toggleIsolation(){LS.showIsolation=!LS.showIsolation;if(LS.showIsolation&&LS.vms.length>=2)completeObj(0,1);if(LS.vms.length>=2)completeObj(0,2);renderPanel()}
+function drawL0(){
+  const cx=W/2,cy=H/2;
+  // Physical machine
+  ctx.strokeStyle='#4d96ff';ctx.lineWidth=3;ctx.strokeRect(cx-250,cy-180,500,360);
+  ctx.fillStyle=t().textSec;ctx.font='14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('物理服务器',cx,cy-190);
+  ctx.fillStyle=t().textMut;ctx.font='12px sans-serif';
+  ctx.fillText('CPU: '+LS.physCPU+'% | 内存: '+LS.physMem+'%',cx,cy-170);
+  // VMs
+  const n=LS.vms.length;if(n===0){ctx.fillStyle=t().textMut;ctx.font='16px sans-serif';ctx.fillText('点击「创建虚拟机」开始',cx,cy);return}
+  const cols=Math.min(n,2),rows=Math.ceil(n/2);
+  const vw=200,vh=140,gap=20;
+  LS.vms.forEach((vm,i)=>{
+    const col=i%2,row=Math.floor(i/2);
+    const vx=cx-((cols*vw+(cols-1)*gap)/2)+col*(vw+gap);
+    const vy=cy-((rows*vh+(rows-1)*gap)/2)+row*(vh+gap);
+    vm.x=vx;vm.y=vy;
+    ctx.fillStyle=vm.color+'20';ctx.fillRect(vx,vy,vw,vh);
+    ctx.strokeStyle=vm.color;ctx.lineWidth=2;ctx.strokeRect(vx,vy,vw,vh);
+    ctx.fillStyle=vm.color;ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+    ctx.fillText('VM '+vm.id,vx+vw/2,vy+20);
+    ctx.fillStyle=t().text;ctx.font='12px sans-serif';
+    ctx.fillText('CPU: '+vm.cpu+'%',vx+vw/2,vy+45);
+    ctx.fillText('内存: '+vm.mem+'%',vx+vw/2,vy+65);
+    // Isolation walls
+    if(LS.showIsolation){
+      ctx.strokeStyle='#f59e0b';ctx.lineWidth=3;ctx.setLineDash([6,4]);ctx.strokeRect(vx-3,vy-3,vw+6,vh+6);ctx.setLineDash([]);
+      ctx.fillStyle='#f59e0b';ctx.font='10px sans-serif';ctx.fillText('🔒 隔离边界',vx+vw/2,vy+vh+15);
+    }
+    // Usage bars
+    const bw=vw-40,bh=8,bx=vx+20;
+    ctx.fillStyle='#333';ctx.fillRect(bx,vy+80,bw,bh);
+    ctx.fillStyle=vm.color;ctx.fillRect(bx,vy+80,bw*vm.cpu/100,bh);
+    ctx.fillStyle='#333';ctx.fillRect(bx,vy+95,bw,bh);
+    ctx.fillStyle=vm.color+'aa';ctx.fillRect(bx,vy+95,bw*vm.mem/100,bh);
+  });
+}
+
+// ===== Level 1: Hypervisor =====
+function initL1(){LS={mode:'type1',perfType1:95,perfType2:78,tested:new Set()}}
+function setHVMode(m){LS.mode=m;if(m==='type1'){LS.tested.add('type1');completeObj(1,0)}else{LS.tested.add('type2');completeObj(1,1)}if(LS.tested.size>=2)completeObj(1,2);renderPanel()}
+function drawL1(){
+  const cx=W/2,cy=H/2;
+  if(LS.mode==='type1'){
+    // Hardware
+    ctx.fillStyle='#4d96ff20';ctx.fillRect(cx-220,cy+80,440,60);
+    ctx.strokeStyle='#4d96ff';ctx.lineWidth=2;ctx.strokeRect(cx-220,cy+80,440,60);
+    ctx.fillStyle='#4d96ff';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('硬件 (Hardware)',cx,cy+115);
+    // Hypervisor directly on hardware
+    ctx.fillStyle='#8b5cf620';ctx.fillRect(cx-220,cy+10,440,60);
+    ctx.strokeStyle='#8b5cf6';ctx.lineWidth=2;ctx.strokeRect(cx-220,cy+10,440,60);
+    ctx.fillStyle='#8b5cf6';ctx.font='bold 14px sans-serif';ctx.fillText('Type 1 Hypervisor (裸金属)',cx,cy+45);
+    // VMs on top
+    for(let i=0;i<3;i++){
+      const vx=cx-210+i*150;
+      ctx.fillStyle=['#4d96ff','#2aaa5a','#f0c060'][i]+'20';ctx.fillRect(vx,cy-80,130,80);
+      ctx.strokeStyle=['#4d96ff','#2aaa5a','#f0c060'][i];ctx.lineWidth=2;ctx.strokeRect(vx,cy-80,130,80);
+      ctx.fillStyle=['#4d96ff','#2aaa5a','#f0c060'][i];ctx.font='bold 12px sans-serif';
+      ctx.fillText('VM '+(i+1),vx+65,cy-55);
+      ctx.fillStyle=t().textSec;ctx.font='11px sans-serif';ctx.fillText('Guest OS',vx+65,cy-35);
+      ctx.fillText('Apps',vx+65,cy-20);
+    }
+    // Performance
+    ctx.fillStyle='#22c55e';ctx.font='bold 16px sans-serif';ctx.fillText('性能: '+LS.perfType1+'%',cx,cy-110);
+    ctx.fillStyle=t().textMut;ctx.font='12px sans-serif';ctx.fillText('直接访问硬件，开销极小',cx,cy-130);
+  } else {
+    // Hardware
+    ctx.fillStyle='#4d96ff20';ctx.fillRect(cx-220,cy+110,440,50);
+    ctx.strokeStyle='#4d96ff';ctx.lineWidth=2;ctx.strokeRect(cx-220,cy+110,440,50);
+    ctx.fillStyle='#4d96ff';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('硬件',cx,cy+140);
+    // Host OS
+    ctx.fillStyle='#f59e0b20';ctx.fillRect(cx-220,cy+50,440,50);
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.strokeRect(cx-220,cy+50,440,50);
+    ctx.fillStyle='#f59e0b';ctx.font='bold 13px sans-serif';ctx.fillText('宿主操作系统 (Host OS)',cx,cy+80);
+    // Type 2 Hypervisor
+    ctx.fillStyle='#8b5cf620';ctx.fillRect(cx-220,cy-10,440,50);
+    ctx.strokeStyle='#8b5cf6';ctx.lineWidth=2;ctx.strokeRect(cx-220,cy-10,440,50);
+    ctx.fillStyle='#8b5cf6';ctx.font='bold 13px sans-serif';ctx.fillText('Type 2 Hypervisor (宿主型)',cx,cy+20);
+    // VMs
+    for(let i=0;i<3;i++){
+      const vx=cx-210+i*150;
+      ctx.fillStyle=['#4d96ff','#2aaa5a','#f0c060'][i]+'20';ctx.fillRect(vx,cy-90,130,70);
+      ctx.strokeStyle=['#4d96ff','#2aaa5a','#f0c060'][i];ctx.lineWidth=2;ctx.strokeRect(vx,cy-90,130,70);
+      ctx.fillStyle=['#4d96ff','#2aaa5a','#f0c060'][i];ctx.font='bold 12px sans-serif';
+      ctx.fillText('VM '+(i+1),vx+65,cy-65);
+      ctx.fillStyle=t().textSec;ctx.font='11px sans-serif';ctx.fillText('Guest OS + Apps',vx+65,cy-45);
+    }
+    ctx.fillStyle='#f59e0b';ctx.font='bold 16px sans-serif';ctx.fillText('性能: '+LS.perfType2+'%',cx,cy-115);
+    ctx.fillStyle=t().textMut;ctx.font='12px sans-serif';ctx.fillText('经过宿主 OS，额外开销',cx,cy-135);
+  }
+}
+
+// ===== Level 2: CPU Virtualization =====
+function initL2(){LS={vtxEnabled:false,trapCount:0,instrQueue:['MOV','HLT','IN','CLI','OUT','LGDT','MOV','STI'],curInstr:0,processing:false,overhead:100,trapped:false}}
+function execNextInstr(){
+  if(LS.processing||LS.curInstr>=LS.instrQueue.length)return;
+  LS.processing=true;const instr=LS.instrQueue[LS.curInstr];
+  const privileged=['HLT','IN','OUT','CLI','STI','LGDT'];
+  if(privileged.includes(instr)){
+    LS.trapped=true;LS.trapCount++;
+    if(!LS.vtxEnabled){completeObj(2,0);LS.overhead=100}
+    setTimeout(()=>{LS.trapped=false;LS.curInstr++;LS.processing=false;renderPanel()},LS.vtxEnabled?300:1000);
+  } else {LS.curInstr++;LS.processing=false}
+  renderPanel();
+}
+function enableVTX(){LS.vtxEnabled=true;LS.overhead=15;LS.curInstr=0;LS.trapCount=0;completeObj(2,1);renderPanel()}
+function resetInstr(){LS.curInstr=0;LS.trapCount=0;LS.processing=false;LS.trapped=false;if(LS.vtxEnabled)completeObj(2,2);renderPanel()}
+function drawL2(){
+  const cx=W/2,cy=H/2;
+  ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  ctx.fillText(LS.vtxEnabled?'VT-x 硬件辅助模式':'软件陷入-模拟模式',cx,40);
+  // Instruction pipeline
+  const qw=70,qh=40,startX=cx-(LS.instrQueue.length*qw)/2;
+  LS.instrQueue.forEach((instr,i)=>{
+    const x=startX+i*qw,y=cy-100;
+    const privileged=['HLT','IN','OUT','CLI','STI','LGDT'].includes(instr);
+    const isCur=i===LS.curInstr;
+    ctx.fillStyle=i<LS.curInstr?'#22c55e20':isCur?(LS.trapped?'#ff444440':'#4d96ff40'):'#33333340';
+    ctx.fillRect(x+2,y,qw-4,qh);
+    ctx.strokeStyle=isCur?'#f59e0b':privileged?'#ff4444':'#4d96ff';
+    ctx.lineWidth=isCur?3:1;ctx.strokeRect(x+2,y,qw-4,qh);
+    ctx.fillStyle=privileged?'#ff6666':'#4d96ff';ctx.font=(isCur?'bold ':'')+' 12px monospace';
+    ctx.fillText(instr,x+qw/2,y+25);
+    if(privileged){ctx.fillStyle='#ff444480';ctx.font='9px sans-serif';ctx.fillText('特权',x+qw/2,y-5)}
+  });
+  // Trap visualization
+  if(LS.trapped){
+    const tx=startX+LS.curInstr*qw+qw/2;
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(tx,cy-55);ctx.lineTo(tx,cy+20);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#f59e0b';ctx.font='bold 14px sans-serif';
+    ctx.fillText(LS.vtxEnabled?'VMX non-root → root (硬件快速切换)':'陷入 VMM → 软件模拟 → 返回',cx,cy+10);
+    // VMM box
+    ctx.fillStyle='#8b5cf620';ctx.fillRect(cx-120,cy+30,240,50);
+    ctx.strokeStyle='#8b5cf6';ctx.lineWidth=2;ctx.strokeRect(cx-120,cy+30,240,50);
+    ctx.fillStyle='#8b5cf6';ctx.font='bold 13px sans-serif';ctx.fillText('VMM (Virtual Machine Monitor)',cx,cy+60);
+  }
+  // Overhead meter
+  ctx.fillStyle=t().textSec;ctx.font='13px sans-serif';ctx.fillText('虚拟化开销',cx,cy+120);
+  const bw=300,bx=cx-bw/2,by=cy+130;
+  ctx.fillStyle='#333';ctx.fillRect(bx,by,bw,16);
+  ctx.fillStyle=LS.overhead>50?'#ff4444':'#22c55e';ctx.fillRect(bx,by,bw*LS.overhead/100,16);
+  ctx.fillStyle='#fff';ctx.font='bold 11px sans-serif';ctx.fillText(LS.overhead+'%',cx,by+13);
+}
+
+// ===== Level 3: Memory Virtualization =====
+function initL3(){LS={mode:'shadow',gva:'0x4000',gpa:'',hpa:'',shadowHits:0,eptEnabled:false,step:0,pages:[
+  {gva:'0x1000',gpa:'0x5000',hpa:'0xA000'},{gva:'0x2000',gpa:'0x6000',hpa:'0xB000'},
+  {gva:'0x3000',gpa:'0x7000',hpa:'0xC000'},{gva:'0x4000',gpa:'0x8000',hpa:'0xD000'}
+]}}
+function translateAddr(){
+  const p=LS.pages.find(p=>p.gva===LS.gva);
+  if(p){LS.gpa=p.gpa;LS.step=1;setTimeout(()=>{LS.hpa=p.hpa;LS.step=2;completeObj(3,0);renderPanel()},800)}
+  renderPanel();
+}
+function updateShadow(){LS.shadowHits++;completeObj(3,1);renderPanel()}
+function enableEPT(){LS.eptEnabled=true;LS.mode='ept';completeObj(3,2);renderPanel()}
+function drawL3(){
+  const cx=W/2,cy=H/2;
+  ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  ctx.fillText(LS.eptEnabled?'EPT 二级地址翻译':'影子页表模式',cx,35);
+  // GVA -> GPA -> HPA pipeline
+  const boxes=[{label:'Guest 虚拟地址\n(GVA)',val:LS.gva,color:'#4d96ff'},{label:'Guest 物理地址\n(GPA)',val:LS.gpa||'???',color:'#f0c060'},{label:'Host 物理地址\n(HPA)',val:LS.hpa||'???',color:'#22c55e'}];
+  const bw=140,bh=80,gap=80;
+  boxes.forEach((b,i)=>{
+    const x=cx-((3*bw+2*gap)/2)+i*(bw+gap),y=cy-bh/2;
+    ctx.fillStyle=b.color+'20';ctx.fillRect(x,y,bw,bh);
+    ctx.strokeStyle=b.color;ctx.lineWidth=2;ctx.strokeRect(x,y,bw,bh);
+    ctx.fillStyle=b.color;ctx.font='bold 12px sans-serif';
+    const lines=b.label.split('\n');lines.forEach((l,li)=>ctx.fillText(l,x+bw/2,y+18+li*16));
+    ctx.fillStyle=t().text;ctx.font='bold 16px monospace';ctx.fillText(b.val,x+bw/2,y+bh-12);
+    // Arrow
+    if(i<2){
+      const ax=x+bw+5,ay=cy;
+      ctx.strokeStyle=LS.step>i?b.color:'#555';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax+gap-10,ay);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(ax+gap-10,ay-6);ctx.lineTo(ax+gap-2,ay);ctx.lineTo(ax+gap-10,ay+6);ctx.fill();
+      if(LS.eptEnabled&&i===0){ctx.fillStyle='#8b5cf6';ctx.font='10px sans-serif';ctx.fillText('Guest 页表',ax+gap/2,ay-12)}
+      if(LS.eptEnabled&&i===1){ctx.fillStyle='#8b5cf6';ctx.font='10px sans-serif';ctx.fillText('EPT 硬件翻译',ax+gap/2,ay-12)}
+      else if(!LS.eptEnabled&&i===1){ctx.fillStyle='#f59e0b';ctx.font='10px sans-serif';ctx.fillText('影子页表',ax+gap/2,ay-12)}
+    }
+  });
+  // Page table visualization
+  ctx.fillStyle=t().textSec;ctx.font='13px sans-serif';ctx.fillText('页表映射',cx,cy+80);
+  const tw=400,tx=cx-tw/2;
+  LS.pages.forEach((p,i)=>{
+    const py=cy+100+i*22;const active=p.gva===LS.gva;
+    ctx.fillStyle=active?'#4d96ff20':'transparent';ctx.fillRect(tx,py,tw,20);
+    ctx.fillStyle=active?'#4d96ff':t().textMut;ctx.font='11px monospace';ctx.textAlign='left';
+    ctx.fillText(p.gva+' → '+p.gpa+' → '+p.hpa,tx+10,py+14);
+  });
+  ctx.textAlign='center';
+}
+
+// ===== Level 4: I/O Virtualization =====
+function initL4(){LS={mode:'full',latency:100,throughput:30,tested:new Set()}}
+function setIOMode(m){
+  LS.mode=m;
+  if(m==='full'){LS.latency=100;LS.throughput=30;LS.tested.add('full');completeObj(4,0)}
+  else if(m==='para'){LS.latency=50;LS.throughput=65;LS.tested.add('para');completeObj(4,1)}
+  else{LS.latency=5;LS.throughput=95;LS.tested.add('sriov');completeObj(4,2)}
+  renderPanel();
+}
+function drawL4(){
+  const cx=W/2,cy=H/2;
+  ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  const modeNames={full:'全虚拟化 I/O',para:'半虚拟化 (virtio)',sriov:'SR-IOV 直通'};
+  ctx.fillText(modeNames[LS.mode],cx,35);
+  // VM
+  ctx.fillStyle='#4d96ff20';ctx.fillRect(cx-100,60,200,80);
+  ctx.strokeStyle='#4d96ff';ctx.lineWidth=2;ctx.strokeRect(cx-100,60,200,80);
+  ctx.fillStyle='#4d96ff';ctx.font='bold 13px sans-serif';ctx.fillText('虚拟机 (Guest)',cx,90);
+  ctx.fillStyle=t().textSec;ctx.font='11px sans-serif';ctx.fillText('I/O 请求',cx,115);
+  // Path based on mode
+  if(LS.mode==='full'){
+    // VM -> VMM emulation -> Physical device
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(cx,140);ctx.lineTo(cx,170);ctx.stroke();
+    ctx.fillStyle='#f59e0b20';ctx.fillRect(cx-120,170,240,60);
+    ctx.strokeStyle='#f59e0b';ctx.strokeRect(cx-120,170,240,60);
+    ctx.fillStyle='#f59e0b';ctx.font='bold 12px sans-serif';ctx.fillText('VMM 设备模拟层',cx,195);
+    ctx.fillStyle=t().textMut;ctx.font='10px sans-serif';ctx.fillText('完全软件模拟，每次 I/O 都陷入',cx,215);
+    ctx.strokeStyle='#ff4444';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,230);ctx.lineTo(cx,270);ctx.stroke();
+  } else if(LS.mode==='para'){
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(cx,140);ctx.lineTo(cx,170);ctx.stroke();
+    ctx.fillStyle='#22c55e20';ctx.fillRect(cx-120,170,240,60);
+    ctx.strokeStyle='#22c55e';ctx.strokeRect(cx-120,170,240,60);
+    ctx.fillStyle='#22c55e';ctx.font='bold 12px sans-serif';ctx.fillText('virtio 前后端驱动',cx,195);
+    ctx.fillStyle=t().textMut;ctx.font='10px sans-serif';ctx.fillText('Guest 知道自己在虚拟环境，批量提交',cx,215);
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,230);ctx.lineTo(cx,270);ctx.stroke();
+  } else {
+    ctx.strokeStyle='#8b5cf6';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(cx,140);ctx.lineTo(cx,270);ctx.stroke();
+    ctx.fillStyle='#8b5cf6';ctx.font='bold 12px sans-serif';ctx.fillText('直通 (bypass VMM)',cx+80,210);
+    ctx.fillStyle=t().textMut;ctx.font='10px sans-serif';ctx.fillText('VF 直接映射到 VM，零拷贝',cx+80,228);
+  }
+  // Physical NIC
+  ctx.fillStyle='#ff666620';ctx.fillRect(cx-100,270,200,60);
+  ctx.strokeStyle='#ff6666';ctx.lineWidth=2;ctx.strokeRect(cx-100,270,200,60);
+  ctx.fillStyle='#ff6666';ctx.font='bold 13px sans-serif';ctx.fillText('物理网卡 (NIC)',cx,295);
+  if(LS.mode==='sriov'){ctx.fillStyle=t().textMut;ctx.font='10px sans-serif';ctx.fillText('PF + VF0 / VF1 / VF2',cx,315)}
+  // Performance bars
+  const by=cy+80;
+  ctx.fillStyle=t().textSec;ctx.font='13px sans-serif';ctx.fillText('延迟 (越低越好)',cx-120,by);
+  ctx.fillStyle='#333';ctx.fillRect(cx-200,by+8,160,14);
+  ctx.fillStyle=LS.latency>60?'#ff4444':LS.latency>20?'#f59e0b':'#22c55e';
+  ctx.fillRect(cx-200,by+8,160*LS.latency/100,14);
+  ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.fillText(LS.latency+'%',cx-120,by+20);
+  ctx.fillStyle=t().textSec;ctx.font='13px sans-serif';ctx.fillText('吞吐量 (越高越好)',cx+120,by);
+  ctx.fillStyle='#333';ctx.fillRect(cx+40,by+8,160,14);
+  ctx.fillStyle=LS.throughput>70?'#22c55e':LS.throughput>40?'#f59e0b':'#ff4444';
+  ctx.fillRect(cx+40,by+8,160*LS.throughput/100,14);
+  ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.fillText(LS.throughput+'%',cx+120,by+20);
+}
+
+// ===== Level 5: Container Technology =====
+function initL5(){LS={namespaces:[],cgroupCPU:100,cgroupMem:512,layers:[],nsCreated:false,cgroupSet:false,imageBuilt:false}}
+function createNS(){LS.namespaces=['PID','NET','MNT','UTS','IPC','USER'];LS.nsCreated=true;completeObj(5,0);renderPanel()}
+function setCgroup(){LS.cgroupCPU=50;LS.cgroupMem=256;LS.cgroupSet=true;completeObj(5,1);renderPanel()}
+function buildImage(){LS.layers=['base: ubuntu:22.04','apt install python3','COPY app.py /app/','CMD ["python3","app.py"]'];LS.imageBuilt=true;completeObj(5,2);renderPanel()}
+function drawL5(){
+  const cx=W/2,cy=H/2-20;
+  ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('容器技术架构',cx,35);
+  // Host kernel
+  ctx.fillStyle='#4d96ff20';ctx.fillRect(cx-250,cy+120,500,50);
+  ctx.strokeStyle='#4d96ff';ctx.lineWidth=2;ctx.strokeRect(cx-250,cy+120,500,50);
+  ctx.fillStyle='#4d96ff';ctx.font='bold 14px sans-serif';ctx.fillText('宿主 Linux 内核 (共享)',cx,cy+150);
+  // Namespaces
+  if(LS.nsCreated){
+    const nsW=70,nsH=30,startX=cx-((LS.namespaces.length*nsW+(LS.namespaces.length-1)*8)/2);
+    ctx.fillStyle=t().textSec;ctx.font='12px sans-serif';ctx.fillText('Namespace 隔离层',cx,cy+95);
+    LS.namespaces.forEach((ns,i)=>{
+      const x=startX+i*(nsW+8),y=cy+100;
+      ctx.fillStyle='#22c55e20';ctx.fillRect(x,y,nsW,nsH);
+      ctx.strokeStyle='#22c55e';ctx.lineWidth=1;ctx.strokeRect(x,y,nsW,nsH);
+      ctx.fillStyle='#22c55e';ctx.font='bold 10px sans-serif';ctx.fillText(ns,x+nsW/2,y+19);
+    });
+  }
+  // Container with cgroup
+  ctx.fillStyle='#8b5cf620';ctx.fillRect(cx-150,cy-40,300,120);
+  ctx.strokeStyle='#8b5cf6';ctx.lineWidth=2;ctx.strokeRect(cx-150,cy-40,300,120);
+  ctx.fillStyle='#8b5cf6';ctx.font='bold 14px sans-serif';ctx.fillText('容器进程',cx,cy-15);
+  if(LS.cgroupSet){
+    ctx.fillStyle='#f59e0b';ctx.font='12px sans-serif';
+    ctx.fillText('cgroup 限制: CPU '+LS.cgroupCPU+'% | 内存 '+LS.cgroupMem+'MB',cx,cy+10);
+    // Usage bars
+    ctx.fillStyle='#333';ctx.fillRect(cx-100,cy+20,200,10);
+    ctx.fillStyle='#f59e0b';ctx.fillRect(cx-100,cy+20,200*0.45,10);
+    ctx.fillStyle=t().textMut;ctx.font='10px sans-serif';ctx.fillText('CPU 使用率',cx,cy+45);
+    ctx.fillStyle='#333';ctx.fillRect(cx-100,cy+50,200,10);
+    ctx.fillStyle='#f59e0b';ctx.fillRect(cx-100,cy+50,200*0.6,10);
+    ctx.fillStyle=t().textMut;ctx.fillText('内存使用率',cx,cy+75);
+  }
+  // Docker layers
+  if(LS.imageBuilt){
+    ctx.fillStyle=t().textSec;ctx.font='13px sans-serif';ctx.fillText('Docker 分层镜像',cx+250,cy-50);
+    LS.layers.forEach((l,i)=>{
+      const ly=cy-30+i*28,lx=cx+170;
+      ctx.fillStyle=['#4d96ff','#22c55e','#f0c060','#ff6666'][i]+'20';ctx.fillRect(lx,ly,180,24);
+      ctx.strokeStyle=['#4d96ff','#22c55e','#f0c060','#ff6666'][i];ctx.lineWidth=1;ctx.strokeRect(lx,ly,180,24);
+      ctx.fillStyle=t().text;ctx.font='10px monospace';ctx.textAlign='left';ctx.fillText('Layer '+(i+1)+': '+l.substring(0,22),lx+5,ly+16);
+      ctx.textAlign='center';
+    });
+  }
+}
+
+// ===== Level 6: Cloud Orchestration =====
+function initL6(){LS={hosts:[
+  {id:1,cpu:8,mem:32,vms:[],x:0,y:0},
+  {id:2,cpu:16,mem:64,vms:[],x:0,y:0},
+  {id:3,cpu:8,mem:32,vms:[],x:0,y:0}
+],pods:[],scheduled:false,migrated:false,k8sDeployed:false,nextVMId:1}}
+function scheduleVM(){
+  // Find host with most free resources
+  const h=LS.hosts.reduce((a,b)=>(b.cpu-b.vms.reduce((s,v)=>s+v.cpu,0))>(a.cpu-a.vms.reduce((s,v)=>s+v.cpu,0))?b:a);
+  const vm={id:LS.nextVMId++,cpu:2+Math.random()*4|0,mem:4+Math.random()*8|0,color:['#4d96ff','#22c55e','#f0c060','#ff6666','#8b5cf6'][h.vms.length%5]};
+  h.vms.push(vm);LS.scheduled=true;completeObj(6,0);renderPanel();
+}
+function liveMigrate(){
+  // Move a VM from busiest to least busy host
+  const sorted=[...LS.hosts].sort((a,b)=>b.vms.length-a.vms.length);
+  if(sorted[0].vms.length>0){
+    const vm=sorted[0].vms.pop();sorted[sorted.length-1].vms.push(vm);
+    LS.migrated=true;completeObj(6,1);renderPanel();
+  }
+}
+function deployPods(){
+  LS.pods=[{name:'web-frontend',replicas:3,status:'Running'},{name:'api-server',replicas:2,status:'Running'},{name:'redis-cache',replicas:1,status:'Running'}];
+  LS.k8sDeployed=true;completeObj(6,2);renderPanel();
+}
+function drawL6(){
+  const cx=W/2,cy=H/2;
+  ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('云计算编排',cx,35);
+  // Physical hosts
+  const hw=180,hh=200,gap=30,startX=cx-((3*hw+2*gap)/2);
+  LS.hosts.forEach((h,i)=>{
+    const x=startX+i*(hw+gap),y=60;h.x=x;h.y=y;
+    const usedCPU=h.vms.reduce((s,v)=>s+v.cpu,0);const usedMem=h.vms.reduce((s,v)=>s+v.mem,0);
+    ctx.fillStyle='#4d96ff10';ctx.fillRect(x,y,hw,hh);
+    ctx.strokeStyle='#4d96ff';ctx.lineWidth=2;ctx.strokeRect(x,y,hw,hh);
+    ctx.fillStyle='#4d96ff';ctx.font='bold 12px sans-serif';ctx.fillText('Host '+h.id+' ('+h.cpu+'C/'+h.mem+'G)',x+hw/2,y+18);
+    // CPU/Mem bars
+    ctx.fillStyle='#333';ctx.fillRect(x+10,y+25,hw-20,8);
+    ctx.fillStyle=usedCPU/h.cpu>0.8?'#ff4444':'#22c55e';ctx.fillRect(x+10,y+25,(hw-20)*Math.min(usedCPU/h.cpu,1),8);
+    ctx.fillStyle=t().textMut;ctx.font='9px sans-serif';ctx.fillText('CPU '+usedCPU+'/'+h.cpu,x+hw/2,y+45);
+    // VMs inside host
+    h.vms.forEach((vm,vi)=>{
+      const vy=y+52+vi*32,vx=x+10;
+      ctx.fillStyle=vm.color+'20';ctx.fillRect(vx,vy,hw-20,28);
+      ctx.strokeStyle=vm.color;ctx.lineWidth=1;ctx.strokeRect(vx,vy,hw-20,28);
+      ctx.fillStyle=vm.color;ctx.font='11px sans-serif';ctx.fillText('VM'+vm.id+' ('+vm.cpu+'C/'+vm.mem+'G)',x+hw/2,vy+18);
+    });
+  });
+  // K8s pods
+  if(LS.k8sDeployed){
+    ctx.fillStyle=t().textSec;ctx.font='bold 14px sans-serif';ctx.fillText('Kubernetes Pod 编排',cx,cy+100);
+    LS.pods.forEach((p,i)=>{
+      const px=cx-200+i*160,py=cy+115;
+      ctx.fillStyle='#8b5cf620';ctx.fillRect(px,py,140,50);
+      ctx.strokeStyle='#8b5cf6';ctx.lineWidth=1;ctx.strokeRect(px,py,140,50);
+      ctx.fillStyle='#8b5cf6';ctx.font='bold 11px sans-serif';ctx.fillText(p.name,px+70,py+18);
+      ctx.fillStyle='#22c55e';ctx.font='10px sans-serif';ctx.fillText('Replicas: '+p.replicas+' | '+p.status,px+70,py+38);
+    });
+  }
+  // Migration arrow
+  if(LS.migrated){
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.setLineDash([6,4]);
+    ctx.beginPath();ctx.moveTo(startX+hw+gap/2,160);ctx.lineTo(startX+2*(hw+gap)+hw/2,160);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';ctx.fillText('热迁移 →',cx,150);
+  }
+}
+
+// ===== Game Infrastructure =====
+function initLevel(i){
+  switch(i){case 0:initL0();break;case 1:initL1();break;case 2:initL2();break;case 3:initL3();break;case 4:initL4();break;case 5:initL5();break;case 6:initL6();break}
+}
+function isLevelDone(i){return levelObjs[i].every(v=>v)}
+function drawLevel(i){
+  switch(i){case 0:drawL0();break;case 1:drawL1();break;case 2:drawL2();break;case 3:drawL3();break;case 4:drawL4();break;case 5:drawL5();break;case 6:drawL6();break}
+}
+function renderLevelPanel(i){
+  let h='';
+  switch(i){
+  case 0:
+    h+='<div class="desc-box">画布上是一台<b>物理服务器</b>，它有 CPU 和内存资源。你的任务是在上面创建虚拟机，观察资源如何被分配和隔离。</div>';
+    h+=objHTML(0);
+    h+='<div class="ctrl-row"><button class="act-btn sm" onclick="createVM()">创建虚拟机</button>';
+    h+='<button class="act-btn sm outline" onclick="toggleIsolation()">'+(LS.showIsolation?'隐藏':'显示')+' 隔离边界</button></div>';
+    if(LS.vms.length>0){h+='<div class="hint-box">已创建 '+LS.vms.length+' 个 VM。每个 VM 有独立的 CPU 和内存配额，互不干扰。</div>'}
+    h+='<div class="learn-box"><b>虚拟化</b>是在一台物理机上创建多个隔离的虚拟环境。每个 VM 认为自己独占硬件，实际由 <span class="sv">Hypervisor</span> 统一管理。</div>';
+    break;
+  case 1:
+    h+='<div class="desc-box">画布展示了两种 <b>Hypervisor</b> 架构。Type 1 直接运行在硬件上，Type 2 运行在宿主操作系统之上。切换模式观察性能差异。</div>';
+    h+=objHTML(1);
+    h+='<div class="ctrl-row"><button class="act-btn sm'+(LS.mode==='type1'?' outline':'')+'" onclick="setHVMode(\'type1\')">Type 1 裸金属</button>';
+    h+='<button class="act-btn sm'+(LS.mode==='type2'?' outline':'')+'" onclick="setHVMode(\'type2\')">Type 2 宿主型</button></div>';
+    h+='<div class="hint-box">Type 1 (如 ESXi, Xen) 性能更高；Type 2 (如 VirtualBox, VMware Workstation) 更易安装。</div>';
+    h+='<div class="learn-box"><span class="sv">VMM</span> (Virtual Machine Monitor) 是 Hypervisor 的核心，负责截获和模拟 Guest 的特权操作。Type 1 直接管理硬件，开销更小。</div>';
+    break;
+  case 2:
+    h+='<div class="desc-box">指令流水线中，<span style="color:#ff6666">红色</span>是特权指令。在软件模式下，每条特权指令都要陷入 VMM 模拟；启用 <b>VT-x</b> 后硬件直接处理。</div>';
+    h+=objHTML(2);
+    h+='<div class="ctrl-row"><button class="act-btn sm" onclick="execNextInstr()">执行下一条</button>';
+    h+='<button class="act-btn sm" onclick="enableVTX()"'+(LS.vtxEnabled?' disabled':'')+'>启用 VT-x</button>';
+    h+='<button class="act-btn sm outline" onclick="resetInstr()">重置</button></div>';
+    h+='<div class="concept-box">已执行: '+LS.curInstr+'/'+LS.instrQueue.length+' | 陷入次数: <b>'+LS.trapCount+'</b> | 开销: <span style="color:'+(LS.overhead>50?'#ff4444':'#22c55e')+'">'+LS.overhead+'%</span></div>';
+    h+='<div class="learn-box">Intel <span class="sv">VT-x</span> 引入 VMX root/non-root 两种 CPU 模式。Guest 在 non-root 执行，遇到敏感指令自动切换到 root（VMM），无需逐条软件模拟。</div>';
+    break;
+  case 3:
+    h+='<div class="desc-box">虚拟机有自己的虚拟地址空间。选择一个 <span style="color:#4d96ff">GVA</span>，观察它如何经过两级翻译到达真实物理内存。</div>';
+    h+=objHTML(3);
+    h+='<div class="ctrl-row"><select onchange="LS.gva=this.value;LS.gpa=\'\';LS.hpa=\'\';LS.step=0;renderPanel()">';
+    LS.pages.forEach(p=>{h+='<option value="'+p.gva+'"'+(p.gva===LS.gva?' selected':'')+'>'+p.gva+'</option>'});
+    h+='</select><button class="act-btn sm" onclick="translateAddr()">翻译地址</button></div>';
+    h+='<div class="ctrl-row"><button class="act-btn sm outline" onclick="updateShadow()">更新影子页表</button>';
+    h+='<button class="act-btn sm" onclick="enableEPT()"'+(LS.eptEnabled?' disabled':'')+'>启用 EPT</button></div>';
+    h+='<div class="concept-box">GVA→GPA: Guest 页表 | GPA→HPA: '+(LS.eptEnabled?'<span style="color:#22c55e">EPT 硬件翻译</span>':'<span style="color:#f59e0b">影子页表 (软件维护)</span>')+'</div>';
+    h+='<div class="learn-box"><span class="sv">EPT</span> (Extended Page Table) / <span class="sv">NPT</span> (Nested Page Table) 让硬件自动完成 GPA→HPA 翻译，消除了影子页表的高维护开销。</div>';
+    break;
+  case 4:
+    h+='<div class="desc-box">虚拟机需要访问网卡等 I/O 设备。三种方式各有优劣：全虚拟化最兼容，半虚拟化更高效，<b>SR-IOV</b> 接近原生性能。</div>';
+    h+=objHTML(4);
+    h+='<div class="ctrl-row"><button class="act-btn sm'+(LS.mode==='full'?' outline':'')+'" onclick="setIOMode(\'full\')">全虚拟化</button>';
+    h+='<button class="act-btn sm'+(LS.mode==='para'?' outline':'')+'" onclick="setIOMode(\'para\')">半虚拟化</button>';
+    h+='<button class="act-btn sm'+(LS.mode==='sriov'?' outline':'')+'" onclick="setIOMode(\'sriov\')">SR-IOV</button></div>';
+    h+='<div class="concept-box">延迟: <span style="color:'+(LS.latency>60?'#ff4444':'#22c55e')+'">'+LS.latency+'%</span> | 吞吐: <span style="color:'+(LS.throughput>70?'#22c55e':'#f59e0b')+'">'+LS.throughput+'%</span></div>';
+    h+='<div class="learn-box"><span class="sv">SR-IOV</span> 让网卡硬件创建多个 VF (Virtual Function)，每个 VF 直接分配给一个 VM，绕过 VMM，实现接近原生的 I/O 性能。</div>';
+    break;
+  case 5:
+    h+='<div class="desc-box">容器与虚拟机不同，它<b>共享宿主内核</b>。通过 namespace 实现隔离，cgroup 限制资源，分层镜像实现快速部署。</div>';
+    h+=objHTML(5);
+    h+='<div class="ctrl-row"><button class="act-btn sm" onclick="createNS()"'+(LS.nsCreated?' disabled':'')+'>创建 Namespace</button>';
+    h+='<button class="act-btn sm" onclick="setCgroup()"'+(LS.cgroupSet?' disabled':'')+'>设置 Cgroup</button>';
+    h+='<button class="act-btn sm" onclick="buildImage()"'+(LS.imageBuilt?' disabled':'')+'>构建镜像</button></div>';
+    if(LS.nsCreated){h+='<div class="concept-box">Namespace: '+LS.namespaces.join(', ')+'</div>'}
+    if(LS.cgroupSet){h+='<div class="concept-box">Cgroup: CPU '+LS.cgroupCPU+'% | 内存 '+LS.cgroupMem+'MB</div>'}
+    h+='<div class="learn-box"><span class="sv">Namespace</span> 隔离进程视图（PID/网络/文件系统等），<span class="sv">Cgroup</span> 限制资源用量。Docker 镜像采用 UnionFS 分层存储，共享基础层节省空间。</div>';
+    break;
+  case 6:
+    h+='<div class="desc-box">三台物理主机组成集群。你需要调度 VM、执行热迁移平衡负载，最后用 <b>Kubernetes</b> 编排容器化应用。</div>';
+    h+=objHTML(6);
+    h+='<div class="ctrl-row"><button class="act-btn sm" onclick="scheduleVM()">调度 VM</button>';
+    h+='<button class="act-btn sm" onclick="liveMigrate()">热迁移</button>';
+    h+='<button class="act-btn sm" onclick="deployPods()"'+(LS.k8sDeployed?' disabled':'')+'>部署 K8s Pod</button></div>';
+    LS.hosts.forEach(h2=>{h+='<div class="concept-box">Host '+h2.id+': '+h2.vms.length+' VMs | CPU '+h2.vms.reduce((s,v)=>s+v.cpu,0)+'/'+h2.cpu+'</div>'});
+    h+='<div class="learn-box"><span class="sv">热迁移</span>在不停机的情况下将 VM 从一台主机移到另一台。<span class="sv">Kubernetes</span> 通过 Pod/Service/Deployment 抽象，实现容器的自动调度、扩缩容和自愈。</div>';
+    break;
+  }
+  return h;
+}
+
+function renderPanel(){
+  let h=stageNavHTML();
+  h+='<h2>'+levelNames[curLevel]+'</h2>';
+  h+=renderLevelPanel(curLevel);
+  if(isLevelDone(curLevel)){
+    h+=renderQuiz(curLevel);
+    if(quizPassed.has(curLevel)&&curLevel<TOTAL-1){h+='<button class="act-btn" onclick="goLevel('+(curLevel+1)+')">下一关 →</button>'}
+  }
+  // Show learn boxes if all done
+  panel.innerHTML=h;
+  if(isLevelDone(curLevel))panel.querySelectorAll('.learn-box').forEach(e=>e.style.display='block');
+}
+
+// ===== Main Loop =====
+let lastT=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  const dt=Math.min((ts-lastT)/1000,0.05);lastT=ts;
+  ctx.clearRect(0,0,W,H);
+  // Background
+  const bg=ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,t().bg1);bg.addColorStop(1,t().bg2);
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  // Grid
+  ctx.strokeStyle=t().grid;ctx.lineWidth=1;
+  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  drawLevel(curLevel);
+}
+</script>
+</body>
+</html>

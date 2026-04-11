@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>分布式系统 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --result-learn-bg:#0e0e20;--result-learn-text:#93c5fd;
+  --retry-bg:#2a2a5a;--retry-text:#ccc;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --roadmap-text:#a0a0c0;--roadmap-num-bg:#1a1a4a;--roadmap-num-text:#60a5fa;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --result-learn-bg:#f0f4ff;--result-learn-text:#1e40af;
+  --retry-bg:#e2e8f0;--retry-text:#475569;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --roadmap-text:#475569;--roadmap-num-bg:#e0e7ff;--roadmap-num-text:#4f46e5;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh}
+#wrap{display:flex;height:calc(100vh - 36px);position:relative}
+.panel{width:320px;min-width:320px;background:var(--panel-bg);border-right:1px solid var(--panel-border);padding:16px;overflow-y:auto;display:none;scrollbar-width:thin;padding-bottom:24px}
+.panel::-webkit-scrollbar{width:5px}.panel::-webkit-scrollbar-thumb{background:#c7d2fe;border-radius:3px}
+.panel h2{color:var(--title-color);font-size:18px;margin-bottom:8px}
+.panel h3{color:var(--title-color);font-size:16px;margin:10px 0 6px}
+.panel p,.panel li{font-size:13px;line-height:1.6;color:var(--concept-text)}
+.panel ul{padding-left:18px;margin-bottom:8px}
+.obj-item{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:13px}
+.obj-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--btn-border);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+.obj-dot.done{background:var(--goal-done);color:#0a0a1a}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:6px;background:var(--btn-bg);color:var(--btn-text);font-size:14px;font-weight:600;cursor:pointer;border:1px solid var(--btn-border);transition:all .2s}
+.act-btn:hover{background:var(--btn-hover);transform:translateY(-1px)}
+.act-btn.green{background:var(--btn-green-bg);border-color:var(--btn-green-border);color:var(--btn-green-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:13px;line-height:1.8;color:var(--learn-text)}
+.learn-box b{color:#60a5fa}
+canvas{flex:1;display:block;background:var(--bg)}
+.bar{height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:none;align-items:center;justify-content:space-between;padding:0 16px;font-size:13px}
+.bar-right{color:var(--sv);font-size:12px}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+.overlay h1{font-size:42px;color:#60a5fa;text-shadow:0 0 30px #60a5fa66;margin-bottom:8px}
+.overlay .sub{color:var(--sub-color);font-size:16px;margin-bottom:30px}
+.overlay .desc{max-width:500px;text-align:center;color:#8899aa;font-size:14px;line-height:1.8;margin-bottom:30px;background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:10px;padding:14px 18px}
+.start-btn{padding:14px 48px;border:2px solid #60a5fa;background:transparent;color:#60a5fa;font-size:18px;border-radius:8px;cursor:pointer;transition:all .3s;letter-spacing:2px}
+.start-btn:hover{background:#60a5fa;color:#0a0a1a;box-shadow:0 0 30px #60a5fa66}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
+.quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg)}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:6px;padding:8px;margin:6px 0;font-size:12px;color:var(--hint-text)}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">&#127769; 暗色</button>
+<div class="overlay" id="overlay">
+<h1>&#128300; 分布式系统 探险</h1>
+<p class="sub">从单机到集群，探索分布式系统的核心原理</p>
+<p class="desc">7 个关卡带你深入理解分布式基础、一致性模型、共识算法、一致性哈希、MapReduce、微服务架构和分布式事务。通过交互式动画，亲手操作节点组网与共识过程。</p>
+<button class="start-btn" onclick="startGame()">开始探索 &#8594;</button>
+<div class="features">
+<div class="feat"><div class="fi">&#128421;</div>分布式基础</div>
+<div class="feat"><div class="fi">&#128203;</div>一致性模型</div>
+<div class="feat"><div class="fi">&#129309;</div>共识算法</div>
+<div class="feat"><div class="fi">&#128218;</div>一致性哈希</div>
+<div class="feat"><div class="fi">&#128202;</div>MapReduce</div>
+<div class="feat"><div class="fi">&#9881;</div>微服务</div>
+<div class="feat"><div class="fi">&#128176;</div>分布式事务</div>
+</div>
+</div>
+<div id="wrap">
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+</div>
+<div class="bar" id="bar"><span class="bar-right" id="barRight"></span></div>
+<script>
+// === Theme ===
+let isDark=true;
+const TH={
+  dark:{bg:'#0a0a1a',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',label:'#f0f2f5',node:'#60a5fa',nodeGlow:'rgba(96,165,250,0.3)',link:'#60a5fa',linkDim:'#60a5fa33'},
+  light:{bg:'#f0f2f5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',label:'#334155',node:'#4338ca',nodeGlow:'rgba(67,56,202,0.3)',link:'#4338ca',linkDim:'#c7d2fe'}
+};
+function th(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').innerHTML=isDark?'&#127769; 暗色':'&#9728;&#65039; 亮色';renderPanel()}
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay');
+let W,H,curLevel=0,animId,time=0,particles=[];
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+let ls={};
+
+function resize(){W=cv.width=cv.offsetWidth;H=cv.height=cv.offsetHeight}
+window.addEventListener('resize',()=>{resize();draw()});
+
+// === Audio ===
+let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function playSound(type){
+  initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}
+  else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}
+  else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}
+}
+function spawnP(x,y,color,n){for(let i=0;i<(n||10);i++){const a=Math.random()*Math.PI*2,sp=1+Math.random()*3;particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:0.6+Math.random()*0.4,color,r:2+Math.random()*3})}}
+function updateP(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life-=dt;if(p.life<=0){particles.splice(i,1);continue}ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+
+// === Levels ===
+const LEVELS=[
+{name:'分布式基础',desc:'单机 vs 分布式、网络分区、时钟同步',objs:['对比单机与分布式架构','模拟网络分区故障','理解逻辑时钟同步']},
+{name:'一致性模型',desc:'强一致、最终一致、线性一致性',objs:['体验强一致性读写','观察最终一致性延迟','理解线性一致性顺序']},
+{name:'共识算法',desc:'Raft 领导选举、日志复制',objs:['触发 Raft 领导选举','观察日志复制过程','模拟领导者故障恢复']},
+{name:'分布式存储',desc:'一致性哈希、虚拟节点、数据迁移',objs:['构建一致性哈希环','添加虚拟节点均衡负载','观察节点增删时数据迁移']},
+{name:'MapReduce',desc:'Map 分发、Shuffle、Reduce 聚合',objs:['执行 Map 阶段分词','观察 Shuffle 分组过程','完成 Reduce 聚合计数']},
+{name:'微服务架构',desc:'服务发现、负载均衡、熔断器',objs:['注册服务到注册中心','配置负载均衡策略','触发熔断器保护']},
+{name:'分布式事务',desc:'2PC、Saga 模式、补偿机制',objs:['执行两阶段提交','观察 Saga 编排流程','触发补偿回滚机制']}
+];
+const quizData=[
+{q:'CAP 定理中，网络分区发生时系统最多同时满足？',opts:['一致性和可用性（二选一）','一致性、可用性和分区容错','只能满足分区容错'],ans:0},
+{q:'最终一致性意味着什么？',opts:['所有节点始终返回相同值','停止写入后，所有副本最终收敛到相同值','数据永远不会一致'],ans:1},
+{q:'Raft 算法中，候选者需要获得多少票才能成为领导者？',opts:['全部节点的票','超过半数节点的票','任意一票即可'],ans:1},
+{q:'一致性哈希中添加虚拟节点的主要目的是？',opts:['提高查询速度','使数据分布更均匀','减少内存占用'],ans:1},
+{q:'MapReduce 中 Shuffle 阶段的作用是？',opts:['对数据排序','将相同 key 的数据发送到同一个 Reducer','压缩数据'],ans:1},
+{q:'熔断器打开状态下，请求会怎样？',opts:['正常转发到服务','直接返回降级响应','无限重试'],ans:1},
+{q:'Saga 模式中，某步骤失败后如何处理？',opts:['整个事务立即回滚','执行已完成步骤的补偿操作','忽略错误继续执行'],ans:1}
+];
+let quizPassed=new Set(),quizLocked=false,totalScore=0;
+const levelScores=new Array(7).fill(0);
+
+// === Drawing helpers ===
+function drawGrid(){ctx.strokeStyle=th().grid;ctx.lineWidth=1;for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}}
+function drawNode(x,y,r,color,label,glow){
+  ctx.save();if(glow){ctx.shadowColor=color;ctx.shadowBlur=15}
+  ctx.fillStyle=color;ctx.globalAlpha=0.2;ctx.beginPath();ctx.arc(x,y,r+4,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();
+  ctx.restore();
+  if(label){ctx.fillStyle=th().text;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,x,y)}
+}
+function drawLink(x1,y1,x2,y2,color,dashed){
+  ctx.strokeStyle=color||th().linkDim;ctx.lineWidth=2;ctx.setLineDash(dashed?[4,4]:[]);
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.setLineDash([])
+}
+function drawArrow(x1,y1,x2,y2,color){
+  const a=Math.atan2(y2-y1,x2-x1),d=Math.sqrt((x2-x1)**2+(y2-y1)**2);
+  const ex=x1+Math.cos(a)*(d-12),ey=y1+Math.sin(a)*(d-12);
+  ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(ex,ey);ctx.stroke();
+  ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-12*Math.cos(a-0.3),y2-12*Math.sin(a-0.3));ctx.lineTo(x2-12*Math.cos(a+0.3),y2-12*Math.sin(a+0.3));ctx.closePath();ctx.fill()
+}
+function drawPacket(x,y,color,label){
+  ctx.save();ctx.shadowColor=color;ctx.shadowBlur=10;ctx.fillStyle=color;
+  ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fill();ctx.restore();
+  if(label){ctx.fillStyle=th().text;ctx.font='9px monospace';ctx.textAlign='center';ctx.fillText(label,x,y-10)}
+}
+function drawServer(x,y,w,h,color,label){
+  ctx.fillStyle=color;ctx.globalAlpha=0.15;ctx.fillRect(x-w/2,y-h/2,w,h);ctx.globalAlpha=1;
+  ctx.strokeStyle=color;ctx.lineWidth=2;ctx.strokeRect(x-w/2,y-h/2,w,h);
+  for(let i=0;i<3;i++){ctx.fillStyle=color;ctx.globalAlpha=0.3;ctx.fillRect(x-w/2+4,y-h/2+4+i*12,w-8,8);ctx.globalAlpha=1}
+  if(label){ctx.fillStyle=th().text;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(label,x,y+h/2+14)}
+}
+function lerp(a,b,t){return a+(b-a)*t}
+
+function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;playSound('success');totalScore+=10;levelScores[li]+=10;spawnP(W/2,H/2,'#4ade80');renderPanel()}}
+function isLevelDone(li){return levelObjs[li].every(Boolean)}
+
+// === Level init ===
+function initLevel(idx){
+  ls={phase:0,t:0,anim:0};
+  if(idx===0){ls.mode='single';ls.nodes=[{x:0,y:0,label:'Server',color:'#60a5fa'}];ls.partitioned=false;ls.clocks=[0,0,0];ls.clockSync=false;ls.msgQueue=[]}
+  else if(idx===1){ls.mode='strong';ls.writes=[];ls.replicas=[{v:0,synced:true},{v:0,synced:true},{v:0,synced:true}];ls.writeCount=0;ls.readAfterWrite=false;ls.eventualDelay=0;ls.linearOps=[]}
+  else if(idx===2){ls.nodes=[{id:0,state:'follower',term:0,votedFor:-1,log:[]},{id:1,state:'follower',term:0,votedFor:-1,log:[]},{id:2,state:'follower',term:0,votedFor:-1,log:[]},{id:3,state:'follower',term:0,votedFor:-1,log:[]},{id:4,state:'follower',term:0,votedFor:-1,log:[]}];ls.leader=-1;ls.electing=false;ls.electAnim=0;ls.votes=[];ls.logEntries=[];ls.replicating=false;ls.repAnim=0;ls.crashed=-1}
+  else if(idx===3){ls.ring=[];ls.vnodes=1;ls.dataKeys=[];ls.migrating=false;ls.migAnim=0;ls.nodesOnRing=[];ls.addedNode=false;ls.removedNode=false;initHashRing()}
+  else if(idx===4){ls.phase=0;ls.docs=['hello world foo','bar hello baz','foo bar hello'];ls.mapResults=[];ls.shuffled={};ls.reduced={};ls.mapDone=false;ls.shuffleDone=false;ls.reduceDone=false;ls.mapAnim=0;ls.shuffleAnim=0;ls.reduceAnim=0}
+  else if(idx===5){ls.services=[{name:'UserSvc',instances:[{id:0,healthy:true,load:0},{id:1,healthy:true,load:0}]},{name:'OrderSvc',instances:[{id:0,healthy:true,load:0},{id:1,healthy:true,load:0}]},{name:'PaySvc',instances:[{id:0,healthy:true,load:0},{id:1,healthy:true,load:0}]}];ls.registry=[];ls.registered=false;ls.lbMode='round-robin';ls.lbIdx=0;ls.requests=[];ls.breaker={state:'closed',failures:0,threshold:3};ls.reqCount=0}
+  else if(idx===6){ls.mode='2pc';ls.participants=[{name:'DB-A',state:'init'},{name:'DB-B',state:'init'},{name:'DB-C',state:'init'}];ls.coordinator={state:'init'};ls.tpcPhase=0;ls.sagaSteps=[{name:'创建订单',done:false,compensated:false},{name:'扣减库存',done:false,compensated:false},{name:'扣款支付',done:false,compensated:false}];ls.sagaIdx=0;ls.sagaFail=-1;ls.compensating=false;ls.compIdx=-1;ls.sagaAnim=0}
+}
+
+function initHashRing(){
+  ls.nodesOnRing=[{name:'N0',angle:0,color:'#60a5fa'},{name:'N1',angle:Math.PI*2/3,color:'#f59e0b'},{name:'N2',angle:Math.PI*4/3,color:'#22c55e'}];
+  ls.dataKeys=[];
+  for(let i=0;i<8;i++){ls.dataKeys.push({key:'K'+i,angle:Math.random()*Math.PI*2})}
+  assignKeys()
+}
+function assignKeys(){
+  ls.dataKeys.forEach(k=>{
+    let minDist=Infinity,owner='';
+    ls.nodesOnRing.forEach(n=>{let d=(n.angle-k.angle+Math.PI*2)%(Math.PI*2);if(d<minDist){minDist=d;owner=n.name}});
+    k.owner=owner
+  })
+}
+
+// === Draw levels ===
+function drawLevel0(){
+  const cx=W/2,cy=H/2;
+  if(ls.mode==='single'){
+    drawServer(cx,cy,80,60,'#60a5fa','单机服务器');
+    for(let i=0;i<3;i++){const a=-Math.PI/2+i*Math.PI/3-Math.PI/6;const px=cx+Math.cos(a)*140,py=cy+Math.sin(a)*140;drawNode(px,py,14,'#888','C'+i);drawLink(px,py,cx,cy,th().linkDim)}
+    ctx.fillStyle=th().textSec;ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('单机架构：所有请求发往一台服务器',cx,cy+120)
+  } else {
+    const nodes=[{x:cx-180,y:cy-60,label:'S0'},{x:cx,y:cy-60,label:'S1'},{x:cx+180,y:cy-60,label:'S2'}];
+    nodes.forEach((n,i)=>{
+      const partColor=ls.partitioned&&i===2?'#ef4444':'#60a5fa';
+      drawServer(n.x,n.y,60,50,partColor,n.label);
+      if(ls.partitioned&&i===2){ctx.fillStyle='#ef4444';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('网络分区!',n.x,n.y+50)}
+    });
+    for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){
+      const broken=ls.partitioned&&(i===2||j===2);
+      drawLink(nodes[i].x,nodes[i].y,nodes[j].x,nodes[j].y,broken?'#ef444444':th().link,broken)
+    }
+    // Clock display
+    ctx.fillStyle=th().text;ctx.font='13px monospace';ctx.textAlign='center';
+    nodes.forEach((n,i)=>{ctx.fillText('T='+ls.clocks[i].toFixed(1),n.x,n.y+70)});
+    if(ls.clockSync){ctx.fillStyle='#4ade80';ctx.fillText('Lamport 时钟已同步',cx,cy+120)}
+    // Messages
+    ls.msgQueue.forEach(m=>{const p=m.prog||0;const sx=nodes[m.from].x,sy=nodes[m.from].y,ex=nodes[m.to].x,ey=nodes[m.to].y;drawPacket(lerp(sx,ex,p),lerp(sy,ey,p),'#f59e0b','msg')})
+  }
+}
+function drawLevel1(){
+  const cx=W/2,cy=H/2;
+  const replicas=[{x:cx-160,y:cy},{x:cx,y:cy},{x:cx+160,y:cy}];
+  replicas.forEach((r,i)=>{
+    const synced=ls.replicas[i].synced;
+    drawServer(r.x,r.y,60,50,synced?'#22c55e':'#f59e0b','R'+i);
+    ctx.fillStyle=th().text;ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.fillText('v='+ls.replicas[i].v,r.x,r.y+50)
+  });
+  ctx.fillStyle='#60a5fa';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  const modeLabel=ls.mode==='strong'?'强一致性':ls.mode==='eventual'?'最终一致性':'线性一致性';
+  ctx.fillText('模式: '+modeLabel,cx,cy-100);
+  if(ls.mode==='eventual'&&ls.eventualDelay>0){ctx.fillStyle='#f59e0b';ctx.fillText('同步延迟中... '+ls.eventualDelay.toFixed(1)+'s',cx,cy+100)}
+}
+function drawLevel2(){
+  const cx=W/2,cy=H/2,r=140;
+  ls.nodes.forEach((n,i)=>{
+    const a=-Math.PI/2+i*Math.PI*2/5;const nx=cx+Math.cos(a)*r,ny=cy+Math.sin(a)*r;
+    n._x=nx;n._y=ny;
+    const color=n.state==='leader'?'#22c55e':n.state==='candidate'?'#f59e0b':ls.crashed===i?'#ef4444':'#60a5fa';
+    drawNode(nx,ny,22,color,'N'+i,n.state==='leader');
+    ctx.fillStyle=th().textSec;ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(n.state,nx,ny+32);
+    ctx.fillText('term:'+n.term,nx,ny+44)
+  });
+  for(let i=0;i<5;i++)for(let j=i+1;j<5;j++){
+    if(ls.crashed===i||ls.crashed===j)continue;
+    drawLink(ls.nodes[i]._x,ls.nodes[i]._y,ls.nodes[j]._x,ls.nodes[j]._y,th().linkDim)
+  }
+  if(ls.electing){
+    ls.votes.forEach(v=>{const p=v.prog||0;const sx=ls.nodes[v.from]._x,sy=ls.nodes[v.from]._y,ex=ls.nodes[v.to]._x,ey=ls.nodes[v.to]._y;drawPacket(lerp(sx,ex,p),lerp(sy,ey,p),'#f59e0b','vote')})
+  }
+  if(ls.replicating){
+    const li=ls.leader;if(li>=0){
+      ls.nodes.forEach((n,i)=>{if(i!==li&&ls.crashed!==i){const p=Math.min(1,ls.repAnim);drawPacket(lerp(ls.nodes[li]._x,n._x,p),lerp(ls.nodes[li]._y,n._y,p),'#22c55e','log')}})
+    }
+  }
+  // Log display
+  if(ls.logEntries.length>0){
+    ctx.fillStyle=th().text;ctx.font='12px monospace';ctx.textAlign='left';
+    ctx.fillText('日志: ['+ls.logEntries.join(', ')+']',20,H-60)
+  }
+}
+function drawLevel3(){
+  const cx=W/2,cy=H/2,r=Math.min(W,H)*0.32;
+  ctx.strokeStyle=th().linkDim;ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.stroke();
+  ls.nodesOnRing.forEach(n=>{
+    const nx=cx+Math.cos(n.angle)*r,ny=cy+Math.sin(n.angle)*r;
+    drawNode(nx,ny,18,n.color,n.name,true);
+    n._x=nx;n._y=ny
+  });
+  ls.dataKeys.forEach(k=>{
+    const kx=cx+Math.cos(k.angle)*(r-30),ky=cy+Math.sin(k.angle)*(r-30);
+    const owner=ls.nodesOnRing.find(n=>n.name===k.owner);
+    if(owner){drawLink(kx,ky,owner._x,owner._y,owner.color+'66',true)}
+    ctx.fillStyle='#fff';ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillText(k.key,kx,ky)
+  });
+  ctx.fillStyle=th().text;ctx.font='13px sans-serif';ctx.textAlign='center';
+  ctx.fillText('一致性哈希环 ('+ls.nodesOnRing.length+' 节点, '+ls.dataKeys.length+' 键)',cx,cy+r+40)
+}
+
+function drawLevel4(){
+  const cx=W/2,cy=H/2;
+  // Map phase
+  const mapY=cy-120,shuffleY=cy,reduceY=cy+120;
+  ctx.fillStyle='#60a5fa';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
+  ctx.fillText('Map',40,mapY-20);ctx.fillText('Shuffle',40,shuffleY-20);ctx.fillText('Reduce',40,reduceY-20);
+  // Draw docs
+  ls.docs.forEach((d,i)=>{
+    const x=120+i*200,y=mapY;
+    ctx.fillStyle='#1a1a4a';ctx.fillRect(x-60,y-15,120,30);ctx.strokeStyle='#60a5fa';ctx.strokeRect(x-60,y-15,120,30);
+    ctx.fillStyle=th().text;ctx.font='11px monospace';ctx.textAlign='center';ctx.fillText(d,x,y+4)
+  });
+  if(ls.mapDone){
+    ls.mapResults.forEach((mr,i)=>{
+      const x=120+i*200,y=mapY+40;
+      mr.forEach((pair,j)=>{ctx.fillStyle='#f59e0b';ctx.font='10px monospace';ctx.textAlign='center';ctx.fillText(pair[0]+':'+pair[1],x,y+j*14)})
+    })
+  }
+  if(ls.shuffleDone){
+    const keys=Object.keys(ls.shuffled);
+    keys.forEach((k,i)=>{
+      const x=100+i*120,y=shuffleY;
+      ctx.fillStyle='#0a2a1a';ctx.fillRect(x-40,y-12,80,24);ctx.strokeStyle='#22c55e';ctx.strokeRect(x-40,y-12,80,24);
+      ctx.fillStyle='#4ade80';ctx.font='11px monospace';ctx.textAlign='center';ctx.fillText(k+': ['+ls.shuffled[k].join(',')+']',x,y+4)
+    })
+  }
+  if(ls.reduceDone){
+    const keys=Object.keys(ls.reduced);
+    keys.forEach((k,i)=>{
+      const x=100+i*120,y=reduceY;
+      ctx.fillStyle='#1a0a2a';ctx.fillRect(x-40,y-12,80,24);ctx.strokeStyle='#7c3aed';ctx.strokeRect(x-40,y-12,80,24);
+      ctx.fillStyle='#a78bfa';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(k+'='+ls.reduced[k],x,y+4)
+    })
+  }
+}
+function drawLevel5(){
+  const cx=W/2,cy=H/2;
+  // Registry
+  drawServer(cx,cy-140,100,40,'#7c3aed','注册中心');
+  // Services
+  ls.services.forEach((svc,si)=>{
+    const sx=120+si*220,sy=cy+40;
+    ctx.fillStyle=th().textSec;ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText(svc.name,sx,sy-50);
+    svc.instances.forEach((inst,ii)=>{
+      const ix=sx-30+ii*60,iy=sy;
+      const color=!inst.healthy?'#ef4444':inst.load>80?'#f59e0b':'#22c55e';
+      drawNode(ix,iy,16,color,inst.id.toString());
+      ctx.fillStyle=th().textSec;ctx.font='10px monospace';ctx.textAlign='center';ctx.fillText(inst.load+'%',ix,iy+26)
+    });
+    if(ls.registered){drawLink(sx,sy-40,cx,cy-120,'#7c3aed66',true)}
+  });
+  // Breaker
+  const bx=cx+260,by=cy-60;
+  const bColor=ls.breaker.state==='closed'?'#22c55e':ls.breaker.state==='open'?'#ef4444':'#f59e0b';
+  ctx.fillStyle=bColor;ctx.globalAlpha=0.2;ctx.fillRect(bx-40,by-20,80,40);ctx.globalAlpha=1;
+  ctx.strokeStyle=bColor;ctx.lineWidth=2;ctx.strokeRect(bx-40,by-20,80,40);
+  ctx.fillStyle=bColor;ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText('熔断器',bx,by-4);ctx.fillText(ls.breaker.state,bx,by+10);
+  // Requests
+  ls.requests.forEach(r=>{if(r.active){drawPacket(r.x,r.y,r.color||'#60a5fa','req')}})
+}
+function drawLevel6(){
+  const cx=W/2,cy=H/2;
+  if(ls.mode==='2pc'){
+    drawServer(cx,cy-100,80,40,'#7c3aed','协调者');
+    ctx.fillStyle=th().textSec;ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText(ls.coordinator.state,cx,cy-50);
+    ls.participants.forEach((p,i)=>{
+      const px=cx-160+i*160,py=cy+60;
+      const color=p.state==='committed'?'#22c55e':p.state==='aborted'?'#ef4444':'#60a5fa';
+      drawServer(px,py,60,40,color,p.name);
+      ctx.fillStyle=th().textSec;ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText(p.state,px,py+40)
+    })
+  } else {
+    ctx.fillStyle='#60a5fa';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('Saga 编排模式',cx,cy-140);
+    ls.sagaSteps.forEach((s,i)=>{
+      const sx=120+i*200,sy=cy;
+      const color=s.compensated?'#ef4444':s.done?'#22c55e':'#60a5fa';
+      ctx.fillStyle=color;ctx.globalAlpha=0.15;ctx.fillRect(sx-70,sy-25,140,50);ctx.globalAlpha=1;
+      ctx.strokeStyle=color;ctx.lineWidth=2;ctx.strokeRect(sx-70,sy-25,140,50);
+      ctx.fillStyle=color;ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText(s.name,sx,sy);
+      if(s.compensated){ctx.fillStyle='#ef4444';ctx.fillText('已补偿',sx,sy+16)}
+      else if(s.done){ctx.fillStyle='#22c55e';ctx.fillText('已完成',sx,sy+16)}
+      if(i<ls.sagaSteps.length-1){drawArrow(sx+70,sy,sx+130,sy,color)}
+    });
+    if(ls.compensating){ctx.fillStyle='#ef4444';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('补偿回滚中...',cx,cy+80)}
+  }
+}
+
+// === Panels ===
+function renderLevelPanel(idx){
+  let h='';
+  const L=LEVELS[idx],objs=levelObjs[idx];
+  h+='<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>'+L.desc+'</div>';
+  h+='<h3>目标</h3>';
+  L.objs.forEach((o,i)=>{h+='<div class="obj-item"><div class="obj-dot'+(objs[i]?' done':'')+'">'+( objs[i]?'&#10003;':'')+'</div><span style="color:var(--goal-text)">'+o+'</span></div>'});
+
+  if(idx===0){
+    h+='<p style="margin:8px 0;font-size:13px;color:var(--concept-text)">画布上展示了一台服务器和三个客户端。点击按钮切换到分布式模式，观察多节点如何协作。</p>';
+    if(ls.mode==='single'){h+='<button class="act-btn" onclick="switchToDistributed()">切换到分布式架构</button>'}
+    else{
+      h+='<button class="act-btn" onclick="simulatePartition()"'+(ls.partitioned?' disabled':'')+'>模拟网络分区</button>';
+      h+='<button class="act-btn" onclick="syncClocks()"'+(ls.clockSync?' disabled':'')+'>同步逻辑时钟</button>';
+      if(ls.partitioned){h+='<div class="hint-box">S2 被网络分区隔离，无法与 S0/S1 通信。这就是 CAP 定理中的 P（分区容错）。</div>'}
+      if(ls.clockSync){h+='<div class="learn-box"><b>Lamport 时钟</b>：每个节点维护逻辑计数器，发送消息时附带时间戳，接收方取 max(本地, 收到)+1，保证因果序。</div>'}
+    }
+  } else if(idx===1){
+    h+='<p style="margin:8px 0;font-size:13px;color:var(--concept-text)">三个副本存储同一个值。选择不同一致性模型，观察写入后读取的行为差异。</p>';
+    h+='<button class="act-btn" onclick="setConsistency(\'strong\')"'+(ls.mode==='strong'?' style="border-color:#22c55e"':'')+'>强一致性</button>';
+    h+='<button class="act-btn" onclick="setConsistency(\'eventual\')"'+(ls.mode==='eventual'?' style="border-color:#22c55e"':'')+'>最终一致性</button>';
+    h+='<button class="act-btn" onclick="setConsistency(\'linear\')"'+(ls.mode==='linear'?' style="border-color:#22c55e"':'')+'>线性一致性</button>';
+    h+='<button class="act-btn green" onclick="writeValue()">写入新值</button>';
+    h+='<button class="act-btn" onclick="readValue()">读取值</button>';
+    if(ls.mode==='eventual'&&ls.eventualDelay>0){h+='<div class="hint-box">最终一致性下，写入后副本需要时间同步，短暂读到旧值是正常的。</div>'}
+  } else if(idx===2){
+    h+='<p style="margin:8px 0;font-size:13px;color:var(--concept-text)">5 个节点组成 Raft 集群。所有节点初始为 Follower，点击按钮触发选举。</p>';
+    h+='<button class="act-btn" onclick="startElection()"'+(ls.leader>=0?' disabled':'')+'>触发领导选举</button>';
+    if(ls.leader>=0){
+      h+='<button class="act-btn green" onclick="replicateLog()">复制日志条目</button>';
+      h+='<button class="act-btn" style="border-color:#ef4444;color:#ef4444" onclick="crashLeader()">模拟领导者崩溃</button>';
+      h+='<div class="hint-box">当前领导者: N'+ls.leader+' (term '+ls.nodes[ls.leader].term+')</div>'
+    }
+    if(ls.crashed>=0&&ls.leader<0){h+='<button class="act-btn" onclick="startElection()">重新选举</button>'}
+  } else if(idx===3){
+    h+='<p style="margin:8px 0;font-size:13px;color:var(--concept-text)">一致性哈希环上分布着节点和数据键。每个键被分配到顺时针方向最近的节点。</p>';
+    h+='<button class="act-btn" onclick="addHashNode()">添加节点</button>';
+    h+='<button class="act-btn" onclick="removeHashNode()"'+(ls.nodesOnRing.length<=2?' disabled':'')+'>移除节点</button>';
+    h+='<button class="act-btn green" onclick="addVirtualNodes()">添加虚拟节点</button>';
+    h+='<p style="font-size:12px;color:var(--stage-hint);margin-top:6px">节点数: '+ls.nodesOnRing.length+' | 数据键: '+ls.dataKeys.length+'</p>';
+  } else if(idx===4){
+    h+='<p style="margin:8px 0;font-size:13px;color:var(--concept-text)">三个文档需要统计词频。按顺序执行 Map → Shuffle → Reduce 三个阶段。</p>';
+    h+='<button class="act-btn" onclick="doMap()"'+(ls.mapDone?' disabled':'')+'>执行 Map 分词</button>';
+    h+='<button class="act-btn" onclick="doShuffle()"'+(!ls.mapDone||ls.shuffleDone?' disabled':'')+'>执行 Shuffle 分组</button>';
+    h+='<button class="act-btn green" onclick="doReduce()"'+(!ls.shuffleDone||ls.reduceDone?' disabled':'')+'>执行 Reduce 聚合</button>';
+    if(ls.reduceDone){h+='<div class="learn-box"><b>MapReduce</b>：Map 将输入拆分为 key-value 对，Shuffle 按 key 分组，Reduce 对每组聚合计算。这是大数据处理的基础范式。</div>'}
+  } else if(idx===5){
+    h+='<p style="margin:8px 0;font-size:13px;color:var(--concept-text)">三个微服务各有两个实例。先注册到注册中心，再配置负载均衡，最后测试熔断器。</p>';
+    h+='<button class="act-btn" onclick="registerServices()"'+(ls.registered?' disabled':'')+'>注册服务</button>';
+    if(ls.registered){
+      h+='<button class="act-btn" onclick="sendRequest()">发送请求</button>';
+      h+='<button class="act-btn" onclick="failInstance()" style="border-color:#ef4444;color:#ef4444">模拟实例故障</button>';
+      h+='<p style="font-size:12px;margin-top:4px;color:var(--stage-hint)">熔断器: <span style="color:'+(ls.breaker.state==='closed'?'#22c55e':ls.breaker.state==='open'?'#ef4444':'#f59e0b')+'">'+ls.breaker.state+'</span> (失败:'+ls.breaker.failures+'/'+ls.breaker.threshold+')</p>'
+    }
+  } else if(idx===6){
+    h+='<p style="margin:8px 0;font-size:13px;color:var(--concept-text)">分布式事务保证多个服务的操作要么全部成功，要么全部回滚。</p>';
+    h+='<button class="act-btn" onclick="setTxMode(\'2pc\')"'+(ls.mode==='2pc'?' style="border-color:#22c55e"':'')+'>两阶段提交 (2PC)</button>';
+    h+='<button class="act-btn" onclick="setTxMode(\'saga\')"'+(ls.mode==='saga'?' style="border-color:#22c55e"':'')+'>Saga 模式</button>';
+    if(ls.mode==='2pc'){
+      h+='<button class="act-btn green" onclick="run2PC()">执行 2PC</button>';
+      h+='<button class="act-btn" onclick="run2PCAbort()" style="border-color:#ef4444;color:#ef4444">模拟参与者拒绝</button>'
+    } else {
+      h+='<button class="act-btn green" onclick="runSaga()">执行 Saga</button>';
+      h+='<button class="act-btn" onclick="runSagaFail()" style="border-color:#ef4444;color:#ef4444">模拟步骤失败+补偿</button>'
+    }
+  }
+  return h;
+}
+
+// === Actions ===
+// Level 0
+function switchToDistributed(){ls.mode='distributed';ls.clocks=[0,0.3,0.7];completeObj(0,0);renderPanel()}
+function simulatePartition(){ls.partitioned=true;completeObj(0,1);renderPanel()}
+function syncClocks(){ls.clockSync=true;ls.clocks=[1,1,1];completeObj(0,2);renderPanel()}
+// Level 1
+function setConsistency(m){ls.mode=m;ls.replicas=[{v:0,synced:true},{v:0,synced:true},{v:0,synced:true}];ls.eventualDelay=0;renderPanel()}
+function writeValue(){
+  ls.writeCount=(ls.writeCount||0)+1;const v=ls.writeCount;
+  if(ls.mode==='strong'){ls.replicas.forEach(r=>{r.v=v;r.synced=true});completeObj(1,0)}
+  else if(ls.mode==='eventual'){ls.replicas[0].v=v;ls.replicas[0].synced=true;ls.replicas[1].synced=false;ls.replicas[2].synced=false;ls.eventualDelay=2;completeObj(1,1)}
+  else{ls.replicas.forEach(r=>{r.v=v;r.synced=true});completeObj(1,2)}
+  renderPanel()
+}
+function readValue(){renderPanel()}
+// Level 2
+function startElection(){
+  if(ls.electing)return;ls.electing=true;ls.electAnim=0;
+  let cand=ls.crashed>=0?((ls.crashed+1)%5):Math.floor(Math.random()*5);
+  while(cand===ls.crashed)cand=(cand+1)%5;
+  ls.nodes[cand].state='candidate';ls.nodes[cand].term++;ls.nodes[cand].votedFor=cand;
+  ls.votes=[];
+  ls.nodes.forEach((n,i)=>{if(i!==cand&&i!==ls.crashed){ls.votes.push({from:i,to:cand,prog:0})}});
+  setTimeout(()=>{
+    let voteCount=1;ls.nodes.forEach((n,i)=>{if(i!==cand&&i!==ls.crashed){n.votedFor=cand;voteCount++}});
+    if(voteCount>2){ls.nodes[cand].state='leader';ls.leader=cand;ls.nodes.forEach((n,i)=>{if(i!==cand&&i!==ls.crashed)n.state='follower';n.term=ls.nodes[cand].term})}
+    ls.electing=false;ls.votes=[];
+    if(ls.crashed>=0){completeObj(2,2)}else{completeObj(2,0)}
+    renderPanel()
+  },1500)
+}
+function replicateLog(){
+  if(ls.leader<0||ls.replicating)return;ls.replicating=true;ls.repAnim=0;
+  const entry='cmd'+(ls.logEntries.length+1);ls.logEntries.push(entry);ls.nodes[ls.leader].log.push(entry);
+  setTimeout(()=>{ls.nodes.forEach((n,i)=>{if(i!==ls.leader&&i!==ls.crashed)n.log.push(entry)});ls.replicating=false;completeObj(2,1);renderPanel()},1200)
+}
+function crashLeader(){
+  if(ls.leader<0)return;ls.crashed=ls.leader;ls.nodes[ls.leader].state='crashed';ls.leader=-1;renderPanel()
+}
+// Level 3
+function addHashNode(){
+  const names='ABCDEFGHIJ';const idx=ls.nodesOnRing.length;
+  const colors=['#ec4899','#8b5cf6','#06b6d4','#84cc16','#f97316'];
+  ls.nodesOnRing.push({name:'N'+names[idx%10],angle:Math.random()*Math.PI*2,color:colors[idx%5]});
+  assignKeys();ls.addedNode=true;
+  if(!levelObjs[3][2]&&ls.addedNode){completeObj(3,2)}
+  renderPanel()
+}
+function removeHashNode(){
+  if(ls.nodesOnRing.length<=2)return;ls.nodesOnRing.pop();assignKeys();ls.removedNode=true;
+  if(!levelObjs[3][2])completeObj(3,2);renderPanel()
+}
+function addVirtualNodes(){
+  ls.vnodes++;const base=ls.nodesOnRing.filter(n=>!n.virtual);
+  base.forEach(n=>{ls.nodesOnRing.push({name:n.name+"'",angle:(n.angle+Math.PI+Math.random()*0.5)%(Math.PI*2),color:n.color,virtual:true})});
+  assignKeys();completeObj(3,0);completeObj(3,1);renderPanel()
+}
+// Level 4
+function doMap(){
+  ls.mapResults=ls.docs.map(d=>d.split(' ').map(w=>[w,1]));ls.mapDone=true;ls.mapAnim=1;completeObj(4,0);renderPanel()
+}
+function doShuffle(){
+  ls.shuffled={};ls.mapResults.forEach(mr=>mr.forEach(p=>{if(!ls.shuffled[p[0]])ls.shuffled[p[0]]=[];ls.shuffled[p[0]].push(p[1])}));
+  ls.shuffleDone=true;completeObj(4,1);renderPanel()
+}
+function doReduce(){
+  ls.reduced={};Object.keys(ls.shuffled).forEach(k=>{ls.reduced[k]=ls.shuffled[k].reduce((a,b)=>a+b,0)});
+  ls.reduceDone=true;completeObj(4,2);renderPanel()
+}
+// Level 5
+function registerServices(){ls.registered=true;ls.registry=ls.services.map(s=>s.name);completeObj(5,0);renderPanel()}
+function sendRequest(){
+  if(!ls.registered)return;ls.reqCount++;
+  const svcIdx=ls.reqCount%3;const svc=ls.services[svcIdx];
+  const healthy=svc.instances.filter(i=>i.healthy);
+  if(healthy.length===0||ls.breaker.state==='open'){
+    ls.breaker.failures++;
+    if(ls.breaker.failures>=ls.breaker.threshold&&ls.breaker.state==='closed'){ls.breaker.state='open';completeObj(5,2)}
+    renderPanel();return
+  }
+  const inst=healthy[ls.lbIdx%healthy.length];ls.lbIdx++;inst.load=Math.min(100,inst.load+20);
+  completeObj(5,1);renderPanel();
+  setTimeout(()=>{inst.load=Math.max(0,inst.load-20);renderPanel()},1000)
+}
+function failInstance(){
+  const svc=ls.services[Math.floor(Math.random()*3)];const healthy=svc.instances.filter(i=>i.healthy);
+  if(healthy.length>0){healthy[0].healthy=false;ls.breaker.failures++;
+    if(ls.breaker.failures>=ls.breaker.threshold&&ls.breaker.state==='closed'){ls.breaker.state='open';completeObj(5,2)}
+  }
+  renderPanel()
+}
+// Level 6
+function setTxMode(m){ls.mode=m;initLevel(6);ls.mode=m;renderPanel()}
+function run2PC(){
+  ls.coordinator.state='prepare';ls.tpcPhase=1;
+  ls.participants.forEach(p=>p.state='prepared');
+  setTimeout(()=>{ls.coordinator.state='commit';ls.tpcPhase=2;ls.participants.forEach(p=>p.state='committed');completeObj(6,0);renderPanel()},1000);
+  renderPanel()
+}
+function run2PCAbort(){
+  ls.coordinator.state='prepare';ls.participants.forEach(p=>p.state='prepared');
+  setTimeout(()=>{ls.participants[2].state='aborted';ls.coordinator.state='abort';ls.participants.forEach(p=>{if(p.state!=='aborted')p.state='aborted'});completeObj(6,0);renderPanel()},1000);
+  renderPanel()
+}
+function runSaga(){
+  ls.sagaIdx=0;ls.sagaSteps.forEach(s=>{s.done=false;s.compensated=false});
+  function step(){if(ls.sagaIdx>=ls.sagaSteps.length){completeObj(6,1);renderPanel();return}
+    ls.sagaSteps[ls.sagaIdx].done=true;ls.sagaIdx++;renderPanel();setTimeout(step,600)}
+  step()
+}
+function runSagaFail(){
+  ls.sagaIdx=0;ls.sagaSteps.forEach(s=>{s.done=false;s.compensated=false});ls.sagaFail=2;ls.compensating=false;
+  function step(){
+    if(ls.sagaIdx>=ls.sagaSteps.length||ls.sagaIdx===ls.sagaFail){
+      if(ls.sagaIdx===ls.sagaFail){ls.compensating=true;ls.compIdx=ls.sagaIdx-1;renderPanel();setTimeout(compensate,600)}
+      return
+    }
+    ls.sagaSteps[ls.sagaIdx].done=true;ls.sagaIdx++;renderPanel();setTimeout(step,600)
+  }
+  function compensate(){
+    if(ls.compIdx<0){ls.compensating=false;completeObj(6,1);completeObj(6,2);renderPanel();return}
+    ls.sagaSteps[ls.compIdx].compensated=true;ls.compIdx--;renderPanel();setTimeout(compensate,600)
+  }
+  step()
+}
+
+// === Quiz ===
+function renderQuiz(li){
+  const qd=quizData[li];if(!qd)return '';
+  let h='<div class="quiz-box"><div class="quiz-q">&#128221; 通关测验：'+qd.q+'</div>';
+  qd.opts.forEach((opt,i)=>{const cls=quizPassed.has(li)?(i===qd.ans?'correct':''):'';h+='<div class="quiz-opt '+cls+'" onclick="answerQuiz('+li+','+i+')">'+opt+'</div>'});
+  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">&#9989; 已通过</div>';
+  h+='</div>';return h
+}
+function answerQuiz(li,oi){
+  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  const qd=quizData[li],opts=panel.querySelectorAll('.quiz-opt');
+  opts.forEach((el,i)=>{el.classList.add(i===qd.ans?'correct':'wrong')});
+  if(oi===qd.ans){quizPassed.add(li);playSound('success');totalScore+=10;levelScores[li]+=10;setTimeout(()=>{quizLocked=false;goLevel(curLevel+1)},800)}
+  else{playSound('fail');setTimeout(()=>{quizLocked=false;renderPanel()},1000)}
+}
+
+// === Stage nav ===
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  LEVELS.forEach((_,i)=>{h+='<div class="sn-d'+(i<curLevel?' done':i===curLevel?' cur':'')+'" onclick="switchLevel('+i+')"></div>'});
+  h+='</div><div class="sn-info">第 '+(curLevel+1)+'/'+LEVELS.length+' 关 — '+LEVELS[curLevel].name+'</div></div>';
+  return h
+}
+
+// === Panel render ===
+function renderPanel(){
+  let h=renderStageNav();
+  h+='<h2>'+LEVELS[curLevel].name+'</h2>';
+  h+=renderLevelPanel(curLevel);
+  if(isLevelDone(curLevel)){
+    h+=renderQuiz(curLevel);
+    if(quizPassed.has(curLevel)&&curLevel<LEVELS.length-1){h+='<button class="act-btn green" onclick="switchLevel('+(curLevel+1)+')">下一关 &#8594;</button>'}
+  }
+  h+='<div style="margin-top:12px;padding:8px;background:var(--concept-bg);border-radius:8px;font-size:12px;color:var(--stage-hint)">总分: <span style="color:var(--sv);font-weight:bold">'+totalScore+'</span> | 已通过: <span style="color:var(--sv);font-weight:bold">'+quizPassed.size+'/'+LEVELS.length+'</span></div>';
+  panel.innerHTML=h
+}
+
+// === Result ===
+function showResult(){
+  overlay.style.display='flex';
+  let h='<div style="text-align:center;max-width:420px;background:var(--result-bg);border:1px solid var(--result-border);border-radius:16px;padding:28px 36px">';
+  h+='<div class="summary-title">&#127942; 探险完成！</div>';
+  h+='<div class="summary-sub">你已掌握分布式系统的核心概念</div>';
+  h+='<div class="summary-stats"><div class="summary-stat"><div class="num">'+totalScore+'</div><div class="label">总分</div></div>';
+  h+='<div class="summary-stat"><div class="num">'+quizPassed.size+'/7</div><div class="label">通过关卡</div></div></div>';
+  h+='<div class="summary-keys"><div>&#128300; CAP 定理与网络分区</div><div>&#128203; 一致性模型对比</div><div>&#129309; Raft 共识算法</div><div>&#128218; 一致性哈希与虚拟节点</div><div>&#128202; MapReduce 计算范式</div><div>&#9881; 微服务熔断与限流</div><div>&#128176; 分布式事务与补偿</div></div>';
+  h+='<button class="act-btn green" style="margin-top:16px" onclick="location.reload()">重新开始</button></div>';
+  overlay.innerHTML=h
+}
+
+// === Main loop ===
+function goLevel(idx){if(idx>=LEVELS.length){showResult();return}curLevel=idx;initLevel(idx);renderPanel()}
+function switchLevel(idx){playSound('click');goLevel(idx)}
+function startGame(){overlay.style.display='none';document.getElementById('wrap').style.display='flex';bar.style.display='flex';panel.style.display='block';resize();initLevel(0);renderPanel();loop()}
+function draw(){
+  ctx.clearRect(0,0,W,H);drawGrid();
+  const drawFns=[drawLevel0,drawLevel1,drawLevel2,drawLevel3,drawLevel4,drawLevel5,drawLevel6];
+  if(drawFns[curLevel])drawFns[curLevel]();
+  updateP(0.016)
+}
+function update(){
+  time+=0.016;
+  if(curLevel===1&&ls.mode==='eventual'&&ls.eventualDelay>0){
+    ls.eventualDelay-=0.016;if(ls.eventualDelay<=0){ls.replicas.forEach(r=>{r.v=ls.writeCount;r.synced=true});renderPanel()}
+  }
+  if(curLevel===2&&ls.electing){ls.electAnim+=0.016;ls.votes.forEach(v=>{v.prog=Math.min(1,v.prog+0.02)})}
+  if(curLevel===2&&ls.replicating){ls.repAnim+=0.02}
+}
+function loop(){update();draw();animId=requestAnimationFrame(loop)}
+
+// === Click handler ===
+cv.addEventListener('click',function(e){
+  const rect=cv.getBoundingClientRect();
+  var x=e.clientX-rect.left,y=e.clientY-rect.top;
+  // Level 3: click on ring to add data
+  if(curLevel===3){ls.dataKeys.push({key:'K'+ls.dataKeys.length,angle:Math.atan2(y-H/2,x-W/2)});assignKeys();renderPanel()}
+});
+</script>
+</body>
+</html>

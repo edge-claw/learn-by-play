@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数据库原理 探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(100vh - 36px)}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100vh - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;display:none;padding-bottom:24px}
+.panel h2{color:var(--title-color);font-size:17px;margin-bottom:2px}
+.panel h3{color:var(--title-color);font-size:15px;margin:8px 0 6px}
+.panel p,.panel li{font-size:12px;line-height:1.6;color:var(--text-sub)}
+.bar{position:absolute;bottom:0;left:0;width:100%;height:36px;background:var(--bg);border-top:1px solid var(--panel-border);display:flex;align-items:center;padding:0 16px;font-size:13px;color:#666;z-index:20;display:none}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:12px;line-height:1.6}
+.concept-box b{color:#a78bfa}
+.act-btn{background:linear-gradient(135deg,#8b5cf6,#a78bfa);color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;font-size:15px;font-weight:600;margin:4px 2px;transition:transform .15s}
+.act-btn:hover{transform:scale(1.04)}
+.act-btn.sm{padding:5px 10px;font-size:11px}
+.act-btn.outline{background:none;border:1px solid #8b5cf6;color:#a78bfa}
+.hint-box{background:var(--hint-bg);border-left:3px solid #8b5cf6;border-radius:0 8px 8px 0;padding:8px 10px;margin:8px 0;font-size:11px;color:var(--hint-text);line-height:1.5}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin:8px 0;font-size:14px;color:var(--learn-text);line-height:1.8;display:none}
+.learn-box .sv{color:var(--sv);font-weight:700}
+.obj-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:12px}
+.obj-row .dot{width:14px;height:14px;border-radius:50%;border:2px solid #444;display:flex;align-items:center;justify-content:center;font-size:9px}
+.obj-row .dot.done{border-color:#2aaa5a;background:#2aaa5a;color:#fff}
+.obj-row .dot.done::after{content:'✓'}
+.obj-row span{color:var(--text-sub)}
+select,.num-input{background:var(--concept-bg);border:1px solid var(--concept-border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:12px;margin:2px}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:520px}
+.start-box h1{font-size:36px;color:#a78bfa;margin-bottom:8px;letter-spacing:2px}
+.start-box .subtitle{font-size:15px;color:#888;margin-bottom:28px}
+.start-box .features{display:flex;flex-wrap:wrap;gap:16px;margin:24px 0;justify-content:center}
+.start-box .feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px;background:var(--feat-bg);border:1px solid var(--feat-border);border-radius:8px;padding:8px 4px}
+.start-box .feat .fi{font-size:26px;margin-bottom:4px}
+.start-btn{background:linear-gradient(135deg,#8b5cf6,#a78bfa);color:#fff;border:none;padding:14px 48px;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.desc-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.desc-box b{color:#a78bfa}
+.ctrl-row{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin:4px 0}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:13px;margin:2px}
+.tag.g{background:#2aaa5a30;color:#6dca88}.tag.r{background:#ff444430;color:#ff6666}.tag.b{background:#4d96ff30;color:#8ab4ff}.tag.y{background:#f0a03030;color:#f0c060}.tag.p{background:#8b5cf630;color:#a78bfa}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
+.quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg)}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+input[type=range]{width:100%;margin:4px 0}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+<h1>🗄️ 数据库原理 探险</h1>
+<p class="subtitle">7 个关卡，从数据模型到分布式</p>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="fi">📊</div>数据模型</div>
+<div class="feat"><div class="fi">🔍</div>SQL查询</div>
+<div class="feat"><div class="fi">🌳</div>B+树索引</div>
+<div class="feat"><div class="fi">🔒</div>事务ACID</div>
+<div class="feat"><div class="fi">⚡</div>并发控制</div>
+<div class="feat"><div class="fi">💾</div>存储引擎</div>
+<div class="feat"><div class="fi">🌐</div>分布式</div>
+</div>
+</div>
+</div>
+<canvas id="cv"></canvas>
+<div class="panel" id="panel"></div>
+<div class="bar" id="bar"><span id="barText"></span></div>
+<script>
+// === Theme ===
+let isDark=true;
+const TH={
+  dark:{bg1:'#0a0a2e',bg2:'#0d0d1a',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)'},
+  light:{bg1:'#e8edf5',bg2:'#f0f2f5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)'}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel()}
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),barText=document.getElementById('barText');
+let W,H,curLevel=0;
+function resize(){cv.width=W=cv.offsetWidth;cv.height=H=cv.offsetHeight}
+window.addEventListener('resize',resize);
+
+const TOTAL=7;
+const levelObjs=Array.from({length:TOTAL},()=>[false,false,false]);
+const levelNames=['数据模型','SQL 查询','索引与 B+ 树','事务与 ACID','并发控制','存储引擎','分布式数据库'];
+const levelIcons=['📊','🔍','🌳','🔒','⚡','💾','🌐'];
+const objTexts=[
+  ['创建一张表','添加数据行','设置主键和外键'],
+  ['执行 SELECT 查询','使用 WHERE 过滤','执行 JOIN 操作'],
+  ['向 B+ 树插入键值','观察查找路径','对比有无索引的查询速度'],
+  ['开始一个事务','观察隔离级别效果','触发脏读/幻读'],
+  ['观察锁冲突','启用 MVCC 模式','检测并解除死锁'],
+  ['观察页/块存储结构','写入 WAL 日志','观察缓冲池命中'],
+  ['配置数据分片','设置主从复制','体验 CAP 定理权衡']
+];
+const quizData=[
+  {q:'关系数据库中，主键的作用是？',opts:['加密数据','唯一标识每一行','排序数据','压缩存储'],ans:1},
+  {q:'SQL 中 JOIN 的作用是？',opts:['删除重复行','合并多张表的相关数据','创建索引','备份数据'],ans:1},
+  {q:'B+ 树索引的查找时间复杂度是？',opts:['O(n)','O(log n)','O(1)','O(n²)'],ans:1},
+  {q:'ACID 中的 I (Isolation) 指什么？',opts:['数据完整性','事务之间互不干扰','索引优化','数据压缩'],ans:1},
+  {q:'MVCC 的核心思想是？',opts:['加更多锁','通过多版本让读写不互相阻塞','删除旧数据','分布式计算'],ans:1},
+  {q:'WAL (Write-Ahead Logging) 的目的是？',opts:['加速查询','保证崩溃恢复，先写日志再写数据','压缩数据','网络传输'],ans:1},
+  {q:'CAP 定理说明分布式系统不能同时满足？',opts:['速度、安全、成本','一致性、可用性、分区容错性','读、写、删除','CPU、内存、磁盘'],ans:1}
+];
+
+function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel()}}
+function startGame(){document.getElementById('startScreen').classList.add('hidden');panel.style.display='block';bar.style.display='flex';resize();goLevel(0);requestAnimationFrame(loop)}
+function goLevel(i){if(i>=TOTAL){showResult();return}curLevel=i;barText.textContent=levelIcons[i]+' '+levelNames[i];initLevel(i);renderPanel()}
+
+function stageNavHTML(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<TOTAL;i++){const c=i<curLevel?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`}
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/${TOTAL} 关 · ${levelNames[curLevel]}</div></div>`;return h;
+}
+function objHTML(li){return levelObjs[li].map((v,i)=>`<div class="obj-row"><div class="dot${v?' done':''}"></div><span>${objTexts[li][i]}</span></div>`).join('')}
+
+const quizPassed=new Set();let quizLocked=false,totalScore=0;
+const levelScores=new Array(TOTAL).fill(0);
+function renderQuiz(li){
+  const qd=quizData[li];if(!qd)return '';
+  let h='<div class="quiz-box"><div class="quiz-q">📝 '+qd.q+'</div>';
+  qd.opts.forEach((o,i)=>{const c=quizPassed.has(li)?(i===qd.ans?'correct':''):'';h+=`<div class="quiz-opt ${c}" onclick="ansQuiz(${li},${i})">${o}</div>`});
+  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过</div>';
+  h+='</div>';return h;
+}
+function ansQuiz(li,oi){
+  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  const qd=quizData[li];const opts=panel.querySelectorAll('.quiz-opt');
+  opts.forEach((el,i)=>el.classList.add(i===qd.ans?'correct':'wrong'));
+  if(oi===qd.ans){quizPassed.add(li);levelScores[li]+=10;totalScore+=10;setTimeout(()=>{quizLocked=false;goLevel(curLevel+1)},800)}
+  else{setTimeout(()=>{quizLocked=false;renderPanel()},1000)}
+}
+
+function showResult(){
+  panel.style.display='none';bar.style.display='none';
+  const ov=document.getElementById('startScreen');ov.classList.remove('hidden');
+  let h='<div class="start-box"><h1>🎉 恭喜通关！</h1><p class="subtitle">你已掌握数据库核心原理</p>';
+  h+='<div class="summary-box"><div class="summary-title">学习总结</div>';
+  h+='<div class="summary-stats"><div class="summary-stat"><div class="num">'+totalScore+'</div><div class="label">总分</div></div>';
+  h+='<div class="summary-stat"><div class="num">'+quizPassed.size+'/'+TOTAL+'</div><div class="label">通过</div></div></div>';
+  h+='<div class="summary-keys"><div>📊 关系模型用表格组织数据，主键保证唯一性</div><div>🌳 B+ 树索引将查找从 O(n) 降到 O(log n)</div><div>🔒 ACID 保证事务的可靠性</div><div>🌐 CAP 定理是分布式系统的基本约束</div></div></div>';
+  h+='<button class="start-btn" onclick="location.reload()" style="margin-top:20px">再玩一次</button></div>';
+  ov.innerHTML=h;
+}
+
+let LS={};
+// ===== Level 0: Data Model =====
+function initL0(){LS={tables:[],hasTable:false,hasRows:false,hasKeys:false}}
+function createTable(){
+  LS.tables=[{name:'students',cols:['id (PK)','name','age','class_id (FK)'],rows:[]}];
+  LS.hasTable=true;completeObj(0,0);renderPanel();
+}
+function addRow(){
+  if(!LS.hasTable)return;
+  const names=['张三','李四','王五','赵六'];const t=LS.tables[0];
+  const id=t.rows.length+1;
+  t.rows.push([id,names[t.rows.length%4],18+Math.floor(Math.random()*5),'C'+(1+Math.floor(Math.random()*3))]);
+  LS.hasRows=true;completeObj(0,1);renderPanel();
+}
+function setKeys(){LS.hasKeys=true;completeObj(0,2);renderPanel()}
+function drawL0(){
+  const cx=W/2,cy=H/2-30;
+  if(!LS.hasTable){ctx.fillStyle=t().textMut;ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText('点击「创建表」开始',cx,cy);return}
+  const tb=LS.tables[0];const colW=120,rowH=28,startX=cx-(tb.cols.length*colW)/2,startY=60;
+  // Table name
+  ctx.fillStyle='#8b5cf6';ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('📊 '+tb.name,cx,45);
+  // Header
+  tb.cols.forEach((c,i)=>{
+    const x=startX+i*colW;
+    ctx.fillStyle='#4d96ff30';ctx.fillRect(x,startY,colW,rowH);
+    ctx.strokeStyle='#4d96ff';ctx.lineWidth=1;ctx.strokeRect(x,startY,colW,rowH);
+    ctx.fillStyle='#4d96ff';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText(c,x+colW/2,startY+19);
+  });
+  // Rows
+  tb.rows.forEach((row,ri)=>{
+    row.forEach((val,ci)=>{
+      const x=startX+ci*colW,y=startY+(ri+1)*rowH;
+      ctx.fillStyle=ri%2===0?'#ffffff08':'#ffffff04';ctx.fillRect(x,y,colW,rowH);
+      ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.strokeRect(x,y,colW,rowH);
+      ctx.fillStyle=ci===0?'#22c55e':ci===3?'#f0c060':t().text;ctx.font='12px sans-serif';ctx.textAlign='center';
+      ctx.fillText(String(val),x+colW/2,y+19);
+    });
+  });
+  // Key indicators
+  if(LS.hasKeys){
+    ctx.fillStyle='#22c55e';ctx.font='bold 11px sans-serif';ctx.textAlign='left';
+    ctx.fillText('🔑 PK: id → 唯一标识每行',startX,startY+(tb.rows.length+1)*rowH+30);
+    ctx.fillStyle='#f0c060';ctx.fillText('🔗 FK: class_id → 引用 classes 表',startX,startY+(tb.rows.length+1)*rowH+50);
+    // FK arrow
+    const fkX=startX+3.5*colW,fkY=startY+(tb.rows.length+1)*rowH+20;
+    ctx.strokeStyle='#f0c060';ctx.lineWidth=2;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.moveTo(fkX,fkY);ctx.lineTo(fkX+100,fkY);ctx.lineTo(fkX+100,fkY+40);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#f0c06040';ctx.fillRect(fkX+60,fkY+40,120,30);
+    ctx.strokeStyle='#f0c060';ctx.strokeRect(fkX+60,fkY+40,120,30);
+    ctx.fillStyle='#f0c060';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('classes 表',fkX+120,fkY+60);
+  }
+}
+
+// ===== Level 1: SQL Query =====
+function initL1(){LS={query:'',result:[],step:0,allData:[
+  {id:1,name:'张三',age:20,score:85},{id:2,name:'李四',age:22,score:92},
+  {id:3,name:'王五',age:19,score:78},{id:4,name:'赵六',age:21,score:95},
+  {id:5,name:'钱七',age:20,score:88}
+],filtered:[],joined:false}}
+function runSelect(){LS.query='SELECT * FROM students';LS.result=[...LS.allData];LS.step=1;completeObj(1,0);renderPanel()}
+function runWhere(){LS.query='SELECT * FROM students WHERE score > 85';LS.result=LS.allData.filter(r=>r.score>85);LS.step=2;completeObj(1,1);renderPanel()}
+function runJoin(){LS.query='SELECT s.name, c.name FROM students s JOIN classes c ON s.class_id = c.id';LS.result=[{name:'张三',class:'计算机'},{name:'李四',class:'数学'},{name:'王五',class:'计算机'}];LS.step=3;LS.joined=true;completeObj(1,2);renderPanel()}
+function drawL1(){
+  const cx=W/2,cy=80;
+  // Query display
+  ctx.fillStyle='#8b5cf6';ctx.font='bold 14px monospace';ctx.textAlign='center';
+  ctx.fillText(LS.query||'等待执行查询...',cx,40);
+  if(LS.result.length===0)return;
+  // Result table
+  const cols=LS.joined?['name','class']:['id','name','age','score'];
+  const colW=LS.joined?160:100,startX=cx-(cols.length*colW)/2;
+  cols.forEach((c,i)=>{
+    const x=startX+i*colW;
+    ctx.fillStyle='#22c55e30';ctx.fillRect(x,cy,colW,26);ctx.strokeStyle='#22c55e';ctx.lineWidth=1;ctx.strokeRect(x,cy,colW,26);
+    ctx.fillStyle='#22c55e';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText(c,x+colW/2,cy+18);
+  });
+  LS.result.forEach((row,ri)=>{
+    cols.forEach((c,ci)=>{
+      const x=startX+ci*colW,y=cy+(ri+1)*26;
+      ctx.fillStyle=ri%2===0?'#ffffff08':'#ffffff04';ctx.fillRect(x,y,colW,26);
+      ctx.strokeStyle='#333';ctx.lineWidth=1;ctx.strokeRect(x,y,colW,26);
+      ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';
+      ctx.fillText(String(row[c]||''),x+colW/2,y+18);
+    });
+  });
+  // Execution flow
+  const fy=cy+(LS.result.length+2)*26+20;
+  ctx.fillStyle=t().textSec;ctx.font='13px sans-serif';ctx.textAlign='center';
+  const steps=['解析 SQL','扫描表','过滤/连接','返回结果'];
+  steps.forEach((s,i)=>{
+    const sx=cx-200+i*130;
+    ctx.fillStyle=i<=LS.step?'#4d96ff20':'#33333320';ctx.fillRect(sx,fy,110,30);
+    ctx.strokeStyle=i<=LS.step?'#4d96ff':'#555';ctx.lineWidth=1;ctx.strokeRect(sx,fy,110,30);
+    ctx.fillStyle=i<=LS.step?'#4d96ff':t().textMut;ctx.font='11px sans-serif';ctx.fillText(s,sx+55,fy+20);
+    if(i<3){ctx.fillStyle=i<LS.step?'#4d96ff':'#555';ctx.fillText('→',sx+115,fy+20)}
+  });
+}
+
+// ===== Level 2: B+ Tree Index =====
+function initL2(){LS={tree:{keys:[10,20,30],children:[{keys:[3,7]},{keys:[12,15]},{keys:[22,25]},{keys:[33,40]}]},searchKey:null,searchPath:[],insertVal:null,noIndexTime:500,indexTime:3,compared:false}}
+function insertKey(){
+  const v=Math.floor(Math.random()*45)+1;LS.insertVal=v;
+  // Simple insert into appropriate leaf
+  const ch=LS.tree.children;
+  let idx=0;for(let i=0;i<LS.tree.keys.length;i++){if(v>LS.tree.keys[i])idx=i+1}
+  if(!ch[idx].keys.includes(v)){ch[idx].keys.push(v);ch[idx].keys.sort((a,b)=>a-b)}
+  completeObj(2,0);renderPanel();
+}
+function searchKey(){
+  const v=LS.tree.children[1].keys[0]||12;LS.searchKey=v;LS.searchPath=[];
+  // Trace path
+  let idx=0;for(let i=0;i<LS.tree.keys.length;i++){if(v>LS.tree.keys[i])idx=i+1;LS.searchPath.push({level:0,pos:i})}
+  LS.searchPath.push({level:1,leaf:idx});
+  completeObj(2,1);renderPanel();
+}
+function compareSpeed(){LS.compared=true;completeObj(2,2);renderPanel()}
+function drawL2(){
+  const cx=W/2,cy=H/2-60;
+  ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('B+ 树索引',cx,30);
+  // Root node
+  const nw=50,nh=30,rootY=70;
+  const rootW=LS.tree.keys.length*nw;const rootX=cx-rootW/2;
+  ctx.fillStyle='#8b5cf620';ctx.fillRect(rootX,rootY,rootW,nh);ctx.strokeStyle='#8b5cf6';ctx.lineWidth=2;ctx.strokeRect(rootX,rootY,rootW,nh);
+  LS.tree.keys.forEach((k,i)=>{
+    ctx.fillStyle=LS.searchPath.some(p=>p.level===0)?'#f59e0b':'#8b5cf6';
+    ctx.font='bold 13px sans-serif';ctx.fillText(String(k),rootX+i*nw+nw/2,rootY+20);
+    if(i<LS.tree.keys.length-1){ctx.strokeStyle='#555';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rootX+(i+1)*nw,rootY);ctx.lineTo(rootX+(i+1)*nw,rootY+nh);ctx.stroke()}
+  });
+  // Leaf nodes
+  const leafY=rootY+80;const leafGap=20;
+  const totalLeafW=LS.tree.children.reduce((s,c)=>s+c.keys.length*nw,0)+(LS.tree.children.length-1)*leafGap;
+  let lx=cx-totalLeafW/2;
+  LS.tree.children.forEach((leaf,li)=>{
+    const lw=leaf.keys.length*nw;
+    const isSearched=LS.searchPath.some(p=>p.level===1&&p.leaf===li);
+    ctx.fillStyle=isSearched?'#f59e0b20':'#22c55e20';ctx.fillRect(lx,leafY,lw,nh);
+    ctx.strokeStyle=isSearched?'#f59e0b':'#22c55e';ctx.lineWidth=isSearched?3:1;ctx.strokeRect(lx,leafY,lw,nh);
+    leaf.keys.forEach((k,ki)=>{
+      const highlight=k===LS.searchKey;
+      ctx.fillStyle=highlight?'#ff4444':isSearched?'#f59e0b':'#22c55e';
+      ctx.font=(highlight?'bold ':'')+' 12px sans-serif';ctx.fillText(String(k),lx+ki*nw+nw/2,leafY+20);
+    });
+    // Connection line from root
+    const rootConnX=rootX+li*(rootW/LS.tree.children.length)+rootW/(2*LS.tree.children.length);
+    ctx.strokeStyle='#555';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(rootConnX,rootY+nh);ctx.lineTo(lx+lw/2,leafY);ctx.stroke();
+    // Leaf chain arrow
+    if(li<LS.tree.children.length-1){
+      ctx.strokeStyle='#22c55e50';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(lx+lw,leafY+nh/2);ctx.lineTo(lx+lw+leafGap,leafY+nh/2);ctx.stroke();
+      ctx.fillStyle='#22c55e50';ctx.beginPath();ctx.moveTo(lx+lw+leafGap-5,leafY+nh/2-4);ctx.lineTo(lx+lw+leafGap,leafY+nh/2);ctx.lineTo(lx+lw+leafGap-5,leafY+nh/2+4);ctx.fill();
+    }
+    lx+=lw+leafGap;
+  });
+  // Speed comparison
+  if(LS.compared){
+    const by=leafY+nh+50;
+    ctx.fillStyle=t().textSec;ctx.font='13px sans-serif';ctx.fillText('查询速度对比',cx,by);
+    ctx.fillStyle='#ff444430';ctx.fillRect(cx-200,by+10,180,24);ctx.strokeStyle='#ff4444';ctx.strokeRect(cx-200,by+10,180,24);
+    ctx.fillStyle='#ff4444';ctx.font='12px sans-serif';ctx.fillText('无索引: 全表扫描 '+LS.noIndexTime+'ms',cx-110,by+26);
+    ctx.fillStyle='#22c55e30';ctx.fillRect(cx+20,by+10,180,24);ctx.strokeStyle='#22c55e';ctx.strokeRect(cx+20,by+10,180,24);
+    ctx.fillStyle='#22c55e';ctx.fillText('B+树索引: '+LS.indexTime+'ms',cx+110,by+26);
+    ctx.fillStyle='#f59e0b';ctx.font='bold 14px sans-serif';ctx.fillText('快 '+(LS.noIndexTime/LS.indexTime|0)+' 倍！',cx,by+55);
+  }
+}
+
+// ===== Level 3: Transaction & ACID =====
+function initL3(){LS={txActive:false,isolation:'read-uncommitted',balance:[1000,1000],txLog:[],dirtyRead:false,phantomRead:false}}
+function beginTx(){LS.txActive=true;LS.txLog=['BEGIN TRANSACTION'];completeObj(3,0);renderPanel()}
+function setIsolation(level){LS.isolation=level;completeObj(3,1);renderPanel()}
+function simulateDirtyRead(){
+  if(!LS.txActive)return;
+  LS.txLog.push('TX1: UPDATE balance SET amount=500 WHERE id=1');
+  LS.txLog.push('TX2: SELECT amount FROM balance WHERE id=1 → 500 (未提交!)');
+  LS.txLog.push('TX1: ROLLBACK');
+  LS.txLog.push('⚠️ TX2 读到了 TX1 未提交的数据 = 脏读!');
+  LS.dirtyRead=true;LS.phantomRead=true;completeObj(3,2);renderPanel();
+}
+function drawL3(){
+  const cx=W/2,cy=60;
+  ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('事务与 ACID',cx,30);
+  // Two accounts
+  const accW=160,accH=80;
+  ctx.fillStyle='#4d96ff20';ctx.fillRect(cx-200,cy,accW,accH);ctx.strokeStyle='#4d96ff';ctx.lineWidth=2;ctx.strokeRect(cx-200,cy,accW,accH);
+  ctx.fillStyle='#4d96ff';ctx.font='bold 13px sans-serif';ctx.fillText('账户 A',cx-120,cy+20);
+  ctx.fillStyle=t().text;ctx.font='bold 20px sans-serif';ctx.fillText('¥'+LS.balance[0],cx-120,cy+55);
+  ctx.fillStyle='#22c55e20';ctx.fillRect(cx+40,cy,accW,accH);ctx.strokeStyle='#22c55e';ctx.lineWidth=2;ctx.strokeRect(cx+40,cy,accW,accH);
+  ctx.fillStyle='#22c55e';ctx.font='bold 13px sans-serif';ctx.fillText('账户 B',cx+120,cy+20);
+  ctx.fillStyle=t().text;ctx.font='bold 20px sans-serif';ctx.fillText('¥'+LS.balance[1],cx+120,cy+55);
+  // ACID properties
+  const acid=[{l:'A',n:'原子性',d:'全做或全不做'},{l:'C',n:'一致性',d:'总额不变'},{l:'I',n:'隔离性',d:'事务互不干扰'},{l:'D',n:'持久性',d:'提交后永久保存'}];
+  acid.forEach((a,i)=>{
+    const ax=cx-220+i*120,ay=cy+100;
+    ctx.fillStyle='#8b5cf620';ctx.fillRect(ax,ay,110,50);ctx.strokeStyle='#8b5cf6';ctx.lineWidth=1;ctx.strokeRect(ax,ay,110,50);
+    ctx.fillStyle='#8b5cf6';ctx.font='bold 14px sans-serif';ctx.fillText(a.l,ax+55,ay+18);
+    ctx.fillStyle=t().textSec;ctx.font='11px sans-serif';ctx.fillText(a.n,ax+55,ay+33);
+    ctx.fillStyle=t().textMut;ctx.font='10px sans-serif';ctx.fillText(a.d,ax+55,ay+46);
+  });
+  // Transaction log
+  if(LS.txLog.length>0){
+    const ly=cy+170;
+    ctx.fillStyle=t().textSec;ctx.font='bold 13px sans-serif';ctx.fillText('事务日志',cx,ly);
+    LS.txLog.forEach((log,i)=>{
+      const isWarn=log.startsWith('⚠️');
+      ctx.fillStyle=isWarn?'#ff4444':t().textMut;ctx.font='11px monospace';ctx.textAlign='left';
+      ctx.fillText(log,cx-250,ly+20+i*18);
+    });
+    ctx.textAlign='center';
+  }
+  // Isolation level indicator
+  ctx.fillStyle='#f59e0b';ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('隔离级别: '+LS.isolation,cx,cy+accH+170+LS.txLog.length*18+10);
+}
+
+// ===== Level 4: Concurrency Control =====
+function initL4(){LS={mode:'lock',locks:[],mvccVersions:[],deadlock:false,resolved:false,tx1:'waiting',tx2:'waiting'}}
+function showLockConflict(){
+  LS.locks=[{tx:'TX1',resource:'Row A',type:'X-Lock',status:'持有'},{tx:'TX2',resource:'Row A',type:'X-Lock',status:'等待'}];
+  LS.tx1='holding';LS.tx2='blocked';completeObj(4,0);renderPanel();
+}
+function enableMVCC(){
+  LS.mode='mvcc';LS.mvccVersions=[{ver:1,val:'Alice',txId:100,ts:'T1'},{ver:2,val:'Bob',txId:105,ts:'T2'},{ver:3,val:'Charlie',txId:110,ts:'T3'}];
+  LS.tx1='reading-v2';LS.tx2='writing-v3';completeObj(4,1);renderPanel();
+}
+function detectDeadlock(){
+  LS.deadlock=true;LS.locks=[{tx:'TX1',resource:'Row A',type:'X-Lock',status:'持有'},{tx:'TX1',resource:'Row B',type:'X-Lock',status:'等待'},{tx:'TX2',resource:'Row B',type:'X-Lock',status:'持有'},{tx:'TX2',resource:'Row A',type:'X-Lock',status:'等待'}];
+  setTimeout(()=>{LS.resolved=true;LS.locks[3].status='回滚';completeObj(4,2);renderPanel()},1500);
+  renderPanel();
+}
+function drawL4(){
+  const cx=W/2,cy=H/2-40;
+  ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  ctx.fillText(LS.mode==='lock'?'锁机制':'MVCC 多版本并发控制',cx,30);
+  if(LS.mode==='lock'){
+    // Two transactions
+    const txW=150,txH=60;
+    ctx.fillStyle='#4d96ff20';ctx.fillRect(cx-200,70,txW,txH);ctx.strokeStyle='#4d96ff';ctx.lineWidth=2;ctx.strokeRect(cx-200,70,txW,txH);
+    ctx.fillStyle='#4d96ff';ctx.font='bold 14px sans-serif';ctx.fillText('TX1',cx-125,95);
+    ctx.fillStyle=t().textSec;ctx.font='11px sans-serif';ctx.fillText(LS.tx1,cx-125,115);
+    ctx.fillStyle='#22c55e20';ctx.fillRect(cx+50,70,txW,txH);ctx.strokeStyle='#22c55e';ctx.lineWidth=2;ctx.strokeRect(cx+50,70,txW,txH);
+    ctx.fillStyle='#22c55e';ctx.font='bold 14px sans-serif';ctx.fillText('TX2',cx+125,95);
+    ctx.fillStyle=t().textSec;ctx.font='11px sans-serif';ctx.fillText(LS.tx2,cx+125,115);
+    // Lock table
+    if(LS.locks.length>0){
+      const ly=160;
+      ctx.fillStyle=t().textSec;ctx.font='bold 13px sans-serif';ctx.fillText('锁表',cx,ly);
+      LS.locks.forEach((lk,i)=>{
+        const y=ly+15+i*22;
+        const isWait=lk.status==='等待';const isRollback=lk.status==='回滚';
+        ctx.fillStyle=isRollback?'#ff444420':isWait?'#f59e0b20':'#22c55e20';
+        ctx.fillRect(cx-200,y,400,20);
+        ctx.fillStyle=isRollback?'#ff4444':isWait?'#f59e0b':'#22c55e';ctx.font='11px monospace';ctx.textAlign='left';
+        ctx.fillText(lk.tx+' | '+lk.resource+' | '+lk.type+' | '+lk.status,cx-190,y+15);
+      });
+      ctx.textAlign='center';
+    }
+    // Deadlock visualization
+    if(LS.deadlock){
+      const dy=160+15+LS.locks.length*22+30;
+      ctx.strokeStyle='#ff4444';ctx.lineWidth=3;ctx.setLineDash([6,4]);
+      ctx.beginPath();ctx.arc(cx,dy+30,50,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='#ff4444';ctx.font='bold 14px sans-serif';ctx.fillText(LS.resolved?'死锁已解除 (回滚 TX2)':'⚠️ 死锁检测中...',cx,dy);
+      ctx.font='12px sans-serif';ctx.fillText('TX1 → 等待 Row B → TX2 → 等待 Row A → TX1',cx,dy+70);
+    }
+  } else {
+    // MVCC versions
+    ctx.fillStyle=t().textSec;ctx.font='bold 13px sans-serif';ctx.fillText('数据版本链',cx,70);
+    LS.mvccVersions.forEach((v,i)=>{
+      const vx=cx-180+i*140,vy=90;
+      ctx.fillStyle=['#4d96ff','#22c55e','#f0c060'][i]+'20';ctx.fillRect(vx,vy,120,60);
+      ctx.strokeStyle=['#4d96ff','#22c55e','#f0c060'][i];ctx.lineWidth=2;ctx.strokeRect(vx,vy,120,60);
+      ctx.fillStyle=['#4d96ff','#22c55e','#f0c060'][i];ctx.font='bold 12px sans-serif';ctx.fillText('V'+v.ver+': '+v.val,vx+60,vy+20);
+      ctx.fillStyle=t().textMut;ctx.font='10px sans-serif';ctx.fillText('TxID: '+v.txId,vx+60,vy+38);ctx.fillText(v.ts,vx+60,vy+52);
+      if(i<LS.mvccVersions.length-1){ctx.strokeStyle='#555';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(vx+120,vy+30);ctx.lineTo(vx+140,vy+30);ctx.stroke()}
+    });
+    ctx.fillStyle='#8b5cf6';ctx.font='13px sans-serif';ctx.fillText('读操作看到快照版本，写操作创建新版本，互不阻塞',cx,180);
+  }
+}
+
+// ===== Level 5: Storage Engine =====
+function initL5(){LS={pages:[],walLog:[],bufferPool:[],pageWritten:false,walWritten:false,bufferHit:false}}
+function writePage(){
+  LS.pages=[{id:1,data:'[Alice,20]',dirty:false},{id:2,data:'[Bob,22]',dirty:true},{id:3,data:'[Charlie,19]',dirty:false}];
+  LS.pageWritten=true;completeObj(5,0);renderPanel();
+}
+function writeWAL(){
+  LS.walLog=['LSN:001 BEGIN TX1','LSN:002 UPDATE page2 [Bob,22]→[Bob,25]','LSN:003 COMMIT TX1'];
+  LS.walWritten=true;completeObj(5,1);renderPanel();
+}
+function hitBuffer(){
+  LS.bufferPool=[{pageId:1,hits:3,pinned:true},{pageId:2,hits:7,pinned:false},{pageId:3,hits:1,pinned:false}];
+  LS.bufferHit=true;completeObj(5,2);renderPanel();
+}
+function drawL5(){
+  const cx=W/2,cy=50;
+  ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('存储引擎内部',cx,30);
+  // Pages
+  if(LS.pageWritten){
+    ctx.fillStyle=t().textSec;ctx.font='bold 13px sans-serif';ctx.fillText('磁盘页 (Pages)',cx-180,cy+10);
+    LS.pages.forEach((p,i)=>{
+      const px=cx-260+i*100,py=cy+20;
+      ctx.fillStyle=p.dirty?'#ff444420':'#4d96ff20';ctx.fillRect(px,py,90,50);
+      ctx.strokeStyle=p.dirty?'#ff4444':'#4d96ff';ctx.lineWidth=2;ctx.strokeRect(px,py,90,50);
+      ctx.fillStyle=p.dirty?'#ff4444':'#4d96ff';ctx.font='bold 11px sans-serif';ctx.fillText('Page '+p.id,px+45,py+18);
+      ctx.fillStyle=t().textMut;ctx.font='10px monospace';ctx.fillText(p.data,px+45,py+35);
+      if(p.dirty){ctx.fillStyle='#ff4444';ctx.font='9px sans-serif';ctx.fillText('dirty',px+45,py+48)}
+    });
+  }
+  // WAL
+  if(LS.walWritten){
+    const wy=cy+90;
+    ctx.fillStyle=t().textSec;ctx.font='bold 13px sans-serif';ctx.fillText('WAL 日志 (先写日志)',cx,wy);
+    LS.walLog.forEach((log,i)=>{
+      const ly=wy+15+i*22;
+      ctx.fillStyle='#f59e0b20';ctx.fillRect(cx-200,ly,400,20);ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;ctx.strokeRect(cx-200,ly,400,20);
+      ctx.fillStyle='#f59e0b';ctx.font='11px monospace';ctx.textAlign='left';ctx.fillText(log,cx-190,ly+15);
+    });
+    ctx.textAlign='center';
+    // Arrow: WAL -> Disk
+    const ay=wy+15+LS.walLog.length*22+10;
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx,ay);ctx.lineTo(cx,ay+20);ctx.stroke();
+    ctx.fillStyle='#f59e0b';ctx.font='11px sans-serif';ctx.fillText('checkpoint → 刷脏页到磁盘',cx,ay+35);
+  }
+  // Buffer Pool
+  if(LS.bufferHit){
+    const by=cy+230;
+    ctx.fillStyle=t().textSec;ctx.font='bold 13px sans-serif';ctx.fillText('缓冲池 (Buffer Pool)',cx,by);
+    LS.bufferPool.forEach((b,i)=>{
+      const bx=cx-180+i*130,bpy=by+15;
+      const hitRate=b.hits>5;
+      ctx.fillStyle=hitRate?'#22c55e20':'#4d96ff20';ctx.fillRect(bx,bpy,120,50);
+      ctx.strokeStyle=hitRate?'#22c55e':'#4d96ff';ctx.lineWidth=1;ctx.strokeRect(bx,bpy,120,50);
+      ctx.fillStyle=hitRate?'#22c55e':'#4d96ff';ctx.font='bold 11px sans-serif';ctx.fillText('Page '+b.pageId,bx+60,bpy+18);
+      ctx.fillStyle=t().textMut;ctx.font='10px sans-serif';ctx.fillText('命中: '+b.hits+'次',bx+60,bpy+35);
+      if(b.pinned){ctx.fillStyle='#f59e0b';ctx.font='9px sans-serif';ctx.fillText('📌 pinned',bx+60,bpy+48)}
+    });
+  }
+}
+
+// ===== Level 6: Distributed Database =====
+function initL6(){LS={shards:[],replicas:[],capChoice:'',sharded:false,replicated:false,capDone:false}}
+function setupSharding(){
+  LS.shards=[{id:'Shard-1',range:'A-M',rows:1250,node:'Node-1'},{id:'Shard-2',range:'N-Z',rows:1180,node:'Node-2'}];
+  LS.sharded=true;completeObj(6,0);renderPanel();
+}
+function setupReplication(){
+  LS.replicas=[{role:'Primary',node:'Node-1',lag:'0ms',status:'Active'},{role:'Replica-1',node:'Node-2',lag:'5ms',status:'Syncing'},{role:'Replica-2',node:'Node-3',lag:'12ms',status:'Syncing'}];
+  LS.replicated=true;completeObj(6,1);renderPanel();
+}
+function chooseCap(choice){LS.capChoice=choice;LS.capDone=true;completeObj(6,2);renderPanel()}
+function drawL6(){
+  const cx=W/2,cy=50;
+  ctx.fillStyle=t().text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('分布式数据库',cx,30);
+  // Shards
+  if(LS.sharded){
+    ctx.fillStyle=t().textSec;ctx.font='bold 13px sans-serif';ctx.fillText('数据分片 (Sharding)',cx-150,cy+10);
+    LS.shards.forEach((s,i)=>{
+      const sx=cx-280+i*180,sy=cy+20;
+      ctx.fillStyle=['#4d96ff','#22c55e'][i]+'20';ctx.fillRect(sx,sy,160,60);
+      ctx.strokeStyle=['#4d96ff','#22c55e'][i];ctx.lineWidth=2;ctx.strokeRect(sx,sy,160,60);
+      ctx.fillStyle=['#4d96ff','#22c55e'][i];ctx.font='bold 12px sans-serif';ctx.fillText(s.id+' ('+s.node+')',sx+80,sy+18);
+      ctx.fillStyle=t().textMut;ctx.font='11px sans-serif';ctx.fillText('范围: '+s.range+' | '+s.rows+' 行',sx+80,sy+40);
+    });
+  }
+  // Replicas
+  if(LS.replicated){
+    const ry=cy+100;
+    ctx.fillStyle=t().textSec;ctx.font='bold 13px sans-serif';ctx.fillText('主从复制 (Replication)',cx,ry);
+    LS.replicas.forEach((r,i)=>{
+      const rx=cx-220+i*160,rpy=ry+15;
+      const isPrimary=r.role==='Primary';
+      ctx.fillStyle=isPrimary?'#f59e0b20':'#8b5cf620';ctx.fillRect(rx,rpy,140,60);
+      ctx.strokeStyle=isPrimary?'#f59e0b':'#8b5cf6';ctx.lineWidth=isPrimary?3:1;ctx.strokeRect(rx,rpy,140,60);
+      ctx.fillStyle=isPrimary?'#f59e0b':'#8b5cf6';ctx.font='bold 12px sans-serif';ctx.fillText(r.role,rx+70,rpy+18);
+      ctx.fillStyle=t().textMut;ctx.font='10px sans-serif';ctx.fillText(r.node+' | lag: '+r.lag,rx+70,rpy+38);
+      ctx.fillStyle=r.status==='Active'?'#22c55e':'#f0c060';ctx.font='10px sans-serif';ctx.fillText(r.status,rx+70,rpy+52);
+      // Replication arrow
+      if(i>0){ctx.strokeStyle='#8b5cf650';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(rx-20,rpy+30);ctx.lineTo(rx,rpy+30);ctx.stroke();ctx.setLineDash([])}
+    });
+  }
+  // CAP theorem
+  const capY=cy+200;
+  ctx.fillStyle=t().textSec;ctx.font='bold 14px sans-serif';ctx.fillText('CAP 定理',cx,capY);
+  const caps=[{l:'C',n:'一致性',d:'所有节点数据相同',color:'#4d96ff'},{l:'A',n:'可用性',d:'每个请求都有响应',color:'#22c55e'},{l:'P',n:'分区容错',d:'网络分区时仍工作',color:'#f59e0b'}];
+  // Triangle
+  const triCx=cx,triCy=capY+80,triR=70;
+  caps.forEach((c,i)=>{
+    const angle=-Math.PI/2+i*(2*Math.PI/3);
+    const px=triCx+Math.cos(angle)*triR,py=triCy+Math.sin(angle)*triR;
+    const chosen=LS.capChoice===c.l||LS.capChoice==='';
+    ctx.fillStyle=chosen?c.color+'40':'#33333340';
+    ctx.beginPath();ctx.arc(px,py,25,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=chosen?c.color:'#555';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle=chosen?c.color:t().textMut;ctx.font='bold 16px sans-serif';ctx.fillText(c.l,px,py+6);
+    ctx.font='10px sans-serif';ctx.fillText(c.n,px,py+25);
+  });
+  // Lines between
+  for(let i=0;i<3;i++){
+    const a1=-Math.PI/2+i*(2*Math.PI/3),a2=-Math.PI/2+((i+1)%3)*(2*Math.PI/3);
+    ctx.strokeStyle='#555';ctx.lineWidth=1;ctx.beginPath();
+    ctx.moveTo(triCx+Math.cos(a1)*triR,triCy+Math.sin(a1)*triR);
+    ctx.lineTo(triCx+Math.cos(a2)*triR,triCy+Math.sin(a2)*triR);ctx.stroke();
+  }
+  if(LS.capDone){ctx.fillStyle='#f59e0b';ctx.font='12px sans-serif';ctx.fillText('选择了 '+LS.capChoice+' — 分布式系统最多同时满足其中两个',cx,capY+160)}
+}
+
+// ===== Game Infrastructure =====
+function initLevel(i){
+  switch(i){case 0:initL0();break;case 1:initL1();break;case 2:initL2();break;case 3:initL3();break;case 4:initL4();break;case 5:initL5();break;case 6:initL6();break}
+}
+function isLevelDone(i){return levelObjs[i].every(v=>v)}
+function drawLevel(i){
+  switch(i){case 0:drawL0();break;case 1:drawL1();break;case 2:drawL2();break;case 3:drawL3();break;case 4:drawL4();break;case 5:drawL5();break;case 6:drawL6();break}
+}
+function renderLevelPanel(i){
+  let h='';
+  switch(i){
+  case 0:
+    h+='<div class="desc-box">画布上是一个空的数据库。你需要创建一张<b>关系表</b>，添加数据行，然后设置主键和外键来建立表之间的关联。</div>';
+    h+=objHTML(0);
+    h+='<div class="ctrl-row"><button class="act-btn sm" onclick="createTable()"'+(LS.hasTable?' disabled':'')+'>创建表</button>';
+    h+='<button class="act-btn sm" onclick="addRow()">添加数据行</button>';
+    h+='<button class="act-btn sm outline" onclick="setKeys()"'+(LS.hasKeys?' disabled':'')+'>设置主键/外键</button></div>';
+    if(LS.hasTable){h+='<div class="hint-box">表 students 已创建，包含 '+LS.tables[0].rows.length+' 行数据。</div>'}
+    h+='<div class="learn-box"><span class="sv">关系模型</span>用二维表格组织数据。<span class="sv">主键 (PK)</span> 唯一标识每行，<span class="sv">外键 (FK)</span> 建立表间关联。</div>';
+    break;
+  case 1:
+    h+='<div class="desc-box">students 表中有 5 条记录。依次执行 <b>SELECT</b>、<b>WHERE</b> 过滤和 <b>JOIN</b> 连接操作，观察查询执行过程。</div>';
+    h+=objHTML(1);
+    h+='<div class="ctrl-row"><button class="act-btn sm" onclick="runSelect()">SELECT *</button>';
+    h+='<button class="act-btn sm" onclick="runWhere()">WHERE score>85</button>';
+    h+='<button class="act-btn sm" onclick="runJoin()">JOIN classes</button></div>';
+    if(LS.query){h+='<div class="concept-box" style="font-family:monospace;font-size:11px">'+LS.query+'</div>'}
+    h+='<div class="learn-box"><span class="sv">SQL</span> 是关系数据库的标准查询语言。SELECT 选取列，WHERE 过滤行，JOIN 合并多表数据。查询优化器会选择最高效的执行计划。</div>';
+    break;
+  case 2:
+    h+='<div class="desc-box">画布上是一棵 <b>B+ 树</b>索引。根节点存储分隔键，叶子节点存储实际数据指针并通过链表相连。</div>';
+    h+=objHTML(2);
+    h+='<div class="ctrl-row"><button class="act-btn sm" onclick="insertKey()">插入随机键</button>';
+    h+='<button class="act-btn sm" onclick="searchKey()">查找键值</button>';
+    h+='<button class="act-btn sm outline" onclick="compareSpeed()">对比查询速度</button></div>';
+    h+='<div class="hint-box">B+ 树的叶子节点通过指针串联，支持高效的范围查询。</div>';
+    h+='<div class="learn-box"><span class="sv">B+ 树</span>是数据库索引的主流结构。所有数据存在叶子节点，内部节点只存索引键。查找时间 O(log n)，远快于全表扫描 O(n)。</div>';
+    break;
+  case 3:
+    h+='<div class="desc-box">两个银行账户之间转账。<b>事务</b>保证转账要么全部成功，要么全部回滚。不同隔离级别会产生不同的并发问题。</div>';
+    h+=objHTML(3);
+    h+='<div class="ctrl-row"><button class="act-btn sm" onclick="beginTx()"'+(LS.txActive?' disabled':'')+'>开始事务</button>';
+    h+='<button class="act-btn sm" onclick="simulateDirtyRead()">模拟脏读</button></div>';
+    h+='<div class="ctrl-row"><select onchange="setIsolation(this.value)">';
+    ['read-uncommitted','read-committed','repeatable-read','serializable'].forEach(l=>{h+='<option value="'+l+'"'+(LS.isolation===l?' selected':'')+'>'+l+'</option>'});
+    h+='</select></div>';
+    if(LS.dirtyRead){h+='<div class="hint-box" style="border-color:#ff4444">⚠️ 脏读: 读到了未提交的数据！提高隔离级别可避免。</div>'}
+    h+='<div class="learn-box"><span class="sv">ACID</span>: 原子性(A)、一致性(C)、隔离性(I)、持久性(D)。隔离级别从低到高: Read Uncommitted → Read Committed → Repeatable Read → Serializable。</div>';
+    break;
+  case 4:
+    h+='<div class="desc-box">两个事务同时访问相同数据。<b>锁机制</b>保证互斥但可能死锁，<b>MVCC</b> 通过多版本让读写并行。</div>';
+    h+=objHTML(4);
+    h+='<div class="ctrl-row"><button class="act-btn sm" onclick="showLockConflict()">触发锁冲突</button>';
+    h+='<button class="act-btn sm" onclick="enableMVCC()">启用 MVCC</button>';
+    h+='<button class="act-btn sm outline" onclick="detectDeadlock()">触发死锁</button></div>';
+    h+='<div class="concept-box">模式: <b>'+LS.mode+'</b> | TX1: '+LS.tx1+' | TX2: '+LS.tx2+'</div>';
+    h+='<div class="learn-box"><span class="sv">MVCC</span> (Multi-Version Concurrency Control) 为每次写操作创建新版本，读操作看到一致性快照，避免了读写互相阻塞。PostgreSQL、MySQL InnoDB 都使用 MVCC。</div>';
+    break;
+  case 5:
+    h+='<div class="desc-box">数据库将数据存储在固定大小的<b>页</b>中。写入时先记录 <b>WAL 日志</b>，再通过缓冲池管理内存中的页。</div>';
+    h+=objHTML(5);
+    h+='<div class="ctrl-row"><button class="act-btn sm" onclick="writePage()"'+(LS.pageWritten?' disabled':'')+'>查看页结构</button>';
+    h+='<button class="act-btn sm" onclick="writeWAL()"'+(LS.walWritten?' disabled':'')+'>写入 WAL</button>';
+    h+='<button class="act-btn sm outline" onclick="hitBuffer()"'+(LS.bufferHit?' disabled':'')+'>查看缓冲池</button></div>';
+    h+='<div class="learn-box"><span class="sv">WAL</span> (Write-Ahead Logging): 先写日志再写数据，崩溃后可通过日志恢复。<span class="sv">缓冲池</span>缓存热点页，减少磁盘 I/O。</div>';
+    break;
+  case 6:
+    h+='<div class="desc-box">单机数据库无法应对海量数据。通过<b>分片</b>水平拆分数据，<b>复制</b>提高可用性，但 CAP 定理限制了三者不可兼得。</div>';
+    h+=objHTML(6);
+    h+='<div class="ctrl-row"><button class="act-btn sm" onclick="setupSharding()"'+(LS.sharded?' disabled':'')+'>配置分片</button>';
+    h+='<button class="act-btn sm" onclick="setupReplication()"'+(LS.replicated?' disabled':'')+'>设置复制</button></div>';
+    h+='<div class="ctrl-row"><button class="act-btn sm outline" onclick="chooseCap(\'CP\')">选择 CP</button>';
+    h+='<button class="act-btn sm outline" onclick="chooseCap(\'AP\')">选择 AP</button></div>';
+    if(LS.capDone){h+='<div class="hint-box">'+( LS.capChoice==='CP'?'CP 系统 (如 ZooKeeper): 保证一致性，网络分区时拒绝服务':'AP 系统 (如 Cassandra): 保证可用性，允许短暂不一致')+'</div>'}
+    h+='<div class="learn-box"><span class="sv">CAP 定理</span>: 分布式系统在网络分区(P)发生时，只能在一致性(C)和可用性(A)之间二选一。实际系统通常选择 CP 或 AP，并通过最终一致性等策略折中。</div>';
+    break;
+  }
+  return h;
+}
+
+function renderPanel(){
+  let h=stageNavHTML();
+  h+='<h2>'+levelNames[curLevel]+'</h2>';
+  h+=renderLevelPanel(curLevel);
+  if(isLevelDone(curLevel)){
+    h+=renderQuiz(curLevel);
+    if(quizPassed.has(curLevel)&&curLevel<TOTAL-1){h+='<button class="act-btn" onclick="goLevel('+(curLevel+1)+')">下一关 →</button>'}
+  }
+  panel.innerHTML=h;
+  if(isLevelDone(curLevel))panel.querySelectorAll('.learn-box').forEach(e=>e.style.display='block');
+}
+
+// ===== Main Loop =====
+let lastT=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  var dt=Math.min((ts-lastT)/1000,0.05);lastT=ts;
+  ctx.clearRect(0,0,W,H);
+  var bg=ctx.createLinearGradient(0,0,0,H);
+  bg.addColorStop(0,t().bg1);bg.addColorStop(1,t().bg2);
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle=t().grid;ctx.lineWidth=1;
+  for(var x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(var y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  drawLevel(curLevel);
+}
+</script>
+</body>
+</html>
