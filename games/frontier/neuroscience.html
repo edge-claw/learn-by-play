@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>🧠 脑科学探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden;height:100vh}
+canvas{display:block}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;background:linear-gradient(135deg,#a855f7,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.overlay .sub{color:var(--text-sub);font-size:17px;margin-bottom:12px}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()" style="position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa">🌙 暗色</button>
+<div class="overlay" id="ov">
+<h1>🧠 脑科学探险</h1>
+<p class="sub">Neuroscience — 从神经元到意识</p>
+<div class="desc" style="max-width:480px;margin:0 auto 24px;padding:12px 18px;background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:10px;font-size:14px;color:var(--concept-text);line-height:1.8">点击神经元触发动作电位，调节神经递质浓度观察突触传递，探索Hebb学习规则和突触可塑性。从单个神经元到整个大脑，揭开意识的神秘面纱。</div>
+<button class="start-btn" onclick="startGame()" style="padding:14px 48px;font-size:18px;background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:transform .2s">开始探索</button>
+<div class="features" style="display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap">
+<div class="feat" style="text-align:center;color:var(--feat-text);font-size:12px;width:80px"><div style="font-size:26px;margin-bottom:4px">⚡</div>神经元</div>
+<div class="feat" style="text-align:center;color:var(--feat-text);font-size:12px;width:80px"><div style="font-size:26px;margin-bottom:4px">🔗</div>突触传递</div>
+<div class="feat" style="text-align:center;color:var(--feat-text);font-size:12px;width:80px"><div style="font-size:26px;margin-bottom:4px">🕸️</div>神经网络</div>
+<div class="feat" style="text-align:center;color:var(--feat-text);font-size:12px;width:80px"><div style="font-size:26px;margin-bottom:4px">👁️</div>感觉系统</div>
+<div class="feat" style="text-align:center;color:var(--feat-text);font-size:12px;width:80px"><div style="font-size:26px;margin-bottom:4px">💾</div>记忆学习</div>
+<div class="feat" style="text-align:center;color:var(--feat-text);font-size:12px;width:80px"><div style="font-size:26px;margin-bottom:4px">📡</div>脑成像</div>
+<div class="feat" style="text-align:center;color:var(--feat-text);font-size:12px;width:80px"><div style="font-size:26px;margin-bottom:4px">🤖</div>意识与AI</div>
+</div>
+</div>
+<div class="panel" id="panel" style="position:fixed;left:0;top:0;width:320px;height:calc(100% - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;display:none;padding:16px;font-size:15px;line-height:1.7;padding-bottom:24px"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar" style="position:fixed;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--panel-border);display:none;z-index:10;padding:0 16px;font-size:13px;align-items:center;justify-content:space-between"></div>
+<script>
+let isDark=true;
+const TH={
+  dark:{bg1:'#0a0a1a',bg2:'#0d0d1a',bg3:'#0a0a2a',grid:'rgba(168,85,247,0.04)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)'},
+  light:{bg1:'#f5f0ff',bg2:'#f0f0f5',bg3:'#e8e0f5',grid:'rgba(168,85,247,0.03)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)'}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';document.getElementById('themeToggle').style.background=isDark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.06)';document.getElementById('themeToggle').style.border=isDark?'1px solid rgba(255,255,255,0.2)':'1px solid rgba(0,0,0,0.12)';document.getElementById('themeToggle').style.color=isDark?'#aaa':'#666';try{renderPanel()}catch(e){}}
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),ov=document.getElementById('ov');
+let W,H,curLevel=0,tick=0,mouse={x:0,y:0,down:false};
+const PL=320,LEVELS=7;
+const levelNames=['神经元结构','突触传递','神经网络','感觉系统','记忆与学习','脑成像技术','意识与AI'];
+const levelDescs=[
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>结构：</b>树突 → 胞体 → 轴突 → 突触末梢</div>画布上展示了一个神经元。点击胞体触发动作电位，观察电信号从树突到突触末梢的传导过程。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>过程：</b>囊泡释放 → 递质扩散 → 受体结合 → 信号传递</div>调节神经递质的浓度，观察突触前膜释放囊泡、递质穿过突触间隙、与突触后膜受体结合的全过程。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>规则：</b>Hebb规则 / 突触可塑性 / LTP / LTD</div>多个神经元组成网络。反复激活同一条通路，观察突触连接如何增强(LTP)或减弱(LTD)。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>通路：</b>视觉 / 听觉 / 体感皮层映射</div>点击不同的感觉输入，观察信号如何沿着特定通路传递到大脑皮层的对应区域。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>系统：</b>海马体 / 工作记忆 / 长期记忆巩固</div>信息先进入工作记忆(容量有限)，通过海马体的反复激活巩固为长期记忆。体验记忆编码和提取的过程。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>技术：</b>EEG / fMRI / PET / 光遗传学</div>不同的脑成像技术各有优劣。选择合适的技术来观察大脑活动，比较它们的时间分辨率和空间分辨率。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>理论：</b>全局工作空间 / 整合信息论 / 人工意识</div>意识是什么？探索两大主流理论，思考机器能否产生意识。'
+];
+const levelObjTexts=[
+['点击胞体触发动作电位','观察电信号沿轴突传导','识别全部4个结构(树突/胞体/轴突/突触)'],
+['触发突触囊泡释放','调节递质浓度观察兴奋性突触','切换到抑制性突触观察差异'],
+['激活神经元触发Hebb学习','反复刺激产生LTP(长时程增强)','停止刺激观察LTD(长时程抑制)'],
+['激活视觉通路(眼→LGN→V1)','激活听觉通路(耳→MGN→A1)','观察体感皮层的身体映射'],
+['将3个项目编码到工作记忆','通过海马体巩固为长期记忆','成功提取已巩固的记忆'],
+['用EEG记录脑电波','用fMRI观察脑区激活','比较4种技术的分辨率'],
+['体验全局工作空间理论','计算整合信息(Φ值)','思考人工意识的可能性']
+];
+const learnTexts=[
+'💡 神经元是神经系统的基本单位，人脑约有860亿个。树突接收信号，胞体整合信息，轴突传导电信号(速度可达120m/s)。当膜电位从-70mV去极化到-55mV(阈值)时，触发动作电位(全或无)。髓鞘使信号跳跃式传导(saltatory conduction)，大幅提高速度。',
+'💡 突触传递：动作电位到达突触末梢→Ca²⁺内流→囊泡与突触前膜融合→神经递质释放到突触间隙(宽约20nm)→与突触后膜受体结合。兴奋性递质(如谷氨酸)使后膜去极化(EPSP)，抑制性递质(如GABA)使后膜超极化(IPSP)。一个神经元可接收数千个突触输入。',
+'💡 Hebb规则(1949)："一起放电的神经元连在一起"。当突触前后神经元同时活跃时，突触连接增强(LTP,可持续数小时到数周)。反之，不同步活动导致连接减弱(LTD)。这是学习和记忆的细胞基础。NMDA受体是LTP的关键分子开关。',
+'💡 感觉信息沿特定通路传递：视觉(视网膜→外侧膝状体LGN→初级视觉皮层V1)，听觉(耳蜗→内侧膝状体MGN→初级听觉皮层A1)，体感(皮肤受体→丘脑VPL→初级体感皮层S1)。体感皮层的"小人图"(homunculus)显示手和嘴唇占据不成比例的大面积。',
+'💡 工作记忆容量约7±2个项目(Miller,1956)，由前额叶皮层维持。海马体是记忆巩固的关键：白天的经历在睡眠时被"重放"(replay)，从海马体转移到新皮层形成长期记忆。这个过程称为系统巩固(systems consolidation)，可能需要数周到数年。',
+'💡 EEG(脑电图)：时间分辨率极高(ms级)但空间分辨率低；fMRI(功能磁共振)：空间分辨率高(mm级)但时间分辨率低(秒级)；PET(正电子发射断层)：可追踪特定分子但需放射性示踪剂；光遗传学：用光精确控制特定神经元(ms+细胞级)，但需基因改造，目前主要用于动物研究。',
+'💡 全局工作空间理论(GWT,Baars)：意识产生于信息在全脑"工作空间"中广播时。整合信息论(IIT,Tononi)：意识的程度由系统的整合信息量Φ衡量——Φ越高，意识越丰富。关于人工意识：如果IIT正确，纯前馈网络(如当前AI)的Φ≈0，即使行为上通过图灵测试也不具有意识。这仍是开放问题。'
+];
+let levelObjs=levelObjTexts.map(a=>a.map(()=>false));
+let L={};
+
+// ========== 音效 ==========
+let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function playSound(type){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}}
+let particles=[];
+function spawnP(x,y,color,n=12){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,sp=1+Math.random()*3;particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:0.6+Math.random()*0.4,color,r:2+Math.random()*3})}}
+function drawParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life-=dt;if(p.life<=0){particles.splice(i,1);continue}ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+function resize(){W=cv.width=innerWidth;H=cv.height=innerHeight}
+resize();window.addEventListener('resize',resize);
+function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;playSound('success');renderPanel()}}
+function allObjDone(){return levelObjs[curLevel].every(v=>v)}
+function resetLevel(li){
+  L={};levelObjs[li]=levelObjs[li].map(()=>false);
+  const cx=PL+(W-PL)/2,cy=H/2;
+  if(li===0){
+    // 神经元结构
+    L.parts=[
+      {id:'dendrite',name:'树突',x:cx-180,y:cy-20,r:40,color:'#a855f7',desc:'接收其他神经元的信号',identified:false},
+      {id:'soma',name:'胞体',x:cx-60,y:cy,r:35,color:'#ec4899',desc:'整合信号,含细胞核',identified:false},
+      {id:'axon',name:'轴突',x:cx+80,y:cy,r:25,color:'#f59e0b',desc:'传导动作电位',identified:false},
+      {id:'synapse',name:'突触末梢',x:cx+200,y:cy,r:20,color:'#22c55e',desc:'释放神经递质',identified:false}
+    ];
+    L.apFired=false;L.apProgress=0;L.apActive=false;L.allIdentified=false;
+    L.membrane=-70;L.threshold=-55;
+  } else if(li===1){
+    // 突触传递
+    L.vesicles=[];L.ntConc=0.5;L.released=false;L.excitatory=true;
+    L.receptorsBound=0;L.inhibitoryDone=false;
+    for(let i=0;i<8;i++){
+      L.vesicles.push({x:cx-80+Math.random()*30-15,y:cy-40+Math.random()*20-10,r:5,released:false,dx:0,dy:0});
+    }
+    L.postPotential=0;
+  } else if(li===2){
+    // 神经网络 - Hebb学习
+    L.neurons=[];L.connections=[];
+    const positions=[[cx-120,cy-80],[cx,cy-100],[cx+120,cy-80],[cx-80,cy+40],[cx+80,cy+40]];
+    positions.forEach((p,i)=>{L.neurons.push({x:p[0],y:p[1],active:false,fireTime:0,id:i})});
+    // 连接
+    [[0,1],[1,2],[0,3],[1,4],[3,4],[2,4]].forEach(([a,b])=>{
+      L.connections.push({from:a,to:b,weight:0.3,ltp:0});
+    });
+    L.hebbFired=false;L.ltpDone=false;L.ltdDone=false;L.stimCount=0;L.noStimTime=0;
+  } else if(li===3){
+    // 感觉系统
+    L.pathways=[
+      {id:'visual',name:'视觉',color:'#3b82f6',stages:['视网膜','LGN','V1'],active:false,progress:0},
+      {id:'auditory',name:'听觉',color:'#22c55e',stages:['耳蜗','MGN','A1'],active:false,progress:0},
+      {id:'somatic',name:'体感',color:'#f59e0b',stages:['皮肤受体','VPL','S1'],active:false,progress:0}
+    ];
+    L.homunculusShown=false;
+    // 大脑轮廓上的区域
+    L.brainRegions=[
+      {name:'V1',x:cx+100,y:cy-60,r:25,color:'#3b82f6',active:false},
+      {name:'A1',x:cx+60,y:cy+20,r:25,color:'#22c55e',active:false},
+      {name:'S1',x:cx-20,y:cy-80,r:25,color:'#f59e0b',active:false}
+    ];
+  } else if(li===4){
+    // 记忆与学习
+    L.items=['🍎','🌟','🎵'];L.encoded=new Set();L.consolidated=new Set();L.retrieved=new Set();
+    L.phase='encode';L.showItems=true;L.hippocampusActive=false;
+    L.replayCount=0;L.testPhase=false;L.testAnswer=null;
+  } else if(li===5){
+    // 脑成像技术
+    L.techs=[
+      {id:'eeg',name:'EEG',color:'#22c55e',timeRes:'ms级',spaceRes:'cm级',invasive:false,desc:'头皮电极记录脑电',active:false},
+      {id:'fmri',name:'fMRI',color:'#3b82f6',timeRes:'秒级',spaceRes:'mm级',invasive:false,desc:'血氧水平依赖信号',active:false},
+      {id:'pet',name:'PET',color:'#f59e0b',timeRes:'分钟级',spaceRes:'mm级',invasive:true,desc:'放射性示踪剂',active:false},
+      {id:'opto',name:'光遗传学',color:'#a855f7',timeRes:'ms级',spaceRes:'细胞级',invasive:true,desc:'光控特定神经元',active:false}
+    ];
+    L.eegDone=false;L.fmriDone=false;L.compared=false;
+    L.brainWaves=[];L.fmriMap=[];
+  } else if(li===6){
+    // 意识与AI
+    L.gwtExplored=false;L.iitExplored=false;L.phiValue=0;L.aiThought=false;
+    L.broadcastActive=false;L.broadcastProgress=0;
+    L.networks=[
+      {name:'前馈网络',phi:0.1,conscious:false,x:cx-100,y:cy+60},
+      {name:'循环网络',phi:2.5,conscious:true,x:cx+100,y:cy+60}
+    ];
+  }
+}
+// ========== 绘制 ==========
+function drawBg(){const th=t();ctx.fillStyle=th.bg1;ctx.fillRect(0,0,W,H);ctx.strokeStyle=th.grid;ctx.lineWidth=1;for(let x=PL;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(W,y);ctx.stroke()}}
+function drawRR(x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke()}}
+function drawArrow(x1,y1,x2,y2,color,w2){const a=Math.atan2(y2-y1,x2-x1),l=8;ctx.strokeStyle=color;ctx.lineWidth=w2||2;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-l*Math.cos(a-0.4),y2-l*Math.sin(a-0.4));ctx.lineTo(x2-l*Math.cos(a+0.4),y2-l*Math.sin(a+0.4));ctx.fill()}
+
+function drawLevel0(){
+  const th=t(),cx=PL+(W-PL)/2,cy=H/2;
+  // 树突分支
+  ctx.strokeStyle=L.parts[0].color;ctx.lineWidth=3;
+  for(let i=0;i<5;i++){
+    const angle=-Math.PI/2+i*Math.PI/4-Math.PI/4;
+    const bx=L.parts[0].x+Math.cos(angle)*50,by=L.parts[0].y+Math.sin(angle)*50;
+    ctx.beginPath();ctx.moveTo(L.parts[0].x,L.parts[0].y);ctx.lineTo(bx,by);ctx.stroke();
+    // 小分支
+    ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+Math.cos(angle-0.3)*20,by+Math.sin(angle-0.3)*20);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+Math.cos(angle+0.3)*20,by+Math.sin(angle+0.3)*20);ctx.stroke();
+  }
+  // 轴突线
+  ctx.strokeStyle=L.parts[2].color+'88';ctx.lineWidth=4;
+  ctx.beginPath();ctx.moveTo(L.parts[1].x+35,L.parts[1].y);ctx.lineTo(L.parts[3].x-20,L.parts[3].y);ctx.stroke();
+  // 髓鞘
+  for(let i=0;i<4;i++){
+    const mx=L.parts[1].x+50+i*40,my=cy;
+    drawRR(mx,my-10,30,20,4,L.parts[2].color+'33',L.parts[2].color+'66');
+  }
+  // 各部分
+  L.parts.forEach(p=>{
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=p.identified?p.color+'66':p.color+'33';ctx.fill();
+    ctx.strokeStyle=p.color;ctx.lineWidth=p.identified?3:2;ctx.stroke();
+    ctx.fillStyle=th.text;ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+    ctx.fillText(p.name,p.x,p.y+p.r+16);
+  });
+  // 动作电位传导动画
+  if(L.apActive){
+    const prog=L.apProgress;
+    const startX=L.parts[0].x,endX=L.parts[3].x;
+    const apX=startX+(endX-startX)*prog;
+    ctx.save();
+    const grad=ctx.createRadialGradient(apX,cy,2,apX,cy,30);
+    grad.addColorStop(0,'#fbbf24');grad.addColorStop(1,'transparent');
+    ctx.fillStyle=grad;ctx.fillRect(apX-30,cy-30,60,60);
+    ctx.restore();
+    // 电压图
+    ctx.fillStyle=th.text;ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText('膜电位: '+(L.membrane>-55?'+30':L.membrane.toFixed(0))+' mV',cx,cy+100);
+  }
+  // 膜电位图
+  const gx=cx-120,gy=cy+120,gw=240,gh=60;
+  ctx.fillStyle='rgba(0,0,0,0.2)';ctx.fillRect(gx,gy,gw,gh);
+  ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.strokeRect(gx,gy,gw,gh);
+  // 静息电位线
+  ctx.strokeStyle='#ef444466';ctx.setLineDash([3,3]);
+  const restY=gy+gh*0.8;ctx.beginPath();ctx.moveTo(gx,restY);ctx.lineTo(gx+gw,restY);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle=th.textMut;ctx.font='10px sans-serif';ctx.textAlign='right';ctx.fillText('-70mV',gx-4,restY+4);
+  ctx.fillText('-55mV',gx-4,gy+gh*0.5+4);
+  if(L.apFired){
+    // 动作电位波形
+    ctx.strokeStyle='#fbbf24';ctx.lineWidth=2;ctx.beginPath();
+    for(let i=0;i<gw;i++){
+      const t2=i/gw*4;let v;
+      if(t2<1)v=0.8;else if(t2<1.3)v=0.1;else if(t2<1.6)v=0.9;else v=0.8;
+      const py=gy+gh*v;
+      i===0?ctx.moveTo(gx+i,py):ctx.lineTo(gx+i,py);
+    }
+    ctx.stroke();
+  }
+}
+
+function drawLevel1(){
+  const th=t(),cx=PL+(W-PL)/2,cy=H/2;
+  // 突触前膜
+  drawRR(cx-120,cy-60,80,120,8,L.excitatory?'#a855f733':'#3b82f633',L.excitatory?'#a855f7':'#3b82f6');
+  ctx.fillStyle=th.text;ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('突触前',cx-80,cy-70);
+  // 突触后膜
+  drawRR(cx+40,cy-60,80,120,8,'rgba(34,197,94,0.2)','#22c55e');
+  ctx.fillText('突触后',cx+80,cy-70);
+  // 突触间隙
+  ctx.fillStyle='rgba(255,255,255,0.05)';ctx.fillRect(cx-38,cy-50,76,100);
+  ctx.fillStyle=th.textMut;ctx.font='10px sans-serif';ctx.fillText('间隙 ~20nm',cx,cy+55);
+  // 囊泡
+  L.vesicles.forEach(v=>{
+    ctx.beginPath();ctx.arc(v.x,v.y,v.r,0,Math.PI*2);
+    ctx.fillStyle=v.released?'transparent':(L.excitatory?'#a855f7':'#3b82f6');ctx.fill();
+    ctx.strokeStyle=v.released?'transparent':(L.excitatory?'#a855f7':'#3b82f6');ctx.lineWidth=1;ctx.stroke();
+  });
+  // 释放的递质粒子
+  if(L.released){
+    const ntColor=L.excitatory?'#ec4899':'#60a5fa';
+    for(let i=0;i<6;i++){
+      const nx=cx-30+Math.random()*60+Math.sin(tick*0.05+i)*10;
+      const ny=cy-20+Math.random()*40;
+      ctx.beginPath();ctx.arc(nx,ny,2,0,Math.PI*2);ctx.fillStyle=ntColor;ctx.globalAlpha=0.6;ctx.fill();ctx.globalAlpha=1;
+    }
+  }
+  // 受体
+  for(let i=0;i<4;i++){
+    const ry=cy-35+i*22;
+    ctx.beginPath();ctx.arc(cx+42,ry,4,0,Math.PI*2);
+    ctx.fillStyle=L.receptorsBound>i?'#22c55e':'rgba(255,255,255,0.2)';ctx.fill();
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=1;ctx.stroke();
+  }
+  // 突触后电位
+  const barX=cx+140,barY=cy-40,barH=80;
+  ctx.fillStyle='rgba(0,0,0,0.2)';ctx.fillRect(barX,barY,20,barH);
+  const potH=Math.abs(L.postPotential)*barH/30;
+  const potColor=L.postPotential>0?'#ec4899':'#60a5fa';
+  if(L.postPotential>0){ctx.fillStyle=potColor;ctx.fillRect(barX,barY+barH/2-potH,20,potH)}
+  else if(L.postPotential<0){ctx.fillStyle=potColor;ctx.fillRect(barX,barY+barH/2,20,potH)}
+  ctx.fillStyle=th.textMut;ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText(L.excitatory?'EPSP':'IPSP',barX+10,barY+barH+14);
+  ctx.fillText((L.postPotential>0?'+':'')+L.postPotential.toFixed(1)+'mV',barX+10,barY-6);
+}
+
+function drawLevel2(){
+  const th=t(),cx=PL+(W-PL)/2,cy=H/2;
+  // 连接线
+  L.connections.forEach(c=>{
+    const from=L.neurons[c.from],to=L.neurons[c.to];
+    const w=Math.max(1,c.weight*6);
+    const alpha=Math.min(1,c.weight+0.2);
+    ctx.strokeStyle=c.ltp>0?`rgba(34,197,94,${alpha})`:`rgba(168,85,247,${alpha})`;
+    ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(from.x,from.y);ctx.lineTo(to.x,to.y);ctx.stroke();
+    // 权重标签
+    ctx.fillStyle=th.textMut;ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText(c.weight.toFixed(2),(from.x+to.x)/2,(from.y+to.y)/2-8);
+  });
+  // 神经元
+  L.neurons.forEach(n=>{
+    const glow=n.active?0.8:0;
+    if(glow>0){
+      ctx.save();ctx.globalAlpha=glow*0.4;
+      const grad=ctx.createRadialGradient(n.x,n.y,5,n.x,n.y,35);
+      grad.addColorStop(0,'#fbbf24');grad.addColorStop(1,'transparent');
+      ctx.fillStyle=grad;ctx.fillRect(n.x-35,n.y-35,70,70);ctx.restore();
+    }
+    ctx.beginPath();ctx.arc(n.x,n.y,18,0,Math.PI*2);
+    ctx.fillStyle=n.active?'#fbbf2466':'#a855f733';ctx.fill();
+    ctx.strokeStyle=n.active?'#fbbf24':'#a855f7';ctx.lineWidth=2;ctx.stroke();
+    ctx.fillStyle=th.text;ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+    ctx.fillText('N'+n.id,n.x,n.y+4);
+  });
+  // LTP/LTD指示
+  ctx.fillStyle=th.text;ctx.font='13px sans-serif';ctx.textAlign='center';
+  ctx.fillText('刺激次数: '+L.stimCount,cx,cy+120);
+  if(L.ltpDone)ctx.fillText('✓ LTP已产生',cx,cy+140);
+  if(L.ltdDone)ctx.fillText('✓ LTD已观察',cx,cy+160);
+}
+
+function drawLevel3(){
+  const th=t(),cx=PL+(W-PL)/2,cy=H/2;
+  // 大脑轮廓
+  ctx.beginPath();ctx.ellipse(cx+40,cy-20,140,110,0,0,Math.PI*2);
+  ctx.fillStyle='rgba(168,85,247,0.08)';ctx.fill();
+  ctx.strokeStyle='rgba(168,85,247,0.3)';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle=th.textMut;ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('大脑皮层',cx+40,cy-140);
+  // 脑区
+  L.brainRegions.forEach(r=>{
+    ctx.beginPath();ctx.arc(r.x,r.y,r.r,0,Math.PI*2);
+    ctx.fillStyle=r.active?r.color+'66':'rgba(255,255,255,0.05)';ctx.fill();
+    ctx.strokeStyle=r.active?r.color:r.color+'44';ctx.lineWidth=2;ctx.stroke();
+    if(r.active){
+      ctx.save();ctx.globalAlpha=0.3+0.2*Math.sin(tick*0.1);
+      const grad=ctx.createRadialGradient(r.x,r.y,5,r.x,r.y,r.r+10);
+      grad.addColorStop(0,r.color);grad.addColorStop(1,'transparent');
+      ctx.fillStyle=grad;ctx.fillRect(r.x-r.r-10,r.y-r.r-10,(r.r+10)*2,(r.r+10)*2);ctx.restore();
+    }
+    ctx.fillStyle=th.text;ctx.font='bold 11px sans-serif';ctx.textAlign='center';
+    ctx.fillText(r.name,r.x,r.y+4);
+  });
+  // 感觉输入按钮区
+  const inputY=cy+100;
+  L.pathways.forEach((p,i)=>{
+    const bx=cx-120+i*120,by=inputY;
+    drawRR(bx,by,100,40,8,p.active?p.color+'33':'rgba(255,255,255,0.05)',p.color);
+    ctx.fillStyle=p.active?p.color:th.text;ctx.font='13px sans-serif';ctx.textAlign='center';
+    ctx.fillText(p.name,bx+50,by+25);
+    // 通路动画
+    if(p.active&&p.progress<1){
+      const stages=p.stages;
+      stages.forEach((s,si)=>{
+        const sx=cx-160+si*100,sy=cy+50-si*40;
+        const reached=p.progress>(si+1)/stages.length;
+        ctx.beginPath();ctx.arc(sx,sy,10,0,Math.PI*2);
+        ctx.fillStyle=reached?p.color+'88':'rgba(255,255,255,0.1)';ctx.fill();
+        ctx.fillStyle=th.textMut;ctx.font='10px sans-serif';ctx.textAlign='center';
+        ctx.fillText(s,sx,sy+20);
+        if(si<stages.length-1)drawArrow(sx+12,sy-4,sx+88,sy-36,p.color+'44',1);
+      });
+    }
+  });
+  // 体感小人图
+  if(L.homunculusShown){
+    const hx=cx+180,hy=cy;
+    ctx.fillStyle=th.textMut;ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText('体感小人图',hx,hy-50);
+    const bodyParts=[{name:'手',size:18},{name:'嘴唇',size:16},{name:'脸',size:12},{name:'脚',size:8},{name:'躯干',size:6}];
+    let yOff=hy-30;
+    bodyParts.forEach(bp=>{
+      ctx.beginPath();ctx.arc(hx,yOff,bp.size,0,Math.PI*2);
+      ctx.fillStyle='#f59e0b33';ctx.fill();ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;ctx.stroke();
+      ctx.fillStyle=th.text;ctx.font='9px sans-serif';ctx.fillText(bp.name,hx,yOff+3);
+      yOff+=bp.size*2+4;
+    });
+  }
+}
+function drawLevel4(){
+  const th=t(),cx=PL+(W-PL)/2,cy=H/2;
+  // 工作记忆区
+  const wmX=cx-140,wmY=cy-80,wmW=120,wmH=100;
+  drawRR(wmX,wmY,wmW,wmH,8,'rgba(236,72,153,0.1)','#ec4899');
+  ctx.fillStyle=th.text;ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('工作记忆',wmX+wmW/2,wmY-8);
+  ctx.font='10px sans-serif';ctx.fillStyle=th.textMut;
+  ctx.fillText('容量: 7±2',wmX+wmW/2,wmY+wmH+14);
+  // 项目
+  if(L.showItems||L.phase==='encode'){
+    L.items.forEach((item,i)=>{
+      const ix=wmX+20+i*35,iy=wmY+30;
+      const encoded=L.encoded.has(i);
+      ctx.font='28px sans-serif';ctx.textAlign='center';
+      ctx.globalAlpha=encoded?1:0.4;ctx.fillText(item,ix+10,iy+25);ctx.globalAlpha=1;
+      if(encoded){ctx.strokeStyle='#ec4899';ctx.lineWidth=2;ctx.beginPath();ctx.arc(ix+10,iy+15,18,0,Math.PI*2);ctx.stroke()}
+    });
+  }
+  // 海马体
+  const hpX=cx+20,hpY=cy-40,hpW=80,hpH=60;
+  drawRR(hpX,hpY,hpW,hpH,20,L.hippocampusActive?'#a855f744':'rgba(168,85,247,0.1)','#a855f7');
+  ctx.fillStyle=th.text;ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('海马体',hpX+hpW/2,hpY+hpH/2+4);
+  if(L.hippocampusActive){
+    ctx.save();ctx.globalAlpha=0.3+0.2*Math.sin(tick*0.08);
+    const grad=ctx.createRadialGradient(hpX+hpW/2,hpY+hpH/2,5,hpX+hpW/2,hpY+hpH/2,50);
+    grad.addColorStop(0,'#a855f7');grad.addColorStop(1,'transparent');
+    ctx.fillStyle=grad;ctx.fillRect(hpX-10,hpY-10,hpW+20,hpH+20);ctx.restore();
+  }
+  // 长期记忆
+  const ltX=cx+20,ltY=cy+60,ltW=120,ltH=80;
+  drawRR(ltX,ltY,ltW,ltH,8,'rgba(34,197,94,0.1)','#22c55e');
+  ctx.fillStyle=th.text;ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('长期记忆',ltX+ltW/2,ltY-8);
+  L.items.forEach((item,i)=>{
+    if(L.consolidated.has(i)){
+      ctx.font='24px sans-serif';ctx.fillText(item,ltX+20+i*35,ltY+45);
+    }
+  });
+  // 箭头
+  drawArrow(wmX+wmW,wmY+wmH/2,hpX,hpY+hpH/2,'#ec489988',2);
+  drawArrow(hpX+hpW/2,hpY+hpH,ltX+ltW/2,ltY,'#a855f788',2);
+  // 重放计数
+  if(L.replayCount>0){
+    ctx.fillStyle=th.textMut;ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText('重放: '+L.replayCount+'/3',hpX+hpW/2,hpY-10);
+  }
+}
+
+function drawLevel5(){
+  const th=t(),cx=PL+(W-PL)/2,cy=H/2;
+  // 大脑
+  ctx.beginPath();ctx.ellipse(cx,cy-20,120,90,0,0,Math.PI*2);
+  ctx.fillStyle='rgba(168,85,247,0.08)';ctx.fill();
+  ctx.strokeStyle='rgba(168,85,247,0.3)';ctx.lineWidth=2;ctx.stroke();
+  // EEG波形
+  if(L.eegDone){
+    const gx=cx-140,gy=cy+80,gw=280,gh=50;
+    ctx.fillStyle='rgba(0,0,0,0.2)';ctx.fillRect(gx,gy,gw,gh);
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=1.5;ctx.beginPath();
+    for(let i=0;i<gw;i++){
+      const t2=i/gw*8+tick*0.05;
+      // Alpha波 (~10Hz)
+      const v=Math.sin(t2*10)*0.3+Math.sin(t2*20)*0.15+Math.sin(t2*4)*0.2;
+      const py=gy+gh/2-v*gh/2;
+      i===0?ctx.moveTo(gx+i,py):ctx.lineTo(gx+i,py);
+    }
+    ctx.stroke();
+    ctx.fillStyle='#22c55e';ctx.font='10px sans-serif';ctx.textAlign='left';
+    ctx.fillText('EEG - Alpha波 (~10Hz)',gx,gy-4);
+  }
+  // fMRI热图
+  if(L.fmriDone){
+    const regions=[[cx-40,cy-50],[cx+20,cy-30],[cx-10,cy+10],[cx+40,cy-60]];
+    regions.forEach((r,i)=>{
+      const intensity=0.3+0.4*Math.sin(tick*0.03+i*1.5);
+      ctx.save();ctx.globalAlpha=intensity;
+      const grad=ctx.createRadialGradient(r[0],r[1],2,r[0],r[1],25);
+      grad.addColorStop(0,'#ef4444');grad.addColorStop(0.5,'#f59e0b');grad.addColorStop(1,'transparent');
+      ctx.fillStyle=grad;ctx.fillRect(r[0]-25,r[1]-25,50,50);ctx.restore();
+    });
+    ctx.fillStyle='#3b82f6';ctx.font='10px sans-serif';ctx.textAlign='center';
+    ctx.fillText('fMRI - BOLD信号',cx,cy+60);
+  }
+  // 技术对比表
+  if(L.compared){
+    const tx=cx-130,ty=cy+140;
+    ctx.fillStyle=th.text;ctx.font='bold 11px sans-serif';ctx.textAlign='left';
+    ctx.fillText('技术',tx,ty);ctx.fillText('时间',tx+80,ty);ctx.fillText('空间',tx+140,ty);ctx.fillText('侵入',tx+200,ty);
+    L.techs.forEach((tech,i)=>{
+      const y=ty+16+i*16;
+      ctx.fillStyle=tech.color;ctx.font='11px sans-serif';
+      ctx.fillText(tech.name,tx,y);
+      ctx.fillStyle=th.textSec;
+      ctx.fillText(tech.timeRes,tx+80,y);ctx.fillText(tech.spaceRes,tx+140,y);
+      ctx.fillText(tech.invasive?'是':'否',tx+200,y);
+    });
+  }
+}
+
+function drawLevel6(){
+  const th=t(),cx=PL+(W-PL)/2,cy=H/2-20;
+  // 全局工作空间
+  if(L.gwtExplored||L.broadcastActive){
+    ctx.beginPath();ctx.arc(cx,cy-40,80,0,Math.PI*2);
+    ctx.fillStyle='rgba(168,85,247,0.08)';ctx.fill();
+    ctx.strokeStyle='#a855f7';ctx.lineWidth=2;ctx.setLineDash([5,5]);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=th.text;ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+    ctx.fillText('全局工作空间',cx,cy-38);
+    // 模块
+    const modules=[{name:'视觉',angle:-Math.PI/3},{name:'听觉',angle:0},{name:'运动',angle:Math.PI/3},{name:'语言',angle:Math.PI*2/3},{name:'记忆',angle:Math.PI},{name:'注意',angle:-Math.PI*2/3}];
+    modules.forEach(m=>{
+      const mx=cx+Math.cos(m.angle)*120,my=cy-40+Math.sin(m.angle)*100;
+      ctx.beginPath();ctx.arc(mx,my,20,0,Math.PI*2);
+      ctx.fillStyle='rgba(99,102,241,0.15)';ctx.fill();
+      ctx.strokeStyle='#6366f1';ctx.lineWidth=1;ctx.stroke();
+      ctx.fillStyle=th.textSec;ctx.font='10px sans-serif';ctx.fillText(m.name,mx,my+4);
+      // 广播线
+      if(L.broadcastActive){
+        const prog=L.broadcastProgress;
+        ctx.strokeStyle=`rgba(168,85,247,${prog*0.5})`;ctx.lineWidth=1+prog*2;
+        ctx.beginPath();ctx.moveTo(cx,cy-40);ctx.lineTo(mx,my);ctx.stroke();
+      }
+    });
+  }
+  // IIT - Phi值
+  if(L.iitExplored){
+    ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+    ctx.fillText('Φ = '+L.phiValue.toFixed(1),cx,cy+80);
+    ctx.fillStyle=th.textSec;ctx.font='12px sans-serif';
+    ctx.fillText('整合信息量',cx,cy+98);
+  }
+  // 网络对比
+  L.networks.forEach(net=>{
+    drawRR(net.x-40,net.y-15,80,50,8,net.conscious?'#22c55e22':'#ef444422',net.conscious?'#22c55e':'#ef4444');
+    ctx.fillStyle=th.text;ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText(net.name,net.x,net.y+5);
+    ctx.fillStyle=th.textMut;ctx.font='10px sans-serif';
+    ctx.fillText('Φ='+net.phi,net.x,net.y+20);
+    ctx.fillText(net.conscious?'可能有意识':'无意识',net.x,net.y+45);
+  });
+}
+// ========== 交互 ==========
+cv.addEventListener('mousedown',e=>{mouse.down=true;mouse.x=e.clientX;mouse.y=e.clientY});
+cv.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});
+cv.addEventListener('mouseup',e=>{mouse.down=false});
+cv.addEventListener('click',e=>{handleClick(e.clientX,e.clientY)});
+
+function handleClick(x,y){
+  if(x<PL)return;
+  const cx=PL+(W-PL)/2,cy=H/2;
+  if(curLevel===0){
+    // 点击神经元部分
+    L.parts.forEach(p=>{
+      if(Math.abs(x-p.x)<p.r+5&&Math.abs(y-p.y)<p.r+5){
+        if(!p.identified){p.identified=true;playSound('click');spawnP(p.x,p.y,p.color)}
+        if(p.id==='soma'&&!L.apActive){
+          L.apActive=true;L.apProgress=0;L.apFired=true;L.membrane=30;
+          completeObj(0);playSound('success');
+        }
+        const allId=L.parts.every(pp=>pp.identified);
+        if(allId&&!L.allIdentified){L.allIdentified=true;completeObj(2)}
+        renderPanel();
+      }
+    });
+  } else if(curLevel===2){
+    // 点击神经元激活
+    L.neurons.forEach(n=>{
+      if(Math.abs(x-n.x)<20&&Math.abs(y-n.y)<20){
+        n.active=true;n.fireTime=tick;
+        L.stimCount++;
+        if(!L.hebbFired){L.hebbFired=true;completeObj(0)}
+        // Hebb: 同时激活的连接增强
+        L.connections.forEach(c=>{
+          if(c.from===n.id||c.to===n.id){
+            const other=L.neurons[c.from===n.id?c.to:c.from];
+            if(other.active){c.weight=Math.min(1,c.weight+0.1);c.ltp=1}
+          }
+        });
+        if(L.stimCount>=5){
+          const strongConn=L.connections.filter(c=>c.weight>0.6);
+          if(strongConn.length>0&&!L.ltpDone){L.ltpDone=true;completeObj(1)}
+        }
+        playSound('click');spawnP(n.x,n.y,'#fbbf24');
+        renderPanel();
+      }
+    });
+  } else if(curLevel===3){
+    // 点击感觉输入
+    const inputY=cy+100;
+    L.pathways.forEach((p,i)=>{
+      const bx=cx-120+i*120,by=inputY;
+      if(x>bx&&x<bx+100&&y>by&&y<by+40){
+        p.active=true;p.progress=0;
+        L.brainRegions[i].active=true;
+        playSound('click');
+        if(i===0)completeObj(0);
+        if(i===1)completeObj(1);
+        if(i===2){L.homunculusShown=true;completeObj(2)}
+        renderPanel();
+      }
+    });
+  } else if(curLevel===4){
+    // 点击项目编码
+    if(L.phase==='encode'){
+      L.items.forEach((item,i)=>{
+        const wmX=cx-140,wmY=cy-80;
+        const ix=wmX+20+i*35,iy=wmY+30;
+        if(Math.abs(x-(ix+10))<20&&Math.abs(y-(iy+15))<20&&!L.encoded.has(i)){
+          L.encoded.add(i);playSound('click');spawnP(ix+10,iy+15,'#ec4899');
+          if(L.encoded.size>=3)completeObj(0);
+          renderPanel();
+        }
+      });
+    }
+  }
+}
+
+// ========== 面板 ==========
+let _panelLock=false;
+function renderPanel(){
+  if(_panelLock)return;_panelLock=true;setTimeout(()=>_panelLock=false,50);
+  let h='';
+  // stage-nav
+  h+='<div style="background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px">';
+  h+='<div style="display:flex;gap:3px;margin-bottom:6px">';
+  for(let i=0;i<LEVELS;i++){
+    h+=`<div style="flex:1;height:5px;border-radius:3px;background:${i<curLevel?'#22c55e':i===curLevel?'#a855f7':'var(--stage-bar)'};cursor:pointer" onclick="goLevel(${i})"></div>`;
+  }
+  h+='</div>';
+  h+=`<div style="color:var(--stage-info);font-weight:600;font-size:13px">第 ${curLevel+1}/${LEVELS} 关</div>`;
+  h+=`<div style="color:var(--stage-hint);font-size:12px;margin-top:3px">${levelNames[curLevel]}</div></div>`;
+  h+=`<h2 style="font-size:20px;color:var(--title-color);margin-bottom:6px">${levelNames[curLevel]}</h2>`;
+  h+=levelDescs[curLevel];
+  h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">目标</h3>';
+  levelObjTexts[curLevel].forEach((obj,i)=>{
+    const done=levelObjs[curLevel][i];
+    h+=`<div style="display:flex;align-items:center;gap:6px;margin:3px 0;font-size:14px"><div style="width:14px;height:14px;border-radius:50%;border:2px solid #22c55e;flex-shrink:0;${done?'background:#22c55e':''}"></div><span style="color:${done?'var(--goal-done)':'var(--goal-text)'}">${obj}</span></div>`;
+  });
+  h+=renderLevelControls();
+  if(allObjDone()){
+    h+=`<div style="background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:var(--learn-text);line-height:1.8">${learnTexts[curLevel]}</div>`;
+    h+=renderQuiz();
+  }
+  panel.innerHTML=h;
+}
+
+function renderLevelControls(){
+  let h='';
+  if(curLevel===0){
+    h+='<div style="background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:6px;padding:8px;margin-top:8px;font-size:13px;color:var(--hint-text)">💡 点击画布上的神经元各部分来识别它们，点击<span style="color:#ec4899">胞体</span>触发动作电位</div>';
+    if(L.apFired){
+      h+='<div style="font-size:13px;color:var(--sv);margin-top:6px">⚡ 动作电位已触发! 膜电位: '+L.membrane.toFixed(0)+' mV</div>';
+    }
+  } else if(curLevel===1){
+    h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">神经递质浓度</h3>';
+    h+=`<input type="range" min="0" max="100" value="${L.ntConc*100}" style="width:100%" oninput="L.ntConc=this.value/100" onchange="this.blur();triggerRelease();renderPanel()">`;
+    h+=`<div style="font-size:13px;color:var(--sv)">浓度: ${(L.ntConc*100).toFixed(0)}%</div>`;
+    if(!L.released){
+      h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#a855f7;color:#fff;font-size:15px;cursor:pointer" onclick="triggerRelease()">释放囊泡</button>`;
+    }
+    h+=`<div style="margin-top:8px"><label style="font-size:13px;cursor:pointer"><input type="radio" name="syntype" ${L.excitatory?'checked':''} onchange="L.excitatory=true;L.released=false;L.receptorsBound=0;L.postPotential=0;renderPanel()"> 兴奋性(谷氨酸)</label></div>`;
+    h+=`<div><label style="font-size:13px;cursor:pointer"><input type="radio" name="syntype" ${!L.excitatory?'checked':''} onchange="L.excitatory=false;L.released=false;L.receptorsBound=0;L.postPotential=0;if(!L.inhibitoryDone){L.inhibitoryDone=true;completeObj(2)};renderPanel()"> 抑制性(GABA)</label></div>`;
+  } else if(curLevel===2){
+    h+='<div style="background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:6px;padding:8px;margin-top:8px;font-size:13px;color:var(--hint-text)">💡 反复点击神经元激活它们。同时活跃的神经元之间的连接会增强(Hebb规则)</div>';
+    if(L.ltpDone&&!L.ltdDone){
+      h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#ef4444;color:#fff;font-size:15px;cursor:pointer" onclick="triggerLTD()">停止刺激(观察LTD)</button>`;
+    }
+  } else if(curLevel===3){
+    h+='<div style="background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:6px;padding:8px;margin-top:8px;font-size:13px;color:var(--hint-text)">💡 点击画布下方的感觉输入按钮，观察信号传递到大脑皮层的对应区域</div>';
+  } else if(curLevel===4){
+    if(L.phase==='encode'){
+      h+='<div style="background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:6px;padding:8px;margin-top:8px;font-size:13px;color:var(--hint-text)">💡 点击画布上的项目(🍎🌟🎵)将它们编码到工作记忆</div>';
+      if(L.encoded.size>=3){
+        h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#a855f7;color:#fff;font-size:15px;cursor:pointer" onclick="startConsolidate()">开始巩固(海马体重放)</button>`;
+      }
+    } else if(L.phase==='consolidate'){
+      h+=`<div style="font-size:13px;color:var(--sv);margin-top:6px">海马体重放中... ${L.replayCount}/3</div>`;
+      h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#a855f7;color:#fff;font-size:15px;cursor:pointer" onclick="doReplay()">重放一次</button>`;
+    } else if(L.phase==='retrieve'){
+      h+='<div style="font-size:13px;color:var(--sv);margin-top:6px">记忆已巩固! 尝试提取:</div>';
+      h+='<div style="font-size:13px;margin-top:4px">刚才编码了哪些项目?</div>';
+      const options=['🍎🌟🎵','🍎🌙🎵','🍎🌟🔔'];
+      options.forEach((opt,i)=>{
+        h+=`<button style="display:block;width:100%;padding:8px;margin:4px 0;border:1px solid var(--panel-border);border-radius:6px;background:var(--btn-bg);color:var(--btn-text);font-size:14px;cursor:pointer" onclick="checkRetrieval(${i})">${opt}</button>`;
+      });
+    }
+  } else if(curLevel===5){
+    h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">选择技术</h3>';
+    L.techs.forEach((tech,i)=>{
+      h+=`<button style="display:block;width:100%;padding:8px;margin:4px 0;border:2px solid ${tech.active?tech.color:'transparent'};border-radius:8px;background:${tech.active?tech.color+'22':'var(--btn-bg)'};color:${tech.active?tech.color:'var(--btn-text)'};font-size:13px;cursor:pointer;text-align:left" onclick="activateTech(${i})"><b>${tech.name}</b> — ${tech.desc}<br><span style="font-size:11px">时间:${tech.timeRes} 空间:${tech.spaceRes}</span></button>`;
+    });
+  } else if(curLevel===6){
+    if(!L.gwtExplored){
+      h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#a855f7;color:#fff;font-size:15px;cursor:pointer" onclick="exploreGWT()">探索全局工作空间理论</button>`;
+    } else if(!L.broadcastActive){
+      h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#6366f1;color:#fff;font-size:15px;cursor:pointer" onclick="L.broadcastActive=true;L.broadcastProgress=0;completeObj(0);renderPanel()">触发信息广播</button>`;
+    }
+    if(!L.iitExplored){
+      h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#ec4899;color:#fff;font-size:15px;cursor:pointer" onclick="exploreIIT()">探索整合信息论</button>`;
+    } else {
+      h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">调节Φ值</h3>';
+      h+=`<input type="range" min="0" max="50" value="${L.phiValue*10}" style="width:100%" oninput="L.phiValue=this.value/10" onchange="this.blur();completeObj(1);renderPanel()">`;
+      h+=`<div style="font-size:13px;color:var(--sv)">Φ = ${L.phiValue.toFixed(1)} ${L.phiValue>2?'(高整合→可能有意识)':'(低整合→可能无意识)'}</div>`;
+    }
+    if(L.gwtExplored&&L.iitExplored&&!L.aiThought){
+      h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-size:15px;cursor:pointer" onclick="L.aiThought=true;completeObj(2);renderPanel()">思考: AI能有意识吗?</button>`;
+    }
+    if(L.aiThought){
+      h+='<div style="background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:8px;font-size:13px;color:var(--learn-text);line-height:1.8">如果IIT正确，当前的前馈神经网络(包括大语言模型)的Φ≈0，即使通过图灵测试也不具有意识。但这仍是科学界最大的开放问题之一。</div>';
+    }
+  }
+  return h;
+}
+// ========== 辅助函数 ==========
+function triggerRelease(){
+  if(L.released)return;
+  L.released=true;
+  L.receptorsBound=Math.round(L.ntConc*4);
+  L.postPotential=L.excitatory?L.ntConc*15:-L.ntConc*10;
+  completeObj(0);
+  if(L.ntConc>0.5&&L.excitatory)completeObj(1);
+  playSound('success');renderPanel();
+}
+function triggerLTD(){
+  L.neurons.forEach(n=>n.active=false);
+  L.connections.forEach(c=>{c.weight=Math.max(0.1,c.weight-0.15);c.ltp=-1});
+  L.ltdDone=true;L.noStimTime=tick;completeObj(2);
+  playSound('success');renderPanel();
+}
+function startConsolidate(){L.phase='consolidate';L.hippocampusActive=true;L.showItems=false;renderPanel()}
+function doReplay(){
+  L.replayCount++;playSound('click');
+  if(L.replayCount>=3){
+    L.items.forEach((_,i)=>L.consolidated.add(i));
+    L.phase='retrieve';completeObj(1);
+  }
+  renderPanel();
+}
+function checkRetrieval(idx){
+  if(idx===0){L.items.forEach((_,i)=>L.retrieved.add(i));completeObj(2);playSound('success')}
+  else{playSound('fail')}
+  renderPanel();
+}
+function activateTech(idx){
+  L.techs[idx].active=true;playSound('click');
+  if(idx===0){L.eegDone=true;completeObj(0)}
+  if(idx===1){L.fmriDone=true;completeObj(1)}
+  const activeCount=L.techs.filter(t2=>t2.active).length;
+  if(activeCount>=4&&!L.compared){L.compared=true;completeObj(2)}
+  renderPanel();
+}
+function exploreGWT(){L.gwtExplored=true;renderPanel()}
+function exploreIIT(){L.iitExplored=true;L.phiValue=0;renderPanel()}
+
+// ========== Quiz ==========
+const quizData=[
+  {q:'动作电位的"全或无"原则是指？',opts:['信号强度与刺激成正比','达到阈值就完全触发,否则不触发','只在轴突末端产生'],ans:1},
+  {q:'兴奋性突触后电位(EPSP)由什么引起？',opts:['GABA与受体结合','谷氨酸使后膜去极化','Ca²⁺从突触后膜流出'],ans:1},
+  {q:'Hebb规则的核心思想是？',opts:['用进废退','一起放电的神经元连在一起','突触只能增强不能减弱'],ans:1},
+  {q:'体感皮层的"小人图"中,哪个部位占面积最大？',opts:['躯干','腿部','手和嘴唇'],ans:2},
+  {q:'海马体在记忆中的主要作用是？',opts:['存储长期记忆','将短期记忆巩固为长期记忆','控制工作记忆容量'],ans:1},
+  {q:'哪种脑成像技术的时间分辨率最高？',opts:['fMRI','PET','EEG'],ans:2},
+  {q:'整合信息论(IIT)用什么衡量意识程度？',opts:['神经元数量','Φ(整合信息量)','脑电波频率'],ans:1}
+];
+let quizPassed=new Set(),quizLocked=false;
+function renderQuiz(){
+  const qd=quizData[curLevel];if(!qd)return '';
+  let h='<div style="background:#1a0a2a;border:1px solid #a855f7;border-radius:8px;padding:10px;margin:8px 0"><div style="font-size:13px;color:#a855f7;margin-bottom:8px;font-weight:600">📝 '+qd.q+'</div>';
+  qd.opts.forEach((opt,i)=>{
+    const cls=quizPassed.has(curLevel)?(i===qd.ans?'border-color:#22c55e;background:#22c55e22;color:#22c55e':''):'';
+    h+=`<div style="font-size:13px;padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--panel-border);background:var(--btn-bg);color:var(--btn-text);${cls}" onclick="answerQuiz(${curLevel},${i})">${opt}</div>`;
+  });
+  if(quizPassed.has(curLevel))h+='<div style="color:#22c55e;font-size:12px;margin-top:6px">✅ 已通过</div>';
+  h+='</div>';return h;
+}
+function answerQuiz(li,oi){
+  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  if(oi===quizData[li].ans){quizPassed.add(li);playSound('success');setTimeout(()=>{quizLocked=false;goLevel(curLevel+1)},800)}
+  else{playSound('fail');setTimeout(()=>{quizLocked=false;renderPanel()},800)}
+}
+
+// ========== 关卡切换 ==========
+function goLevel(idx){
+  if(idx>=LEVELS){showResult();return}
+  if(idx<0)idx=0;curLevel=idx;resetLevel(idx);renderPanel();
+}
+function startGame(){ov.style.display='none';panel.style.display='block';bar.style.display='flex';resetLevel(0);renderPanel()}
+function showResult(){
+  panel.style.display='none';bar.style.display='none';
+  const total=quizPassed.size;
+  let h='<div style="position:fixed;inset:0;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:100">';
+  h+='<div style="background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:16px;padding:32px;text-align:center;max-width:420px">';
+  h+='<div style="font-size:36px;margin-bottom:8px">🧠</div>';
+  h+='<div style="font-size:22px;font-weight:bold;color:var(--summary-title);margin-bottom:8px">脑科学探险完成!</div>';
+  h+=`<div style="color:var(--summary-sub);font-size:14px;margin-bottom:16px">通过 ${total}/${LEVELS} 关测验</div>`;
+  h+='<div style="display:flex;justify-content:center;gap:20px;margin:16px 0">';
+  h+='<div style="text-align:center"><div style="font-size:26px;font-weight:bold;color:#a855f7">7</div><div style="font-size:11px;color:var(--summary-sub)">关卡</div></div>';
+  h+=`<div style="text-align:center"><div style="font-size:26px;font-weight:bold;color:#a855f7">${total*3}</div><div style="font-size:11px;color:var(--summary-sub)">目标完成</div></div></div>`;
+  h+='<div style="text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px">';
+  h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">⚡ 理解了神经元的结构和动作电位</div>';
+  h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">🔗 掌握了突触传递的兴奋与抑制</div>';
+  h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">🕸️ 体验了Hebb学习和突触可塑性</div>';
+  h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">💾 了解了记忆编码和巩固的过程</div>';
+  h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">🤖 思考了意识与人工智能的关系</div></div>';
+  h+=`<button style="margin-top:16px;padding:12px 36px;font-size:16px;background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;border:none;border-radius:10px;cursor:pointer" onclick="location.reload()">再来一次</button>`;
+  h+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+
+// ========== 主循环 ==========
+let lastTime=0;
+function gameLoop(ts){
+  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;tick++;
+  drawBg();
+  // 更新
+  if(curLevel===0&&L.apActive){
+    L.apProgress+=dt*0.8;
+    if(L.apProgress>0.3&&L.apProgress<0.5)L.membrane=30;
+    else if(L.apProgress>0.5)L.membrane=-70;
+    if(L.apProgress>=1){L.apActive=false;L.apProgress=0;completeObj(1);renderPanel()}
+  }
+  if(curLevel===3){
+    L.pathways.forEach(p=>{if(p.active&&p.progress<1)p.progress+=dt*0.5});
+  }
+  if(curLevel===6&&L.broadcastActive&&L.broadcastProgress<1){
+    L.broadcastProgress+=dt*0.5;
+  }
+  if(curLevel===2){
+    L.neurons.forEach(n=>{if(n.active&&tick-n.fireTime>60)n.active=false});
+  }
+  // 绘制
+  const drawFns=[drawLevel0,drawLevel1,drawLevel2,drawLevel3,drawLevel4,drawLevel5,drawLevel6];
+  if(drawFns[curLevel])drawFns[curLevel]();
+  drawParticles(dt);
+  // 底部栏
+  bar.innerHTML=`<div style="display:flex;gap:4px;align-items:center">${Array.from({length:LEVELS},(_,i)=>`<button style="width:28px;height:24px;border:1px solid ${i===curLevel?'#a855f7':'#c7d2fe'};background:${i===curLevel?'#a855f7':i<curLevel?'var(--btn-bg)':'transparent'};color:${i===curLevel?'#fff':i<curLevel?'#a855f7':'var(--text-sub)'};border-radius:4px;cursor:pointer;font-size:13px" onclick="goLevel(${i})">${i+1}</button>`).join('')}</div><div style="color:var(--text-muted)">脑科学探险</div>`;
+  requestAnimationFrame(gameLoop);
+}
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

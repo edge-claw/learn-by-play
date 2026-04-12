@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>恒星演化探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --result-learn-bg:#0e0e20;--result-learn-text:#93c5fd;
+  --retry-bg:#2a2a5a;--retry-text:#ccc;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --event-bg:#2a0a0a;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --roadmap-text:#a0a0c0;--roadmap-num-bg:#1a1a4a;--roadmap-num-text:#60a5fa;
+  --slider-label:#888;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --result-learn-bg:#f0f4ff;--result-learn-text:#1e40af;
+  --retry-bg:#e2e8f0;--retry-text:#475569;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --event-bg:#fef2f2;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --roadmap-text:#475569;--roadmap-num-bg:#e0e7ff;--roadmap-num-text:#4f46e5;
+  --slider-label:#888;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50;opacity:1;transition:opacity 0.5s}
+.overlay.hidden{display:none;opacity:0}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#60a5fa}
+.start-box .sub{font-size:17px;color:var(--sub-color);margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px;background:var(--feat-bg);border:1px solid var(--feat-border);border-radius:10px;padding:10px 4px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.desc-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:14px;line-height:1.8;color:var(--concept-text);text-align:left}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100% - 32px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none;padding-bottom:16px}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}.g-text{color:var(--text-sub)}.g-text.done{color:#059669;text-decoration:line-through}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:15px;cursor:pointer;text-align:center}
+.act-btn:hover{background:var(--btn-hover)}.act-btn:disabled{opacity:0.4;cursor:not-allowed}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--hint-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:14px;line-height:1.8;color:var(--learn-text)}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:var(--slider-label)}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}
+.sv{color:var(--sv);font-weight:bold}
+.m-title{font-size:17px;font-weight:700;margin:8px 0 4px;color:var(--title-color)}
+.m-sub{font-size:12px;color:var(--sub-color);margin-bottom:8px}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:var(--bar-bg);border-top:1px solid var(--bar-border);z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}#bottom-bar .bb-right{text-align:right}
+.overlay .result-box{text-align:center;max-width:420px;background:var(--result-bg);border:1px solid var(--result-border);border-radius:16px;padding:28px 36px;box-shadow:0 8px 32px rgba(0,0,0,0.1)}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-learn{text-align:left;background:var(--result-learn-bg);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--result-learn-text);line-height:1.7;margin-bottom:16px}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#3b82f6;color:#fff}.result-box .btn-retry{background:var(--retry-bg);color:var(--retry-text)}
+.quiz-box{border:1px solid var(--quiz-border);border-radius:10px;padding:12px;margin:10px 0;background:var(--quiz-bg)}
+.quiz-box .quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px 10px;margin:4px 0;border-radius:6px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:12px;cursor:pointer;text-align:left;transition:all 0.2s}
+.quiz-opt:hover{background:var(--quiz-opt-hover);border-color:var(--quiz-border)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:var(--quiz-correct-text);color:var(--quiz-correct-text);font-weight:700}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:var(--quiz-wrong-text);color:var(--quiz-wrong-text)}
+.quiz-result{font-size:14px;margin-top:6px;font-weight:700}
+.quiz-result.pass{color:var(--quiz-correct-text)}.quiz-result.fail{color:var(--quiz-wrong-text)}
+.pred-btn{display:inline-block;padding:6px 14px;margin:3px;border-radius:6px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--sv);font-size:12px;cursor:pointer}
+.pred-btn:hover{background:var(--btn-hover)}.pred-btn.selected{background:#3b82f6;color:#fff}
+.pred-result{font-size:14px;margin:6px 0;font-weight:700;padding:6px;border-radius:6px}
+.pred-result.correct{background:var(--quiz-correct-bg);color:var(--quiz-correct-text);border:1px solid var(--quiz-correct-text)}
+.pred-result.wrong{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text);border:1px solid var(--quiz-wrong-text)}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}.level-fade{animation:fadeIn 0.6s ease-out}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>⭐ <span class="gold">恒星演化</span>探险</h1>
+  <div class="sub">7 个关卡，追踪恒星从诞生到死亡的壮丽旅程</div>
+  <div class="desc-box">从分子云坍缩到黑洞形成，从氢聚变到元素起源。调节恒星质量，观察不同演化路径，在赫罗图上实时追踪恒星的一生。</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">🌫️</div>分子云</div>
+    <div class="feat"><div class="fi">☀️</div>主序星</div>
+    <div class="feat"><div class="fi">🔴</div>红巨星</div>
+    <div class="feat"><div class="fi">💎</div>白矮星</div>
+    <div class="feat"><div class="fi">💥</div>超新星</div>
+    <div class="feat"><div class="fi">🕳️</div>黑洞</div>
+    <div class="feat"><div class="fi">⚗️</div>元素起源</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+// === Theme ===
+let isDark=true;
+const TH={
+  dark:{bg:'#0a0a2e',text:'#fff',textSec:'rgba(255,255,255,0.6)',showStars:true},
+  light:{bg:'#e8edf5',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',showStars:false}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';panelDirty=true;renderPanel();}
+
+// === Audio ===
+const Audio2=(()=>{let c=null;function ctx(){if(!c)c=new(window.AudioContext||window.webkitAudioContext)();return c;}
+function play(tp){try{const c2=ctx(),o=c2.createOscillator(),g=c2.createGain();o.connect(g);g.connect(c2.destination);const n=c2.currentTime;
+if(tp==='click'){o.frequency.value=800;o.type='sine';g.gain.setValueAtTime(0.15,n);g.gain.exponentialRampToValueAtTime(0.001,n+0.1);o.start(n);o.stop(n+0.1);}
+else if(tp==='success'){o.frequency.value=523;o.type='sine';g.gain.setValueAtTime(0.2,n);g.gain.exponentialRampToValueAtTime(0.001,n+0.5);o.start(n);o.stop(n+0.5);
+const o2=c2.createOscillator(),g2=c2.createGain();o2.connect(g2);g2.connect(c2.destination);o2.frequency.value=659;o2.type='sine';g2.gain.setValueAtTime(0.2,n+0.15);g2.gain.exponentialRampToValueAtTime(0.001,n+0.6);o2.start(n+0.15);o2.stop(n+0.6);}
+else if(tp==='fail'){o.frequency.value=300;o.type='sawtooth';g.gain.setValueAtTime(0.15,n);g.gain.exponentialRampToValueAtTime(0.001,n+0.4);o.start(n);o.stop(n+0.4);}
+}catch(e){}}return{play};})();
+
+// === Core ===
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,animId;
+let gameState='start',currentLevel=0;
+let levelState={},bgStars=[],particles=[];
+const completedLevels=new Set();
+const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
+const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
+let panelDirty=true,levelTransition=0;
+
+const quizData=[
+  {q:'金斯质量与什么成正比？',opts:['A. 温度的3/2次方','B. 密度的平方','C. 压力的1/2次方'],ans:0},
+  {q:'太阳在赫罗图上属于哪类恒星？',opts:['A. 红巨星','B. 主序星','C. 白矮星'],ans:1},
+  {q:'氦闪发生在哪个阶段？',opts:['A. 主序星','B. 红巨星','C. 白矮星'],ans:1},
+  {q:'钱德拉塞卡极限约为多少太阳质量？',opts:['A. 0.5','B. 1.4','C. 3.0'],ans:1},
+  {q:'超新星爆发后核心质量>3M☉会形成？',opts:['A. 白矮星','B. 中子星','C. 黑洞'],ans:2},
+  {q:'史瓦西半径公式 Rs = ?',opts:['A. GM/c²','B. 2GM/c²','C. 4GM/c²'],ans:1},
+  {q:'比铁重的元素主要通过什么过程产生？',opts:['A. 恒星核心聚变','B. r-过程和s-过程','C. 宇宙大爆炸'],ans:1}
+];
+let quizState={active:false,answered:false,correct:false,selected:-1};
+
+const levels=[
+  {name:'恒星诞生',icon:'🌫️',goals:['触发分子云坍缩','形成原恒星','理解金斯质量'],
+   learn:'当分子云的质量超过金斯质量时，引力胜过热压力，云团开始坍缩。金斯质量 Mj ∝ T^(3/2) / ρ^(1/2)，温度越低、密度越高，越容易坍缩形成恒星。'},
+  {name:'主序星',icon:'☀️',goals:['启动氢聚变','观察质光关系','在赫罗图上定位'],
+   learn:'主序星通过氢聚变维持平衡。质光关系 L ∝ M^3.5 表明质量越大的恒星越亮，但寿命越短。太阳是一颗典型的G型主序星，表面温度约5778K。'},
+  {name:'红巨星',icon:'🔴',goals:['观察氢壳燃烧','触发氦闪','观察洋葱层结构'],
+   learn:'当核心氢耗尽，氢壳燃烧使恒星膨胀为红巨星。低质量恒星核心的简并电子气会导致氦闪——氦聚变以爆炸性方式点燃。大质量恒星则形成洋葱层结构，每层燃烧不同元素。'},
+  {name:'恒星死亡-低质量',icon:'💎',goals:['形成行星状星云','创建白矮星','理解钱德拉塞卡极限'],
+   learn:'低质量恒星（<8M☉）外层被吹散形成行星状星云，核心成为白矮星。钱德拉塞卡极限（~1.4M☉）是白矮星的质量上限，超过则电子简并压无法支撑。'},
+  {name:'恒星死亡-高质量',icon:'💥',goals:['触发超新星爆发','形成中子星','观察脉冲星'],
+   learn:'大质量恒星核心铁聚变吸能导致坍缩，反弹产生超新星爆发。核心被压缩为中子星（密度达10^17 kg/m³），快速旋转的中子星就是脉冲星，周期可短至毫秒级。'},
+  {name:'黑洞形成',icon:'🕳️',goals:['引力坍缩形成黑洞','计算史瓦西半径','观察吸积盘'],
+   learn:'当核心质量超过约3M☉（奥本海默极限），中子简并压也无法抵抗引力，形成黑洞。史瓦西半径 Rs=2GM/c² 定义了事件视界，太阳质量黑洞的Rs仅约3km。'},
+  {name:'元素起源',icon:'⚗️',goals:['观察恒星核合成','理解r-过程','查看宇宙化学丰度'],
+   learn:'恒星是宇宙的元素工厂。核心聚变产生到铁为止的元素，超新星的r-过程（快中子俘获）和AGB星的s-过程（慢中子俘获）产生更重的元素。我们身体里的每个原子都来自恒星。'}
+];
+
+function resize(){canvas.width=CW=innerWidth;canvas.height=CH=innerHeight;bgStars=[];for(let i=0;i<200;i++)bgStars.push({x:Math.random()*CW,y:Math.random()*CH,r:Math.random()*1.5+0.3,b:Math.random()*0.5+0.5});}
+window.addEventListener('resize',resize);resize();
+
+function startGame(){document.getElementById('startScreen').classList.add('hidden');gameState='play';currentLevel=0;panelEl.style.display='block';bbEl.style.display='flex';initLevel(0);panelDirty=true;renderPanel();loop();Audio2.play('click');}
+function goLevel(n){if(n>=0&&n<levels.length&&(n<=currentLevel||completedLevels.has(n)||n<=Math.max(...completedLevels,-1)+1)){initLevel(n);panelDirty=true;renderPanel();}}
+
+// PLACEHOLDER_LEVELS
+
+function initLevel(n){
+  currentLevel=n;particles=[];
+  const g=levels[n].goals;
+  levelState={goals:g.map(()=>false)};
+  quizState={active:false,answered:false,correct:false,selected:-1};
+  levelTransition=1;panelDirty=true;canvas.onclick=null;
+  if(n===0)initL0();else if(n===1)initL1();else if(n===2)initL2();else if(n===3)initL3();
+  else if(n===4)initL4();else if(n===5)initL5();else if(n===6)initL6();
+  Audio2.play('click');
+}
+function markGoal(i){if(!levelState.goals[i]){levelState.goals[i]=true;panelDirty=true;Audio2.play('success');checkComplete();}}
+function checkComplete(){if(levelState.goals.every(g=>g)&&!completedLevels.has(currentLevel)){completedLevels.add(currentLevel);panelDirty=true;celebP((CW+320)/2,CH/2);setTimeout(()=>showResult(),600);}}
+function celebP(cx,cy){for(let i=0;i<40;i++){const a=Math.random()*Math.PI*2,sp=Math.random()*5+2;particles.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1.5,color:`hsl(${40+Math.random()*20},90%,60%)`,r:2+Math.random()*2});}}
+
+function showResult(){
+  const lv=levels[currentLevel],isLast=currentLevel===levels.length-1;
+  const rb=document.getElementById('resultBox');
+  quizState={active:true,answered:false,correct:false,selected:-1};
+  const qd=quizData[currentLevel];
+  let h=`<div class="rb-icon">${lv.icon}</div><div class="rb-title">${lv.name} 完成！</div>`;
+  h+=`<div class="rb-learn">${lv.learn}</div>`;
+  h+=`<div class="quiz-box"><div class="quiz-title">📝 通关测验</div><div style="font-size:12px;color:var(--quiz-opt-text);margin-bottom:8px">${qd.q}</div>`;
+  qd.opts.forEach((o,i)=>{h+=`<button class="quiz-opt" id="qopt${i}" onclick="answerQuiz(${i})">${o}</button>`;});
+  h+=`<div class="quiz-result" id="quizResult"></div></div>`;
+  h+=`<div id="quizBtns" style="margin-top:12px;display:none">`;
+  if(isLast)h+=`<button class="btn-next" onclick="restartAll()">🎉 全部通关！重新开始</button>`;
+  else h+=`<button class="btn-next" onclick="nextLevel()">下一关</button><button class="btn-retry" onclick="retryLevel()">重玩</button>`;
+  h+=`</div>`;rb.innerHTML=h;document.getElementById('resultModal').classList.remove('hidden');
+}
+function answerQuiz(idx){
+  if(quizState.answered)return;const qd=quizData[currentLevel];quizState.selected=idx;
+  if(idx===qd.ans){quizState.answered=true;quizState.correct=true;document.getElementById('qopt'+idx).classList.add('correct');document.getElementById('quizResult').className='quiz-result pass';document.getElementById('quizResult').textContent='✅ 回答正确！';document.getElementById('quizBtns').style.display='block';Audio2.play('success');}
+  else{document.getElementById('qopt'+idx).classList.add('wrong');document.getElementById('quizResult').className='quiz-result fail';document.getElementById('quizResult').textContent='❌ 再想想...';Audio2.play('fail');setTimeout(()=>{document.getElementById('qopt'+idx).classList.remove('wrong');document.getElementById('quizResult').textContent='';},1000);}
+}
+function nextLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel+1);}
+function retryLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel);}
+function restartAll(){document.getElementById('resultModal').classList.add('hidden');completedLevels.clear();initLevel(0);}
+
+function _patchPanel(el,html){var ae=document.activeElement;if(!ae||ae.type!=='range'||!el.contains(ae)){el.innerHTML=html;return;}var tmp=document.createElement('div');tmp.innerHTML=html;_diffN(el,tmp);}
+function _diffN(o,n){var oc=Array.from(o.childNodes),nc=Array.from(n.childNodes);var i=0;while(i<oc.length&&i<nc.length){var a=oc[i],b=nc[i];if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName){o.replaceChild(b.cloneNode(true),a);i++;continue;}if(a.nodeType===3){if(a.textContent!==b.textContent)a.textContent=b.textContent;i++;continue;}if(a.nodeType===1){if(a.tagName==='INPUT'&&a.type==='range'&&a===document.activeElement){i++;continue;}for(var j=0;j<b.attributes.length;j++){var at=b.attributes[j];if(a.getAttribute(at.name)!==at.value)a.setAttribute(at.name,at.value);}_diffN(a,b);}i++;}while(oc.length>nc.length)o.removeChild(o.lastChild);for(;i<nc.length;i++)o.appendChild(nc[i].cloneNode(true));}
+
+function stageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<levels.length;i++){let cls=completedLevels.has(i)?'done':i===currentLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;}
+  h+=`</div><div class="sn-info">📍 第${currentLevel+1}/${levels.length}关 | 进度 ${Math.round(completedLevels.size/levels.length*100)}%</div></div>`;return h;
+}
+
+function renderPanel(){
+  if(!panelDirty)return;panelDirty=false;
+  const lv=levels[currentLevel];
+  let h=stageNav();
+  h+=`<div class="m-title">${lv.icon} ${lv.name}</div>`;
+  h+='<div class="concept-box"><b>目标</b>';
+  lv.goals.forEach((g,i)=>{const done=levelState.goals[i];h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${g}</span></div>`;});
+  h+='</div>';
+  if(currentLevel===0)h+=panelL0();else if(currentLevel===1)h+=panelL1();else if(currentLevel===2)h+=panelL2();
+  else if(currentLevel===3)h+=panelL3();else if(currentLevel===4)h+=panelL4();else if(currentLevel===5)h+=panelL5();else if(currentLevel===6)h+=panelL6();
+  h+=`<div class="learn-box">💡 ${lv.learn}</div>`;
+  _patchPanel(panelEl,h);
+  bbLeft.textContent=`关卡 ${currentLevel+1}: ${lv.name}`;bbRight.textContent=`已完成 ${completedLevels.size}/${levels.length}`;
+}
+
+// === Drawing helpers ===
+function drawBg(){ctx.fillStyle=t().bg;ctx.fillRect(0,0,CW,CH);if(levelTransition>0)levelTransition-=0.02;bgStars.forEach(s=>{ctx.globalAlpha=(1-Math.max(0,levelTransition))*(s.b*(0.7+0.3*Math.sin(time*2+s.x)));ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();});ctx.globalAlpha=1;}
+function drawParticles(){particles.forEach((p,i)=>{p.x+=p.vx;p.y+=p.vy;p.life-=0.02;if(p.life<=0){particles.splice(i,1);return;}ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();});ctx.globalAlpha=1;}
+
+// PLACEHOLDER_L0
+
+// ===== L0: 恒星诞生 =====
+let l0={density:1,temp:100,collapsed:false,protostar:false,cloudParts:[],animT:0};
+function initL0(){l0={density:1,temp:100,collapsed:false,protostar:false,cloudParts:[],animT:0};
+  for(let i=0;i<120;i++)l0.cloudParts.push({x:Math.random()*400-200,y:Math.random()*400-200,r:Math.random()*8+3,a:Math.random()*0.5+0.2,vx:(Math.random()-0.5)*0.3,vy:(Math.random()-0.5)*0.3});}
+function panelL0(){
+  const jeansMass=(l0.temp/10)*Math.sqrt(l0.temp/10)/(Math.sqrt(l0.density)*0.5);
+  const cloudMass=l0.density*50;
+  const canCollapse=cloudMass>jeansMass;
+  let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">画布上是一团<span style="color:#6ea8fe">蓝色分子云</span>。调节密度和温度，让云团质量超过金斯质量触发坍缩。</div>`;
+  h+=`<div class="slider-wrap"><label>云团密度: <span class="sv">${l0.density.toFixed(1)} ×10³ cm⁻³</span></label>`;
+  h+=`<input type="range" min="0.5" max="20" step="0.1" value="${l0.density}" oninput="l0.density=+this.value;panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
+  h+=`<div class="slider-wrap"><label>温度: <span class="sv">${l0.temp.toFixed(0)} K</span></label>`;
+  h+=`<input type="range" min="5" max="300" step="1" value="${l0.temp}" oninput="l0.temp=+this.value;panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
+  h+=`<div style="font-size:12px;margin:6px 0;color:var(--concept-text)">云团质量: <span class="sv">${cloudMass.toFixed(1)} M☉</span> | 金斯质量: <span class="sv">${jeansMass.toFixed(1)} M☉</span></div>`;
+  h+=`<div style="font-size:12px;color:${canCollapse?'#4ade80':'#f87171'};margin:4px 0">${canCollapse?'✅ 云团质量 > 金斯质量，可以坍缩！':'❌ 云团质量 < 金斯质量，无法坍缩'}</div>`;
+  if(!l0.collapsed)h+=`<button class="act-btn${canCollapse?' green':''}" onclick="collapseCloud()"${canCollapse?'':' disabled'}>触发坍缩</button>`;
+  else if(!l0.protostar)h+=`<button class="act-btn green" onclick="formProtostar()">形成原恒星</button>`;
+  else h+=`<div style="color:#4ade80;font-size:13px;margin:6px 0">✨ 原恒星已形成！核心温度持续升高...</div>`;
+  h+=`<div class="hint-box">💡 降低温度、增大密度可以降低金斯质量，使坍缩更容易发生。Mj ∝ T^(3/2) / ρ^(1/2)</div>`;
+  return h;
+}
+function collapseCloud(){if(l0.collapsed)return;l0.collapsed=true;markGoal(0);panelDirty=true;renderPanel();}
+function formProtostar(){if(l0.protostar)return;l0.protostar=true;markGoal(1);markGoal(2);panelDirty=true;renderPanel();}
+function drawL0(){
+  const cx=(CW+320)/2,cy=CH/2;
+  if(!l0.collapsed){
+    l0.cloudParts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;if(Math.abs(p.x)>250)p.vx*=-1;if(Math.abs(p.y)>250)p.vy*=-1;
+      ctx.globalAlpha=p.a*0.6;ctx.fillStyle=`hsl(220,60%,${40+Math.random()*20}%)`;ctx.beginPath();ctx.arc(cx+p.x,cy+p.y,p.r,0,Math.PI*2);ctx.fill();});
+  } else if(!l0.protostar){
+    l0.animT+=0.01;const shrink=Math.max(0.1,1-l0.animT*0.5);
+    l0.cloudParts.forEach(p=>{const tx=p.x*shrink,ty=p.y*shrink;
+      ctx.globalAlpha=p.a*0.8;ctx.fillStyle=`hsl(${220-l0.animT*50},60%,${50+l0.animT*20}%)`;ctx.beginPath();ctx.arc(cx+tx,cy+ty,p.r*shrink,0,Math.PI*2);ctx.fill();});
+    ctx.globalAlpha=l0.animT*0.5;ctx.fillStyle='#ffa500';ctx.beginPath();ctx.arc(cx,cy,20*l0.animT,0,Math.PI*2);ctx.fill();
+  } else {
+    const pulse=1+0.05*Math.sin(time*3);
+    const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,60*pulse);
+    grd.addColorStop(0,'#fff');grd.addColorStop(0.3,'#ffdd44');grd.addColorStop(0.7,'#ff8800');grd.addColorStop(1,'rgba(255,100,0,0)');
+    ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,60*pulse,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,200,100,0.1)';ctx.beginPath();ctx.arc(cx,cy,100*pulse,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('原恒星',cx,cy+90);
+  }
+  ctx.globalAlpha=1;
+}
+
+// ===== L1: 主序星 =====
+let l1={mass:1,fusionOn:false,hrTracked:false,hrPoints:[],starT:0};
+function initL1(){l1={mass:1,fusionOn:false,hrTracked:false,hrPoints:[],starT:0};}
+function panelL1(){
+  const lum=Math.pow(l1.mass,3.5);const temp=5778*Math.pow(l1.mass,0.5);
+  const life=10/Math.pow(l1.mass,2.5);
+  let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">画布上是一颗恒星。调节质量观察亮度和温度的变化，理解质光关系 L ∝ M^3.5。</div>`;
+  h+=`<div class="slider-wrap"><label>恒星质量: <span class="sv">${l1.mass.toFixed(1)} M☉</span></label>`;
+  h+=`<input type="range" min="0.1" max="50" step="0.1" value="${l1.mass}" oninput="l1.mass=+this.value;panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
+  h+=`<div style="font-size:12px;color:var(--concept-text);margin:4px 0">光度: <span class="sv">${lum.toFixed(2)} L☉</span> | 表面温度: <span class="sv">${temp.toFixed(0)} K</span></div>`;
+  h+=`<div style="font-size:12px;color:var(--concept-text);margin:4px 0">主序寿命: <span class="sv">${life.toFixed(2)} 亿年</span> | 光谱型: <span class="sv">${getSpectral(temp)}</span></div>`;
+  if(!l1.fusionOn)h+=`<button class="act-btn green" onclick="startFusion()">🔥 启动氢聚变</button>`;
+  else h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 氢聚变已启动，4H → He + 能量</div>`;
+  if(l1.fusionOn&&!l1.hrTracked)h+=`<button class="act-btn" onclick="trackHR()">📊 在赫罗图上定位</button>`;
+  if(l1.hrTracked)h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 赫罗图已标记</div>`;
+  h+=`<div class="hint-box">💡 质量越大的恒星越亮但寿命越短。试试把质量调到20M☉以上看看！</div>`;
+  return h;
+}
+function getSpectral(t){if(t>30000)return'O型(蓝)';if(t>10000)return'B型(蓝白)';if(t>7500)return'A型(白)';if(t>6000)return'F型(黄白)';if(t>5200)return'G型(黄)';if(t>3700)return'K型(橙)';return'M型(红)';}
+function startFusion(){l1.fusionOn=true;markGoal(0);panelDirty=true;renderPanel();}
+function trackHR(){l1.hrTracked=true;markGoal(1);markGoal(2);panelDirty=true;renderPanel();}
+function drawL1(){
+  const cx=(CW+320)/2,cy=CH/2;
+  const lum=Math.pow(l1.mass,3.5);const temp=5778*Math.pow(l1.mass,0.5);
+  const radius=Math.min(120,20+Math.pow(l1.mass,0.8)*15);
+  const pulse=l1.fusionOn?1+0.03*Math.sin(time*4):1;
+  // Star color from temperature
+  let r2,g2,b2;
+  if(temp>10000){r2=150;g2=180;b2=255;}else if(temp>7000){r2=200;g2=210;b2=255;}else if(temp>5500){r2=255;g2=255;b2=200;}else if(temp>4000){r2=255;g2=200;b2=100;}else{r2=255;g2=120;b2=60;}
+  const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,radius*pulse);
+  grd.addColorStop(0,'#fff');grd.addColorStop(0.3,`rgb(${r2},${g2},${b2})`);grd.addColorStop(1,`rgba(${r2},${g2},${b2},0)`);
+  ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,radius*pulse,0,Math.PI*2);ctx.fill();
+  if(l1.fusionOn){ctx.fillStyle=`rgba(${r2},${g2},${b2},0.08)`;ctx.beginPath();ctx.arc(cx,cy,radius*1.8,0,Math.PI*2);ctx.fill();}
+  // HR diagram mini
+  if(l1.hrTracked){
+    const hx=CW-220,hy=60,hw=180,hh=160;
+    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(hx,hy,hw,hh);ctx.strokeStyle='#444';ctx.strokeRect(hx,hy,hw,hh);
+    ctx.fillStyle=t().text;ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('赫罗图',hx+hw/2,hy-4);
+    ctx.fillStyle='#888';ctx.font='9px sans-serif';ctx.fillText('← 温度高',hx+30,hy+hh+12);ctx.fillText('温度低 →',hx+hw-30,hy+hh+12);
+    ctx.save();ctx.translate(hx-4,hy+hh/2);ctx.rotate(-Math.PI/2);ctx.fillText('光度 ↑',0,0);ctx.restore();
+    // Main sequence line
+    ctx.strokeStyle='rgba(100,150,255,0.3)';ctx.lineWidth=2;ctx.beginPath();
+    for(let m=0.1;m<=50;m+=0.5){const tM=5778*Math.pow(m,0.5),lM=Math.pow(m,3.5);const px=hx+hw-(Math.log10(tM)-3.3)/(5-3.3)*hw;const py=hy+hh-(Math.log10(lM)+2)/(7+2)*hh;if(m===0.1)ctx.moveTo(px,py);else ctx.lineTo(px,py);}
+    ctx.stroke();
+    // Current star
+    const sx=hx+hw-(Math.log10(temp)-3.3)/(5-3.3)*hw;const sy=hy+hh-(Math.log10(lum)+2)/(7+2)*hh;
+    ctx.fillStyle=`rgb(${r2},${g2},${b2})`;ctx.beginPath();ctx.arc(sx,sy,5,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();
+  }
+  ctx.fillStyle=t().text;ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText(`${l1.mass.toFixed(1)} M☉ ${getSpectral(temp)}`,cx,cy+radius*pulse+25);
+}
+
+// PLACEHOLDER_L2
+
+// ===== L2: 红巨星 =====
+let l2={shellBurn:false,heliumFlash:false,onionView:false,expandT:0,flashT:0,layers:[]};
+function initL2(){l2={shellBurn:false,heliumFlash:false,onionView:false,expandT:0,flashT:0,
+  layers:[{name:'铁核',color:'#888',r:0.08},{name:'硅',color:'#c0a040',r:0.15},{name:'氧',color:'#40a0c0',r:0.25},{name:'碳',color:'#60c060',r:0.38},{name:'氦',color:'#e0e040',r:0.55},{name:'氢壳',color:'#ff6644',r:0.8}]};}
+function panelL2(){
+  let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">恒星核心的氢已耗尽。观察氢壳燃烧如何使恒星膨胀为<span style="color:#ef4444">红巨星</span>。</div>`;
+  if(!l2.shellBurn)h+=`<button class="act-btn" onclick="startShellBurn()">🔥 启动氢壳燃烧</button>`;
+  else{h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 氢壳燃烧中，恒星正在膨胀...</div>`;
+    if(!l2.heliumFlash)h+=`<button class="act-btn" style="border-color:#f59e0b;color:#f59e0b" onclick="triggerHeliumFlash()">⚡ 触发氦闪</button>`;
+    else{h+=`<div style="color:#f59e0b;font-size:12px;margin:4px 0">⚡ 氦闪！核心氦聚变爆发性点燃</div>`;
+      if(!l2.onionView)h+=`<button class="act-btn green" onclick="showOnion()">🧅 查看洋葱层结构</button>`;
+      else h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 洋葱层结构已展示</div>`;
+    }
+  }
+  h+=`<div class="hint-box">💡 大质量恒星内部形成洋葱层结构：每层燃烧不同元素，从外到内依次是氢→氦→碳→氧→硅→铁核</div>`;
+  return h;
+}
+function startShellBurn(){l2.shellBurn=true;markGoal(0);panelDirty=true;renderPanel();}
+function triggerHeliumFlash(){l2.heliumFlash=true;l2.flashT=1;markGoal(1);panelDirty=true;renderPanel();}
+function showOnion(){l2.onionView=true;markGoal(2);panelDirty=true;renderPanel();}
+function drawL2(){
+  const cx=(CW+320)/2,cy=CH/2;
+  if(!l2.shellBurn){
+    const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,50);grd.addColorStop(0,'#fff');grd.addColorStop(0.5,'#ffdd44');grd.addColorStop(1,'rgba(255,200,0,0)');
+    ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,50,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=t().text;ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('核心氢耗尽的恒星',cx,cy+70);
+  } else if(!l2.onionView){
+    l2.expandT=Math.min(l2.expandT+0.005,1);
+    const baseR=50,maxR=150,r=baseR+(maxR-baseR)*l2.expandT;
+    const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,r);grd.addColorStop(0,'#ffaa00');grd.addColorStop(0.4,'#ff4400');grd.addColorStop(1,'rgba(255,50,0,0)');
+    ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+    if(l2.flashT>0){l2.flashT-=0.01;ctx.globalAlpha=l2.flashT;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cx,cy,r*0.3,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
+    ctx.fillStyle='#ff8800';ctx.beginPath();ctx.arc(cx,cy,r*0.15,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=t().text;ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('红巨星',cx,cy+r+25);
+  } else {
+    // Onion layers
+    const maxR=140;
+    l2.layers.slice().reverse().forEach(ly=>{
+      ctx.fillStyle=ly.color;ctx.globalAlpha=0.7;ctx.beginPath();ctx.arc(cx,cy,maxR*ly.r,0,Math.PI*2);ctx.fill();
+    });
+    ctx.globalAlpha=1;
+    l2.layers.forEach(ly=>{
+      ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(cx,cy,maxR*ly.r,0,Math.PI*2);ctx.stroke();
+      const labelR=maxR*ly.r+12;ctx.fillStyle=t().text;ctx.font='11px sans-serif';ctx.textAlign='left';
+      ctx.fillText(ly.name,cx+labelR*0.7,cy-labelR*0.7);
+    });
+    ctx.fillStyle=t().text;ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('洋葱层结构',cx,cy+maxR+30);
+  }
+}
+
+// ===== L3: 低质量恒星死亡 =====
+let l3={nebula:false,whiteDwarf:false,chandraTest:false,mass:0.8,nebParts:[],wdPulse:0};
+function initL3(){l3={nebula:false,whiteDwarf:false,chandraTest:false,mass:0.8,nebParts:[],wdPulse:0};
+  for(let i=0;i<80;i++)l3.nebParts.push({a:Math.random()*Math.PI*2,r:60+Math.random()*40,sp:0.3+Math.random()*0.5,hue:180+Math.random()*120,size:3+Math.random()*5});}
+function panelL3(){
+  let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">低质量恒星（<8M☉）的最终归宿：外层被吹散形成<span style="color:#60a5fa">行星状星云</span>，核心成为<span style="color:#e0e0ff">白矮星</span>。</div>`;
+  if(!l3.nebula)h+=`<button class="act-btn" onclick="formNebula()">💨 吹散外层</button>`;
+  else{h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 行星状星云已形成</div>`;
+    if(!l3.whiteDwarf)h+=`<button class="act-btn" onclick="formWD()">💎 形成白矮星</button>`;
+    else{h+=`<div style="color:#e0e0ff;font-size:12px;margin:4px 0">✅ 白矮星已形成</div>`;
+      if(!l3.chandraTest){
+        h+=`<div class="slider-wrap"><label>白矮星质量: <span class="sv">${l3.mass.toFixed(2)} M☉</span></label>`;
+        h+=`<input type="range" min="0.2" max="2.0" step="0.01" value="${l3.mass}" oninput="l3.mass=+this.value;panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
+        h+=`<div style="font-size:12px;color:${l3.mass>1.4?'#f87171':'#4ade80'};margin:4px 0">${l3.mass>1.4?'⚠️ 超过钱德拉塞卡极限！白矮星不稳定！':'✅ 在钱德拉塞卡极限以下，白矮星稳定'}</div>`;
+        h+=`<button class="act-btn green" onclick="testChandra()">验证钱德拉塞卡极限</button>`;
+      } else h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 已理解钱德拉塞卡极限 ~1.4 M☉</div>`;
+    }
+  }
+  h+=`<div class="hint-box">💡 钱德拉塞卡极限 ~1.4M☉ 是白矮星的质量上限。超过此极限，电子简并压无法支撑引力。</div>`;
+  return h;
+}
+function formNebula(){l3.nebula=true;markGoal(0);panelDirty=true;renderPanel();}
+function formWD(){l3.whiteDwarf=true;markGoal(1);panelDirty=true;renderPanel();}
+function testChandra(){l3.chandraTest=true;markGoal(2);panelDirty=true;renderPanel();}
+function drawL3(){
+  const cx=(CW+320)/2,cy=CH/2;
+  if(!l3.nebula){
+    const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,80);grd.addColorStop(0,'#ff8844');grd.addColorStop(0.6,'#ff4400');grd.addColorStop(1,'rgba(255,50,0,0)');
+    ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,80,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=t().text;ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('膨胀的红巨星外层',cx,cy+100);
+  } else {
+    // Planetary nebula
+    l3.nebParts.forEach(p=>{p.r+=p.sp*0.1;if(p.r>200)p.r=60;
+      const px=cx+Math.cos(p.a+time*0.2)*p.r,py=cy+Math.sin(p.a+time*0.2)*p.r;
+      ctx.globalAlpha=0.5*(1-p.r/200);ctx.fillStyle=`hsl(${p.hue},70%,60%)`;ctx.beginPath();ctx.arc(px,py,p.size,0,Math.PI*2);ctx.fill();});
+    ctx.globalAlpha=1;
+    if(l3.whiteDwarf){
+      l3.wdPulse+=0.05;const pulse=1+0.02*Math.sin(l3.wdPulse);
+      const sz=l3.mass>1.4?15*(2-l3.mass/1.4):15;
+      const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,sz*pulse);grd.addColorStop(0,'#fff');grd.addColorStop(0.5,'#ccddff');grd.addColorStop(1,'rgba(200,220,255,0)');
+      ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,sz*pulse,0,Math.PI*2);ctx.fill();
+      if(l3.mass>1.4){ctx.strokeStyle='#f87171';ctx.lineWidth=2;ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(cx,cy,sz*1.5,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+        ctx.fillStyle='#f87171';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('不稳定！超过1.4M☉',cx,cy+sz*1.5+18);}
+      ctx.fillStyle=t().text;ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText(`白矮星 ${l3.mass.toFixed(2)}M☉`,cx,cy-sz*pulse-15);
+    }
+  }
+}
+
+// PLACEHOLDER_L4
+
+// ===== L4: 高质量恒星死亡 =====
+let l4={supernova:false,neutronStar:false,pulsar:false,snT:0,snParts:[],pulsarAngle:0};
+function initL4(){l4={supernova:false,neutronStar:false,pulsar:false,snT:0,snParts:[],pulsarAngle:0};}
+function panelL4(){
+  let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">大质量恒星（>8M☉）的核心铁聚变吸收能量，引力坍缩引发<span style="color:#f59e0b">超新星爆发</span>。</div>`;
+  if(!l4.supernova)h+=`<button class="act-btn" style="border-color:#f59e0b;color:#f59e0b" onclick="triggerSN()">💥 触发超新星爆发</button>`;
+  else{h+=`<div style="color:#f59e0b;font-size:12px;margin:4px 0">💥 超新星爆发！亮度超过整个星系</div>`;
+    if(!l4.neutronStar)h+=`<button class="act-btn" onclick="formNS()">⚛️ 形成中子星</button>`;
+    else{h+=`<div style="color:#60a5fa;font-size:12px;margin:4px 0">✅ 中子星已形成（密度 ~10¹⁷ kg/m³）</div>`;
+      if(!l4.pulsar)h+=`<button class="act-btn green" onclick="startPulsar()">📡 观察脉冲星</button>`;
+      else h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 脉冲星旋转中，周期可短至毫秒级</div>`;
+    }
+  }
+  h+=`<div class="hint-box">💡 超新星爆发释放的能量相当于太阳一生辐射总量。核心被压缩到直径仅约20公里的中子星。</div>`;
+  return h;
+}
+function triggerSN(){l4.supernova=true;l4.snT=1;
+  for(let i=0;i<100;i++){const a=Math.random()*Math.PI*2,sp=Math.random()*8+3;l4.snParts.push({x:0,y:0,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:2,hue:30+Math.random()*30,r:2+Math.random()*4});}
+  markGoal(0);panelDirty=true;renderPanel();}
+function formNS(){l4.neutronStar=true;markGoal(1);panelDirty=true;renderPanel();}
+function startPulsar(){l4.pulsar=true;markGoal(2);panelDirty=true;renderPanel();}
+function drawL4(){
+  const cx=(CW+320)/2,cy=CH/2;
+  if(!l4.supernova){
+    const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,70);grd.addColorStop(0,'#fff');grd.addColorStop(0.3,'#aaf');grd.addColorStop(1,'rgba(100,100,255,0)');
+    ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,70,0,Math.PI*2);ctx.fill();
+    // Iron core
+    ctx.fillStyle='#888';ctx.beginPath();ctx.arc(cx,cy,12,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=t().text;ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('铁核（聚变终点）',cx,cy+85);
+  } else {
+    // SN debris
+    l4.snParts.forEach((p,i)=>{p.x+=p.vx;p.y+=p.vy;p.vx*=0.995;p.vy*=0.995;p.life-=0.008;
+      if(p.life<=0){l4.snParts.splice(i,1);return;}
+      ctx.globalAlpha=p.life*0.7;ctx.fillStyle=`hsl(${p.hue},90%,60%)`;ctx.beginPath();ctx.arc(cx+p.x,cy+p.y,p.r*p.life,0,Math.PI*2);ctx.fill();});
+    ctx.globalAlpha=1;
+    if(l4.snT>0){l4.snT-=0.005;ctx.globalAlpha=l4.snT*0.3;ctx.fillStyle='#fff';ctx.fillRect(320,0,CW-320,CH);ctx.globalAlpha=1;}
+    if(l4.neutronStar){
+      const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,10);grd.addColorStop(0,'#fff');grd.addColorStop(0.5,'#aaccff');grd.addColorStop(1,'rgba(150,200,255,0)');
+      ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,10,0,Math.PI*2);ctx.fill();
+      if(l4.pulsar){
+        l4.pulsarAngle+=0.15;
+        const beamLen=200;
+        ctx.save();ctx.translate(cx,cy);ctx.rotate(l4.pulsarAngle);
+        const bg=ctx.createLinearGradient(0,0,beamLen,0);bg.addColorStop(0,'rgba(100,200,255,0.6)');bg.addColorStop(1,'rgba(100,200,255,0)');
+        ctx.fillStyle=bg;ctx.beginPath();ctx.moveTo(0,-3);ctx.lineTo(beamLen,-8);ctx.lineTo(beamLen,8);ctx.lineTo(0,3);ctx.fill();
+        ctx.rotate(Math.PI);ctx.fillStyle=bg;ctx.beginPath();ctx.moveTo(0,-3);ctx.lineTo(beamLen,-8);ctx.lineTo(beamLen,8);ctx.lineTo(0,3);ctx.fill();
+        ctx.restore();
+        ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('脉冲星',cx,cy+30);
+      } else {ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('中子星',cx,cy+25);}
+    }
+  }
+}
+
+// ===== L5: 黑洞形成 =====
+let l5={collapsed:false,rsCalc:false,accretion:false,mass:5,collapseT:0,accParts:[]};
+function initL5(){l5={collapsed:false,rsCalc:false,accretion:false,mass:5,collapseT:0,accParts:[]};
+  for(let i=0;i<60;i++)l5.accParts.push({a:Math.random()*Math.PI*2,r:80+Math.random()*60,sp:0.02+Math.random()*0.02,hue:20+Math.random()*40});}
+function panelL5(){
+  const rs=(2*6.674e-11*l5.mass*1.989e30/(9e16))/1000;
+  let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">核心质量超过约3M☉（奥本海默极限），中子简并压也无法抵抗引力，形成<span style="color:#a78bfa">黑洞</span>。</div>`;
+  h+=`<div class="slider-wrap"><label>核心质量: <span class="sv">${l5.mass.toFixed(1)} M☉</span></label>`;
+  h+=`<input type="range" min="1" max="30" step="0.1" value="${l5.mass}" oninput="l5.mass=+this.value;panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
+  h+=`<div style="font-size:12px;color:var(--concept-text);margin:4px 0">史瓦西半径: <span class="sv">${rs.toFixed(2)} km</span></div>`;
+  if(!l5.collapsed){h+=`<div style="font-size:12px;color:${l5.mass>3?'#4ade80':'#f87171'};margin:4px 0">${l5.mass>3?'✅ 超过奥本海默极限，可以形成黑洞':'❌ 未超过3M☉，无法形成黑洞'}</div>`;
+    h+=`<button class="act-btn" onclick="collapseToBH()"${l5.mass>3?'':' disabled'}>🕳️ 引力坍缩</button>`;}
+  else{h+=`<div style="color:#a78bfa;font-size:12px;margin:4px 0">✅ 黑洞已形成</div>`;
+    if(!l5.rsCalc)h+=`<button class="act-btn" onclick="calcRs()">📐 计算史瓦西半径</button>`;
+    else{h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ Rs = 2GM/c² = ${rs.toFixed(2)} km</div>`;
+      if(!l5.accretion)h+=`<button class="act-btn green" onclick="showAccretion()">💫 观察吸积盘</button>`;
+      else h+=`<div style="color:#f59e0b;font-size:12px;margin:4px 0">✅ 吸积盘形成，物质摩擦加热发光</div>`;
+    }
+  }
+  h+=`<div class="hint-box">💡 把质量调到3M☉以上触发坍缩。Rs = 2GM/c²，太阳质量黑洞的Rs仅约3km。</div>`;
+  return h;
+}
+function collapseToBH(){l5.collapsed=true;l5.collapseT=1;markGoal(0);panelDirty=true;renderPanel();}
+function calcRs(){l5.rsCalc=true;markGoal(1);panelDirty=true;renderPanel();}
+function showAccretion(){l5.accretion=true;markGoal(2);panelDirty=true;renderPanel();}
+function drawL5(){
+  const cx=(CW+320)/2,cy=CH/2;
+  if(!l5.collapsed){
+    const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,40);grd.addColorStop(0,'#fff');grd.addColorStop(0.5,'#aaccff');grd.addColorStop(1,'rgba(150,200,255,0)');
+    ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,40,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=t().text;ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText(`核心 ${l5.mass.toFixed(1)}M☉`,cx,cy+55);
+  } else {
+    if(l5.collapseT>0){l5.collapseT-=0.01;const r=40*l5.collapseT;
+      ctx.fillStyle=`rgba(150,200,255,${l5.collapseT})`;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();}
+    // Black hole
+    const bhR=20+l5.mass*0.5;
+    ctx.fillStyle='#000';ctx.beginPath();ctx.arc(cx,cy,bhR,0,Math.PI*2);ctx.fill();
+    const grd=ctx.createRadialGradient(cx,cy,bhR,cx,cy,bhR*2);grd.addColorStop(0,'rgba(100,100,255,0.3)');grd.addColorStop(1,'transparent');
+    ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,bhR*2,0,Math.PI*2);ctx.fill();
+    // Event horizon
+    ctx.setLineDash([4,4]);ctx.strokeStyle='rgba(100,150,255,0.5)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(cx,cy,bhR,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+    if(l5.accretion){
+      l5.accParts.forEach(p=>{p.a+=p.sp;if(p.r>bhR+5)p.r-=0.05;
+        const px=cx+Math.cos(p.a)*p.r,py=cy+Math.sin(p.a)*p.r*0.3;
+        ctx.globalAlpha=0.7;ctx.fillStyle=`hsl(${p.hue},90%,${50+20*(1-p.r/140)}%)`;ctx.beginPath();ctx.arc(px,py,2,0,Math.PI*2);ctx.fill();});
+      ctx.globalAlpha=1;
+    }
+    ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('黑洞',cx,cy+bhR*2+15);
+  }
+}
+
+// PLACEHOLDER_L6
+
+// ===== L6: 元素起源 =====
+let l6={nucleoSyn:false,rProcess:false,abundance:false,elements:[
+  {sym:'H',z:1,origin:'大爆炸',color:'#60a5fa',x:0,y:0},
+  {sym:'He',z:2,origin:'大爆炸',color:'#fbbf24',x:0,y:0},
+  {sym:'C',z:6,origin:'恒星聚变',color:'#34d399',x:0,y:0},
+  {sym:'O',z:8,origin:'恒星聚变',color:'#60a5fa',x:0,y:0},
+  {sym:'Si',z:14,origin:'恒星聚变',color:'#a78bfa',x:0,y:0},
+  {sym:'Fe',z:26,origin:'恒星聚变终点',color:'#f87171',x:0,y:0},
+  {sym:'Au',z:79,origin:'r-过程',color:'#fbbf24',x:0,y:0},
+  {sym:'U',z:92,origin:'r-过程',color:'#f472b6',x:0,y:0}
+],fusionAnim:0};
+function initL6(){l6.nucleoSyn=false;l6.rProcess=false;l6.abundance=false;l6.fusionAnim=0;
+  const cx=(CW+320)/2,cy=CH/2;
+  l6.elements.forEach((e,i)=>{const a=i/l6.elements.length*Math.PI*2;e.x=cx+Math.cos(a)*120;e.y=cy+Math.sin(a)*120;});}
+function panelL6(){
+  let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">恒星是宇宙的元素工厂。画布上展示了不同元素的起源。</div>`;
+  if(!l6.nucleoSyn)h+=`<button class="act-btn" onclick="showNucleoSyn()">⚗️ 观察恒星核合成</button>`;
+  else{h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 恒星核心聚变：H→He→C→O→Si→Fe</div>`;
+    if(!l6.rProcess)h+=`<button class="act-btn" style="border-color:#f59e0b;color:#f59e0b" onclick="showRProcess()">💥 观察r-过程</button>`;
+    else{h+=`<div style="color:#f59e0b;font-size:12px;margin:4px 0">✅ r-过程：超新星中快中子俘获产生重元素</div>`;
+      if(!l6.abundance)h+=`<button class="act-btn green" onclick="showAbundance()">📊 查看宇宙化学丰度</button>`;
+      else h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 宇宙丰度图已展示</div>`;
+    }
+  }
+  h+=`<div class="concept-box" style="font-size:11px;line-height:1.8"><b>元素起源</b><br>`;
+  l6.elements.forEach(e=>{h+=`<span style="color:${e.color}">${e.sym}(Z=${e.z})</span>: ${e.origin}<br>`;});
+  h+=`</div>`;
+  h+=`<div class="hint-box">💡 我们身体里的碳来自红巨星，铁来自超新星，金来自中子星合并的r-过程。"我们都是星尘。"</div>`;
+  return h;
+}
+function showNucleoSyn(){l6.nucleoSyn=true;l6.fusionAnim=0;markGoal(0);panelDirty=true;renderPanel();}
+function showRProcess(){l6.rProcess=true;markGoal(1);panelDirty=true;renderPanel();}
+function showAbundance(){l6.abundance=true;markGoal(2);panelDirty=true;renderPanel();}
+function drawL6(){
+  const cx=(CW+320)/2,cy=CH/2;
+  // Draw elements in a circle
+  l6.elements.forEach((e,i)=>{
+    const highlight=l6.nucleoSyn&&e.z<=26||l6.rProcess&&e.z>26;
+    const r=highlight?22:16;
+    ctx.fillStyle=highlight?e.color:'rgba(100,100,150,0.3)';ctx.beginPath();ctx.arc(e.x,e.y,r,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font=`${highlight?'bold ':''}13px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(e.sym,e.x,e.y);
+    ctx.textBaseline='alphabetic';
+    if(highlight){ctx.fillStyle=e.color;ctx.font='10px sans-serif';ctx.fillText(e.origin,e.x,e.y+r+12);}
+  });
+  // Fusion chain arrows
+  if(l6.nucleoSyn){
+    l6.fusionAnim=Math.min(l6.fusionAnim+0.01,1);
+    const chain=[0,1,2,3,4,5]; // H→He→C→O→Si→Fe
+    ctx.strokeStyle='rgba(100,200,100,0.4)';ctx.lineWidth=2;
+    for(let i=0;i<chain.length-1;i++){
+      const a=l6.elements[chain[i]],b=l6.elements[chain[i+1]];
+      const prog=Math.min(1,l6.fusionAnim*(chain.length)/(i+1));
+      if(prog<=0)continue;
+      ctx.globalAlpha=prog*0.6;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(a.x+(b.x-a.x)*prog,a.y+(b.y-a.y)*prog);ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+  }
+  // Abundance chart
+  if(l6.abundance){
+    const ax=CW-260,ay=80,aw=220,ah=180;
+    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(ax,ay,aw,ah);ctx.strokeStyle='#444';ctx.strokeRect(ax,ay,aw,ah);
+    ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('宇宙化学丰度',ax+aw/2,ay-6);
+    const abundances=[{sym:'H',val:1},{sym:'He',val:0.08},{sym:'O',val:6.6e-4},{sym:'C',val:3.3e-4},{sym:'Fe',val:3.2e-5},{sym:'Au',val:6e-11},{sym:'U',val:3e-12}];
+    const maxLog=0,minLog=-12;
+    abundances.forEach((a,i)=>{
+      const logV=Math.log10(a.val);const barH=(logV-minLog)/(maxLog-minLog)*(ah-30);
+      const bx=ax+20+i*(aw-40)/abundances.length,bw=(aw-40)/abundances.length-4;
+      const el=l6.elements.find(e=>e.sym===a.sym);
+      ctx.fillStyle=el?el.color:'#888';ctx.fillRect(bx,ay+ah-barH-10,bw,barH);
+      ctx.fillStyle=t().text;ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText(a.sym,bx+bw/2,ay+ah-2);
+    });
+  }
+  // Central star
+  const pulse=1+0.03*Math.sin(time*3);
+  const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,35*pulse);grd.addColorStop(0,'#fff');grd.addColorStop(0.5,'#ffdd44');grd.addColorStop(1,'rgba(255,200,0,0)');
+  ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,35*pulse,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=t().text;ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('恒星核合成',cx,cy+50);
+}
+
+// ===== Main Loop =====
+function loop(){
+  time+=0.016;drawBg();
+  if(gameState==='play'){
+    if(currentLevel===0)drawL0();else if(currentLevel===1)drawL1();else if(currentLevel===2)drawL2();
+    else if(currentLevel===3)drawL3();else if(currentLevel===4)drawL4();else if(currentLevel===5)drawL5();else if(currentLevel===6)drawL6();
+  }
+  drawParticles();
+  animId=requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>

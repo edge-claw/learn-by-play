@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>智能合约安全探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-bg:#111;--quiz-opt-border:#1a3a1a;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --roadmap-text:#a0a0c0;--roadmap-num-bg:#1a1a4a;--roadmap-num-text:#60a5fa;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --code-bg:#0d0d20;--code-border:#1a1a3a;--code-text:#e0e0e0;
+  --code-keyword:#c792ea;--code-string:#c3e88d;--code-comment:#546e7a;--code-func:#82aaff;--code-num:#f78c6c;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-bg:#fff;--quiz-opt-border:#d1d5db;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --roadmap-text:#475569;--roadmap-num-bg:#e0e7ff;--roadmap-num-text:#4f46e5;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --code-bg:#f8f8fc;--code-border:#e0e0e8;--code-text:#1e293b;
+  --code-keyword:#7c3aed;--code-string:#059669;--code-comment:#94a3b8;--code-func:#2563eb;--code-num:#dc2626;
+}
+
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:36px;margin-bottom:6px;letter-spacing:2px}
+.start-box .sub{font-size:17px;color:var(--sub-color);margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:14px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:var(--feat-text);font-size:11px;width:68px;padding:10px 4px;background:var(--feat-bg);border:1px solid var(--feat-border);border-radius:10px}
+.feat .fi{font-size:24px;margin-bottom:4px}
+.desc-box{background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2);border-radius:12px;padding:16px 20px;margin-bottom:24px;font-size:14px;color:var(--text-sub);line-height:1.8;text-align:left}
+
+#lp{position:absolute;top:0;left:0;width:320px;height:100%;background:var(--panel-bg);border-right:1px solid var(--panel-border);z-index:20;display:none;flex-direction:column;overflow:hidden}
+#lp .lp-head{padding:12px 16px;border-bottom:1px solid var(--panel-border);display:flex;align-items:center;justify-content:space-between}
+#lp .lp-title{font-size:14px;font-weight:700;color:#7c3aed}
+#lp .lp-step{font-size:11px;color:#888}
+#lp-body{flex:1;overflow-y:auto;padding:0}
+
+.mission{margin:12px;padding:14px;background:var(--btn-bg);border:1px solid var(--result-border);border-radius:10px}
+.mission .m-level{font-size:11px;color:#7c3aed;font-weight:600;letter-spacing:1px}
+.mission .m-title{font-size:17px;font-weight:700;margin:4px 0;color:var(--title-color)}
+.mission .m-desc{font-size:13px;color:var(--text-sub);line-height:1.6}
+.mission .m-concept{margin-top:10px;padding:8px 10px;background:rgba(124,58,237,0.08);border-radius:6px;font-size:12px;color:var(--sv);line-height:1.6}
+.goal-row{display:flex;align-items:center;gap:8px;padding:4px 12px;font-size:13px}
+.goal-row .g-icon{font-size:15px}
+.goal-row .g-text{color:var(--text-sub);flex:1}
+.goal-row.done .g-text{color:#22c55e}
+.hint-b{margin:0 12px;padding:10px 14px;background:rgba(245,158,11,0.08);border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;font-size:12px;color:#f59e0b;line-height:1.5}
+.act-section{margin:12px}
+.act-section .as-label{font-size:12px;color:#888;margin-bottom:8px;font-weight:600}
+.act-btn{width:100%;padding:12px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px;transition:all .2s}
+.act-btn:hover{filter:brightness(1.1)}
+.act-btn:disabled{background:#333;color:#666;cursor:not-allowed;filter:none}
+.act-btn.green{background:linear-gradient(135deg,#2aaa5a,#3cc76a)}
+.act-btn.red{background:linear-gradient(135deg,#e8443a,#ff6b6b)}
+.act-btn.blue{background:linear-gradient(135deg,#3a7aff,#5a9aff)}
+.act-btn.small{width:auto;display:inline-block;padding:8px 16px;font-size:12px;margin:4px 2px}
+.slider-row{margin:8px 12px}
+.slider-row label{font-size:12px;color:var(--text-sub);display:block;margin-bottom:4px}
+.slider-row input[type=range]{width:100%;accent-color:#7c3aed}
+.slider-row .sv{color:var(--sv);font-weight:700}
+.code-block{margin:8px 12px;padding:10px;background:var(--code-bg);border:1px solid var(--code-border);border-radius:8px;font-family:'SF Mono',Consolas,monospace;font-size:11px;line-height:1.6;overflow-x:auto;white-space:pre;color:var(--code-text)}
+.code-block .kw{color:var(--code-keyword)}
+.code-block .str{color:var(--code-string)}
+.code-block .cmt{color:var(--code-comment)}
+.code-block .fn{color:var(--code-func)}
+.code-block .num{color:var(--code-num)}
+.code-block .vuln{background:rgba(239,68,68,0.15);border-left:3px solid #ef4444;padding-left:6px;display:block}
+.code-block .fix{background:rgba(34,197,94,0.15);border-left:3px solid #22c55e;padding-left:6px;display:block}
+#info-bar{position:absolute;top:48px;right:12px;background:var(--bar-bg);border:1px solid var(--panel-border);border-radius:10px;padding:12px 16px;z-index:20;min-width:200px;display:none;font-size:12px}
+#info-bar .ib-title{font-size:11px;color:#7c3aed;font-weight:600;margin-bottom:6px}
+.ib-row{display:flex;justify-content:space-between;padding:3px 0}
+.ib-row .ib-k{color:#888}
+.ib-row .ib-v{font-weight:600;font-variant-numeric:tabular-nums}
+.result-box{text-align:center;max-width:420px;background:var(--result-bg);border:1px solid var(--result-border);border-radius:16px;padding:28px 36px}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-desc{font-size:13px;color:#999;line-height:1.6;margin-bottom:16px}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#7c3aed;color:#fff}
+.result-box .btn-retry{background:var(--stage-bar);color:var(--text-sub)}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 12px}
+.quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:12px;color:var(--text-sub);padding:6px 8px;margin:3px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);transition:all .2s}
+.quiz-opt:hover{background:var(--quiz-opt-hover);border-color:var(--quiz-border)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:var(--quiz-correct-text);color:var(--quiz-correct-text);pointer-events:none}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:var(--quiz-wrong-text);color:var(--quiz-wrong-text)}
+.quiz-opt.disabled{pointer-events:none;opacity:.5}
+.stage-nav{display:flex;gap:2px;margin:10px 12px 6px;flex-wrap:wrap}
+.stage-dot{width:28px;height:28px;border-radius:50%;border:2px solid #cbd5e1;background:var(--btn-bg);display:flex;align-items:center;justify-content:center;font-size:11px;color:#94a3b8;cursor:pointer;transition:all .2s;font-weight:600}
+.stage-dot.done{border-color:#22c55e;background:rgba(34,197,94,0.15);color:#22c55e}
+.stage-dot.cur{border-color:#7c3aed;background:rgba(124,58,237,0.15);color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.2)}
+.stage-dot:hover{transform:scale(1.15)}
+#particle-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:100}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+.roadmap{margin:20px auto;max-width:500px;text-align:left}
+.roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
+.roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
+.roadmap-num{width:24px;height:24px;border-radius:50%;background:var(--roadmap-num-bg);color:var(--roadmap-num-text);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;flex-shrink:0}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<canvas id="canvas"></canvas>
+<canvas id="particle-canvas"></canvas>
+
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>📜 <span style="color:#7c3aed">智能合约</span>安全探险</h1>
+  <div class="sub">7 个关卡，从 EVM 基础到审计实战</div>
+  <div class="desc-box">阅读合约代码找漏洞、模拟攻击过程、学习修复方法。掌握智能合约安全的核心知识，成为 Web3 安全守护者。</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">⚙️</div>EVM</div>
+    <div class="feat"><div class="fi">💾</div>存储</div>
+    <div class="feat"><div class="fi">🔄</div>重入</div>
+    <div class="feat"><div class="fi">💥</div>溢出</div>
+    <div class="feat"><div class="fi">🔐</div>权限</div>
+    <div class="feat"><div class="fi">⬆️</div>升级</div>
+    <div class="feat"><div class="fi">🔍</div>审计</div>
+  </div>
+</div>
+</div>
+
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+
+<div id="lp">
+  <div class="lp-head"><span class="lp-title" id="lpTitle">第 1 关</span><span class="lp-step" id="lpStep">1/7</span></div>
+  <div id="lp-body"></div>
+</div>
+<div id="info-bar"></div>
+
+<script>
+/* PLACEHOLDER_SCRIPT */
+// === 主题 ===
+let isDark=true;
+const TH={
+  dark:{bg:'#0a0a2e',bg2:'#0d0d1a',text:'#fff',textSec:'rgba(255,255,255,0.6)',accent:'#7c3aed',green:'#22c55e',red:'#ef4444',orange:'#f59e0b',showStars:true},
+  light:{bg:'#e8edf5',bg2:'#f0f2f5',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',accent:'#7c3aed',green:'#059669',red:'#dc2626',orange:'#d97706',showStars:false}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel()}
+
+// === 音效 ===
+const AudioCtx=window.AudioContext||window.webkitAudioContext;let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new AudioCtx()}
+function playSound(type){
+  try{initAudio()}catch(e){return}
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);const now=audioCtx.currentTime;
+  if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start(now);g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.stop(now+0.1)}
+  else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(659,now+0.1);o.frequency.setValueAtTime(784,now+0.2);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);o.stop(now+0.4)}
+  else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(200,now+0.15);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);o.stop(now+0.3)}
+}
+
+// === 粒子 ===
+const pCanvas=document.getElementById('particle-canvas'),pCtx=pCanvas.getContext('2d');
+let particles=[];
+function spawnParticles(cx,cy,count){for(let i=0;i<count;i++){const a=Math.random()*Math.PI*2,s=2+Math.random()*4;particles.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s-2,life:1,color:`hsl(${270+Math.random()*40},80%,${50+Math.random()*30}%)`,size:2+Math.random()*3})}}
+function updateParticles(dt){const dpr=devicePixelRatio||1;pCanvas.width=innerWidth*dpr;pCanvas.height=innerHeight*dpr;pCtx.setTransform(dpr,0,0,dpr,0,0);pCtx.clearRect(0,0,innerWidth,innerHeight);for(let p of particles){p.x+=p.vx;p.y+=p.vy;p.vy+=0.1;p.life-=dt*1.2;if(p.life>0){pCtx.globalAlpha=p.life;pCtx.fillStyle=p.color;pCtx.beginPath();pCtx.arc(p.x,p.y,p.size,0,Math.PI*2);pCtx.fill()}}pCtx.globalAlpha=1;particles=particles.filter(p=>p.life>0)}
+
+// === Canvas ===
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH;
+function resize(){const dpr=devicePixelRatio||1;CW=innerWidth;CH=innerHeight;canvas.width=CW*dpr;canvas.height=CH*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
+resize();window.addEventListener('resize',resize);
+
+// === 游戏状态 ===
+const TOTAL=7;
+let curLevel=0,gameStarted=false;
+let completedLevels=new Set(),quizPassedSet=new Set(),quizCooldown=false;
+let goals=[[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false]];
+let stars_bg=[];
+
+const LEVELS=[
+  {title:'智能合约基础',sub:'EVM、Solidity、Gas',icon:'⚙️',desc:'理解以太坊虚拟机如何执行智能合约代码'},
+  {title:'存储与内存',sub:'Storage/Memory/Calldata',icon:'💾',desc:'探索合约数据的存储布局和 Slot 机制'},
+  {title:'重入攻击',sub:'Reentrancy 漏洞',icon:'🔄',desc:'模拟经典重入攻击，学习 checks-effects-interactions 模式'},
+  {title:'整数溢出与钓鱼',sub:'Overflow & tx.origin',icon:'💥',desc:'发现整数溢出漏洞和 tx.origin 钓鱼攻击'},
+  {title:'访问控制',sub:'权限管理与多签',icon:'🔐',desc:'设计安全的权限系统，理解多签和时间锁'},
+  {title:'升级模式',sub:'代理合约与存储冲突',icon:'⬆️',desc:'学习合约升级的不同模式和潜在风险'},
+  {title:'审计实战',sub:'形式化验证与模糊测试',icon:'🔍',desc:'综合运用审计工具发现和修复漏洞'}
+];
+
+const QUIZZES=[
+  {q:'EVM 执行智能合约时，Gas 的作用是什么？',opts:['A. 给矿工发工资','B. 防止无限循环，衡量计算资源消耗','C. 加密交易数据'],ans:1},
+  {q:'Solidity 中 storage 和 memory 的区别是？',opts:['A. storage 永久存储在链上，memory 只在函数执行期间存在','B. 没有区别','C. memory 更贵'],ans:0},
+  {q:'重入攻击的根本原因是什么？',opts:['A. 合约代码太长','B. 在更新状态前调用了外部合约','C. Gas 不够'],ans:1},
+  {q:'SafeMath 库解决了什么问题？',opts:['A. 让数学计算更快','B. 防止整数溢出/下溢','C. 减少 Gas 消耗'],ans:1},
+  {q:'多签钱包的安全优势是什么？',opts:['A. 交易更快','B. 需要多个私钥签名才能执行操作','C. Gas 更便宜'],ans:1},
+  {q:'代理合约升级模式中最大的风险是？',opts:['A. Gas 消耗增加','B. 存储布局冲突导致数据损坏','C. 代码变长'],ans:1},
+  {q:'模糊测试 (Fuzzing) 的原理是什么？',opts:['A. 手动检查每行代码','B. 用随机输入大量测试寻找异常行为','C. 只测试正常情况'],ans:1}
+];
+
+// Level states
+let l0_gasUsed=0,l0_opcodes=[],l0_deployed=false,l0_executed=false;
+let l1_slots=[{name:'owner',type:'address',slot:0,val:'0xABC...'},{name:'balance',type:'uint256',slot:1,val:'1000'},{name:'name',type:'string',slot:2,val:'"Token"'}];
+let l1_memoryUsed=false,l1_calldataUsed=false,l1_slotFound=false;
+let l2_victimBal=10,l2_attackerBal=1,l2_attacking=false,l2_attackCount=0,l2_fixed=false;
+let l3_uint8=255,l3_overflowed=false,l3_txOriginTricked=false,l3_safeMathUsed=false;
+let l4_roles=new Set(),l4_multisigSigs=0,l4_timelockSet=false;
+let l5_proxyDeployed=false,l5_upgraded=false,l5_storageClash=false,l5_uupsUsed=false;
+let l6_vulnsFound=new Set(),l6_fuzzRuns=0,l6_formalVerified=false,l6_bugBounty=false;
+
+function initLevel(idx){
+  goals[idx]=[false,false,false];
+  if(idx===0){l0_gasUsed=0;l0_opcodes=[];l0_deployed=false;l0_executed=false}
+  if(idx===1){l1_memoryUsed=false;l1_calldataUsed=false;l1_slotFound=false}
+  if(idx===2){l2_victimBal=10;l2_attackerBal=1;l2_attacking=false;l2_attackCount=0;l2_fixed=false}
+  if(idx===3){l3_uint8=255;l3_overflowed=false;l3_txOriginTricked=false;l3_safeMathUsed=false}
+  if(idx===4){l4_roles.clear();l4_multisigSigs=0;l4_timelockSet=false}
+  if(idx===5){l5_proxyDeployed=false;l5_upgraded=false;l5_storageClash=false;l5_uupsUsed=false}
+  if(idx===6){l6_vulnsFound.clear();l6_fuzzRuns=0;l6_formalVerified=false;l6_bugBounty=false}
+}
+
+function completeObj(idx,g){if(!goals[curLevel][g]){goals[curLevel][g]=true;playSound('success');spawnParticles(160,200+g*60,20);renderPanel()}}
+
+function startGame(){
+  document.getElementById('startScreen').classList.add('hidden');
+  gameStarted=true;
+  document.getElementById('lp').style.display='flex';
+  document.getElementById('info-bar').style.display='block';
+  initLevel(0);renderPanel();
+  for(let i=0;i<80;i++)stars_bg.push({x:Math.random()*2000,y:Math.random()*1200,s:Math.random()*1.5+0.5,b:Math.random()});
+}
+function goLevel(idx){if(idx<0||idx>=TOTAL)return;curLevel=idx;initLevel(idx);renderPanel()}
+
+// === PANEL_PLACEHOLDER ===
+// === 面板渲染 ===
+function renderPanel(){
+  const lv=LEVELS[curLevel];
+  document.getElementById('lpTitle').textContent=lv.icon+' '+lv.title;
+  document.getElementById('lpStep').textContent=`${curLevel+1}/${TOTAL}`;
+  const body=document.getElementById('lp-body');
+  let h='<div class="stage-nav">';
+  for(let i=0;i<TOTAL;i++){
+    const cls=completedLevels.has(i)?'done':(i===curLevel?'cur':'');
+    h+=`<div class="stage-dot ${cls}" onclick="goLevel(${i})">${i+1}</div>`;
+  }
+  h+='</div>';
+  h+=`<div class="mission"><div class="m-level">第 ${curLevel+1} 关</div><div class="m-title">${lv.title}</div><div class="m-desc">${lv.desc}</div></div>`;
+  const gLabels=getGoalLabels(curLevel);
+  for(let g=0;g<3;g++){
+    const done=goals[curLevel][g];
+    h+=`<div class="goal-row${done?' done':''}"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text">${gLabels[g]}</span></div>`;
+  }
+  h+=renderLevelPanel(curLevel);
+  if(goals[curLevel][0]&&goals[curLevel][1]&&goals[curLevel][2]&&!quizPassedSet.has(curLevel)){
+    const quiz=QUIZZES[curLevel];
+    h+=`<div class="quiz-box" id="quiz-${curLevel}"><div class="quiz-q">🧠 ${quiz.q}</div>`;
+    quiz.opts.forEach((o,i)=>h+=`<div class="quiz-opt" onclick="checkQuiz(${curLevel},${i})">${o}</div>`);
+    h+='</div>';
+  }
+  if(quizPassedSet.has(curLevel)&&curLevel<TOTAL-1){
+    h+=`<div class="act-section"><button class="act-btn green" onclick="goLevel(${curLevel+1})">进入下一关 →</button></div>`;
+  }
+  if(quizPassedSet.has(TOTAL-1)&&curLevel===TOTAL-1) h+=renderSummary();
+  body.innerHTML=h;
+  renderInfoBar();
+}
+
+function getGoalLabels(idx){
+  const G=[
+    ['部署一个智能合约','执行合约函数观察 Gas 消耗','理解 EVM 操作码执行流程'],
+    ['查看 Storage Slot 布局','使用 Memory 临时存储','理解 Calldata 只读特性'],
+    ['发起重入攻击窃取资金','观察攻击的递归调用过程','用 CEI 模式修复漏洞'],
+    ['触发 uint8 整数溢出','识别 tx.origin 钓鱼攻击','使用 SafeMath 防护'],
+    ['设置角色权限','收集多签签名','部署时间锁'],
+    ['部署代理合约','执行合约升级','发现并修复存储冲突'],
+    ['用模糊测试发现漏洞','完成形式化验证','提交 Bug Bounty']
+  ];
+  return G[idx];
+}
+
+function renderLevelPanel(idx){
+  let h='';
+  if(idx===0){
+    h+=`<div class="hint-b">💡 画布上展示了 EVM 执行环境。点击部署合约，然后执行函数观察 Gas 消耗</div>`;
+    h+=`<div class="code-block"><span class="kw">contract</span> <span class="fn">SimpleStorage</span> {
+  <span class="kw">uint256</span> <span class="kw">public</span> value;
+  <span class="kw">function</span> <span class="fn">set</span>(<span class="kw">uint256</span> _v) {
+    value = _v; <span class="cmt">// SSTORE: 20000 gas</span>
+  }
+}</div>`;
+    h+=`<div class="act-section"><button class="act-btn" onclick="deployContract()" ${l0_deployed?'disabled':''}>📦 部署合约</button></div>`;
+    if(l0_deployed){
+      h+=`<div class="act-section"><button class="act-btn blue" onclick="executeContract()">▶️ 调用 set(42)</button></div>`;
+    }
+    if(l0_executed){
+      h+=`<div class="mission"><div class="m-concept"><b>Gas 消耗</b>: ${l0_gasUsed} gas<br>操作码: ${l0_opcodes.join(' → ')}</div></div>`;
+      h+=`<div class="act-section"><button class="act-btn green" onclick="completeObj(0,2);renderPanel()">✅ 我理解了 EVM 执行流程</button></div>`;
+    }
+  }
+  else if(idx===1){
+    h+=`<div class="hint-b">💡 画布上展示了合约的存储布局。点击 Slot 查看数据，体验不同存储区域</div>`;
+    h+=`<div class="code-block"><span class="kw">contract</span> <span class="fn">Token</span> {
+  <span class="kw">address</span> owner;   <span class="cmt">// slot 0</span>
+  <span class="kw">uint256</span> balance; <span class="cmt">// slot 1</span>
+  <span class="kw">string</span>  name;    <span class="cmt">// slot 2 (ptr)</span>
+}</div>`;
+    h+=`<div class="act-section">
+      <button class="act-btn small" onclick="readSlot()">📖 读取 Slot</button>
+      <button class="act-btn small blue" onclick="useMemory()">💭 使用 Memory</button>
+      <button class="act-btn small" onclick="useCalldata()">📨 使用 Calldata</button></div>`;
+  }
+  else if(idx===2){
+    h+=`<div class="hint-b">💡 这是一个有重入漏洞的提款合约。先发起攻击，再学习修复方法</div>`;
+    h+=`<div class="code-block"><span class="cmt">// 有漏洞的合约</span>
+<span class="kw">function</span> <span class="fn">withdraw</span>() {
+  <span class="kw">uint</span> bal = balances[msg.sender];
+<span class="vuln">  msg.sender.call{value: bal}(""); <span class="cmt">// 危险!</span></span>
+  balances[msg.sender] = 0;
+}</div>`;
+    h+=`<div class="mission"><div class="m-concept">受害合约余额: <span style="color:#22c55e">${l2_victimBal} ETH</span><br>攻击者余额: <span style="color:#ef4444">${l2_attackerBal} ETH</span><br>重入次数: ${l2_attackCount}</div></div>`;
+    h+=`<div class="act-section"><button class="act-btn red" onclick="reentrancyAttack()" ${l2_attacking||l2_victimBal<=1?'disabled':''}>⚔️ 发起重入攻击</button></div>`;
+    if(l2_attackCount>0&&!l2_fixed){
+      h+=`<div class="code-block"><span class="cmt">// 修复: Checks-Effects-Interactions</span>
+<span class="kw">function</span> <span class="fn">withdraw</span>() {
+  <span class="kw">uint</span> bal = balances[msg.sender];
+<span class="fix">  balances[msg.sender] = 0; <span class="cmt">// 先更新状态</span></span>
+<span class="fix">  msg.sender.call{value: bal}(""); <span class="cmt">// 再转账</span></span>
+}</div>`;
+      h+=`<div class="act-section"><button class="act-btn green" onclick="fixReentrancy()">🔧 应用 CEI 修复</button></div>`;
+    }
+  }
+  else if(idx===3){
+    h+=`<div class="hint-b">💡 uint8 最大值是 255，加 1 会发生什么？试试看</div>`;
+    h+=`<div class="code-block"><span class="kw">uint8</span> counter = <span class="num">${l3_uint8}</span>;
+counter += <span class="num">1</span>; <span class="cmt">// = ?</span></div>`;
+    h+=`<div class="slider-row"><label>当前值: <span class="sv">${l3_uint8}</span></label>
+      <input type="range" min="0" max="255" value="${l3_uint8}" oninput="l3_uint8=+this.value;this.previousElementSibling.querySelector('.sv').textContent=this.value" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div class="act-section"><button class="act-btn red" onclick="triggerOverflow()">➕ 加 1</button></div>`;
+    if(l3_overflowed){
+      h+=`<div class="act-section"><button class="act-btn" onclick="txOriginAttack()">🎣 模拟 tx.origin 钓鱼</button></div>`;
+    }
+    if(l3_txOriginTricked){
+      h+=`<div class="act-section"><button class="act-btn green" onclick="useSafeMath()">🛡️ 使用 SafeMath / Solidity 0.8+</button></div>`;
+    }
+  }
+  else if(idx===4){
+    h+=`<div class="hint-b">💡 设置合约的角色权限，收集多签签名，部署时间锁</div>`;
+    h+=`<div class="act-section"><div class="as-label">角色管理</div>
+      <button class="act-btn small" onclick="addRole('admin')">👑 添加 Admin</button>
+      <button class="act-btn small" onclick="addRole('minter')">🏭 添加 Minter</button>
+      <button class="act-btn small" onclick="addRole('pauser')">⏸️ 添加 Pauser</button></div>`;
+    h+=`<div class="mission"><div class="m-concept">已设置角色: ${l4_roles.size>0?[...l4_roles].join(', '):'无'}<br>多签签名: ${l4_multisigSigs}/3<br>时间锁: ${l4_timelockSet?'已部署':'未部署'}</div></div>`;
+    if(l4_roles.size>=2){
+      h+=`<div class="act-section"><button class="act-btn blue" onclick="collectSig()">✍️ 收集签名 (${l4_multisigSigs}/3)</button></div>`;
+    }
+    if(l4_multisigSigs>=3){
+      h+=`<div class="act-section"><button class="act-btn green" onclick="deployTimelock()">⏰ 部署时间锁 (48h 延迟)</button></div>`;
+    }
+  }
+  else if(idx===5){
+    h+=`<div class="hint-b">💡 部署代理合约，执行升级，观察存储冲突问题</div>`;
+    h+=`<div class="code-block"><span class="cmt">// 代理合约模式</span>
+<span class="kw">contract</span> <span class="fn">Proxy</span> {
+  <span class="kw">address</span> implementation;
+  <span class="kw">fallback</span>() {
+    <span class="fn">delegatecall</span>(implementation);
+  }
+}</div>`;
+    h+=`<div class="act-section"><button class="act-btn" onclick="deployProxy()" ${l5_proxyDeployed?'disabled':''}>📦 部署代理合约</button></div>`;
+    if(l5_proxyDeployed){
+      h+=`<div class="act-section"><button class="act-btn blue" onclick="upgradeContract()">⬆️ 升级到 V2</button></div>`;
+    }
+    if(l5_upgraded&&!l5_uupsUsed){
+      h+=`<div class="act-section"><button class="act-btn red" onclick="showStorageClash()">💥 检查存储冲突</button></div>`;
+    }
+    if(l5_storageClash){
+      h+=`<div class="act-section"><button class="act-btn green" onclick="useUUPS()">🔧 使用 UUPS 模式修复</button></div>`;
+    }
+  }
+  else if(idx===6){
+    h+=`<div class="hint-b">💡 综合运用审计工具：模糊测试、形式化验证、Bug Bounty</div>`;
+    h+=`<div class="code-block"><span class="cmt">// 待审计合约</span>
+<span class="kw">contract</span> <span class="fn">Vault</span> {
+  <span class="kw">mapping</span>(<span class="kw">address</span> => <span class="kw">uint</span>) balances;
+  <span class="kw">function</span> <span class="fn">deposit</span>() <span class="kw">payable</span> { ... }
+  <span class="kw">function</span> <span class="fn">withdraw</span>(<span class="kw">uint</span> amt) { ... }
+  <span class="kw">function</span> <span class="fn">transfer</span>(<span class="kw">address</span> to, <span class="kw">uint</span> amt) { ... }
+}</div>`;
+    h+=`<div class="act-section">
+      <button class="act-btn red" onclick="runFuzz()">🎲 模糊测试 (${l6_fuzzRuns}/100)</button>
+      <button class="act-btn blue" onclick="formalVerify()" ${l6_fuzzRuns<50?'disabled':''}>📐 形式化验证</button>
+      <button class="act-btn green" onclick="submitBounty()" ${!l6_formalVerified?'disabled':''}>🏆 提交 Bug Bounty</button></div>`;
+    if(l6_vulnsFound.size>0){
+      h+=`<div class="mission"><div class="m-concept"><b>发现的漏洞:</b><br>`;
+      for(const v of l6_vulnsFound) h+=`🐛 ${v}<br>`;
+      h+='</div></div>';
+    }
+  }
+  return h;
+}
+
+function renderInfoBar(){
+  const bar=document.getElementById('info-bar');
+  const lv=LEVELS[curLevel];
+  let h=`<div class="ib-title">${lv.icon} ${lv.title}</div>`;
+  h+=`<div class="ib-row"><span class="ib-k">关卡</span><span class="ib-v">${curLevel+1}/${TOTAL}</span></div>`;
+  h+=`<div class="ib-row"><span class="ib-k">已完成</span><span class="ib-v">${completedLevels.size}/${TOTAL}</span></div>`;
+  if(curLevel===0) h+=`<div class="ib-row"><span class="ib-k">Gas 消耗</span><span class="ib-v" style="color:#f59e0b">${l0_gasUsed}</span></div>`;
+  if(curLevel===2) h+=`<div class="ib-row"><span class="ib-k">重入次数</span><span class="ib-v" style="color:#ef4444">${l2_attackCount}</span></div>`;
+  if(curLevel===6) h+=`<div class="ib-row"><span class="ib-k">漏洞数</span><span class="ib-v" style="color:#ef4444">${l6_vulnsFound.size}</span></div>`;
+  bar.innerHTML=h;
+}
+
+// === ACTIONS_PLACEHOLDER ===
+// === Level actions ===
+// L0
+function deployContract(){
+  l0_deployed=true;l0_gasUsed=32000;l0_opcodes=['PUSH1','MSTORE','CODECOPY','RETURN'];
+  completeObj(0,0);playSound('click');renderPanel();
+}
+function executeContract(){
+  l0_gasUsed+=21000+20000;l0_opcodes.push('SSTORE','STOP');
+  l0_executed=true;completeObj(0,1);playSound('success');renderPanel();
+}
+
+// L1
+function readSlot(){l1_slotFound=true;completeObj(1,0);playSound('click');renderPanel()}
+function useMemory(){l1_memoryUsed=true;completeObj(1,1);playSound('click');renderPanel()}
+function useCalldata(){l1_calldataUsed=true;completeObj(1,2);playSound('success');renderPanel()}
+
+// L2
+function reentrancyAttack(){
+  if(l2_victimBal<=1)return;
+  l2_attacking=true;
+  const interval=setInterval(()=>{
+    if(l2_victimBal<=1){clearInterval(interval);l2_attacking=false;completeObj(2,1);renderPanel();return}
+    l2_victimBal--;l2_attackerBal++;l2_attackCount++;
+    if(l2_attackCount===1)completeObj(2,0);
+    renderPanel();
+  },300);
+}
+function fixReentrancy(){l2_fixed=true;completeObj(2,2);playSound('success');renderPanel()}
+
+// L3
+function triggerOverflow(){
+  if(l3_uint8>=255){l3_uint8=0;l3_overflowed=true;completeObj(3,0);playSound('fail')}
+  else{l3_uint8++;playSound('click')}
+  renderPanel();
+}
+function txOriginAttack(){l3_txOriginTricked=true;completeObj(3,1);playSound('fail');renderPanel()}
+function useSafeMath(){l3_safeMathUsed=true;completeObj(3,2);playSound('success');renderPanel()}
+
+// L4
+function addRole(role){l4_roles.add(role);if(l4_roles.size>=2)completeObj(4,0);playSound('click');renderPanel()}
+function collectSig(){l4_multisigSigs=Math.min(l4_multisigSigs+1,3);if(l4_multisigSigs>=3)completeObj(4,1);playSound('click');renderPanel()}
+function deployTimelock(){l4_timelockSet=true;completeObj(4,2);playSound('success');renderPanel()}
+
+// L5
+function deployProxy(){l5_proxyDeployed=true;completeObj(5,0);playSound('click');renderPanel()}
+function upgradeContract(){l5_upgraded=true;completeObj(5,1);playSound('click');renderPanel()}
+function showStorageClash(){l5_storageClash=true;completeObj(5,2);playSound('fail');renderPanel()}
+function useUUPS(){l5_uupsUsed=true;playSound('success');renderPanel()}
+
+// L6
+function runFuzz(){
+  l6_fuzzRuns=Math.min(l6_fuzzRuns+10,100);
+  const vulns=['重入漏洞','整数溢出','未检查返回值','权限缺失'];
+  if(l6_fuzzRuns>=30&&!l6_vulnsFound.has(vulns[0]))l6_vulnsFound.add(vulns[0]);
+  if(l6_fuzzRuns>=50&&!l6_vulnsFound.has(vulns[1]))l6_vulnsFound.add(vulns[1]);
+  if(l6_fuzzRuns>=70&&!l6_vulnsFound.has(vulns[2]))l6_vulnsFound.add(vulns[2]);
+  if(l6_fuzzRuns>=90&&!l6_vulnsFound.has(vulns[3]))l6_vulnsFound.add(vulns[3]);
+  if(l6_vulnsFound.size>=2)completeObj(6,0);
+  playSound('click');renderPanel();
+}
+function formalVerify(){l6_formalVerified=true;completeObj(6,1);playSound('success');renderPanel()}
+function submitBounty(){l6_bugBounty=true;completeObj(6,2);playSound('success');renderPanel()}
+
+// === Quiz ===
+function checkQuiz(levelIdx,chosen){
+  if(quizCooldown)return;
+  const quiz=QUIZZES[levelIdx];
+  const opts=document.querySelectorAll(`#quiz-${levelIdx} .quiz-opt`);
+  if(chosen===quiz.ans){
+    opts[chosen].classList.add('correct');quizPassedSet.add(levelIdx);completedLevels.add(levelIdx);
+    playSound('success');spawnParticles(160,300,30);
+    setTimeout(()=>renderPanel(),800);
+  }else{
+    opts[chosen].classList.add('wrong');opts[quiz.ans].classList.add('correct');
+    playSound('fail');quizCooldown=true;
+    setTimeout(()=>{quizCooldown=false;renderPanel()},1500);
+  }
+}
+
+function renderSummary(){
+  return `<div class="summary-box">
+    <div class="summary-title">🎉 智能合约安全探险完成！</div>
+    <div class="summary-sub">你已掌握智能合约安全的核心知识</div>
+    <div class="summary-stats">
+      <div class="summary-stat"><div class="num">${completedLevels.size}</div><div class="label">通关数</div></div>
+      <div class="summary-stat"><div class="num">7</div><div class="label">安全概念</div></div>
+    </div>
+    <div class="summary-keys">
+      <div>⚙️ EVM 通过 Gas 机制防止无限循环</div>
+      <div>💾 Storage 永久上链，Memory 临时存在</div>
+      <div>🔄 CEI 模式防止重入攻击</div>
+      <div>💥 Solidity 0.8+ 内置溢出检查</div>
+      <div>🔐 多签 + 时间锁保障权限安全</div>
+      <div>⬆️ 代理升级需注意存储布局冲突</div>
+      <div>🔍 模糊测试 + 形式化验证 = 全面审计</div>
+    </div>
+    <div class="roadmap">
+      <div class="roadmap-title">🗺️ 智能合约安全学习路线</div>
+      <div class="roadmap-item"><div class="roadmap-num">1</div>掌握 Solidity 基础和 EVM 原理</div>
+      <div class="roadmap-item"><div class="roadmap-num">2</div>学习常见漏洞模式和修复方法</div>
+      <div class="roadmap-item"><div class="roadmap-num">3</div>实践 Foundry/Hardhat 测试框架</div>
+      <div class="roadmap-item"><div class="roadmap-num">4</div>参与 CTF 和 Bug Bounty 实战</div>
+      <div class="roadmap-item"><div class="roadmap-num">5</div>深入形式化验证和高级审计</div>
+    </div>
+  </div>`;
+}
+
+// === DRAW_PLACEHOLDER ===
+// === 绘制 ===
+function drawStars(){
+  if(!t().showStars)return;
+  for(const s of stars_bg){s.b+=0.01;ctx.fillStyle=`rgba(255,255,255,${0.3+Math.sin(s.b)*0.3})`;ctx.beginPath();ctx.arc(s.x,s.y,s.s,0,Math.PI*2);ctx.fill()}
+}
+
+function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
+function drawArrow(x,y,dir,color){ctx.fillStyle=color;ctx.beginPath();if(dir==='down'){ctx.moveTo(x-5,y-5);ctx.lineTo(x+5,y-5);ctx.lineTo(x,y+2)}ctx.fill()}
+
+function drawLevel(idx){
+  const ox=340,oy=60,w=CW-ox-20,h=CH-80;
+  if(idx===0) drawL0(ox,oy,w,h);
+  else if(idx===1) drawL1(ox,oy,w,h);
+  else if(idx===2) drawL2(ox,oy,w,h);
+  else if(idx===3) drawL3(ox,oy,w,h);
+  else if(idx===4) drawL4(ox,oy,w,h);
+  else if(idx===5) drawL5(ox,oy,w,h);
+  else if(idx===6) drawL6(ox,oy,w,h);
+}
+
+function drawL0(ox,oy,w,h){
+  const th=t(),cx=ox+w/2,cy=oy+h/2;
+  // EVM stack machine
+  ctx.fillStyle=th.text;ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+  ctx.fillText('EVM 执行环境',cx,oy+30);
+  // Stack
+  const stackX=cx-150,stackY=oy+80;
+  ctx.strokeStyle='#7c3aed';ctx.lineWidth=2;
+  roundRect(stackX,stackY,120,200,8);ctx.stroke();
+  ctx.fillStyle='#7c3aed';ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('Stack',stackX+60,stackY-8);
+  if(l0_deployed){
+    const stackItems=['0x2A','0x00','0x01'];
+    for(let i=0;i<stackItems.length;i++){
+      ctx.fillStyle='rgba(124,58,237,0.2)';roundRect(stackX+10,stackY+10+i*35,100,28,4);ctx.fill();
+      ctx.fillStyle=th.text;ctx.font='13px monospace';ctx.fillText(stackItems[i],stackX+60,stackY+28+i*35);
+    }
+  }
+  // Memory
+  const memX=cx,memY=oy+80;
+  ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;
+  roundRect(memX,memY,120,200,8);ctx.stroke();
+  ctx.fillStyle='#3b82f6';ctx.font='bold 12px sans-serif';ctx.fillText('Memory',memX+60,memY-8);
+  // Storage
+  const stoX=cx+150,stoY=oy+80;
+  ctx.strokeStyle='#22c55e';ctx.lineWidth=2;
+  roundRect(stoX,stoY,120,200,8);ctx.stroke();
+  ctx.fillStyle='#22c55e';ctx.font='bold 12px sans-serif';ctx.fillText('Storage',stoX+60,stoY-8);
+  if(l0_executed){
+    ctx.fillStyle='rgba(34,197,94,0.2)';roundRect(stoX+10,stoY+10,100,28,4);ctx.fill();
+    ctx.fillStyle=th.text;ctx.font='13px monospace';ctx.fillText('slot0: 42',stoX+60,stoY+28);
+  }
+  // Gas meter
+  if(l0_gasUsed>0){
+    const gasW=w*0.6,gasH=20;
+    const gasX=cx-gasW/2,gasY=oy+h-60;
+    ctx.fillStyle='rgba(245,158,11,0.15)';roundRect(gasX,gasY,gasW,gasH,4);ctx.fill();
+    ctx.fillStyle='#f59e0b';roundRect(gasX,gasY,gasW*(l0_gasUsed/100000),gasH,4);ctx.fill();
+    ctx.fillStyle=th.text;ctx.font='12px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`Gas: ${l0_gasUsed} / 100,000`,cx,gasY+14);
+  }
+  // Opcodes flow
+  if(l0_opcodes.length>0){
+    ctx.fillStyle=th.textSec;ctx.font='11px monospace';ctx.textAlign='center';
+    ctx.fillText(l0_opcodes.join(' → '),cx,oy+h-20);
+  }
+}
+
+function drawL1(ox,oy,w,h){
+  const th=t(),cx=ox+w/2;
+  ctx.fillStyle=th.text;ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+  ctx.fillText('合约存储布局',cx,oy+30);
+  // Storage slots
+  for(let i=0;i<l1_slots.length;i++){
+    const s=l1_slots[i];
+    const sy=oy+80+i*70;
+    const active=l1_slotFound;
+    ctx.fillStyle=active?'rgba(124,58,237,0.15)':'rgba(255,255,255,0.05)';
+    ctx.strokeStyle=active?'#7c3aed':'rgba(255,255,255,0.1)';
+    ctx.lineWidth=2;
+    roundRect(cx-180,sy,360,50,8);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#7c3aed';ctx.font='bold 12px monospace';ctx.textAlign='left';
+    ctx.fillText(`Slot ${s.slot}`,cx-170,sy+20);
+    ctx.fillStyle=th.text;ctx.font='13px sans-serif';
+    ctx.fillText(`${s.type} ${s.name} = ${s.val}`,cx-170,sy+38);
+    ctx.fillStyle=th.textSec;ctx.font='11px monospace';ctx.textAlign='right';
+    ctx.fillText(`32 bytes`,cx+170,sy+20);
+  }
+  // Memory area
+  if(l1_memoryUsed){
+    ctx.fillStyle='rgba(59,130,246,0.1)';ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;
+    roundRect(cx-180,oy+310,360,50,8);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#3b82f6';ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+    ctx.fillText('Memory: 临时数据 (函数执行后销毁)',cx,oy+340);
+  }
+  // Calldata area
+  if(l1_calldataUsed){
+    ctx.fillStyle='rgba(245,158,11,0.1)';ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;
+    roundRect(cx-180,oy+380,360,50,8);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#f59e0b';ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+    ctx.fillText('Calldata: 只读输入数据 (最省 Gas)',cx,oy+410);
+  }
+}
+
+function drawL2(ox,oy,w,h){
+  const th=t(),cx=ox+w/2,cy=oy+h/2;
+  // Victim contract
+  const vx=cx-120,vy=cy-80;
+  ctx.fillStyle='rgba(34,197,94,0.15)';ctx.strokeStyle='#22c55e';ctx.lineWidth=2;
+  roundRect(vx-60,vy-30,120,80,10);ctx.fill();ctx.stroke();
+  ctx.fillStyle=th.text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('受害合约',vx,vy-5);
+  ctx.fillStyle='#22c55e';ctx.font='bold 20px sans-serif';
+  ctx.fillText(`${l2_victimBal} ETH`,vx,vy+30);
+  // Attacker contract
+  const ax=cx+120,ay=cy-80;
+  ctx.fillStyle='rgba(239,68,68,0.15)';ctx.strokeStyle='#ef4444';ctx.lineWidth=2;
+  roundRect(ax-60,ay-30,120,80,10);ctx.fill();ctx.stroke();
+  ctx.fillStyle=th.text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('攻击合约',ax,ay-5);
+  ctx.fillStyle='#ef4444';ctx.font='bold 20px sans-serif';
+  ctx.fillText(`${l2_attackerBal} ETH`,ax,ay+30);
+  // Attack arrows
+  if(l2_attackCount>0){
+    for(let i=0;i<Math.min(l2_attackCount,5);i++){
+      const yOff=i*8;
+      ctx.strokeStyle=`rgba(239,68,68,${0.8-i*0.15})`;ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(vx+60,vy+yOff);ctx.lineTo(ax-60,ay+yOff);ctx.stroke();
+      drawArrow(ax-60,ay+yOff,'right','#ef4444');
+    }
+    ctx.fillStyle='#ef4444';ctx.font='bold 16px sans-serif';
+    ctx.fillText(`🔄 重入 ×${l2_attackCount}`,cx,cy+40);
+  }
+  // Fix indicator
+  if(l2_fixed){
+    ctx.fillStyle='#22c55e';ctx.font='bold 18px sans-serif';
+    ctx.fillText('✅ CEI 模式已修复',cx,cy+80);
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=3;ctx.setLineDash([8,4]);
+    roundRect(vx-70,vy-40,140,100,12);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+function drawL3(ox,oy,w,h){
+  const th=t(),cx=ox+w/2,cy=oy+h/2;
+  // uint8 visualization - circular gauge
+  ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=8;
+  ctx.beginPath();ctx.arc(cx,cy-40,80,0,Math.PI*2);ctx.stroke();
+  const angle=(l3_uint8/255)*Math.PI*2-Math.PI/2;
+  ctx.strokeStyle=l3_overflowed?'#ef4444':'#7c3aed';ctx.lineWidth=8;
+  ctx.beginPath();ctx.arc(cx,cy-40,80,-Math.PI/2,angle);ctx.stroke();
+  ctx.fillStyle=th.text;ctx.font='bold 32px monospace';ctx.textAlign='center';
+  ctx.fillText(l3_uint8.toString(),cx,cy-30);
+  ctx.fillStyle=th.textSec;ctx.font='14px sans-serif';
+  ctx.fillText('uint8 (0-255)',cx,cy);
+  if(l3_overflowed){
+    ctx.fillStyle='#ef4444';ctx.font='bold 20px sans-serif';
+    ctx.fillText('💥 溢出! 255 + 1 = 0',cx,cy+60);
+  }
+  // tx.origin phishing
+  if(l3_txOriginTricked){
+    ctx.fillStyle='rgba(239,68,68,0.1)';roundRect(cx-150,cy+90,300,80,10);ctx.fill();
+    ctx.strokeStyle='#ef4444';ctx.lineWidth=2;roundRect(cx-150,cy+90,300,80,10);ctx.stroke();
+    ctx.fillStyle='#ef4444';ctx.font='bold 14px sans-serif';
+    ctx.fillText('🎣 tx.origin 钓鱼攻击',cx,cy+120);
+    ctx.fillStyle=th.textSec;ctx.font='12px sans-serif';
+    ctx.fillText('用户 → 恶意合约 → 目标合约',cx,cy+145);
+    ctx.fillText('tx.origin = 用户 (被利用!)',cx,cy+162);
+  }
+  if(l3_safeMathUsed){
+    ctx.fillStyle='#22c55e';ctx.font='bold 16px sans-serif';
+    ctx.fillText('🛡️ SafeMath: require(a+b >= a)',cx,cy+200);
+  }
+}
+
+function drawL4(ox,oy,w,h){
+  const th=t(),cx=ox+w/2,cy=oy+h/2;
+  ctx.fillStyle=th.text;ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+  ctx.fillText('访问控制架构',cx,oy+30);
+  // Role hierarchy
+  const roles=[
+    {name:'Owner',color:'#f59e0b',y:oy+80},
+    {name:'Admin',color:'#7c3aed',y:oy+160,need:'admin'},
+    {name:'Minter',color:'#3b82f6',y:oy+240,need:'minter'},
+    {name:'Pauser',color:'#ef4444',y:oy+240,need:'pauser',xOff:160}
+  ];
+  for(const r of roles){
+    const rx=cx+(r.xOff||0)-(r.xOff?80:0);
+    const active=!r.need||l4_roles.has(r.need);
+    ctx.fillStyle=active?r.color+'33':'rgba(255,255,255,0.05)';
+    ctx.strokeStyle=active?r.color:'rgba(255,255,255,0.1)';
+    ctx.lineWidth=2;
+    roundRect(rx-50,r.y,100,40,8);ctx.fill();ctx.stroke();
+    ctx.fillStyle=active?th.text:'rgba(255,255,255,0.3)';ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+    ctx.fillText(r.name,rx,r.y+25);
+  }
+  // Multisig
+  if(l4_multisigSigs>0){
+    const msY=oy+h-120;
+    ctx.fillStyle=th.text;ctx.font='bold 14px sans-serif';
+    ctx.fillText(`多签钱包 (${l4_multisigSigs}/3)`,cx,msY);
+    for(let i=0;i<3;i++){
+      const sx=cx-60+i*60;
+      ctx.fillStyle=i<l4_multisigSigs?'#22c55e':'rgba(255,255,255,0.1)';
+      ctx.beginPath();ctx.arc(sx,msY+30,15,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=i<l4_multisigSigs?'#fff':'rgba(255,255,255,0.3)';ctx.font='14px sans-serif';
+      ctx.fillText(i<l4_multisigSigs?'✓':'?',sx,msY+35);
+    }
+  }
+  // Timelock
+  if(l4_timelockSet){
+    ctx.fillStyle='#22c55e';ctx.font='bold 14px sans-serif';
+    ctx.fillText('⏰ 时间锁: 48h 延迟已启用',cx,oy+h-30);
+  }
+}
+
+function drawL5(ox,oy,w,h){
+  const th=t(),cx=ox+w/2,cy=oy+h/2;
+  // Proxy pattern
+  const boxes=[
+    {label:'用户',x:cx-200,y:cy-20,color:'#3b82f6',always:true},
+    {label:'Proxy',x:cx-50,y:cy-20,color:'#7c3aed',always:l5_proxyDeployed},
+    {label:l5_upgraded?'Impl V2':'Impl V1',x:cx+100,y:cy-20,color:l5_upgraded?'#22c55e':'#f59e0b',always:l5_proxyDeployed}
+  ];
+  for(const b of boxes){
+    if(!b.always)continue;
+    ctx.fillStyle=b.color+'33';ctx.strokeStyle=b.color;ctx.lineWidth=2;
+    roundRect(b.x,b.y,90,50,8);ctx.fill();ctx.stroke();
+    ctx.fillStyle=th.text;ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+    ctx.fillText(b.label,b.x+45,b.y+30);
+  }
+  // Arrows
+  if(l5_proxyDeployed){
+    ctx.strokeStyle='#7c3aed';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(cx-110,cy+5);ctx.lineTo(cx-50,cy+5);ctx.stroke();
+    drawArrow(cx-50,cy+5,'right','#7c3aed');
+    ctx.strokeStyle='#f59e0b';
+    ctx.beginPath();ctx.moveTo(cx+40,cy+5);ctx.lineTo(cx+100,cy+5);ctx.stroke();
+    drawArrow(cx+100,cy+5,'right','#f59e0b');
+    ctx.fillStyle=th.textSec;ctx.font='11px sans-serif';
+    ctx.fillText('delegatecall',cx+70,cy-10);
+  }
+  // Storage clash warning
+  if(l5_storageClash){
+    ctx.fillStyle='rgba(239,68,68,0.15)';roundRect(cx-150,cy+60,300,60,8);ctx.fill();
+    ctx.strokeStyle='#ef4444';ctx.lineWidth=2;roundRect(cx-150,cy+60,300,60,8);ctx.stroke();
+    ctx.fillStyle='#ef4444';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('⚠️ 存储冲突!',cx,cy+85);
+    ctx.fillStyle=th.textSec;ctx.font='12px sans-serif';
+    ctx.fillText('V2 新增变量覆盖了 V1 的 slot',cx,cy+105);
+  }
+  if(l5_uupsUsed){
+    ctx.fillStyle='#22c55e';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('✅ UUPS 模式: 升级逻辑在实现合约中',cx,cy+150);
+  }
+}
+
+function drawL6(ox,oy,w,h){
+  const th=t(),cx=ox+w/2;
+  ctx.fillStyle=th.text;ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+  ctx.fillText('审计工具箱',cx,oy+30);
+  // Fuzz progress
+  const fuzzW=w*0.6,fuzzH=20;
+  ctx.fillStyle='rgba(239,68,68,0.15)';roundRect(cx-fuzzW/2,oy+60,fuzzW,fuzzH,4);ctx.fill();
+  ctx.fillStyle='#ef4444';roundRect(cx-fuzzW/2,oy+60,fuzzW*(l6_fuzzRuns/100),fuzzH,4);ctx.fill();
+  ctx.fillStyle=th.text;ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`模糊测试: ${l6_fuzzRuns}%`,cx,oy+75);
+  // Vulns found
+  const vulnList=[...l6_vulnsFound];
+  for(let i=0;i<vulnList.length;i++){
+    const vy=oy+110+i*50;
+    ctx.fillStyle='rgba(239,68,68,0.1)';roundRect(cx-140,vy,280,38,8);ctx.fill();
+    ctx.strokeStyle='#ef4444';ctx.lineWidth=1;roundRect(cx-140,vy,280,38,8);ctx.stroke();
+    ctx.fillStyle='#ef4444';ctx.font='13px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`🐛 ${vulnList[i]}`,cx,vy+24);
+  }
+  // Formal verification
+  if(l6_formalVerified){
+    const fvY=oy+110+vulnList.length*50+20;
+    ctx.fillStyle='rgba(34,197,94,0.1)';roundRect(cx-140,fvY,280,38,8);ctx.fill();
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=1;roundRect(cx-140,fvY,280,38,8);ctx.stroke();
+    ctx.fillStyle='#22c55e';ctx.font='13px sans-serif';ctx.textAlign='center';
+    ctx.fillText('📐 形式化验证通过',cx,fvY+24);
+  }
+  // Bug bounty
+  if(l6_bugBounty){
+    ctx.fillStyle='#f59e0b';ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+    ctx.fillText('🏆 Bug Bounty 已提交!',cx,oy+h-40);
+  }
+}
+
+function drawArrow(x,y,dir,color){
+  ctx.fillStyle=color;ctx.beginPath();
+  if(dir==='down'){ctx.moveTo(x-5,y-5);ctx.lineTo(x+5,y-5);ctx.lineTo(x,y+2)}
+  else if(dir==='right'){ctx.moveTo(x-5,y-5);ctx.lineTo(x-5,y+5);ctx.lineTo(x+2,y)}
+  ctx.fill();
+}
+
+// === 主循环 ===
+let lastTime=0;
+function loop(ts){
+  const dt=Math.min((ts-lastTime)/1000,0.1);lastTime=ts;
+  ctx.clearRect(0,0,CW,CH);
+  const th_=t();
+  const grad=ctx.createLinearGradient(0,0,0,CH);
+  grad.addColorStop(0,th_.bg);grad.addColorStop(1,th_.bg2);
+  ctx.fillStyle=grad;ctx.fillRect(0,0,CW,CH);
+  if(gameStarted){drawStars();drawLevel(curLevel)}
+  updateParticles(dt);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

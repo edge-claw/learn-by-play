@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>轨道力学探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --result-learn-bg:#0e0e20;--result-learn-text:#93c5fd;
+  --retry-bg:#2a2a5a;--retry-text:#ccc;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --slider-label:#888;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --result-learn-bg:#f0f4ff;--result-learn-text:#1e40af;
+  --retry-bg:#e2e8f0;--retry-text:#475569;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --slider-label:#888;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50;opacity:1;transition:opacity 0.5s}
+.overlay.hidden{display:none;opacity:0}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#60a5fa}
+.start-box .sub{font-size:17px;color:var(--sub-color);margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px;background:var(--feat-bg);border:1px solid var(--feat-border);border-radius:10px;padding:10px 4px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.desc-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:14px;line-height:1.8;color:var(--concept-text);text-align:left}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100% - 32px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none;padding-bottom:16px}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}.g-text{color:var(--text-sub)}.g-text.done{color:#059669;text-decoration:line-through}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:15px;cursor:pointer;text-align:center}
+.act-btn:hover{background:var(--btn-hover)}.act-btn:disabled{opacity:0.4;cursor:not-allowed}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--hint-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:14px;line-height:1.8;color:var(--learn-text)}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:var(--slider-label)}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}
+.sv{color:var(--sv);font-weight:bold}
+.m-title{font-size:17px;font-weight:700;margin:8px 0 4px;color:var(--title-color)}
+.m-sub{font-size:12px;color:var(--sub-color);margin-bottom:8px}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:var(--bar-bg);border-top:1px solid var(--bar-border);z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}#bottom-bar .bb-right{text-align:right}
+.overlay .result-box{text-align:center;max-width:420px;background:var(--result-bg);border:1px solid var(--result-border);border-radius:16px;padding:28px 36px;box-shadow:0 8px 32px rgba(0,0,0,0.1)}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}
+.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-learn{text-align:left;background:var(--result-learn-bg);border-radius:8px;padding:12px 14px;font-size:13px;color:var(--result-learn-text);line-height:1.7;margin-bottom:16px}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#3b82f6;color:#fff}.result-box .btn-retry{background:var(--retry-bg);color:var(--retry-text)}
+.quiz-box{border:1px solid var(--quiz-border);border-radius:10px;padding:12px;margin:10px 0;background:var(--quiz-bg)}
+.quiz-box .quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px 10px;margin:4px 0;border-radius:6px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:12px;cursor:pointer;text-align:left;transition:all 0.2s}
+.quiz-opt:hover{background:var(--quiz-opt-hover);border-color:var(--quiz-border)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:var(--quiz-correct-text);color:var(--quiz-correct-text);font-weight:700}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:var(--quiz-wrong-text);color:var(--quiz-wrong-text)}
+.quiz-result{font-size:14px;margin-top:6px;font-weight:700}
+.quiz-result.pass{color:var(--quiz-correct-text)}.quiz-result.fail{color:var(--quiz-wrong-text)}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}.level-fade{animation:fadeIn 0.6s ease-out}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🚀 <span class="gold">轨道力学</span>探险</h1>
+  <div class="sub">7 个关卡，掌握太空飞行的核心力学</div>
+  <div class="desc-box">从开普勒定律到星际航行，拖动飞船调整轨道，设置推力方向和大小，观察轨迹变化。理解霍曼转移、引力弹弓和拉格朗日点。</div>
+  <button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">🪐</div>开普勒</div>
+    <div class="feat"><div class="fi">📐</div>轨道要素</div>
+    <div class="feat"><div class="fi">🔄</div>霍曼转移</div>
+    <div class="feat"><div class="fi">🏹</div>引力弹弓</div>
+    <div class="feat"><div class="fi">⚖️</div>拉格朗日</div>
+    <div class="feat"><div class="fi">🛬</div>轨道机动</div>
+    <div class="feat"><div class="fi">🌌</div>星际航行</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+// === Theme ===
+let isDark=true;
+const TH={dark:{bg:'#0a0a2e',text:'#fff',textSec:'rgba(255,255,255,0.6)'},light:{bg:'#e8edf5',text:'#1e293b',textSec:'rgba(30,41,59,0.6)'}};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';panelDirty=true;renderPanel();}
+
+// === Audio ===
+const Audio2=(()=>{let c=null;function ctx(){if(!c)c=new(window.AudioContext||window.webkitAudioContext)();return c;}
+function play(tp){try{const c2=ctx(),o=c2.createOscillator(),g=c2.createGain();o.connect(g);g.connect(c2.destination);const n=c2.currentTime;
+if(tp==='click'){o.frequency.value=800;o.type='sine';g.gain.setValueAtTime(0.15,n);g.gain.exponentialRampToValueAtTime(0.001,n+0.1);o.start(n);o.stop(n+0.1);}
+else if(tp==='success'){o.frequency.value=523;o.type='sine';g.gain.setValueAtTime(0.2,n);g.gain.exponentialRampToValueAtTime(0.001,n+0.5);o.start(n);o.stop(n+0.5);
+const o2=c2.createOscillator(),g2=c2.createGain();o2.connect(g2);g2.connect(c2.destination);o2.frequency.value=659;o2.type='sine';g2.gain.setValueAtTime(0.2,n+0.15);g2.gain.exponentialRampToValueAtTime(0.001,n+0.6);o2.start(n+0.15);o2.stop(n+0.6);}
+else if(tp==='fail'){o.frequency.value=300;o.type='sawtooth';g.gain.setValueAtTime(0.15,n);g.gain.exponentialRampToValueAtTime(0.001,n+0.4);o.start(n);o.stop(n+0.4);}
+}catch(e){}}return{play};})();
+
+// === Core ===
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,animId;
+let gameState='start',currentLevel=0;
+let levelState={},bgStars=[],particles=[];
+const completedLevels=new Set();
+const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
+const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
+let panelDirty=true,levelTransition=0;
+
+const quizData=[
+  {q:'开普勒第二定律说的是什么？',opts:['A. 轨道是椭圆','B. 面积速度恒定','C. 周期平方正比于半长轴立方'],ans:1},
+  {q:'偏心率 e=0 的轨道是什么形状？',opts:['A. 椭圆','B. 圆形','C. 抛物线'],ans:1},
+  {q:'霍曼转移轨道的特点是？',opts:['A. 最快到达','B. 最省燃料','C. 最短距离'],ans:1},
+  {q:'引力弹弓效应中飞船获得的额外速度来自？',opts:['A. 自身燃料','B. 行星的轨道动能','C. 太阳辐射'],ans:1},
+  {q:'JWST 位于哪个拉格朗日点？',opts:['A. L1','B. L2','C. L4'],ans:1},
+  {q:'气动减速利用的是什么？',opts:['A. 反向推力','B. 大气摩擦','C. 引力制动'],ans:1},
+  {q:'太阳帆的推进力来自？',opts:['A. 太阳风粒子','B. 光子辐射压','C. 磁场'],ans:1}
+];
+let quizState={active:false,answered:false,correct:false,selected:-1};
+
+const levels=[
+  {name:'开普勒定律',icon:'🪐',goals:['观察椭圆轨道','验证面积速度恒定','验证周期定律'],
+   learn:'开普勒三定律：1.行星沿椭圆轨道运行，太阳在焦点上；2.行星与太阳连线在相等时间内扫过相等面积（面积速度恒定）；3.轨道周期平方正比于半长轴立方 T²∝a³。'},
+  {name:'轨道要素',icon:'📐',goals:['调节半长轴','调节偏心率','调节倾角'],
+   learn:'描述轨道需要6个要素：半长轴a（轨道大小）、偏心率e（轨道形状）、倾角i（轨道面倾斜）、升交点经度Ω、近地点幅角ω、真近点角ν。前三个最为关键。'},
+  {name:'霍曼转移',icon:'🔄',goals:['执行第一次变轨','到达转移轨道远地点','执行第二次变轨'],
+   learn:'霍曼转移是两个圆轨道间最省燃料的变轨方式：在低轨道加速进入椭圆转移轨道，到达远地点再加速进入高轨道。总Δv最小，但耗时较长。'},
+  {name:'引力弹弓',icon:'🏹',goals:['飞掠行星','获得加速','观察旅行者号轨迹'],
+   learn:'引力弹弓（飞掠加速）利用行星引力改变飞船方向和速度。飞船从行星后方飞掠可获得加速，从前方飞掠则减速。旅行者号正是通过多次引力弹弓飞出太阳系。'},
+  {name:'拉格朗日点',icon:'⚖️',goals:['找到L1点','找到L2点','观察L4/L5三角点'],
+   learn:'拉格朗日点是两个大天体引力与离心力平衡的5个特殊位置。L1在两体之间，L2在小天体外侧，L3在大天体对面，L4/L5与两体构成等边三角形。JWST位于日-地L2点。'},
+  {name:'轨道机动',icon:'🛬',goals:['执行近地制动','气动减速','精确着陆'],
+   learn:'轨道机动包括：近地制动（反向点火减速进入轨道）、气动减速（利用大气摩擦降低速度，需要精确的进入角度）、精确着陆（最后阶段的动力减速和姿态控制）。'},
+  {name:'星际航行',icon:'🌌',goals:['部署太阳帆','启动离子推进','设计代际飞船'],
+   learn:'星际航行面临巨大挑战。太阳帆利用光压加速，理论上可达光速的几个百分点。离子推进比化学火箭高效10倍但推力小。核脉冲推进（猎户座计划）可达光速5%。代际飞船则需要自给自足的生态系统。'}
+];
+
+function resize(){canvas.width=CW=innerWidth;canvas.height=CH=innerHeight;bgStars=[];for(let i=0;i<200;i++)bgStars.push({x:Math.random()*CW,y:Math.random()*CH,r:Math.random()*1.5+0.3,b:Math.random()*0.5+0.5});}
+window.addEventListener('resize',resize);resize();
+
+function startGame(){document.getElementById('startScreen').classList.add('hidden');gameState='play';currentLevel=0;panelEl.style.display='block';bbEl.style.display='flex';initLevel(0);panelDirty=true;renderPanel();loop();Audio2.play('click');}
+function goLevel(n){if(n>=0&&n<levels.length&&(n<=currentLevel||completedLevels.has(n)||n<=Math.max(...completedLevels,-1)+1)){initLevel(n);panelDirty=true;renderPanel();}}
+
+function initLevel(n){
+  currentLevel=n;particles=[];
+  const g=levels[n].goals;
+  levelState={goals:g.map(()=>false)};
+  quizState={active:false,answered:false,correct:false,selected:-1};
+  levelTransition=1;panelDirty=true;canvas.onclick=null;
+  if(n===0)initL0();else if(n===1)initL1();else if(n===2)initL2();else if(n===3)initL3();
+  else if(n===4)initL4();else if(n===5)initL5();else if(n===6)initL6();
+  Audio2.play('click');
+}
+function markGoal(i){if(!levelState.goals[i]){levelState.goals[i]=true;panelDirty=true;Audio2.play('success');checkComplete();}}
+function checkComplete(){if(levelState.goals.every(g=>g)&&!completedLevels.has(currentLevel)){completedLevels.add(currentLevel);panelDirty=true;celebP((CW+320)/2,CH/2);setTimeout(()=>showResult(),600);}}
+function celebP(cx,cy){for(let i=0;i<40;i++){const a=Math.random()*Math.PI*2,sp=Math.random()*5+2;particles.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1.5,color:`hsl(${200+Math.random()*60},90%,60%)`,r:2+Math.random()*2});}}
+
+function showResult(){
+  const lv=levels[currentLevel],isLast=currentLevel===levels.length-1;
+  const rb=document.getElementById('resultBox');
+  quizState={active:true,answered:false,correct:false,selected:-1};
+  const qd=quizData[currentLevel];
+  let h=`<div class="rb-icon">${lv.icon}</div><div class="rb-title">${lv.name} 完成！</div>`;
+  h+=`<div class="rb-learn">${lv.learn}</div>`;
+  h+=`<div class="quiz-box"><div class="quiz-title">📝 通关测验</div><div style="font-size:12px;color:var(--quiz-opt-text);margin-bottom:8px">${qd.q}</div>`;
+  qd.opts.forEach((o,i)=>{h+=`<button class="quiz-opt" id="qopt${i}" onclick="answerQuiz(${i})">${o}</button>`;});
+  h+=`<div class="quiz-result" id="quizResult"></div></div>`;
+  h+=`<div id="quizBtns" style="margin-top:12px;display:none">`;
+  if(isLast)h+=`<button class="btn-next" onclick="restartAll()">🎉 全部通关！重新开始</button>`;
+  else h+=`<button class="btn-next" onclick="nextLevel()">下一关</button><button class="btn-retry" onclick="retryLevel()">重玩</button>`;
+  h+=`</div>`;rb.innerHTML=h;document.getElementById('resultModal').classList.remove('hidden');
+}
+function answerQuiz(idx){
+  if(quizState.answered)return;const qd=quizData[currentLevel];quizState.selected=idx;
+  if(idx===qd.ans){quizState.answered=true;quizState.correct=true;document.getElementById('qopt'+idx).classList.add('correct');document.getElementById('quizResult').className='quiz-result pass';document.getElementById('quizResult').textContent='✅ 回答正确！';document.getElementById('quizBtns').style.display='block';Audio2.play('success');}
+  else{document.getElementById('qopt'+idx).classList.add('wrong');document.getElementById('quizResult').className='quiz-result fail';document.getElementById('quizResult').textContent='❌ 再想想...';Audio2.play('fail');setTimeout(()=>{document.getElementById('qopt'+idx).classList.remove('wrong');document.getElementById('quizResult').textContent='';},1000);}
+}
+function nextLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel+1);}
+function retryLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel);}
+function restartAll(){document.getElementById('resultModal').classList.add('hidden');completedLevels.clear();initLevel(0);}
+
+function _patchPanel(el,html){var ae=document.activeElement;if(!ae||ae.type!=='range'||!el.contains(ae)){el.innerHTML=html;return;}var tmp=document.createElement('div');tmp.innerHTML=html;_diffN(el,tmp);}
+function _diffN(o,n){var oc=Array.from(o.childNodes),nc=Array.from(n.childNodes);var i=0;while(i<oc.length&&i<nc.length){var a=oc[i],b=nc[i];if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName){o.replaceChild(b.cloneNode(true),a);i++;continue;}if(a.nodeType===3){if(a.textContent!==b.textContent)a.textContent=b.textContent;i++;continue;}if(a.nodeType===1){if(a.tagName==='INPUT'&&a.type==='range'&&a===document.activeElement){i++;continue;}for(var j=0;j<b.attributes.length;j++){var at=b.attributes[j];if(a.getAttribute(at.name)!==at.value)a.setAttribute(at.name,at.value);}_diffN(a,b);}i++;}while(oc.length>nc.length)o.removeChild(o.lastChild);for(;i<nc.length;i++)o.appendChild(nc[i].cloneNode(true));}
+
+function stageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<levels.length;i++){let cls=completedLevels.has(i)?'done':i===currentLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;}
+  h+=`</div><div class="sn-info">📍 第${currentLevel+1}/${levels.length}关 | 进度 ${Math.round(completedLevels.size/levels.length*100)}%</div></div>`;return h;
+}
+
+function renderPanel(){
+  if(!panelDirty)return;panelDirty=false;
+  const lv=levels[currentLevel];
+  let h=stageNav();
+  h+=`<div class="m-title">${lv.icon} ${lv.name}</div>`;
+  h+='<div class="concept-box"><b>目标</b>';
+  lv.goals.forEach((g,i)=>{const done=levelState.goals[i];h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${g}</span></div>`;});
+  h+='</div>';
+  if(currentLevel===0)h+=panelL0();else if(currentLevel===1)h+=panelL1();else if(currentLevel===2)h+=panelL2();
+  else if(currentLevel===3)h+=panelL3();else if(currentLevel===4)h+=panelL4();else if(currentLevel===5)h+=panelL5();else if(currentLevel===6)h+=panelL6();
+  h+=`<div class="learn-box">💡 ${lv.learn}</div>`;
+  _patchPanel(panelEl,h);
+  bbLeft.textContent=`关卡 ${currentLevel+1}: ${lv.name}`;bbRight.textContent=`已完成 ${completedLevels.size}/${levels.length}`;
+}
+
+// === Drawing helpers ===
+function drawBg(){ctx.fillStyle=t().bg;ctx.fillRect(0,0,CW,CH);if(levelTransition>0)levelTransition-=0.02;bgStars.forEach(s=>{ctx.globalAlpha=(1-Math.max(0,levelTransition))*(s.b*(0.7+0.3*Math.sin(time*2+s.x)));ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();});ctx.globalAlpha=1;}
+function drawParticles(){particles.forEach((p,i)=>{p.x+=p.vx;p.y+=p.vy;p.life-=0.02;if(p.life<=0){particles.splice(i,1);return;}ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();});ctx.globalAlpha=1;}
+
+// Helper: draw elliptical orbit
+function drawOrbit(cx,cy,a,b,color,dash){
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;if(dash)ctx.setLineDash(dash);
+  ctx.beginPath();ctx.ellipse(cx,cy,a,b,0,0,Math.PI*2);ctx.stroke();
+  if(dash)ctx.setLineDash([]);
+}
+function drawSun(cx,cy,r){
+  const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,r);grd.addColorStop(0,'#fff');grd.addColorStop(0.3,'#ffdd44');grd.addColorStop(1,'rgba(255,200,0,0)');
+  ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();
+}
+function drawPlanet(x,y,r,color){
+  ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.stroke();
+}
+function drawShip(x,y,angle,size){
+  ctx.save();ctx.translate(x,y);ctx.rotate(angle);
+  ctx.fillStyle='#60a5fa';ctx.beginPath();ctx.moveTo(size,0);ctx.lineTo(-size*0.6,-size*0.5);ctx.lineTo(-size*0.3,0);ctx.lineTo(-size*0.6,size*0.5);ctx.closePath();ctx.fill();
+  ctx.restore();
+}
+
+// PLACEHOLDER_ORBITAL_LEVELS
+
+// ===== L0: 开普勒定律 =====
+let l0={ecc:0.5,semiA:150,angle:0,trail:[],areaShown:false,periodVerified:false,sweepT:0,sweepPts:[]};
+function initL0(){l0={ecc:0.5,semiA:150,angle:0,trail:[],areaShown:false,periodVerified:false,sweepT:0,sweepPts:[]};}
+function panelL0(){
+  const b=l0.semiA*Math.sqrt(1-l0.ecc*l0.ecc);const T=Math.pow(l0.semiA/100,1.5);
+  let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">画布上是一颗行星绕<span style="color:#ffdd44">恒星</span>运行的<span style="color:#60a5fa">椭圆轨道</span>。调节偏心率观察轨道形状变化。</div>`;
+  h+=`<div class="slider-wrap"><label>偏心率 e: <span class="sv">${l0.ecc.toFixed(2)}</span></label>`;
+  h+=`<input type="range" min="0" max="0.95" step="0.01" value="${l0.ecc}" oninput="l0.ecc=+this.value;l0.trail=[];panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
+  h+=`<div class="slider-wrap"><label>半长轴 a: <span class="sv">${l0.semiA.toFixed(0)} px</span></label>`;
+  h+=`<input type="range" min="80" max="250" step="1" value="${l0.semiA}" oninput="l0.semiA=+this.value;l0.trail=[];panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
+  h+=`<div style="font-size:12px;color:var(--concept-text);margin:4px 0">半短轴 b: <span class="sv">${b.toFixed(0)} px</span> | 周期 T: <span class="sv">${T.toFixed(2)}</span></div>`;
+  if(!levelState.goals[0]&&l0.ecc>0.1)h+=`<div style="color:#4ade80;font-size:12px">✅ 椭圆轨道已形成！</div>`;
+  if(levelState.goals[0]&&!l0.areaShown)h+=`<button class="act-btn" onclick="showAreaSweep()">📐 验证面积速度</button>`;
+  if(l0.areaShown&&!l0.periodVerified)h+=`<button class="act-btn green" onclick="verifyPeriod()">⏱️ 验证周期定律 T²∝a³</button>`;
+  h+=`<div class="hint-box">💡 偏心率e=0是圆，e越大椭圆越扁。注意行星在近日点速度快、远日点速度慢——这就是面积速度恒定。</div>`;
+  return h;
+}
+function showAreaSweep(){l0.areaShown=true;l0.sweepT=0;l0.sweepPts=[];markGoal(1);panelDirty=true;renderPanel();}
+function verifyPeriod(){l0.periodVerified=true;markGoal(2);panelDirty=true;renderPanel();}
+function drawL0(){
+  const cx=(CW+320)/2,cy=CH/2;
+  const a=l0.semiA,e=l0.ecc,b=a*Math.sqrt(1-e*e);
+  const focusX=cx+a*e; // Sun at focus
+  // Orbit
+  drawOrbit(cx,cy,a,b,'rgba(100,150,255,0.3)');
+  // Sun at focus
+  drawSun(focusX,cy,14);
+  // Planet position (Kepler equation approximation)
+  l0.angle+=0.02*(1+e*Math.cos(l0.angle))*(1+e*Math.cos(l0.angle));
+  const r=a*(1-e*e)/(1+e*Math.cos(l0.angle));
+  const px=focusX+r*Math.cos(l0.angle),py=cy-r*Math.sin(l0.angle);
+  l0.trail.push({x:px,y:py});if(l0.trail.length>300)l0.trail.shift();
+  // Trail
+  ctx.strokeStyle='rgba(100,200,255,0.3)';ctx.lineWidth=1;ctx.beginPath();
+  l0.trail.forEach((p,i)=>{if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);});ctx.stroke();
+  // Planet
+  drawPlanet(px,py,6,'#60a5fa');
+  // Radius vector
+  ctx.strokeStyle='rgba(255,255,100,0.3)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(focusX,cy);ctx.lineTo(px,py);ctx.stroke();
+  if(!levelState.goals[0]&&l0.ecc>0.1){markGoal(0);}
+  // Area sweep visualization
+  if(l0.areaShown){
+    l0.sweepT+=0.016;
+    if(l0.sweepPts.length<2||l0.sweepT<2){l0.sweepPts.push({x:px,y:py});}
+    if(l0.sweepPts.length>2){
+      ctx.fillStyle='rgba(100,255,100,0.15)';ctx.beginPath();ctx.moveTo(focusX,cy);
+      l0.sweepPts.forEach(p=>ctx.lineTo(p.x,p.y));ctx.closePath();ctx.fill();
+    }
+    ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';
+    ctx.fillText('面积速度 = 常数',cx,cy+a+30);
+  }
+  // Period law
+  if(l0.periodVerified){
+    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(CW-220,60,190,80);
+    ctx.fillStyle=t().text;ctx.font='13px sans-serif';ctx.textAlign='center';
+    ctx.fillText('开普勒第三定律',CW-125,78);
+    ctx.fillStyle='#fbbf24';ctx.font='16px sans-serif';ctx.fillText('T² ∝ a³',CW-125,105);
+    ctx.fillStyle='#888';ctx.font='11px sans-serif';ctx.fillText(`T²=${Math.pow(l0.semiA/100,3).toFixed(2)}, a³=${Math.pow(l0.semiA/100,3).toFixed(2)}`,CW-125,125);
+  }
+}
+
+// ===== L1: 轨道要素 =====
+let l1={semiA:140,ecc:0.3,incl:0,aChanged:false,eChanged:false,iChanged:false};
+function initL1(){l1={semiA:140,ecc:0.3,incl:0,aChanged:false,eChanged:false,iChanged:false};}
+function panelL1(){
+  let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">调节三个关键轨道要素，观察轨道如何变化。</div>`;
+  h+=`<div class="slider-wrap"><label>半长轴 a: <span class="sv">${l1.semiA} px</span> (轨道大小)</label>`;
+  h+=`<input type="range" min="60" max="250" step="1" value="${l1.semiA}" oninput="l1.semiA=+this.value;if(!l1.aChanged){l1.aChanged=true;markGoal(0);}panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
+  h+=`<div class="slider-wrap"><label>偏心率 e: <span class="sv">${l1.ecc.toFixed(2)}</span> (轨道形状)</label>`;
+  h+=`<input type="range" min="0" max="0.95" step="0.01" value="${l1.ecc}" oninput="l1.ecc=+this.value;if(!l1.eChanged){l1.eChanged=true;markGoal(1);}panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
+  h+=`<div class="slider-wrap"><label>倾角 i: <span class="sv">${l1.incl.toFixed(0)}°</span> (轨道面倾斜)</label>`;
+  h+=`<input type="range" min="0" max="90" step="1" value="${l1.incl}" oninput="l1.incl=+this.value;if(!l1.iChanged){l1.iChanged=true;markGoal(2);}panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
+  h+=`<div class="concept-box" style="font-size:11px"><b>6个轨道要素</b><br>a=半长轴, e=偏心率, i=倾角<br>Ω=升交点经度, ω=近地点幅角, ν=真近点角</div>`;
+  h+=`<div class="hint-box">💡 拖动每个滑块观察轨道变化。半长轴决定大小，偏心率决定形状，倾角决定轨道面的倾斜程度。</div>`;
+  return h;
+}
+function drawL1(){
+  const cx=(CW+320)/2,cy=CH/2;
+  const a=l1.semiA,e=l1.ecc,b=a*Math.sqrt(1-e*e);
+  const tilt=l1.incl*Math.PI/180;
+  const bVis=b*Math.cos(tilt); // Visual compression from inclination
+  drawSun(cx+a*e,cy,12);
+  // Orbit with inclination
+  ctx.save();ctx.translate(cx,cy);
+  ctx.strokeStyle='rgba(100,200,255,0.5)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.ellipse(0,0,a,Math.max(5,bVis),0,0,Math.PI*2);ctx.stroke();
+  // Reference circle
+  ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.arc(0,0,a,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+  // Moving planet
+  const ang=time*0.8;
+  const px=a*Math.cos(ang),py=-Math.max(5,bVis)*Math.sin(ang);
+  drawPlanet(px,py,5,'#34d399');
+  ctx.restore();
+  // Labels
+  ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`a=${a} | e=${e.toFixed(2)} | i=${l1.incl}°`,cx,cy+a+30);
+  // Periapsis/Apoapsis markers
+  ctx.fillStyle='#f87171';ctx.font='10px sans-serif';
+  ctx.fillText('近地点',cx+a*(1-e)+a*e+15,cy-10);
+  ctx.fillStyle='#60a5fa';ctx.fillText('远地点',cx-a*(1+e)+a*e-15,cy-10);
+}
+
+// ===== L2: 霍曼转移 =====
+let l2={phase:0,shipAngle:0,transferAngle:0,burn1:false,atApo:false,burn2:false,r1:80,r2:180,trail:[]};
+function initL2(){l2={phase:0,shipAngle:0,transferAngle:0,burn1:false,atApo:false,burn2:false,r1:80,r2:180,trail:[]};}
+function panelL2(){
+  const dv1=Math.sqrt(1/l2.r1)*(Math.sqrt(2*l2.r2/(l2.r1+l2.r2))-1);
+  const dv2=Math.sqrt(1/l2.r2)*(1-Math.sqrt(2*l2.r1/(l2.r1+l2.r2)));
+  let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">飞船在<span style="color:#60a5fa">低轨道</span>（蓝色）上运行。目标：转移到<span style="color:#f87171">高轨道</span>（红色）。</div>`;
+  h+=`<div class="slider-wrap"><label>低轨道半径: <span class="sv">${l2.r1} px</span></label>`;
+  h+=`<input type="range" min="60" max="120" step="1" value="${l2.r1}" oninput="l2.r1=+this.value;panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"${l2.burn1?' disabled':''}></div>`;
+  h+=`<div class="slider-wrap"><label>高轨道半径: <span class="sv">${l2.r2} px</span></label>`;
+  h+=`<input type="range" min="140" max="250" step="1" value="${l2.r2}" oninput="l2.r2=+this.value;panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"${l2.burn1?' disabled':''}></div>`;
+  h+=`<div style="font-size:12px;color:var(--concept-text);margin:4px 0">Δv₁: <span class="sv">${(dv1*100).toFixed(1)} m/s</span> | Δv₂: <span class="sv">${(dv2*100).toFixed(1)} m/s</span></div>`;
+  if(!l2.burn1)h+=`<button class="act-btn" onclick="hohmannBurn1()">🔥 第一次变轨（加速）</button>`;
+  else if(!l2.atApo)h+=`<div style="color:#f59e0b;font-size:12px;margin:4px 0">🚀 转移轨道飞行中...等待到达远地点</div>`;
+  else if(!l2.burn2)h+=`<button class="act-btn green" onclick="hohmannBurn2()">🔥 第二次变轨（圆化）</button>`;
+  else h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 霍曼转移完成！已进入高轨道</div>`;
+  h+=`<div class="hint-box">💡 霍曼转移：低轨道加速→椭圆转移轨道→远地点再加速→高圆轨道。总Δv最小！</div>`;
+  return h;
+}
+function hohmannBurn1(){l2.burn1=true;l2.transferAngle=l2.shipAngle;l2.trail=[];markGoal(0);panelDirty=true;renderPanel();}
+function hohmannBurn2(){l2.burn2=true;markGoal(2);panelDirty=true;renderPanel();}
+function drawL2(){
+  const cx=(CW+320)/2,cy=CH/2;
+  drawSun(cx,cy,10);
+  // Low orbit
+  ctx.strokeStyle='rgba(100,150,255,0.4)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,l2.r1,0,Math.PI*2);ctx.stroke();
+  // High orbit
+  ctx.strokeStyle='rgba(255,100,100,0.4)';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(cx,cy,l2.r2,0,Math.PI*2);ctx.stroke();
+  if(!l2.burn1){
+    // Ship on low orbit
+    l2.shipAngle+=0.02;
+    const sx=cx+l2.r1*Math.cos(l2.shipAngle),sy=cy+l2.r1*Math.sin(l2.shipAngle);
+    drawShip(sx,sy,l2.shipAngle+Math.PI/2,8);
+  } else if(!l2.burn2){
+    // Transfer orbit
+    const tA=(l2.r1+l2.r2)/2,tB=Math.sqrt(l2.r1*l2.r2);
+    ctx.strokeStyle='rgba(255,200,50,0.4)';ctx.lineWidth=1.5;ctx.setLineDash([6,4]);
+    ctx.beginPath();ctx.ellipse(cx+(l2.r2-l2.r1)/2*Math.cos(l2.transferAngle),cy+(l2.r2-l2.r1)/2*Math.sin(l2.transferAngle),tA,tB,l2.transferAngle,Math.PI,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+    l2.shipAngle+=0.01*(l2.r1/(l2.r1+l2.phase*0.5));
+    l2.phase+=0.3;
+    const progress=Math.min(l2.phase/180,1);
+    const currentR=l2.r1+(l2.r2-l2.r1)*progress;
+    const sx=cx+currentR*Math.cos(l2.transferAngle+Math.PI*progress),sy=cy+currentR*Math.sin(l2.transferAngle+Math.PI*progress);
+    l2.trail.push({x:sx,y:sy});if(l2.trail.length>200)l2.trail.shift();
+    ctx.strokeStyle='rgba(255,200,50,0.5)';ctx.lineWidth=1;ctx.beginPath();l2.trail.forEach((p,i)=>{if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);});ctx.stroke();
+    drawShip(sx,sy,l2.transferAngle+Math.PI*progress+Math.PI/2,8);
+    if(progress>=1&&!l2.atApo){l2.atApo=true;markGoal(1);panelDirty=true;renderPanel();}
+  } else {
+    // On high orbit
+    l2.shipAngle+=0.01;
+    const sx=cx+l2.r2*Math.cos(l2.shipAngle),sy=cy+l2.r2*Math.sin(l2.shipAngle);
+    drawShip(sx,sy,l2.shipAngle+Math.PI/2,8);
+    // Show transfer trail
+    ctx.strokeStyle='rgba(255,200,50,0.2)';ctx.lineWidth=1;ctx.beginPath();l2.trail.forEach((p,i)=>{if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);});ctx.stroke();
+  }
+  ctx.fillStyle=t().text;ctx.font='11px sans-serif';ctx.textAlign='left';
+  ctx.fillText('蓝=低轨道',cx-l2.r2-60,cy-l2.r2-10);ctx.fillText('红=高轨道',cx-l2.r2-60,cy-l2.r2+5);
+}
+
+// ===== L3: 引力弹弓 =====
+let l3={flyby:false,boosted:false,voyager:false,shipX:0,shipY:0,shipVx:0,shipVy:0,planetAngle:0,trail:[],vTrail:[]};
+function initL3(){l3={flyby:false,boosted:false,voyager:false,shipX:0,shipY:0,shipVx:2,shipVy:0,planetAngle:Math.PI,trail:[],vTrail:[]};
+  const cx=(CW+320)/2;l3.shipX=cx-200;l3.shipY=CH/2+50;}
+function panelL3(){
+  const speed=Math.sqrt(l3.shipVx*l3.shipVx+l3.shipVy*l3.shipVy);
+  let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">一艘<span style="color:#60a5fa">飞船</span>正在接近一颗<span style="color:#34d399">行星</span>。观察引力弹弓效应如何改变飞船速度。</div>`;
+  h+=`<div style="font-size:12px;color:var(--concept-text);margin:4px 0">飞船速度: <span class="sv">${speed.toFixed(2)}</span></div>`;
+  if(!l3.flyby)h+=`<button class="act-btn" onclick="launchFlyby()">🚀 发射飞船</button>`;
+  else{h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 飞船已发射</div>`;
+    if(l3.boosted)h+=`<div style="color:#f59e0b;font-size:12px;margin:4px 0">⚡ 引力弹弓加速！速度增加了</div>`;
+    if(!l3.voyager)h+=`<button class="act-btn green" onclick="showVoyager()">🛸 查看旅行者号轨迹</button>`;
+    else h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 旅行者号：木星→土星→天王星→海王星</div>`;
+  }
+  h+=`<div class="hint-box">💡 飞船从行星运动方向的后方飞掠，可以"偷"到行星的轨道动能获得加速。旅行者号正是靠此飞出太阳系。</div>`;
+  return h;
+}
+function launchFlyby(){l3.flyby=true;l3.shipVx=2.5;l3.shipVy=-0.5;markGoal(0);panelDirty=true;renderPanel();}
+function showVoyager(){l3.voyager=true;markGoal(2);panelDirty=true;renderPanel();}
+function drawL3(){
+  const cx=(CW+320)/2,cy=CH/2;
+  drawSun(cx,cy,10);
+  // Planet orbiting
+  l3.planetAngle+=0.005;
+  const pR=130,px=cx+pR*Math.cos(l3.planetAngle),py=cy+pR*Math.sin(l3.planetAngle);
+  ctx.strokeStyle='rgba(100,200,100,0.2)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(cx,cy,pR,0,Math.PI*2);ctx.stroke();
+  drawPlanet(px,py,12,'#34d399');
+  if(l3.flyby){
+    // Gravity from planet
+    const dx=px-l3.shipX,dy=py-l3.shipY,d=Math.sqrt(dx*dx+dy*dy);
+    if(d>15){const f=500/(d*d);l3.shipVx+=dx/d*f;l3.shipVy+=dy/d*f;}
+    // Gravity from sun
+    const dsx=cx-l3.shipX,dsy=cy-l3.shipY,ds=Math.sqrt(dsx*dsx+dsy*dsy);
+    if(ds>15){const fs=200/(ds*ds);l3.shipVx+=dsx/ds*fs;l3.shipVy+=dsy/ds*fs;}
+    l3.shipX+=l3.shipVx;l3.shipY+=l3.shipVy;
+    l3.trail.push({x:l3.shipX,y:l3.shipY});if(l3.trail.length>500)l3.trail.shift();
+    // Trail
+    ctx.strokeStyle='rgba(100,150,255,0.4)';ctx.lineWidth=1;ctx.beginPath();l3.trail.forEach((p,i)=>{if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);});ctx.stroke();
+    const ang=Math.atan2(l3.shipVy,l3.shipVx);
+    drawShip(l3.shipX,l3.shipY,ang,7);
+    // Check boost
+    if(!l3.boosted&&d<50){l3.boosted=true;markGoal(1);panelDirty=true;renderPanel();}
+  } else {
+    drawShip(l3.shipX,l3.shipY,0,7);
+  }
+  // Voyager trajectory
+  if(l3.voyager){
+    const planets=[{name:'木星',r:90,color:'#d4a574',a:0.3},{name:'土星',r:140,color:'#f0d890',a:0.8},{name:'天王星',r:185,color:'#7dd3fc',a:1.5},{name:'海王星',r:220,color:'#6366f1',a:2.2}];
+    const vx=CW-180,vy=CH-180;
+    ctx.fillStyle='rgba(0,0,0,0.4)';ctx.fillRect(vx-10,vy-10,170,170);
+    ctx.fillStyle=t().text;ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('旅行者号轨迹',vx+75,vy);
+    drawSun(vx+75,vy+80,5);
+    planets.forEach(p=>{
+      ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=0.5;ctx.beginPath();ctx.arc(vx+75,vy+80,p.r*0.4,0,Math.PI*2);ctx.stroke();
+      const ppx=vx+75+p.r*0.4*Math.cos(p.a),ppy=vy+80+p.r*0.4*Math.sin(p.a);
+      ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(ppx,ppy,3,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#888';ctx.font='8px sans-serif';ctx.fillText(p.name,ppx,ppy-6);
+    });
+    // Voyager path
+    ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(vx+75,vy+80);
+    planets.forEach(p=>{const ppx=vx+75+p.r*0.4*Math.cos(p.a),ppy=vy+80+p.r*0.4*Math.sin(p.a);ctx.lineTo(ppx,ppy);});
+    ctx.lineTo(vx+160,vy+20);ctx.stroke();
+  }
+}
+
+// PLACEHOLDER_ORBITAL_L4
+
+// ===== L4: 拉格朗日点 =====
+let l4={l1Found:false,l2Found:false,l45Found:false,probeX:0,probeY:0,dragging:false};
+function initL4(){l4={l1Found:false,l2Found:false,l45Found:false,probeX:(CW+320)/2+80,probeY:CH/2,dragging:false};
+  canvas.onmousedown=function(ev){const r=canvas.getBoundingClientRect();const mx=ev.clientX-r.left,my=ev.clientY-r.top;
+    const dx=mx-l4.probeX,dy=my-l4.probeY;if(dx*dx+dy*dy<400){l4.dragging=true;}};
+  canvas.onmousemove=function(ev){if(!l4.dragging)return;const r=canvas.getBoundingClientRect();l4.probeX=ev.clientX-r.left;l4.probeY=ev.clientY-r.top;checkLagrange();};
+  canvas.onmouseup=function(){l4.dragging=false;};
+}
+function checkLagrange(){
+  const cx=(CW+320)/2,cy=CH/2,earthR=120;
+  const earthX=cx+earthR,earthY=cy;
+  // L1: between Sun and Earth (~1% closer)
+  const l1x=cx+earthR*0.99,l1y=cy;
+  // L2: beyond Earth (~1% further)
+  const l2x=cx+earthR*1.01+15,l2y=cy;
+  const dx1=l4.probeX-l1x,dy1=l4.probeY-l1y;
+  const dx2=l4.probeX-l2x,dy2=l4.probeY-l2y;
+  if(dx1*dx1+dy1*dy1<600&&!l4.l1Found){l4.l1Found=true;markGoal(0);panelDirty=true;renderPanel();}
+  if(dx2*dx2+dy2*dy2<600&&!l4.l2Found){l4.l2Found=true;markGoal(1);panelDirty=true;renderPanel();}
+  // L4/L5: equilateral triangle points
+  const l4x=cx+earthR*0.5,l4y=cy-earthR*0.866;
+  const l5x=cx+earthR*0.5,l5y=cy+earthR*0.866;
+  const dx4=l4.probeX-l4x,dy4=l4.probeY-l4y;
+  const dx5=l4.probeX-l5x,dy5=l4.probeY-l5y;
+  if((dx4*dx4+dy4*dy4<800||dx5*dx5+dy5*dy5<800)&&!l4.l45Found){l4.l45Found=true;markGoal(2);panelDirty=true;renderPanel();}
+}
+function panelL4(){
+  let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">拖动<span style="color:#f59e0b">探测器</span>（黄色圆点）到5个拉格朗日点的位置。这些是引力和离心力平衡的特殊点。</div>`;
+  h+=`<div style="font-size:12px;color:${l4.l1Found?'#4ade80':'var(--concept-text)'};margin:3px 0">${l4.l1Found?'✅':'⬜'} L1: 日-地之间（SOHO卫星）</div>`;
+  h+=`<div style="font-size:12px;color:${l4.l2Found?'#4ade80':'var(--concept-text)'};margin:3px 0">${l4.l2Found?'✅':'⬜'} L2: 地球外侧（JWST位置）</div>`;
+  h+=`<div style="font-size:12px;color:${l4.l45Found?'#4ade80':'var(--concept-text)'};margin:3px 0">${l4.l45Found?'✅':'⬜'} L4/L5: 等边三角形顶点（特洛伊小行星）</div>`;
+  h+=`<div class="hint-box">💡 L1在两体之间，L2在小天体外侧。L4/L5与太阳和地球构成等边三角形，是最稳定的拉格朗日点。</div>`;
+  return h;
+}
+function drawL4(){
+  const cx=(CW+320)/2,cy=CH/2,earthR=120;
+  drawSun(cx,cy,14);
+  // Earth orbit
+  ctx.strokeStyle='rgba(100,150,255,0.2)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(cx,cy,earthR,0,Math.PI*2);ctx.stroke();
+  // Earth
+  const earthX=cx+earthR,earthY=cy;
+  drawPlanet(earthX,earthY,8,'#3b82f6');
+  ctx.fillStyle=t().text;ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('地球',earthX,earthY+16);
+  // L points
+  const lpts=[
+    {name:'L1',x:cx+earthR*0.99-10,y:cy,found:l4.l1Found},
+    {name:'L2',x:cx+earthR*1.01+15,y:cy,found:l4.l2Found},
+    {name:'L3',x:cx-earthR,y:cy,found:false},
+    {name:'L4',x:cx+earthR*0.5,y:cy-earthR*0.866,found:l4.l45Found},
+    {name:'L5',x:cx+earthR*0.5,y:cy+earthR*0.866,found:l4.l45Found}
+  ];
+  lpts.forEach(lp=>{
+    ctx.fillStyle=lp.found?'rgba(74,222,128,0.3)':'rgba(255,255,255,0.1)';
+    ctx.beginPath();ctx.arc(lp.x,lp.y,12,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle=lp.found?'#4ade80':'rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.beginPath();ctx.arc(lp.x,lp.y,12,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=lp.found?'#4ade80':'#888';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText(lp.name,lp.x,lp.y-16);
+  });
+  // Equilateral triangle lines for L4/L5
+  ctx.strokeStyle='rgba(255,200,50,0.15)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(lpts[3].x,lpts[3].y);ctx.lineTo(earthX,earthY);ctx.closePath();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(lpts[4].x,lpts[4].y);ctx.lineTo(earthX,earthY);ctx.closePath();ctx.stroke();
+  ctx.setLineDash([]);
+  // Probe
+  ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(l4.probeX,l4.probeY,6,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='rgba(251,191,36,0.5)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(l4.probeX,l4.probeY,10,0,Math.PI*2);ctx.stroke();
+  if(l4.dragging){ctx.fillStyle='rgba(251,191,36,0.2)';ctx.beginPath();ctx.arc(l4.probeX,l4.probeY,18,0,Math.PI*2);ctx.fill();}
+}
+
+// ===== L5: 轨道机动 =====
+let l5={braking:false,aerobrake:false,landing:false,altitude:300,speed:8,phase:0,shipY:0,flameOn:false};
+function initL5(){l5={braking:false,aerobrake:false,landing:false,altitude:300,speed:8,phase:0,shipY:0,flameOn:false};}
+function panelL5(){
+  let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">飞船正在接近目标行星。执行一系列轨道机动实现安全着陆。</div>`;
+  h+=`<div style="font-size:12px;color:var(--concept-text);margin:4px 0">高度: <span class="sv">${l5.altitude.toFixed(0)} km</span> | 速度: <span class="sv">${l5.speed.toFixed(1)} km/s</span></div>`;
+  if(!l5.braking)h+=`<button class="act-btn" onclick="orbitBrake()">🔥 近地制动（反向点火）</button>`;
+  else{h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 近地制动完成，已进入轨道</div>`;
+    if(!l5.aerobrake)h+=`<button class="act-btn" style="border-color:#f59e0b;color:#f59e0b" onclick="aerobrake()">🌡️ 气动减速</button>`;
+    else{h+=`<div style="color:#f59e0b;font-size:12px;margin:4px 0">✅ 气动减速完成，速度大幅降低</div>`;
+      if(!l5.landing)h+=`<button class="act-btn green" onclick="precisionLand()">🛬 精确着陆</button>`;
+      else h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 着陆成功！</div>`;
+    }
+  }
+  h+=`<div class="hint-box">💡 近地制动：反向点火减速进入轨道。气动减速：利用大气摩擦降速（需精确进入角度）。最后动力减速着陆。</div>`;
+  return h;
+}
+function orbitBrake(){l5.braking=true;l5.speed=5;l5.altitude=200;l5.flameOn=true;setTimeout(()=>{l5.flameOn=false;},1500);markGoal(0);panelDirty=true;renderPanel();}
+function aerobrake(){l5.aerobrake=true;l5.speed=1.5;l5.altitude=80;markGoal(1);panelDirty=true;renderPanel();}
+function precisionLand(){l5.landing=true;l5.speed=0;l5.altitude=0;markGoal(2);panelDirty=true;renderPanel();}
+function drawL5(){
+  const cx=(CW+320)/2,cy=CH/2;
+  // Planet surface
+  const planetR=180;
+  const grd=ctx.createRadialGradient(cx,cy+planetR+100,0,cx,cy+planetR+100,planetR*2);
+  grd.addColorStop(0,'#c2410c');grd.addColorStop(0.5,'#9a3412');grd.addColorStop(1,'rgba(100,30,10,0)');
+  ctx.fillStyle=grd;ctx.beginPath();ctx.arc(cx,cy+planetR+100,planetR,0,Math.PI*2);ctx.fill();
+  // Atmosphere glow
+  if(l5.aerobrake&&!l5.landing){
+    ctx.strokeStyle='rgba(255,150,50,0.3)';ctx.lineWidth=8;ctx.beginPath();ctx.arc(cx,cy+planetR+100,planetR+5,-0.8,-0.2);ctx.stroke();
+  }
+  // Ship
+  const shipAlt=l5.landing?cy+planetR+100-planetR-5:cy-l5.altitude*0.5+200;
+  const shipX=cx;
+  drawShip(shipX,shipAlt,l5.landing?-Math.PI/2:(l5.aerobrake?-Math.PI/3:-Math.PI/4),10);
+  // Flame
+  if(l5.flameOn||l5.landing){
+    const flameDir=l5.landing?Math.PI/2:Math.PI*0.75;
+    const fx=shipX+Math.cos(flameDir)*15,fy=shipAlt+Math.sin(flameDir)*15;
+    ctx.fillStyle='rgba(255,150,50,0.6)';ctx.beginPath();ctx.arc(fx,fy,5+Math.random()*3,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle='rgba(255,255,100,0.4)';ctx.beginPath();ctx.arc(fx,fy,3+Math.random()*2,0,Math.PI*2);ctx.fill();
+  }
+  // Aerobrake heat shield
+  if(l5.aerobrake&&!l5.landing){
+    ctx.fillStyle='rgba(255,100,30,0.4)';ctx.beginPath();ctx.arc(shipX-8,shipAlt+5,12,0,Math.PI*2);ctx.fill();
+  }
+  // Altitude indicator
+  ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`高度 ${l5.altitude.toFixed(0)} km | 速度 ${l5.speed.toFixed(1)} km/s`,cx,60);
+  if(l5.landing){ctx.fillStyle='#4ade80';ctx.font='18px sans-serif';ctx.fillText('着陆成功！',cx,cy-50);}
+}
+
+// PLACEHOLDER_ORBITAL_L6
+
+// ===== L6: 星际航行 =====
+let l6={sail:false,ion:false,generation:false,sailAngle:0,ionParts:[],shipDist:0};
+function initL6(){l6={sail:false,ion:false,generation:false,sailAngle:0,ionParts:[],shipDist:0};}
+function panelL6(){
+  let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">星际航行面临巨大挑战。探索三种推进方式，选择最适合的星际旅行方案。</div>`;
+  if(!l6.sail)h+=`<button class="act-btn" onclick="deploySail()">⛵ 部署太阳帆</button>`;
+  else{h+=`<div style="color:#fbbf24;font-size:12px;margin:4px 0">✅ 太阳帆已部署，光压持续加速中</div>`;
+    h+=`<div style="font-size:11px;color:var(--concept-text);margin:2px 0">理论最高速度: ~光速5%（15,000 km/s）</div>`;
+    if(!l6.ion)h+=`<button class="act-btn" onclick="startIon()">⚡ 启动离子推进</button>`;
+    else{h+=`<div style="color:#60a5fa;font-size:12px;margin:4px 0">✅ 离子推进启动，比冲远超化学火箭</div>`;
+      h+=`<div style="font-size:11px;color:var(--concept-text);margin:2px 0">比冲: ~3000s（化学火箭仅~450s）</div>`;
+      if(!l6.generation)h+=`<button class="act-btn green" onclick="designGenShip()">🏗️ 设计代际飞船</button>`;
+      else h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 代际飞船设计完成</div>`;
+    }
+  }
+  h+=`<div class="concept-box" style="font-size:11px;line-height:1.8"><b>推进方式对比</b><br>`;
+  h+=`<span style="color:#fbbf24">太阳帆</span>: 光压推进，无需燃料，加速慢<br>`;
+  h+=`<span style="color:#60a5fa">离子推进</span>: 电推进，高比冲低推力<br>`;
+  h+=`<span style="color:#f87171">核脉冲</span>: 猎户座计划，可达光速5%<br>`;
+  h+=`<span style="color:#a78bfa">代际飞船</span>: 自给自足生态系统，数百年旅程</div>`;
+  h+=`<div class="hint-box">💡 到最近的恒星（比邻星4.24光年），即使以光速10%飞行也需要42年。星际航行是人类最大的工程挑战。</div>`;
+  return h;
+}
+function deploySail(){l6.sail=true;markGoal(0);panelDirty=true;renderPanel();}
+function startIon(){l6.ion=true;markGoal(1);panelDirty=true;renderPanel();}
+function designGenShip(){l6.generation=true;markGoal(2);panelDirty=true;renderPanel();}
+function drawL6(){
+  const cx=(CW+320)/2,cy=CH/2;
+  // Sun on left
+  drawSun(cx-250,cy,20);
+  // Light rays
+  for(let i=0;i<8;i++){
+    const y=cy-80+i*20;
+    ctx.strokeStyle='rgba(255,220,50,0.1)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cx-230,y);ctx.lineTo(cx+300,y+(i-4)*2);ctx.stroke();
+  }
+  // Stars (destination)
+  ctx.fillStyle='#fff';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('比邻星 (4.24 光年)',cx+200,cy-120);
+  ctx.beginPath();ctx.arc(cx+200,cy-100,3,0,Math.PI*2);ctx.fill();
+  if(l6.sail){
+    l6.shipDist+=0.3;
+    const sx=cx-150+l6.shipDist*0.5,sy=cy;
+    // Solar sail
+    l6.sailAngle=Math.sin(time*0.5)*0.1;
+    ctx.save();ctx.translate(sx,sy);ctx.rotate(l6.sailAngle);
+    ctx.fillStyle='rgba(255,220,100,0.3)';ctx.beginPath();ctx.moveTo(-5,0);ctx.lineTo(-30,-40);ctx.lineTo(-30,40);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='rgba(255,220,100,0.5)';ctx.lineWidth=1;ctx.stroke();
+    ctx.restore();
+    drawShip(sx+5,sy,0,8);
+    // Speed indicator
+    const speed=l6.ion?l6.shipDist*0.02:l6.shipDist*0.005;
+    ctx.fillStyle=t().text;ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`速度: ${(speed*1000).toFixed(0)} km/s`,sx,sy+30);
+  }
+  if(l6.ion){
+    // Ion trail
+    const sx=cx-150+l6.shipDist*0.5+5,sy=cy;
+    for(let i=0;i<5;i++){
+      const ix=sx-15-i*8+Math.random()*4,iy=sy+Math.random()*6-3;
+      ctx.globalAlpha=0.5-i*0.1;ctx.fillStyle='#60a5fa';ctx.beginPath();ctx.arc(ix,iy,2,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
+  if(l6.generation){
+    // Generation ship concept
+    const gx=cx+50,gy=cy+80;
+    ctx.fillStyle='rgba(0,0,0,0.4)';ctx.fillRect(gx-80,gy-30,160,60);
+    ctx.strokeStyle='#a78bfa';ctx.lineWidth=2;
+    // Ship hull
+    ctx.beginPath();ctx.ellipse(gx,gy,60,15,0,0,Math.PI*2);ctx.stroke();
+    // Rotating habitat ring
+    ctx.beginPath();ctx.ellipse(gx,gy,30,30,0,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle='#a78bfa';ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('代际飞船',gx,gy+45);
+    ctx.fillText('自给自足生态系统 | 数百年旅程',gx,gy+58);
+  }
+  // Distance scale
+  ctx.fillStyle='#444';ctx.fillRect(cx-100,CH-60,200,2);
+  ctx.fillStyle='#888';ctx.font='10px sans-serif';ctx.textAlign='center';
+  ctx.fillText('0',cx-100,CH-45);ctx.fillText('4.24 光年',cx+100,CH-45);
+}
+
+// ===== Main Loop =====
+function loop(){
+  time+=0.016;drawBg();
+  if(gameState==='play'){
+    if(currentLevel===0)drawL0();else if(currentLevel===1)drawL1();else if(currentLevel===2)drawL2();
+    else if(currentLevel===3)drawL3();else if(currentLevel===4)drawL4();else if(currentLevel===5)drawL5();else if(currentLevel===6)drawL6();
+  }
+  drawParticles();
+  animId=requestAnimationFrame(loop);
+}
+</script>
+</body>
+</html>

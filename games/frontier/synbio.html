@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>🧬 合成生物学探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden;height:100vh}
+canvas{display:block}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
+.overlay h1{font-size:42px;background:linear-gradient(135deg,#22c55e,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.overlay .sub{color:var(--text-sub);font-size:17px;margin-bottom:12px}
+.overlay .desc{max-width:480px;margin:0 auto 24px;padding:12px 18px;background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:10px;font-size:14px;color:var(--concept-text);line-height:1.8}
+.overlay .start-btn{padding:14px 48px;font-size:18px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;border-radius:12px;cursor:pointer;transition:transform .2s}
+.overlay .start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.features .feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px}
+.features .feat .fi{font-size:26px;margin-bottom:4px}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()" style="position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa">🌙 暗色</button>
+<div class="overlay" id="ov">
+<h1>🧬 合成生物学探险</h1>
+<p class="sub">Synthetic Biology — 从生物砖到细胞工厂</p>
+<div class="desc">像搭积木一样组装基因回路，用CRISPR编辑基因组，优化代谢通量打造细胞工厂。从标准生物砖到无细胞系统，体验合成生物学的完整工程流程。</div>
+<button class="start-btn" onclick="startGame()">开始探索</button>
+<div class="features">
+<div class="feat"><div class="fi">🧱</div>生物砖</div>
+<div class="feat"><div class="fi">🔄</div>基因回路</div>
+<div class="feat"><div class="fi">✂️</div>基因编辑</div>
+<div class="feat"><div class="fi">⚗️</div>代谢工程</div>
+<div class="feat"><div class="fi">🏭</div>细胞工厂</div>
+<div class="feat"><div class="fi">🧪</div>无细胞系统</div>
+<div class="feat"><div class="fi">🛡️</div>生物安全</div>
+</div>
+</div>
+<div class="panel" id="panel" style="position:fixed;left:0;top:0;width:320px;height:calc(100% - 36px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;display:none;padding:16px;font-size:15px;line-height:1.7;padding-bottom:24px"></div>
+<canvas id="cv"></canvas>
+<div class="bar" id="bar" style="position:fixed;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--panel-border);display:none;z-index:10;padding:0 16px;font-size:13px;align-items:center;justify-content:space-between"></div>
+<script>
+let isDark=true;
+const TH={
+  dark:{bg1:'#0a1a0a',bg2:'#0d1a0d',bg3:'#0a0a1a',grid:'rgba(34,197,94,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)'},
+  light:{bg1:'#e8f5e8',bg2:'#f0f5f0',bg3:'#e0f0e0',grid:'rgba(34,197,94,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)'}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';document.getElementById('themeToggle').style.background=isDark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.06)';document.getElementById('themeToggle').style.border=isDark?'1px solid rgba(255,255,255,0.2)':'1px solid rgba(0,0,0,0.12)';document.getElementById('themeToggle').style.color=isDark?'#aaa':'#666';try{renderPanel()}catch(e){}}
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),ov=document.getElementById('ov');
+let W,H,curLevel=0,tick=0,mouse={x:0,y:0,down:false,clicked:false};
+const PL=320;
+const LEVELS=7;
+const levelNames=['生物砖','基因回路','基因编辑工具','代谢工程','细胞工厂','无细胞系统','生物安全与伦理'];
+const levelDescs=[
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>标准件：</b>启动子 / RBS / CDS / 终止子</div>画布上有4种不同颜色的生物砖散落着。把它们按正确顺序从左到右拖放到组装区，组成一个完整的基因表达单元。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>回路类型：</b>开关 / 振荡器 / 逻辑门 / 反馈环路</div>画布上展示了一个基因回路。调节各组件的表达强度，观察输出信号如何变化。让回路产生稳定的振荡输出。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>三大工具：</b>CRISPR-Cas9 / ZFN / TALEN</div>三种基因编辑工具各有优劣。点击选择工具，然后点击DNA上的目标位点进行编辑。比较它们的精度、成本和适用范围。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>优化目标：</b>通量分析 / 瓶颈酶 / 产量最大化</div>代谢网络中有多条路径。调节关键酶的表达水平，消除瓶颈，让目标产物的产量达到最大。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>应用：</b>微生物发酵 / 生物燃料 / 药物合成</div>选择底盘生物和目标产物，配置发酵参数（温度、pH、溶氧），让细胞工厂高效生产。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>体外系统：</b>转录翻译 / 纸基诊断 / 快速原型</div>不需要活细胞！把DNA模板、核糖体、氨基酸等组分加入试管，观察蛋白质在体外合成的过程。',
+'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>伦理议题：</b>基因驱动 / 生物武器公约 / 双重用途</div>合成生物学的强大能力带来伦理挑战。评估不同研究场景的风险等级，做出负责任的决策。'
+];
+const levelObjTexts=[
+['识别4种生物砖的功能','按正确顺序组装基因表达单元','调节启动子强度观察表达量变化'],
+['连接基因回路的正负反馈','调节参数产生稳定振荡','设计一个AND逻辑门'],
+['用CRISPR切割目标基因','比较三种工具的编辑效率','完成一次精确的碱基编辑'],
+['找到代谢网络中的瓶颈酶','调节酶表达消除瓶颈','将目标产物产量提升到80%以上'],
+['选择合适的底盘生物','优化发酵参数达到目标产量','完成从实验室到工业规模的放大'],
+['组装无细胞转录翻译系统','在纸基平台上检测目标分子','比较体内vs体外系统的优劣'],
+['评估基因驱动的生态风险','判断双重用途研究的风险等级','制定一份生物安全审查方案']
+];
+const learnTexts=[
+'💡 生物砖(BioBrick)是合成生物学的标准化DNA零件。一个基因表达单元由4部分组成：启动子(Promoter,启动转录)→核糖体结合位点(RBS,招募核糖体)→编码序列(CDS,编码蛋白质)→终止子(Terminator,终止转录)。iGEM竞赛的标准生物砖库已有超过20000个零件。',
+'💡 基因回路是由多个基因元件组成的功能网络。正反馈产生双稳态开关(如toggle switch)；负反馈加延迟产生振荡器(如repressilator,周期约150分钟)；组合不同输入可构建AND/OR/NOT等逻辑门。2000年Elowitz的repressilator是合成生物学的里程碑。',
+'💡 CRISPR-Cas9由guide RNA引导，精度高、成本低、设计简单，是目前最主流的基因编辑工具。ZFN(锌指核酸酶)和TALEN(转录激活因子样效应物核酸酶)更早出现，但设计复杂、成本高。CRISPR还发展出碱基编辑(BE)和先导编辑(PE)等精确工具。',
+'💡 代谢工程通过改造细胞内的代谢网络来生产目标化合物。通量平衡分析(FBA)可预测代谢流分布；过表达瓶颈酶、敲除竞争途径、引入异源途径是常用策略。青蒿素的半合成(Jay Keasling团队)是代谢工程的经典案例。',
+'💡 细胞工厂利用微生物(大肠杆菌、酿酒酵母、谷氨酸棒杆菌等)作为底盘，通过基因改造使其高效生产目标产物。工业发酵需要优化温度、pH、溶氧、补料策略等参数。从摇瓶(mL)到发酵罐(m³)的放大是关键挑战。',
+'💡 无细胞系统(Cell-free system)在试管中重建转录翻译机器，无需维持活细胞。优势：快速原型验证(数小时vs数天)、可使用有毒底物、易于定量控制。应用：纸基诊断(冻干在纸上,加水即用)、非天然氨基酸掺入、教育套件。',
+'💡 合成生物学的伦理挑战：基因驱动可在野外快速传播改造基因(如消灭疟蚊)，但可能造成不可逆的生态影响；双重用途研究(DURC)指既有益又可能被滥用的研究；《生物武器公约》(BWC,1975)禁止开发生物武器。负责任的创新需要科学家、政策制定者和公众的共同参与。'
+];
+let levelObjs=levelObjTexts.map(a=>a.map(()=>false));
+let L={};
+// ========== 音效 ==========
+let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function playSound(type){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}}
+
+// ========== 粒子 ==========
+let particles=[];
+function spawnP(x,y,color,n=12){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,sp=1+Math.random()*3;particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:0.6+Math.random()*0.4,color,r:2+Math.random()*3})}}
+function drawParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life-=dt;if(p.life<=0){particles.splice(i,1);continue}ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+
+// ========== 尺寸 ==========
+function resize(){W=cv.width=innerWidth;H=cv.height=innerHeight}
+resize();window.addEventListener('resize',resize);
+
+// ========== 关卡核心 ==========
+function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;playSound('success');renderPanel()}}
+function allObjDone(){return levelObjs[curLevel].every(v=>v)}
+
+function resetLevel(li){
+  L={};levelObjs[li]=levelObjs[li].map(()=>false);
+  const cx=PL+(W-PL)/2, cy=H/2;
+  if(li===0){
+    // 生物砖: 拖放组装
+    const bricks=[
+      {id:'promoter',name:'启动子',abbr:'P',color:'#ef4444',desc:'启动转录',correct:0},
+      {id:'rbs',name:'RBS',abbr:'R',color:'#f59e0b',desc:'核糖体结合位点',correct:1},
+      {id:'cds',name:'CDS',abbr:'C',color:'#22c55e',desc:'编码序列',correct:2},
+      {id:'terminator',name:'终止子',abbr:'T',color:'#3b82f6',desc:'终止转录',correct:3}
+    ];
+    // 随机散布
+    L.bricks=bricks.map((b,i)=>{
+      const angle=Math.random()*Math.PI*2, dist=80+Math.random()*120;
+      return {...b,x:cx+Math.cos(angle)*dist,y:cy-100+Math.sin(angle)*dist,w:70,h:50,placed:-1}
+    });
+    L.slots=bricks.map((_,i)=>({x:cx-140+i*80,y:cy+100,w:70,h:50,filled:false}));
+    L.dragIdx=-1;L.identified=new Set();L.strength=0.5;L.showExpr=false;
+  } else if(li===1){
+    // 基因回路: 振荡器
+    L.nodes=[
+      {id:'A',x:cx-100,y:cy-80,label:'基因A',color:'#ef4444',expr:0.8,represses:'B'},
+      {id:'B',x:cx+100,y:cy-80,label:'基因B',color:'#22c55e',expr:0.3,represses:'C'},
+      {id:'C',x:cx,y:cy+80,label:'基因C',color:'#3b82f6',expr:0.5,represses:'A'}
+    ];
+    L.time=0;L.history={A:[],B:[],C:[]};L.running=false;L.oscillating=false;
+    L.connected=false;L.logicDone=false;L.logicMode=false;
+    L.gateInputs=[false,false];L.gateOutput=false;
+  } else if(li===2){
+    // 基因编辑工具对比
+    L.tools=[
+      {id:'crispr',name:'CRISPR-Cas9',color:'#22c55e',precision:95,cost:1,ease:9,speed:8,desc:'RNA引导,设计简单'},
+      {id:'zfn',name:'ZFN',color:'#f59e0b',precision:75,cost:8,ease:3,speed:5,desc:'锌指蛋白,设计复杂'},
+      {id:'talen',name:'TALEN',color:'#3b82f6',precision:85,cost:5,ease:5,speed:6,desc:'TAL效应物,中等复杂'}
+    ];
+    L.selectedTool=null;L.dnaTargets=[];L.editsDone=0;L.compared=false;L.baseDone=false;
+    // DNA链上的目标位点
+    for(let i=0;i<5;i++){
+      L.dnaTargets.push({x:cx-180+i*90,y:cy,edited:false,tool:null});
+    }
+  } else if(li===3){
+    // 代谢工程
+    L.enzymes=[
+      {id:'E1',name:'酶1(己糖激酶)',x:cx-160,y:cy-60,expr:0.5,maxFlux:1.0,color:'#22c55e'},
+      {id:'E2',name:'酶2(磷酸果糖激酶)',x:cx-40,y:cy-60,expr:0.3,maxFlux:0.6,color:'#f59e0b',bottleneck:true},
+      {id:'E3',name:'酶3(丙酮酸激酶)',x:cx+80,y:cy-60,expr:0.7,maxFlux:0.8,color:'#3b82f6'},
+      {id:'E4',name:'酶4(目标合成酶)',x:cx+200,y:cy-60,expr:0.4,maxFlux:0.5,color:'#8b5cf6'}
+    ];
+    L.flux=0;L.yield=0;L.bottleneckFound=false;L.optimized=false;
+    L.flowParticles=[];
+  } else if(li===4){
+    // 细胞工厂
+    L.chassis=['大肠杆菌','酿酒酵母','谷氨酸棒杆菌'];
+    L.products=['青蒿素','生物乙醇','胰岛素'];
+    L.selectedChassis=0;L.selectedProduct=0;
+    L.temp=37;L.ph=7.0;L.oxygen=50;
+    L.yield=0;L.maxYield=0;L.fermenting=false;L.fermTime=0;
+    L.scaleUp=false;L.labDone=false;
+    L.optimalParams={0:{temp:30,ph:7.0,oxy:60},1:{temp:30,ph:5.0,oxy:40},2:{temp:37,ph:7.2,oxy:70}};
+    L.bubbles=[];
+  } else if(li===5){
+    // 无细胞系统
+    L.components=['DNA模板','RNA聚合酶','核糖体','氨基酸','ATP/GTP','缓冲液'];
+    L.added=new Set();L.reacting=false;L.reactTime=0;L.proteinMade=false;
+    L.paperTest=false;L.paperResult=null;L.compared=false;
+    L.tubes=[{x:cx-60,y:cy,w:40,h:120,level:0,color:'#60a5fa'}];
+  } else if(li===6){
+    // 生物安全与伦理
+    L.scenarios=[
+      {id:'drive',title:'基因驱动消灭疟蚊',desc:'释放携带基因驱动的蚊子到野外，使疟疾传播蚊种灭绝',risk:3,category:'生态风险',assessed:false},
+      {id:'virus',title:'增强型病毒研究',desc:'改造H5N1使其可在哺乳动物间空气传播，研究传播机制',risk:4,category:'双重用途',assessed:false},
+      {id:'therapy',title:'基因治疗镰刀细胞病',desc:'用CRISPR修复患者造血干细胞中的HBB基因突变',risk:1,category:'医疗应用',assessed:false},
+      {id:'biofuel',title:'工程藻类生产燃料',desc:'改造微藻在开放池塘中高效产油，替代化石燃料',risk:2,category:'环境释放',assessed:false},
+      {id:'diy',title:'DIY生物学实验室',desc:'社区实验室中业余爱好者进行基因工程实验',risk:2,category:'监管挑战',assessed:false}
+    ];
+    L.currentScenario=0;L.assessments={};L.planDone=false;L.driveDone=false;L.durcDone=false;
+  }
+}
+// ========== 绘制 ==========
+function drawBg(){
+  const th=t();
+  ctx.fillStyle=th.bg1;ctx.fillRect(0,0,W,H);
+  // 网格
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  for(let x=PL;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(W,y);ctx.stroke()}
+}
+
+function drawRoundRect(x,y,w,h,r,fill,stroke){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+  if(fill){ctx.fillStyle=fill;ctx.fill()}
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=2;ctx.stroke()}
+}
+
+function drawArrow(x1,y1,x2,y2,color,width){
+  const angle=Math.atan2(y2-y1,x2-x1),len=8;
+  ctx.strokeStyle=color;ctx.lineWidth=width||2;
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  ctx.fillStyle=color;ctx.beginPath();
+  ctx.moveTo(x2,y2);ctx.lineTo(x2-len*Math.cos(angle-0.4),y2-len*Math.sin(angle-0.4));
+  ctx.lineTo(x2-len*Math.cos(angle+0.4),y2-len*Math.sin(angle+0.4));ctx.fill();
+}
+
+function drawLevel0(){
+  const th=t(),cx=PL+(W-PL)/2,cy=H/2;
+  // 组装区
+  ctx.strokeStyle='rgba(99,102,241,0.3)';ctx.setLineDash([5,5]);
+  ctx.strokeRect(cx-160,cy+75,320,70);ctx.setLineDash([]);
+  ctx.fillStyle=th.textMut;ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText('组装区：从左到右放置 启动子→RBS→CDS→终止子',cx,cy+68);
+  // 槽位
+  L.slots.forEach((s,i)=>{
+    drawRoundRect(s.x,s.y,s.w,s.h,6,null,'rgba(99,102,241,0.4)');
+    ctx.fillStyle=th.textMut;ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText(['P','R','C','T'][i],s.x+s.w/2,s.y+s.h/2+4);
+  });
+  // 砖块
+  L.bricks.forEach((b,i)=>{
+    if(b.placed>=0){
+      const s=L.slots[b.placed];
+      drawRoundRect(s.x+2,s.y+2,s.w-4,s.h-4,6,b.color+'cc',b.color);
+      ctx.fillStyle='#fff';ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+      ctx.fillText(b.abbr,s.x+s.w/2,s.y+s.h/2-4);
+      ctx.font='10px sans-serif';ctx.fillText(b.name,s.x+s.w/2,s.y+s.h/2+12);
+    } else {
+      drawRoundRect(b.x-b.w/2,b.y-b.h/2,b.w,b.h,8,b.color+'cc',b.color);
+      ctx.fillStyle='#fff';ctx.font='bold 18px sans-serif';ctx.textAlign='center';
+      ctx.fillText(b.abbr,b.x,b.y-2);
+      ctx.font='10px sans-serif';ctx.fillText(b.name,b.x,b.y+14);
+    }
+  });
+  // 表达量指示
+  if(L.showExpr){
+    const barX=cx-100,barY=cy-160,barW=200,barH=20;
+    ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(barX,barY,barW,barH);
+    ctx.fillStyle='#22c55e';ctx.fillRect(barX,barY,barW*L.strength,barH);
+    ctx.strokeStyle='#22c55e';ctx.strokeRect(barX,barY,barW,barH);
+    ctx.fillStyle=th.text;ctx.font='13px sans-serif';ctx.textAlign='center';
+    ctx.fillText('表达量: '+(L.strength*100).toFixed(0)+'%',cx,barY-8);
+    // GFP荧光效果
+    const glow=L.strength;
+    ctx.save();ctx.globalAlpha=glow*0.6;
+    const grad=ctx.createRadialGradient(cx,cy-60,5,cx,cy-60,60*glow);
+    grad.addColorStop(0,'#22c55e');grad.addColorStop(1,'transparent');
+    ctx.fillStyle=grad;ctx.fillRect(cx-80,cy-120,160,120);ctx.restore();
+  }
+}
+
+function drawLevel1(){
+  const th=t(),cx=PL+(W-PL)/2,cy=H/2;
+  // 节点
+  L.nodes.forEach(n=>{
+    ctx.beginPath();ctx.arc(n.x,n.y,30,0,Math.PI*2);
+    ctx.fillStyle=n.color+'44';ctx.fill();
+    ctx.strokeStyle=n.color;ctx.lineWidth=3;ctx.stroke();
+    // 表达量条
+    const barW=50,barH=6,bx=n.x-barW/2,by=n.y+36;
+    ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(bx,by,barW,barH);
+    ctx.fillStyle=n.color;ctx.fillRect(bx,by,barW*n.expr,barH);
+    ctx.fillStyle=th.text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+    ctx.fillText(n.label,n.x,n.y+4);
+    ctx.font='11px sans-serif';ctx.fillStyle=th.textSec;
+    ctx.fillText((n.expr*100).toFixed(0)+'%',n.x,n.y+52);
+  });
+  // 抑制箭头
+  if(L.connected){
+    L.nodes.forEach((n,i)=>{
+      const target=L.nodes.find(m=>m.id===n.represses);
+      if(target){
+        const dx=target.x-n.x,dy=target.y-n.y,dist=Math.sqrt(dx*dx+dy*dy);
+        const nx2=dx/dist,ny2=dy/dist;
+        drawArrow(n.x+nx2*34,n.y+ny2*34,target.x-nx2*34,target.y-ny2*34,n.color+'88',2);
+        // 抑制符号 ⊣
+        const mx=(n.x+target.x)/2,my=(n.y+target.y)/2;
+        ctx.fillStyle=n.color+'88';ctx.font='10px sans-serif';ctx.textAlign='center';
+        ctx.fillText('⊣',mx,my-6);
+      }
+    });
+  }
+  // 波形图
+  if(L.history.A.length>2){
+    const gx=cx-150,gy=cy+120,gw=300,gh=80;
+    ctx.fillStyle='rgba(0,0,0,0.2)';ctx.fillRect(gx,gy,gw,gh);
+    ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.strokeRect(gx,gy,gw,gh);
+    ['A','B','C'].forEach((id,ci)=>{
+      const hist=L.history[id],color=L.nodes[ci].color;
+      ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();
+      hist.forEach((v,j)=>{
+        const px=gx+j/Math.max(hist.length-1,1)*gw,py=gy+gh-v*gh;
+        j===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+      });
+      ctx.stroke();
+    });
+    ctx.fillStyle=th.textMut;ctx.font='10px sans-serif';ctx.textAlign='left';
+    ctx.fillText('时间 →',gx,gy+gh+14);ctx.fillText('表达量',gx-4,gy-4);
+  }
+  // AND门
+  if(L.logicMode){
+    const gx=cx+160,gy=cy-40;
+    drawRoundRect(gx,gy,80,60,8,'rgba(99,102,241,0.2)','#6366f1');
+    ctx.fillStyle=th.text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('AND',gx+40,gy+35);
+    // 输入
+    [0,1].forEach((inp,i)=>{
+      const iy=gy+15+i*30;
+      ctx.beginPath();ctx.arc(gx-15,iy,8,0,Math.PI*2);
+      ctx.fillStyle=L.gateInputs[i]?'#22c55e':'#ef4444';ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();
+      ctx.fillStyle=th.text;ctx.font='10px sans-serif';ctx.textAlign='right';
+      ctx.fillText('输入'+(i+1),gx-28,iy+4);
+    });
+    // 输出
+    ctx.beginPath();ctx.arc(gx+95,gy+30,8,0,Math.PI*2);
+    ctx.fillStyle=L.gateOutput?'#22c55e':'#ef4444';ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle=th.text;ctx.font='10px sans-serif';ctx.textAlign='left';
+    ctx.fillText('输出',gx+108,gy+34);
+  }
+}
+
+function drawLevel2(){
+  const th=t(),cx=PL+(W-PL)/2,cy=H/2;
+  // DNA双链
+  const dnaY=cy,dnaW=W-PL-80;
+  for(let i=0;i<40;i++){
+    const x=PL+40+i*(dnaW/40),phase=i*0.3+tick*0.02;
+    const y1=dnaY-15*Math.sin(phase),y2=dnaY+15*Math.sin(phase);
+    ctx.beginPath();ctx.arc(x,y1,4,0,Math.PI*2);ctx.fillStyle='#3b82f6';ctx.fill();
+    ctx.beginPath();ctx.arc(x,y2,4,0,Math.PI*2);ctx.fillStyle='#ef4444';ctx.fill();
+    if(i%2===0){ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.beginPath();ctx.moveTo(x,y1);ctx.lineTo(x,y2);ctx.stroke()}
+  }
+  // 目标位点
+  L.dnaTargets.forEach((tgt,i)=>{
+    const x=tgt.x,y=tgt.y;
+    if(tgt.edited){
+      ctx.beginPath();ctx.arc(x,y,12,0,Math.PI*2);
+      ctx.fillStyle=tgt.tool==='crispr'?'#22c55e44':tgt.tool==='zfn'?'#f59e0b44':'#3b82f644';ctx.fill();
+      ctx.strokeStyle=tgt.tool==='crispr'?'#22c55e':tgt.tool==='zfn'?'#f59e0b':'#3b82f6';ctx.lineWidth=2;ctx.stroke();
+      ctx.fillStyle='#fff';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText('✓',x,y+4);
+    } else {
+      ctx.beginPath();ctx.arc(x,y,12,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,0.1)';ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.3)';ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle=th.textMut;ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('靶点'+(i+1),x,y+4);
+    }
+  });
+  // 工具选择指示
+  if(L.selectedTool!==null){
+    const tool=L.tools[L.selectedTool];
+    ctx.fillStyle=tool.color;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('当前工具: '+tool.name,cx,cy+80);
+    // 剪刀动画
+    ctx.font='28px sans-serif';ctx.fillText('✂️',mouse.x>PL?mouse.x:cx,cy+120);
+  }
+  // 工具对比雷达图
+  if(L.compared){
+    const rx=cx,ry=cy+160,rr=60;
+    ctx.strokeStyle='rgba(255,255,255,0.1)';ctx.lineWidth=1;
+    for(let r=1;r<=3;r++){ctx.beginPath();ctx.arc(rx,ry,rr*r/3,0,Math.PI*2);ctx.stroke()}
+    L.tools.forEach(tool=>{
+      const attrs=[tool.precision/100,tool.ease/10,tool.speed/10,(10-tool.cost)/10];
+      ctx.strokeStyle=tool.color;ctx.lineWidth=2;ctx.beginPath();
+      attrs.forEach((v,i)=>{
+        const angle=i*Math.PI/2-Math.PI/2,px=rx+Math.cos(angle)*rr*v,py=ry+Math.sin(angle)*rr*v;
+        i===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+      });
+      ctx.closePath();ctx.stroke();
+      ctx.fillStyle=tool.color+'33';ctx.fill();
+    });
+  }
+}
+function drawLevel3(){
+  const th=t(),cx=PL+(W-PL)/2,cy=H/2-40;
+  // 代谢网络
+  ctx.fillStyle=th.text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+  ctx.fillText('代谢通路',cx,cy-100);
+  L.enzymes.forEach((e,i)=>{
+    // 酶节点
+    const r=25;
+    ctx.beginPath();ctx.arc(e.x,e.y,r,0,Math.PI*2);
+    ctx.fillStyle=e.color+'44';ctx.fill();
+    ctx.strokeStyle=e.bottleneck&&L.bottleneckFound?'#ef4444':e.color;
+    ctx.lineWidth=e.bottleneck&&L.bottleneckFound?3:2;ctx.stroke();
+    ctx.fillStyle=th.text;ctx.font='bold 11px sans-serif';ctx.textAlign='center';
+    ctx.fillText(e.id,e.x,e.y-4);
+    // 表达量条
+    const bw=40,bh=6,bx=e.x-bw/2,by=e.y+30;
+    ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle=e.color;ctx.fillRect(bx,by,bw*e.expr,bh);
+    ctx.fillStyle=th.textSec;ctx.font='10px sans-serif';
+    ctx.fillText((e.expr*100).toFixed(0)+'%',e.x,by+16);
+    // 箭头连接
+    if(i<L.enzymes.length-1){
+      const next=L.enzymes[i+1];
+      drawArrow(e.x+r+4,e.y,next.x-r-4,next.y,'rgba(255,255,255,0.3)',2);
+    }
+  });
+  // 通量流动粒子
+  L.flowParticles.forEach(p=>{
+    ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);
+    ctx.fillStyle='#22c55e';ctx.globalAlpha=p.life;ctx.fill();ctx.globalAlpha=1;
+  });
+  // 产量指示
+  const barX=cx-100,barY=cy+100,barW=200,barH=24;
+  ctx.fillStyle='rgba(0,0,0,0.3)';ctx.fillRect(barX,barY,barW,barH);
+  const yieldColor=L.yield>=0.8?'#22c55e':L.yield>=0.5?'#f59e0b':'#ef4444';
+  ctx.fillStyle=yieldColor;ctx.fillRect(barX,barY,barW*L.yield,barH);
+  ctx.strokeStyle=yieldColor;ctx.strokeRect(barX,barY,barW,barH);
+  ctx.fillStyle='#fff';ctx.font='bold 13px sans-serif';ctx.textAlign='center';
+  ctx.fillText('产量: '+(L.yield*100).toFixed(1)+'%',cx,barY+16);
+}
+
+function drawLevel4(){
+  const th=t(),cx=PL+(W-PL)/2,cy=H/2;
+  // 发酵罐
+  const tankX=cx-60,tankY=cy-100,tankW=120,tankH=180;
+  drawRoundRect(tankX,tankY,tankW,tankH,12,'rgba(99,102,241,0.1)','#6366f1');
+  // 液面
+  const fillH=tankH*0.7;
+  ctx.fillStyle='rgba(34,197,94,0.15)';
+  ctx.fillRect(tankX+2,tankY+tankH-fillH,tankW-4,fillH-2);
+  // 气泡
+  L.bubbles.forEach(b=>{
+    ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,0.15)';ctx.fill();
+  });
+  // 参数显示
+  ctx.fillStyle=th.text;ctx.font='13px sans-serif';ctx.textAlign='center';
+  ctx.fillText(L.chassis[L.selectedChassis]+' → '+L.products[L.selectedProduct],cx,tankY-20);
+  // 产量曲线
+  if(L.fermenting||L.fermTime>0){
+    ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';
+    ctx.fillText('产量: '+(L.yield*100).toFixed(1)+'%',cx,tankY+tankH+30);
+    if(L.yield>=80){
+      ctx.fillStyle='#22c55e';ctx.font='12px sans-serif';
+      ctx.fillText('✓ 达标!',cx,tankY+tankH+50);
+    }
+  }
+  // 规模放大指示
+  if(L.scaleUp){
+    ctx.fillStyle=th.textSec;ctx.font='12px sans-serif';ctx.textAlign='center';
+    ctx.fillText('🏭 工业规模: 10,000L 发酵罐',cx,tankY+tankH+70);
+    // 画大罐
+    const bx=cx+100,by=cy-40,bw=60,bh=90;
+    drawRoundRect(bx,by,bw,bh,8,'rgba(34,197,94,0.1)','#22c55e');
+    ctx.fillStyle=th.textMut;ctx.font='10px sans-serif';ctx.fillText('10m³',bx+bw/2,by+bh/2);
+  }
+}
+
+function drawLevel5(){
+  const th=t(),cx=PL+(W-PL)/2,cy=H/2;
+  // 试管
+  const tubeX=cx-30,tubeY=cy-80,tubeW=60,tubeH=160;
+  drawRoundRect(tubeX,tubeY,tubeW,tubeH,8,null,'rgba(96,165,250,0.5)');
+  // 液面
+  const fillLevel=L.added.size/L.components.length;
+  if(fillLevel>0){
+    const fh=tubeH*fillLevel*0.8;
+    ctx.fillStyle='rgba(96,165,250,0.2)';
+    ctx.fillRect(tubeX+2,tubeY+tubeH-fh,tubeW-4,fh-2);
+  }
+  // 组分标签
+  L.components.forEach((c,i)=>{
+    const x=cx-180+((i%3)*130),y=cy-140+Math.floor(i/3)*50;
+    const added=L.added.has(i);
+    drawRoundRect(x,y,110,35,6,added?'#22c55e33':'rgba(255,255,255,0.05)',added?'#22c55e':'rgba(255,255,255,0.2)');
+    ctx.fillStyle=added?'#22c55e':th.text;ctx.font='12px sans-serif';ctx.textAlign='center';
+    ctx.fillText((added?'✓ ':'')+c,x+55,y+22);
+  });
+  // 反应动画
+  if(L.reacting){
+    const progress=Math.min(L.reactTime/3,1);
+    ctx.fillStyle=th.text;ctx.font='13px sans-serif';ctx.textAlign='center';
+    ctx.fillText('转录翻译中... '+(progress*100).toFixed(0)+'%',cx,cy+120);
+    // 蛋白质折叠动画
+    if(progress>0.5){
+      const px=cx,py=cy+20;
+      ctx.save();ctx.translate(px,py);ctx.rotate(tick*0.02);
+      ctx.beginPath();
+      for(let a=0;a<Math.PI*4*progress;a+=0.1){
+        const r=5+a*3,x2=Math.cos(a)*r,y2=Math.sin(a)*r;
+        a===0?ctx.moveTo(x2,y2):ctx.lineTo(x2,y2);
+      }
+      ctx.strokeStyle='#22c55e';ctx.lineWidth=3;ctx.stroke();ctx.restore();
+    }
+  }
+  if(L.proteinMade){
+    ctx.fillStyle='#22c55e';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('✓ 蛋白质合成成功!',cx,cy+140);
+  }
+  // 纸基诊断
+  if(L.paperTest){
+    const px=cx+140,py=cy-20,pw=80,ph=40;
+    drawRoundRect(px,py,pw,ph,4,'#fffbeb','#fcd34d');
+    ctx.fillStyle=L.paperResult?'#22c55e':'#666';ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+    ctx.fillText(L.paperResult?'阳性 +':'等待...',px+pw/2,py+ph/2+4);
+  }
+}
+
+function drawLevel6(){
+  const th=t(),cx=PL+(W-PL)/2,cy=H/2;
+  // 场景卡片
+  const sc=L.scenarios[L.currentScenario];
+  if(!sc)return;
+  const cardW=360,cardH=180,cardX=cx-cardW/2,cardY=cy-cardH/2-20;
+  drawRoundRect(cardX,cardY,cardW,cardH,12,'rgba(99,102,241,0.08)','rgba(99,102,241,0.3)');
+  ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
+  ctx.fillText(sc.title,cx,cardY+30);
+  ctx.fillStyle=th.textSec;ctx.font='13px sans-serif';
+  // 自动换行
+  const words=sc.desc;const maxW=cardW-40;let line='',ly=cardY+55;
+  for(let i=0;i<words.length;i++){
+    line+=words[i];
+    if(ctx.measureText(line).width>maxW||i===words.length-1){
+      ctx.fillText(line,cx,ly);ly+=20;line='';
+    }
+  }
+  // 风险等级指示
+  ctx.fillStyle=th.text;ctx.font='13px sans-serif';ctx.textAlign='center';
+  ctx.fillText('类别: '+sc.category,cx,cardY+cardH-40);
+  // 风险条
+  const riskColors=['#22c55e','#84cc16','#f59e0b','#ef4444','#dc2626'];
+  const barX=cx-80,barY=cardY+cardH-20,barW=160,barH=10;
+  for(let i=0;i<5;i++){
+    ctx.fillStyle=i<sc.risk?riskColors[sc.risk-1]+'66':'rgba(255,255,255,0.1)';
+    ctx.fillRect(barX+i*33,barY,30,barH);
+  }
+  ctx.fillStyle=th.textMut;ctx.font='10px sans-serif';
+  ctx.fillText('低风险',barX-20,barY+8);ctx.fillText('高风险',barX+barW+20,barY+8);
+  // 已评估标记
+  if(sc.assessed){
+    ctx.fillStyle='#22c55e';ctx.font='bold 14px sans-serif';
+    ctx.fillText('✓ 已评估',cx,cardY+cardH+20);
+  }
+  // 进度
+  const assessed=L.scenarios.filter(s=>s.assessed).length;
+  ctx.fillStyle=th.textMut;ctx.font='12px sans-serif';
+  ctx.fillText('进度: '+assessed+'/'+L.scenarios.length,cx,cy+130);
+}
+// ========== 交互 ==========
+cv.addEventListener('mousedown',e=>{mouse.down=true;mouse.x=e.clientX;mouse.y=e.clientY;handleMouseDown(e.clientX,e.clientY)});
+cv.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;handleMouseMove(e.clientX,e.clientY)});
+cv.addEventListener('mouseup',e=>{mouse.down=false;handleMouseUp(e.clientX,e.clientY)});
+cv.addEventListener('click',e=>{handleClick(e.clientX,e.clientY)});
+
+function handleMouseDown(x,y){
+  if(curLevel===0){
+    // 拖拽砖块
+    L.bricks.forEach((b,i)=>{
+      if(b.placed>=0)return;
+      if(Math.abs(x-b.x)<b.w/2&&Math.abs(y-b.y)<b.h/2){L.dragIdx=i}
+    });
+  }
+}
+function handleMouseMove(x,y){
+  if(curLevel===0&&L.dragIdx>=0){
+    L.bricks[L.dragIdx].x=x;L.bricks[L.dragIdx].y=y;
+  }
+}
+function handleMouseUp(x,y){
+  if(curLevel===0&&L.dragIdx>=0){
+    const b=L.bricks[L.dragIdx];
+    // 检查是否放入槽位
+    let placed=false;
+    L.slots.forEach((s,si)=>{
+      if(!s.filled&&x>s.x&&x<s.x+s.w&&y>s.y&&y<s.y+s.h){
+        if(si===b.correct){
+          b.placed=si;s.filled=true;placed=true;
+          playSound('success');spawnP(s.x+s.w/2,s.y+s.h/2,'#22c55e');
+          L.identified.add(b.id);
+          if(L.identified.size>=4)completeObj(0);
+          // 检查全部放好
+          if(L.bricks.every(bb=>bb.placed>=0)){completeObj(1);L.showExpr=true}
+        } else {
+          playSound('fail');spawnP(x,y,'#ef4444');
+        }
+      }
+    });
+    if(!placed){
+      // 弹回随机位置
+      const cx2=PL+(W-PL)/2;
+      b.x=cx2-100+Math.random()*200;b.y=H/2-100+Math.random()*80;
+    }
+    L.dragIdx=-1;
+    renderPanel();
+  }
+}
+
+function handleClick(x,y){
+  if(x<PL)return;
+  if(curLevel===1){
+    // 点击AND门输入
+    if(L.logicMode){
+      const cx2=PL+(W-PL)/2,gx=cx2+160,gy=H/2-40;
+      [0,1].forEach((inp,i)=>{
+        const iy=gy+15+i*30;
+        if(Math.abs(x-(gx-15))<12&&Math.abs(y-iy)<12){
+          L.gateInputs[i]=!L.gateInputs[i];
+          L.gateOutput=L.gateInputs[0]&&L.gateInputs[1];
+          if(L.gateOutput){L.logicDone=true;completeObj(2);playSound('success')}
+          renderPanel();
+        }
+      });
+    }
+  } else if(curLevel===2){
+    // 点击DNA靶点
+    if(L.selectedTool!==null){
+      L.dnaTargets.forEach((tgt,i)=>{
+        if(!tgt.edited&&Math.abs(x-tgt.x)<15&&Math.abs(y-tgt.y)<15){
+          tgt.edited=true;tgt.tool=L.tools[L.selectedTool].id;
+          L.editsDone++;playSound('success');spawnP(tgt.x,tgt.y,L.tools[L.selectedTool].color);
+          if(L.editsDone>=1&&L.tools[L.selectedTool].id==='crispr')completeObj(0);
+          if(L.editsDone>=3){
+            // 检查是否用了不同工具
+            const usedTools=new Set(L.dnaTargets.filter(t2=>t2.edited).map(t2=>t2.tool));
+            if(usedTools.size>=2){L.compared=true;completeObj(1)}
+          }
+          renderPanel();
+        }
+      });
+    }
+  } else if(curLevel===5){
+    // 点击组分添加
+    const cx2=PL+(W-PL)/2;
+    L.components.forEach((c,i)=>{
+      const bx=cx2-180+((i%3)*130),by=H/2-140+Math.floor(i/3)*50;
+      if(x>bx&&x<bx+110&&y>by&&y<by+35&&!L.added.has(i)){
+        L.added.add(i);playSound('click');
+        if(L.added.size===L.components.length){
+          L.reacting=true;L.reactTime=0;
+          completeObj(0);
+        }
+        renderPanel();
+      }
+    });
+  } else if(curLevel===6){
+    // 无需额外点击处理，面板按钮控制
+  }
+}
+
+// ========== 面板 ==========
+let _panelLock=false;
+function renderPanel(){
+  if(_panelLock)return;_panelLock=true;setTimeout(()=>_panelLock=false,50);
+  let h='';
+  // stage-nav
+  h+='<div class="stage-nav" style="background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px">';
+  h+='<div class="sn-bar" style="display:flex;gap:3px;margin-bottom:6px">';
+  for(let i=0;i<LEVELS;i++){
+    const cls=i<curLevel?'done':i===curLevel?'cur':'';
+    h+=`<div class="sn-d ${cls}" style="flex:1;height:5px;border-radius:3px;background:${i<curLevel?'#22c55e':i===curLevel?'#6366f1':'var(--stage-bar)'};cursor:pointer" onclick="goLevel(${i})"></div>`;
+  }
+  h+='</div>';
+  h+=`<div style="color:var(--stage-info);font-weight:600;font-size:13px">第 ${curLevel+1}/${LEVELS} 关</div>`;
+  h+=`<div style="color:var(--stage-hint);font-size:12px;margin-top:3px">${levelNames[curLevel]}</div>`;
+  h+='</div>';
+  // 标题
+  h+=`<h2 style="font-size:20px;color:var(--title-color);margin-bottom:6px">${levelNames[curLevel]}</h2>`;
+  // 描述
+  h+=levelDescs[curLevel];
+  // 目标
+  h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">目标</h3>';
+  levelObjTexts[curLevel].forEach((obj,i)=>{
+    const done=levelObjs[curLevel][i];
+    h+=`<div style="display:flex;align-items:center;gap:6px;margin:3px 0;font-size:14px"><div style="width:14px;height:14px;border-radius:50%;border:2px solid #22c55e;flex-shrink:0;${done?'background:#22c55e':''}"></div><span style="color:${done?'var(--goal-done)':'var(--goal-text)'}">${obj}</span></div>`;
+  });
+  // 关卡特定控件
+  h+=renderLevelControls();
+  // 学习框
+  if(allObjDone()){
+    h+=`<div style="background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:var(--learn-text);line-height:1.8">${learnTexts[curLevel]}</div>`;
+    h+=renderQuiz();
+  }
+  panel.innerHTML=h;
+}
+
+function renderLevelControls(){
+  let h='';
+  if(curLevel===0){
+    if(L.showExpr){
+      h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">调节启动子强度</h3>';
+      h+=`<input type="range" min="0" max="100" value="${L.strength*100}" style="width:100%" oninput="L.strength=this.value/100" onchange="this.blur();if(L.strength>0.7)completeObj(2);renderPanel()">`;
+      h+=`<div style="font-size:13px;color:var(--sv)">表达量: ${(L.strength*100).toFixed(0)}%</div>`;
+    } else {
+      h+='<div style="background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:6px;padding:8px;margin-top:8px;font-size:13px;color:var(--hint-text)">💡 把4种生物砖拖到下方组装区的正确位置</div>';
+    }
+  } else if(curLevel===1){
+    if(!L.connected){
+      h+=`<button class="act-btn" style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-size:15px;cursor:pointer" onclick="L.connected=true;completeObj(0);renderPanel()">连接抑制回路</button>`;
+    } else if(!L.running){
+      h+=`<button class="act-btn" style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-size:15px;cursor:pointer" onclick="L.running=true;renderPanel()">启动振荡器</button>`;
+      h+='<div style="font-size:12px;color:var(--hint-text);margin-top:4px">连接完成！点击启动观察振荡</div>';
+    } else {
+      h+='<div style="font-size:13px;color:var(--sv);margin-top:6px">振荡器运行中...</div>';
+      if(!L.logicMode){
+        h+=`<button class="act-btn" style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#6366f1;color:#fff;font-size:15px;cursor:pointer" onclick="L.logicMode=true;renderPanel()">设计AND逻辑门</button>`;
+      } else {
+        h+='<div style="font-size:13px;color:var(--text-sub);margin-top:6px">点击画布上的输入端切换信号，让两个输入都为绿色(1)时输出才为绿色</div>';
+      }
+    }
+  } else if(curLevel===2){
+    h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">选择工具</h3>';
+    L.tools.forEach((tool,i)=>{
+      const sel=L.selectedTool===i;
+      h+=`<button style="display:block;width:100%;padding:8px;margin:4px 0;border:2px solid ${sel?tool.color:'transparent'};border-radius:8px;background:${sel?tool.color+'22':'var(--btn-bg)'};color:${sel?tool.color:'var(--btn-text)'};font-size:13px;cursor:pointer;text-align:left" onclick="L.selectedTool=${i};renderPanel()"><b>${tool.name}</b> — ${tool.desc}<br><span style="font-size:11px">精度:${tool.precision}% 成本:${'💰'.repeat(Math.ceil(tool.cost/3))} 易用:${'⭐'.repeat(Math.ceil(tool.ease/3))}</span></button>`;
+    });
+    if(L.compared&&!L.baseDone){
+      h+=`<button class="act-btn" style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#7c3aed;color:#fff;font-size:15px;cursor:pointer" onclick="L.baseDone=true;completeObj(2);renderPanel()">完成碱基编辑</button>`;
+    }
+  } else if(curLevel===3){
+    h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">调节酶表达</h3>';
+    L.enzymes.forEach((e,i)=>{
+      h+=`<div style="font-size:13px;margin:4px 0"><span style="color:${e.color}">${e.name}</span>`;
+      h+=`<input type="range" min="0" max="100" value="${e.expr*100}" style="width:100%" oninput="L.enzymes[${i}].expr=this.value/100;updateFlux()" onchange="this.blur();renderPanel()">`;
+      h+=`</div>`;
+    });
+    if(!L.bottleneckFound){
+      h+=`<button class="act-btn" style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#f59e0b;color:#fff;font-size:15px;cursor:pointer" onclick="L.bottleneckFound=true;completeObj(0);renderPanel()">标记瓶颈酶</button>`;
+    }
+    h+=`<div style="font-size:14px;color:var(--sv);margin-top:6px">当前产量: ${(L.yield*100).toFixed(1)}%</div>`;
+  } else if(curLevel===4){
+    h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">底盘生物</h3>';
+    L.chassis.forEach((c,i)=>{
+      h+=`<label style="display:block;font-size:13px;margin:2px 0;cursor:pointer"><input type="radio" name="chassis" ${L.selectedChassis===i?'checked':''} onchange="L.selectedChassis=${i};renderPanel()"> ${c}</label>`;
+    });
+    h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">目标产物</h3>';
+    L.products.forEach((p,i)=>{
+      h+=`<label style="display:block;font-size:13px;margin:2px 0;cursor:pointer"><input type="radio" name="product" ${L.selectedProduct===i?'checked':''} onchange="L.selectedProduct=${i};completeObj(0);renderPanel()"> ${p}</label>`;
+    });
+    h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">发酵参数</h3>';
+    h+=`<div style="font-size:13px">温度: ${L.temp}°C<input type="range" min="20" max="45" value="${L.temp}" style="width:100%" oninput="L.temp=+this.value" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div style="font-size:13px">pH: ${L.ph.toFixed(1)}<input type="range" min="40" max="90" value="${L.ph*10}" style="width:100%" oninput="L.ph=this.value/10" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div style="font-size:13px">溶氧: ${L.oxygen}%<input type="range" min="10" max="100" value="${L.oxygen}" style="width:100%" oninput="L.oxygen=+this.value" onchange="this.blur();renderPanel()"></div>`;
+    if(!L.fermenting&&!L.labDone){
+      h+=`<button class="act-btn" style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-size:15px;cursor:pointer" onclick="startFerment()">开始发酵</button>`;
+    }
+    if(L.labDone&&!L.scaleUp){
+      h+=`<button class="act-btn" style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#6366f1;color:#fff;font-size:15px;cursor:pointer" onclick="L.scaleUp=true;completeObj(2);renderPanel()">工业放大</button>`;
+    }
+  } else if(curLevel===5){
+    if(!L.reacting&&L.added.size<L.components.length){
+      h+='<div style="background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:6px;padding:8px;margin-top:8px;font-size:13px;color:var(--hint-text)">💡 点击画布上的组分添加到试管中</div>';
+    }
+    if(L.proteinMade&&!L.paperTest){
+      h+=`<button class="act-btn" style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#f59e0b;color:#fff;font-size:15px;cursor:pointer" onclick="L.paperTest=true;setTimeout(()=>{L.paperResult=true;completeObj(1);renderPanel()},1500);renderPanel()">纸基诊断测试</button>`;
+    }
+    if(L.paperResult&&!L.compared){
+      h+=`<button class="act-btn" style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#6366f1;color:#fff;font-size:15px;cursor:pointer" onclick="L.compared=true;completeObj(2);renderPanel()">对比体内/体外系统</button>`;
+    }
+  } else if(curLevel===6){
+    const sc=L.scenarios[L.currentScenario];
+    if(sc&&!sc.assessed){
+      h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">风险评估</h3>';
+      h+='<div style="font-size:13px;color:var(--text-sub);margin-bottom:6px">为当前场景选择风险等级:</div>';
+      [1,2,3,4,5].forEach(r=>{
+        const labels=['极低','低','中','高','极高'];
+        h+=`<button style="display:block;width:100%;padding:6px;margin:3px 0;border:1px solid ${r===sc.risk?'#22c55e':'var(--panel-border)'};border-radius:6px;background:${r===sc.risk?'#22c55e22':'var(--btn-bg)'};color:var(--btn-text);font-size:13px;cursor:pointer" onclick="assessRisk(${r})">${labels[r-1]}风险 (${'🔴'.repeat(r)})</button>`;
+      });
+    }
+    if(sc&&sc.assessed){
+      h+='<div style="color:#22c55e;font-size:13px;margin:6px 0">✓ 评估正确!</div>';
+    }
+    // 导航
+    h+='<div style="display:flex;gap:8px;margin-top:10px">';
+    if(L.currentScenario>0)h+=`<button style="flex:1;padding:8px;border:1px solid var(--panel-border);border-radius:6px;background:var(--btn-bg);color:var(--btn-text);cursor:pointer;font-size:13px" onclick="L.currentScenario--;renderPanel()">← 上一个</button>`;
+    if(L.currentScenario<L.scenarios.length-1)h+=`<button style="flex:1;padding:8px;border:1px solid var(--panel-border);border-radius:6px;background:var(--btn-bg);color:var(--btn-text);cursor:pointer;font-size:13px" onclick="L.currentScenario++;renderPanel()">下一个 →</button>`;
+    h+='</div>';
+    if(!L.planDone&&L.scenarios.filter(s=>s.assessed).length>=5){
+      h+=`<button class="act-btn" style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#7c3aed;color:#fff;font-size:15px;cursor:pointer" onclick="L.planDone=true;completeObj(2);renderPanel()">制定安全审查方案</button>`;
+    }
+  }
+  return h;
+}
+// ========== 辅助函数 ==========
+function updateFlux(){
+  const minExpr=Math.min(...L.enzymes.map(e=>e.expr));
+  L.yield=minExpr;
+  if(L.yield>=0.5&&L.bottleneckFound)completeObj(1);
+  if(L.yield>=0.8){completeObj(2);L.optimized=true}
+}
+function startFerment(){
+  L.fermenting=true;L.fermTime=0;L.yield=0;renderPanel();
+}
+function assessRisk(r){
+  const sc=L.scenarios[L.currentScenario];
+  if(r===sc.risk){
+    sc.assessed=true;playSound('success');
+    const assessed=L.scenarios.filter(s=>s.assessed).length;
+    if(sc.id==='drive'){L.driveDone=true;completeObj(0)}
+    if(sc.id==='virus'){L.durcDone=true;completeObj(1)}
+    if(assessed>=5)completeObj(2);
+  } else {
+    playSound('fail');
+  }
+  renderPanel();
+}
+
+// ========== Quiz ==========
+const quizData=[
+  {q:'BioBrick标准基因表达单元的正确顺序是？',opts:['CDS→RBS→启动子→终止子','启动子→RBS→CDS→终止子','RBS→启动子→终止子→CDS'],ans:1},
+  {q:'Repressilator(抑制振荡器)由几个基因组成？',opts:['2个','3个','4个'],ans:1},
+  {q:'CRISPR-Cas9相比ZFN和TALEN的最大优势是？',opts:['切割效率更高','设计简单成本低','不会脱靶'],ans:1},
+  {q:'代谢工程中"瓶颈酶"是指？',opts:['表达量最高的酶','限制整条通路通量的酶','最后一步的酶'],ans:1},
+  {q:'工业发酵从实验室到工厂的关键挑战是？',opts:['选择培养基','规模放大(scale-up)','基因测序'],ans:1},
+  {q:'无细胞系统的最大优势是？',opts:['产量更高','快速原型验证,无需维持活细胞','成本更低'],ans:1},
+  {q:'《生物武器公约》(BWC)生效于哪一年？',opts:['1965年','1975年','1985年'],ans:1}
+];
+let quizPassed=new Set(),quizLocked=false;
+function renderQuiz(){
+  const qd=quizData[curLevel];if(!qd)return '';
+  let h='<div style="background:#0a2a1a;border:1px solid #22c55e;border-radius:8px;padding:10px;margin:8px 0"><div style="font-size:13px;color:#22c55e;margin-bottom:8px;font-weight:600">📝 '+qd.q+'</div>';
+  qd.opts.forEach((opt,i)=>{
+    const cls=quizPassed.has(curLevel)?(i===qd.ans?'border-color:#22c55e;background:#22c55e22;color:#22c55e':''):'';
+    h+=`<div style="font-size:13px;padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--panel-border);background:var(--btn-bg);color:var(--btn-text);${cls}" onclick="answerQuiz(${curLevel},${i})">${opt}</div>`;
+  });
+  if(quizPassed.has(curLevel))h+='<div style="color:#22c55e;font-size:12px;margin-top:6px">✅ 已通过</div>';
+  h+='</div>';return h;
+}
+function answerQuiz(li,oi){
+  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  if(oi===quizData[li].ans){quizPassed.add(li);playSound('success');setTimeout(()=>{quizLocked=false;goLevel(curLevel+1)},800)}
+  else{playSound('fail');setTimeout(()=>{quizLocked=false;renderPanel()},800)}
+}
+
+// ========== 关卡切换 ==========
+function goLevel(idx){
+  if(idx>=LEVELS){showResult();return}
+  if(idx<0)idx=0;
+  curLevel=idx;resetLevel(idx);renderPanel();
+}
+function startGame(){
+  ov.style.display='none';panel.style.display='block';bar.style.display='flex';
+  resetLevel(0);renderPanel();
+}
+function showResult(){
+  panel.style.display='none';bar.style.display='none';
+  const total=quizPassed.size;
+  let h='<div style="position:fixed;inset:0;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:100">';
+  h+='<div style="background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:16px;padding:32px;text-align:center;max-width:420px">';
+  h+='<div style="font-size:36px;margin-bottom:8px">🧬</div>';
+  h+='<div style="font-size:22px;font-weight:bold;color:var(--summary-title);margin-bottom:8px">合成生物学探险完成!</div>';
+  h+=`<div style="color:var(--summary-sub);font-size:14px;margin-bottom:16px">通过 ${total}/${LEVELS} 关测验</div>`;
+  h+='<div style="display:flex;justify-content:center;gap:20px;margin:16px 0">';
+  h+='<div style="text-align:center"><div style="font-size:26px;font-weight:bold;color:#22c55e">7</div><div style="font-size:11px;color:var(--summary-sub)">关卡</div></div>';
+  h+=`<div style="text-align:center"><div style="font-size:26px;font-weight:bold;color:#22c55e">${total*3}</div><div style="font-size:11px;color:var(--summary-sub)">目标完成</div></div>`;
+  h+='</div>';
+  h+='<div style="text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px">';
+  h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">🧱 掌握了BioBrick标准件组装</div>';
+  h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">🔄 理解了基因回路的设计原理</div>';
+  h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">✂️ 比较了三大基因编辑工具</div>';
+  h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">🏭 体验了从实验室到工厂的全流程</div>';
+  h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">🛡️ 思考了生物安全与伦理问题</div>';
+  h+='</div>';
+  h+=`<button style="margin-top:16px;padding:12px 36px;font-size:16px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;border-radius:10px;cursor:pointer" onclick="location.reload()">再来一次</button>`;
+  h+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+
+// ========== 主循环 ==========
+let lastTime=0;
+function gameLoop(ts){
+  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;tick++;
+  drawBg();
+  // 更新逻辑
+  if(curLevel===1&&L.running){
+    L.time+=dt;
+    L.nodes.forEach(n=>{
+      const repressor=L.nodes.find(m=>m.represses===n.id);
+      if(repressor){
+        const target=1/(1+Math.pow(repressor.expr*5,2));
+        n.expr+=(target-n.expr)*dt*2;
+      }
+    });
+    if(L.time%0.1<dt){
+      L.nodes.forEach(n=>{L.history[n.id].push(n.expr);if(L.history[n.id].length>200)L.history[n.id].shift()});
+    }
+    if(L.time>5&&!L.oscillating){L.oscillating=true;completeObj(1);renderPanel()}
+  }
+  if(curLevel===3){
+    // 流动粒子
+    if(tick%10===0&&L.yield>0){
+      const e=L.enzymes[0];
+      L.flowParticles.push({x:e.x-30,y:e.y,vx:2,life:1});
+    }
+    L.flowParticles.forEach(p=>{p.x+=p.vx;p.life-=dt*0.5});
+    L.flowParticles=L.flowParticles.filter(p=>p.life>0&&p.x<W);
+  }
+  if(curLevel===4){
+    if(L.fermenting){
+      L.fermTime+=dt;
+      const opt=L.optimalParams[L.selectedProduct];
+      const tempScore=1-Math.abs(L.temp-opt.temp)/20;
+      const phScore=1-Math.abs(L.ph-opt.ph)/3;
+      const oxyScore=1-Math.abs(L.oxygen-opt.oxy)/50;
+      const score=Math.max(0,tempScore*phScore*oxyScore)*100;
+      L.yield+=(score-L.yield)*dt*0.5;
+      if(L.yield>=70&&!L.labDone){L.labDone=true;completeObj(1);L.fermenting=false;renderPanel()}
+      // 气泡
+      if(tick%15===0){
+        const cx2=PL+(W-PL)/2;
+        L.bubbles.push({x:cx2-40+Math.random()*80,y:H/2+60,r:2+Math.random()*4,vy:-0.5-Math.random()});
+      }
+    }
+    L.bubbles.forEach(b=>{b.y+=b.vy});
+    L.bubbles=L.bubbles.filter(b=>b.y>H/2-120);
+  }
+  if(curLevel===5&&L.reacting){
+    L.reactTime+=dt;
+    if(L.reactTime>=3&&!L.proteinMade){L.proteinMade=true;completeObj(0);renderPanel()}
+  }
+  // 绘制
+  const drawFns=[drawLevel0,drawLevel1,drawLevel2,drawLevel3,drawLevel4,drawLevel5,drawLevel6];
+  if(drawFns[curLevel])drawFns[curLevel]();
+  drawParticles(dt);
+  // 底部栏
+  bar.innerHTML=`<div class="levels" style="display:flex;gap:4px;align-items:center">${Array.from({length:LEVELS},(_, i)=>`<button style="width:28px;height:24px;border:1px solid ${i===curLevel?'#22c55e':'#c7d2fe'};background:${i===curLevel?'#22c55e':i<curLevel?'var(--btn-bg)':'transparent'};color:${i===curLevel?'#fff':i<curLevel?'#16a34a':'var(--text-sub)'};border-radius:4px;cursor:pointer;font-size:13px" onclick="goLevel(${i})">${i+1}</button>`).join('')}</div><div style="color:var(--text-muted)">合成生物学探险</div>`;
+  requestAnimationFrame(gameLoop);
+}
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>

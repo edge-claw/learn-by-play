@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>桥梁工程探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --roadmap-text:#a0a0c0;--roadmap-num-bg:#1a1a4a;--roadmap-num-text:#60a5fa;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --roadmap-text:#475569;--roadmap-num-bg:#e0e7ff;--roadmap-num-text:#4f46e5;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+</style>
+</head>
+<body data-theme="dark">
+<style>
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#60a5fa}
+.start-box .sub{font-size:17px;color:var(--sub-color);margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100% - 32px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none;padding-bottom:16px}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}.g-text{color:var(--text-sub)}.g-text.done{color:#059669;text-decoration:line-through}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:15px;cursor:pointer;text-align:center}
+.act-btn:hover{background:var(--btn-hover)}.act-btn:disabled{opacity:0.4;cursor:not-allowed}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--hint-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:14px;line-height:1.8;color:var(--learn-text)}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}
+.sv{color:var(--sv);font-weight:bold}
+.m-title{font-size:17px;font-weight:700;margin:8px 0 4px;color:var(--title-color)}.m-sub{font-size:12px;color:#888;margin-bottom:8px}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:var(--bar-bg);border-top:1px solid var(--bar-border);z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}#bottom-bar .bb-right{text-align:right}
+.overlay .result-box{text-align:center;max-width:420px;background:var(--result-bg);border:1px solid var(--result-border);border-radius:16px;padding:28px 36px;box-shadow:0 8px 32px rgba(0,0,0,0.1)}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box .rb-learn{text-align:left;background:var(--concept-bg);border-radius:8px;padding:12px 14px;font-size:13px;color:#1e40af;line-height:1.7;margin-bottom:16px}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#3b82f6;color:#fff}.result-box .btn-retry{background:var(--stage-bar);color:var(--text-sub)}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+.roadmap{margin:20px auto;max-width:500px;text-align:left}
+.roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
+.roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
+.roadmap-num{width:24px;height:24px;border-radius:50%;background:var(--roadmap-num-bg);color:var(--roadmap-num-text);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;flex-shrink:0}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+.quiz-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0}
+.quiz-q{font-size:13px;color:var(--sv);margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:13px;color:var(--concept-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--concept-border);background:var(--concept-bg)}
+.quiz-opt:hover{background:var(--btn-hover);border-color:var(--btn-border)}
+.quiz-opt.correct{background:#0a2a0a;border-color:#22c55e;color:#4ade80}
+.quiz-opt.wrong{background:#2a0a0a;border-color:#ef4444;color:#f87171}
+[data-theme="light"] .quiz-opt.correct{background:#dcfce7;border-color:#22c55e;color:#166534}
+[data-theme="light"] .quiz-opt.wrong{background:#fef2f2;border-color:#ef4444;color:#991b1b}
+</style>
+<button id="themeToggle" onclick="toggleTheme()" style="position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa">🌙 暗色</button>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>🌉 <span class="gold">桥梁工程</span>探险</h1>
+  <div class="sub">7 个关卡，从力学基础到施工监测</div>
+<button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">⚙️</div>力学基础</div>
+    <div class="feat"><div class="fi">🏗️</div>梁桥设计</div>
+    <div class="feat"><div class="fi">🌀</div>拱桥原理</div>
+    <div class="feat"><div class="fi">🔗</div>悬索桥</div>
+    <div class="feat"><div class="fi">📐</div>斜拉桥</div>
+    <div class="feat"><div class="fi">🌊</div>动力学</div>
+    <div class="feat"><div class="fi">🔧</div>施工监测</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+let isDark=true;
+const TH={
+  dark:{bg:'#0a0a2e',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)',beam:'#60a5fa',cable:'#fbbf24',arch:'#f97316',road:'#94a3b8',force:'#ef4444',support:'#22c55e',water:'rgba(59,130,246,0.15)',sky1:'#0a0a2e',sky2:'#1a1a4a',ground:'#1a2a1a',showStars:true},
+  light:{bg:'#e8edf5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',beam:'#3b82f6',cable:'#d97706',arch:'#ea580c',road:'#475569',force:'#dc2626',support:'#16a34a',water:'rgba(59,130,246,0.1)',sky1:'#87ceeb',sky2:'#e0f0ff',ground:'#2d5a2d',showStars:false}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel()}
+
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,animId;
+let gameState='start',currentLevel=0;
+let levelState={},stars=[],particles=[];
+const completedLevels=new Set();
+
+const levels=[
+{title:'力学基础',sub:'拉力、压力、剪力、弯矩',concept:'桥梁承受四种基本内力：拉力（拉伸构件）、压力（压缩构件）、剪力（截面滑移）、弯矩（使构件弯曲）。理解这些力的分布是桥梁设计的基础。',goals:['施加荷载观察梁的变形','识别拉力区和压力区','观察剪力和弯矩分布图'],learn:'简支梁受集中荷载时，上缘受压、下缘受拉，中性轴处应力为零。剪力在支座处最大，弯矩在荷载作用点最大。这就是为什么梁的截面设计成工字形——把材料集中在受力最大的上下翼缘。'},
+{title:'梁桥设计',sub:'简支梁与连续梁',concept:'简支梁两端简支，跨中弯矩最大。连续梁多跨连续，支座处产生负弯矩，跨中弯矩减小。截面惯性矩I越大，抗弯能力越强，挠度越小。',goals:['调节截面高度减小挠度','对比简支梁与连续梁','使挠度满足L/400限值'],learn:'连续梁利用支座负弯矩"分担"跨中正弯矩，使最大弯矩减小约20-30%。这就是为什么长桥多采用连续梁——同样的截面可以跨越更大的距离。挠度限值L/400是保证行车舒适性和结构安全的基本要求。'},
+{title:'拱桥原理',sub:'推力线与拱轴线',concept:'拱桥将竖向荷载转化为沿拱轴的压力，传递到两端拱脚。当拱轴线与推力线重合时，拱截面只受压力，不受弯矩——这是最理想的受力状态。',goals:['调节拱的矢跨比','使推力线贴近拱轴线','对比无铰拱与三铰拱'],learn:'抛物线拱在均布荷载下推力线与拱轴完全重合，是最优形状。矢跨比（拱高/跨度）通常取1/4~1/8。赵州桥（隋朝）矢跨比约1/5，是世界上现存最古老的敞肩石拱桥，1400年屹立不倒，证明了拱结构的卓越性能。'},
+{title:'悬索桥',sub:'主缆与吊杆',concept:'悬索桥的主缆呈抛物线形，承受桥面传来的均布荷载。吊杆将桥面重量传递给主缆，主缆的水平分力通过锚碇传入地基。主缆截面积决定了桥的承载力。',goals:['调节主缆垂度观察受力','加载观察吊杆力分布','设计锚碇承受水平拉力'],learn:'悬索桥是跨越能力最强的桥型，明石海峡大桥主跨1991米。主缆由数万根高强钢丝组成，直径超过1米。缆索垂度越大，水平拉力越小，但桥塔越高。锚碇要承受数万吨的水平拉力，通常采用重力式锚碇，用巨大的混凝土块靠自重抵抗。'},
+{title:'斜拉桥',sub:'索面与塔柱',concept:'斜拉桥的拉索从塔柱直接斜拉至桥面，形成扇形或竖琴形索面。每根拉索的水平分力在桥面产生压力，竖向分力支撑桥面重量。塔柱承受所有索力的合力。',goals:['对比扇形与竖琴形索面','调节索力使桥面水平','优化塔柱高度'],learn:'斜拉桥主跨通常300-1000米，介于梁桥和悬索桥之间。扇形索面所有索汇聚于塔顶，索力效率高但锚固困难；竖琴形索面平行排列，美观且施工方便。苏通大桥主跨1088米，是世界最大跨径斜拉桥之一。'},
+{title:'桥梁动力学',sub:'风致振动与共振',concept:'风吹过桥面时产生周期性涡旋脱落（卡门涡街），当涡旋频率接近桥梁固有频率时，发生涡激共振，振幅急剧增大。1940年塔科马海峡桥就因风致颤振而坍塌。',goals:['调节风速观察涡激振动','触发共振观察振幅发散','安装阻尼器抑制振动'],learn:'塔科马桥坍塌是桥梁工程史上最著名的事故。仅通车4个月，在19m/s的风速下发生扭转颤振，桥面扭曲撕裂。此后所有大跨桥梁都必须进行风洞试验。现代桥梁采用气动外形优化、TMD调谐质量阻尼器等措施抑制风振。'},
+{title:'施工与监测',sub:'悬臂施工与健康监测',concept:'大跨桥梁常采用悬臂施工法：从桥墩两侧对称悬臂浇筑或拼装，最后在跨中合龙。建成后安装传感器进行长期健康监测，评估结构安全和剩余寿命。',goals:['模拟悬臂施工过程','完成跨中合龙','部署传感器监测桥梁健康'],learn:'悬臂施工是现代大跨桥梁最常用的施工方法。每个节段长3-5米，从桥墩两侧对称推进，靠临时预应力保持平衡。合龙是最关键的时刻——两个悬臂端精确对接，误差控制在毫米级。港珠澳大桥海底隧道最终接头仅用了1天完成对接。'}
+];
+
+// PLACEHOLDER_GAME_LOGIC
+
+function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
+function initStars(){stars=[];for(let i=0;i<80;i++)stars.push({x:Math.random()*CW,y:Math.random()*CH,r:Math.random()*1.5+.3,tw:Math.random()*Math.PI*2,sp:Math.random()*.02+.005})}
+function drawStars(){if(!t().showStars)return;for(let s of stars){const a=.4+.6*Math.abs(Math.sin(s.tw+time*s.sp));ctx.fillStyle=`rgba(255,255,255,${a})`;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill()}}
+function addP(x,y,col,n){for(let i=0;i<(n||8);i++){const a=Math.random()*Math.PI*2,sp=1+Math.random()*3;particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,col,life:0.6+Math.random()*0.4,ml:1,sz:2+Math.random()*2})}}
+function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt*60;p.y+=p.vy*dt*60;p.life-=dt;if(p.life<=0)particles.splice(i,1)}}
+function drawParticles(){for(let p of particles){const a=Math.max(0,p.life/p.ml);ctx.globalAlpha=a;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.sz*a,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+window.addEventListener('resize',resize);resize();
+
+function startGame(){document.getElementById('startScreen').classList.add('hidden');document.getElementById('panel').style.display='block';document.getElementById('bottom-bar').style.display='flex';gameState='play';initLevel(0);renderPanel()}
+
+function initLevel(idx){
+  currentLevel=idx;particles=[];
+  const cx=CW/2+160,cy=CH/2;
+  if(idx===0){
+    levelState={load:0,loadX:0.5,showForces:false,showDiagram:false,goalDone:[false,false,false],elapsed:0};
+  }else if(idx===1){
+    levelState={beamH:0.3,isContinuous:false,span:200,goalDone:[false,false,false],elapsed:0,triedH:false,triedCont:false};
+  }else if(idx===2){
+    levelState={rise:0.25,archType:'none',showThrust:false,goalDone:[false,false,false],elapsed:0};
+  }else if(idx===3){
+    levelState={sag:0.1,loadLevel:0,showForces:false,anchorSize:1,goalDone:[false,false,false],elapsed:0};
+  }else if(idx===4){
+    levelState={pattern:'fan',towerH:0.5,cableForce:50,goalDone:[false,false,false],elapsed:0,balanced:false};
+  }else if(idx===5){
+    levelState={windSpeed:0,damperOn:false,amplitude:0,freq:0,natFreq:2.5,resonance:false,goalDone:[false,false,false],elapsed:0,triggered:false};
+  }else if(idx===6){
+    levelState={segments:0,maxSeg:10,merged:false,sensors:0,maxSensors:5,goalDone:[false,false,false],elapsed:0,building:false,buildSide:'both'};
+  }
+  renderPanel();
+}
+
+// PLACEHOLDER_RENDER_PANEL
+
+function renderPanel(){
+  const L=levels[currentLevel],S=levelState,p=document.getElementById('panel');
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<levels.length;i++){let cls=i<currentLevel||completedLevels.has(i)?'done':i===currentLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="switchLevel(${i})"></div>`}
+  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关</div><div class="sn-hint">${L.title} — ${L.sub}</div></div>`;
+  h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
+  h+=`<div class="concept-box">${L.concept}</div>`;
+  h+='<div style="margin:8px 0;font-size:12px;color:var(--text-muted);font-weight:600">目标清单</div>';
+  for(let i=0;i<L.goals.length;i++){const done=S.goalDone&&S.goalDone[i];h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`}
+  h+=renderLevelActions();
+  if(S.goalDone&&S.goalDone.every(g=>g)&&!completedLevels.has(currentLevel))completedLevels.add(currentLevel);
+  if(completedLevels.has(currentLevel)){
+    h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
+    if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
+    else h+=summaryHTML();
+  }
+  p.innerHTML=h;
+  document.getElementById('bbLeft').textContent=`第 ${currentLevel+1} 关：${L.title}`;
+  document.getElementById('bbRight').textContent=`已通关 ${completedLevels.size}/${levels.length}`;
+}
+function switchLevel(i){if(i>=0&&i<levels.length){initLevel(i)}}
+function summaryHTML(){
+  let h='<div class="summary-box"><div class="summary-title">🏆 桥梁工程探险完成！</div>';
+  h+='<div class="summary-sub">你已掌握桥梁工程的核心知识</div>';
+  h+='<div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡通关</div></div><div class="summary-stat"><div class="num">4</div><div class="label">桥型掌握</div></div></div>';
+  h+='<div class="summary-keys"><div>🔑 四种内力：拉力、压力、剪力、弯矩</div><div>🔑 拱桥将荷载转化为轴向压力</div><div>🔑 悬索桥跨越能力最强</div><div>🔑 风致振动是大跨桥梁的关键挑战</div></div>';
+  h+='<div class="roadmap"><div class="roadmap-title">继续学习路线</div>';
+  const items=['结构力学深入学习','有限元分析方法','桥梁抗震设计','智能桥梁与数字孪生'];
+  items.forEach((t,i)=>{h+=`<div class="roadmap-item"><div class="roadmap-num">${i+1}</div><div>${t}</div></div>`});
+  h+='</div></div>';return h;
+}
+
+// PLACEHOLDER_LEVEL_ACTIONS
+
+function renderLevelActions(){
+  const S=levelState;let h='';
+  if(currentLevel===0){
+    h+=`<div class="slider-wrap"><label>荷载大小: <span class="sv">${(S.load*100).toFixed(0)} kN</span></label><input type="range" min="0" max="100" value="${S.load*100}" oninput="levelState.load=this.value/100;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div class="slider-wrap"><label>荷载位置: <span class="sv">${(S.loadX*100).toFixed(0)}%</span></label><input type="range" min="10" max="90" value="${S.loadX*100}" oninput="levelState.loadX=this.value/100;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<button class="act-btn" onclick="levelState.showForces=true;levelState.goalDone[0]=levelState.load>0.3;renderPanel()">施加荷载</button>`;
+    if(S.showForces){
+      h+=`<button class="act-btn" onclick="levelState.showDiagram=true;levelState.goalDone[1]=true;renderPanel()">显示应力分布</button>`;
+      if(S.showDiagram){h+=`<div class="hint-box">📊 上方蓝色=压力区，下方红色=拉力区。剪力在支座处最大，弯矩在荷载点最大。</div>`;S.goalDone[2]=true;}
+    }
+  }else if(currentLevel===1){
+    h+=`<div class="slider-wrap"><label>截面高度: <span class="sv">${(S.beamH*100).toFixed(0)} cm</span></label><input type="range" min="10" max="80" value="${S.beamH*100}" oninput="levelState.beamH=this.value/100;levelState.triedH=true;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<button class="act-btn" onclick="levelState.isContinuous=!levelState.isContinuous;levelState.triedCont=true;renderPanel()">${S.isContinuous?'切换为简支梁':'切换为连续梁'}</button>`;
+    const defl=calcDeflection();
+    const limit=S.span/400;
+    h+=`<div style="font-size:12px;margin:6px 0;color:var(--text-sub)">挠度: <span class="sv">${defl.toFixed(2)} mm</span> | 限值 L/400 = <span class="sv">${limit.toFixed(2)} mm</span></div>`;
+    if(defl<=limit)h+=`<div style="font-size:12px;color:#4ade80">✅ 挠度满足要求</div>`;
+    else h+=`<div style="font-size:12px;color:#f87171">❌ 挠度超限，请增大截面或改用连续梁</div>`;
+    if(S.triedH)S.goalDone[0]=true;
+    if(S.triedCont)S.goalDone[1]=true;
+    if(defl<=limit)S.goalDone[2]=true;
+  }else if(currentLevel===2){
+    h+=`<div class="slider-wrap"><label>矢跨比 f/L: <span class="sv">${S.rise.toFixed(2)}</span></label><input type="range" min="5" max="50" value="${S.rise*100}" oninput="levelState.rise=this.value/100;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<button class="act-btn" onclick="levelState.archType=levelState.archType==='none'?'three':'none';renderPanel()">${S.archType==='three'?'切换为无铰拱':'切换为三铰拱'}</button>`;
+    h+=`<button class="act-btn" onclick="levelState.showThrust=true;renderPanel()">显示推力线</button>`;
+    const diff=Math.abs(S.rise-0.25);
+    if(S.rise>0.05)S.goalDone[0]=true;
+    if(S.showThrust&&diff<0.05)S.goalDone[1]=true;
+    if(S.archType==='three')S.goalDone[2]=true;
+    if(S.showThrust)h+=`<div class="hint-box">推力线偏差: ${(diff*100).toFixed(1)}%${diff<0.05?' ✅ 推力线与拱轴基本重合':' — 继续调节矢跨比'}</div>`;
+  }else if(currentLevel===3){
+    h+=`<div class="slider-wrap"><label>主缆垂度 f/L: <span class="sv">${S.sag.toFixed(2)}</span></label><input type="range" min="5" max="30" value="${S.sag*100}" oninput="levelState.sag=this.value/100;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div class="slider-wrap"><label>桥面荷载: <span class="sv">${S.loadLevel} kN/m</span></label><input type="range" min="0" max="100" value="${S.loadLevel}" oninput="levelState.loadLevel=+this.value;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<button class="act-btn" onclick="levelState.showForces=true;renderPanel()">显示吊杆力</button>`;
+    const Hforce=(S.loadLevel*200)/(8*Math.max(S.sag,0.05)*200);
+    h+=`<div style="font-size:12px;margin:4px 0;color:var(--text-sub)">水平拉力: <span class="sv">${Hforce.toFixed(0)} kN</span></div>`;
+    h+=`<div class="slider-wrap"><label>锚碇尺寸: <span class="sv">${S.anchorSize.toFixed(1)}x</span></label><input type="range" min="5" max="30" value="${S.anchorSize*10}" oninput="levelState.anchorSize=this.value/10;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    if(S.sag>0.05)S.goalDone[0]=true;
+    if(S.showForces&&S.loadLevel>20)S.goalDone[1]=true;
+    if(S.anchorSize>1.5&&Hforce>50)S.goalDone[2]=true;
+  }else if(currentLevel===4){
+    h+=`<button class="act-btn" onclick="levelState.pattern=levelState.pattern==='fan'?'harp':'fan';renderPanel()">${S.pattern==='fan'?'切换为竖琴形':'切换为扇形'}</button>`;
+    h+=`<div class="slider-wrap"><label>索力调节: <span class="sv">${S.cableForce}%</span></label><input type="range" min="10" max="100" value="${S.cableForce}" oninput="levelState.cableForce=+this.value;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div class="slider-wrap"><label>塔柱高度: <span class="sv">${(S.towerH*100).toFixed(0)}%</span></label><input type="range" min="20" max="80" value="${S.towerH*100}" oninput="levelState.towerH=this.value/100;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    const balanced=Math.abs(S.cableForce-65)<15;
+    if(balanced)S.balanced=true;
+    S.goalDone[0]=true;
+    if(balanced)S.goalDone[1]=true;
+    if(S.towerH>0.3&&S.towerH<0.7)S.goalDone[2]=true;
+    if(balanced)h+=`<div style="font-size:12px;color:#4ade80">✅ 索力平衡，桥面水平</div>`;
+    else h+=`<div style="font-size:12px;color:#fbbf24">⚠ 桥面倾斜，请调节索力</div>`;
+  }else if(currentLevel===5){
+    h+=`<div class="slider-wrap"><label>风速: <span class="sv">${S.windSpeed.toFixed(1)} m/s</span></label><input type="range" min="0" max="300" value="${S.windSpeed*10}" oninput="levelState.windSpeed=this.value/10;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    const vortexFreq=S.windSpeed*0.2;
+    const ratio=S.natFreq>0?vortexFreq/S.natFreq:0;
+    if(S.windSpeed>5)S.goalDone[0]=true;
+    if(ratio>0.8&&ratio<1.2){S.resonance=true;S.triggered=true;S.goalDone[1]=true;}else{S.resonance=false;}
+    h+=`<div style="font-size:12px;margin:4px 0;color:var(--text-sub)">涡旋频率: <span class="sv">${vortexFreq.toFixed(2)} Hz</span> | 固有频率: <span class="sv">${S.natFreq.toFixed(2)} Hz</span></div>`;
+    if(S.resonance)h+=`<div style="font-size:12px;color:#ef4444;font-weight:bold">🚨 共振！振幅急剧增大！</div>`;
+    h+=`<button class="act-btn" onclick="levelState.damperOn=!levelState.damperOn;renderPanel()">${S.damperOn?'移除阻尼器':'安装TMD阻尼器'}</button>`;
+    if(S.damperOn&&S.triggered)S.goalDone[2]=true;
+    if(S.damperOn)h+=`<div style="font-size:12px;color:#4ade80">✅ 阻尼器已安装，振幅衰减</div>`;
+  }else if(currentLevel===6){
+    h+=`<div style="font-size:12px;color:var(--text-sub);margin:4px 0">悬臂节段: ${S.segments}/${S.maxSeg}</div>`;
+    h+=`<button class="act-btn" onclick="buildSegment()" ${S.segments>=S.maxSeg||S.merged?'disabled':''}>浇筑下一节段</button>`;
+    if(S.segments>=S.maxSeg&&!S.merged)h+=`<button class="act-btn green" onclick="mergeSpan()">合龙！</button>`;
+    if(S.merged){
+      h+=`<div style="font-size:12px;color:#4ade80;margin:4px 0">✅ 合龙成功！</div>`;
+      h+=`<div style="font-size:12px;color:var(--text-sub);margin:4px 0">传感器: ${S.sensors}/${S.maxSensors}</div>`;
+      h+=`<button class="act-btn" onclick="addSensor()" ${S.sensors>=S.maxSensors?'disabled':''}>部署传感器</button>`;
+    }
+    if(S.segments>0)S.goalDone[0]=true;
+    if(S.merged)S.goalDone[1]=true;
+    if(S.sensors>=S.maxSensors)S.goalDone[2]=true;
+  }
+  return h;
+}
+
+function calcDeflection(){
+  const S=levelState;
+  const I=Math.pow(S.beamH,3)/12;
+  const base=S.isContinuous?0.3:1;
+  return base*5*10*Math.pow(S.span,4)/(384*200000*I*1e6)*1000;
+}
+function buildSegment(){const S=levelState;if(S.segments<S.maxSeg){S.segments++;addP(CW/2+160,CH/2,'#60a5fa',6);renderPanel()}}
+function mergeSpan(){levelState.merged=true;addP(CW/2+160,CH/2,'#22c55e',20);renderPanel()}
+function addSensor(){const S=levelState;if(S.sensors<S.maxSensors){S.sensors++;addP(CW/2+160+Math.random()*200-100,CH/2+Math.random()*40-20,'#fbbf24',4);renderPanel()}}
+
+// PLACEHOLDER_DRAW
+
+function drawBg(){
+  const th=t();
+  const grd=ctx.createLinearGradient(0,0,0,CH);
+  grd.addColorStop(0,th.sky1);grd.addColorStop(1,th.sky2);
+  ctx.fillStyle=grd;ctx.fillRect(0,0,CW,CH);
+  drawStars();
+  // water
+  ctx.fillStyle=th.water;ctx.fillRect(0,CH*0.75,CW,CH*0.25);
+  // ground
+  ctx.fillStyle=th.ground;ctx.fillRect(0,CH*0.85,CW,CH*0.15);
+}
+
+function drawLevel0(){
+  const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;
+  const bL=400,bH=40,bx=cx-bL/2,by=cy-bH/2;
+  // supports
+  ctx.fillStyle=th.support;
+  drawTriangle(bx,by+bH,20);drawTriangle(bx+bL,by+bH,20);
+  // beam
+  ctx.fillStyle=th.beam;ctx.fillRect(bx,by,bL,bH);
+  // load
+  if(S.load>0&&S.showForces){
+    const lx=bx+S.loadX*bL;
+    const defl=S.load*30*Math.sin(S.loadX*Math.PI);
+    // deformed beam
+    ctx.strokeStyle=th.road;ctx.lineWidth=3;ctx.beginPath();
+    for(let i=0;i<=50;i++){const t2=i/50;const x=bx+t2*bL;const y2=by+bH/2+defl*Math.sin(t2*Math.PI);ctx.lineTo(x,y2)}
+    ctx.stroke();
+    // load arrow
+    ctx.strokeStyle=th.force;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(lx,by-60);ctx.lineTo(lx,by-5);ctx.stroke();
+    drawArrowHead(lx,by-5,Math.PI/2,th.force);
+    ctx.fillStyle=th.text;ctx.font='14px sans-serif';ctx.textAlign='center';
+    ctx.fillText(`${(S.load*100).toFixed(0)} kN`,lx,by-68);
+    // stress distribution
+    if(S.showDiagram){
+      // compression top (blue)
+      ctx.fillStyle='rgba(59,130,246,0.3)';
+      ctx.fillRect(bx,by-25,bL,20);
+      ctx.fillStyle=th.beam;ctx.font='11px sans-serif';ctx.textAlign='center';
+      ctx.fillText('压力区',cx,by-12);
+      // tension bottom (red)
+      ctx.fillStyle='rgba(239,68,68,0.3)';
+      ctx.fillRect(bx,by+bH+5,bL,20);
+      ctx.fillStyle=th.force;ctx.fillText('拉力区',cx,by+bH+20);
+      // shear diagram
+      const dy=100;
+      ctx.strokeStyle='#22c55e';ctx.lineWidth=2;ctx.beginPath();
+      const Ra=S.load*100*(1-S.loadX),Rb=S.load*100*S.loadX;
+      ctx.moveTo(bx,by+bH+dy);ctx.lineTo(bx,by+bH+dy-Ra*0.3);
+      ctx.lineTo(bx+S.loadX*bL,by+bH+dy-Ra*0.3);
+      ctx.lineTo(bx+S.loadX*bL,by+bH+dy+Rb*0.3);
+      ctx.lineTo(bx+bL,by+bH+dy+Rb*0.3);ctx.lineTo(bx+bL,by+bH+dy);
+      ctx.stroke();
+      ctx.fillStyle=th.textSec;ctx.font='11px sans-serif';ctx.fillText('剪力图',cx,by+bH+dy+25);
+      // bending moment
+      ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.beginPath();
+      const Mmax=Ra*S.loadX*bL*0.001;
+      for(let i=0;i<=50;i++){const t2=i/50;const x=bx+t2*bL;let M;if(t2<=S.loadX)M=Ra*t2*bL*0.001;else M=Ra*t2*bL*0.001-S.load*100*(t2-S.loadX)*bL*0.001;ctx.lineTo(x,by+bH+dy+50-M*15)}
+      ctx.stroke();
+      ctx.fillStyle=th.textSec;ctx.fillText('弯矩图',cx,by+bH+dy+80);
+    }
+  }
+}
+
+function drawTriangle(x,y,sz){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-sz/2,y+sz);ctx.lineTo(x+sz/2,y+sz);ctx.closePath();ctx.fill()}
+function drawArrowHead(x,y,angle,col){ctx.fillStyle=col;ctx.save();ctx.translate(x,y);ctx.rotate(angle);ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-6,-12);ctx.lineTo(6,-12);ctx.closePath();ctx.fill();ctx.restore()}
+
+function drawLevel1(){
+  const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;
+  const bL=400,bH=S.beamH*80+10,bx=cx-bL/2,by=cy-bH/2;
+  const defl=calcDeflection();
+  if(S.isContinuous){
+    // 3-span continuous beam
+    const spanW=bL/3;
+    for(let s=0;s<4;s++){ctx.fillStyle=th.support;drawTriangle(bx+s*spanW,by+bH,16)}
+    ctx.strokeStyle=th.beam;ctx.lineWidth=bH;ctx.beginPath();
+    for(let i=0;i<=60;i++){const t2=i/60;const x=bx+t2*bL;const d=defl*0.3*Math.sin(t2*3*Math.PI);ctx.lineTo(x,by+bH/2+d*0.1)}
+    ctx.stroke();
+    ctx.fillStyle=th.textSec;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('连续梁（3跨）',cx,by-20);
+  }else{
+    ctx.fillStyle=th.support;drawTriangle(bx,by+bH,16);drawTriangle(bx+bL,by+bH,16);
+    ctx.strokeStyle=th.beam;ctx.lineWidth=bH;ctx.beginPath();
+    for(let i=0;i<=50;i++){const t2=i/50;const x=bx+t2*bL;const d=defl*Math.sin(t2*Math.PI);ctx.lineTo(x,by+bH/2+d*0.1)}
+    ctx.stroke();
+    ctx.fillStyle=th.textSec;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('简支梁',cx,by-20);
+  }
+  // deflection indicator
+  ctx.strokeStyle=th.force;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(cx,by+bH);ctx.lineTo(cx,by+bH+defl*0.15);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle=th.text;ctx.font='13px sans-serif';ctx.fillText(`挠度 ${defl.toFixed(2)}mm`,cx,by+bH+defl*0.15+18);
+}
+
+function drawLevel2(){
+  const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;
+  const span=400,rise=S.rise*span,ax=cx-span/2,ay=cy+50;
+  // arch
+  ctx.strokeStyle=th.arch;ctx.lineWidth=8;ctx.beginPath();
+  for(let i=0;i<=50;i++){const t2=i/50;const x=ax+t2*span;const y=ay-4*rise*t2*(1-t2);ctx.lineTo(x,y)}
+  ctx.stroke();
+  // road deck
+  ctx.strokeStyle=th.road;ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax+span,ay);ctx.stroke();
+  // spandrel columns
+  for(let i=1;i<10;i++){const t2=i/10;const x=ax+t2*span;const yArch=ay-4*rise*t2*(1-t2);ctx.strokeStyle=th.textMut;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,ay);ctx.lineTo(x,yArch);ctx.stroke()}
+  // supports
+  ctx.fillStyle=th.support;drawTriangle(ax,ay,20);drawTriangle(ax+span,ay,20);
+  // thrust line
+  if(S.showThrust){
+    ctx.strokeStyle='#ef4444';ctx.lineWidth=2;ctx.setLineDash([6,4]);ctx.beginPath();
+    for(let i=0;i<=50;i++){const t2=i/50;const x=ax+t2*span;const y=ay-4*0.25*span*t2*(1-t2);ctx.lineTo(x,y)}
+    ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#ef4444';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('推力线（理想抛物线）',cx,ay-0.25*span-15);
+  }
+  // hinges for three-hinge arch
+  if(S.archType==='three'){
+    [0,0.5,1].forEach(t2=>{const x=ax+t2*span;const y=ay-4*rise*t2*(1-t2);ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(x,y,6,0,Math.PI*2);ctx.fill()});
+    ctx.fillStyle=th.textSec;ctx.font='11px sans-serif';ctx.fillText('三铰拱',cx,ay+35);
+  }
+  ctx.fillStyle=th.text;ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText(`矢跨比 f/L = ${S.rise.toFixed(2)}`,cx,ay-rise-20);
+}
+
+// PLACEHOLDER_DRAW2
+
+function drawLevel3(){
+  const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;
+  const span=400,sag=S.sag*span,tx=cx-span/2,ty=cy-80;
+  // towers
+  ctx.fillStyle=th.beam;ctx.fillRect(tx-8,ty-sag-40,16,sag+120);ctx.fillRect(tx+span-8,ty-sag-40,16,sag+120);
+  // main cable (parabola)
+  ctx.strokeStyle=th.cable;ctx.lineWidth=5;ctx.beginPath();
+  for(let i=0;i<=50;i++){const t2=i/50;const x=tx+t2*span;const y=ty-sag+4*sag*Math.pow(t2-0.5,2);ctx.lineTo(x,y)}
+  ctx.stroke();
+  // hangers
+  const nH=16;
+  for(let i=1;i<nH;i++){const t2=i/nH;const x=tx+t2*span;const yCable=ty-sag+4*sag*Math.pow(t2-0.5,2);const yDeck=ty+80;
+    ctx.strokeStyle=S.showForces?`hsl(${120-t2*60},70%,50%)`:th.textMut;ctx.lineWidth=S.showForces?2:1;ctx.beginPath();ctx.moveTo(x,yCable);ctx.lineTo(x,yDeck);ctx.stroke();
+    if(S.showForces){const force=S.loadLevel*(1+0.3*Math.sin(t2*Math.PI));ctx.fillStyle=th.textSec;ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText(`${force.toFixed(0)}`,x,yCable-8)}
+  }
+  // deck
+  ctx.strokeStyle=th.road;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(tx,ty+80);ctx.lineTo(tx+span,ty+80);ctx.stroke();
+  // anchors
+  const aW=20*S.anchorSize,aH=15*S.anchorSize;
+  ctx.fillStyle=th.support;ctx.fillRect(tx-40-aW,ty+60,aW,aH);ctx.fillRect(tx+span+40,ty+60,aW,aH);
+  // labels
+  ctx.fillStyle=th.text;ctx.font='13px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`垂度 f/L = ${S.sag.toFixed(2)}`,cx,ty-sag-50);
+  ctx.fillStyle=th.textSec;ctx.font='11px sans-serif';
+  ctx.fillText('锚碇',tx-40-aW/2,ty+60+aH+14);ctx.fillText('锚碇',tx+span+40+aW/2,ty+60+aH+14);
+}
+
+function drawLevel4(){
+  const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;
+  const span=380,tH=S.towerH*250+50,tx=cx,ty=cy+60;
+  // tower
+  ctx.fillStyle=th.beam;ctx.fillRect(tx-6,ty-tH,12,tH);
+  // deck
+  ctx.strokeStyle=th.road;ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(tx-span/2,ty);ctx.lineTo(tx+span/2,ty);ctx.stroke();
+  // cables
+  const nCables=8;
+  ctx.lineWidth=2;
+  for(let side=-1;side<=1;side+=2){
+    for(let i=1;i<=nCables;i++){
+      const deckX=tx+side*i*(span/2/nCables);
+      let towerY;
+      if(S.pattern==='fan'){towerY=ty-tH+10;}
+      else{towerY=ty-tH+i*(tH*0.6/nCables);}
+      const tension=S.cableForce/100;
+      const sag2=(1-tension)*15;
+      ctx.strokeStyle=`hsl(${40+i*8},80%,${50+tension*20}%)`;ctx.beginPath();
+      ctx.moveTo(tx,towerY);
+      const mx=(tx+deckX)/2,my=(towerY+ty)/2+sag2;
+      ctx.quadraticCurveTo(mx,my,deckX,ty);ctx.stroke();
+    }
+  }
+  // deck deflection indicator
+  const balanced=Math.abs(S.cableForce-65)<15;
+  if(!balanced){
+    const tilt=(S.cableForce-65)*0.1;
+    ctx.strokeStyle=th.force;ctx.lineWidth=1;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(tx-span/2,ty+tilt);ctx.lineTo(tx+span/2,ty-tilt);ctx.stroke();ctx.setLineDash([]);
+  }
+  // supports
+  ctx.fillStyle=th.support;drawTriangle(tx-span/2,ty,14);drawTriangle(tx+span/2,ty,14);drawTriangle(tx,ty,14);
+  // labels
+  ctx.fillStyle=th.text;ctx.font='13px sans-serif';ctx.textAlign='center';
+  ctx.fillText(S.pattern==='fan'?'扇形索面':'竖琴形索面',cx,ty-tH-20);
+}
+
+function drawLevel5(){
+  const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;
+  const span=400,bx=cx-span/2,by=cy;
+  // bridge deck
+  const amp=S.resonance?(S.damperOn?8:40*Math.sin(time*8)):S.windSpeed*0.3*Math.sin(time*3)*(S.damperOn?0.15:1);
+  ctx.strokeStyle=th.beam;ctx.lineWidth=6;ctx.beginPath();
+  for(let i=0;i<=50;i++){const t2=i/50;const x=bx+t2*span;const y=by+amp*Math.sin(t2*Math.PI*2+time*5);ctx.lineTo(x,y)}
+  ctx.stroke();
+  // towers
+  ctx.fillStyle=th.beam;ctx.fillRect(bx+span*0.25-5,by-100,10,120);ctx.fillRect(bx+span*0.75-5,by-100,10,120);
+  // wind arrows
+  if(S.windSpeed>0){
+    for(let i=0;i<5;i++){
+      const wy=by-60+i*25;const wx=bx-80+Math.sin(time*3+i)*10;
+      ctx.strokeStyle=`rgba(100,200,255,${0.3+S.windSpeed/30*0.5})`;ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(wx,wy);ctx.lineTo(wx+40+S.windSpeed,wy);ctx.stroke();
+      drawArrowHead(wx+40+S.windSpeed,wy,0,`rgba(100,200,255,${0.5+S.windSpeed/30*0.3})`);
+    }
+    ctx.fillStyle=th.text;ctx.font='12px sans-serif';ctx.textAlign='left';ctx.fillText(`风速 ${S.windSpeed.toFixed(1)} m/s`,bx-80,by-80);
+  }
+  // vortices
+  if(S.windSpeed>5){
+    for(let i=0;i<3;i++){
+      const vx=bx+span*0.5+60+i*40+Math.sin(time*4+i)*10;
+      const vy=by+20+Math.cos(time*3+i*2)*15;
+      ctx.strokeStyle=`rgba(100,200,255,${0.2+0.1*Math.sin(time*5+i)})`;ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(vx,vy,8+4*Math.sin(time*2+i),0,Math.PI*2);ctx.stroke();
+    }
+  }
+  // damper
+  if(S.damperOn){
+    ctx.fillStyle='#22c55e';ctx.fillRect(cx-15,by+15,30,20);
+    ctx.fillStyle=th.text;ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('TMD',cx,by+30);
+  }
+  // resonance warning
+  if(S.resonance&&!S.damperOn){
+    ctx.fillStyle=`rgba(239,68,68,${0.3+0.3*Math.sin(time*10)})`;ctx.font='bold 24px sans-serif';ctx.textAlign='center';ctx.fillText('⚠ 共振！',cx,by-120);
+  }
+}
+
+function drawLevel6(){
+  const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;
+  const span=400,bx=cx-span/2,by=cy+20;
+  // pier
+  ctx.fillStyle=th.support;ctx.fillRect(cx-12,by,24,80);
+  // built segments
+  const segW=span/2/S.maxSeg;
+  for(let i=0;i<S.segments;i++){
+    const lx=cx-12-(i+1)*segW,rx=cx+12+i*segW;
+    ctx.fillStyle=i%2===0?th.beam:`hsl(220,60%,${isDark?40:55}%)`;
+    ctx.fillRect(lx,by-10,segW,14);ctx.fillRect(rx,by-10,segW,14);
+  }
+  // merged deck
+  if(S.merged){
+    ctx.fillStyle=th.beam;ctx.fillRect(bx,by-10,span,14);
+    ctx.fillStyle='#22c55e';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('✅ 合龙',cx,by-20);
+    // sensors
+    for(let i=0;i<S.sensors;i++){
+      const sx=bx+30+i*(span-60)/(S.maxSensors-1);
+      ctx.fillStyle='#fbbf24';ctx.beginPath();ctx.arc(sx,by-3,5,0,Math.PI*2);ctx.fill();
+      // signal waves
+      const wa=0.3+0.3*Math.sin(time*4+i);
+      ctx.strokeStyle=`rgba(251,191,36,${wa})`;ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(sx,by-3,10+5*Math.sin(time*3+i),0,Math.PI*2);ctx.stroke();
+    }
+  }
+  // supports at ends
+  ctx.fillStyle=th.support;drawTriangle(bx,by+4,16);drawTriangle(bx+span,by+4,16);
+  // construction crane hint
+  if(!S.merged&&S.segments<S.maxSeg){
+    const craneX=cx-(S.segments+1)*segW-20;
+    ctx.strokeStyle=th.cable;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(craneX,by-60);ctx.lineTo(craneX,by-10);ctx.stroke();
+    ctx.strokeStyle=th.cable;ctx.beginPath();ctx.moveTo(craneX-15,by-60);ctx.lineTo(craneX+15,by-60);ctx.stroke();
+  }
+}
+
+// PLACEHOLDER_MAINLOOP
+
+function draw(){
+  ctx.clearRect(0,0,CW,CH);
+  if(gameState!=='play')return;
+  drawBg();
+  const drawFns=[drawLevel0,drawLevel1,drawLevel2,drawLevel3,drawLevel4,drawLevel5,drawLevel6];
+  if(drawFns[currentLevel])drawFns[currentLevel]();
+  drawParticles();
+}
+
+let lastT=0;
+function loop(ts){
+  const dt=Math.min((ts-lastT)/1000,0.05);lastT=ts;time+=dt;
+  updateParticles(dt);
+  draw();
+  animId=requestAnimationFrame(loop);
+}
+animId=requestAnimationFrame(loop);
+</script>
+</body>
+</html>

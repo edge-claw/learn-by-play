@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>🚗 自动驾驶探险 — 边玩边学</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --roadmap-text:#a0a0c0;--roadmap-num-bg:#1a1a4a;--roadmap-num-text:#60a5fa;
+  --slider-label:#888;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
+  --accent:#06b6d4;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --roadmap-text:#475569;--roadmap-num-bg:#e0e7ff;--roadmap-num-text:#4f46e5;
+  --slider-label:#888;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
+  --accent:#0891b2;
+}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;height:100vh}
+#wrap{display:flex;height:calc(100vh - 36px);position:relative}
+.panel{width:320px;min-width:320px;background:var(--panel-bg);border-right:1px solid var(--panel-border);padding:16px;overflow-y:auto;display:none;scrollbar-width:thin;padding-bottom:24px}
+.panel::-webkit-scrollbar{width:5px}.panel::-webkit-scrollbar-thumb{background:#c7d2fe;border-radius:3px}
+.panel h2{color:var(--title-color);font-size:18px;margin-bottom:8px}
+.panel h3{color:var(--title-color);font-size:16px;margin:10px 0 6px}
+.panel p,.panel li{font-size:13px;line-height:1.6;color:var(--concept-text)}
+.panel ul{padding-left:18px;margin-bottom:8px}
+.obj-item{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:13px}
+.obj-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+.obj-dot.done{background:var(--accent);color:#0a0a1a}
+.act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:6px;background:var(--accent);color:#0a0a1a;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.act-btn:hover{background:#22d3ee;transform:translateY(-1px)}
+.act-btn.secondary{background:var(--btn-bg);color:var(--btn-text);border:1px solid var(--btn-border)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;line-height:1.8}
+.learn-box b{color:var(--accent)}
+canvas{flex:1;display:block;background:var(--bg)}
+.bar{height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:none;align-items:center;justify-content:space-between;padding:0 16px;font-size:13px}
+.bar-left{display:flex;gap:4px}
+.bar-btn{padding:4px 12px;border:1px solid rgba(6,182,212,0.3);background:transparent;color:#8899aa;border-radius:4px;cursor:pointer;font-size:12px;transition:all .2s}
+.bar-btn:hover{border-color:var(--accent);color:var(--accent)}
+.bar-btn.active{background:var(--accent);color:#0a0a1a;border-color:var(--accent)}
+.bar-right{color:var(--accent);font-size:12px}
+.overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
+.overlay h1{font-size:42px;color:var(--accent);text-shadow:0 0 30px rgba(6,182,212,0.4);margin-bottom:8px}
+.overlay .sub{color:var(--sub-color);font-size:16px;margin-bottom:30px}
+.overlay .desc{max-width:520px;text-align:center;color:#8899aa;font-size:14px;line-height:1.8;margin-bottom:30px;background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:10px;padding:16px}
+.start-btn{padding:14px 48px;border:2px solid var(--accent);background:transparent;color:var(--accent);font-size:18px;border-radius:8px;cursor:pointer;transition:all .3s;letter-spacing:2px}
+.start-btn:hover{background:var(--accent);color:#0a0a1a;box-shadow:0 0 30px rgba(6,182,212,0.4)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}
+.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
+.quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg)}
+.quiz-opt:hover{background:var(--quiz-opt-hover);border-color:var(--accent)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+.slider-row{margin:6px 0}
+.slider-row label{font-size:12px;color:var(--slider-label)}
+.slider-row input[type=range]{width:100%;margin:4px 0}
+.concept-box{padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px}
+#themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()">🌙 暗色</button>
+<div class="overlay" id="overlay">
+<h1>🚗 自动驾驶探险</h1>
+<p class="sub">从传感器到决策，探索无人驾驶的核心技术</p>
+<p class="desc">7 个关卡带你深入理解自动驾驶全栈技术：传感器融合、环境感知、高精定位、路径规划、决策控制、V2X车联网和安全伦理。通过交互式动画，亲手操控一辆自动驾驶汽车。</p>
+<button class="start-btn" onclick="startGame()">开始探索 →</button>
+<div class="features">
+<div class="feat"><div class="fi">📡</div>传感器融合</div>
+<div class="feat"><div class="fi">👁️</div>环境感知</div>
+<div class="feat"><div class="fi">🗺️</div>高精定位</div>
+<div class="feat"><div class="fi">🛤️</div>路径规划</div>
+<div class="feat"><div class="fi">🎮</div>决策控制</div>
+<div class="feat"><div class="fi">📶</div>V2X车联网</div>
+<div class="feat"><div class="fi">⚖️</div>安全伦理</div>
+</div>
+</div>
+<div id="wrap">
+<div class="panel" id="panel"></div>
+<canvas id="cv"></canvas>
+</div>
+<div class="bar" id="bar"></div>
+
+<script>
+// === Theme ===
+let isDark=true;
+const TH={
+  dark:{bg:'#0a0a1a',grid:'rgba(6,182,212,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',road:'#1a1a3a',roadLine:'#334155',car:'#06b6d4',carGlow:'rgba(6,182,212,0.3)',obstacle:'#ef4444',sensor:'rgba(6,182,212,0.15)',lidar:'#22c55e',radar:'#f59e0b',camera:'#3b82f6',path:'#8b5cf6',showStars:true},
+  light:{bg:'#f0f2f5',grid:'rgba(6,182,212,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',road:'#d1d5db',roadLine:'#9ca3af',car:'#0891b2',carGlow:'rgba(8,145,178,0.3)',obstacle:'#dc2626',sensor:'rgba(8,145,178,0.1)',lidar:'#16a34a',radar:'#d97706',camera:'#2563eb',path:'#7c3aed',showStars:false}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{renderPanel()}catch(e){}}
+
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay');
+let W,H,curLevel=0,animId,time=0;
+let levelObjs=Array.from({length:7},()=>[false,false,false]);
+let S={};
+
+function resize(){W=cv.width=cv.offsetWidth;H=cv.height=cv.offsetHeight}
+window.addEventListener('resize',()=>{resize();draw()});
+
+const LEVELS=[
+{name:'传感器融合',desc:'<div class="concept-box"><b>关键词：</b>摄像头、激光雷达(LiDAR)、毫米波雷达、多传感器融合</div>画布上有一辆自动驾驶汽车，周围有三种传感器的探测范围。拖动滑块调节各传感器的权重，观察融合效果如何变化。',
+ objs:['安装全部三种传感器','调节权重使融合置信度>90%','在恶劣天气下保持感知'],
+ quiz:{q:'多传感器融合的主要优势是什么？',opts:['降低成本','提高冗余性和鲁棒性','减少计算量','简化算法'],ans:1},
+ learn:'<b>摄像头</b>：高分辨率纹理/颜色信息，受光照影响大。<br><b>LiDAR</b>：精确3D点云，不受光照影响，但雨雾衰减。<br><b>毫米波雷达</b>：测速精确，全天候工作，但角分辨率低。<br><b>融合策略</b>：早期融合（原始数据级）、晚期融合（决策级）、中期融合（特征级）。'},
+{name:'环境感知',desc:'<div class="concept-box"><b>关键词：</b>目标检测、语义分割、3D点云处理</div>画布上显示一个驾驶场景的俯视图，包含行人、车辆和交通标志。调节检测阈值，观察目标检测框的变化——阈值太低会产生误检，太高会漏检。',
+ objs:['调节阈值使检测准确率>85%','完成语义分割着色','识别全部3D目标'],
+ quiz:{q:'目标检测中，降低置信度阈值会导致什么？',opts:['漏检增多','误检增多','计算量减少','精度提高'],ans:1},
+ learn:'<b>目标检测</b>：用边界框标注物体位置和类别（YOLO、SSD等）。<br><b>语义分割</b>：逐像素分类（道路、人行道、车辆、行人等）。<br><b>3D点云</b>：LiDAR生成的三维空间点集，用PointNet等网络处理。<br><b>精确率vs召回率</b>：阈值越低召回率越高但精确率下降。'},
+{name:'高精地图与定位',desc:'<div class="concept-box"><b>关键词：</b>GPS+IMU+视觉里程计、卡尔曼滤波、高精地图</div>画布上有一辆车在地图上行驶，三种定位源（GPS蓝点、IMU绿线、视觉紫线）各有误差。调节卡尔曼滤波参数，让融合定位（红点）尽可能贴近真实位置。',
+ objs:['观察三种定位源的误差特征','调节滤波参数使定位误差<0.5m','在GPS信号丢失时保持定位'],
+ quiz:{q:'卡尔曼滤波的核心思想是什么？',opts:['取最大值','加权平均预测和观测','只用最新数据','丢弃异常值'],ans:1},
+ learn:'<b>GPS</b>：全球定位，精度~2m，受遮挡影响。<br><b>IMU</b>：惯性测量，短期精确但会漂移。<br><b>视觉里程计</b>：通过图像特征匹配估计运动。<br><b>卡尔曼滤波</b>：预测+更新循环，用协方差加权融合多源数据，最优估计。'},
+{name:'路径规划',desc:'<div class="concept-box"><b>关键词：</b>A*算法、RRT快速随机树、动态障碍物避让</div>画布上有一个网格地图，绿色是起点，红色是终点，灰色是障碍物。点击选择算法，观察不同路径规划算法的搜索过程和最终路径。',
+ objs:['用A*算法找到最短路径','用RRT算法探索路径','成功避让动态障碍物'],
+ quiz:{q:'A*算法相比Dijkstra的优势是什么？',opts:['保证最短路径','使用启发函数减少搜索范围','不需要地图','计算更简单'],ans:1},
+ learn:'<b>A*算法</b>：f(n)=g(n)+h(n)，g是已走代价，h是启发估计。保证最优且高效。<br><b>RRT</b>：随机采样+树扩展，适合高维空间和复杂约束。<br><b>动态避障</b>：预测障碍物轨迹，实时重规划路径。'},
+{name:'决策与控制',desc:'<div class="concept-box"><b>关键词：</b>状态机、PID控制、MPC模型预测控制</div>画布上有一辆车需要沿着弯道行驶。调节PID参数（P/I/D），观察车辆的转向响应——参数不当会导致震荡或响应迟缓。',
+ objs:['理解状态机的状态转换','调节PID使车辆平稳过弯','用MPC预测最优轨迹'],
+ quiz:{q:'PID控制中，D（微分）项的作用是什么？',opts:['消除稳态误差','加快响应速度','抑制震荡','增大超调'],ans:2},
+ learn:'<b>状态机</b>：巡航→跟车→变道→停车，根据环境切换行为。<br><b>PID</b>：P比例（当前误差）、I积分（累积误差）、D微分（误差变化率）。<br><b>MPC</b>：建立车辆模型，预测未来N步，优化控制序列，只执行第一步。'},
+{name:'V2X车联网',desc:'<div class="concept-box"><b>关键词：</b>V2V车-车、V2I车-路、V2C车-云、协同感知</div>画布上有多辆车和路侧设备。点击建立通信链路，观察信息如何在车辆、路侧单元和云端之间传递，实现超视距感知。',
+ objs:['建立V2V车-车通信链路','连接V2I路侧感知单元','实现云端协同决策'],
+ quiz:{q:'V2X中"X"代表什么？',opts:['未知数','一切（Everything）','交叉路口','加速度'],ans:1},
+ learn:'<b>V2V</b>：车-车直接通信，共享位置/速度/意图，避免碰撞。<br><b>V2I</b>：车-路通信，获取信号灯、路况、施工信息。<br><b>V2C</b>：车-云通信，云端融合全局信息，下发最优策略。<br><b>协同感知</b>：多车共享感知数据，扩展单车感知范围。'},
+{name:'安全与伦理',desc:'<div class="concept-box"><b>关键词：</b>电车难题、ISO 26262功能安全、冗余设计</div>画布上模拟紧急场景：前方突然出现障碍，你需要在不同选项中做出决策。体验自动驾驶面临的伦理困境和安全设计原则。',
+ objs:['体验电车难题的伦理抉择','了解ISO 26262安全等级','设计冗余系统架构'],
+ quiz:{q:'ISO 26262中ASIL-D代表什么？',opts:['最低安全等级','最高安全等级','不需要安全措施','仅需软件测试'],ans:1},
+ learn:'<b>电车难题</b>：不可避免的事故中，算法如何权衡不同方案的伤害？<br><b>ISO 26262</b>：汽车功能安全标准，ASIL A~D，D为最高等级。<br><b>冗余设计</b>：关键系统（转向、制动、感知）至少双重冗余，单点故障不导致危险。'}
+];
+
+// === Drawing helpers ===
+function drawGrid(){ctx.strokeStyle=t().grid;ctx.lineWidth=1;for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}}
+function drawStars(){if(!t().showStars)return;for(let i=0;i<60;i++){let sx=(i*137.5+time*0.02*(i%3+1))%W,sy=(i*97.3)%H;ctx.fillStyle=`rgba(255,255,255,${0.2+0.3*Math.sin(time*0.01+i)})`;ctx.fillRect(sx,sy,1.5,1.5)}}
+function drawCar(x,y,w,h,angle){ctx.save();ctx.translate(x,y);ctx.rotate(angle||0);ctx.fillStyle=t().car;ctx.shadowColor=t().carGlow;ctx.shadowBlur=15;ctx.beginPath();ctx.roundRect(-w/2,-h/2,w,h,4);ctx.fill();ctx.shadowBlur=0;ctx.fillStyle=isDark?'#fff':'#1e293b';ctx.fillRect(-w/2+3,-h/2+2,6,3);ctx.fillRect(w/2-9,-h/2+2,6,3);ctx.fillRect(-w/2+3,h/2-5,6,3);ctx.fillRect(w/2-9,h/2-5,6,3);ctx.restore()}
+function drawText(txt,x,y,size,color,align){ctx.fillStyle=color||t().text;ctx.font=`${size||14}px system-ui`;ctx.textAlign=align||'center';ctx.fillText(txt,x,y)}
+
+// === Level state init ===
+function initLevel(idx){
+  S={phase:0,t:0};
+  if(idx===0){S.sensors={camera:false,lidar:false,radar:false};S.weights={camera:0.3,lidar:0.3,radar:0.3};S.weather='clear';S.confidence=0;S.installed=0}
+  if(idx===1){S.threshold=0.8;S.objects=[];S.segDone=false;S.detected3d=false;for(let i=0;i<8;i++)S.objects.push({x:100+Math.random()*(W-300),y:80+Math.random()*(H-160),type:['car','person','sign'][i%3],conf:0.3+Math.random()*0.7,w:30+Math.random()*20,h:30+Math.random()*20,detected:false})}
+  if(idx===2){S.gpsNoise=3;S.imuDrift=0;S.kfQ=1;S.kfR=1;S.truePos={x:W/2,y:H/2};S.gpsPos={x:0,y:0};S.imuPos={x:0,y:0};S.visPos={x:0,y:0};S.fusedPos={x:0,y:0};S.error=5;S.gpsLost=false;S.pathT=0}
+  if(idx===3){S.grid=[];S.gridW=25;S.gridH=18;S.start={x:1,y:1};S.end={x:23,y:16};S.algo='none';S.searching=false;S.path=[];S.visited=[];S.openSet=[];S.dynObs=[];S.searchStep=0;
+    for(let y=0;y<S.gridH;y++){S.grid[y]=[];for(let x=0;x<S.gridW;x++)S.grid[y][x]=0}
+    for(let i=0;i<60;i++){let gx=2+Math.floor(Math.random()*(S.gridW-4)),gy=2+Math.floor(Math.random()*(S.gridH-4));if((gx!==S.start.x||gy!==S.start.y)&&(gx!==S.end.x||gy!==S.end.y))S.grid[gy][gx]=1}
+    S.dynObs=[{x:12,y:9,dx:0.02,dy:0.01},{x:18,y:5,dx:-0.015,dy:0.02}]}
+  if(idx===4){S.pidP=0;S.pidI=0;S.pidD=0;S.carX=W*0.3;S.carY=H*0.7;S.carAngle=0;S.carSpeed=0;S.targetPath=[];S.steerAngle=0;S.integral=0;S.prevError=0;S.trail=[];S.stateMachine='cruise';S.mpcActive=false;S.mpcPath=[];
+    for(let i=0;i<=100;i++){let tt=i/100;S.targetPath.push({x:W*0.15+tt*(W*0.7),y:H*0.5+Math.sin(tt*Math.PI*2.5)*H*0.25})}}
+  if(idx===5){S.vehicles=[{x:W*0.3,y:H*0.4,id:'V1',linked:[]},{x:W*0.6,y:H*0.3,id:'V2',linked:[]},{x:W*0.5,y:H*0.65,id:'V3',linked:[]}];S.rsu={x:W*0.75,y:H*0.55,id:'RSU'};S.cloud={x:W*0.8,y:H*0.15,id:'Cloud'};S.links=[];S.v2vDone=false;S.v2iDone=false;S.v2cDone=false;S.msgParticles=[];S.selectedNode=null}
+  if(idx===6){S.scenario=0;S.choice=-1;S.asilLevel=0;S.redundancy={sensor:false,compute:false,brake:false};S.dilemmaShown=false;S.safetyDone=false;S.redundancyDone=false}
+}
+
+// === Level draw ===
+function drawLevel(idx){
+  const th=t();
+  if(idx===0)drawSensorFusion(th);
+  if(idx===1)drawPerception(th);
+  if(idx===2)drawLocalization(th);
+  if(idx===3)drawPathPlanning(th);
+  if(idx===4)drawControl(th);
+  if(idx===5)drawV2X(th);
+  if(idx===6)drawSafety(th);
+}
+
+function drawSensorFusion(th){
+  let cx=W/2,cy=H/2;
+  drawCar(cx,cy,50,80,0);
+  if(S.sensors.camera){ctx.strokeStyle=th.camera;ctx.lineWidth=2;ctx.globalAlpha=0.3;ctx.beginPath();ctx.moveTo(cx,cy-40);ctx.lineTo(cx-80,cy-160);ctx.lineTo(cx+80,cy-160);ctx.closePath();ctx.stroke();ctx.fillStyle=th.camera;ctx.fill();ctx.globalAlpha=1;drawText('📷 摄像头',cx,cy-170,12,th.camera)}
+  if(S.sensors.lidar){ctx.strokeStyle=th.lidar;ctx.lineWidth=2;ctx.globalAlpha=0.15;ctx.beginPath();ctx.arc(cx,cy,140,0,Math.PI*2);ctx.fill();ctx.globalAlpha=0.4;ctx.stroke();ctx.globalAlpha=1;for(let a=0;a<Math.PI*2;a+=0.15){let r=130+Math.random()*20;ctx.fillStyle=th.lidar;ctx.fillRect(cx+Math.cos(a)*r,cy+Math.sin(a)*r,2,2)}drawText('🔦 LiDAR',cx+150,cy-10,12,th.lidar,'left')}
+  if(S.sensors.radar){ctx.strokeStyle=th.radar;ctx.lineWidth=2;ctx.globalAlpha=0.2;ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,180,Math.PI*1.25,Math.PI*1.75);ctx.closePath();ctx.fillStyle=th.radar;ctx.fill();ctx.globalAlpha=1;drawText('📡 雷达',cx,cy+120,12,th.radar)}
+  S.confidence=0;let cnt=0;
+  if(S.sensors.camera){S.confidence+=S.weights.camera*(S.weather==='clear'?95:40);cnt++}
+  if(S.sensors.lidar){S.confidence+=S.weights.lidar*(S.weather==='clear'?90:60);cnt++}
+  if(S.sensors.radar){S.confidence+=S.weights.radar*(S.weather==='clear'?70:85);cnt++}
+  if(cnt>0)S.confidence=Math.min(100,S.confidence/(S.weights.camera+S.weights.lidar+S.weights.radar)*3);
+  if(S.weather!=='clear'){ctx.fillStyle='rgba(150,150,180,0.3)';ctx.fillRect(0,0,W,H);for(let i=0;i<40;i++){ctx.fillStyle='rgba(200,200,220,0.4)';let rx=(i*73+time*2)%W,ry=(i*47+time*3)%H;ctx.fillRect(rx,ry,2,8)}}
+  let barW=200,barH=20,barX=cx-barW/2,barY=30;
+  ctx.fillStyle='#333';ctx.fillRect(barX,barY,barW,barH);
+  ctx.fillStyle=S.confidence>90?'#22c55e':S.confidence>60?'#f59e0b':'#ef4444';
+  ctx.fillRect(barX,barY,barW*S.confidence/100,barH);
+  drawText(`融合置信度: ${S.confidence.toFixed(1)}%`,cx,barY+barH+18,14,th.text);
+}
+
+function drawPerception(th){
+  ctx.fillStyle=isDark?'#1a2a1a':'#e8f5e9';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=isDark?'#2a2a3a':'#bdbdbd';ctx.fillRect(W*0.1,H*0.3,W*0.8,H*0.15);
+  ctx.setLineDash([20,15]);ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W*0.1,H*0.375);ctx.lineTo(W*0.9,H*0.375);ctx.stroke();ctx.setLineDash([]);
+  for(let o of S.objects){
+    let col=o.type==='car'?'#3b82f6':o.type==='person'?'#f59e0b':'#22c55e';
+    ctx.fillStyle=col;ctx.globalAlpha=0.7;
+    if(o.type==='car'){ctx.fillRect(o.x-o.w/2,o.y-o.h/2,o.w,o.h)}
+    else if(o.type==='person'){ctx.beginPath();ctx.arc(o.x,o.y,o.h/2,0,Math.PI*2);ctx.fill()}
+    else{ctx.beginPath();ctx.moveTo(o.x,o.y-o.h/2);ctx.lineTo(o.x+o.w/2,o.y+o.h/2);ctx.lineTo(o.x-o.w/2,o.y+o.h/2);ctx.closePath();ctx.fill()}
+    ctx.globalAlpha=1;
+    if(o.conf>=S.threshold){o.detected=true;ctx.strokeStyle=col;ctx.lineWidth=2;ctx.strokeRect(o.x-o.w/2-5,o.y-o.h/2-5,o.w+10,o.h+10);drawText(`${(o.conf*100).toFixed(0)}%`,o.x,o.y-o.h/2-10,11,col)}
+    else{o.detected=false}
+  }
+  let det=S.objects.filter(o=>o.detected&&o.conf>=0.5).length,total=S.objects.filter(o=>o.conf>=0.5).length;
+  let acc=total>0?det/total*100:0;
+  drawText(`检测准确率: ${acc.toFixed(1)}% (阈值: ${S.threshold.toFixed(2)})`,W/2,30,16,th.text);
+}
+
+function drawLocalization(th){
+  S.pathT+=0.002;if(S.pathT>1)S.pathT=0;
+  let angle=S.pathT*Math.PI*4;
+  S.truePos={x:W/2+Math.cos(angle)*W*0.25,y:H/2+Math.sin(angle*0.5)*H*0.25};
+  S.gpsPos={x:S.truePos.x+(Math.random()-0.5)*S.gpsNoise*10*(S.gpsLost?50:1),y:S.truePos.y+(Math.random()-0.5)*S.gpsNoise*10*(S.gpsLost?50:1)};
+  S.imuDrift+=0.1;S.imuPos={x:S.truePos.x+Math.sin(S.imuDrift)*S.imuDrift*0.3,y:S.truePos.y+Math.cos(S.imuDrift)*S.imuDrift*0.3};
+  S.visPos={x:S.truePos.x+(Math.random()-0.5)*15,y:S.truePos.y+(Math.random()-0.5)*15};
+  let kfGain=S.kfQ/(S.kfQ+S.kfR);
+  S.fusedPos={x:S.fusedPos.x+(S.truePos.x-S.fusedPos.x)*kfGain*0.3+((S.gpsLost?0:S.gpsPos.x)+S.imuPos.x+S.visPos.x)/3*kfGain*0.05,
+              y:S.fusedPos.y+(S.truePos.y-S.fusedPos.y)*kfGain*0.3+((S.gpsLost?0:S.gpsPos.y)+S.imuPos.y+S.visPos.y)/3*kfGain*0.05};
+  S.error=Math.sqrt((S.fusedPos.x-S.truePos.x)**2+(S.fusedPos.y-S.truePos.y)**2)/10;
+  ctx.strokeStyle=isDark?'#333':'#ccc';ctx.lineWidth=1;
+  for(let a=0;a<=1;a+=0.01){let ang=a*Math.PI*4;ctx.fillStyle='rgba(100,100,100,0.3)';ctx.fillRect(W/2+Math.cos(ang)*W*0.25,H/2+Math.sin(ang*0.5)*H*0.25,2,2)}
+  if(!S.gpsLost){ctx.fillStyle=th.camera;ctx.beginPath();ctx.arc(S.gpsPos.x,S.gpsPos.y,6,0,Math.PI*2);ctx.fill();drawText('GPS',S.gpsPos.x+12,S.gpsPos.y-8,11,th.camera,'left')}
+  ctx.fillStyle=th.lidar;ctx.beginPath();ctx.arc(S.imuPos.x,S.imuPos.y,6,0,Math.PI*2);ctx.fill();drawText('IMU',S.imuPos.x+12,S.imuPos.y-8,11,th.lidar,'left');
+  ctx.fillStyle=th.path;ctx.beginPath();ctx.arc(S.visPos.x,S.visPos.y,6,0,Math.PI*2);ctx.fill();drawText('视觉',S.visPos.x+12,S.visPos.y-8,11,th.path,'left');
+  ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(S.fusedPos.x,S.fusedPos.y,8,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ef4444';ctx.lineWidth=2;ctx.beginPath();ctx.arc(S.fusedPos.x,S.fusedPos.y,12,0,Math.PI*2);ctx.stroke();drawText('融合',S.fusedPos.x+16,S.fusedPos.y-10,11,'#ef4444','left');
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(S.truePos.x,S.truePos.y,4,0,Math.PI*2);ctx.fill();drawText('真实',S.truePos.x+12,S.truePos.y+15,11,'#fff','left');
+  drawText(`定位误差: ${S.error.toFixed(2)}m ${S.gpsLost?'⚠️ GPS信号丢失':''}`,W/2,30,16,S.error<0.5?'#22c55e':'#f59e0b');
+}
+
+function drawPathPlanning(th){
+  let cellW=Math.min((W-20)/S.gridW,(H-60)/S.gridH),offX=(W-cellW*S.gridW)/2,offY=40;
+  for(let y=0;y<S.gridH;y++)for(let x=0;x<S.gridW;x++){
+    let px=offX+x*cellW,py=offY+y*cellW;
+    if(S.grid[y][x]===1){ctx.fillStyle=isDark?'#4a4a5a':'#9ca3af'}
+    else if(S.visited.some(v=>v.x===x&&v.y===y)){ctx.fillStyle=isDark?'rgba(99,102,241,0.2)':'rgba(99,102,241,0.15)'}
+    else{ctx.fillStyle=isDark?'#111':'#e5e7eb'}
+    ctx.fillRect(px+1,py+1,cellW-2,cellW-2);
+  }
+  for(let d of S.dynObs){ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(offX+d.x*cellW+cellW/2,offY+d.y*cellW+cellW/2,cellW/2,0,Math.PI*2);ctx.fill()}
+  if(S.path.length>1){ctx.strokeStyle=th.path;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(offX+S.path[0].x*cellW+cellW/2,offY+S.path[0].y*cellW+cellW/2);for(let p of S.path)ctx.lineTo(offX+p.x*cellW+cellW/2,offY+p.y*cellW+cellW/2);ctx.stroke()}
+  ctx.fillStyle='#22c55e';ctx.fillRect(offX+S.start.x*cellW+2,offY+S.start.y*cellW+2,cellW-4,cellW-4);
+  ctx.fillStyle='#ef4444';ctx.fillRect(offX+S.end.x*cellW+2,offY+S.end.y*cellW+2,cellW-4,cellW-4);
+  drawText(S.algo==='none'?'选择算法开始规划':S.searching?`${S.algo.toUpperCase()} 搜索中... 步骤: ${S.searchStep}`:`${S.algo.toUpperCase()} 路径长度: ${S.path.length}`,W/2,25,14,th.text);
+}
+
+function drawControl(th){
+  ctx.strokeStyle=isDark?'#333':'#ccc';ctx.lineWidth=2;ctx.setLineDash([5,5]);
+  if(S.targetPath.length>1){ctx.beginPath();ctx.moveTo(S.targetPath[0].x,S.targetPath[0].y);for(let p of S.targetPath)ctx.lineTo(p.x,p.y);ctx.strokeStyle=isDark?'rgba(139,92,246,0.5)':'rgba(124,58,237,0.5)';ctx.stroke()}
+  ctx.setLineDash([]);
+  if(S.trail.length>1){ctx.strokeStyle=th.car;ctx.lineWidth=2;ctx.globalAlpha=0.4;ctx.beginPath();ctx.moveTo(S.trail[0].x,S.trail[0].y);for(let p of S.trail)ctx.lineTo(p.x,p.y);ctx.stroke();ctx.globalAlpha=1}
+  if(S.mpcActive&&S.mpcPath.length>1){ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(S.mpcPath[0].x,S.mpcPath[0].y);for(let p of S.mpcPath)ctx.lineTo(p.x,p.y);ctx.stroke();ctx.setLineDash([])}
+  drawCar(S.carX,S.carY,30,50,S.carAngle);
+  let stateColors={cruise:'#22c55e',follow:'#f59e0b',lane_change:'#3b82f6',stop:'#ef4444'};
+  drawText(`状态: ${S.stateMachine}`,W/2,30,14,stateColors[S.stateMachine]||th.text);
+}
+
+function drawV2X(th){
+  for(let v of S.vehicles){ctx.fillStyle=th.car;ctx.beginPath();ctx.roundRect(v.x-20,v.y-12,40,24,4);ctx.fill();drawText(v.id,v.x,v.y+4,12,'#fff')}
+  ctx.fillStyle=isDark?'#4a3a1a':'#fef3c7';ctx.beginPath();ctx.roundRect(S.rsu.x-25,S.rsu.y-15,50,30,6);ctx.fill();ctx.strokeStyle=th.radar;ctx.lineWidth=2;ctx.stroke();drawText('RSU',S.rsu.x,S.rsu.y+5,12,th.radar);
+  ctx.fillStyle=isDark?'#1a2a4a':'#dbeafe';ctx.beginPath();ctx.roundRect(S.cloud.x-30,S.cloud.y-18,60,36,10);ctx.fill();ctx.strokeStyle=th.camera;ctx.lineWidth=2;ctx.stroke();drawText('☁️ Cloud',S.cloud.x,S.cloud.y+5,12,th.camera);
+  for(let l of S.links){ctx.strokeStyle=l.color;ctx.lineWidth=2;ctx.globalAlpha=0.6;ctx.setLineDash([5,5]);ctx.beginPath();ctx.moveTo(l.x1,l.y1);ctx.lineTo(l.x2,l.y2);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1}
+  for(let i=S.msgParticles.length-1;i>=0;i--){let p=S.msgParticles[i];p.t+=0.02;if(p.t>1){S.msgParticles.splice(i,1);continue}
+    let px=p.x1+(p.x2-p.x1)*p.t,py=p.y1+(p.y2-p.y1)*p.t;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);ctx.fill()}
+  drawText(S.v2vDone&&S.v2iDone&&S.v2cDone?'✅ V2X全链路已建立':'点击车辆或设备建立通信链路',W/2,30,14,th.text);
+}
+
+function drawSafety(th){
+  if(S.scenario===0){
+    let roadY=H*0.5;ctx.fillStyle=isDark?'#2a2a3a':'#bdbdbd';ctx.fillRect(0,roadY-40,W,80);
+    ctx.setLineDash([20,15]);ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,roadY);ctx.lineTo(W,roadY);ctx.stroke();ctx.setLineDash([]);
+    drawCar(W*0.3,roadY,30,50,0);
+    ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(W*0.65,roadY-20,15,0,Math.PI*2);ctx.fill();drawText('👤',W*0.65,roadY-16,16);
+    ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(W*0.65,roadY+25,15,0,Math.PI*2);ctx.fill();drawText('👥',W*0.65,roadY+29,16);
+    drawText('⚠️ 电车难题：直行撞1人 or 转向撞2人？',W/2,60,16,'#f59e0b');
+    if(S.choice>=0)drawText(S.choice===0?'选择：直行（功利主义）':'选择：转向（义务论）',W/2,90,14,th.text);
+  }else if(S.scenario===1){
+    let levels=['QM','ASIL-A','ASIL-B','ASIL-C','ASIL-D'];let colors=['#666','#22c55e','#3b82f6','#f59e0b','#ef4444'];
+    for(let i=0;i<5;i++){let bx=W*0.15+i*(W*0.14),by=H*0.3,bw=W*0.12,bh=H*0.35;
+      ctx.fillStyle=i<=S.asilLevel?colors[i]:'rgba(100,100,100,0.2)';ctx.fillRect(bx,by+bh*(1-((i+1)/5)),bw,bh*((i+1)/5));
+      ctx.strokeStyle=colors[i];ctx.lineWidth=2;ctx.strokeRect(bx,by,bw,bh);drawText(levels[i],bx+bw/2,by+bh+20,13,colors[i])}
+    drawText('ISO 26262 汽车功能安全等级',W/2,60,16,th.text);
+  }else{
+    let parts=[{name:'传感器',x:W*0.2,y:H*0.35,done:S.redundancy.sensor},{name:'计算平台',x:W*0.5,y:H*0.35,done:S.redundancy.compute},{name:'制动系统',x:W*0.8,y:H*0.35,done:S.redundancy.brake}];
+    for(let p of parts){ctx.fillStyle=p.done?'rgba(34,197,94,0.2)':'rgba(100,100,100,0.1)';ctx.strokeStyle=p.done?'#22c55e':'#666';ctx.lineWidth=2;ctx.beginPath();ctx.roundRect(p.x-50,p.y-30,100,60,8);ctx.fill();ctx.stroke();
+      drawText(p.name,p.x,p.y-5,13,p.done?'#22c55e':th.text);drawText(p.done?'✅ 双重冗余':'❌ 单点故障',p.x,p.y+15,11,p.done?'#22c55e':'#ef4444');
+      if(p.done){ctx.fillStyle='rgba(34,197,94,0.1)';ctx.beginPath();ctx.roundRect(p.x-45,p.y+40,90,40,6);ctx.fill();ctx.strokeStyle='#22c55e55';ctx.stroke();drawText('备份',p.x,p.y+65,11,'#22c55e')}}
+    drawText('冗余系统设计：关键组件需要双重备份',W/2,60,16,th.text);
+  }
+}
+
+// === Update logic ===
+function updateLevel(idx,dt){
+  S.t+=dt;
+  if(idx===3&&S.searching){
+    S.searchStep++;
+    if(S.algo==='astar')stepAStar();
+    if(S.algo==='rrt')stepRRT();
+    for(let d of S.dynObs){d.x+=d.dx;d.y+=d.dy;if(d.x<1||d.x>S.gridW-2)d.dx*=-1;if(d.y<1||d.y>S.gridH-2)d.dy*=-1}
+  }
+  if(idx===4&&S.pidP>0){
+    let closest=null,minD=Infinity;
+    for(let p of S.targetPath){let d=Math.sqrt((p.x-S.carX)**2+(p.y-S.carY)**2);if(d<minD){minD=d;closest=p}}
+    if(closest){
+      let lookIdx=Math.min(S.targetPath.indexOf(closest)+5,S.targetPath.length-1);
+      let target=S.targetPath[lookIdx];
+      let desired=Math.atan2(target.y-S.carY,target.x-S.carX);
+      let error=desired-S.carAngle;while(error>Math.PI)error-=Math.PI*2;while(error<-Math.PI)error+=Math.PI*2;
+      S.integral+=error*dt;S.integral=Math.max(-2,Math.min(2,S.integral));
+      let deriv=(error-S.prevError)/dt;S.prevError=error;
+      S.steerAngle=S.pidP*error+S.pidI*S.integral+S.pidD*deriv;
+      S.steerAngle=Math.max(-0.1,Math.min(0.1,S.steerAngle));
+      S.carAngle+=S.steerAngle;S.carSpeed=2;
+      S.carX+=Math.cos(S.carAngle)*S.carSpeed;S.carY+=Math.sin(S.carAngle)*S.carSpeed;
+      S.trail.push({x:S.carX,y:S.carY});if(S.trail.length>300)S.trail.shift();
+      if(S.mpcActive){S.mpcPath=[];for(let i=0;i<20;i++){let fa=S.carAngle+S.steerAngle*i*0.5;S.mpcPath.push({x:S.carX+Math.cos(fa)*i*10,y:S.carY+Math.sin(fa)*i*10})}}
+    }
+  }
+  if(idx===5){if(Math.random()<0.05)for(let l of S.links)S.msgParticles.push({x1:l.x1,y1:l.y1,x2:l.x2,y2:l.y2,t:0,color:l.color})}
+}
+
+// A* step
+function stepAStar(){
+  if(S.path.length>0||S.openSet.length===0)return;
+  if(!S._astarInit){S._astarInit=true;S._gScore={};S._fScore={};S._cameFrom={};
+    let k=`${S.start.x},${S.start.y}`;S._gScore[k]=0;S._fScore[k]=heur(S.start,S.end);S.openSet=[{...S.start}];S.visited=[]}
+  if(S.openSet.length===0){S.searching=false;return}
+  S.openSet.sort((a,b)=>(S._fScore[`${a.x},${a.y}`]||Infinity)-(S._fScore[`${b.x},${b.y}`]||Infinity));
+  let cur=S.openSet.shift(),ck=`${cur.x},${cur.y}`;S.visited.push(cur);
+  if(cur.x===S.end.x&&cur.y===S.end.y){S.path=reconstructPath(S._cameFrom,cur);S.searching=false;completeObj(0);return}
+  for(let[dx,dy]of[[0,1],[0,-1],[1,0],[-1,0]]){
+    let nx=cur.x+dx,ny=cur.y+dy,nk=`${nx},${ny}`;
+    if(nx<0||ny<0||nx>=S.gridW||ny>=S.gridH||S.grid[ny][nx]===1)continue;
+    let tg=(S._gScore[ck]||0)+1;
+    if(tg<(S._gScore[nk]||Infinity)){S._cameFrom[nk]=cur;S._gScore[nk]=tg;S._fScore[nk]=tg+heur({x:nx,y:ny},S.end);
+      if(!S.openSet.some(o=>o.x===nx&&o.y===ny))S.openSet.push({x:nx,y:ny})}}
+}
+function heur(a,b){return Math.abs(a.x-b.x)+Math.abs(a.y-b.y)}
+function reconstructPath(cf,cur){let p=[cur];while(cf[`${cur.x},${cur.y}`]){cur=cf[`${cur.x},${cur.y}`];p.unshift(cur)}return p}
+
+// RRT step
+function stepRRT(){
+  if(S.path.length>0)return;
+  if(!S._rrtNodes){S._rrtNodes=[{...S.start,parent:null}];S._rrtEdges=[]}
+  let rand=Math.random()<0.1?{...S.end}:{x:Math.floor(Math.random()*S.gridW),y:Math.floor(Math.random()*S.gridH)};
+  let nearest=S._rrtNodes[0],minD=Infinity;
+  for(let n of S._rrtNodes){let d=Math.abs(n.x-rand.x)+Math.abs(n.y-rand.y);if(d<minD){minD=d;nearest=n}}
+  let dx=rand.x-nearest.x,dy=rand.y-nearest.y,dist=Math.sqrt(dx*dx+dy*dy);
+  if(dist<0.5)return;
+  let step=Math.min(2,dist),nx=Math.round(nearest.x+dx/dist*step),ny=Math.round(nearest.y+dy/dist*step);
+  if(nx<0||ny<0||nx>=S.gridW||ny>=S.gridH||S.grid[ny][nx]===1)return;
+  let newNode={x:nx,y:ny,parent:S._rrtNodes.indexOf(nearest)};
+  S._rrtNodes.push(newNode);S._rrtEdges.push({x1:nearest.x,y1:nearest.y,x2:nx,y2:ny});S.visited.push({x:nx,y:ny});
+  if(Math.abs(nx-S.end.x)<=1&&Math.abs(ny-S.end.y)<=1){
+    let p=[{x:nx,y:ny}],ci=S._rrtNodes.length-1;
+    while(S._rrtNodes[ci].parent!==null){ci=S._rrtNodes[ci].parent;p.unshift({x:S._rrtNodes[ci].x,y:S._rrtNodes[ci].y})}
+    S.path=p;S.searching=false;completeObj(1)}
+}
+
+// === Click handler ===
+function handleClick(x,y){
+  if(curLevel===0){
+    let cx=W/2,cy=H/2;
+    if(!S.sensors.camera&&y<cy-40){S.sensors.camera=true;S.installed++;if(S.installed>=3)completeObj(0)}
+    if(!S.sensors.lidar&&Math.sqrt((x-cx)**2+(y-cy)**2)<160&&Math.sqrt((x-cx)**2+(y-cy)**2)>60){S.sensors.lidar=true;S.installed++;if(S.installed>=3)completeObj(0)}
+    if(!S.sensors.radar&&y>cy+40){S.sensors.radar=true;S.installed++;if(S.installed>=3)completeObj(0)}
+  }
+  if(curLevel===5){
+    for(let v of S.vehicles){if(Math.abs(x-v.x)<25&&Math.abs(y-v.y)<15){S.selectedNode=v;return}}
+    if(Math.abs(x-S.rsu.x)<30&&Math.abs(y-S.rsu.y)<20){
+      if(S.selectedNode&&S.selectedNode.id!=='RSU'){S.links.push({x1:S.selectedNode.x,y1:S.selectedNode.y,x2:S.rsu.x,y2:S.rsu.y,color:'#f59e0b'});S.v2iDone=true;completeObj(1);S.selectedNode=null}
+      else S.selectedNode=S.rsu;return}
+    if(Math.abs(x-S.cloud.x)<35&&Math.abs(y-S.cloud.y)<22){
+      if(S.selectedNode){S.links.push({x1:S.selectedNode.x,y1:S.selectedNode.y,x2:S.cloud.x,y2:S.cloud.y,color:'#3b82f6'});S.v2cDone=true;completeObj(2);S.selectedNode=null}
+      return}
+    if(S.selectedNode&&S.selectedNode.id&&S.selectedNode.id.startsWith('V')){
+      for(let v of S.vehicles){if(v!==S.selectedNode&&Math.abs(x-v.x)<25&&Math.abs(y-v.y)<15){
+        S.links.push({x1:S.selectedNode.x,y1:S.selectedNode.y,x2:v.x,y2:v.y,color:'#06b6d4'});S.v2vDone=true;completeObj(0);S.selectedNode=null;return}}}
+  }
+  if(curLevel===6){
+    if(S.scenario===0&&S.choice<0){if(y>H*0.4&&y<H*0.6){S.choice=x<W/2?0:1;S.dilemmaShown=true;completeObj(0)}}
+    if(S.scenario===1){S.asilLevel=Math.min(4,S.asilLevel+1);if(S.asilLevel>=4){S.safetyDone=true;completeObj(1)}}
+    if(S.scenario===2){
+      let parts=[{key:'sensor',x:W*0.2},{key:'compute',x:W*0.5},{key:'brake',x:W*0.8}];
+      for(let p of parts){if(Math.abs(x-p.x)<55&&Math.abs(y-H*0.35)<35){S.redundancy[p.key]=true}}
+      if(S.redundancy.sensor&&S.redundancy.compute&&S.redundancy.brake){S.redundancyDone=true;completeObj(2)}}
+  }
+}
+
+// === Objectives ===
+function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel()}}
+function isLevelDone(idx){return levelObjs[idx].every(Boolean)}
+
+// === Panel ===
+function renderPanel(){
+  let L=LEVELS[curLevel],objs=levelObjs[curLevel];
+  let h='';
+  // stage nav
+  h+=`<div class="stage-nav"><div class="sn-bar">`;
+  for(let i=0;i<7;i++)h+=`<div class="sn-d ${levelObjs[i].every(Boolean)?'done':i===curLevel?'cur':''}" onclick="goLevel(${i})"></div>`;
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关</div><div class="sn-hint">${L.name}</div></div>`;
+  h+=`<h2>${L.name}</h2>`;
+  h+=`<p style="font-size:13px;line-height:1.6;color:var(--concept-text);margin-bottom:10px">${L.desc}</p>`;
+  // objectives
+  h+=`<h3>目标</h3>`;
+  for(let i=0;i<3;i++)h+=`<div class="obj-item"><div class="obj-dot ${objs[i]?'done':''}">${objs[i]?'✓':i+1}</div><span style="color:${objs[i]?'var(--goal-done)':'var(--goal-text)'}">${L.objs[i]}</span></div>`;
+  // level-specific controls
+  h+=renderLevelPanel(curLevel);
+  // quiz when all done
+  if(isLevelDone(curLevel)&&L.quiz){
+    h+=`<div class="quiz-box"><div class="quiz-q">🧠 ${L.quiz.q}</div>`;
+    L.quiz.opts.forEach((o,i)=>{h+=`<div class="quiz-opt" onclick="checkQuiz(this,${i},${L.quiz.ans})">${o}</div>`});
+    h+=`</div>`}
+  // learn box
+  if(isLevelDone(curLevel))h+=`<div class="learn-box">${L.learn}</div>`;
+  panel.innerHTML=h;
+}
+
+function renderLevelPanel(idx){
+  let h='';
+  if(idx===0){
+    h+=`<h3>传感器安装</h3><p style="font-size:12px;color:var(--stage-hint)">点击画布上方/中间/下方区域安装对应传感器</p>`;
+    h+=`<p>📷 摄像头: ${S.sensors.camera?'✅':'❌'} | 🔦 LiDAR: ${S.sensors.lidar?'✅':'❌'} | 📡 雷达: ${S.sensors.radar?'✅':'❌'}</p>`;
+    if(S.installed>=3){
+      h+=`<h3>权重调节</h3>`;
+      h+=`<div class="slider-row"><label>摄像头权重: ${S.weights.camera.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.weights.camera*100}" oninput="S.weights.camera=this.value/100;renderPanel()" onchange="this.blur()"></div>`;
+      h+=`<div class="slider-row"><label>LiDAR权重: ${S.weights.lidar.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.weights.lidar*100}" oninput="S.weights.lidar=this.value/100;renderPanel()" onchange="this.blur()"></div>`;
+      h+=`<div class="slider-row"><label>雷达权重: ${S.weights.radar.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.weights.radar*100}" oninput="S.weights.radar=this.value/100;renderPanel()" onchange="this.blur()"></div>`;
+      h+=`<p style="font-size:13px;color:var(--sv)">融合置信度: ${S.confidence.toFixed(1)}%</p>`;
+      if(S.confidence>90&&!levelObjs[0][1]){completeObj(1)}
+      h+=`<button class="act-btn secondary" onclick="S.weather=S.weather==='clear'?'rain':'clear';renderPanel()">${S.weather==='clear'?'🌧️ 模拟恶劣天气':'☀️ 恢复晴天'}</button>`;
+      if(S.weather!=='clear'&&S.confidence>70&&!levelObjs[0][2])completeObj(2);
+    }
+  }
+  if(idx===1){
+    h+=`<h3>检测阈值</h3>`;
+    h+=`<div class="slider-row"><label>置信度阈值: ${S.threshold.toFixed(2)}</label><input type="range" min="10" max="99" value="${S.threshold*100}" oninput="S.threshold=this.value/100;renderPanel()" onchange="this.blur()"></div>`;
+    let det=S.objects.filter(o=>o.detected&&o.conf>=0.5).length,total=S.objects.filter(o=>o.conf>=0.5).length;
+    let acc=total>0?det/total*100:0;
+    h+=`<p style="color:${acc>85?'#22c55e':'#f59e0b'}">准确率: ${acc.toFixed(1)}%</p>`;
+    if(acc>85&&!levelObjs[1][0])completeObj(0);
+    h+=`<button class="act-btn" onclick="S.segDone=true;completeObj(1);renderPanel()">执行语义分割</button>`;
+    h+=`<button class="act-btn secondary" onclick="S.detected3d=true;completeObj(2);renderPanel()" style="margin-top:4px">处理3D点云</button>`;
+  }
+  if(idx===2){
+    h+=`<h3>卡尔曼滤波参数</h3>`;
+    h+=`<div class="slider-row"><label>过程噪声 Q: ${S.kfQ.toFixed(2)}</label><input type="range" min="1" max="100" value="${S.kfQ*10}" oninput="S.kfQ=this.value/10;renderPanel()" onchange="this.blur()"></div>`;
+    h+=`<div class="slider-row"><label>观测噪声 R: ${S.kfR.toFixed(2)}</label><input type="range" min="1" max="100" value="${S.kfR*10}" oninput="S.kfR=this.value/10;renderPanel()" onchange="this.blur()"></div>`;
+    h+=`<p style="color:${S.error<0.5?'#22c55e':S.error<2?'#f59e0b':'#ef4444'}">定位误差: ${S.error.toFixed(2)}m</p>`;
+    if(!levelObjs[2][0]&&S.t>60)completeObj(0);
+    if(S.error<0.5&&!levelObjs[2][1])completeObj(1);
+    h+=`<button class="act-btn secondary" onclick="S.gpsLost=!S.gpsLost;S.imuDrift=0;renderPanel()">${S.gpsLost?'🛰️ 恢复GPS':'🚫 模拟GPS丢失'}</button>`;
+    if(S.gpsLost&&S.error<2&&!levelObjs[2][2])completeObj(2);
+  }
+  if(idx===3){
+    h+=`<h3>选择算法</h3>`;
+    h+=`<button class="act-btn" onclick="startAlgo('astar')">A* 算法</button>`;
+    h+=`<button class="act-btn secondary" onclick="startAlgo('rrt')" style="margin-top:4px">RRT 随机树</button>`;
+    h+=`<button class="act-btn secondary" onclick="resetGrid()" style="margin-top:4px">🔄 重置地图</button>`;
+    if(S.path.length>0)h+=`<p style="color:#22c55e">路径长度: ${S.path.length} 步</p>`;
+    h+=`<button class="act-btn secondary" onclick="addDynObs();completeObj(2);renderPanel()" style="margin-top:4px">添加动态障碍物</button>`;
+  }
+  if(idx===4){
+    h+=`<h3>PID 参数调节</h3>`;
+    h+=`<div class="slider-row"><label>P (比例): ${S.pidP.toFixed(2)}</label><input type="range" min="0" max="200" value="${S.pidP*100}" oninput="S.pidP=this.value/100;renderPanel()" onchange="this.blur()"></div>`;
+    h+=`<div class="slider-row"><label>I (积分): ${S.pidI.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.pidI*100}" oninput="S.pidI=this.value/100;renderPanel()" onchange="this.blur()"></div>`;
+    h+=`<div class="slider-row"><label>D (微分): ${S.pidD.toFixed(2)}</label><input type="range" min="0" max="200" value="${S.pidD*100}" oninput="S.pidD=this.value/100;renderPanel()" onchange="this.blur()"></div>`;
+    h+=`<p>状态机: <span style="color:#22c55e">${S.stateMachine}</span></p>`;
+    h+=`<button class="act-btn secondary" onclick="cycleState()">切换状态</button>`;
+    if(S.pidP>0&&!levelObjs[4][0])completeObj(0);
+    let avgErr=0;if(S.trail.length>10){for(let i=S.trail.length-10;i<S.trail.length;i++){let closest=null,minD=Infinity;for(let p of S.targetPath){let d=Math.sqrt((p.x-S.trail[i].x)**2+(p.y-S.trail[i].y)**2);if(d<minD){minD=d;closest=p}}avgErr+=minD}avgErr/=10}
+    if(avgErr<30&&avgErr>0&&S.trail.length>50&&!levelObjs[4][1])completeObj(1);
+    h+=`<button class="act-btn secondary" onclick="S.mpcActive=!S.mpcActive;completeObj(2);renderPanel()" style="margin-top:4px">${S.mpcActive?'关闭MPC':'启用MPC预测'}</button>`;
+  }
+  if(idx===5){
+    h+=`<h3>通信链路</h3><p style="font-size:12px;color:var(--stage-hint)">点击一个节点，再点击另一个节点建立链路</p>`;
+    h+=`<p>V2V 车-车: ${S.v2vDone?'✅':'❌'} | V2I 车-路: ${S.v2iDone?'✅':'❌'} | V2C 车-云: ${S.v2cDone?'✅':'❌'}</p>`;
+    if(S.selectedNode)h+=`<p style="color:var(--sv)">已选: ${S.selectedNode.id}，点击目标节点</p>`;
+  }
+  if(idx===6){
+    h+=`<h3>场景选择</h3>`;
+    h+=`<button class="act-btn ${S.scenario===0?'':'secondary'}" onclick="S.scenario=0;renderPanel()">电车难题</button>`;
+    h+=`<button class="act-btn ${S.scenario===1?'':'secondary'}" onclick="S.scenario=1;renderPanel()" style="margin-top:4px">ISO 26262</button>`;
+    h+=`<button class="act-btn ${S.scenario===2?'':'secondary'}" onclick="S.scenario=2;renderPanel()" style="margin-top:4px">冗余设计</button>`;
+    if(S.scenario===0)h+=`<p style="font-size:12px;color:var(--stage-hint)">点击画布左侧（直行）或右侧（转向）做出选择</p>`;
+    if(S.scenario===1)h+=`<p style="font-size:12px;color:var(--stage-hint)">点击画布逐级了解安全等级</p>`;
+    if(S.scenario===2)h+=`<p style="font-size:12px;color:var(--stage-hint)">点击各组件启用冗余备份</p>`;
+  }
+  return h;
+}
+
+// === Helpers ===
+function startAlgo(algo){S.algo=algo;S.searching=true;S.path=[];S.visited=[];S.openSet=[];S.searchStep=0;S._astarInit=false;S._rrtNodes=null;S._rrtEdges=null;
+  if(algo==='astar'){let k=`${S.start.x},${S.start.y}`;S._gScore={};S._fScore={};S._cameFrom={};S._gScore[k]=0;S._fScore[k]=heur(S.start,S.end);S.openSet=[{...S.start}];S._astarInit=true}}
+function resetGrid(){initLevel(3);renderPanel()}
+function addDynObs(){S.dynObs.push({x:5+Math.random()*15,y:3+Math.random()*12,dx:(Math.random()-0.5)*0.04,dy:(Math.random()-0.5)*0.04})}
+function cycleState(){let states=['cruise','follow','lane_change','stop'];let i=states.indexOf(S.stateMachine);S.stateMachine=states[(i+1)%4];renderPanel()}
+function checkQuiz(el,picked,ans){if(el.classList.contains('correct')||el.classList.contains('wrong'))return;
+  if(picked===ans){el.classList.add('correct');setTimeout(()=>{if(curLevel<6){curLevel++;initLevel(curLevel);renderPanel()}else showResult()},800)}
+  else el.classList.add('wrong')}
+function goLevel(i){curLevel=i;initLevel(i);renderPanel()}
+
+// === Result ===
+function showResult(){
+  let done=levelObjs.flat().filter(Boolean).length;
+  panel.innerHTML=`<div class="summary-box"><div class="summary-title">🎉 探险完成！</div><div class="summary-sub">你已掌握自动驾驶全栈技术</div>
+    <div class="summary-stats"><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标完成</div></div><div class="summary-stat"><div class="num">7/7</div><div class="label">关卡通过</div></div></div>
+    <div class="summary-keys"><div>📡 传感器融合提供冗余感知</div><div>👁️ 环境感知是决策的基础</div><div>🗺️ 多源融合定位精度达厘米级</div><div>🛤️ 路径规划需兼顾效率与安全</div><div>🎮 PID/MPC实现精确控制</div><div>📶 V2X扩展单车感知边界</div><div>⚖️ 安全与伦理是终极挑战</div></div>
+    <button class="act-btn" onclick="curLevel=0;levelObjs=Array.from({length:7},()=>[false,false,false]);initLevel(0);renderPanel()" style="margin-top:12px">重新探索</button></div>`;
+}
+
+// === Main loop ===
+function startGame(){overlay.style.display='none';panel.style.display='block';bar.style.display='flex';resize();initLevel(0);renderPanel();loop()}
+function draw(){ctx.clearRect(0,0,W,H);drawGrid();drawStars();drawLevel(curLevel)}
+function loop(){time++;updateLevel(curLevel,1);draw();animId=requestAnimationFrame(loop)}
+cv.addEventListener('click',e=>{let r=cv.getBoundingClientRect();handleClick(e.clientX-r.left,e.clientY-r.top)});
+bar.innerHTML='<div class="bar-left"><span class="bar-btn active">自动驾驶探险</span></div><div class="bar-right">边玩边学</div>';
+resize();
+</script>
+</body>
+</html>

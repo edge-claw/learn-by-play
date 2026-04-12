@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>航空发动机探险</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root,[data-theme="dark"]{
+  --bg:#0a0a1a;--text:#eee;--text-sub:#888;--text-muted:#aaa;
+  --overlay-bg:rgba(0,0,0,.88);
+  --panel-bg:rgba(10,10,30,0.95);--panel-border:#1a1a3a;
+  --bar-bg:rgba(10,10,26,.95);--bar-border:#1a1a3a;
+  --concept-bg:#0d0d24;--concept-border:#1a1a3a;--concept-text:#a0a0c0;
+  --goal-text:#c0c0e0;--goal-done:#4ade80;
+  --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
+  --btn-green-bg:#0a2a1a;--btn-green-border:#22c55e;--btn-green-text:#4ade80;
+  --hint-bg:#1a1a10;--hint-border:#444;--hint-text:#cca;
+  --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
+  --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
+  --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
+  --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
+  --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
+  --roadmap-text:#a0a0c0;--roadmap-num-bg:#1a1a4a;--roadmap-num-text:#60a5fa;
+  --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+}
+[data-theme="light"]{
+  --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
+  --overlay-bg:rgba(255,255,255,0.97);
+  --panel-bg:rgba(255,255,255,0.98);--panel-border:#e0e0e8;
+  --bar-bg:rgba(255,255,255,0.98);--bar-border:#e0e0e8;
+  --concept-bg:#f0f4ff;--concept-border:#c7d2fe;--concept-text:#334155;
+  --goal-text:#475569;--goal-done:#059669;
+  --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
+  --btn-green-bg:#ecfdf5;--btn-green-border:#6ee7b7;--btn-green-text:#059669;
+  --hint-bg:#fffbeb;--hint-border:#fcd34d;--hint-text:#92400e;
+  --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
+  --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
+  --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
+  --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
+  --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
+  --roadmap-text:#475569;--roadmap-num-bg:#e0e7ff;--roadmap-num-text:#4f46e5;
+  --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+.overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.hidden{display:none}
+.start-box{text-align:center;max-width:560px}
+.start-box h1{font-size:38px;margin-bottom:6px;letter-spacing:2px}
+.start-box h1 .gold{color:#60a5fa}
+.start-box .sub{font-size:17px;color:var(--sub-color);margin-bottom:28px}
+.start-btn{background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff;border:none;padding:14px 52px;border-radius:10px;font-size:18px;font-weight:700;cursor:pointer;transition:transform .2s}
+.start-btn:hover{transform:scale(1.05)}
+.features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
+.feat{text-align:center;color:#aaa;font-size:12px;width:80px}
+.feat .fi{font-size:26px;margin-bottom:4px}
+.panel{position:absolute;top:0;left:0;width:320px;height:calc(100% - 32px);background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;display:none;padding-bottom:16px}
+.concept-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
+.goal-row{display:flex;align-items:center;gap:6px;margin:3px 0;font-size:12px}
+.g-icon{font-size:14px}.g-text{color:var(--text-sub)}.g-text.done{color:#059669;text-decoration:line-through}
+.act-btn{display:block;width:100%;padding:10px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:15px;cursor:pointer;text-align:center}
+.act-btn:hover{background:var(--btn-hover)}.act-btn:disabled{opacity:0.4;cursor:not-allowed}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--hint-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:14px;line-height:1.8;color:var(--learn-text)}
+.slider-wrap{margin:8px 0}.slider-wrap label{font-size:11px;color:#888}
+.slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}
+.sv{color:var(--sv);font-weight:bold}
+.m-title{font-size:17px;font-weight:700;margin:8px 0 4px;color:var(--title-color)}.m-sub{font-size:12px;color:#888;margin-bottom:8px}
+#bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:var(--bar-bg);border-top:1px solid var(--bar-border);z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
+#bottom-bar .bb-left{flex:1}#bottom-bar .bb-right{text-align:right}
+.overlay .result-box{text-align:center;max-width:420px;background:var(--result-bg);border:1px solid var(--result-border);border-radius:16px;padding:28px 36px;box-shadow:0 8px 32px rgba(0,0,0,0.1)}
+.result-box .rb-icon{font-size:48px;margin-bottom:10px}.result-box .rb-title{font-size:22px;font-weight:700;margin-bottom:8px}
+.result-box button{padding:10px 28px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin:0 6px}
+.result-box .btn-next{background:#3b82f6;color:#fff}.result-box .btn-retry{background:var(--stage-bar);color:var(--text-sub)}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px}.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
+.summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
+.summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
+.summary-stats{display:flex;justify-content:center;gap:20px;margin:12px 0}
+.summary-stat{text-align:center}.summary-stat .num{font-size:26px;font-weight:bold;color:#22c55e}
+.summary-stat .label{font-size:11px;color:var(--summary-sub)}
+.summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
+.summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+.roadmap{margin:20px auto;max-width:500px;text-align:left}
+.roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
+.roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
+.roadmap-num{width:24px;height:24px;border-radius:50%;background:var(--roadmap-num-bg);color:var(--roadmap-num-text);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;flex-shrink:0}
+[data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
+[data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
+.quiz-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin:8px 0}
+.quiz-q{font-size:13px;color:var(--sv);margin-bottom:8px;font-weight:600}
+.quiz-opt{font-size:13px;color:var(--concept-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--concept-border);background:var(--concept-bg)}
+.quiz-opt:hover{background:var(--btn-hover);border-color:var(--btn-border)}
+.quiz-opt.correct{background:#0a2a0a;border-color:#22c55e;color:#4ade80}
+.quiz-opt.wrong{background:#2a0a0a;border-color:#ef4444;color:#f87171}
+[data-theme="light"] .quiz-opt.correct{background:#dcfce7;border-color:#22c55e;color:#166534}
+[data-theme="light"] .quiz-opt.wrong{background:#fef2f2;border-color:#ef4444;color:#991b1b}
+</style>
+</head>
+<body data-theme="dark">
+<button id="themeToggle" onclick="toggleTheme()" style="position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa">🌙 暗色</button>
+<canvas id="canvas"></canvas>
+<div class="overlay" id="startScreen">
+<div class="start-box">
+  <h1>✈️ <span class="gold">航空发动机</span>探险</h1>
+  <div class="sub">7 个关卡，从推进原理到未来动力</div>
+<button class="start-btn" onclick="startGame()">开始探险</button>
+  <div class="features">
+    <div class="feat"><div class="fi">🚀</div>推进原理</div>
+    <div class="feat"><div class="fi">🔥</div>涡喷发动机</div>
+    <div class="feat"><div class="fi">💨</div>涡扇发动机</div>
+    <div class="feat"><div class="fi">🌀</div>压气机</div>
+    <div class="feat"><div class="fi">🔥</div>燃烧室</div>
+    <div class="feat"><div class="fi">💎</div>涡轮叶片</div>
+    <div class="feat"><div class="fi">⚡</div>未来动力</div>
+  </div>
+</div>
+</div>
+<div class="overlay hidden" id="resultModal"><div class="result-box" id="resultBox"></div></div>
+<div class="panel" id="panel"></div>
+<div id="bottom-bar"><span class="bb-left" id="bbLeft"></span><span class="bb-right" id="bbRight"></span></div>
+<script>
+let isDark=true;
+const TH={
+  dark:{bg:'#0a0a2e',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)',metal:'#4a5568',metalLight:'#718096',flame:'#f97316',flameCore:'#fbbf24',exhaust:'rgba(239,68,68,0.4)',air:'rgba(96,165,250,0.3)',blade:'#60a5fa',casing:'#2d3748',sky1:'#0a0a2e',sky2:'#1a1a4a',showStars:true},
+  light:{bg:'#e8edf5',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',metal:'#94a3b8',metalLight:'#cbd5e1',flame:'#ea580c',flameCore:'#f59e0b',exhaust:'rgba(239,68,68,0.25)',air:'rgba(59,130,246,0.2)',blade:'#3b82f6',casing:'#64748b',sky1:'#87ceeb',sky2:'#e0f0ff',showStars:false}
+};
+function t(){return isDark?TH.dark:TH.light}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel()}
+
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let CW,CH,time=0,animId;
+let gameState='start',currentLevel=0;
+let levelState={},stars=[],particles=[];
+const completedLevels=new Set();
+
+const levels=[
+{title:'推进原理',sub:'牛顿第三定律与推力',concept:'喷气发动机的核心原理是牛顿第三定律：向后高速喷出气体，获得向前的反作用力（推力）。推力 = 质量流量 × (排气速度 - 进气速度)。比冲衡量燃料效率。',goals:['调节排气速度产生推力','观察推力与质量流量的关系','使比冲超过1000秒'],learn:'推力公式 F = ṁ(Ve-V0) 是所有喷气发动机的基础。比冲 Isp = F/(ṁg) 表示单位重量燃料产生的推力持续时间。涡扇发动机比冲约3000-6000秒，远高于火箭的300秒，因为它利用了大量空气作为工质。'},
+{title:'涡喷发动机',sub:'五大核心部件',concept:'涡喷发动机由进气道→压气机→燃烧室→涡轮→喷管五部分组成。空气被压缩→加热→膨胀做功→高速喷出。这就是布雷顿循环。',goals:['观察气流通过各部件的变化','调节油门观察温度压力变化','使推力超过50kN'],learn:'涡喷发动机是最简单的燃气涡轮发动机。压气机将空气压缩10-30倍，燃烧室加热到1200-1700°C，涡轮提取部分能量驱动压气机，剩余能量在喷管中转化为动能。1937年惠特尔制造了第一台实用涡喷发动机。'},
+{title:'涡扇发动机',sub:'涵道比与推力分配',concept:'涡扇发动机在涡喷外加了一个大风扇和外涵道。风扇推动大量空气绕过核心机，产生80%以上的推力。涵道比（外涵/内涵流量比）越大，效率越高，噪音越低。',goals:['调节涵道比观察推力变化','对比内涵与外涵推力占比','使总效率超过40%'],learn:'现代民航发动机涵道比高达10-12（如GE9X达到10:1）。高涵道比意味着大量空气以较低速度排出，推进效率高、噪音低。但涵道比不能无限增大——风扇直径受限于机翼离地高度和阻力。这就是为什么A380的发动机直径接近3米。'},
+{title:'压气机设计',sub:'轴流级数与喘振',concept:'轴流压气机由多级转子+静子叶片组成，每级压比约1.2-1.5。总压比=各级压比之积。当攻角过大或流量不匹配时，气流分离导致喘振——压气机的致命故障。',goals:['调节级数观察总压比','触发喘振观察现象','调节失速裕度恢复稳定'],learn:'喘振是压气机最危险的工况——气流突然反向，伴随巨大噪音和振动，可在数秒内摧毁发动机。现代压气机通过可调静子叶片、放气活门、主动控制等手段保持15-25%的失速裕度。GE90压气机22级，总压比39:1。'},
+{title:'燃烧室设计',sub:'火焰稳定与冷却',concept:'燃烧室要在高速气流中维持稳定燃烧（1400-1900°C），同时保护壁面不被烧毁。环形燃烧室通过旋流器产生回流区稳定火焰，多排气膜孔冷却壁面。',goals:['调节燃油流量观察温度分布','设计冷却方案降低壁温','使出口温度均匀度<5%'],learn:'燃烧室的挑战是在0.002秒内完成燃烧，效率>99%，同时出口温度分布均匀。气膜冷却在壁面形成一层冷空气保护膜，使壁温降低300-500°C。贫油预混燃烧（LPP）可减少50%的NOx排放，是下一代低排放燃烧室的关键技术。'},
+{title:'涡轮叶片',sub:'材料与冷却极限',concept:'涡轮叶片工作在1500°C以上的燃气中，承受巨大的离心力和热应力。单晶高温合金+气膜冷却+热障涂层（TBC），使叶片能在超过材料熔点的温度下工作。',goals:['选择叶片材料观察耐温极限','设计气膜冷却孔布局','施加热障涂层降低金属温度'],learn:'涡轮叶片是航空发动机中技术含量最高的零件。单晶叶片消除了晶界——高温蠕变的薄弱环节。内部复杂的冷却通道+数百个气膜孔，使叶片表面温度比燃气低300-400°C。热障涂层（氧化锆陶瓷）再降低100-150°C。一片叶片价值数万美元。'},
+{title:'未来动力',sub:'变循环与新能源',concept:'未来航空动力正在探索：变循环发动机（可在涡喷/涡扇间切换）、超燃冲压发动机（Ma5+）、电推进（短途航线）、氢燃料（零碳排放）。',goals:['对比变循环发动机的两种模式','观察超燃冲压的工作原理','评估电推进与氢燃料方案'],learn:'变循环发动机（如GE的XA100）可根据飞行状态改变涵道比——起飞时高涵道比省油，超音速时低涵道比增推。超燃冲压发动机在Ma5以上让空气超音速通过燃烧室，是高超音速飞行的唯一选择。空客计划2035年推出氢燃料客机，实现零碳飞行。'}
+];
+
+function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
+function initStars(){stars=[];for(let i=0;i<80;i++)stars.push({x:Math.random()*CW,y:Math.random()*CH,r:Math.random()*1.5+.3,tw:Math.random()*Math.PI*2,sp:Math.random()*.02+.005})}
+function drawStars(){if(!t().showStars)return;for(let s of stars){const a=.4+.6*Math.abs(Math.sin(s.tw+time*s.sp));ctx.fillStyle=`rgba(255,255,255,${a})`;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill()}}
+function addP(x,y,col,n){for(let i=0;i<(n||8);i++){const a=Math.random()*Math.PI*2,sp=1+Math.random()*3;particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,col,life:0.6+Math.random()*0.4,ml:1,sz:2+Math.random()*2})}}
+function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt*60;p.y+=p.vy*dt*60;p.life-=dt;if(p.life<=0)particles.splice(i,1)}}
+function drawParticles(){for(let p of particles){const a=Math.max(0,p.life/p.ml);ctx.globalAlpha=a;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.sz*a,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
+window.addEventListener('resize',resize);resize();
+
+function startGame(){document.getElementById('startScreen').classList.add('hidden');document.getElementById('panel').style.display='block';document.getElementById('bottom-bar').style.display='flex';gameState='play';initLevel(0);renderPanel()}
+
+// PLACEHOLDER_INIT_LEVEL
+
+function initLevel(idx){
+  currentLevel=idx;particles=[];
+  if(idx===0){
+    levelState={massFlow:1,exitVel:100,inletVel:250,goalDone:[false,false,false],elapsed:0};
+  }else if(idx===1){
+    levelState={throttle:0.3,sections:[],goalDone:[false,false,false],elapsed:0,observed:false};
+    calcSections();
+  }else if(idx===2){
+    levelState={bpr:2,goalDone:[false,false,false],elapsed:0,triedHigh:false};
+  }else if(idx===3){
+    levelState={stages:5,stallMargin:20,surging:false,goalDone:[false,false,false],elapsed:0,surgeTriggered:false};
+  }else if(idx===4){
+    levelState={fuelFlow:0.5,coolingHoles:0,goalDone:[false,false,false],elapsed:0};
+  }else if(idx===5){
+    levelState={material:'poly',cooling:false,tbc:false,goalDone:[false,false,false],elapsed:0};
+  }else if(idx===6){
+    levelState={mode:'turbojet',viewType:'adaptive',goalDone:[false,false,false],elapsed:0,seenScramjet:false,seenElectric:false};
+  }
+  renderPanel();
+}
+
+function calcSections(){
+  const thr=levelState.throttle;
+  const P2=1+thr*25,T2=288+thr*200;
+  const T3=T2+thr*1200,P3=P2*0.95;
+  const T4=T3-thr*400,P4=P3*0.4;
+  const Ve=Math.sqrt(2*1005*(T4-288));
+  levelState.sections=[
+    {name:'进气道',P:1,T:288,V:250},
+    {name:'压气机',P:P2,T:T2,V:150},
+    {name:'燃烧室',P:P3,T:T3,V:80},
+    {name:'涡轮',P:P4,T:T4,V:200},
+    {name:'喷管',P:1.1,T:T4*0.6,V:Ve}
+  ];
+}
+
+function renderPanel(){
+  const L=levels[currentLevel],S=levelState,p=document.getElementById('panel');
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<levels.length;i++){let cls=i<currentLevel||completedLevels.has(i)?'done':i===currentLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="switchLevel(${i})"></div>`}
+  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关</div><div class="sn-hint">${L.title} — ${L.sub}</div></div>`;
+  h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
+  h+=`<div class="concept-box">${L.concept}</div>`;
+  h+='<div style="margin:8px 0;font-size:12px;color:var(--text-muted);font-weight:600">目标清单</div>';
+  for(let i=0;i<L.goals.length;i++){const done=S.goalDone&&S.goalDone[i];h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`}
+  h+=renderLevelActions();
+  if(S.goalDone&&S.goalDone.every(g=>g)&&!completedLevels.has(currentLevel))completedLevels.add(currentLevel);
+  if(completedLevels.has(currentLevel)){
+    h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
+    if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
+    else h+=summaryHTML();
+  }
+  p.innerHTML=h;
+  document.getElementById('bbLeft').textContent=`第 ${currentLevel+1} 关：${L.title}`;
+  document.getElementById('bbRight').textContent=`已通关 ${completedLevels.size}/${levels.length}`;
+}
+function switchLevel(i){if(i>=0&&i<levels.length){initLevel(i)}}
+function summaryHTML(){
+  let h='<div class="summary-box"><div class="summary-title">🏆 航空发动机探险完成！</div>';
+  h+='<div class="summary-sub">你已掌握喷气发动机的核心知识</div>';
+  h+='<div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡通关</div></div><div class="summary-stat"><div class="num">5</div><div class="label">部件掌握</div></div></div>';
+  h+='<div class="summary-keys"><div>🔑 推力 = 质量流量 × 速度差</div><div>🔑 涵道比越大效率越高</div><div>🔑 单晶叶片+气膜冷却突破材料极限</div><div>🔑 变循环是未来战斗机动力方向</div></div>';
+  h+='<div class="roadmap"><div class="roadmap-title">继续学习路线</div>';
+  const items=['气体动力学与热力学','计算流体力学(CFD)','航空发动机控制系统','新型推进技术'];
+  items.forEach((t2,i)=>{h+=`<div class="roadmap-item"><div class="roadmap-num">${i+1}</div><div>${t2}</div></div>`});
+  h+='</div></div>';return h;
+}
+
+// PLACEHOLDER_LEVEL_ACTIONS
+
+function renderLevelActions(){
+  const S=levelState;let h='';
+  if(currentLevel===0){
+    h+=`<div class="slider-wrap"><label>排气速度: <span class="sv">${S.exitVel} m/s</span></label><input type="range" min="50" max="800" value="${S.exitVel}" oninput="levelState.exitVel=+this.value;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div class="slider-wrap"><label>质量流量: <span class="sv">${S.massFlow} kg/s</span></label><input type="range" min="1" max="200" value="${S.massFlow}" oninput="levelState.massFlow=+this.value;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    const thrust=S.massFlow*(S.exitVel-S.inletVel);
+    const isp=thrust>0?thrust/(S.massFlow*9.81):0;
+    h+=`<div style="font-size:12px;margin:6px 0;color:var(--text-sub)">推力: <span class="sv">${(thrust/1000).toFixed(1)} kN</span> | 比冲: <span class="sv">${isp.toFixed(0)} s</span></div>`;
+    if(thrust>0)S.goalDone[0]=true;
+    if(S.massFlow>50)S.goalDone[1]=true;
+    if(isp>1000)S.goalDone[2]=true;
+  }else if(currentLevel===1){
+    h+=`<div class="slider-wrap"><label>油门: <span class="sv">${(S.throttle*100).toFixed(0)}%</span></label><input type="range" min="10" max="100" value="${S.throttle*100}" oninput="levelState.throttle=this.value/100;calcSections();renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    if(S.sections.length>0){
+      h+='<div style="font-size:11px;margin:6px 0">';
+      S.sections.forEach(sec=>{h+=`<div style="color:var(--text-sub);margin:2px 0">${sec.name}: <span class="sv">${sec.P.toFixed(1)}atm</span> / <span style="color:#f97316">${sec.T.toFixed(0)}K</span> / ${sec.V.toFixed(0)}m/s</div>`});
+      h+='</div>';
+      S.goalDone[0]=true;
+    }
+    if(S.throttle>0.5)S.goalDone[1]=true;
+    const lastSec=S.sections[S.sections.length-1];
+    if(lastSec&&S.massFlow){const thr2=50*(lastSec.V-250);if(S.throttle>0.8)S.goalDone[2]=true;}
+  }else if(currentLevel===2){
+    h+=`<div class="slider-wrap"><label>涵道比 BPR: <span class="sv">${S.bpr.toFixed(1)}</span></label><input type="range" min="5" max="120" value="${S.bpr*10}" oninput="levelState.bpr=this.value/10;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    const coreThrust=100/(1+S.bpr);const bypassThrust=100-coreThrust;
+    const eta=25+S.bpr*2.5;
+    h+=`<div style="font-size:12px;margin:6px 0;color:var(--text-sub)">内涵推力: <span class="sv">${coreThrust.toFixed(1)}%</span> | 外涵推力: <span class="sv">${bypassThrust.toFixed(1)}%</span></div>`;
+    h+=`<div style="font-size:12px;color:var(--text-sub)">推进效率: <span class="sv">${Math.min(eta,55).toFixed(1)}%</span></div>`;
+    S.goalDone[0]=true;
+    if(bypassThrust>80)S.goalDone[1]=true;
+    if(eta>40)S.goalDone[2]=true;
+    if(S.bpr>6)S.triedHigh=true;
+  }else if(currentLevel===3){
+    h+=`<div class="slider-wrap"><label>压气机级数: <span class="sv">${S.stages}</span></label><input type="range" min="1" max="22" value="${S.stages}" oninput="levelState.stages=+this.value;levelState.surging=false;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    const pr=Math.pow(1.35,S.stages);
+    h+=`<div style="font-size:12px;margin:4px 0;color:var(--text-sub)">总压比: <span class="sv">${pr.toFixed(1)}:1</span></div>`;
+    h+=`<div class="slider-wrap"><label>失速裕度: <span class="sv">${S.stallMargin}%</span></label><input type="range" min="0" max="40" value="${S.stallMargin}" oninput="levelState.stallMargin=+this.value;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<button class="act-btn" onclick="triggerSurge()">模拟极端工况</button>`;
+    if(S.surging)h+=`<div style="font-size:12px;color:#ef4444;font-weight:bold">🚨 喘振！气流反向，发动机剧烈振动！</div>`;
+    S.goalDone[0]=true;
+    if(S.surgeTriggered)S.goalDone[1]=true;
+    if(S.surgeTriggered&&!S.surging&&S.stallMargin>15)S.goalDone[2]=true;
+  }else if(currentLevel===4){
+    h+=`<div class="slider-wrap"><label>燃油流量: <span class="sv">${(S.fuelFlow*100).toFixed(0)}%</span></label><input type="range" min="10" max="100" value="${S.fuelFlow*100}" oninput="levelState.fuelFlow=this.value/100;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    const Tmax=1200+S.fuelFlow*700;
+    const wallT=S.coolingHoles>0?Tmax-S.coolingHoles*60:Tmax;
+    const uniformity=S.coolingHoles>=5?3+Math.random()*2:8+Math.random()*5;
+    h+=`<div style="font-size:12px;margin:4px 0;color:var(--text-sub)">燃气温度: <span style="color:#f97316">${Tmax.toFixed(0)}°C</span> | 壁面温度: <span style="color:${wallT>900?'#ef4444':'#4ade80'}">${wallT.toFixed(0)}°C</span></div>`;
+    h+=`<div class="slider-wrap"><label>冷却孔排数: <span class="sv">${S.coolingHoles}</span></label><input type="range" min="0" max="8" value="${S.coolingHoles}" oninput="levelState.coolingHoles=+this.value;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div style="font-size:12px;color:var(--text-sub)">出口温度均匀度: <span class="sv">${uniformity.toFixed(1)}%</span></div>`;
+    if(S.fuelFlow>0.3)S.goalDone[0]=true;
+    if(S.coolingHoles>=3&&wallT<900)S.goalDone[1]=true;
+    if(uniformity<5)S.goalDone[2]=true;
+  }else if(currentLevel===5){
+    const mats={poly:{name:'多晶合金',maxT:850},ds:{name:'定向凝固',maxT:950},sx:{name:'单晶合金',maxT:1050}};
+    const mat=mats[S.material];
+    let effectiveT=1500;
+    if(S.cooling)effectiveT-=350;
+    if(S.tbc)effectiveT-=130;
+    h+=`<div style="font-size:12px;margin:4px 0;color:var(--text-sub)">当前材料: <span class="sv">${mat.name}</span> (耐温 ${mat.maxT}°C)</div>`;
+    h+=`<div style="font-size:12px;color:var(--text-sub)">叶片金属温度: <span style="color:${effectiveT>mat.maxT?'#ef4444':'#4ade80'}">${effectiveT}°C</span></div>`;
+    h+=`<button class="act-btn" onclick="levelState.material='poly';renderPanel()" ${S.material==='poly'?'disabled':''}>多晶合金</button>`;
+    h+=`<button class="act-btn" onclick="levelState.material='ds';renderPanel()" ${S.material==='ds'?'disabled':''}>定向凝固</button>`;
+    h+=`<button class="act-btn" onclick="levelState.material='sx';renderPanel()" ${S.material==='sx'?'disabled':''}>单晶合金</button>`;
+    h+=`<button class="act-btn" onclick="levelState.cooling=!levelState.cooling;renderPanel()">${S.cooling?'关闭气膜冷却':'开启气膜冷却'}</button>`;
+    h+=`<button class="act-btn" onclick="levelState.tbc=!levelState.tbc;renderPanel()">${S.tbc?'移除热障涂层':'施加热障涂层'}</button>`;
+    S.goalDone[0]=true;
+    if(S.cooling)S.goalDone[1]=true;
+    if(S.tbc&&effectiveT<=mat.maxT)S.goalDone[2]=true;
+  }else if(currentLevel===6){
+    h+=`<button class="act-btn" onclick="levelState.viewType='adaptive';renderPanel()" ${S.viewType==='adaptive'?'disabled':''}>变循环发动机</button>`;
+    h+=`<button class="act-btn" onclick="levelState.viewType='scramjet';levelState.seenScramjet=true;renderPanel()" ${S.viewType==='scramjet'?'disabled':''}>超燃冲压发动机</button>`;
+    h+=`<button class="act-btn" onclick="levelState.viewType='electric';levelState.seenElectric=true;renderPanel()" ${S.viewType==='electric'?'disabled':''}>电推进/氢燃料</button>`;
+    if(S.viewType==='adaptive'){
+      h+=`<button class="act-btn" onclick="levelState.mode=levelState.mode==='turbojet'?'turbofan':'turbojet';renderPanel()">切换模式: ${S.mode==='turbojet'?'涡喷(超音速)':'涡扇(亚音速)'}</button>`;
+      S.goalDone[0]=true;
+    }
+    if(S.seenScramjet)S.goalDone[1]=true;
+    if(S.seenElectric)S.goalDone[2]=true;
+  }
+  return h;
+}
+
+function triggerSurge(){
+  const S=levelState;S.surgeTriggered=true;
+  if(S.stallMargin<15){S.surging=true;addP(CW/2+160,CH/2,'#ef4444',20);}
+  else{S.surging=false;addP(CW/2+160,CH/2,'#22c55e',10);}
+  renderPanel();
+}
+
+// PLACEHOLDER_DRAW_ENGINE
+
+function drawBg(){
+  const th=t();
+  const grd=ctx.createLinearGradient(0,0,0,CH);
+  grd.addColorStop(0,th.sky1);grd.addColorStop(1,th.sky2);
+  ctx.fillStyle=grd;ctx.fillRect(0,0,CW,CH);
+  drawStars();
+}
+
+function drawEngineOutline(cx,cy,len,rad){
+  const th=t();
+  // nacelle
+  ctx.strokeStyle=th.casing;ctx.lineWidth=3;
+  ctx.beginPath();
+  ctx.moveTo(cx-len/2,cy-rad);ctx.lineTo(cx+len/2,cy-rad);
+  ctx.moveTo(cx-len/2,cy+rad);ctx.lineTo(cx+len/2,cy+rad);
+  ctx.stroke();
+  // inlet
+  ctx.beginPath();ctx.ellipse(cx-len/2,cy,8,rad,0,0,Math.PI*2);ctx.strokeStyle=th.metal;ctx.stroke();
+  // nozzle
+  ctx.beginPath();ctx.ellipse(cx+len/2,cy,6,rad*0.6,0,0,Math.PI*2);ctx.stroke();
+}
+
+function drawRotor(cx,cy,r,blades,angle){
+  const th=t();
+  ctx.strokeStyle=th.blade;ctx.lineWidth=2;
+  for(let i=0;i<blades;i++){
+    const a=angle+i*(Math.PI*2/blades);
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);ctx.stroke();
+  }
+}
+
+function drawFlameParticles(cx,cy,intensity){
+  const th=t();
+  for(let i=0;i<8;i++){
+    const px=cx+Math.random()*40-20;
+    const py=cy+Math.random()*30-15;
+    const r=2+Math.random()*4*intensity;
+    const a=0.3+Math.random()*0.5*intensity;
+    ctx.fillStyle=Math.random()>0.5?`rgba(249,115,22,${a})`:`rgba(251,191,36,${a})`;
+    ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);ctx.fill();
+  }
+}
+
+function drawLevel0(){
+  const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;
+  const thrust=S.massFlow*(S.exitVel-S.inletVel);
+  // rocket/engine body
+  ctx.fillStyle=th.metal;
+  ctx.beginPath();ctx.roundRect(cx-120,cy-40,240,80,10);ctx.fill();
+  // inlet air arrows
+  for(let i=0;i<5;i++){
+    const ay=cy-30+i*15;const ax=cx-180+Math.sin(time*3+i)*5;
+    ctx.strokeStyle=th.air;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax+50,ay);ctx.stroke();
+    ctx.fillStyle=th.air;ctx.beginPath();ctx.moveTo(ax+50,ay);ctx.lineTo(ax+44,ay-4);ctx.lineTo(ax+44,ay+4);ctx.closePath();ctx.fill();
+  }
+  ctx.fillStyle=th.textSec;ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText(`进气 ${S.inletVel} m/s`,cx-155,cy-45);
+  // exhaust
+  const exLen=S.exitVel*0.3;
+  for(let i=0;i<10;i++){
+    const ex=cx+120+Math.random()*exLen;const ey=cy+Math.random()*50-25;
+    const a2=0.2+0.5*(1-(ex-cx-120)/exLen);
+    ctx.fillStyle=`rgba(239,68,68,${a2})`;ctx.beginPath();ctx.arc(ex,ey,3+Math.random()*4,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle=th.textSec;ctx.font='11px sans-serif';ctx.fillText(`排气 ${S.exitVel} m/s`,cx+120+exLen/2,cy-45);
+  // thrust arrow
+  if(thrust>0){
+    const arrLen=Math.min(thrust/500*80,150);
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(cx-120,cy);ctx.lineTo(cx-120-arrLen,cy);ctx.stroke();
+    ctx.fillStyle='#22c55e';ctx.beginPath();ctx.moveTo(cx-120-arrLen,cy);ctx.lineTo(cx-120-arrLen+10,cy-8);ctx.lineTo(cx-120-arrLen+10,cy+8);ctx.closePath();ctx.fill();
+    ctx.fillStyle=th.text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(`推力 ${(thrust/1000).toFixed(1)} kN`,cx-120-arrLen/2,cy-20);
+  }
+  // formula
+  ctx.fillStyle=th.textMut;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('F = ṁ × (Ve - V₀)',cx,cy+70);
+}
+
+function drawLevel1(){
+  const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;
+  const len=360,rad=50;
+  drawEngineOutline(cx,cy,len,rad);
+  // sections
+  const sectionX=[-0.4,-0.15,0.05,0.25,0.42];
+  const sectionW=[0.25,0.2,0.2,0.17,0.13];
+  const colors=['rgba(96,165,250,0.2)','rgba(96,165,250,0.35)','rgba(249,115,22,0.4)','rgba(239,68,68,0.3)','rgba(239,68,68,0.2)'];
+  const names=['进气道','压气机','燃烧室','涡轮','喷管'];
+  for(let i=0;i<5;i++){
+    const sx=cx+sectionX[i]*len;const sw=sectionW[i]*len;
+    ctx.fillStyle=colors[i];ctx.fillRect(sx,cy-rad+5,sw,rad*2-10);
+    ctx.fillStyle=th.text;ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText(names[i],sx+sw/2,cy-rad-8);
+    if(S.sections[i]){
+      ctx.fillStyle=th.textSec;ctx.font='10px sans-serif';
+      ctx.fillText(`${S.sections[i].P.toFixed(1)}atm`,sx+sw/2,cy+rad+15);
+      ctx.fillStyle='#f97316';ctx.fillText(`${S.sections[i].T.toFixed(0)}K`,sx+sw/2,cy+rad+28);
+    }
+  }
+  // compressor rotor animation
+  drawRotor(cx-0.05*len,cy,rad*0.7,12,time*S.throttle*10);
+  // turbine rotor
+  drawRotor(cx+0.3*len,cy,rad*0.6,8,time*S.throttle*8);
+  // flame in combustor
+  if(S.throttle>0.2)drawFlameParticles(cx+0.15*len,cy,S.throttle);
+  // exhaust
+  if(S.throttle>0.1){
+    for(let i=0;i<6;i++){
+      const ex=cx+len/2+10+Math.random()*S.throttle*100;const ey=cy+Math.random()*40-20;
+      ctx.fillStyle=`rgba(239,68,68,${0.15+S.throttle*0.3})`;ctx.beginPath();ctx.arc(ex,ey,2+Math.random()*3,0,Math.PI*2);ctx.fill();
+    }
+  }
+}
+
+function drawLevel2(){
+  const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;
+  const len=380,coreRad=35,fanRad=35+S.bpr*8;
+  // outer nacelle (bypass)
+  ctx.strokeStyle=th.casing;ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(cx-len/2,cy-fanRad);ctx.lineTo(cx+len*0.2,cy-fanRad);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(cx-len/2,cy+fanRad);ctx.lineTo(cx+len*0.2,cy+fanRad);ctx.stroke();
+  // core
+  ctx.fillStyle=`rgba(100,100,150,0.15)`;ctx.fillRect(cx-len*0.3,cy-coreRad,len*0.7,coreRad*2);
+  // bypass flow
+  ctx.fillStyle=th.air;
+  for(let i=0;i<8;i++){
+    const bx=cx-len*0.2+Math.random()*len*0.5+time*50%len*0.5;
+    const by1=cy-fanRad+5+Math.random()*15;const by2=cy+fanRad-20+Math.random()*15;
+    ctx.beginPath();ctx.arc(bx,by1,2,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(bx,by2,2,0,Math.PI*2);ctx.fill();
+  }
+  // fan
+  drawRotor(cx-len/2+20,cy,fanRad*0.9,16,time*5);
+  // core components
+  drawRotor(cx-len*0.1,cy,coreRad*0.8,10,time*12);
+  drawFlameParticles(cx+len*0.1,cy,0.6);
+  drawRotor(cx+len*0.25,cy,coreRad*0.7,8,time*10);
+  // labels
+  const coreP=100/(1+S.bpr),bypassP=100-coreP;
+  ctx.fillStyle=th.text;ctx.font='12px sans-serif';ctx.textAlign='center';
+  ctx.fillText(`外涵 (${bypassP.toFixed(0)}% 推力)`,cx-len*0.1,cy-fanRad-15);
+  ctx.fillText(`内涵 (${coreP.toFixed(0)}% 推力)`,cx+len*0.1,cy+coreRad+25);
+  ctx.fillText(`BPR = ${S.bpr.toFixed(1)}`,cx,cy-fanRad-35);
+}
+
+// PLACEHOLDER_DRAW2
+
+function drawLevel3(){
+  const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;
+  const stageW=20,totalW=S.stages*stageW,startX=cx-totalW/2;
+  // compressor stages
+  for(let i=0;i<S.stages;i++){
+    const sx=startX+i*stageW;
+    const h2=40+i*3;
+    // rotor blade
+    ctx.fillStyle=i%2===0?th.blade:`hsl(220,60%,${isDark?50:40}%)`;
+    ctx.fillRect(sx,cy-h2,stageW-2,h2*2);
+    // rotation indicator
+    if(!S.surging){
+      const a=time*8+i*0.5;
+      ctx.strokeStyle=th.metalLight;ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(sx+stageW/2,cy);ctx.lineTo(sx+stageW/2+Math.cos(a)*h2*0.8,cy+Math.sin(a)*h2*0.8);ctx.stroke();
+    }
+  }
+  // pressure gradient
+  ctx.fillStyle=th.textSec;ctx.font='11px sans-serif';ctx.textAlign='center';
+  const pr=Math.pow(1.35,S.stages);
+  ctx.fillText(`1 atm →`,startX-30,cy-55);ctx.fillText(`→ ${pr.toFixed(1)} atm`,startX+totalW+20,cy-55);
+  // casing
+  ctx.strokeStyle=th.casing;ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(startX-10,cy-45);ctx.lineTo(startX+totalW+10,cy-(45+S.stages*3));ctx.stroke();
+  ctx.beginPath();ctx.moveTo(startX-10,cy+45);ctx.lineTo(startX+totalW+10,cy+(45+S.stages*3));ctx.stroke();
+  // surge effect
+  if(S.surging){
+    const shake=Math.sin(time*30)*8;
+    ctx.save();ctx.translate(shake,shake*0.5);
+    ctx.fillStyle=`rgba(239,68,68,${0.3+0.3*Math.sin(time*15)})`;ctx.font='bold 20px sans-serif';ctx.textAlign='center';
+    ctx.fillText('⚠ 喘振！',cx,cy-80);
+    // reverse flow arrows
+    for(let i=0;i<5;i++){
+      const ax=startX+totalW-i*30-time*100%totalW;const ay=cy+Math.sin(time*10+i)*20;
+      ctx.strokeStyle='#ef4444';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(ax,ay);ctx.lineTo(ax-20,ay);ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // stall margin indicator
+  ctx.fillStyle=S.stallMargin>15?'#22c55e':'#ef4444';
+  ctx.fillRect(startX,cy+70,totalW*(S.stallMargin/40),8);
+  ctx.strokeStyle=th.casing;ctx.strokeRect(startX,cy+70,totalW,8);
+  ctx.fillStyle=th.textSec;ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(`失速裕度 ${S.stallMargin}%`,cx,cy+92);
+}
+
+function drawLevel4(){
+  const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;
+  const cW=200,cH=100;
+  // combustor shell
+  ctx.strokeStyle=th.casing;ctx.lineWidth=3;
+  ctx.beginPath();ctx.roundRect(cx-cW/2,cy-cH/2,cW,cH,12);ctx.stroke();
+  // flame zone
+  const intensity=S.fuelFlow;
+  for(let i=0;i<20;i++){
+    const fx=cx-cW/4+Math.random()*cW/2;const fy=cy+Math.random()*cH*0.6-cH*0.3;
+    const fr=3+Math.random()*8*intensity;
+    const hue=20+Math.random()*30;
+    ctx.fillStyle=`hsla(${hue},90%,55%,${0.2+intensity*0.4})`;
+    ctx.beginPath();ctx.arc(fx,fy,fr,0,Math.PI*2);ctx.fill();
+  }
+  // swirler
+  drawRotor(cx-cW/2+20,cy,cH*0.3,6,time*6);
+  // cooling holes
+  if(S.coolingHoles>0){
+    for(let row=0;row<S.coolingHoles;row++){
+      const hx=cx-cW/2+30+row*(cW-60)/(S.coolingHoles);
+      // top holes
+      ctx.fillStyle='rgba(96,165,250,0.5)';
+      ctx.beginPath();ctx.arc(hx,cy-cH/2+5,3,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(hx,cy+cH/2-5,3,0,Math.PI*2);ctx.fill();
+      // cooling film
+      ctx.strokeStyle='rgba(96,165,250,0.2)';ctx.lineWidth=4;
+      ctx.beginPath();ctx.moveTo(hx,cy-cH/2+5);ctx.lineTo(hx+15,cy-cH/2+8);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(hx,cy+cH/2-5);ctx.lineTo(hx+15,cy+cH/2-8);ctx.stroke();
+    }
+  }
+  // temperature gradient bar
+  const Tmax=1200+S.fuelFlow*700;
+  const barY=cy+cH/2+25;
+  const grd=ctx.createLinearGradient(cx-cW/2,0,cx+cW/2,0);
+  grd.addColorStop(0,'#3b82f6');grd.addColorStop(0.3,'#f59e0b');grd.addColorStop(0.7,'#ef4444');grd.addColorStop(1,'#f97316');
+  ctx.fillStyle=grd;ctx.fillRect(cx-cW/2,barY,cW,10);
+  ctx.fillStyle=th.textSec;ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText(`温度分布 (最高 ${Tmax.toFixed(0)}°C)`,cx,barY+24);
+}
+
+function drawLevel5(){
+  const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;
+  // blade shape (airfoil)
+  const bW=120,bH=50;
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(-0.2);
+  // blade body
+  const matColors={poly:th.metal,ds:'#8b8000',sx:'#c0a000'};
+  ctx.fillStyle=matColors[S.material]||th.metal;
+  ctx.beginPath();ctx.moveTo(-bW/2,0);
+  ctx.bezierCurveTo(-bW/4,-bH,bW/4,-bH*0.8,bW/2,0);
+  ctx.bezierCurveTo(bW/4,bH*0.6,-bW/4,bH*0.8,-bW/2,0);
+  ctx.closePath();ctx.fill();ctx.strokeStyle=th.casing;ctx.lineWidth=2;ctx.stroke();
+  // TBC layer
+  if(S.tbc){
+    ctx.strokeStyle='rgba(255,255,200,0.6)';ctx.lineWidth=4;
+    ctx.beginPath();ctx.moveTo(-bW/2,0);
+    ctx.bezierCurveTo(-bW/4,-bH-4,bW/4,-bH*0.8-4,bW/2,0);
+    ctx.stroke();
+    ctx.fillStyle=th.textSec;ctx.font='10px sans-serif';ctx.textAlign='center';ctx.fillText('TBC涂层',0,-bH-10);
+  }
+  // cooling channels inside
+  if(S.cooling){
+    ctx.strokeStyle='rgba(96,165,250,0.5)';ctx.lineWidth=1.5;
+    for(let i=0;i<5;i++){
+      const cx2=-bW/3+i*bW/4;
+      ctx.beginPath();ctx.moveTo(cx2,bH*0.3);ctx.lineTo(cx2,-bH*0.5);ctx.stroke();
+      // film cooling jets
+      ctx.fillStyle='rgba(96,165,250,0.4)';
+      for(let j=0;j<3;j++){
+        const jx=cx2+j*3+3;const jy=-bH*0.5-j*3;
+        ctx.beginPath();ctx.arc(jx,jy,2,0,Math.PI*2);ctx.fill();
+      }
+    }
+  }
+  ctx.restore();
+  // hot gas flow
+  for(let i=0;i<12;i++){
+    const gx=cx-100+Math.random()*200+time*80%200;const gy=cy-60+Math.random()*120;
+    ctx.fillStyle=`rgba(249,115,22,${0.1+Math.random()*0.2})`;ctx.beginPath();ctx.arc(gx,gy,2+Math.random()*3,0,Math.PI*2);ctx.fill();
+  }
+  // crystal structure hint
+  const mats={poly:'多晶（晶界多）',ds:'定向凝固（柱状晶）',sx:'单晶（无晶界）'};
+  ctx.fillStyle=th.text;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText(mats[S.material],cx,cy+80);
+}
+
+function drawLevel6(){
+  const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;
+  if(S.viewType==='adaptive'){
+    const len=350,rad=S.mode==='turbofan'?60:40;
+    drawEngineOutline(cx,cy,len,rad);
+    // mode label
+    ctx.fillStyle=th.text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+    ctx.fillText(S.mode==='turbojet'?'涡喷模式 (超音速)':'涡扇模式 (亚音速)',cx,cy-rad-25);
+    // bypass doors
+    if(S.mode==='turbofan'){
+      ctx.fillStyle='rgba(96,165,250,0.2)';ctx.fillRect(cx-len*0.3,cy-rad,len*0.3,rad*2);
+      ctx.fillStyle=th.textSec;ctx.font='11px sans-serif';ctx.fillText('外涵道开启',cx-len*0.15,cy);
+    }else{
+      ctx.fillStyle='rgba(239,68,68,0.15)';ctx.fillRect(cx-len*0.3,cy-rad*0.6,len*0.6,rad*1.2);
+      ctx.fillStyle=th.textSec;ctx.font='11px sans-serif';ctx.fillText('全流量通过核心机',cx,cy);
+    }
+    drawRotor(cx-len*0.3,cy,rad*0.8,12,time*8);
+    drawFlameParticles(cx+len*0.1,cy,0.5);
+  }else if(S.viewType==='scramjet'){
+    const len=400;
+    // scramjet shape (wedge)
+    ctx.fillStyle=th.metal;ctx.beginPath();
+    ctx.moveTo(cx-len/2,cy);ctx.lineTo(cx-len/4,cy-40);ctx.lineTo(cx+len/4,cy-40);ctx.lineTo(cx+len/2,cy);
+    ctx.lineTo(cx+len/4,cy+30);ctx.lineTo(cx-len/4,cy+30);ctx.closePath();ctx.fill();
+    // shock waves
+    ctx.strokeStyle='rgba(96,165,250,0.4)';ctx.lineWidth=1;
+    for(let i=0;i<4;i++){
+      const sx2=cx-len/2-20-i*15;
+      ctx.beginPath();ctx.moveTo(cx-len/2,cy);ctx.lineTo(sx2,cy-60-i*10);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(cx-len/2,cy);ctx.lineTo(sx2,cy+50+i*10);ctx.stroke();
+    }
+    // supersonic combustion
+    for(let i=0;i<15;i++){
+      const fx=cx-len/8+Math.random()*len/4;const fy=cy-20+Math.random()*40;
+      ctx.fillStyle=`rgba(249,115,22,${0.3+Math.random()*0.4})`;ctx.beginPath();ctx.arc(fx,fy,2+Math.random()*4,0,Math.PI*2);ctx.fill();
+    }
+    ctx.fillStyle=th.text;ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('超燃冲压发动机 (Ma 5+)',cx,cy-60);
+    ctx.fillStyle=th.textSec;ctx.font='11px sans-serif';ctx.fillText('空气超音速通过燃烧室',cx,cy+55);
+  }else{
+    // electric / hydrogen
+    const len=300;
+    // electric motor
+    ctx.fillStyle=th.metal;ctx.beginPath();ctx.roundRect(cx-len/2,cy-50,len*0.4,100,8);ctx.fill();
+    ctx.fillStyle='#22c55e';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('电动机',cx-len/2+len*0.2,cy+5);
+    // battery
+    ctx.fillStyle='#3b82f6';ctx.beginPath();ctx.roundRect(cx-len/2,cy+70,len*0.3,30,5);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.fillText('电池组',cx-len/2+len*0.15,cy+90);
+    // propeller
+    drawRotor(cx+len*0.1,cy,60,6,time*6);
+    // hydrogen tank
+    ctx.fillStyle='#06b6d4';ctx.beginPath();ctx.roundRect(cx+len*0.2,cy+70,len*0.3,30,5);ctx.fill();
+    ctx.fillStyle='#fff';ctx.fillText('液氢储罐',cx+len*0.2+len*0.15,cy+90);
+    ctx.fillStyle=th.text;ctx.font='bold 14px sans-serif';ctx.fillText('电推进 + 氢燃料',cx,cy-70);
+    ctx.fillStyle=th.textSec;ctx.font='11px sans-serif';ctx.fillText('零碳排放，短途航线首选',cx,cy+120);
+  }
+}
+
+function draw(){
+  ctx.clearRect(0,0,CW,CH);
+  if(gameState!=='play')return;
+  drawBg();
+  const drawFns=[drawLevel0,drawLevel1,drawLevel2,drawLevel3,drawLevel4,drawLevel5,drawLevel6];
+  if(drawFns[currentLevel])drawFns[currentLevel]();
+  drawParticles();
+}
+
+let lastT=0;
+function loop(ts){
+  const dt=Math.min((ts-lastT)/1000,0.05);lastT=ts;time+=dt;
+  updateParticles(dt);
+  draw();
+  animId=requestAnimationFrame(loop);
+}
+animId=requestAnimationFrame(loop);
+</script>
+</body>
+</html>
