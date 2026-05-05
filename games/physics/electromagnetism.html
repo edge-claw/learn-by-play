@@ -70,6 +70,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
@@ -128,6 +129,7 @@ let CW,CH,time=0;
 let gameState='start',currentLevel=0;
 let levelState={},bgStars=[],particles=[];
 const completedLevels=new Set();
+const readyForQuiz=new Set();
 const quizPassed=new Set();
 let quizLocked=false,totalScore=0;
 const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
@@ -203,7 +205,7 @@ function answerQuiz(li,oi){
   if(quizLocked||quizPassed.has(li))return;quizLocked=true;
   const qd=quizData[li],opts=panelEl.querySelectorAll('.quiz-opt');
   opts.forEach((el,i)=>{el.classList.add(i===qd.ans?'correct':'wrong')});
-  if(oi===qd.ans){quizPassed.add(li);playSound('success');totalScore+=10;
+  if(oi===qd.ans){quizPassed.add(li);completedLevels.add(li);readyForQuiz.delete(li);playSound('success');totalScore+=10;
     setTimeout(()=>{quizLocked=false;goLevel(currentLevel+1)},800);
   }else{playSound('fail');setTimeout(()=>{quizLocked=false;renderPanel()},1000)}
 }
@@ -211,16 +213,20 @@ function answerQuiz(li,oi){
 // === Stage nav ===
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  levels.forEach((_,i)=>{const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':'';
-    h+=`<div class="sn-d ${cls}" onclick="switchLevel(${i})"></div>`});
+  levels.forEach((_,i)=>{
+    const unlocked=canGoLevel(i);
+    const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'switchLevel('+i+')':''}"></div>`});
   h+=`</div><div class="sn-info">${levels[currentLevel].icon} 第${currentLevel+1}/${levels.length}关 · ${levels[currentLevel].name}</div>`;
   h+=`<div class="sn-hint">${levels[currentLevel].sub}</div></div>`;return h;
 }
 function switchLevel(i){playSound('click');goLevel(i)}
 function goLevel(idx){
   if(idx<0||idx>=levels.length){showResult();return}
+  if(!canGoLevel(idx)){return}
   currentLevel=idx;initLevel(idx);renderPanel();
 }
+function canGoLevel(idx){return idx>=0&&idx<levels.length&&(idx===0||completedLevels.has(idx)||completedLevels.has(idx-1))}
 
 // === Level init ===
 function initLevel(idx){
@@ -251,7 +257,7 @@ function initLevel(idx){
 
 function isLevelDone(idx){return completedLevels.has(idx)}
 function completeLevel(idx){
-  if(!completedLevels.has(idx)){completedLevels.add(idx);totalScore+=20;playSound('success');
+  if(!readyForQuiz.has(idx)&&!completedLevels.has(idx)){readyForQuiz.add(idx);totalScore+=20;playSound('success');
     spawnParticles(cx(),cy(),'#22c55e',20);renderPanel()}
 }
 
@@ -293,7 +299,7 @@ function sliderDrag(){
 function renderPanel(){
   let h=renderStageNav();
   h+=renderLevelPanel(currentLevel);
-  if(completedLevels.has(currentLevel)){
+  if(readyForQuiz.has(currentLevel)||completedLevels.has(currentLevel)){
     h+=renderQuiz(currentLevel);
     if(quizPassed.has(currentLevel)&&currentLevel<levels.length-1)
       h+=`<button class="act-btn" onclick="switchLevel(${currentLevel+1})" style="background:#3b82f6;color:#fff;border:none;margin-top:8px">下一关 →</button>`;

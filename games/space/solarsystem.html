@@ -138,8 +138,17 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:12px}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;line-height:1.6;color:var(--concept-text);margin-bottom:8px}
+.quiz-option{display:block;width:100%;padding:9px 10px;margin:6px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
+.quiz-option:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:8px;color:var(--quiz-wrong-text)}
+.quiz-feedback.ok{color:var(--quiz-correct-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin:12px;font-size:13px;line-height:1.7;color:var(--learn-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -206,6 +215,9 @@ let stars = [];
 let particles = [];
 let animId;
 const completedLevels = new Set();
+const levelReady = new Set();
+const quizPassed = new Set();
+const quizFeedback = {};
 const G_CONST = 800; // 模拟引力常数
 const PANEL_W = 320;
 
@@ -218,6 +230,58 @@ const levels = [
   { name:'行星迁移', icon:'☄️', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>大迁移模型，木星迁移，小天体清扫</div>木星向内迁移，扫清小行星带', concept:'<b>大迁移模型</b>：太阳系早期，木星等巨行星并非在现在的位置形成，而是经历了大规模迁移，过程中清扫了大量小天体。', hint:'用滑块控制木星向内迁移，清除80%的小行星即可通关' },
   { name:'宜居带', icon:'🌡️', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>宜居带，液态水温度区间（0-100°C）</div>调整恒星质量和行星距离，寻找液态水区间', concept:'<b>宜居带</b>：恒星周围存在一个温度适宜的区域，行星表面可以维持液态水。恒星越大越亮，宜居带越远。', hint:'调节恒星质量和行星距离，让表面温度落在0°C~100°C之间' },
   { name:'系统稳定性', icon:'💫', desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>N 体问题，轨道混沌，引力扰动</div>自由放置多颗行星，观察长期稳定性', concept:'<b>N体问题</b>：三个以上天体的引力相互作用没有解析解。行星间的引力扰动可能导致轨道混沌，甚至将行星弹射出系统。', hint:'点击添加行星（至少3颗），运行模拟观察是否稳定存活超过50年' }
+];
+
+const quizData = [
+  {
+    q:'万有引力为什么会在距离变近时迅速变强？',
+    opts:['因为 F 与距离平方成反比，r 减半时引力约变为 4 倍','因为质量会自动变成 0','因为距离越近引力只线性增加一点点'],
+    ans:0,
+    ok:'正确。平方反比是太阳系轨道和潮汐效应的基础。',
+    bad:'看公式 F = GMm/r²：距离在分母且是平方。'
+  },
+  {
+    q:'轨道速度过低时，行星最可能发生什么？',
+    opts:['坠向恒星或形成更扁的轨道','立刻获得逃逸速度','完全不受引力影响'],
+    ans:0,
+    ok:'正确。轨道形状由引力和切向速度共同决定。',
+    bad:'对比不同点击速度：慢了会掉向恒星，快了会逃逸。'
+  },
+  {
+    q:'潮汐锁定的结果是什么？',
+    opts:['小天体自转周期逐渐接近公转周期','小天体完全停止公转','大天体质量变为 0'],
+    ans:0,
+    ok:'正确。同步后，小天体会长期以同一面朝向主天体。',
+    bad:'观察同步度：目标是自转速率接近公转速率。'
+  },
+  {
+    q:'L4 和 L5 为什么适合放置稳定小天体？',
+    opts:['它们在两大天体构成的等边三角形附近，扰动后较容易回到稳定区','它们离所有天体无限远','它们没有任何引力'],
+    ans:0,
+    ok:'正确。L4/L5 是受限三体问题中的稳定拉格朗日点。',
+    bad:'把卫星拖到不同 L 点：L1/L2/L3 会更容易偏离。'
+  },
+  {
+    q:'行星迁移会如何影响小行星带？',
+    opts:['巨行星迁移会扰动并清扫大量小天体','小行星会全部静止不动','木星质量会自动消失'],
+    ans:0,
+    ok:'正确。巨行星迁移能重塑早期太阳系的小天体分布。',
+    bad:'看木星引力范围扫过时，小行星会被吸收或弹射。'
+  },
+  {
+    q:'宜居带的核心判据是什么？',
+    opts:['行星表面可能维持液态水','行星离恒星越近越宜居','恒星质量越大越一定宜居'],
+    ans:0,
+    ok:'正确。宜居带是液态水可能存在的温度区间。',
+    bad:'目标温度范围是 0°C 到 100°C，对应液态水。'
+  },
+  {
+    q:'多行星系统为什么可能变得混沌？',
+    opts:['多个天体相互引力扰动，长期轨道没有简单解析解','所有行星只受一个固定力','行星间从不相互影响'],
+    ans:0,
+    ok:'正确。N 体相互作用会放大微小差异，影响长期稳定性。',
+    bad:'看多颗行星同时运行时的相互扰动，而不是只看恒星引力。'
+  }
 ];
 
 // ============ 星空 ============
@@ -298,11 +362,14 @@ function renderPanel(){
   document.getElementById('lpTitle').textContent=`第 ${currentLevel+1} 关`;
   document.getElementById('lpStep').textContent=`${currentLevel+1}/${levels.length}`;
   const body=document.getElementById('lp-body');
-  let h=`<div class="mission"><div class="m-level">${lv.icon} 关卡 ${currentLevel+1}</div><div class="m-title">${lv.name}</div><div class="m-desc">${lv.desc}</div><div class="m-concept">${lv.concept}</div></div>`;
+  let h=renderStageNav();
+  h+=`<div class="mission"><div class="m-level">${lv.icon} 关卡 ${currentLevel+1}</div><div class="m-title">${lv.name}</div><div class="m-desc">${lv.desc}</div><div class="m-concept">${lv.concept}</div></div>`;
   h+=`<div class="hint-b">${lv.hint}</div>`;
   h+=`<div class="act-section"><div class="as-label">操作</div>`;
   h+=getPanelControls();
   h+=`</div>`;
+  if(levelReady.has(currentLevel)&&!quizPassed.has(currentLevel))h+=renderQuiz();
+  else if(quizPassed.has(currentLevel))h+=renderLearn();
   body.innerHTML=h;
   bindPanelEvents();
 }
@@ -343,7 +410,7 @@ function getPanelControls(){
       h+=`<div style="font-size:12px;color:#aaa;margin:8px 0">点击画布添加行星（至少3颗）</div>`;
       h+=`<button class="act-btn green" onclick="runNBody()">运行模拟</button>`;
       h+=`<button class="act-btn red" onclick="resetNBody()" style="margin-top:4px">重置</button>`;
-      h+=`<div id="nbInfo" style="font-size:13px;color:#aaa;margin:8px 0"></div>`;
+      h+=`<div id="nbInfo" style="font-size:13px;color:#aaa;margin:8px 0">${levelState.nbNotice?`<span style="color:#ffcc80">${levelState.nbNotice}</span>`:''}</div>`;
       break;
   }
   return h;
@@ -376,8 +443,66 @@ function bindPanelEvents(){
   }
 }
 
+function isUnlocked(n){
+  return n===0 || completedLevels.has(n-1);
+}
+
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<levels.length;i++){
+    let cls='sn-d';
+    if(completedLevels.has(i))cls+=' done';
+    if(i===currentLevel)cls+=' cur';
+    if(!isUnlocked(i))cls+=' locked';
+    h+=`<div class="${cls}" onclick="goLevel(${i})"></div>`;
+  }
+  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关：${levels[currentLevel].name}</div>`;
+  h+=`<div class="sn-hint">${levels[currentLevel].desc.replace(/<[^>]+>/g,'')}</div></div>`;
+  return h;
+}
+
+function renderQuiz(){
+  const qd=quizData[currentLevel];
+  const fb=quizFeedback[currentLevel];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${qd.q}</div>`;
+  qd.opts.forEach((opt,i)=>{h+=`<button class="quiz-option" onclick="answerQuiz(${i})">${String.fromCharCode(65+i)}. ${opt}</button>`});
+  if(fb)h+=`<div class="quiz-feedback${fb.ok?' ok':''}">${fb.ok?'✅':'💡'} ${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+
+function answerQuiz(choice){
+  const qd=quizData[currentLevel];
+  const ok=choice===qd.ans;
+  quizFeedback[currentLevel]={ok,text:ok?qd.ok:qd.bad};
+  if(ok){
+    quizPassed.add(currentLevel);
+    completedLevels.add(currentLevel);
+  }
+  renderPanel();
+}
+
+function renderLearn(){
+  const lv=levels[currentLevel];
+  let h=`<div class="learn-box">🎓 ${lv.concept}</div>`;
+  if(currentLevel<levels.length-1)h+=`<div class="act-section"><button class="act-btn green" onclick="goLevel(${currentLevel+1})">下一关 →</button></div>`;
+  else h+=`<div class="act-section">${summaryHTML()}</div>`;
+  return h;
+}
+
+function summaryHTML(){
+  let h='<div class="summary-box"><div class="summary-title">🎉 太阳系建造完成！</div>';
+  h+='<div class="summary-sub">你已完成从万有引力到系统稳定性的 7 个核心主题</div>';
+  h+='<div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡通过</div></div>';
+  h+='<div class="summary-stat"><div class="num">7</div><div class="label">概念掌握</div></div></div>';
+  h+='<div class="summary-keys"><div>✅ 引力遵循平方反比定律</div><div>✅ 速度决定轨道形状与逃逸</div><div>✅ 潮汐力可让自转与公转同步</div><div>✅ L4/L5 是稳定拉格朗日点</div><div>✅ 迁移、宜居带和 N 体扰动共同塑造行星系统</div></div></div>';
+  return h;
+}
+
 // ============ 关卡初始化 ============
 function initLevel(n){
+  if(!isUnlocked(n))return;
   currentLevel=n;particles=[];
   const cx=PANEL_W+(CW-PANEL_W)/2, cy=CH/2;
   switch(n){
@@ -408,7 +533,7 @@ function initLevel(n){
       levelState={starMass:1,planetDist:150,inZone:false};
       break;
     case 6:
-      levelState={planets:[],running:false,simYears:0,stable:true,starMass:800,star:{x:cx,y:cy,r:22}};
+      levelState={planets:[],running:false,simYears:0,stable:true,starMass:800,star:{x:cx,y:cy,r:22},nbNotice:''};
       break;
   }
   renderPanel();
@@ -443,18 +568,18 @@ function showResult(icon,title,desc,learn,isLast){
   rb.innerHTML=h;
 }
 function hideResult(){document.getElementById('resultModal').classList.add('hidden');}
-function nextLevel(){hideResult();initLevel(currentLevel+1);}
+function nextLevel(){hideResult();goLevel(currentLevel+1);}
 function retryLevel(){hideResult();initLevel(currentLevel);}
 function backToStart(){hideResult();gameState='start';document.getElementById('lp').style.display='none';hideInfoBar();document.getElementById('bottom-bar').style.display='none';document.getElementById('startScreen').classList.remove('hidden');}
 
 // ============ 通关检测 ============
 function completeLevel(n){
-  if(completedLevels.has(n))return;
-  completedLevels.add(n);
-  const lv=levels[n];
-  const isLast=n===levels.length-1;
-  showResult('🎉',`${lv.name} — 通关！`,`你已掌握${lv.name}的核心原理`,lv.concept,isLast);
+  if(levelReady.has(n)||quizPassed.has(n))return;
+  levelReady.add(n);
+  renderPanel();
 }
+
+function goLevel(i){initLevel(i);}
 
 // ============ 关卡0: 万有引力 ============
 function updateLevel0(dt){
@@ -539,7 +664,7 @@ function updateLevel1(dt){
 }
 function clearOrbits(){
   levelState.planets=[];levelState.clickPhase='pos';levelState.tempPos=null;levelState.madeCircle=false;
-  completedLevels.delete(1);
+  levelReady.delete(1);quizPassed.delete(1);completedLevels.delete(1);
 }
 
 // ============ 关卡2: 潮汐锁定 ============
@@ -796,13 +921,18 @@ function updateLevel6(dt){
   }
   const aliveCount=s.planets.filter(p=>p.alive).length;
   const ni=document.getElementById('nbInfo');
-  if(ni)ni.innerHTML=`行星: ${aliveCount}/${s.planets.length}${s.running?` | 模拟: ${s.simYears.toFixed(0)}年`:''}${s.running&&!s.stable?'<br><span style="color:#ff4444">系统不稳定！行星逃逸或坠毁</span>':''}`;
+  if(ni)ni.innerHTML=`行星: ${aliveCount}/${s.planets.length}${s.running?` | 模拟: ${s.simYears.toFixed(0)}年`:''}${s.nbNotice?`<br><span style="color:#ffcc80">${s.nbNotice}</span>`:''}${s.running&&!s.stable?'<br><span style="color:#ff4444">系统不稳定！行星逃逸或坠毁</span>':''}`;
   updateInfoBar('N体动力学',[['行星数',aliveCount+'/'+s.planets.length],['模拟年',s.running?s.simYears.toFixed(0):'--'],['稳定性',s.stable?'稳定':'混沌',s.stable?'#2aaa5a':'#ff4444']]);
   updateBottomBar('N体问题',s.running?`模拟中 ${s.simYears.toFixed(0)}年`:'点击添加行星');
 }
 function runNBody(){
   const s=levelState;
-  if(s.planets.length<3){alert('至少需要3颗行星！');return;}
+  if(s.planets.length<3){
+    s.nbNotice=`还差 ${3-s.planets.length} 颗行星。至少 3 颗行星才能观察 N 体扰动和长期稳定性。`;
+    renderPanel();
+    return;
+  }
+  s.nbNotice='';
   s.running=true;s.simYears=0;s.stable=true;
   // 给每颗行星初始轨道速度
   for(let p of s.planets){
@@ -817,7 +947,8 @@ function runNBody(){
 function resetNBody(){
   const cx=PANEL_W+(CW-PANEL_W)/2,cy=CH/2;
   levelState.planets=[];levelState.running=false;levelState.simYears=0;levelState.stable=true;
-  completedLevels.delete(6);
+  levelState.nbNotice='';
+  levelReady.delete(6);quizPassed.delete(6);completedLevels.delete(6);
   renderPanel();
 }
 
@@ -870,6 +1001,7 @@ canvas.addEventListener('mousedown',e=>{
     const dist=Math.sqrt(dx*dx+dy*dy);
     if(dist<40)return;
     s.planets.push({x:mouseX,y:mouseY,vx:0,vy:0,r:5+Math.random()*4,mass:5+Math.random()*15,trail:[],alive:true});
+    s.nbNotice=s.planets.length>=3?'':'继续添加行星，至少 3 颗后才能运行 N 体稳定性模拟。';
     renderPanel();
   }
 });
@@ -911,105 +1043,6 @@ function startGame(){
 }
 requestAnimationFrame(gameLoop);
 
-function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeof curLevel!=="undefined")curLevel=i;if(typeof initLevel==="function")initLevel(i);if(typeof renderPanel==="function")renderPanel();}
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
 try{renderPanel();}catch(e){}
 
 </script>

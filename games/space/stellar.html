@@ -113,6 +113,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -175,6 +176,7 @@ let CW,CH,time=0,animId;
 let gameState='start',currentLevel=0;
 let levelState={},bgStars=[],particles=[];
 const completedLevels=new Set();
+const readyForQuiz=new Set();
 const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
 const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
 let panelDirty=true,levelTransition=0;
@@ -211,9 +213,8 @@ function resize(){canvas.width=CW=innerWidth;canvas.height=CH=innerHeight;bgStar
 window.addEventListener('resize',resize);resize();
 
 function startGame(){document.getElementById('startScreen').classList.add('hidden');gameState='play';currentLevel=0;panelEl.style.display='block';bbEl.style.display='flex';initLevel(0);panelDirty=true;renderPanel();loop();Audio2.play('click');}
-function goLevel(n){if(n>=0&&n<levels.length&&(n<=currentLevel||completedLevels.has(n)||n<=Math.max(...completedLevels,-1)+1)){initLevel(n);panelDirty=true;renderPanel();}}
-
-// PLACEHOLDER_LEVELS
+function canGoLevel(n){return n>=0&&n<levels.length&&(n===0||completedLevels.has(n)||completedLevels.has(n-1));}
+function goLevel(n){if(canGoLevel(n)){initLevel(n);panelDirty=true;renderPanel();}}
 
 function initLevel(n){
   currentLevel=n;particles=[];
@@ -226,7 +227,7 @@ function initLevel(n){
   Audio2.play('click');
 }
 function markGoal(i){if(!levelState.goals[i]){levelState.goals[i]=true;panelDirty=true;Audio2.play('success');checkComplete();}}
-function checkComplete(){if(levelState.goals.every(g=>g)&&!completedLevels.has(currentLevel)){completedLevels.add(currentLevel);panelDirty=true;celebP((CW+320)/2,CH/2);setTimeout(()=>showResult(),600);}}
+function checkComplete(){if(levelState.goals.every(g=>g)&&!readyForQuiz.has(currentLevel)&&!completedLevels.has(currentLevel)){readyForQuiz.add(currentLevel);panelDirty=true;celebP((CW+320)/2,CH/2);setTimeout(()=>showResult(),600);}}
 function celebP(cx,cy){for(let i=0;i<40;i++){const a=Math.random()*Math.PI*2,sp=Math.random()*5+2;particles.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1.5,color:`hsl(${40+Math.random()*20},90%,60%)`,r:2+Math.random()*2});}}
 
 function showResult(){
@@ -246,21 +247,73 @@ function showResult(){
 }
 function answerQuiz(idx){
   if(quizState.answered)return;const qd=quizData[currentLevel];quizState.selected=idx;
-  if(idx===qd.ans){quizState.answered=true;quizState.correct=true;document.getElementById('qopt'+idx).classList.add('correct');document.getElementById('quizResult').className='quiz-result pass';document.getElementById('quizResult').textContent='✅ 回答正确！';document.getElementById('quizBtns').style.display='block';Audio2.play('success');}
+  if(idx===qd.ans){quizState.answered=true;quizState.correct=true;completedLevels.add(currentLevel);readyForQuiz.delete(currentLevel);panelDirty=true;renderPanel();document.getElementById('qopt'+idx).classList.add('correct');document.getElementById('quizResult').className='quiz-result pass';document.getElementById('quizResult').textContent='✅ 回答正确！';document.getElementById('quizBtns').style.display='block';Audio2.play('success');}
   else{document.getElementById('qopt'+idx).classList.add('wrong');document.getElementById('quizResult').className='quiz-result fail';document.getElementById('quizResult').textContent='❌ 再想想...';Audio2.play('fail');setTimeout(()=>{document.getElementById('qopt'+idx).classList.remove('wrong');document.getElementById('quizResult').textContent='';},1000);}
 }
 function nextLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel+1);}
 function retryLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel);}
-function restartAll(){document.getElementById('resultModal').classList.add('hidden');completedLevels.clear();initLevel(0);}
+function restartAll(){document.getElementById('resultModal').classList.add('hidden');completedLevels.clear();readyForQuiz.clear();initLevel(0);}
 
 function _patchPanel(el,html){var ae=document.activeElement;if(!ae||ae.type!=='range'||!el.contains(ae)){el.innerHTML=html;return;}var tmp=document.createElement('div');tmp.innerHTML=html;_diffN(el,tmp);}
 function _diffN(o,n){var oc=Array.from(o.childNodes),nc=Array.from(n.childNodes);var i=0;while(i<oc.length&&i<nc.length){var a=oc[i],b=nc[i];if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName){o.replaceChild(b.cloneNode(true),a);i++;continue;}if(a.nodeType===3){if(a.textContent!==b.textContent)a.textContent=b.textContent;i++;continue;}if(a.nodeType===1){if(a.tagName==='INPUT'&&a.type==='range'&&a===document.activeElement){i++;continue;}for(var j=0;j<b.attributes.length;j++){var at=b.attributes[j];if(a.getAttribute(at.name)!==at.value)a.setAttribute(at.name,at.value);}_diffN(a,b);}i++;}while(oc.length>nc.length)o.removeChild(o.lastChild);for(;i<nc.length;i++)o.appendChild(nc[i].cloneNode(true));}
 
 function stageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<levels.length;i++){let cls=completedLevels.has(i)?'done':i===currentLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;}
+  for(let i=0;i<levels.length;i++){
+    const unlocked=canGoLevel(i);
+    const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+  }
   h+=`</div><div class="sn-info">📍 第${currentLevel+1}/${levels.length}关 | 进度 ${Math.round(completedLevels.size/levels.length*100)}%</div></div>`;return h;
 }
+
+function l0Metrics(){
+  const jeansMass=(l0.temp/10)*Math.sqrt(l0.temp/10)/(Math.sqrt(l0.density)*0.5);
+  const cloudMass=l0.density*50;
+  return {jeansMass,cloudMass,canCollapse:cloudMass>jeansMass};
+}
+function updateL0Metrics(){
+  const m=l0Metrics();
+  const density=document.getElementById('l0DensityVal');
+  const temp=document.getElementById('l0TempVal');
+  const mass=document.getElementById('l0MassText');
+  const status=document.getElementById('l0CollapseText');
+  if(density)density.textContent=l0.density.toFixed(1)+' ×10³ cm⁻³';
+  if(temp)temp.textContent=l0.temp.toFixed(0)+' K';
+  if(mass)mass.innerHTML=`云团质量: <span class="sv">${m.cloudMass.toFixed(1)} M☉</span> | 金斯质量: <span class="sv">${m.jeansMass.toFixed(1)} M☉</span>`;
+  if(status){status.style.color=m.canCollapse?'#4ade80':'#f87171';status.textContent=m.canCollapse?'✅ 云团质量 > 金斯质量，可以坍缩！':'❌ 云团质量 < 金斯质量，无法坍缩';}
+}
+function setL0Cloud(key,el){l0[key]=+el.value;updateL0Metrics();}
+
+function updateL1Metrics(){
+  const lum=Math.pow(l1.mass,3.5),temp=5778*Math.pow(l1.mass,0.5),life=10/Math.pow(l1.mass,2.5);
+  const mass=document.getElementById('l1MassVal');
+  const metrics=document.getElementById('l1MetricsText');
+  const lifeText=document.getElementById('l1LifeText');
+  if(mass)mass.textContent=l1.mass.toFixed(1)+' M☉';
+  if(metrics)metrics.innerHTML=`光度: <span class="sv">${lum.toFixed(2)} L☉</span> | 表面温度: <span class="sv">${temp.toFixed(0)} K</span>`;
+  if(lifeText)lifeText.innerHTML=`主序寿命: <span class="sv">${life.toFixed(2)} 亿年</span> | 光谱型: <span class="sv">${getSpectral(temp)}</span>`;
+}
+function setL1Mass(el){l1.mass=+el.value;updateL1Metrics();}
+
+function setL3Mass(el){
+  l3.mass=+el.value;
+  const mass=document.getElementById('l3MassVal');
+  const status=document.getElementById('l3ChandraText');
+  if(mass)mass.textContent=l3.mass.toFixed(2)+' M☉';
+  if(status){status.style.color=l3.mass>1.4?'#f87171':'#4ade80';status.textContent=l3.mass>1.4?'⚠️ 超过钱德拉塞卡极限！白矮星不稳定！':'✅ 在钱德拉塞卡极限以下，白矮星稳定';}
+}
+
+function updateL5Mass(){
+  const rs=(2*6.674e-11*l5.mass*1.989e30/(9e16))/1000;
+  const mass=document.getElementById('l5MassVal');
+  const rsText=document.getElementById('l5RsText');
+  const status=document.getElementById('l5CollapseText');
+  if(mass)mass.textContent=l5.mass.toFixed(1)+' M☉';
+  if(rsText)rsText.innerHTML=`史瓦西半径: <span class="sv">${rs.toFixed(2)} km</span>`;
+  if(status){status.style.color=l5.mass>3?'#4ade80':'#f87171';status.textContent=l5.mass>3?'✅ 超过奥本海默极限，可以形成黑洞':'❌ 未超过3M☉，无法形成黑洞';}
+}
+function setL5Mass(el){l5.mass=+el.value;updateL5Mass();}
 
 function renderPanel(){
   if(!panelDirty)return;panelDirty=false;
@@ -272,6 +325,7 @@ function renderPanel(){
   h+='</div>';
   if(currentLevel===0)h+=panelL0();else if(currentLevel===1)h+=panelL1();else if(currentLevel===2)h+=panelL2();
   else if(currentLevel===3)h+=panelL3();else if(currentLevel===4)h+=panelL4();else if(currentLevel===5)h+=panelL5();else if(currentLevel===6)h+=panelL6();
+  if(readyForQuiz.has(currentLevel)&&!completedLevels.has(currentLevel))h+='<div class="hint-box">目标已完成。请答对弹窗中的通关测验，解锁下一关。</div>';
   h+=`<div class="learn-box">💡 ${lv.learn}</div>`;
   _patchPanel(panelEl,h);
   bbLeft.textContent=`关卡 ${currentLevel+1}: ${lv.name}`;bbRight.textContent=`已完成 ${completedLevels.size}/${levels.length}`;
@@ -281,24 +335,20 @@ function renderPanel(){
 function drawBg(){ctx.fillStyle=t().bg;ctx.fillRect(0,0,CW,CH);if(levelTransition>0)levelTransition-=0.02;bgStars.forEach(s=>{ctx.globalAlpha=(1-Math.max(0,levelTransition))*(s.b*(0.7+0.3*Math.sin(time*2+s.x)));ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();});ctx.globalAlpha=1;}
 function drawParticles(){particles.forEach((p,i)=>{p.x+=p.vx;p.y+=p.vy;p.life-=0.02;if(p.life<=0){particles.splice(i,1);return;}ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();});ctx.globalAlpha=1;}
 
-// PLACEHOLDER_L0
-
 // ===== L0: 恒星诞生 =====
 let l0={density:1,temp:100,collapsed:false,protostar:false,cloudParts:[],animT:0};
 function initL0(){l0={density:1,temp:100,collapsed:false,protostar:false,cloudParts:[],animT:0};
   for(let i=0;i<120;i++)l0.cloudParts.push({x:Math.random()*400-200,y:Math.random()*400-200,r:Math.random()*8+3,a:Math.random()*0.5+0.2,vx:(Math.random()-0.5)*0.3,vy:(Math.random()-0.5)*0.3});}
 function panelL0(){
-  const jeansMass=(l0.temp/10)*Math.sqrt(l0.temp/10)/(Math.sqrt(l0.density)*0.5);
-  const cloudMass=l0.density*50;
-  const canCollapse=cloudMass>jeansMass;
+  const m=l0Metrics();
   let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">画布上是一团<span style="color:#6ea8fe">蓝色分子云</span>。调节密度和温度，让云团质量超过金斯质量触发坍缩。</div>`;
-  h+=`<div class="slider-wrap"><label>云团密度: <span class="sv">${l0.density.toFixed(1)} ×10³ cm⁻³</span></label>`;
-  h+=`<input type="range" min="0.5" max="20" step="0.1" value="${l0.density}" oninput="l0.density=+this.value;panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
-  h+=`<div class="slider-wrap"><label>温度: <span class="sv">${l0.temp.toFixed(0)} K</span></label>`;
-  h+=`<input type="range" min="5" max="300" step="1" value="${l0.temp}" oninput="l0.temp=+this.value;panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
-  h+=`<div style="font-size:12px;margin:6px 0;color:var(--concept-text)">云团质量: <span class="sv">${cloudMass.toFixed(1)} M☉</span> | 金斯质量: <span class="sv">${jeansMass.toFixed(1)} M☉</span></div>`;
-  h+=`<div style="font-size:12px;color:${canCollapse?'#4ade80':'#f87171'};margin:4px 0">${canCollapse?'✅ 云团质量 > 金斯质量，可以坍缩！':'❌ 云团质量 < 金斯质量，无法坍缩'}</div>`;
-  if(!l0.collapsed)h+=`<button class="act-btn${canCollapse?' green':''}" onclick="collapseCloud()"${canCollapse?'':' disabled'}>触发坍缩</button>`;
+  h+=`<div class="slider-wrap"><label>云团密度: <span class="sv" id="l0DensityVal">${l0.density.toFixed(1)} ×10³ cm⁻³</span></label>`;
+  h+=`<input type="range" min="0.5" max="20" step="0.1" value="${l0.density}" oninput="setL0Cloud('density',this)" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
+  h+=`<div class="slider-wrap"><label>温度: <span class="sv" id="l0TempVal">${l0.temp.toFixed(0)} K</span></label>`;
+  h+=`<input type="range" min="5" max="300" step="1" value="${l0.temp}" oninput="setL0Cloud('temp',this)" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
+  h+=`<div id="l0MassText" style="font-size:12px;margin:6px 0;color:var(--concept-text)">云团质量: <span class="sv">${m.cloudMass.toFixed(1)} M☉</span> | 金斯质量: <span class="sv">${m.jeansMass.toFixed(1)} M☉</span></div>`;
+  h+=`<div id="l0CollapseText" style="font-size:12px;color:${m.canCollapse?'#4ade80':'#f87171'};margin:4px 0">${m.canCollapse?'✅ 云团质量 > 金斯质量，可以坍缩！':'❌ 云团质量 < 金斯质量，无法坍缩'}</div>`;
+  if(!l0.collapsed)h+=`<button class="act-btn${m.canCollapse?' green':''}" onclick="collapseCloud()"${m.canCollapse?'':' disabled'}>触发坍缩</button>`;
   else if(!l0.protostar)h+=`<button class="act-btn green" onclick="formProtostar()">形成原恒星</button>`;
   else h+=`<div style="color:#4ade80;font-size:13px;margin:6px 0">✨ 原恒星已形成！核心温度持续升高...</div>`;
   h+=`<div class="hint-box">💡 降低温度、增大密度可以降低金斯质量，使坍缩更容易发生。Mj ∝ T^(3/2) / ρ^(1/2)</div>`;
@@ -334,10 +384,10 @@ function panelL1(){
   const lum=Math.pow(l1.mass,3.5);const temp=5778*Math.pow(l1.mass,0.5);
   const life=10/Math.pow(l1.mass,2.5);
   let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">画布上是一颗恒星。调节质量观察亮度和温度的变化，理解质光关系 L ∝ M^3.5。</div>`;
-  h+=`<div class="slider-wrap"><label>恒星质量: <span class="sv">${l1.mass.toFixed(1)} M☉</span></label>`;
-  h+=`<input type="range" min="0.1" max="50" step="0.1" value="${l1.mass}" oninput="l1.mass=+this.value;panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
-  h+=`<div style="font-size:12px;color:var(--concept-text);margin:4px 0">光度: <span class="sv">${lum.toFixed(2)} L☉</span> | 表面温度: <span class="sv">${temp.toFixed(0)} K</span></div>`;
-  h+=`<div style="font-size:12px;color:var(--concept-text);margin:4px 0">主序寿命: <span class="sv">${life.toFixed(2)} 亿年</span> | 光谱型: <span class="sv">${getSpectral(temp)}</span></div>`;
+  h+=`<div class="slider-wrap"><label>恒星质量: <span class="sv" id="l1MassVal">${l1.mass.toFixed(1)} M☉</span></label>`;
+  h+=`<input type="range" min="0.1" max="50" step="0.1" value="${l1.mass}" oninput="setL1Mass(this)" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
+  h+=`<div id="l1MetricsText" style="font-size:12px;color:var(--concept-text);margin:4px 0">光度: <span class="sv">${lum.toFixed(2)} L☉</span> | 表面温度: <span class="sv">${temp.toFixed(0)} K</span></div>`;
+  h+=`<div id="l1LifeText" style="font-size:12px;color:var(--concept-text);margin:4px 0">主序寿命: <span class="sv">${life.toFixed(2)} 亿年</span> | 光谱型: <span class="sv">${getSpectral(temp)}</span></div>`;
   if(!l1.fusionOn)h+=`<button class="act-btn green" onclick="startFusion()">🔥 启动氢聚变</button>`;
   else h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 氢聚变已启动，4H → He + 能量</div>`;
   if(l1.fusionOn&&!l1.hrTracked)h+=`<button class="act-btn" onclick="trackHR()">📊 在赫罗图上定位</button>`;
@@ -378,8 +428,6 @@ function drawL1(){
   }
   ctx.fillStyle=t().text;ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText(`${l1.mass.toFixed(1)} M☉ ${getSpectral(temp)}`,cx,cy+radius*pulse+25);
 }
-
-// PLACEHOLDER_L2
 
 // ===== L2: 红巨星 =====
 let l2={shellBurn:false,heliumFlash:false,onionView:false,expandT:0,flashT:0,layers:[]};
@@ -442,9 +490,9 @@ function panelL3(){
     if(!l3.whiteDwarf)h+=`<button class="act-btn" onclick="formWD()">💎 形成白矮星</button>`;
     else{h+=`<div style="color:#e0e0ff;font-size:12px;margin:4px 0">✅ 白矮星已形成</div>`;
       if(!l3.chandraTest){
-        h+=`<div class="slider-wrap"><label>白矮星质量: <span class="sv">${l3.mass.toFixed(2)} M☉</span></label>`;
-        h+=`<input type="range" min="0.2" max="2.0" step="0.01" value="${l3.mass}" oninput="l3.mass=+this.value;panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
-        h+=`<div style="font-size:12px;color:${l3.mass>1.4?'#f87171':'#4ade80'};margin:4px 0">${l3.mass>1.4?'⚠️ 超过钱德拉塞卡极限！白矮星不稳定！':'✅ 在钱德拉塞卡极限以下，白矮星稳定'}</div>`;
+        h+=`<div class="slider-wrap"><label>白矮星质量: <span class="sv" id="l3MassVal">${l3.mass.toFixed(2)} M☉</span></label>`;
+        h+=`<input type="range" min="0.2" max="2.0" step="0.01" value="${l3.mass}" oninput="setL3Mass(this)" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
+        h+=`<div id="l3ChandraText" style="font-size:12px;color:${l3.mass>1.4?'#f87171':'#4ade80'};margin:4px 0">${l3.mass>1.4?'⚠️ 超过钱德拉塞卡极限！白矮星不稳定！':'✅ 在钱德拉塞卡极限以下，白矮星稳定'}</div>`;
         h+=`<button class="act-btn green" onclick="testChandra()">验证钱德拉塞卡极限</button>`;
       } else h+=`<div style="color:#4ade80;font-size:12px;margin:4px 0">✅ 已理解钱德拉塞卡极限 ~1.4 M☉</div>`;
     }
@@ -478,8 +526,6 @@ function drawL3(){
     }
   }
 }
-
-// PLACEHOLDER_L4
 
 // ===== L4: 高质量恒星死亡 =====
 let l4={supernova:false,neutronStar:false,pulsar:false,snT:0,snParts:[],pulsarAngle:0};
@@ -541,10 +587,10 @@ function initL5(){l5={collapsed:false,rsCalc:false,accretion:false,mass:5,collap
 function panelL5(){
   const rs=(2*6.674e-11*l5.mass*1.989e30/(9e16))/1000;
   let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">核心质量超过约3M☉（奥本海默极限），中子简并压也无法抵抗引力，形成<span style="color:#a78bfa">黑洞</span>。</div>`;
-  h+=`<div class="slider-wrap"><label>核心质量: <span class="sv">${l5.mass.toFixed(1)} M☉</span></label>`;
-  h+=`<input type="range" min="1" max="30" step="0.1" value="${l5.mass}" oninput="l5.mass=+this.value;panelDirty=true;renderPanel()" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
-  h+=`<div style="font-size:12px;color:var(--concept-text);margin:4px 0">史瓦西半径: <span class="sv">${rs.toFixed(2)} km</span></div>`;
-  if(!l5.collapsed){h+=`<div style="font-size:12px;color:${l5.mass>3?'#4ade80':'#f87171'};margin:4px 0">${l5.mass>3?'✅ 超过奥本海默极限，可以形成黑洞':'❌ 未超过3M☉，无法形成黑洞'}</div>`;
+  h+=`<div class="slider-wrap"><label>核心质量: <span class="sv" id="l5MassVal">${l5.mass.toFixed(1)} M☉</span></label>`;
+  h+=`<input type="range" min="1" max="30" step="0.1" value="${l5.mass}" oninput="setL5Mass(this)" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
+  h+=`<div id="l5RsText" style="font-size:12px;color:var(--concept-text);margin:4px 0">史瓦西半径: <span class="sv">${rs.toFixed(2)} km</span></div>`;
+  if(!l5.collapsed){h+=`<div id="l5CollapseText" style="font-size:12px;color:${l5.mass>3?'#4ade80':'#f87171'};margin:4px 0">${l5.mass>3?'✅ 超过奥本海默极限，可以形成黑洞':'❌ 未超过3M☉，无法形成黑洞'}</div>`;
     h+=`<button class="act-btn" onclick="collapseToBH()"${l5.mass>3?'':' disabled'}>🕳️ 引力坍缩</button>`;}
   else{h+=`<div style="color:#a78bfa;font-size:12px;margin:4px 0">✅ 黑洞已形成</div>`;
     if(!l5.rsCalc)h+=`<button class="act-btn" onclick="calcRs()">📐 计算史瓦西半径</button>`;
@@ -584,8 +630,6 @@ function drawL5(){
     ctx.fillStyle=t().text;ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('黑洞',cx,cy+bhR*2+15);
   }
 }
-
-// PLACEHOLDER_L6
 
 // ===== L6: 元素起源 =====
 let l6={nucleoSyn:false,rProcess:false,abundance:false,elements:[

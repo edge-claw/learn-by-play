@@ -93,6 +93,7 @@ canvas{flex:1;display:block;background:var(--bg)}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
@@ -105,11 +106,15 @@ canvas{flex:1;display:block;background:var(--bg)}
 .summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
 .summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
 .quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
+.quiz-title{font-weight:700;color:var(--quiz-q);margin-bottom:6px}
 .quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
-.quiz-opt{font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg)}
+.quiz-opt{display:block;width:100%;font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);text-align:left}
 .quiz-opt:hover{background:var(--quiz-opt-hover);border-color:var(--accent)}
 .quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
 .quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .slider-row{margin:6px 0}
 .slider-row label{font-size:12px;color:var(--slider-label)}
 .slider-row input[type=range]{width:100%;margin:4px 0}
@@ -155,6 +160,8 @@ function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay');
 let W,H,curLevel=0,animId,time=0;
 let levelObjs=Array.from({length:7},()=>[false,false,false]);
+let quizPassed=Array.from({length:7},()=>false);
+let quizFeedback={};
 let S={};
 
 function resize(){W=cv.width=cv.offsetWidth;H=cv.height=cv.offsetHeight}
@@ -446,6 +453,7 @@ function handleClick(x,y){
 // === Objectives ===
 function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel()}}
 function isLevelDone(idx){return levelObjs[idx].every(Boolean)}
+function isUnlocked(idx){return idx===0||quizPassed[idx-1]}
 
 // === Panel ===
 function renderPanel(){
@@ -453,8 +461,9 @@ function renderPanel(){
   let h='';
   // stage nav
   h+=`<div class="stage-nav"><div class="sn-bar">`;
-  for(let i=0;i<7;i++)h+=`<div class="sn-d ${levelObjs[i].every(Boolean)?'done':i===curLevel?'cur':''}" onclick="goLevel(${i})"></div>`;
-  h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关</div><div class="sn-hint">${L.name}</div></div>`;
+  for(let i=0;i<7;i++){let unlocked=isUnlocked(i);h+=`<div class="sn-d ${quizPassed[i]?'done':i===curLevel?'cur':unlocked?'':'locked'}" onclick="${unlocked?`goLevel(${i})`:''}"></div>`}
+  let passed=quizPassed.filter(Boolean).length;
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关 | 进度 ${Math.round(passed/7*100)}%</div><div class="sn-hint">${passed}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;
   h+=`<h2>${L.name}</h2>`;
   h+=`<p style="font-size:13px;line-height:1.6;color:var(--concept-text);margin-bottom:10px">${L.desc}</p>`;
   // objectives
@@ -463,12 +472,17 @@ function renderPanel(){
   // level-specific controls
   h+=renderLevelPanel(curLevel);
   // quiz when all done
-  if(isLevelDone(curLevel)&&L.quiz){
-    h+=`<div class="quiz-box"><div class="quiz-q">🧠 ${L.quiz.q}</div>`;
-    L.quiz.opts.forEach((o,i)=>{h+=`<div class="quiz-opt" onclick="checkQuiz(this,${i},${L.quiz.ans})">${o}</div>`});
+  if(isLevelDone(curLevel)&&L.quiz&&!quizPassed[curLevel]){
+    let fb=quizFeedback[curLevel];
+    h+=`<div class="quiz-box"><div class="quiz-title">通关小测验</div><div class="quiz-q">🧠 ${L.quiz.q}</div>`;
+    L.quiz.opts.forEach((o,i)=>{h+=`<button class="quiz-opt" onclick="checkQuiz(${curLevel},${i})">${o}</button>`});
+    if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
     h+=`</div>`}
   // learn box
-  if(isLevelDone(curLevel))h+=`<div class="learn-box">${L.learn}</div>`;
+  if(quizPassed[curLevel]){
+    h+=`<div class="learn-box">${L.learn}</div>`;
+    h+=curLevel<6?`<button class="act-btn" onclick="goLevel(${curLevel+1})">下一关 →</button>`:`<button class="act-btn" onclick="showResult()">查看总总结 🎉</button>`;
+  }
   panel.innerHTML=h;
 }
 
@@ -479,9 +493,9 @@ function renderLevelPanel(idx){
     h+=`<p>📷 摄像头: ${S.sensors.camera?'✅':'❌'} | 🔦 LiDAR: ${S.sensors.lidar?'✅':'❌'} | 📡 雷达: ${S.sensors.radar?'✅':'❌'}</p>`;
     if(S.installed>=3){
       h+=`<h3>权重调节</h3>`;
-      h+=`<div class="slider-row"><label>摄像头权重: ${S.weights.camera.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.weights.camera*100}" oninput="S.weights.camera=this.value/100;renderPanel()" onchange="this.blur()"></div>`;
-      h+=`<div class="slider-row"><label>LiDAR权重: ${S.weights.lidar.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.weights.lidar*100}" oninput="S.weights.lidar=this.value/100;renderPanel()" onchange="this.blur()"></div>`;
-      h+=`<div class="slider-row"><label>雷达权重: ${S.weights.radar.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.weights.radar*100}" oninput="S.weights.radar=this.value/100;renderPanel()" onchange="this.blur()"></div>`;
+      h+=`<div class="slider-row"><label>摄像头权重: ${S.weights.camera.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.weights.camera*100}" oninput="setWeight('camera',this)" onchange="renderPanel();this.blur()"></div>`;
+      h+=`<div class="slider-row"><label>LiDAR权重: ${S.weights.lidar.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.weights.lidar*100}" oninput="setWeight('lidar',this)" onchange="renderPanel();this.blur()"></div>`;
+      h+=`<div class="slider-row"><label>雷达权重: ${S.weights.radar.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.weights.radar*100}" oninput="setWeight('radar',this)" onchange="renderPanel();this.blur()"></div>`;
       h+=`<p style="font-size:13px;color:var(--sv)">融合置信度: ${S.confidence.toFixed(1)}%</p>`;
       if(S.confidence>90&&!levelObjs[0][1]){completeObj(1)}
       h+=`<button class="act-btn secondary" onclick="S.weather=S.weather==='clear'?'rain':'clear';renderPanel()">${S.weather==='clear'?'🌧️ 模拟恶劣天气':'☀️ 恢复晴天'}</button>`;
@@ -490,7 +504,7 @@ function renderLevelPanel(idx){
   }
   if(idx===1){
     h+=`<h3>检测阈值</h3>`;
-    h+=`<div class="slider-row"><label>置信度阈值: ${S.threshold.toFixed(2)}</label><input type="range" min="10" max="99" value="${S.threshold*100}" oninput="S.threshold=this.value/100;renderPanel()" onchange="this.blur()"></div>`;
+    h+=`<div class="slider-row"><label>置信度阈值: ${S.threshold.toFixed(2)}</label><input type="range" min="10" max="99" value="${S.threshold*100}" oninput="setThreshold(this)" onchange="renderPanel();this.blur()"></div>`;
     let det=S.objects.filter(o=>o.detected&&o.conf>=0.5).length,total=S.objects.filter(o=>o.conf>=0.5).length;
     let acc=total>0?det/total*100:0;
     h+=`<p style="color:${acc>85?'#22c55e':'#f59e0b'}">准确率: ${acc.toFixed(1)}%</p>`;
@@ -500,8 +514,8 @@ function renderLevelPanel(idx){
   }
   if(idx===2){
     h+=`<h3>卡尔曼滤波参数</h3>`;
-    h+=`<div class="slider-row"><label>过程噪声 Q: ${S.kfQ.toFixed(2)}</label><input type="range" min="1" max="100" value="${S.kfQ*10}" oninput="S.kfQ=this.value/10;renderPanel()" onchange="this.blur()"></div>`;
-    h+=`<div class="slider-row"><label>观测噪声 R: ${S.kfR.toFixed(2)}</label><input type="range" min="1" max="100" value="${S.kfR*10}" oninput="S.kfR=this.value/10;renderPanel()" onchange="this.blur()"></div>`;
+    h+=`<div class="slider-row"><label>过程噪声 Q: ${S.kfQ.toFixed(2)}</label><input type="range" min="1" max="100" value="${S.kfQ*10}" oninput="setKf('kfQ',this)" onchange="renderPanel();this.blur()"></div>`;
+    h+=`<div class="slider-row"><label>观测噪声 R: ${S.kfR.toFixed(2)}</label><input type="range" min="1" max="100" value="${S.kfR*10}" oninput="setKf('kfR',this)" onchange="renderPanel();this.blur()"></div>`;
     h+=`<p style="color:${S.error<0.5?'#22c55e':S.error<2?'#f59e0b':'#ef4444'}">定位误差: ${S.error.toFixed(2)}m</p>`;
     if(!levelObjs[2][0]&&S.t>60)completeObj(0);
     if(S.error<0.5&&!levelObjs[2][1])completeObj(1);
@@ -518,9 +532,9 @@ function renderLevelPanel(idx){
   }
   if(idx===4){
     h+=`<h3>PID 参数调节</h3>`;
-    h+=`<div class="slider-row"><label>P (比例): ${S.pidP.toFixed(2)}</label><input type="range" min="0" max="200" value="${S.pidP*100}" oninput="S.pidP=this.value/100;renderPanel()" onchange="this.blur()"></div>`;
-    h+=`<div class="slider-row"><label>I (积分): ${S.pidI.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.pidI*100}" oninput="S.pidI=this.value/100;renderPanel()" onchange="this.blur()"></div>`;
-    h+=`<div class="slider-row"><label>D (微分): ${S.pidD.toFixed(2)}</label><input type="range" min="0" max="200" value="${S.pidD*100}" oninput="S.pidD=this.value/100;renderPanel()" onchange="this.blur()"></div>`;
+    h+=`<div class="slider-row"><label>P (比例): ${S.pidP.toFixed(2)}</label><input type="range" min="0" max="200" value="${S.pidP*100}" oninput="setPid('pidP',this)" onchange="renderPanel();this.blur()"></div>`;
+    h+=`<div class="slider-row"><label>I (积分): ${S.pidI.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.pidI*100}" oninput="setPid('pidI',this)" onchange="renderPanel();this.blur()"></div>`;
+    h+=`<div class="slider-row"><label>D (微分): ${S.pidD.toFixed(2)}</label><input type="range" min="0" max="200" value="${S.pidD*100}" oninput="setPid('pidD',this)" onchange="renderPanel();this.blur()"></div>`;
     h+=`<p>状态机: <span style="color:#22c55e">${S.stateMachine}</span></p>`;
     h+=`<button class="act-btn secondary" onclick="cycleState()">切换状态</button>`;
     if(S.pidP>0&&!levelObjs[4][0])completeObj(0);
@@ -551,10 +565,19 @@ function startAlgo(algo){S.algo=algo;S.searching=true;S.path=[];S.visited=[];S.o
 function resetGrid(){initLevel(3);renderPanel()}
 function addDynObs(){S.dynObs.push({x:5+Math.random()*15,y:3+Math.random()*12,dx:(Math.random()-0.5)*0.04,dy:(Math.random()-0.5)*0.04})}
 function cycleState(){let states=['cruise','follow','lane_change','stop'];let i=states.indexOf(S.stateMachine);S.stateMachine=states[(i+1)%4];renderPanel()}
-function checkQuiz(el,picked,ans){if(el.classList.contains('correct')||el.classList.contains('wrong'))return;
-  if(picked===ans){el.classList.add('correct');setTimeout(()=>{if(curLevel<6){curLevel++;initLevel(curLevel);renderPanel()}else showResult()},800)}
-  else el.classList.add('wrong')}
-function goLevel(i){curLevel=i;initLevel(i);renderPanel()}
+function updateSliderLabel(input,text){let label=input&&input.previousElementSibling;if(label)label.textContent=text}
+function setWeight(key,input){S.weights[key]=+input.value/100;let names={camera:'摄像头权重',lidar:'LiDAR权重',radar:'雷达权重'};updateSliderLabel(input,`${names[key]}: ${S.weights[key].toFixed(2)}`)}
+function setThreshold(input){S.threshold=+input.value/100;updateSliderLabel(input,`置信度阈值: ${S.threshold.toFixed(2)}`)}
+function setKf(key,input){S[key]=+input.value/10;updateSliderLabel(input,`${key==='kfQ'?'过程噪声 Q':'观测噪声 R'}: ${S[key].toFixed(2)}`)}
+function setPid(key,input){S[key]=+input.value/100;let names={pidP:'P (比例)',pidI:'I (积分)',pidD:'D (微分)'};updateSliderLabel(input,`${names[key]}: ${S[key].toFixed(2)}`)}
+function checkQuiz(levelIdx,picked){
+  if(levelIdx!==curLevel||quizPassed[levelIdx])return;
+  let q=LEVELS[levelIdx].quiz,ok=picked===q.ans;
+  quizFeedback[levelIdx]={ok,text:ok?'答对了。进入下一关前，先读一下本关的工程总结。':'还不对。先回到现象：自动驾驶系统要靠冗余、融合和风险控制提升可靠性。'};
+  if(ok)quizPassed[levelIdx]=true;
+  renderPanel();
+}
+function goLevel(i){if(!isUnlocked(i))return;curLevel=i;initLevel(i);renderPanel()}
 
 // === Result ===
 function showResult(){
@@ -562,7 +585,7 @@ function showResult(){
   panel.innerHTML=`<div class="summary-box"><div class="summary-title">🎉 探险完成！</div><div class="summary-sub">你已掌握自动驾驶全栈技术</div>
     <div class="summary-stats"><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标完成</div></div><div class="summary-stat"><div class="num">7/7</div><div class="label">关卡通过</div></div></div>
     <div class="summary-keys"><div>📡 传感器融合提供冗余感知</div><div>👁️ 环境感知是决策的基础</div><div>🗺️ 多源融合定位精度达厘米级</div><div>🛤️ 路径规划需兼顾效率与安全</div><div>🎮 PID/MPC实现精确控制</div><div>📶 V2X扩展单车感知边界</div><div>⚖️ 安全与伦理是终极挑战</div></div>
-    <button class="act-btn" onclick="curLevel=0;levelObjs=Array.from({length:7},()=>[false,false,false]);initLevel(0);renderPanel()" style="margin-top:12px">重新探索</button></div>`;
+    <button class="act-btn" onclick="curLevel=0;levelObjs=Array.from({length:7},()=>[false,false,false]);quizPassed=Array.from({length:7},()=>false);quizFeedback={};initLevel(0);renderPanel()" style="margin-top:12px">重新探索</button></div>`;
 }
 
 // === Main loop ===

@@ -116,8 +116,17 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px 10px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:7px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -170,6 +179,8 @@ let CW,CH,time=0,animId;
 let gameState='start',currentLevel=0;
 let levelState={},bgStars=[],trailParticles=[];
 const completedLevels=new Set();
+const quizPassed=new Set();
+let quizFeedback={};
 const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
 const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
 const c=3e8,eCharge=1.6e-19,protonMass=1.67e-27;
@@ -182,6 +193,16 @@ const levels=[
 {name:'粒子探测器',sub:'识别碎片',icon:'🔍'},
 {name:'发现希格斯',sub:'5σ发现',icon:'📊'},
 {name:'标准模型',sub:'粒子物理元素周期表',icon:'🧩'}
+];
+
+const quizData=[
+{q:'电场加速中粒子获得的动能主要由什么决定？',opts:['电荷与电压的乘积 E=qV','磁场半径的平方','探测器层数','统计显著性'],ans:0},
+{q:'回旋加速器让粒子反复增能的关键组合是什么？',opts:['磁场让轨迹弯曲，电场在间隙加速','只靠重力让粒子下落','只靠探测器吸收粒子','让粒子停止后重新发射'],ans:0},
+{q:'同步加速器为什么要随能量同步调节磁场？',opts:['保持粒子在固定环形轨道上运行','让粒子完全静止','降低光速上限','消除所有相对论效应'],ans:0},
+{q:'高能对撞能产生新粒子的物理基础是什么？',opts:['动能可按 E=mc² 转化为粒子质量','电荷会凭空增加','磁场直接制造质量','探测器把光子变成质子'],ans:0},
+{q:'探测器分层识别粒子的依据是什么？',opts:['不同粒子在不同层留下轨迹或沉积能量','所有粒子都会停在同一层','粒子颜色固定不变','中微子会发出强光'],ans:0},
+{q:'宣布发现希格斯这类新粒子通常需要什么统计标准？',opts:['达到约 5σ 的统计显著性','只看到一个事件','柱状图中任意一个峰','总事件数刚好为 100'],ans:0},
+{q:'标准模型目前仍不能完整解释什么？',opts:['引力、暗物质和暗能量等现象','电子和夸克的存在','光子的电磁作用','弱相互作用'],ans:0}
 ];
 
 function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight}
@@ -198,10 +219,12 @@ function startGame(){
 document.getElementById('startScreen').classList.add('hidden');
 gameState='play';currentLevel=0;
 panelEl.style.display='block';bbEl.style.display='flex';
+completedLevels.clear();quizPassed.clear();quizFeedback={};
 initLevel(0);renderPanel();animate();
 }
 
 function initLevel(n){
+if(n<0||n>=levels.length||!isUnlocked(n))return;
 currentLevel=n;trailParticles=[];
 const L=levels[n];
 if(n===0)initLevel0();
@@ -212,6 +235,28 @@ else if(n===4)initLevel4();
 else if(n===5)initLevel5();
 else if(n===6)initLevel6();
 renderPanel();
+}
+
+function isUnlocked(n){return n===0||quizPassed.has(n-1);}
+function tryCompleteLevel(n){
+if(n!==currentLevel||!levelState.goals||!levelState.goals.every(Boolean)||quizPassed.has(n)||levelState.quizReady)return;
+levelState.quizReady=true;renderPanel();
+}
+function setInlineText(id,text){const el=document.getElementById(id);if(el)el.textContent=text;}
+function drawCurrentFrame(){
+drawBg();
+if(currentLevel===0)updateLevel0();
+else if(currentLevel===1)updateLevel1();
+}
+function dragVoltage(el){
+levelState.voltage=+el.value;
+setInlineText('voltageVal',levelState.voltage+' kV');
+drawCurrentFrame();
+}
+function dragCyclotronB(el){
+levelState.bField=+el.value/100;
+setInlineText('bFieldVal',levelState.bField.toFixed(2)+' T');
+drawCurrentFrame();
 }
 
 /* ========== LEVEL 0: 电场加速 ========== */
@@ -244,8 +289,7 @@ if(s.protonX>=plateR-40){s.phase='done';s.protonX=plateR-40;
 if(s.energy>=1000&&!s.goals[0])s.goals[0]=true;
 if(s.energy>=10000&&!s.goals[1])s.goals[1]=true;
 s.goals[2]=true;
-if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(0)){completedLevels.add(0);showResult(0);}
-else renderPanel();
+tryCompleteLevel(0);
 }}
 // draw proton
 let glow=ctx.createRadialGradient(s.protonX,s.protonY,0,s.protonX,s.protonY,18);
@@ -305,7 +349,7 @@ if(s.laps>=3&&!s.goals[0]){s.goals[0]=true;
 if(!s.escaped&&!s.goals[1]){s.goals[1]=true;}
 renderPanel();}
 if(s.energy>=50000&&!s.goals[2]){s.goals[2]=true;renderPanel();}
-if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(1)){completedLevels.add(1);showResult(1);}
+tryCompleteLevel(1);
 let px=cx+Math.cos(s.angle)*s.radius,py=cy+Math.sin(s.angle)*s.radius;
 s.trail.push({x:px,y:py,t:60});
 if(s.trail.length>300)s.trail.shift();
@@ -389,7 +433,7 @@ if(s.laps>=10&&!s.goals[0]){s.goals[0]=true;renderPanel();}
 let pctC=s.speed/c*100;
 if(pctC>=99&&!s.goals[1]){s.goals[1]=true;renderPanel();}
 if(s.energy>=1000&&!s.goals[2]){s.goals[2]=true;renderPanel();}
-if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(2)){completedLevels.add(2);showResult(2);}
+tryCompleteLevel(2);
 }
 let pctC=s.speed/c*100;let gamma=1/Math.sqrt(1-(s.speed/c)*(s.speed/c)+1e-15);
 ctx.fillStyle='#444';ctx.font='19px sans-serif';
@@ -452,7 +496,7 @@ if(s.particleTypes.size>=3&&!s.goals[2]){s.goals[2]=true;renderPanel();}
 // goal 1: observe curved tracks
 let hasCurved=s.debris.some(d=>d.charge!==0&&d.trail.length>10);
 if(hasCurved&&!s.goals[1]){s.goals[1]=true;renderPanel();}
-if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(3)){completedLevels.add(3);showResult(3);}
+tryCompleteLevel(3);
 }
 // info
 ctx.fillStyle='#444';ctx.font='19px sans-serif';
@@ -617,7 +661,7 @@ if(identNames.has('电子')&&!s.goals[0]){s.goals[0]=true;}
 if(identNames.has('μ子')&&!s.goals[1]){s.goals[1]=true;}
 if(identNames.has('中微子')&&!s.goals[2]){s.goals[2]=true;}
 s.selected=null;
-if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(4)){completedLevels.add(4);showResult(4);}
+tryCompleteLevel(4);
 renderPanel();
 }
 function resetLevel4(){initLevel4();renderPanel();}
@@ -713,7 +757,7 @@ s.sigma=Math.max(0,sigma);
 if(s.totalEvents>=2000&&!s.goals[0]){s.goals[0]=true;}
 if(s.sigma>=3&&!s.goals[1]){s.goals[1]=true;}
 if(s.sigma>=5&&!s.goals[2]){s.goals[2]=true;}
-if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(5)){completedLevels.add(5);showResult(5);}
+tryCompleteLevel(5);
 renderPanel();
 }
 function randn(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
@@ -885,7 +929,7 @@ if(cd.cat==='lepton')leptonsCorrect++;
 if(quarksCorrect>=6&&!s.goals[0]){s.goals[0]=true;}
 if(leptonsCorrect>=6&&!s.goals[1]){s.goals[1]=true;}
 if(correctCount>=17&&!s.goals[2]){s.goals[2]=true;}
-if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(6)){completedLevels.add(6);showResult(6);}
+tryCompleteLevel(6);
 renderPanel();
 }
 function resetLevel6(){initLevel6();renderPanel();}
@@ -918,12 +962,7 @@ function _diffNodes(o,n){
 
 function renderPanel(){
 const s=levelState,L=levels[currentLevel];
-let h='<div style="margin-bottom:8px">';
-levels.forEach((l,i)=>{
-let cls='level-btn';if(i===currentLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
-h+=`<span class="${cls}" onclick="initLevel(${i})">${l.icon}${i+1}</span>`;
-});
-h+='</div>';
+let h=renderStageNav();
 h+=`<div class="m-title">${L.icon} ${L.name}</div><div class="m-sub">${L.sub}</div>`;
 
 if(currentLevel===0){
@@ -931,8 +970,8 @@ let g=s.goals||[false,false,false];
 h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心公式：</b>E = qV（动能 = 电荷 × 电压）</div>`;
 h+=`<div class="concept-box">质子在电场中加速，获得动能 E = qV。<br>电压越高，粒子能量越大。</div>`;
 h+=goalHtml(['加速到 1 keV','加速到 10 keV','理解电压与能量关系'],g);
-h+=`<div class="slider-wrap"><label>电压: <span class="sv">${s.voltage} kV</span></label>`;
-h+=`<input type="range" min="1" max="100" value="${s.voltage}" oninput="levelState.voltage=+this.value;renderPanel()"></div>`;
+h+=`<div class="slider-wrap"><label>电压: <span class="sv" id="voltageVal">${s.voltage} kV</span></label>`;
+h+=`<input type="range" min="1" max="100" value="${s.voltage}" oninput="dragVoltage(this)" onchange="this.blur();renderPanel()"></div>`;
 h+=`<button class="act-btn" onclick="accelLevel0()">⚡ 加速！</button>`;
 h+=`<button class="act-btn" onclick="resetLevel0()">🔄 重置</button>`;
 h+=`<div class="hint-box">💡 先调低电压试试，再调到最大看看能量变化</div>`;
@@ -941,8 +980,8 @@ let g=s.goals||[false,false,false];
 h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心原理：</b>回旋加速器 — 磁场偏转 + 电场加速</div>`;
 h+=`<div class="concept-box">回旋加速器：粒子在D形电极间来回加速，磁场使其走圆弧。每过间隙加速一次，半径增大。</div>`;
 h+=goalHtml(['完成 3 圈','调磁场使粒子不飞出','达到 50 keV'],g);
-h+=`<div class="slider-wrap"><label>磁场: <span class="sv">${s.bField?.toFixed(2)||'0.50'} T</span></label>`;
-h+=`<input type="range" min="10" max="200" value="${Math.round((s.bField||0.5)*100)}" oninput="levelState.bField=+this.value/100;renderPanel()"></div>`;
+h+=`<div class="slider-wrap"><label>磁场: <span class="sv" id="bFieldVal">${s.bField?.toFixed(2)||'0.50'} T</span></label>`;
+h+=`<input type="range" min="10" max="200" value="${Math.round((s.bField||0.5)*100)}" oninput="dragCyclotronB(this)" onchange="this.blur();renderPanel()"></div>`;
 h+=`<button class="act-btn" onclick="startCyclotron()">🌀 启动回旋加速器</button>`;
 h+=`<button class="act-btn" onclick="resetLevel1()">🔄 重置</button>`;
 if(s.escaped)h+=`<div class="hint-box">⚠️ 粒子飞出了！试试增大磁场</div>`;
@@ -991,15 +1030,64 @@ h+=goalHtml(['放置所有夸克（6种）','放置所有轻子（6种）','完�
 h+=`<button class="act-btn" onclick="resetLevel6()">🔄 重置</button>`;
 h+=`<div class="hint-box">💡 提示：上型夸克(u,c,t)电荷+2/3，下型夸克(d,s,b)电荷-1/3</div>`;
 }
+if(s.goals&&s.goals.every(Boolean)&&!quizPassed.has(currentLevel)){
+h+=renderQuiz();
+}
+if(quizPassed.has(currentLevel)){
+h+=`<div class="learn-box">${learnTexts[currentLevel]}</div>`;
+if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="initLevel(${currentLevel+1})">下一关 →</button>`;
+else h+=renderSummary();
+}
 _patchPanel(panelEl,h);
 bbLeft.textContent=`关卡 ${currentLevel+1}/7: ${L.name}`;
-bbRight.textContent=`已完成: ${completedLevels.size}/7`;
+bbRight.textContent=`测验通过: ${quizPassed.size}/7`;
 }
 
 function goalHtml(texts,goals){
 let h='';texts.forEach((t,i)=>{
 h+=`<div class="goal-row"><span class="g-icon">${goals[i]?'✅':'⬜'}</span><span class="g-text${goals[i]?' done':''}">${t}</span></div>`;
 });return h;
+}
+
+function renderStageNav(){
+let h='<div class="stage-nav"><div class="sn-bar">';
+levels.forEach((l,i)=>{
+let unlocked=isUnlocked(i);
+let cls=quizPassed.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
+h+=`<div class="sn-d ${cls}" onclick="${unlocked?`initLevel(${i})`:''}"></div>`;
+});
+h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 进度 ${Math.round(quizPassed.size/levels.length*100)}%</div>`;
+h+=`<div class="sn-hint">${quizPassed.size}/${levels.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
+return h;
+}
+
+function renderQuiz(){
+let q=quizData[currentLevel],fb=quizFeedback[currentLevel];
+let h=`<div class="quiz-box"><div class="quiz-title">通关小测验</div><div class="quiz-q">${q.q}</div>`;
+q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="checkQuiz(${i})">${opt}</button>`;});
+if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+h+='</div>';
+return h;
+}
+
+function checkQuiz(oi){
+if(quizPassed.has(currentLevel))return;
+let q=quizData[currentLevel],ok=oi===q.ans;
+quizFeedback[currentLevel]={ok,text:ok?'答对了。先读学习总结，再进入下一关。':'还不对。回到本关现象、公式和探测逻辑再判断。'};
+if(ok){quizPassed.add(currentLevel);completedLevels.add(currentLevel);}
+renderPanel();
+}
+
+function renderSummary(){
+let h='<div class="summary-box"><div class="summary-title">🏆 粒子加速器探险通关！</div>';
+h+=`<div class="summary-sub">你已完成全部 ${levels.length} 个粒子物理关卡</div>`;
+h+='<div class="summary-stats">';
+h+=`<div class="summary-stat"><div class="num">${quizPassed.size}/${levels.length}</div><div class="label">测验通过</div></div>`;
+h+='<div class="summary-stat"><div class="num">7</div><div class="label">核心概念</div></div>';
+h+='</div><div class="summary-keys"><div style="font-weight:bold;color:var(--summary-title);margin-bottom:6px">📚 关键知识回顾</div>';
+levels.forEach(l=>{h+=`<div>✅ ${l.name}</div>`;});
+h+='</div></div>';
+return h;
 }
 
 /* ========== RESULT MODAL ========== */
@@ -1068,108 +1156,6 @@ else if(currentLevel===4)updateLevel4();
 else if(currentLevel===5)updateLevel5();
 else if(currentLevel===6){updateLevel6();drawLevel6Cards();}
 }
-
-function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeof curLevel!=="undefined")curLevel=i;if(typeof initLevel==="function")initLevel(i);if(typeof renderPanel==="function")renderPanel();}
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
-
 
 </script>
 </body>

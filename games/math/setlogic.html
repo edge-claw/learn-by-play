@@ -78,6 +78,7 @@ canvas{position:fixed;left:320px;top:0;background:var(--bg)}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#14b8a6;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
@@ -125,13 +126,14 @@ function t(){return isDark?{bg:'#0a0a2e',grid:'rgba(20,184,166,0.06)',text:'#fff
 
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const panel=document.getElementById('panel'),bar=document.getElementById('bar'),barInner=document.getElementById('barInner');
-let W,H,curLevel=0;
+let W,H,curLevel=0,drawTheme=t();
 let levelObjs=Array.from({length:7},()=>[false,false,false]);
 
 function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';draw()}
 window.addEventListener('resize',resize);
 function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
-function goLevel(n){curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
+function isUnlocked(n){return n>=0&&n<LI.length&&(n===0||quizPassed.has(n)||quizPassed.has(n-1))}
+function goLevel(n){if(!isUnlocked(n))return;curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
 function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
 
 const LI=[
@@ -231,6 +233,17 @@ function verifyBase(){
   if(L6.n===1){let lhs=1,rhs=1*(1+1)/2;if(lhs===rhs){L6.verified[0]=true;completeObj(5,0)}}
   renderPanel();draw();
 }
+function setInductionN(el){
+  L6.n=+el.value;
+  let sum=L6.n*(L6.n+1)/2;
+  let val=document.getElementById('l6NVal');
+  let sumText=document.getElementById('l6SumText');
+  let formulaText=document.getElementById('l6FormulaText');
+  if(val)val.textContent=L6.n;
+  if(sumText)sumText.textContent=`1+2+...+${L6.n} = ${sum}`;
+  if(formulaText)formulaText.textContent=`n(n+1)/2 = ${L6.n}×${L6.n+1}/2 = ${sum}`;
+  draw();
+}
 function showHypothesis(){L6.verified[1]=true;completeObj(5,1);renderPanel();draw()}
 function verifyStep(){L6.verified[2]=true;completeObj(5,2);renderPanel();draw()}
 
@@ -247,8 +260,8 @@ function exploreParadox(p){
 function renderBar(){barInner.innerHTML='<span style="color:var(--text-muted)">🔗 '+LI[curLevel].title+'</span><span class="progress">'+levelObjs.flat().filter(Boolean).length+'/'+levelObjs.flat().length+'</span>'}
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<7;i++){let cls=levelObjs[i].every(Boolean)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`}
-  h+='</div><div class="sn-info">第 '+(curLevel+1)+'/7 关 — '+LI[curLevel].title+'</div><div class="sn-hint">'+LI[curLevel].sub+'</div></div>';return h;
+  for(let i=0;i<7;i++){let cls=quizPassed.has(i)?'done':i===curLevel?'cur':isUnlocked(i)?'':'locked';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`}
+  h+='</div><div class="sn-info">第 '+(curLevel+1)+'/7 关 — '+LI[curLevel].title+'</div><div class="sn-hint">'+LI[curLevel].sub+' · '+quizPassed.size+'/7 已通关，答对测验才解锁下一关</div></div>';return h;
 }
 function renderQuiz(li){
   let qd=quizData[li];if(!qd)return '';
@@ -298,9 +311,9 @@ function renderPanel(){
     case 4:h+=`<button class="act-btn green" onclick="verifyDM(1)">验证 ¬(A∧B) = ¬A∨¬B</button><button class="act-btn green" onclick="verifyDM(2)">验证 ¬(A∨B) = ¬A∧¬B</button><button class="act-btn" onclick="verifyDMTruth()">用真值表确认</button>`;
       if(L5.verified[0])h+=`<div style="color:var(--quiz-correct-text);font-size:12px">✅ 第一定律已验证</div>`;
       if(L5.verified[1])h+=`<div style="color:var(--quiz-correct-text);font-size:12px">✅ 第二定律已验证</div>`;break;
-    case 5:h+=`<div class="slider-row"><label>n 值</label><input type="range" min="1" max="20" value="${L6.n}" oninput="L6.n=+this.value;renderPanel();draw()"><span class="val">${L6.n}</span></div>`;
-      h+=`<div style="font-size:12px;color:var(--text-muted);margin:4px 0">1+2+...+${L6.n} = ${L6.n*(L6.n+1)/2}</div>`;
-      h+=`<div style="font-size:12px;color:var(--text-muted)">n(n+1)/2 = ${L6.n}×${L6.n+1}/2 = ${L6.n*(L6.n+1)/2}</div>`;
+    case 5:h+=`<div class="slider-row"><label>n 值</label><input type="range" min="1" max="20" value="${L6.n}" oninput="setInductionN(this)" onchange="this.blur();renderPanel()"><span class="val" id="l6NVal">${L6.n}</span></div>`;
+      h+=`<div id="l6SumText" style="font-size:12px;color:var(--text-muted);margin:4px 0">1+2+...+${L6.n} = ${L6.n*(L6.n+1)/2}</div>`;
+      h+=`<div id="l6FormulaText" style="font-size:12px;color:var(--text-muted)">n(n+1)/2 = ${L6.n}×${L6.n+1}/2 = ${L6.n*(L6.n+1)/2}</div>`;
       h+=`<button class="act-btn green" onclick="verifyBase()">验证基础步 (n=1)</button>`;
       h+=`<button class="act-btn" onclick="showHypothesis()">理解归纳假设</button>`;
       h+=`<button class="act-btn" onclick="verifyStep()">完成归纳步</button>`;break;
@@ -321,9 +334,9 @@ function showResult(){
 }
 
 function draw(){
-  ctx.clearRect(0,0,W,H);let th=t();
-  ctx.fillStyle=th.bg;ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
+  ctx.clearRect(0,0,W,H);drawTheme=t();
+  ctx.fillStyle=drawTheme.bg;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle=drawTheme.grid;ctx.lineWidth=1;
   for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
   for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
   switch(curLevel){case 0:drawL1();break;case 1:drawL2();break;case 2:drawL3();break;case 3:drawL4();break;case 4:drawL5();break;case 5:drawL6();break;case 6:drawL7();break}
@@ -353,7 +366,7 @@ function drawL1(){
   ctx.strokeStyle='#3b82f6';ctx.lineWidth=2;ctx.beginPath();ctx.arc(ax,cy,r,0,Math.PI*2);ctx.stroke();
   ctx.strokeStyle='#ec4899';ctx.beginPath();ctx.arc(bx,cy,r,0,Math.PI*2);ctx.stroke();
   // labels
-  ctx.fillStyle=th.text;ctx.font='16px sans-serif';ctx.textAlign='center';
+  ctx.fillStyle=drawTheme.text;ctx.font='16px sans-serif';ctx.textAlign='center';
   ctx.fillText('A',ax-r/2,cy-r-10);ctx.fillText('B',bx+r/2,cy-r-10);
   // elements
   ctx.font='14px sans-serif';
@@ -365,7 +378,7 @@ function drawL1(){
     else if(inA){x=ax-40;y=cy-30+(n%4)*20}
     else if(inB){x=bx+40;y=cy-30+(n%4)*20}
     else{x=cx;y=cy+r+20}
-    ctx.fillStyle=th.text;ctx.fillText(n,x,y);
+    ctx.fillStyle=drawTheme.text;ctx.fillText(n,x,y);
   });
   // operation label
   ctx.font='18px sans-serif';ctx.fillStyle='#14b8a6';
@@ -375,7 +388,7 @@ function drawL1(){
 
 function drawL2(){
   let cx=W/2,cy=H/2;
-  ctx.fillStyle=th=t().text;ctx.font='24px sans-serif';ctx.textAlign='center';
+  ctx.fillStyle=drawTheme.text;ctx.font='24px sans-serif';ctx.textAlign='center';
   ctx.fillText('命题逻辑',cx,50);
   // P and Q boxes
   let bw=120,bh=80,gap=60;

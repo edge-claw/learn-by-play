@@ -107,8 +107,17 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;line-height:1.6;color:var(--quiz-q);margin-bottom:6px}
+.quiz-opt{display:block;width:100%;text-align:left;padding:8px;margin:4px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;cursor:pointer}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{border-radius:8px;padding:8px;margin:8px 0;font-size:13px;line-height:1.6}
+.quiz-feedback.ok{border:1px solid #22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{border:1px solid #ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -170,6 +179,8 @@ const levelObjs=[
   [false,false,false],[false,false,false],[false,false,false],[false,false,false]
 ];
 const levelCompleted=[false,false,false,false,false,false,false];
+const quizPassed=[false,false,false,false,false,false,false];
+const quizFeedback={};
 
 // Level state variables
 let lv1={freq:3e9,showE:true,showB:true};
@@ -208,6 +219,15 @@ const levelLearn=[
   '阵列天线通过相位控制实现电子扫描，无需机械转动。阵元越多波束越窄，间距影响栅瓣位置。',
   '自由空间损耗FSPL=20lg(d)+20lg(f)+20lg(4π/c)。距离翻倍损耗增加6dB，频率翻倍也增加6dB。'
 ];
+const quizData=[
+  {q:'电磁波中电场、磁场和传播方向的关系是什么？',opts:['三者两两垂直','电场和磁场总是同向','只有电场会传播'],ans:0,ok:'对。电场、磁场和传播方向两两正交，这是横电磁波的核心图像。',bad:'观察画布中 E 场和 B 场的两个方向，它们与传播轴正交。'},
+  {q:'传输线完美匹配时 VSWR 等于多少？',opts:['1','无穷大','负数'],ans:0,ok:'对。VSWR=1 表示没有反射，功率完全送入负载。',bad:'VSWR 越接近 1 越好，开路/短路才会走向极大。'},
+  {q:'史密斯圆图中心代表什么？',opts:['归一化阻抗 1+j0 的匹配点','短路点','开路点'],ans:0,ok:'对。圆心就是匹配点，反射系数为 0。',bad:'左端是短路，右端是开路，中心才是匹配。'},
+  {q:'矩形波导 TE10 模式能传播的条件是什么？',opts:['工作频率高于截止频率','工作频率必须为 0','只要波导足够长就能传播'],ans:0,ok:'对。低于截止频率时场沿波导衰减，不能有效传输。',bad:'波导模式有截止频率，f 必须大于 fc。'},
+  {q:'半波偶极子长度大约是多少？',opts:['λ/2','2λ','λ/20'],ans:0,ok:'对。半波偶极子是最常见的基本谐振天线。',bad:'本关目标要求把长度调到 0.5λ。'},
+  {q:'相控阵靠什么实现波束偏转？',opts:['调节阵元之间的相位差','只改变背景颜色','让所有阵元短路'],ans:0,ok:'对。相位差改变各方向叠加结果，从而移动主瓣。',bad:'波束扫描的关键是阵元相位控制。'},
+  {q:'自由空间链路中距离翻倍，路径损耗约增加多少？',opts:['6 dB','0 dB','60 dB'],ans:0,ok:'对。20log10(2)≈6dB，频率翻倍也一样增加约 6dB。',bad:'FSPL 对距离是 20log10(d)，翻倍不是线性加倍，而是约 +6dB。'}
+];
 
 function resize(){
   const wrap=document.getElementById('canvasWrap');
@@ -226,32 +246,33 @@ function startGame(){
 }
 
 function buildNav(){
-  document.getElementById('levelNav').innerHTML='';
+  let h='';
+  for(let i=0;i<levelNames.length;i++){
+    const unlocked=canLoadLevel(i);
+    h+=`<button class="${i===curLevel?'active ':''}${levelCompleted[i]?'completed ':''}" ${unlocked?'':'disabled'} onclick="${unlocked?'loadLevel('+i+')':''}">${i+1}</button>`;
+  }
+  document.getElementById('levelNav').innerHTML=h;
 }
 
 function updateNav(){
   document.getElementById('barText').textContent='📡 '+levelNames[curLevel];
+  buildNav();
 }
 
 function completeObj(li,oi){
   if(levelObjs[li][oi])return;
   levelObjs[li][oi]=true;
   updatePanel();
-  if(levelObjs[li].every(v=>v)){
-    levelCompleted[li]=true;
-    updateNav();
-    const lb=panel.querySelector('.learn-box');
-    if(lb)lb.style.display='block';
-  }
 }
 
 function updatePanel(){loadLevel(curLevel,true);}
 
 function loadLevel(idx,keepState){
+  if(!canLoadLevel(idx))return;
   curLevel=idx;
   if(!keepState)time=0;
   updateNav();
-  let html=`<h2>关卡 ${idx+1}: ${levelNames[idx]}</h2>`;
+  let html=stageNavHTML()+`<h2>关卡 ${idx+1}: ${levelNames[idx]}</h2>`;
   html+=`<p class="desc">${levelDescs[idx]}</p>`;
   html+=`<ul class="obj-list">`;
   for(let i=0;i<3;i++){
@@ -259,11 +280,59 @@ function loadLevel(idx,keepState){
   }
   html+=`</ul>`;
   html+=buildControls(idx);
-  html+=`<div class="learn-box" style="display:${levelCompleted[idx]?'block':'none'}">💡 ${levelLearn[idx]}</div>`;
+  if(levelObjs[idx].every(Boolean)){
+    if(!quizPassed[idx])html+=quizHTML(idx);
+    else{
+      html+=`<div class="learn-box" style="display:block">💡 ${levelLearn[idx]}</div>`;
+      if(idx<levelNames.length-1)html+=`<div class="ctrl-group"><button onclick="loadLevel(${idx+1})">下一关 →</button></div>`;
+      else html+=summaryHTML();
+    }
+  }
   panel.innerHTML=html;
   bindControls(idx);
   canvas.onmousedown=null;canvas.onmousemove=null;canvas.onmouseup=null;
   if(idx===2)bindSmithChart();
+}
+
+function canLoadLevel(idx){
+  return idx>=0&&idx<levelNames.length&&(idx===0||levelCompleted[idx]||levelCompleted[idx-1]);
+}
+
+function stageNavHTML(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<levelNames.length;i++){
+    const unlocked=canLoadLevel(i);
+    const cls=levelCompleted[i]?'done':i===curLevel?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'loadLevel('+i+')':''}"></div>`;
+  }
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/${levelNames.length} 关 | 已通关 ${levelCompleted.filter(Boolean).length}/${levelNames.length}</div>`;
+  h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
+  return h;
+}
+
+function quizHTML(idx){
+  const q=quizData[idx],fb=quizFeedback[idx];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((o,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${idx},${i})">${String.fromCharCode(65+i)}. ${o}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+
+function answerQuiz(idx,choice){
+  const q=quizData[idx],ok=choice===q.ans;
+  quizFeedback[idx]={ok,text:ok?q.ok:q.bad};
+  if(ok){quizPassed[idx]=true;levelCompleted[idx]=true;}
+  updatePanel();updateNav();
+}
+
+function summaryHTML(){
+  let h='<div class="summary-box"><div class="summary-title">🏆 微波与天线实验室通关</div>';
+  h+='<div class="summary-sub">你已完成 7 个射频核心主题</div><div class="summary-keys">';
+  levelNames.forEach(n=>{h+=`<div>✅ ${n}</div>`});
+  h+='</div></div>';
+  return h;
 }
 
 function buildControls(idx){
@@ -1038,109 +1107,6 @@ function drawLevel7(){
   ctx.fillStyle='#444';ctx.font='11px monospace';
   ctx.fillText(`f = ${(lv7.freq/1e9).toFixed(0)} GHz`,cx-30,midY-28);
 }
-
-// Start
-
-
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
 
 </script>
 </body>

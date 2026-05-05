@@ -116,8 +116,17 @@ input.ctrl-inp{background:#1e1e38;border:1px solid #2a2a5a;color:#c0c0d0;padding
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -196,6 +205,16 @@ const levels=[
  learn:'现代 CPU 采用<span class="sv">5 级流水线</span>：IF(取指)→ID(解码)→EX(执行)→MEM(访存)→WB(写回)。流水线让多条指令重叠执行，但<span class="sv">数据冒险</span>需要转发或暂停来解决。'}
 ];
 
+const quizData=[
+  {q:'数字电路中逻辑门的作用是什么？',opts:['根据输入位产生布尔输出','存储大量文件','把交流电直接变成图像'],ans:0,ok:'对。逻辑门实现布尔运算，是组合逻辑的基础。',bad:'逻辑门处理 0/1 信号，核心是布尔运算。'},
+  {q:'全加器相比半加器多处理什么输入？',opts:['低位进位 Cin','显示器颜色','内存地址总线宽度'],ans:0,ok:'对。全加器处理 A、B 和 Cin，输出 Sum 与 Cout。',bad:'半加器只有两个输入，全加器多了来自低位的进位。'},
+  {q:'D 触发器通常在什么时候保存输入？',opts:['时钟边沿','任意随机时刻','电源关闭后'],ans:0,ok:'对。触发器按时钟边沿采样，是寄存器的基础。',bad:'寄存器依赖时钟同步，不是随机保存。'},
+  {q:'ALU 在 CPU 中主要负责什么？',opts:['算术和逻辑运算','长期保存全部程序','控制散热风扇'],ans:0,ok:'对。ALU 执行加减和 AND/OR/XOR 等运算，并产生标志位。',bad:'ALU 是运算单元，不是主存或外设控制器。'},
+  {q:'数据通路中的多路选择器作用是什么？',opts:['根据控制信号选择数据来源','提升屏幕亮度','永久删除寄存器'],ans:0,ok:'对。MUX 决定 ALU、寄存器、内存之间的数据来源。',bad:'数据通路靠控制信号选择数据流，不是靠手动连接。'},
+  {q:'控制器解码指令后会生成什么？',opts:['控制信号','网页样式表','随机噪声'],ans:0,ok:'对。控制信号驱动寄存器、ALU、内存和多路选择器协同工作。',bad:'控制器的职责是解释指令并产生控制信号。'},
+  {q:'五级流水线的正确顺序是什么？',opts:['IF→ID→EX→MEM→WB','WB→MEM→EX→ID→IF','ALU→RAM→GPU→NIC→Disk'],ans:0,ok:'对。取指、解码、执行、访存、写回构成经典五级流水。',bad:'经典 CPU 流水线从取指开始，到写回结束。'}
+];
+let quizPassed=new Set(),quizFeedback={};
 let levelObjs=levels.map(l=>l.objs.map(()=>false));
 // Level-specific state
 let gateType=0,gateA=0,gateB=0; // L0
@@ -216,6 +235,25 @@ function completeObj(li,oi){
 if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel()}
 }
 function allDone(li){return levelObjs[li].every(v=>v)}
+function isUnlocked(n){return n===0||quizPassed.has(n-1)}
+
+function quizHTML(li){
+  const q=quizData[li],fb=quizFeedback[li];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`;});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+function answerQuiz(li,choice){
+  if(li!==curLevel||quizPassed.has(li))return;
+  const q=quizData[li],ok=choice===q.ans;
+  quizFeedback[li]={ok:ok,text:ok?q.ok:q.bad};
+  if(ok)quizPassed.add(li);
+  renderPanel();
+}
+window.answerQuiz=answerQuiz;
 
 // ===== Start =====
 function startGame(){
@@ -227,6 +265,7 @@ loop();
 }
 
 function goLevel(i){
+if(i<0||i>=levels.length||!isUnlocked(i))return;
 curLevel=i;
 // reset level state
 if(i===1){addA=[0,1,1,0];addB=[0,0,1,1];addAnim=0}
@@ -259,8 +298,9 @@ h+=`<div class="sec-title">交互控件</div>`;
 h+=renderControls();
 if(allDone(curLevel)){
   h+=`<div class="learn-box">${L.learn}</div>`;
-  if(curLevel<6)h+=`<button class="act-btn" style="width:100%;margin-top:8px;background:#1a3a1a;border-color:#2a5a2a;color:#4ade80" onclick="goLevel(${curLevel+1})">▶ 下一关</button>`;
-  else h+=`<div class="learn-box" style="border-color:#3b82f6;background:#0a0a2a;color:#60a5fa">🎉 恭喜通关！你已经从逻辑门走到了完整 CPU！</div>`;
+  if(!quizPassed.has(curLevel))h+=quizHTML(curLevel);
+  if(quizPassed.has(curLevel)&&curLevel<6)h+=`<button class="act-btn" style="width:100%;margin-top:8px;background:#1a3a1a;border-color:#2a5a2a;color:#4ade80" onclick="goLevel(${curLevel+1})">▶ 下一关</button>`;
+  if(quizPassed.has(curLevel)&&curLevel===6)h+=window._summaryHTML?window._summaryHTML():`<div class="learn-box" style="border-color:#3b82f6;background:#0a0a2a;color:#60a5fa">🎉 恭喜通关！你已经从逻辑门走到了完整 CPU！</div>`;
 }
 panel.innerHTML=h;
 }
@@ -963,6 +1003,7 @@ resize();
     return null;
   }
   function _isDone(i){
+    if(typeof quizPassed!=='undefined')return quizPassed.has(i);
     var o=_getObjs();
     if(o&&o[i])return o[i].every(function(v){return v;});
     if(typeof completedLevels!=='undefined')return completedLevels.has(i);
@@ -984,11 +1025,14 @@ resize();
     var pct=s.total>0?Math.round(s.done/s.total*100):0;
     var h='<div class="stage-nav"><div class="sn-bar">';
     for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+      var unlocked=typeof isUnlocked==='function'?isUnlocked(i):true;
+      var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
+      var click=unlocked?"typeof goLevel==='function'&&goLevel("+i+")":'';
+      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+    if(typeof quizPassed!=='undefined')h+='<div class="sn-hint">'+quizPassed.size+'/'+total+' \u5DF2\u901A\u5173\uFF0C\u5B8C\u6210\u76EE\u6807\u540E\u7B54\u5BF9\u6D4B\u9A8C\u624D\u89E3\u9501\u4E0B\u4E00\u5173</div>';
 
     h+='</div>';
     return h;

@@ -106,8 +106,16 @@ canvas{display:block}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin-top:10px}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;line-height:1.6;color:var(--concept-text);margin-bottom:8px}
+.quiz-option{display:block;width:100%;padding:9px 10px;margin:6px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
+.quiz-option:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:8px;color:var(--quiz-wrong-text)}
+.quiz-feedback.ok{color:var(--quiz-correct-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -165,6 +173,9 @@ const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.ge
 let W,H,curLevel=0,animId=null,gameStarted=false;
 let levelObjs=Array.from({length:7},()=>[false,false,false]);
 let levelState={};
+const completedLevels=new Set();
+const quizPassed=new Set();
+const quizFeedback={};
 const LN=['科赫雪花','Mandelbrot 集','Julia 集','分形树','蝴蝶效应','Logistic 映射','奇异吸引子'];
 const LD=[
 '<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>分形：</b>科赫雪花 — 每边中间 1/3 替换为等边三角形</div>科赫雪花是最经典的分形之一。从一个等边三角形开始，每条边中间三分之一替换为向外的等边三角形。调整迭代次数，观察雪花如何从简单变得无限复杂。',
@@ -193,14 +204,101 @@ const LT=[
 '<strong>通往混沌之路</strong>：Logistic 映射展示了从有序到混沌的完整过程。r<3 时系统收敛到固定点；r≈3.449 时出现周期4；r≈3.57 后进入混沌。费根鲍姆发现，分岔点之间的比值趋近于常数 4.669...，这个常数在所有混沌系统中都出现！',
 '<strong>奇异吸引子</strong>：混沌系统虽然不可预测，但轨迹会被"吸引"到特定的几何结构上。Lorenz 吸引子像一只蝴蝶，Rössler 吸引子像一条折叠的带子。这些结构具有分数维度，是混沌与分形的交汇点。'
 ];
+const quizData=[
+  {
+    q:'科赫雪花为什么是分形？',
+    opts:['局部放大后仍能看到与整体相似的结构','它只能画一次，不能继续细分','它的周长和面积都必须为 0'],
+    ans:0,
+    ok:'正确。自相似性是科赫雪花最核心的分形特征。',
+    bad:'观察每次迭代：每条边都重复同一个替换规则。'
+  },
+  {
+    q:'Mandelbrot 集中黑色区域通常表示什么？',
+    opts:['迭代 z→z²+c 后没有在限定次数内发散的点','所有发散最快的点','随机涂黑的背景区域'],
+    ans:0,
+    ok:'正确。黑色区域对应被认为留在集合内或发散很慢的点。',
+    bad:'边界附近需要很多次迭代判断，内部点不会快速逃逸。'
+  },
+  {
+    q:'Julia 集与 Mandelbrot 集的关系是什么？',
+    opts:['Mandelbrot 集中的参数 c 通常对应连通 Julia 集','Julia 集完全不依赖参数 c','Mandelbrot 集只是 Julia 集的颜色表'],
+    ans:0,
+    ok:'正确。参数 c 的位置决定 Julia 集是否连通。',
+    bad:'拖动参数点：c 的变化会直接改变 Julia 集形态。'
+  },
+  {
+    q:'分形树能模拟自然树形的原因是什么？',
+    opts:['简单分支规则递归重复，形成多层级结构','每根枝条必须完全随机','树枝不能再分支'],
+    ans:0,
+    ok:'正确。递归分支可以生成类似树木、血管、河网的结构。',
+    bad:'看递归深度和分支角：相同规则重复产生复杂形态。'
+  },
+  {
+    q:'蝴蝶效应强调混沌系统的什么性质？',
+    opts:['对初始条件极端敏感','完全没有规律也没有方程','任何小误差都会立刻消失'],
+    ans:0,
+    ok:'正确。微小初始差异会被系统动力学逐步放大。',
+    bad:'红蓝轨迹初始只差 0.001，但之后距离会迅速变大。'
+  },
+  {
+    q:'Logistic 映射进入混沌前常见路径是什么？',
+    opts:['固定点 → 周期倍增 → 混沌','混沌 → 固定点 → 没有分岔','永远只保持一个固定值'],
+    ans:0,
+    ok:'正确。周期倍增是通向混沌的经典路线。',
+    bad:'观察分岔图：r 增大后先出现周期 2、4、8，再进入混沌。'
+  },
+  {
+    q:'奇异吸引子说明混沌系统并非完全随机，因为它们会怎样？',
+    opts:['轨迹会被限制在特定几何结构附近','轨迹永远是一条直线','所有点最终停在原点'],
+    ans:0,
+    ok:'正确。奇异吸引子体现了“不可预测但有结构”的混沌。',
+    bad:'看 Lorenz、Rössler、Hénon：轨迹复杂，但会围绕特定形状运动。'
+  }
+];
 
 function resize(){W=window.innerWidth-320;H=window.innerHeight-36;cv.width=W;cv.height=H;cv.style.position='fixed';cv.style.left='320px';cv.style.top='0';cv.style.width=W+'px';cv.style.height=H+'px';if(gameStarted)drawLevel();}
 window.addEventListener('resize',resize);
 function startGame(){document.getElementById('startOverlay').style.display='none';panel.style.display='block';bar.style.display='flex';gameStarted=true;resize();goLevel(0);}
-function goLevel(n){curLevel=n;if(animId){cancelAnimationFrame(animId);animId=null;}cv.onmousedown=null;cv.onmousemove=null;cv.onmouseup=null;cv.onwheel=null;levelState={};initLevel(n);renderPanel();renderBar();drawLevel();}
+function isUnlocked(n){return n===0||completedLevels.has(n-1);}
+function goLevel(n){if(!isUnlocked(n))return;curLevel=n;if(animId){cancelAnimationFrame(animId);animId=null;}cv.onmousedown=null;cv.onmousemove=null;cv.onmouseup=null;cv.onwheel=null;levelState={};if(quizPassed.has(n))levelObjs[n]=[true,true,true];initLevel(n);renderPanel();renderBar();drawLevel();}
 function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel();renderBar();}}
-function renderPanel(){let li=curLevel,h='';h+=`<span class="level-tag">关卡 ${li+1}/7</span>`;h+=`<h2>${LN[li]}</h2>`;h+=`<p class="desc-text">${LD[li]}</p>`;h+=`<ul class="obj-list">`;for(let i=0;i<3;i++)h+=`<li class="${levelObjs[li][i]?'done':''}">${LOT[li][i]}</li>`;h+=`</ul>`;h+=getPanelCtrl();if(levelObjs[li].every(v=>v)){h+=`<div class="learn-box">${LT[li]}</div>`;if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;if(li===6)h+=`${_summaryHTML()}`;}panel.innerHTML=h;}
+function renderPanel(){let li=curLevel,h='';h+=renderStageNav();h+=`<span class="level-tag">关卡 ${li+1}/7</span>`;h+=`<h2>${LN[li]}</h2>`;h+=`<p class="desc-text">${LD[li]}</p>`;h+=`<ul class="obj-list">`;for(let i=0;i<3;i++)h+=`<li class="${levelObjs[li][i]?'done':''}">${LOT[li][i]}</li>`;h+=`</ul>`;h+=getPanelCtrl();if(levelObjs[li].every(v=>v)&&!quizPassed.has(li))h+=renderQuiz();else if(quizPassed.has(li)){h+=`<div class="learn-box">${LT[li]}</div>`;if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;if(li===6)h+=summaryHTML();}panel.innerHTML=h;}
 function renderBar(){bar.innerHTML='<span style="color:var(--text-muted)">🌀 '+LN[curLevel]+'</span>';}
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<LN.length;i++){
+    let cls='sn-d';
+    if(completedLevels.has(i))cls+=' done';
+    if(i===curLevel)cls+=' cur';
+    if(!isUnlocked(i))cls+=' locked';
+    h+=`<div class="${cls}" onclick="goLevel(${i})"></div>`;
+  }
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/${LN.length} 关：${LN[curLevel]}</div>`;
+  h+=`<div class="sn-hint">完成三项目标后回答小测验，答对才解锁下一关</div></div>`;
+  return h;
+}
+function renderQuiz(){
+  const qd=quizData[curLevel],fb=quizFeedback[curLevel];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${qd.q}</div>`;
+  qd.opts.forEach((opt,i)=>{h+=`<button class="quiz-option" onclick="answerQuiz(${i})">${String.fromCharCode(65+i)}. ${opt}</button>`});
+  if(fb)h+=`<div class="quiz-feedback${fb.ok?' ok':''}">${fb.ok?'✅':'💡'} ${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+function answerQuiz(choice){
+  const qd=quizData[curLevel],ok=choice===qd.ans;
+  quizFeedback[curLevel]={ok,text:ok?qd.ok:qd.bad};
+  if(ok){quizPassed.add(curLevel);completedLevels.add(curLevel);}
+  renderPanel();renderBar();
+}
+function summaryHTML(){
+  let h='<div class="summary-box"><div class="summary-title">🎉 分形与混沌探险完成！</div>';
+  h+='<div class="summary-sub">你已完成 7 个主题，并通过每关小测验</div>';
+  h+=`<div class="summary-stats"><div class="summary-stat"><div class="num">${completedLevels.size}/${LN.length}</div><div class="label">测验通过</div></div><div class="summary-stat"><div class="num">${completedLevels.size*3}</div><div class="label">目标完成</div></div></div>`;
+  h+='<div class="summary-keys"><div>✅ 自相似结构产生分形</div><div>✅ 复迭代揭示 Mandelbrot 与 Julia 集</div><div>✅ 周期倍增通向混沌</div><div>✅ 奇异吸引子展示“不可预测但有结构”</div></div></div>';
+  return h;
+}
 
 /* ===== Koch Snowflake (iterative point generation) ===== */
 function initL0(){levelState.iter=1;}
@@ -821,108 +919,10 @@ initFns[3]=function(){origInitL3();animTree();};
 document.addEventListener('keydown',function(e){
   if(!gameStarted)return;
   if(e.key>='1'&&e.key<='7'){goLevel(+e.key-1);e.preventDefault();}
-  if(e.key==='ArrowRight'&&curLevel<6){goLevel(curLevel+1);e.preventDefault();}
+  if(e.key==='ArrowRight'&&curLevel<6&&isUnlocked(curLevel+1)){goLevel(curLevel+1);e.preventDefault();}
   if(e.key==='ArrowLeft'&&curLevel>0){goLevel(curLevel-1);e.preventDefault();}
 });
 
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
 try{renderPanel();}catch(e){}
 
 </script>

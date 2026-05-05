@@ -76,9 +76,17 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
-.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--concept-bg);border:1px solid var(--learn-border);border-radius:10px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--sv);margin-bottom:6px}
+.quiz-q{font-size:13px;line-height:1.6;color:var(--concept-text);margin-bottom:6px}
+.quiz-opt{display:block;width:100%;text-align:left;padding:8px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:13px;cursor:pointer}
+.quiz-opt:hover{background:var(--btn-hover)}
+.quiz-feedback{border-radius:8px;padding:8px;margin:8px 0;font-size:13px;line-height:1.6}
+.quiz-feedback.ok{border:1px solid #22c55e;background:#0a2a1a;color:#4ade80}
+.quiz-feedback.bad{border:1px solid #ef4444;background:#2a0a0a;color:#fca5a5}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -134,7 +142,16 @@ const LEVELS=[
   {name:'弹性回跳',icon:'💥'},{name:'P波与S波',icon:'〰️'},{name:'地震仪',icon:'📊'},
   {name:'震级与烈度',icon:'📏'},{name:'地震波层析',icon:'🔍'},{name:'海啸',icon:'🌊'},{name:'抗震设计',icon:'🏗️'}
 ];
-let cur=0,gameState='title',S={},done=new Array(7).fill(false);
+const quizData=[
+  {q:'弹性回跳理论解释的是哪一件事？',opts:['断层长期积累应变，突然滑动释放能量','地下空洞塌陷产生所有地震','地震只由天气变化触发'],ans:0,ok:'对。岩石像弹簧一样积累弹性能，超过强度后突然回跳并释放地震波。',bad:'回到断层受力过程：关键是应变积累和突然滑动。'},
+  {q:'为什么 P 波通常比 S 波先到达地震台站？',opts:['P 波传播速度更快','S 波能在空气中无限加速','P 波只在地表传播所以路程更短'],ans:0,ok:'对。P 波速度快，且可穿过固体和液体；S 波较慢且不能穿过液体。',bad:'比较两类体波时，先看传播速度。'},
+  {q:'地震仪记录地面振动主要利用了什么原理？',opts:['惯性：重锤相对保持静止，框架随地面运动','磁铁会自动预测震中','纸带只会记录强震不记录弱震'],ans:0,ok:'对。重锤和框架的相对位移形成地震图。',bad:'地震仪的核心是相对运动，而不是预测。'},
+  {q:'震级和烈度的区别是什么？',opts:['震级描述总能量，烈度描述某地破坏程度','震级只对建筑有效，烈度只对海啸有效','两者完全等价'],ans:0,ok:'对。同一次地震只有一个能量级别，但不同地点烈度不同。',bad:'看“全球统一的能量”和“当地影响”的差别。'},
+  {q:'P 波影区为什么能说明地球外核是液态？',opts:['波在液态外核处强烈折射，S 波不能穿过液体','影区是云层挡住了地震波','P 波影区说明地球内部没有分层'],ans:0,ok:'对。体波传播异常提供了地球内部圈层和外核状态的证据。',bad:'影区来自地震波穿过不同介质时的传播变化。'},
+  {q:'海啸从深海进入浅海时通常会发生什么？',opts:['波速降低、波高增大','波速和波高都立刻归零','只改变颜色，不改变能量分布'],ans:0,ok:'对。水深变浅使波速下降，能量堆积成更高的近岸浪。',bad:'关注水深变化如何影响波速和波高。'},
+  {q:'基础隔震和阻尼器的共同目标是什么？',opts:['减少建筑吸收的地震能量和振动响应','让建筑变得更重以压住地面','把地震完全消除'],ans:0,ok:'对。抗震设计不是消灭地震，而是降低结构响应并避免倒塌。',bad:'抗震措施处理的是建筑响应，不是让地震不存在。'}
+];
+let cur=0,gameState='title',S={},done=new Array(7).fill(false),quizPassed=new Set(),quizFeedback={},th=t();
 
 function initLevel(i){
   S={anim:0,phase:0};
@@ -153,17 +170,36 @@ function initLevel(i){
 
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  LEVELS.forEach((_,i)=>{const c=i<cur?'done':i===cur?'cur':'';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`});
+  LEVELS.forEach((_,i)=>{
+    const unlocked=i===0||quizPassed.has(i-1);
+    const c=quizPassed.has(i)?'done':i===cur?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${c}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+  });
   h+=`</div><div class="sn-info">第 ${cur+1}/7 关 — ${LEVELS[cur].name}</div>`;
-  h+=`<div class="sn-hint">${done.filter(Boolean).length}/7 已完成</div></div>`;return h;
+  h+=`<div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;return h;
+}
+function quizHTML(i){
+  const q=quizData[i],fb=quizFeedback[i];let h='<div class="quiz-box">';
+  h+='<div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,j)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${i},${j})">${opt}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';return h;
+}
+function answerQuiz(i,choice){
+  const q=quizData[i],ok=choice===q.ans;
+  quizFeedback[i]={ok,text:ok?q.ok:q.bad};
+  if(ok){quizPassed.add(i);playSound('ok')}else{playSound('no')}
+  renderPanel();updateInfobar();
 }
 function renderPanel(){
   const p=document.getElementById('panel');
   let h=renderStageNav();
   h+=`<h2>${LEVELS[cur].icon} ${LEVELS[cur].name}</h2>`;
   h+=renderLevelPanel(cur);
-  if(done[cur]&&cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
-  if(done.every(Boolean))h+=renderSummary();
+  if(done[cur]&&!quizPassed.has(cur))h+=quizHTML(cur);
+  if(quizPassed.has(cur)&&cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
+  if(quizPassed.size===7)h+=renderSummary();
   p.innerHTML=h;
 }
 function renderLevelPanel(i){
@@ -189,7 +225,8 @@ function renderLevelPanel(i){
       h+=`<div class="slider-wrap"><label>振幅: <span class="slider-val">${S.amplitude.toFixed(1)}</span></label><input type="range" min="0" max="10" step="0.5" value="${S.amplitude}" oninput="S.amplitude=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.amplitude.toFixed(1);draw()" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div class="slider-wrap"><label>频率: <span class="slider-val">${S.frequency.toFixed(1)} Hz</span></label><input type="range" min="0.5" max="5" step="0.5" value="${S.frequency}" oninput="S.frequency=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.frequency.toFixed(1)+' Hz';draw()" onchange="this.blur();renderPanel()"></div>`;
       h+=`<button class="act-btn" onclick="toggleRecord()">${S.recording?'⏹ 停止记录':'⏺ 开始记录'}</button>`;
-      if(S.trace.length>50&&!done[2]){done[2]=true;playSound('ok')}
+      if(S.trace.length>50&&S.amplitude>=3&&!done[2]){done[2]=true;playSound('ok')}
+      if(S.trace.length>50&&S.amplitude<3)h+=`<div class="hint-box">振幅太小，试着把振幅调到 3 以上再记录一段清晰波形。</div>`;
       break;
     case 3:
       h+=`<div class="concept-box"><b>震级</b>（里氏）衡量地震释放的总能量，全球统一。<b>烈度</b>衡量某地的破坏程度，同一地震不同地点烈度不同——离震中越远烈度越低。</div>`;
@@ -204,7 +241,7 @@ function renderLevelPanel(i){
       h+=`<div class="desc">点击"发射地震波"，观察波如何在地球内部传播，以及影区的形成。</div>`;
       h+=`<button class="act-btn" onclick="fireRays()">🔍 发射地震波</button>`;
       if(S.showShadow)h+=`<div class="learn-box">103°-143° 范围内没有P波到达，这就是<b>P波影区</b>。它证明了地球外核是液态的——S波完全无法穿过。</div>`;
-      if(S.showShadow&&!done[4]){done[4]=true;playSound('ok')}
+      if(S.showShadow&&S.rays.some(r=>(r.progress||0)>=1)&&!done[4]){done[4]=true;playSound('ok')}
       break;
     case 5:
       h+=`<div class="concept-box"><b>海啸</b>由海底地震、火山或滑坡引起。深海中波速极快（~700 km/h）但波高很低；接近海岸时水深变浅，波速降低但波高急剧增大，形成破坏性巨浪。</div>`;
@@ -212,6 +249,7 @@ function renderLevelPanel(i){
       h+=`<div class="slider-wrap"><label>海底深度: <span class="slider-val">${S.depth} m</span></label><input type="range" min="100" max="6000" step="100" value="${S.depth}" oninput="S.depth=+this.value;S.speed=Math.sqrt(9.8*S.depth)*3.6;this.previousElementSibling.querySelector('.slider-val').textContent=S.depth+' m';draw()" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div style="font-size:12px;color:var(--text-muted)">波速: <span class="sv">${S.speed.toFixed(0)} km/h</span></div>`;
       h+=`<button class="act-btn" onclick="triggerTsunami()">${S.running?'⏹ 重置':'🌊 触发海啸'}</button>`;
+      if(done[5])h+=`<div class="hint-box">海啸已接近浅海，注意波速和波高的交换关系。</div>`;
       break;
     case 6:
       h+=`<div class="concept-box"><b>抗震设计</b>的核心是让建筑能承受地震力而不倒塌。关键技术包括：<b>基础隔震</b>（橡胶支座隔离地面振动）、<b>阻尼器</b>（吸收振动能量）、<b>剪力墙</b>（抵抗水平力）。</div>`;
@@ -234,15 +272,15 @@ function renderSummary(){
 function calcIntensity(){const e=Math.pow(10,1.5*S.magnitude+4.8);const att=Math.max(1,S.distance);S.intensity=Math.min(12,Math.max(1,Math.round(S.magnitude*1.5-Math.log10(att)*2)))}
 function toRoman(n){const r=['','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];return r[Math.min(12,Math.max(0,n))]||n}
 function getIntensityDesc(n){const d=['','无感','微有感','少数有感','多数有感','惊醒','损坏','破坏','严重破坏','建筑倒塌','严重倒塌','毁灭','全面毁灭'];return d[Math.min(12,Math.max(0,n))]||''}
-function triggerWaves(){S.pWaveX=0;S.sWaveX=0;S.running=true;S.elapsed=0;if(!done[1]){done[1]=true;playSound('ok')}renderPanel()}
+function triggerWaves(){S.pWaveX=0;S.sWaveX=0;S.running=true;S.elapsed=0;renderPanel()}
 function toggleRecord(){S.recording=!S.recording;if(S.recording){S.trace=[];S.recTime=0}renderPanel()}
 function fireRays(){S.showShadow=true;S.angle=0;S.rays.forEach(r=>{r.bent=false;r.progress=0});renderPanel()}
-function triggerTsunami(){S.running=!S.running;if(S.running){S.wavePos=0;S.speed=Math.sqrt(9.8*S.depth)*3.6;for(let j=0;j<80;j++)S.waterH[j]=0;if(!done[5]){done[5]=true;playSound('ok')}}renderPanel()}
+function triggerTsunami(){S.running=!S.running;if(S.running){S.wavePos=0;S.speed=Math.sqrt(9.8*S.depth)*3.6;for(let j=0;j<80;j++)S.waterH[j]=0}else{S.wavePos=0}renderPanel()}
 function triggerQuake(){S.running=true;S.shaking=1;S.damage=0;const reduction=(S.baseIso?0.5:1)*(S.damper?0.6:1);S.damage=Math.min(100,S.floors*5*reduction+(1-reduction)*10);renderPanel()}
 
 /* === 绘制 === */
 function draw(){
-  ctx.clearRect(0,0,CW,CH);const th=t();
+  ctx.clearRect(0,0,CW,CH);th=t();
   ctx.fillStyle=th.bg;ctx.fillRect(0,0,CW,CH);
   ctx.strokeStyle=th.grid;ctx.lineWidth=1;
   for(let x=0;x<CW;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke()}
@@ -426,9 +464,9 @@ function drawBuilding(){
 }
 
 /* === 交互 === */
-function goLevel(i){if(i<0||i>=7)return;cur=i;initLevel(i);renderPanel();draw();updateInfobar();playSound('click')}
+function goLevel(i){if(i<0||i>=7)return;if(i>0&&!quizPassed.has(i-1))return;cur=i;initLevel(i);renderPanel();draw();updateInfobar();playSound('click')}
 function startGame(){playSound('click');document.getElementById('startScreen').classList.add('hidden');document.getElementById('panel').style.display='block';gameState='play';goLevel(0);anim()}
-function updateInfobar(){document.getElementById('ib-level').textContent=`关卡 ${cur+1}/7`;document.getElementById('ib-title').textContent=LEVELS[cur].name;document.getElementById('ib-status').textContent=done[cur]?'✅ 已完成':'进行中'}
+function updateInfobar(){document.getElementById('ib-level').textContent=`关卡 ${cur+1}/7`;document.getElementById('ib-title').textContent=LEVELS[cur].name;document.getElementById('ib-status').textContent=quizPassed.has(cur)?'✅ 已通关':done[cur]?'待测验':'进行中'}
 
 let lastT=0;
 function anim(ts){
@@ -436,10 +474,10 @@ function anim(ts){
   const dt=(ts-lastT)/1000;lastT=ts;
   if(gameState!=='play')return;
   S.anim=(S.anim||0)+dt;
-  if(cur===1&&S.running){S.elapsed+=dt;S.pWaveX=Math.min(1,S.pWaveX+S.pSpeed*0.02*dt);S.sWaveX=Math.min(1,S.sWaveX+S.sSpeed*0.02*dt)}
+  if(cur===1&&S.running){S.elapsed+=dt;S.pWaveX=Math.min(1,S.pWaveX+S.pSpeed*0.02*dt);S.sWaveX=Math.min(1,S.sWaveX+S.sSpeed*0.02*dt);if(S.pWaveX>=1&&S.sWaveX>=0.55&&!done[1]){done[1]=true;playSound('ok');renderPanel();updateInfobar()}}
   if(cur===2&&S.recording){S.recTime+=dt;if(S.trace.length<200)S.trace.push(S.amplitude*Math.sin(S.recTime*S.frequency*Math.PI*2)/10)}
-  if(cur===4&&S.showShadow){S.rays.forEach(r=>{r.progress=Math.min(1,(r.progress||0)+dt*0.5)})}
-  if(cur===5&&S.running){S.wavePos+=dt*0.15;if(S.wavePos>1.2){S.wavePos=0}}
+  if(cur===4&&S.showShadow){S.rays.forEach(r=>{r.progress=Math.min(1,(r.progress||0)+dt*0.5)});if(S.rays.some(r=>(r.progress||0)>=1)&&!done[4]){done[4]=true;playSound('ok');renderPanel();updateInfobar()}}
+  if(cur===5&&S.running){S.wavePos+=dt*0.15;if(S.wavePos>=0.75&&!done[5]){done[5]=true;playSound('ok');renderPanel();updateInfobar()}if(S.wavePos>1.2){S.wavePos=0}}
   if(cur===6&&S.running){S.shaking=Math.max(0,S.shaking-dt*0.3);if(S.shaking<=0)S.running=false}
   draw();
 }

@@ -20,6 +20,10 @@
   --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
   --result-bg:rgba(10,10,26,.98);--result-border:#2a2a5a;
   --retry-bg:#2a2a5a;--retry-text:#ccc;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
   --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
   --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
   --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
@@ -40,6 +44,10 @@
   --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
   --result-bg:rgba(255,255,255,0.98);--result-border:#c7d2fe;
   --retry-bg:#e2e8f0;--retry-text:#475569;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
   --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
   --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
   --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
@@ -80,8 +88,17 @@ canvas{display:block;position:absolute;top:0;left:320px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -159,17 +176,45 @@ learn:'好的记忆系统让 Agent 记住你的偏好、项目背景、之前的
 concept:'复杂任务可以拆给多个 Agent 并行处理。主 Agent 拆分和汇总，子 Agent 各自有独立上下文，互不干扰。',
 learn:'多 Agent 协作就像技术主管分配任务给团队。每个子 Agent 有自己的上下文窗口，独立工作，最后主 Agent 合并成果。这是从单兵作战到团队协作的升级。'}
 ];
-let curLevel=0,objectives=[],levelState={};
+const quizData=[
+{q:'Coding Agent 最核心的运行结构是什么？',opts:['接收、思考、调用工具、读取结果的循环','只输出一段固定文本','只等待用户手动执行命令'],ans:0,ok:'对。Agent Loop 让模型能反复观察结果并继续行动。',bad:'关键不是一次性回答，而是循环观察、行动、再判断。'},
+{q:'工具系统为什么重要？',opts:['让模型能读取文件、执行命令等真实操作','让模型不需要任何上下文','让所有操作都无需校验'],ans:0,ok:'对。工具是 Agent 连接真实工作环境的接口。',bad:'没有工具，Agent 只能说话，不能实际查看或修改项目。'},
+{q:'任务拆解对 Coding Agent 的作用是什么？',opts:['把大任务拆成可跟踪的小步骤','让任务完全随机执行','避免任何中间状态'],ans:0,ok:'对。计划让复杂任务可见、可控、可逐步验证。',bad:'复杂任务需要计划，否则容易遗漏步骤或重复工作。'},
+{q:'上下文管理要解决的核心问题是什么？',opts:['模型窗口有限，需要保留关键历史并压缩细节','让模型忘掉所有历史','只记录最后一句话'],ans:0,ok:'对。压缩能保留要点并释放窗口。',bad:'上下文不是无限的，长任务必须管理和压缩。'},
+{q:'权限系统主要防止什么？',opts:['危险操作未经确认就执行','安全读取永远失败','用户无法看到任何操作'],ans:0,ok:'对。删除、写入、联网等风险动作需要权限边界。',bad:'权限系统不是阻止一切，而是给高风险动作加确认。'},
+{q:'持久记忆和会话内存的差异是什么？',opts:['持久记忆可跨会话保留，会话内存通常随会话结束消失','两者完全相同','会话内存一定写入磁盘'],ans:0,ok:'对。偏好、项目背景等可写入长期记忆。',bad:'会话内存是临时工作记忆，持久记忆才跨会话保留。'},
+{q:'多 Agent 协作的优势是什么？',opts:['主 Agent 拆分任务，子 Agent 并行处理后汇总','所有 Agent 修改同一文件且互相覆盖','完全不需要主 Agent'],ans:0,ok:'对。并行分工能提高复杂任务处理效率。',bad:'多 Agent 需要主 Agent 规划和汇总，不是无序并发。'}
+];
+let curLevel=0,objectives=[],levelState={},levelProgress=LEVELS.map(L=>L.objs.map(()=>false));
+let quizPassed=new Set(),quizFeedback={};
 
 // === Core ===
 function startGame(){document.getElementById('startScreen').classList.add('hidden');panel.style.display='block';bar.style.display='flex';goLevel(0);}
-function completeObj(i){if(!objectives[i]){objectives[i]=true;renderPanel();if(objectives.every(v=>v)){const lb=document.querySelector('.learn-box');if(lb)lb.style.display='block';}}}
-function goLevel(n){curLevel=n;objectives=LEVELS[n].objs.map(()=>false);levelState={step:0,anim:0,items:[],particles:[]};renderPanel();barText.textContent=LEVELS[n].icon+' '+LEVELS[n].name+' — '+LEVELS[n].desc;}
+function completeObj(i){if(!objectives[i]){objectives[i]=true;levelProgress[curLevel][i]=true;renderPanel();}}
+function isUnlocked(n){return n===0||quizPassed.has(n-1)}
+function goLevel(n){if(n<0||n>=LEVELS.length||!isUnlocked(n))return;curLevel=n;objectives=levelProgress[n].slice();levelState={step:0,anim:0,items:[],particles:[]};renderPanel();barText.textContent=LEVELS[n].icon+' '+LEVELS[n].name+' — '+LEVELS[n].desc;}
+function quizHTML(li){
+const q=quizData[li],fb=quizFeedback[li];
+let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+h+=`<div class="quiz-q">${q.q}</div>`;
+q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`;});
+if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+h+='</div>';
+return h;
+}
+function answerQuiz(li,choice){
+if(li!==curLevel||quizPassed.has(li))return;
+const q=quizData[li],ok=choice===q.ans;
+quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+if(ok)quizPassed.add(li);
+renderPanel();
+}
+window.answerQuiz=answerQuiz;
 function renderPanel(){
 const L=LEVELS[curLevel];
 let h='<div class="stage-nav"><div class="sn-bar">';
-LEVELS.forEach((_,i)=>{let cls=i<curLevel?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;});
-h+=`</div><div class="sn-info">${L.icon} 第${curLevel+1}关：${L.name}</div><div class="sn-hint">${L.desc}</div></div>`;
+LEVELS.forEach((_,i)=>{const unlocked=isUnlocked(i),cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';const click=unlocked?`goLevel(${i})`:'';h+=`<div class="sn-d ${cls}" onclick="${click}" title="${unlocked?LEVELS[i].name:'答对上一关测验后解锁'}"></div>`;});
+h+=`</div><div class="sn-info">${L.icon} 第${curLevel+1}关：${L.name}</div><div class="sn-hint">${quizPassed.size}/${LEVELS.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
 h+=`<div class="concept-box">${L.concept}</div>`;
 h+='<div style="margin:8px 0">';
 L.objs.forEach((o,i)=>{h+=`<div class="obj-row"><div class="dot${objectives[i]?' done':''}"></div><span style="color:${objectives[i]?'var(--goal-done)':'var(--goal-text)'}">${o}</span></div>`;});
@@ -182,14 +227,16 @@ else if(curLevel===3)h+=panelL4();
 else if(curLevel===4)h+=panelL5();
 else if(curLevel===5)h+=panelL6();
 else if(curLevel===6)h+=panelL7();
-h+=`<div class="hint-box">💡 点击按钮与 Canvas 画面互动，完成所有目标解锁知识卡片</div>`;
-h+=`<div class="learn-box"><div class="sv">🎓 知识卡片</div><p>${L.learn}</p></div>`;
+h+=`<div class="hint-box">💡 点击按钮与 Canvas 画面互动，完成所有目标后答对测验解锁知识卡片</div>`;
 if(objectives.every(v=>v)){
-  if(curLevel<6)h+=`<button class="act-btn green" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
-  else h+=`<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握 Coding Agent 的 7 大核心机制</div><div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡完成</div></div><div class="summary-stat"><div class="num">21</div><div class="label">目标达成</div></div></div><div class="summary-keys"><div>🔄 Agent Loop — 核心循环驱动一切</div><div>🔧 Tool Use — 工具让 Agent 能做事</div><div>📋 Planning — 先想后做不迷路</div><div>📊 Context — 有限空间智能管理</div><div>🔒 Permission — 安全防线不可少</div><div>🧠 Memory — 跨会话记住你</div><div>👥 Multi-Agent — 团队协作更高效</div></div></div>`;
+  if(!quizPassed.has(curLevel))h+=quizHTML(curLevel);
+  if(quizPassed.has(curLevel)){
+    h+=`<div class="learn-box" style="display:block"><div class="sv">🎓 知识卡片</div><p>${L.learn}</p></div>`;
+    if(curLevel<6)h+=`<button class="act-btn green" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+    if(curLevel===6)h+=`<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握 Coding Agent 的 7 大核心机制</div><div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡完成</div></div><div class="summary-stat"><div class="num">21</div><div class="label">目标达成</div></div></div><div class="summary-keys"><div>🔄 Agent Loop — 核心循环驱动一切</div><div>🔧 Tool Use — 工具让 Agent 能做事</div><div>📋 Planning — 先想后做不迷路</div><div>📊 Context — 有限空间智能管理</div><div>🔒 Permission — 安全防线不可少</div><div>🧠 Memory — 跨会话记住你</div><div>👥 Multi-Agent — 团队协作更高效</div></div></div>`;
+  }
 }
 panel.innerHTML=h;
-if(objectives.every(v=>v)){const lb=panel.querySelector('.learn-box');if(lb)lb.style.display='block';}
 }
 
 // === Level 1: Agent Loop ===

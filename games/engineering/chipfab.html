@@ -105,6 +105,13 @@ canvas{display:block;position:absolute;top:0;left:320px}
 .summary-stat .label{font-size:11px;color:var(--summary-sub)}
 .summary-keys{text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px}
 .summary-keys div{font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-q{font-size:13px;color:var(--quiz-q);font-weight:700;margin-bottom:8px;line-height:1.6}
+.quiz-opt{font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:5px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);transition:all .2s}
+.quiz-opt:hover{background:var(--quiz-opt-hover);border-color:var(--quiz-border)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+.quiz-feedback{font-size:12px;line-height:1.7;margin-top:8px;color:var(--text-sub)}
 #themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
 [data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
 [data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
@@ -176,20 +183,83 @@ const levels=[
  objs:['完成一次生产','良率提升到80%','良率达到90%'],
  learn:'台积电3nm工艺良率约70-80%。一座先进晶圆厂投资超过200亿美元，良率每提升1%都意味着数亿美元的利润。'}
 ];
+const quizData=[
+{q:'CZ法拉制单晶硅时，为什么提拉速度不能太快？',opts:['太快会破坏晶格有序生长，容易形成多晶或缺陷','速度越快原子越容易排成完美晶格','提拉速度只影响颜色，不影响质量'],ans:0,why:'单晶生长需要原子按籽晶晶格逐步排列，过快会让界面失稳并引入缺陷。'},
+{q:'光刻把电路图案转移到硅片上的核心顺序是什么？',opts:['涂胶/掩模图案 → 曝光 → 显影','先显影，再随便画图案','只要提高温度就会出现图案'],ans:0,why:'光刻胶被光改变溶解性，显影步骤再把曝光差异转化成可见图形。'},
+{q:'湿法刻蚀和干法刻蚀的关键差异是什么？',opts:['湿法各向同性易底切，干法各向异性可形成垂直侧壁','湿法一定更适合所有纳米结构','干法不会移除任何材料'],ans:0,why:'先进制程常依赖等离子体干法刻蚀控制深宽比和侧壁形貌。'},
+{q:'为什么需要分别形成N型和P型区域后再构成PN结？',opts:['N型多电子、P型多空穴，交界处形成耗尽区和单向导电特性','两种掺杂只是为了改变硅片颜色','PN结只需要一种掺杂就能形成'],ans:0,why:'PN结的电场来自电子和空穴在界面附近复合后留下的固定离子区。'},
+{q:'ALD相比CVD/PVD最突出的工艺优势是什么？',opts:['按原子层自限制生长，厚度和覆盖性控制更精确','沉积速度永远最快','只能沉积很厚的金属块'],ans:0,why:'ALD每个反应循环趋于自限制，适合几纳米甚至原子级薄膜控制。'},
+{q:'EUV光刻为什么使用反射镜而不是普通透镜？',opts:['13.5nm极紫外光会被大多数材料强吸收，只能靠多层反射镜传输','反射镜只是为了装饰光路','EUV波长太长，无法聚焦'],ans:0,why:'EUV系统需要真空环境和Mo/Si多层反射镜，反射率本身也是系统工程难点。'},
+{q:'良率优化中，哪一项说法最准确？',opts:['光刻、刻蚀、沉积、洁净度都会影响合格芯片比例','只要晶圆足够大，良率一定是100%','良率与利润没有关系'],ans:0,why:'良率是制程窗口、缺陷密度和工艺稳定性的综合结果，直接决定可销售芯片数量。'}
+];
+let quizFeedback=null;
 let lState={},panelDirty=true;
+
+const rangeDefs={
+ pullSpeed:{label:v=>`${v}`},
+ rotSpeed:{label:v=>`${v}`},
+ etchTime:{label:v=>`${v}%`},
+ energy:{label:v=>`${v}keV`},
+ dose:{label:v=>`${v}%`},
+ mirrorAngle:{label:v=>`${v.toFixed(1)}°`},
+ lithoAlign:{label:v=>`${v}%`},
+ etchUniform:{label:v=>`${v}%`},
+ depoThick:{label:v=>`${v}%`},
+ cleanLevel:{label:v=>`${v}%`}
+};
+function rangeHTML(key,label,min,max,step){
+ const stepAttr=step?` step="${step}"`:'';
+ return `<div class="slider-wrap"><label>${label}：<span class="sv">${formatRange(key,lState[key])}</span></label><input type="range" min="${min}" max="${max}" value="${lState[key]}"${stepAttr} oninput="updateRange(this,'${key}')" onchange="this.blur();panelDirty=true"></div>`;
+}
+function formatRange(key,value){
+ const def=rangeDefs[key];
+ return def&&def.label?def.label(value):String(value);
+}
+function updateRange(input,key){
+ lState[key]=+input.value;
+ const out=input.parentElement.querySelector('.sv');
+ if(out)out.textContent=formatRange(key,lState[key]);
+}
+function quizHTML(li){
+ const q=quizData[li];
+ let h=`<div class="quiz-box"><div class="quiz-q">📝 通关小测验：${q.q}</div>`;
+ q.opts.forEach((opt,i)=>{
+  let cls='';
+  if(quizFeedback&&quizFeedback.level===li){
+   if(i===q.ans)cls='correct';
+   else if(i===quizFeedback.chosen)cls='wrong';
+  }
+  h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${opt}</div>`;
+ });
+ if(quizFeedback&&quizFeedback.level===li){
+  h+=`<div class="quiz-feedback">${quizFeedback.correct?'回答正确。':'再想想。'}${q.why}</div>`;
+ }else{
+  h+='<div class="quiz-feedback">完成三个目标后，答对这个问题才会计入通关。</div>';
+ }
+ h+='</div>';
+ return h;
+}
+function answerQuiz(li,choice){
+ if(li!==curLevel||completedLevels.has(li))return;
+ const q=quizData[li],correct=choice===q.ans;
+ quizFeedback={level:li,chosen:choice,correct};
+ if(correct)completedLevels.add(li);
+ panelDirty=true;
+ renderPanel();
+}
 function resetLevelState(){
  switch(curLevel){
-  case 0:lState={pullSpeed:50,rotSpeed:50,pulling:false,rodLen:0,rodMaxLen:100,crystalQuality:0,
+  case 0:lState={pullSpeed:70,rotSpeed:50,pulling:false,rodLen:0,rodMaxLen:100,crystalQuality:0,
    diameter:0,growPhase:0,objDone:[false,false,false],particles:[]};break;
   case 1:lState={maskPattern:[],exposing:false,exposed:false,developed:false,exposureAnim:0,
    resolution:45,drawing:false,objDone:[false,false,false],waferPattern:[]};break;
   case 2:lState={method:'wet',etchTime:50,etching:false,etchProgress:0,etchDone:false,
    objDone:[false,false,false],wetDone:false,dryDone:false};break;
   case 3:lState={dopant:'P',energy:50,dose:50,implanting:false,implantDone:false,annealed:false,
-   nDoped:false,pDoped:false,pnFormed:false,ions:[],profile:[],objDone:[false,false,false]};break;
+   nDoped:false,pDoped:false,pnFormed:false,implantedDopant:null,ions:[],profile:[],objDone:[false,false,false]};break;
   case 4:lState={method:'CVD',depositing:false,depositProgress:0,thickness:0,uniformity:0,
    cvdDone:false,pvdDone:false,aldDone:false,atoms:[],objDone:[false,false,false]};break;
-  case 5:lState={laserFired:false,euvGenerated:false,mirrorAngle:45,focused:false,
+  case 5:lState={laserFired:false,euvGenerated:false,mirrorAngle:52,focused:false,
    power:0,resolution:20,throughput:0,photons:[],objDone:[false,false,false]};break;
   case 6:lState={lithoAlign:50,etchUniform:50,depoThick:50,cleanLevel:50,
    produced:false,chips:[],yield:0,profit:0,bestYield:0,objDone:[false,false,false]};break;
@@ -211,12 +281,19 @@ function renderPanel(){
  h+=`<h3>第${curLevel+1}关：${L.name}</h3>`;
  h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>${_kw}</div>`;
  h+=`<div class="concept-box">${L.concept}</div>`;
+ const controlsHTML=renderLevelControls();
  h+='<h4>目标</h4>';
  const od=lState.objDone||[];
- L.objs.forEach((o,i)=>{h+=`<div class="obj-item${od[i]?' done':''}">${od[i]?'✅':'⬜'} ${o}</div>`;});
- h+=renderLevelControls();
- if(od.every(v=>v)){
-  if(!completedLevels.has(curLevel)){completedLevels.add(curLevel);}
+ L.objs.forEach((o,i)=>{
+  const done=completedLevels.has(curLevel)||od[i];
+  h+=`<div class="obj-item${done?' done':''}">${done?'✅':'⬜'} ${o}</div>`;
+ });
+ h+=controlsHTML;
+ const goalsDone=od.every(v=>v);
+ if(goalsDone&&!completedLevels.has(curLevel)){
+  h+=quizHTML(curLevel);
+ }
+ if(completedLevels.has(curLevel)){
   h+=`<div class="learn-box">💡 ${L.learn}</div>`;
   if(curLevel<levels.length-1){
    h+=`<button class="act-btn green" onclick="switchLevel(${curLevel+1})">进入第${curLevel+2}关 →</button>`;
@@ -231,8 +308,8 @@ function renderLevelControls(){
  let h='';
  switch(curLevel){
  case 0:
-  h+=`<div class="slider-wrap"><label>提拉速度：<span class="sv">${lState.pullSpeed}</span></label><input type="range" min="1" max="100" value="${lState.pullSpeed}" oninput="lState.pullSpeed=+this.value;panelDirty=true"></div>`;
-  h+=`<div class="slider-wrap"><label>旋转速度：<span class="sv">${lState.rotSpeed}</span></label><input type="range" min="1" max="100" value="${lState.rotSpeed}" oninput="lState.rotSpeed=+this.value;panelDirty=true"></div>`;
+  h+=rangeHTML('pullSpeed','提拉速度',1,100);
+  h+=rangeHTML('rotSpeed','旋转速度',1,100);
   h+=`<div class="concept-box">晶体质量：<span class="sv">${lState.crystalQuality.toFixed(0)}%</span><br>直径：<span class="sv">${lState.diameter.toFixed(1)}mm</span> | 长度：<span class="sv">${lState.rodLen.toFixed(1)}cm</span></div>`;
   if(!lState.pulling)h+=`<button class="act-btn" onclick="startPull()">开始提拉</button>`;
   else h+=`<button class="act-btn" onclick="lState.pulling=false;panelDirty=true" style="border-color:#ef4444;color:#f87171">停止提拉</button>`;
@@ -252,7 +329,7 @@ function renderLevelControls(){
   if(!lState.etching&&!lState.etchDone){
    h+=`<button class="act-btn" onclick="lState.method='wet';panelDirty=true" ${lState.method==='wet'?'style="background:#2a2a6a"':''}>湿法刻蚀（化学溶液）</button>`;
    h+=`<button class="act-btn" onclick="lState.method='dry';panelDirty=true" ${lState.method==='dry'?'style="background:#2a2a6a"':''}>干法刻蚀（等离子体）</button>`;
-   h+=`<div class="slider-wrap"><label>刻蚀时间：<span class="sv">${lState.etchTime}%</span></label><input type="range" min="10" max="100" value="${lState.etchTime}" oninput="lState.etchTime=+this.value;panelDirty=true"></div>`;
+   h+=rangeHTML('etchTime','刻蚀时间',10,100);
    h+=`<button class="act-btn" onclick="startEtch()">开始刻蚀</button>`;
   }
   if(lState.etchDone)h+=`<button class="act-btn" onclick="lState.etchDone=false;lState.etchProgress=0;panelDirty=true">重新刻蚀</button>`;
@@ -261,8 +338,8 @@ function renderLevelControls(){
   h+=`<div class="concept-box">掺杂类型：<span class="sv">${lState.dopant==='P'?'磷（N型）':'硼（P型）'}</span></div>`;
   h+=`<button class="act-btn" onclick="lState.dopant='P';panelDirty=true" ${lState.dopant==='P'?'style="background:#2a2a6a"':''}>磷（N型 - 蓝色）</button>`;
   h+=`<button class="act-btn" onclick="lState.dopant='B';panelDirty=true" ${lState.dopant==='B'?'style="background:#2a2a6a"':''}>硼（P型 - 红色）</button>`;
-  h+=`<div class="slider-wrap"><label>注入能量（深度）：<span class="sv">${lState.energy}keV</span></label><input type="range" min="10" max="100" value="${lState.energy}" oninput="lState.energy=+this.value;panelDirty=true"></div>`;
-  h+=`<div class="slider-wrap"><label>注入剂量（浓度）：<span class="sv">${lState.dose}%</span></label><input type="range" min="10" max="100" value="${lState.dose}" oninput="lState.dose=+this.value;panelDirty=true"></div>`;
+  h+=rangeHTML('energy','注入能量（深度）',10,100);
+  h+=rangeHTML('dose','注入剂量（浓度）',10,100);
   if(!lState.implanting)h+=`<button class="act-btn" onclick="startImplant()">离子注入</button>`;
   if(lState.implantDone&&!lState.annealed)h+=`<button class="act-btn green" onclick="doAnneal()">退火修复晶格</button>`;
   if(lState.nDoped&&lState.pDoped&&!lState.pnFormed)h+=`<button class="act-btn green" onclick="formPN()">形成PN结</button>`;
@@ -280,17 +357,18 @@ function renderLevelControls(){
   h+=`<div class="concept-box">功率：<span class="sv">${lState.power.toFixed(0)}W</span> | 分辨率：<span class="sv">${lState.resolution.toFixed(1)}nm</span></div>`;
   if(!lState.laserFired)h+=`<button class="act-btn" onclick="fireLaser()">发射激光轰击锡滴</button>`;
   if(lState.euvGenerated&&!lState.focused){
-   h+=`<div class="slider-wrap"><label>反射镜角度：<span class="sv">${lState.mirrorAngle.toFixed(1)}°</span></label><input type="range" min="30" max="60" value="${lState.mirrorAngle}" step="0.5" oninput="lState.mirrorAngle=+this.value;panelDirty=true"></div>`;
+   h+=rangeHTML('mirrorAngle','反射镜角度',30,60,'0.5');
+   h+='<div class="hint-box">💡 多层反射镜必须接近45°，EUV光才能有效聚焦到掩模和硅片。</div>';
    h+=`<button class="act-btn" onclick="focusMirror()">调整聚焦</button>`;
   }
   if(lState.focused)h+=`<button class="act-btn green" onclick="exposeEUV()">EUV曝光</button>`;
   break;
  case 6:
   h+=`<div class="concept-box">良率：<span class="sv">${lState.yield.toFixed(1)}%</span> | 最佳：<span class="sv">${lState.bestYield.toFixed(1)}%</span><br>利润：<span class="sv">$${(lState.profit/1e6).toFixed(1)}M</span></div>`;
-  h+=`<div class="slider-wrap"><label>光刻对准精度：<span class="sv">${lState.lithoAlign}%</span></label><input type="range" min="0" max="100" value="${lState.lithoAlign}" oninput="lState.lithoAlign=+this.value;panelDirty=true"></div>`;
-  h+=`<div class="slider-wrap"><label>刻蚀均匀性：<span class="sv">${lState.etchUniform}%</span></label><input type="range" min="0" max="100" value="${lState.etchUniform}" oninput="lState.etchUniform=+this.value;panelDirty=true"></div>`;
-  h+=`<div class="slider-wrap"><label>沉积厚度控制：<span class="sv">${lState.depoThick}%</span></label><input type="range" min="0" max="100" value="${lState.depoThick}" oninput="lState.depoThick=+this.value;panelDirty=true"></div>`;
-  h+=`<div class="slider-wrap"><label>洁净室等级：<span class="sv">${lState.cleanLevel}%</span></label><input type="range" min="0" max="100" value="${lState.cleanLevel}" oninput="lState.cleanLevel=+this.value;panelDirty=true"></div>`;
+  h+=rangeHTML('lithoAlign','光刻对准精度',0,100);
+  h+=rangeHTML('etchUniform','刻蚀均匀性',0,100);
+  h+=rangeHTML('depoThick','沉积厚度控制',0,100);
+  h+=rangeHTML('cleanLevel','洁净室等级',0,100);
   h+=`<button class="act-btn" onclick="runProduction()">开始生产</button>`;
   break;
  }
@@ -312,7 +390,7 @@ function developWafer(){
 function startEtch(){lState.etching=true;lState.etchProgress=0;panelDirty=true;}
 // === Level 3: Ion Implantation ===
 function startImplant(){
- lState.implanting=true;lState.ions=[];lState.profile=[];
+ lState.implanting=true;lState.implantedDopant=lState.dopant;lState.ions=[];lState.profile=[];
  for(let i=0;i<30;i++){
   const depth=lState.energy/100;
   lState.ions.push({x:Math.random(),y:-Math.random()*0.3,vy:0.02+Math.random()*0.01,
@@ -322,8 +400,9 @@ function startImplant(){
 }
 function doAnneal(){
  lState.annealed=true;
- if(lState.dopant==='P')lState.nDoped=true;
- if(lState.dopant==='B')lState.pDoped=true;
+ const dopant=lState.implantedDopant||lState.dopant;
+ if(dopant==='P')lState.nDoped=true;
+ if(dopant==='B')lState.pDoped=true;
  lState.implantDone=false;
  panelDirty=true;
 }
@@ -361,9 +440,8 @@ function exposeEUV(){
 // === Level 6: Yield ===
 function runProduction(){
  const avg=(lState.lithoAlign+lState.etchUniform+lState.depoThick+lState.cleanLevel)/4;
- const baseYield=avg*0.95;
- const noise=(Math.random()-0.5)*10;
- lState.yield=Math.max(0,Math.min(100,baseYield+noise));
+ const weakest=Math.min(lState.lithoAlign,lState.etchUniform,lState.depoThick,lState.cleanLevel);
+ lState.yield=Math.max(0,Math.min(100,avg*0.88+weakest*0.12));
  lState.profit=lState.yield/100*500*2e6-5e8;
  if(lState.yield>lState.bestYield)lState.bestYield=lState.yield;
  lState.chips=[];

@@ -62,7 +62,6 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 #lp .lp-title{font-size:14px;font-weight:700;color:#6366f1}
 #lp .lp-step{font-size:11px;color:#888}
 #lp-body{flex:1;overflow-y:auto;padding:0}
-/* PLACEHOLDER_CSS2 */
 .mission{margin:12px;padding:14px;background:var(--btn-bg);border:1px solid var(--result-border);border-radius:10px}
 .mission .m-level{font-size:11px;color:#6366f1;font-weight:600;letter-spacing:1px}
 .mission .m-title{font-size:17px;font-weight:700;margin:4px 0;color:var(--title-color)}
@@ -99,17 +98,22 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .result-box .btn-next{background:#6366f1;color:#fff}
 .result-box .btn-retry{background:var(--stage-bar);color:var(--text-sub)}
 .quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 12px}
+.quiz-title{font-size:12px;color:var(--quiz-q);font-weight:700;margin-bottom:6px}
 .quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
 .quiz-opt{font-size:12px;color:var(--text-sub);padding:6px 8px;margin:3px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);transition:all .2s}
 .quiz-opt:hover{background:var(--quiz-opt-hover);border-color:var(--quiz-border)}
 .quiz-opt.correct{background:var(--quiz-correct-bg);border-color:var(--quiz-correct-text);color:var(--quiz-correct-text);pointer-events:none}
 .quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:var(--quiz-wrong-text);color:var(--quiz-wrong-text)}
 .quiz-opt.disabled{pointer-events:none;opacity:.5}
+.learn-box{background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:8px;padding:10px 12px;margin:10px 12px;font-size:13px;line-height:1.7;color:var(--text-sub)}
+.learn-box b{color:var(--sv)}
 .stage-nav{display:flex;gap:2px;margin:10px 12px 6px;flex-wrap:wrap}
 .stage-dot{width:28px;height:28px;border-radius:50%;border:2px solid #cbd5e1;background:var(--btn-bg);display:flex;align-items:center;justify-content:center;font-size:11px;color:#94a3b8;cursor:pointer;transition:all .2s;font-weight:600}
 .stage-dot.done{border-color:#22c55e;background:rgba(34,197,94,0.15);color:#22c55e}
 .stage-dot.cur{border-color:#6366f1;background:rgba(99,102,241,0.15);color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,0.2)}
+.stage-dot.locked{opacity:.35;cursor:not-allowed}
 .stage-dot:hover{transform:scale(1.15)}
+.stage-dot.locked:hover{transform:none}
 #particle-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:100}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -202,7 +206,6 @@ let goals=[[false,false,false],[false,false,false],[false,false,false],[false,fa
 let stars=[];
 
 // 关卡数据
-/* PLACEHOLDER_LEVELS */
 const LEVELS=[
   {title:'DeFi 基础',sub:'传统金融 vs 去中心化金融',icon:'🏦',desc:'理解 DeFi 的核心理念：无许可、可组合、透明'},
   {title:'去中心化交易所',sub:'AMM 与流动性池',icon:'🔄',desc:'体验恒定乘积公式 x·y=k 如何自动定价'},
@@ -221,6 +224,15 @@ const QUIZZES=[
   {q:'无常损失发生在什么情况下？',opts:['A. 提供流动性后价格发生变化','B. 网络拥堵','C. Gas 费太高'],ans:0},
   {q:'预言机的核心作用是什么？',opts:['A. 预测未来价格','B. 将链下真实数据安全传入链上','C. 加速交易'],ans:1},
   {q:'闪电贷攻击的关键特征是什么？',opts:['A. 需要大量初始资金','B. 在一笔交易内完成借贷和攻击','C. 需要破解私钥'],ans:1}
+];
+const LEARNS=[
+  'DeFi 的关键不是“更高收益”，而是用公开智能合约替代中心化准入。无许可和可组合性让 DEX、借贷、收益聚合可以像乐高一样组合。',
+  'AMM 用资金池和公式自动报价。交易越大，池子比例变化越大，滑点越明显；流动性越深，同样交易造成的价格冲击越小。',
+  'DeFi 借贷缺少传统信用评估，所以依赖超额抵押和清算线保护协议偿付能力。价格下跌会压低抵押率，低于阈值就会触发清算。',
+  '稳定币不是天然稳定。抵押稳定币依靠超额抵押，算法稳定币依靠供需调节；当市场信心不足时，算法锚定更容易失效。',
+  '流动性挖矿的收益要和无常损失一起看。资产相对价格变化越大，LP 相比单纯持有的隐性损失越明显。',
+  '预言机把链下价格带到链上，是 DeFi 的关键依赖。单一数据源容易被操纵，多源聚合和 TWAP 可以降低瞬时价格攻击风险。',
+  '闪电贷攻击常把借款、操纵、套利和还款塞进一笔交易。防御重点是重入保护、抗操纵预言机、时间锁和完整审计。'
 ];
 
 // === Level-specific state ===
@@ -243,7 +255,7 @@ let l3_depegged=false,l3_restored=false;
 
 // L4: Yield
 let l4_deposited=0,l4_yieldRate=0.1,l4_days=0,l4_earned=0;
-let l4_priceChange=0,l4_ilShown=false;
+let l4_priceChange=0,l4_ilShown=false,l4_ilValue=0;
 
 // L5: Oracle
 let l5_realPrice=100,l5_oraclePrice=100,l5_sources=[],l5_twapEnabled=false;
@@ -260,7 +272,7 @@ function initLevel(idx){
   if(idx===1){l1_poolX=1000;l1_poolY=1000;l1_k=1000000;l1_buyAmt=0;l1_trades=[];l1_addedLiq=false}
   if(idx===2){l2_collateral=0;l2_borrowed=0;l2_price=100;l2_liquidated=false;l2_repaid=false}
   if(idx===3){l3_algoSupply=1000;l3_algoDemand=1000;l3_algoPrice=1.0;l3_collateralBacked=150;l3_collPrice=1.0;l3_depegged=false;l3_restored=false}
-  if(idx===4){l4_deposited=0;l4_yieldRate=0.1;l4_days=0;l4_earned=0;l4_priceChange=0;l4_ilShown=false}
+  if(idx===4){l4_deposited=0;l4_yieldRate=0.1;l4_days=0;l4_earned=0;l4_priceChange=0;l4_ilShown=false;l4_ilValue=0}
   if(idx===5){l5_realPrice=100;l5_oraclePrice=100;l5_sources=[];l5_twapEnabled=false;l5_manipulated=false;l5_defended=false}
   if(idx===6){l6_phase=0;l6_flashLoanAmt=0;l6_attackStep=0;l6_defended=false;l6_defenseApplied.clear()}
 }
@@ -278,9 +290,10 @@ function startGame(){
 }
 
 function goLevel(idx){
-  if(idx<0||idx>=TOTAL)return;
+  if(idx<0||idx>=TOTAL||!isUnlocked(idx))return;
   curLevel=idx;initLevel(idx);renderPanel();
 }
+function isUnlocked(idx){return idx===0||quizPassedSet.has(idx-1)}
 
 // === 面板渲染 ===
 function renderPanel(){
@@ -292,8 +305,9 @@ function renderPanel(){
   // stage nav
   h+='<div class="stage-nav">';
   for(let i=0;i<TOTAL;i++){
-    const cls=completedLevels.has(i)?'done':(i===curLevel?'cur':'');
-    h+=`<div class="stage-dot ${cls}" onclick="goLevel(${i})">${i+1}</div>`;
+    const unlocked=isUnlocked(i);
+    const cls=quizPassedSet.has(i)?'done':(i===curLevel?'cur':(unlocked?'':'locked'));
+    h+=`<div class="stage-dot ${cls}" onclick="goLevel(${i})" title="${unlocked?LEVELS[i].title:'答对上一关测验后解锁'}">${i+1}</div>`;
   }
   h+='</div>';
   h+=`<div class="mission"><div class="m-level">第 ${curLevel+1} 关</div><div class="m-title">${lv.title}</div><div class="m-desc">${lv.desc}</div></div>`;
@@ -308,9 +322,12 @@ function renderPanel(){
   // quiz
   if(goals[curLevel][0]&&goals[curLevel][1]&&goals[curLevel][2]&&!quizPassedSet.has(curLevel)){
     const quiz=QUIZZES[curLevel];
-    h+=`<div class="quiz-box" id="quiz-${curLevel}"><div class="quiz-q">🧠 ${quiz.q}</div>`;
+    h+=`<div class="quiz-box" id="quiz-${curLevel}"><div class="quiz-title">通关小测验</div><div class="quiz-q">🧠 ${quiz.q}</div>`;
     quiz.opts.forEach((o,i)=>h+=`<div class="quiz-opt" onclick="checkQuiz(${curLevel},${i})">${o}</div>`);
     h+='</div>';
+  }
+  if(quizPassedSet.has(curLevel)){
+    h+=`<div class="learn-box"><b>关键知识：</b>${LEARNS[curLevel]}</div>`;
   }
   if(quizPassedSet.has(curLevel)&&curLevel<TOTAL-1){
     h+=`<div class="act-section"><button class="act-btn green" onclick="goLevel(${curLevel+1})">进入下一关 →</button></div>`;
@@ -336,7 +353,6 @@ function getGoalLabels(idx){
   return G[idx];
 }
 
-/* PLACEHOLDER_RENDERLEVEL */
 function renderLevelPanel(idx){
   let h='';
   if(idx===0){
@@ -377,6 +393,9 @@ function renderLevelPanel(idx){
     h+=`<div class="hint-b">💡 调节供需观察算法稳定币价格变化，然后对比抵押稳定币</div>`;
     h+=`<div class="slider-row"><label>市场需求: <span class="sv">${l3_algoDemand}</span></label>
       <input type="range" min="200" max="2000" value="${l3_algoDemand}" oninput="l3_algoDemand=+this.value;this.previousElementSibling.querySelector('.sv').textContent=this.value;updateAlgoPrice()" onchange="this.blur();renderPanel()"></div>`;
+    if(l3_depegged){
+      h+=`<div class="mission"><div class="m-concept" style="color:#ef4444"><b>脱锚警报：</b>供需失衡让算法稳定币偏离 $1。市场信心不足时，单靠算法调节可能形成死亡螺旋。</div></div>`;
+    }
     h+=`<div class="act-section"><button class="act-btn" onclick="adjustAlgoSupply()">算法调节供给</button></div>`;
     h+=`<div class="mission"><div class="m-concept">算法稳定币价格: <span style="color:${Math.abs(l3_algoPrice-1)>0.1?'#ef4444':'#22c55e'}">$${l3_algoPrice.toFixed(4)}</span><br>供给: ${l3_algoSupply.toFixed(0)} | 需求: ${l3_algoDemand}</div></div>`;
     if(l3_depegged){
@@ -394,6 +413,9 @@ function renderLevelPanel(idx){
       h+=`<div class="slider-row"><label>价格变化: <span class="sv">${l4_priceChange>0?'+':''}${l4_priceChange}%</span></label>
         <input type="range" min="-80" max="200" value="${l4_priceChange}" oninput="l4_priceChange=+this.value;this.previousElementSibling.querySelector('.sv').textContent=(this.value>0?'+':'')+this.value+'%'" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div class="act-section"><button class="act-btn red" onclick="showIL()">计算无常损失</button></div>`;
+      if(l4_ilShown){
+        h+=`<div class="mission"><div class="m-concept" style="color:#ef4444"><b>无常损失：</b>${(l4_ilValue*100).toFixed(2)}%。价格变化越大，LP 相比单纯持有的隐性损失越明显。</div></div>`;
+      }
     }
   }
   else if(idx===5){
@@ -462,7 +484,7 @@ function stepDeFi(){
   if(l0_tradFi.cur>=4&&l0_defi.cur>=3){l0_compared=true;completeObj(0,0)}
   playSound('click');renderPanel();
 }
-function composeDeFi(){completeObj(0,1);completeObj(0,2);renderPanel()}
+function composeDeFi(){l0_composed=true;completeObj(0,1);completeObj(0,2);renderPanel()}
 
 // L1
 function executeTrade(){
@@ -502,7 +524,7 @@ function repayLoan(){
 }
 
 // L3
-function updateAlgoPrice(){l3_algoPrice=l3_algoDemand/l3_algoSupply;if(Math.abs(l3_algoPrice-1)>0.05)completeObj(3,0)}
+function updateAlgoPrice(){l3_algoPrice=l3_algoDemand/l3_algoSupply;if(Math.abs(l3_algoPrice-1)>0.05)completeObj(3,0);checkDepeg()}
 function adjustAlgoSupply(){
   l3_algoSupply=l3_algoDemand;l3_algoPrice=1.0;
   playSound('click');renderPanel();
@@ -520,8 +542,8 @@ function startFarming(){
 function showIL(){
   const r=1+l4_priceChange/100;
   const il=2*Math.sqrt(r)/(1+r)-1;
+  l4_ilValue=il;
   l4_ilShown=true;completeObj(4,2);
-  alert(`无常损失: ${(il*100).toFixed(2)}%\n价格变化 ${l4_priceChange}% 时，提供流动性比单纯持有损失 ${(Math.abs(il)*100).toFixed(2)}%`);
   playSound('success');renderPanel();
 }
 
@@ -564,6 +586,7 @@ function checkQuiz(levelIdx,chosen){
   if(quizCooldown)return;
   const quiz=QUIZZES[levelIdx];
   const opts=document.querySelectorAll(`#quiz-${levelIdx} .quiz-opt`);
+  if(!opts[chosen]||!opts[quiz.ans])return;
   if(chosen===quiz.ans){
     opts[chosen].classList.add('correct');quizPassedSet.add(levelIdx);completedLevels.add(levelIdx);
     playSound('success');spawnParticles(160,300,30);
@@ -602,7 +625,6 @@ function renderSummary(){
   </div>`;
 }
 
-/* PLACEHOLDER_DRAW */
 // === 绘制 ===
 function drawStars(){
   if(!t().showStars)return;
@@ -763,7 +785,6 @@ function drawL3(ox,oy,w,h){
     ctx.fillStyle=th.textSec;ctx.font='12px sans-serif';
     ctx.fillText('150% 超额抵押 → 稳定',cx+w/4,targetY+30);
   }
-  checkDepeg();
 }
 
 function drawL4(ox,oy,w,h){

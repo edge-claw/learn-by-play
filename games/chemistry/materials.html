@@ -17,6 +17,10 @@
   --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
   --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
   --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
   --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
   --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
 }
@@ -31,6 +35,10 @@
   --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
   --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
   --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
   --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
   --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
 }
@@ -38,9 +46,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC'
 #overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
 #overlay h1{font-size:36px;color:#8b5cf6;text-shadow:0 0 30px rgba(139,92,246,0.5);margin-bottom:8px}
 #overlay h2{font-size:18px;color:#a78bfa;margin-bottom:30px;font-weight:normal}
-</style>
-</head>
-<body data-theme="dark">
 .features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
 .feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px;padding:8px;background:var(--feat-bg);border:1px solid var(--feat-border);border-radius:8px}
 .feat .fi{font-size:26px;margin-bottom:4px}
@@ -57,6 +62,14 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC'
 .act-btn:hover{background:rgba(139,92,246,0.3)}
 .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;line-height:1.8;color:var(--learn-text)}
 .learn-box b{color:#8b5cf6}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 #bar{position:absolute;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:none;align-items:center;padding:0 12px;gap:8px;z-index:10}
 #bar .prog{margin-left:auto;font-size:12px;color:var(--text-muted)}
 canvas{position:absolute;left:320px;top:0;background:var(--bg)}
@@ -68,6 +81,7 @@ input[type=range].ctl{width:100%;accent-color:#8b5cf6;margin:4px 0}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
@@ -114,6 +128,16 @@ let levelObjs=[[false,false,false],[false,false,false],[false,false,false],[fals
 
 const LEVEL_NAMES=['晶体与非晶体','金属材料(合金)','陶瓷材料','聚合物(塑料/橡胶)','复合材料','半导体材料','纳米材料'];
 const LEVEL_ICONS=['💎','⚙️','🏺','🧬','🔗','💡','🔍'];
+const quizData=[
+  {q:'晶体和非晶体最关键的微观差异是什么？',opts:['原子排列是否长程有序','颜色是否透明','密度是否一定更大'],ans:0,ok:'对。晶体有周期性有序排列，非晶体缺少长程有序。',bad:'关键不是颜色或密度，而是微观排列是否有长程周期性。'},
+  {q:'钢中碳含量升高通常会带来什么变化？',opts:['硬度升高、延展性下降','硬度降低、延展性升高','完全不影响性能'],ans:0,ok:'对。碳强化会提高硬度和强度，但通常牺牲延展性。',bad:'看合金性能条：碳越多，硬度越高，延展性通常越低。'},
+  {q:'先进陶瓷的典型优势是什么？',opts:['高硬度、耐高温、耐腐蚀','一定非常柔软','都能像金属一样延展'],ans:0,ok:'对。陶瓷常见优势是硬、耐热、耐腐蚀和绝缘。',bad:'陶瓷的弱点恰恰是脆性大，不是延展性强。'},
+  {q:'热塑性聚合物的特点是什么？',opts:['加热软化，可重新塑形','加热后永久固化不可重塑','一定是高交联橡胶'],ans:0,ok:'对。热塑性聚合物通常线性或支化，加热可软化重塑。',bad:'热固性材料才会形成不可逆网络结构。'},
+  {q:'复合材料中纤维增强体主要提供什么？',opts:['强度和刚度','只提供颜色','只降低密度且不承载'],ans:0,ok:'对。纤维主要承担载荷，基体负责传力和保护。',bad:'复合材料的“增强体”不是装饰，它决定强度和刚度。'},
+  {q:'N 型半导体掺磷后的主要载流子是什么？',opts:['电子','空穴','中子'],ans:0,ok:'对。磷有 5 个价电子，会提供多余电子。',bad:'P 型掺硼才以空穴为多数载流子。'},
+  {q:'纳米材料出现特殊性质的重要原因是什么？',opts:['表面效应和量子尺寸效应增强','材料不再由原子构成','温度永远不变'],ans:0,ok:'对。尺寸降到纳米尺度后，比表面积和量子效应显著增强。',bad:'纳米效应来自尺度变化，不是材料失去原子结构。'}
+];
+let quizPassed=new Set(),quizFeedback={};
 
 // === Level 0: Crystal vs Amorphous ===
 let l0temp=25,l0type=0; // 0=crystal, 1=amorphous
@@ -138,9 +162,10 @@ window.addEventListener('resize',()=>{resize();draw();});
 
 function startGame(){overlay.style.display='none';wrap.style.display='block';panel.style.display='block';bar.style.display='flex';resize();goLevel(0);animate();}
 
-function goLevel(n){if(n>6)return;curLevel=n;if(!unlocked[n])unlocked[n]=true;initLevel(n);renderPanel();draw();}
+function goLevel(n){if(n<0||n>6||!isUnlocked(n))return;curLevel=n;unlocked[n]=true;initLevel(n);renderPanel();draw();}
 
-function checkObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;if(levelObjs[li].every(v=>v)&&li<6)unlocked[li+1]=true;renderPanel();}}
+function checkObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();}}
+function isUnlocked(n){return n===0||quizPassed.has(n-1)}
 
 function initLevel(n){
   switch(n){
@@ -156,8 +181,12 @@ function initLevel(n){
 
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  LEVEL_NAMES.forEach((_,i)=>{const cls=i<curLevel?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})" title="${LEVEL_NAMES[i]}"></div>`;});
-  h+=`</div><div class="sn-info">${LEVEL_ICONS[curLevel]} ${curLevel+1}/${LEVEL_NAMES.length} ${LEVEL_NAMES[curLevel]}</div></div>`;
+  LEVEL_NAMES.forEach((_,i)=>{
+    const unlocked=isUnlocked(i),cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    const click=unlocked?`goLevel(${i})`:'';
+    h+=`<div class="sn-d ${cls}" onclick="${click}" title="${unlocked?LEVEL_NAMES[i]:'答对上一关测验后解锁'}"></div>`;
+  });
+  h+=`</div><div class="sn-info">${LEVEL_ICONS[curLevel]} ${curLevel+1}/${LEVEL_NAMES.length} ${LEVEL_NAMES[curLevel]}</div><div class="sn-hint">${quizPassed.size}/${LEVEL_NAMES.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
   return h;
 }
 
@@ -165,6 +194,26 @@ function summaryHTML(){
   const done=levelObjs.flat().filter(v=>v).length,total=levelObjs.flat().length;
   return `<div class="summary-box"><div class="summary-title">🎉 材料科学探险完成！</div><div class="summary-sub">你已掌握材料科学核心概念</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}</div><div class="label">完成目标</div></div><div class="summary-stat"><div class="num">7</div><div class="label">探索关卡</div></div></div><div class="summary-keys"><div>💎 晶体：有序排列 vs 无序排列</div><div>⚙️ 合金：碳含量决定钢的性能</div><div>🏺 陶瓷：高温高硬度绝缘体</div><div>🧬 聚合物：链结构决定性能</div><div>🔗 复合材料：1+1>2的组合</div><div>💡 半导体：掺杂改变导电性</div><div>🔍 纳米材料：尺寸效应</div></div></div>`;
 }
+function quizHTML(li){
+  const q=quizData[li],fb=quizFeedback[li];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`;});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+function answerQuiz(li,choice){
+  if(li!==curLevel||quizPassed.has(li))return;
+  const q=quizData[li],ok=choice===q.ans;
+  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  if(ok){
+    quizPassed.add(li);
+    if(li<6)unlocked[li+1]=true;
+  }
+  renderPanel();
+}
+window.answerQuiz=answerQuiz;
 
 function renderPanel(){
   let h=renderStageNav();
@@ -172,10 +221,15 @@ function renderPanel(){
     case 0:h+=renderP0();break;case 1:h+=renderP1();break;case 2:h+=renderP2();break;
     case 3:h+=renderP3();break;case 4:h+=renderP4();break;case 5:h+=renderP5();break;case 6:h+=renderP6();break;
   }
-  if(levelObjs[curLevel].every(v=>v)&&curLevel<6)h+=`<button class="act-btn" style="background:#8b5cf6;color:#fff;margin-top:8px" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
-  if(levelObjs[curLevel].every(v=>v)&&curLevel===6)h+=summaryHTML();
+  if(levelObjs[curLevel].every(v=>v)){
+    if(!quizPassed.has(curLevel))h+=quizHTML(curLevel);
+    if(quizPassed.has(curLevel)&&curLevel<6)h+=`<button class="act-btn" style="background:#8b5cf6;color:#fff;margin-top:8px" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+    if(quizPassed.has(curLevel)&&curLevel===6)h+=summaryHTML();
+  }
   panel.innerHTML=h;
-  bar.innerHTML=`<span style="color:var(--text-muted)">🔬 ${LEVEL_NAMES[curLevel]}</span><span class="prog">${levelObjs.flat().filter(v=>v).length}/${levelObjs.flat().length} 目标</span>`;
+  const done=levelObjs[curLevel].filter(Boolean).length;
+  const status=quizPassed.has(curLevel)?'已通关':levelObjs[curLevel].every(Boolean)?'待测验':'进行中';
+  bar.innerHTML=`<span style="color:var(--text-muted)">🔬 ${LEVEL_NAMES[curLevel]}</span><span class="prog">目标 ${done}/3 · ${status} · 通关 ${quizPassed.size}/${LEVEL_NAMES.length}</span>`;
 }
 
 function renderP0(){

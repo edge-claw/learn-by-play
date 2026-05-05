@@ -148,8 +148,17 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0;text-align:left}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -202,6 +211,25 @@ function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 let CW,CH,time=0,gameState='start',currentLevel=0,levelState={},completedLevels=new Set(),particles=[];
 const ACCENT='#00ff88',GOLD='#ffd700',BLUE='#5a9aff',PURPLE='#b47aff',RED='#ff4444';
+const quizData=[
+  {q:'凯撒密码的核心弱点是什么？',opts:['固定字母偏移容易被频率分析破解','必须使用椭圆曲线','不能处理大写字母'],ans:0,ok:'对。固定替换保留语言频率特征，所以容易被分析。',bad:'凯撒密码弱在替换规律固定，密文仍保留明文语言频率。'},
+  {q:'AES 属于哪一类加密算法？',opts:['对称加密','非对称加密','哈希函数'],ans:0,ok:'对。AES 加密和解密使用同一把密钥。',bad:'AES 是对称分组密码，不是公私钥体系。'},
+  {q:'RSA 的安全性主要依赖什么困难问题？',opts:['大整数分解困难','排序数组困难','压缩图片困难'],ans:0,ok:'对。知道 n 很容易，想从 n 分解出 p 和 q 很难。',bad:'RSA 的基础是大数分解难题，不是一般数据处理问题。'},
+  {q:'哈希函数的雪崩效应指什么？',opts:['输入微小变化会导致输出大幅变化','输出永远越来越短','密钥会自动公开'],ans:0,ok:'对。雪崩效应让篡改能被快速发现。',bad:'雪崩效应关注输入变化与哈希输出差异。'},
+  {q:'数字签名能同时帮助确认什么？',opts:['身份来源和内容完整性','文件一定没有被复制','网络带宽大小'],ans:0,ok:'对。私钥签名证明来源，哈希比对发现篡改。',bad:'数字签名不能阻止复制，核心是认证和完整性。'},
+  {q:'零知识证明的目标是什么？',opts:['证明知道秘密但不泄露秘密','把秘密广播给所有人','替代所有加密算法'],ans:0,ok:'对。验证者获得可信结论，但学不到秘密本身。',bad:'零知识证明强调证明能力和隐私同时成立。'},
+  {q:'同态加密最关键的能力是什么？',opts:['可以直接在密文上计算','让密文变成明文','删除所有密钥'],ans:0,ok:'对。同态加密让数据保持加密状态也能参与运算。',bad:'同态加密不是绕过密钥，而是在密文域保持可计算性。'}
+];
+const quizLearns=[
+  '凯撒密码虽简单，但频率分析可轻松破解。现代加密需要更复杂的算法。',
+  'AES 通过 SubBytes、ShiftRows、MixColumns、AddRoundKey 四步实现混淆与扩散，是当今最安全的对称加密。',
+  'RSA 的安全性基于<b>大数分解难题</b>。量子计算机可能威胁 RSA，因此后量子密码学正在研究中。',
+  '哈希函数的<b>雪崩效应</b>确保微小改变导致完全不同的输出，这是区块链防篡改的基础。',
+  '数字签名结合了<b>哈希</b>和<b>非对称加密</b>，同时保证身份认证和数据完整性。',
+  '零知识证明让你<b>证明知识而不泄露知识</b>。ZK-SNARKs 和 ZK-Rollups 正在革新区块链隐私和扩展性。',
+  '同态加密实现<b>"数据可用不可见"</b>，是医疗、金融等隐私计算场景的关键技术。'
+];
+let quizPassed=new Set(),quizFeedback={},levelReady=new Set();
 
 function resize(){CW=canvas.width=window.innerWidth;CH=canvas.height=window.innerHeight}
 window.addEventListener('resize',resize);resize();
@@ -262,6 +290,7 @@ const L=levels[currentLevel];
 document.getElementById('lpTitle').textContent=L.icon+' '+L.title;
 document.getElementById('lpStep').textContent=(currentLevel+1)+'/'+levels.length;
 let h='<div class="mission"><div class="m-level">第 '+(currentLevel+1)+' 关</div><div class="m-title">'+L.title+'</div><div class="m-desc">'+L.desc+'</div><div class="m-concept">'+L.concept+'</div></div>';
+if(typeof window._stageNavHTML==='function')h=window._stageNavHTML()+h;
 // 各关卡面板
 if(currentLevel===0)h+=renderCaesarPanel();
 else if(currentLevel===1)h+=renderAESPanel();
@@ -270,13 +299,17 @@ else if(currentLevel===3)h+=renderHashPanel();
 else if(currentLevel===4)h+=renderSignPanel();
 else if(currentLevel===5)h+=renderZKPPanel();
 else if(currentLevel===6)h+=renderHEPanel();
+const readyForQuiz=levelReady.has(currentLevel)||quizPassed.has(currentLevel);
+if(readyForQuiz&&!quizPassed.has(currentLevel))h+=quizHTML(currentLevel);
+if(readyForQuiz&&quizPassed.has(currentLevel)&&currentLevel<levels.length-1)h+='<div class="act-section"><button class="act-btn green" onclick="nextLevel()">下一关 →</button></div>';
+if(readyForQuiz&&quizPassed.has(currentLevel)&&currentLevel===levels.length-1&&window._summaryHTML)h+=window._summaryHTML();
 _patchPanel(body,h);
 lp.style.display='flex';
 }
 
 function startGame(){
 document.getElementById('startScreen').classList.add('hidden');
-gameState='playing';currentLevel=0;completedLevels.clear();
+gameState='playing';currentLevel=0;completedLevels.clear();quizPassed.clear();quizFeedback={};levelReady.clear();
 initLevel();renderPanel();
 }
 
@@ -293,7 +326,7 @@ else if(currentLevel===6){levelState={a:0,b:0,encA:0,encB:0,encSum:0,decResult:0
 
 function nextLevel(){
 document.getElementById('resultModal').classList.add('hidden');
-if(currentLevel<levels.length-1){currentLevel++;initLevel();renderPanel()}
+if(currentLevel<levels.length-1&&isUnlocked(currentLevel+1)){currentLevel++;initLevel();renderPanel()}
 }
 
 function showResult(title,desc,learn){
@@ -304,12 +337,46 @@ document.getElementById('resultModal').classList.remove('hidden');
 spawnParticles(CW/2,CH/2,ACCENT,30);
 }
 
+function isUnlocked(i){return i===0||quizPassed.has(i-1)}
+function quizHTML(li){
+const q=quizData[li],fb=quizFeedback[li];
+let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+h+='<div class="quiz-q">'+q.q+'</div>';
+q.opts.forEach((opt,i)=>{h+='<button class="quiz-opt" onclick="answerQuiz('+li+','+i+')">'+opt+'</button>'});
+if(fb)h+='<div class="quiz-feedback '+(fb.ok?'ok':'bad')+'">'+fb.text+'</div>';
+h+='</div>';
+return h;
+}
+function answerQuiz(li,choice){
+if(li!==currentLevel||quizPassed.has(li))return;
+const q=quizData[li],ok=choice===q.ans;
+quizFeedback[li]={ok:ok,text:ok?q.ok:q.bad};
+if(ok){quizPassed.add(li);completedLevels.add(li);const L=levels[li];showResult('第 '+(li+1)+' 关通过！',L.title+' — 掌握完成',quizLearns[li]);}
+renderPanel();
+}
+window.answerQuiz=answerQuiz;
 function completeLevel(){
-if(completedLevels.has(currentLevel))return;
-completedLevels.add(currentLevel);
-const L=levels[currentLevel];
-const learns=['凯撒密码虽简单，但频率分析可轻松破解。现代加密需要更复杂的算法。','AES 通过 SubBytes、ShiftRows、MixColumns、AddRoundKey 四步实现混淆与扩散，是当今最安全的对称加密。','RSA 的安全性基于<b>大数分解难题</b>。量子计算机可能威胁 RSA，因此后量子密码学正在研究中。','哈希函数的<b>雪崩效应</b>确保微小改变导致完全不同的输出，这是区块链防篡改的基础。','数字签名结合了<b>哈希</b>和<b>非对称加密</b>，同时保证身份认证和数据完整性。','零知识证明让你<b>证明知识而不泄露知识</b>。ZK-SNARKs 和 ZK-Rollups 正在革新区块链隐私和扩展性。','同态加密实现<b>"数据可用不可见"</b>，是医疗、金融等隐私计算场景的关键技术。'];
-showResult('第 '+(currentLevel+1)+' 关通过！',L.title+' — 掌握完成',learns[currentLevel]);
+if(quizPassed.has(currentLevel))return;
+levelReady.add(currentLevel);
+renderPanel();
+}
+function updateInlineText(el,text){
+if(el)el.textContent=text;
+}
+function updateNextText(el,text){
+if(el&&el.nextElementSibling)el.nextElementSibling.textContent=text;
+}
+function dragCaesarOffset(el){
+levelState.offset=+el.value;
+levelState.encrypted=caesarEncrypt(levelState.plaintext.toUpperCase(),levelState.offset);
+updateNextText(el,'偏移: '+levelState.offset);
+updateInlineText(document.getElementById('caesarOutput'),levelState.encrypted);
+}
+function editHashText(el,key){
+levelState[key]=el.value;
+const h1=simpleHash(levelState.text1),h2=simpleHash(levelState.text2);
+updateInlineText(document.getElementById('hashOut1'),h1);
+updateInlineText(document.getElementById('hashOut2'),h2);
 }
 
 // ===== 第1关：凯撒密码 =====
@@ -318,8 +385,8 @@ function renderCaesarPanel(){
 const s=levelState;
 s.encrypted=caesarEncrypt(s.plaintext.toUpperCase(),s.offset);
 let h='<div class="act-section"><div class="as-label">明文输入</div><div class="input-row"><input type="text" id="caesarInput" value="'+s.plaintext+'" onchange="levelState.plaintext=this.value.toUpperCase();renderPanel()"></div></div>';
-h+='<div class="act-section"><div class="slider-row"><label>偏移量 (1-25)</label><input type="range" min="1" max="25" value="'+s.offset+'" oninput="levelState.offset=+this.value;renderPanel()"><div class="slider-val">偏移: '+s.offset+'</div></div></div>';
-h+='<div class="hint-b">密文结果</div><div class="crypto-output">'+s.encrypted+'</div>';
+h+='<div class="act-section"><div class="slider-row"><label>偏移量 (1-25)</label><input type="range" min="1" max="25" value="'+s.offset+'" oninput="dragCaesarOffset(this)" onchange="this.blur();renderPanel()"><div class="slider-val">偏移: '+s.offset+'</div></div></div>';
+h+='<div class="hint-b">密文结果</div><div class="crypto-output" id="caesarOutput">'+s.encrypted+'</div>';
 h+='<div class="act-section"><button class="act-btn blue" onclick="levelState.showFreq=true;renderPanel()">📊 频率分析</button></div>';
 if(s.showFreq){
 h+='<div class="hint-b">密文字母频率 vs 英文标准频率（E 最高）</div>';
@@ -399,7 +466,7 @@ h+='<div class="step-box"><div class="step-title">解密</div><div class="step-c
 h+='M = C^d mod n = '+s.encrypted+'^'+s.d+' mod '+s.n+' = <span style="color:#ffd700">'+s.decrypted+'</span>';
 h+=(s.decrypted===s.msg?'<br><span style="color:#00ff88">✅ 解密成功！M = '+s.decrypted+'</span>':'');
 h+='</div></div>';
-if(!completedLevels.has(2)){h+='<div class="act-section"><button class="act-btn green" onclick="completeLevel()">✅ RSA 验证通过！</button></div>'}
+if(!levelReady.has(2)&&!quizPassed.has(2)){h+='<div class="act-section"><button class="act-btn green" onclick="completeLevel()">✅ RSA 验证通过！</button></div>'}
 }
 }
 }
@@ -415,10 +482,10 @@ function rsaDecrypt(){const s=levelState;s.decrypted=modPow(s.encrypted,s.d,s.n)
 function renderHashPanel(){
 const s=levelState;
 s.hash1=simpleHash(s.text1);s.hash2=simpleHash(s.text2);
-let h='<div class="act-section"><div class="as-label">输入文本 1</div><div class="input-row"><input type="text" id="hashIn1" value="'+s.text1+'" oninput="levelState.text1=this.value;renderPanel()"></div></div>';
-h+='<div class="crypto-output hash">'+s.hash1+'</div>';
-h+='<div class="act-section"><div class="as-label">输入文本 2（试试只改一个字符）</div><div class="input-row"><input type="text" id="hashIn2" value="'+s.text2+'" oninput="levelState.text2=this.value;renderPanel()"></div></div>';
-h+='<div class="crypto-output hash">'+s.hash2+'</div>';
+let h='<div class="act-section"><div class="as-label">输入文本 1</div><div class="input-row"><input type="text" id="hashIn1" value="'+s.text1+'" oninput="editHashText(this,&quot;text1&quot;)" onchange="renderPanel()"></div></div>';
+h+='<div class="crypto-output hash" id="hashOut1">'+s.hash1+'</div>';
+h+='<div class="act-section"><div class="as-label">输入文本 2（试试只改一个字符）</div><div class="input-row"><input type="text" id="hashIn2" value="'+s.text2+'" oninput="editHashText(this,&quot;text2&quot;)" onchange="renderPanel()"></div></div>';
+h+='<div class="crypto-output hash" id="hashOut2">'+s.hash2+'</div>';
 h+='<div class="act-section"><button class="act-btn blue" onclick="levelState.showAvalanche=true;renderPanel()">🌊 雪崩效应分析</button></div>';
 if(s.showAvalanche){
 const b1=s.hash1.split(''),b2=s.hash2.split('');
@@ -460,7 +527,7 @@ h+='篡改文档哈希: <span style="color:#ff4444">'+simpleHash(s.tamperedDoc).
 h+='原始签名哈希: <span style="color:#b47aff">'+simpleHash(s.doc).slice(0,16)+'...</span><br>';
 h+='<span style="color:#ff4444">哈希不匹配 → 文档被篡改！</span>';
 h+='</div></div>';
-if(!completedLevels.has(4)){h+='<div class="act-section"><button class="act-btn green" onclick="completeLevel()">✅ 理解数字签名！</button></div>'}
+if(!levelReady.has(4)&&!quizPassed.has(4)){h+='<div class="act-section"><button class="act-btn green" onclick="completeLevel()">✅ 理解数字签名！</button></div>'}
 }
 }
 return h;
@@ -747,7 +814,7 @@ requestAnimationFrame(mainLoop);
 mainLoop();
 
 
-function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeof curLevel!=="undefined")curLevel=i;if(typeof initLevel==="function")initLevel(i);if(typeof renderPanel==="function")renderPanel();}
+function goLevel(i){if(i<0||i>=levels.length||!isUnlocked(i))return;if(typeof currentLevel!=="undefined")currentLevel=i;if(typeof curLevel!=="undefined")curLevel=i;if(typeof initLevel==="function")initLevel(i);if(typeof renderPanel==="function")renderPanel();}
 // === 总分总认知结构增强 ===
 // 延迟重新渲染确保增强生效
 (function(){
@@ -771,6 +838,7 @@ function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeo
     return null;
   }
   function _isDone(i){
+    if(typeof quizPassed!=='undefined')return quizPassed.has(i);
     var o=_getObjs();
     if(o&&o[i])return o[i].every(function(v){return v;});
     if(typeof completedLevels!=='undefined')return completedLevels.has(i);
@@ -792,11 +860,14 @@ function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeo
     var pct=s.total>0?Math.round(s.done/s.total*100):0;
     var h='<div class="stage-nav"><div class="sn-bar">';
     for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+      var unlocked=typeof isUnlocked==='function'?isUnlocked(i):true;
+      var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
+      var click=unlocked?"typeof goLevel==='function'&&goLevel("+i+")":'';
+      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+    if(typeof quizPassed!=='undefined')h+='<div class="sn-hint">'+quizPassed.size+'/'+total+' \u5DF2\u901A\u5173\uFF0C\u5B8C\u6210\u76EE\u6807\u540E\u7B54\u5BF9\u6D4B\u9A8C\u624D\u89E3\u9501\u4E0B\u4E00\u5173</div>';
 
     h+='</div>';
     return h;

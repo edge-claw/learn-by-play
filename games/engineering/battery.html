@@ -119,8 +119,17 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:10px;padding:12px;margin:10px 0}
+.quiz-title{font-weight:700;color:var(--quiz-q);font-size:14px;margin-bottom:8px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:9px 10px;margin:6px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{border-radius:8px;padding:8px;margin-top:8px;font-size:12px;line-height:1.6}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -173,6 +182,8 @@ let CW,CH,time=0,animId;
 let gameState='start',currentLevel=0;
 let levelState={},stars=[],particles=[];
 const completedLevels=new Set();
+const quizPassed=new Set();
+const quizFeedback={};
 
 const levels=[
 {title:'氧化还原',sub:'原电池的诞生',concept:'将锌片放入硫酸铜溶液中，锌失去电子被氧化（溶解），铜离子得到电子被还原（沉积）。电子从锌流向铜——这就是原电池的基本原理。',goals:['将锌片放入硫酸铜溶液','观察锌溶解与铜沉积','观察电子流动方向'],learn:'原电池是化学能转化为电能的装置。锌比铜活泼，更容易失去电子。这个"活泼性差异"就是电池电压的来源。伏打在1800年发明的第一个电池，就是基于这个原理——锌铜原电池。'},
@@ -182,6 +193,16 @@ const levels=[
 {title:'固态电池',sub:'下一代技术',concept:'液态电解质存在锂枝晶穿透隔膜导致短路的风险。固态电解质（陶瓷/硫化物）能物理阻挡枝晶生长，同时兼容锂金属负极，能量密度翻倍。',goals:['观察液态电池的枝晶风险','观察固态电池的安全性','对比两种技术的差异'],learn:'固态电池被认为是锂电池的"终极形态"。用固态电解质替代易燃的液态电解液，不仅更安全，还能使用锂金属负极（理论容量是石墨的10倍）。丰田、三星SDI、宁德时代都在竞相研发。预计2027-2030年量产，届时电动车续航将突破1000公里。'},
 {title:'BMS电池管理',sub:'均衡与SOC估算',concept:'多节电池串联时，由于制造差异，各节电压会不一致。BMS（电池管理系统）通过均衡电路让高压电池放电、低压电池充电，保持一致性。SOC（荷电状态）估算是BMS的核心算法。',goals:['执行电压均衡操作','使4节电池电压差<0.05V','完成SOC校准'],learn:'BMS是电池包的"大脑"。它实时监测每节电池的电压、温度、电流，执行均衡、SOC估算、故障诊断。没有BMS，电池包寿命会急剧缩短——因为最弱的那节电池会被过充或过放，率先损坏，拖累整个电池包。'},
 {title:'储能电站',sub:'调峰填谷',concept:'风光发电"靠天吃饭"，白天多晚上少。储能电站在发电高峰时充电存储多余电力，在用电高峰时放电补充不足，实现电网功率平衡——这就是"调峰填谷"。',goals:['组装电池阵列到机架','完成白天充电过程','完成夜间放电调峰'],learn:'电网级储能是新能源大规模应用的关键。一个100MW/400MWh的储能电站，能在4小时内为10万户家庭供电。目前主流技术是磷酸铁锂电池，循环寿命超过6000次。中国已建成全球最大的储能装机容量，2025年超过100GW。'}
+];
+
+const quizData=[
+{q:'锌铜原电池中，电子主要从哪里流向哪里？',opts:['从锌电极流向铜电极','从铜电极流向锌电极','在溶液里随机消失'],ans:0,ok:'对。锌更活泼，失去电子被氧化，电子经外电路流向铜。',bad:'锌是还原剂，失电子；铜离子得电子沉积为铜。'},
+{q:'锂离子电池反复充放电依赖的核心机制是什么？',opts:['锂离子在正负极间可逆嵌入和脱嵌','电极材料每次完全燃烧','隔膜主动产生锂离子'],ans:0,ok:'对。锂离子像摇椅一样在两极间往返，是可充电的基础。',bad:'本关重点是可逆的嵌入脱嵌，不是材料燃烧。'},
+{q:'为什么大倍率放电时可用容量通常会下降？',opts:['内阻压降增大且离子扩散来不及','电池容量单位 C 会自动变小','电压平台一定升高'],ans:0,ok:'对。大电流带来更强极化和扩散限制，电压更低、容量更少。',bad:'倍率越大通常越吃力，容量和平台电压往往下降。'},
+{q:'热失控链式反应的危险之处是什么？',opts:['内部放热会自我加速，温度快速飙升','只会让电池轻微降温','只影响电量显示'],ans:0,ok:'对。SEI 分解、正极释氧和电解液燃烧会相互推动。',bad:'热失控是安全事故核心，不是普通温升。'},
+{q:'固态电解质相比液态电解质的关键优势之一是什么？',opts:['可阻挡枝晶并降低易燃液体风险','必须让枝晶更快穿透隔膜','完全不需要电极'],ans:0,ok:'对。固态电解质兼顾安全性和锂金属负极潜力。',bad:'固态电池仍需要正负极，优势在电解质和界面安全。'},
+{q:'BMS 对串联电池做均衡的目的是什么？',opts:['减少单体电压/SOC 偏差，避免弱单体拖累电池包','让所有电池随机充放电','只改变仪表盘颜色'],ans:0,ok:'对。均衡能减小差异，提升安全性、寿命和可用容量。',bad:'BMS 是电池包大脑，重点是监测、保护和均衡。'},
+{q:'储能电站“调峰填谷”的含义是什么？',opts:['发电富余时充电，用电高峰时放电','全天只充电不放电','只在电网低谷时增加负荷'],ans:0,ok:'对。储能把时间上不匹配的发电和用电重新对齐。',bad:'调峰填谷强调能量跨时间搬运，而不是单向充电。'}
 ];
 
 function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
@@ -201,6 +222,7 @@ function startGame(){
 }
 
 function initLevel(idx){
+  if(!canGoLevel(idx))return;
   currentLevel=idx;particles=[];
   const cx=CW/2+160,cy=CH/2;
   if(idx===0){
@@ -223,12 +245,7 @@ function initLevel(idx){
 
 function renderPanel(){
   const L=levels[currentLevel],S=levelState,p=document.getElementById('panel');
-  let h='<div style="margin-bottom:8px">';
-  for(let i=0;i<levels.length;i++){
-    let cls='level-btn';if(i===currentLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
-    h+=`<span class="${cls}" onclick="switchLevel(${i})">第${i+1}关</span>`;
-  }
-  h+='</div>';
+  let h=stageNavHTML();
   h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
   const _kw=['氧化还原：锌失电子（氧化）→ 铜得电子（还原）','锂离子嵌入脱嵌：充电正极→负极，放电反向','倍率 C = 1小时放完的电流，大C容量↓电压↓','热失控链式反应：SEI分解→正极释氧→电解液燃烧','固态电解质：阻挡锂枝晶 + 兼容锂金属负极','BMS均衡：高压放电、低压充电，保持一致性','储能调峰填谷：白天充电存储，夜间放电补充'][currentLevel];
   h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>${_kw}</div>`;
@@ -239,20 +256,64 @@ function renderPanel(){
     h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`;
   }
   h+=renderLevelActions();
-  if(S.goalDone&&S.goalDone.every(g=>g)&&!completedLevels.has(currentLevel)){
-    completedLevels.add(currentLevel);
-  }
-  if(completedLevels.has(currentLevel)){
-    h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
-    if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
-    else h+=`${_summaryHTML()}`;
+  if(S.goalDone&&S.goalDone.every(g=>g)){
+    if(!quizPassed.has(currentLevel)){
+      h+=quizHTML(currentLevel);
+    }else{
+      h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
+      if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
+      else h+=summaryHTML();
+    }
   }
   p.innerHTML=h;
   document.getElementById('bbLeft').textContent=`第 ${currentLevel+1} 关：${L.title}`;
   document.getElementById('bbRight').textContent=`已通关 ${completedLevels.size}/${levels.length}`;
 }
 
-function switchLevel(i){if(i>=0&&i<levels.length){initLevel(i);renderPanel()}}
+function canGoLevel(i){return i>=0&&i<levels.length&&(i===0||completedLevels.has(i)||completedLevels.has(i-1));}
+
+function switchLevel(i){if(canGoLevel(i)){initLevel(i);renderPanel()}}
+
+function stageNavHTML(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<levels.length;i++){
+    const unlocked=canGoLevel(i);
+    const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+  }
+  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${completedLevels.size}/${levels.length}</div>`;
+  h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
+  return h;
+}
+
+function quizHTML(i){
+  const q=quizData[i],fb=quizFeedback[i];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,idx)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${i},${idx})">${String.fromCharCode(65+idx)}. ${opt}</button>`;});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+
+function answerQuiz(i,optIdx){
+  const q=quizData[i],ok=optIdx===q.ans;
+  quizFeedback[i]={ok:ok,text:ok?q.ok:q.bad};
+  if(ok){quizPassed.add(i);completedLevels.add(i);}
+  renderPanel();
+}
+
+function summaryHTML(){
+  let h='<div class="summary-box"><div class="summary-title">🏆 电池与储能技术通关</div>';
+  h+='<div class="summary-sub">你已完成 7 个电池工程主题</div><div class="summary-stats">';
+  h+=`<div class="summary-stat"><div class="num">${levels.length}</div><div class="label">关卡完成</div></div>`;
+  h+=`<div class="summary-stat"><div class="num">${completedLevels.size}</div><div class="label">测验通过</div></div>`;
+  h+='<div class="summary-stat"><div class="num">100%</div><div class="label">知识闭环</div></div></div>';
+  h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">📚 关键知识回顾</div>';
+  levels.forEach(l=>{h+=`<div>✅ ${l.title}</div>`;});
+  h+='</div></div>';
+  return h;
+}
 
 function renderLevelActions(){
   const S=levelState;let h='';
@@ -785,105 +846,6 @@ animId=requestAnimationFrame(gameLoop);
 
 
 function goLevel(i){switchLevel(i);}
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
 
 </script>
 </body>

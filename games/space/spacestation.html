@@ -116,8 +116,17 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:10px;padding:12px;margin:10px 0}
+.quiz-title{font-weight:700;color:var(--quiz-q);font-size:14px;margin-bottom:8px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:9px 10px;margin:6px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{border-radius:8px;padding:8px;margin-top:8px;font-size:12px;line-height:1.6}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -170,6 +179,9 @@ let CW,CH,time=0,animId;
 let gameState='start',currentLevel=0;
 let levelState={},bgStars=[];
 const completedLevels=new Set();
+const quizPassed=new Set();
+const quizFeedback={};
+const goalReady=new Set();
 const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
 const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
 
@@ -181,6 +193,16 @@ const levels=[
 {name:'辐射防护',sub:'太阳粒子事件',icon:'☢️'},
 {name:'太空行走',sub:'舱外活动',icon:'🧑‍🚀'},
 {name:'再补给',sub:'霍曼转移',icon:'🚀'}
+];
+
+const quizData=[
+{q:'空间站模块交会对接前，最关键的条件是什么？',opts:['匹配轨道、速度和相对位置','只要靠近就能自动吸附','先把所有模块一次性发射到同一点'],ans:0,ok:'对。交会对接的核心是相对运动控制，位置和速度都要精确匹配。',bad:'本关重点是轨道、速度和相对位置的匹配，不是简单靠近。'},
+{q:'ECLSS 生命支持系统主要维持哪些闭环？',opts:['供氧、去除二氧化碳和水回收','只负责给舱内加热','只负责控制舱外太阳翼'],ans:0,ok:'对。生命支持要同时管理氧气、二氧化碳、水和环境安全。',bad:'ECLSS 是环境控制与生命支持系统，不只是温控或供电。'},
+{q:'空间站使用 CMG 调整姿态时，依赖的物理基础是什么？',opts:['角动量守恒产生控制力矩','消耗大量燃料直接推开空间站','改变太阳光照颜色'],ans:0,ok:'对。控制力矩陀螺通过角动量交换调整姿态，能减少推进剂消耗。',bad:'CMG 的关键不是燃料喷射，而是角动量交换。'},
+{q:'微重力环境让哪些现象更明显？',opts:['无明显浮力对流和沉降，表面张力效应突出','所有物体质量变为零','化学反应完全停止'],ans:0,ok:'对。微重力削弱对流和沉降，让流体、火焰、晶体生长呈现不同形态。',bad:'微重力不是没有质量，而是重力相关效应被大幅削弱。'},
+{q:'为什么聚乙烯或水常用于高能粒子辐射防护？',opts:['富含氢，对高能带电粒子屏蔽更有效','密度无限大，可以挡住一切辐射','能把太阳粒子转化成电能'],ans:0,ok:'对。富氢材料对太阳高能质子等粒子有较好的屏蔽效果。',bad:'防护重点是材料成分和粒子相互作用，富氢材料通常优于单纯加厚铝。'},
+{q:'EVA 舱外活动中必须重点管理什么？',opts:['系绳、氧气、推进剂和返回路径','只要修好设备即可不返回','航天服可以无限供应资源'],ans:0,ok:'对。EVA 是资源受限任务，安全返回和生命保障同样重要。',bad:'舱外活动不能只看维修进度，还要管理生命支持和返回气闸。'},
+{q:'霍曼转移轨道的主要优势是什么？',opts:['在两个圆轨道之间以较低燃料代价转移','让飞船瞬间到达目标轨道','不需要等待任何相位关系'],ans:0,ok:'对。霍曼转移利用半个椭圆轨道完成省燃料的轨道转移。',bad:'霍曼转移省燃料，但仍需要合适发射窗口和飞行时间。'}
 ];
 
 function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight}
@@ -207,6 +229,7 @@ initLevel(0);renderPanel();animate();
 }
 
 function initLevel(n){
+if(!canGoLevel(n))return;
 currentLevel=n;
 if(n===0)initLevel0();else if(n===1)initLevel1();else if(n===2)initLevel2();
 else if(n===3)initLevel3();else if(n===4)initLevel4();else if(n===5)initLevel5();
@@ -299,8 +322,7 @@ if(Math.abs(dx)<60&&Math.abs(dy)<50){
   s.crosshair={active:true,x:mx,y:my,tx:t.x,ty:t.y,t:0};
   if(s.docked>=1&&!s.goals[0]){s.goals[0]=true;}
   if(s.docked>=3&&!s.goals[1]){s.goals[1]=true;}
-  if(s.docked>=4&&!s.goals[2]){s.goals[2]=true;
-    if(!completedLevels.has(0)){completedLevels.add(0);showResult(0);}}
+  if(s.docked>=4&&!s.goals[2]){s.goals[2]=true;completeLevel(0);}
   renderPanel();
 }else{s.modules[i].cx=s.modules[i].sx;s.modules[i].cy=s.modules[i].sy;}
 }
@@ -323,8 +345,7 @@ if(s.running&&!s.failed){
   if(s.o2<10||s.o2>35||s.co2>5||s.water<20){s.failed=true;renderPanel();}
   if(s.stable>=10&&!s.goals[0]){s.goals[0]=true;renderPanel();}
   if(s.stable>=20&&!s.goals[1]){s.goals[1]=true;renderPanel();}
-  if(s.stable>=30&&!s.goals[2]){s.goals[2]=true;
-    if(!completedLevels.has(1)){completedLevels.add(1);showResult(1);}}
+  if(s.stable>=30&&!s.goals[2]){s.goals[2]=true;completeLevel(1);}
 }
 // draw gauges
 const gauges=[
@@ -378,8 +399,7 @@ let aligned=Math.abs(s.pitch)<5&&Math.abs(s.yaw)<5&&Math.abs(s.roll)<5;
 if(aligned)s.alignTime+=0.016;else s.alignTime=Math.max(0,s.alignTime-0.02);
 if(s.alignTime>=3&&!s.goals[0]){s.goals[0]=true;renderPanel();}
 if(s.alignTime>=6&&!s.goals[1]){s.goals[1]=true;renderPanel();}
-if(s.alignTime>=10&&!s.goals[2]){s.goals[2]=true;
-  if(!completedLevels.has(2)){completedLevels.add(2);showResult(2);}}
+if(s.alignTime>=10&&!s.goals[2]){s.goals[2]=true;completeLevel(2);}
 // draw station 3D-ish
 let cx=ox+W/2,ccy=cy-20;
 let pr=s.pitch*Math.PI/180,yr=s.yaw*Math.PI/180,rr=s.roll*Math.PI/180;
@@ -516,7 +536,7 @@ if(s.experiment===0){// water ball
   ctx.textAlign='left';
   if(s.timer>3&&!s.goals[2]){s.goals[2]=true;renderPanel();}
 }
-if(s.goals[0]&&s.goals[1]&&s.goals[2]&&!completedLevels.has(3)){completedLevels.add(3);showResult(3);}
+if(s.goals[0]&&s.goals[1]&&s.goals[2])completeLevel(3);
 }
 function chooseExperiment(n){levelState.experiment=n;levelState.timer=0;renderPanel();}
 function handleLevel3Click(mx,my){
@@ -562,8 +582,7 @@ if(s.eventActive){
   s.penetration=1-s.shieldEff;
   if(s.timer>5&&s.dose<30&&!s.goals[0]){s.goals[0]=true;renderPanel();}
   if(s.shieldEff>0.5&&!s.goals[1]){s.goals[1]=true;renderPanel();}
-  if(s.timer>15&&s.dose<20&&!s.goals[2]){s.goals[2]=true;
-    if(!completedLevels.has(4)){completedLevels.add(4);showResult(4);}}
+  if(s.timer>15&&s.dose<20&&!s.goals[2]){s.goals[2]=true;completeLevel(4);}
 }
 // draw sun (particle source)
 ctx.fillStyle='#ffdd44';ctx.beginPath();ctx.arc(ox+30,cy,25,0,Math.PI*2);ctx.fill();
@@ -635,7 +654,7 @@ else{
   // check return to airlock
   if(s.repaired>=3&&Math.abs(s.astX-s.airlock.x)<30&&Math.abs(s.astY-s.airlock.y)<30){
     s.goals[2]=true;s.done=true;
-    if(!completedLevels.has(5)){completedLevels.add(5);showResult(5);}
+    completeLevel(5);
   }
 }
 // draw station body
@@ -791,8 +810,7 @@ if(s.shipPhase==='docked'){
     ctx.fillStyle='#111';ctx.fillRect(stX-40,stY+25,80,8);
     ctx.fillStyle='#4ade80';ctx.fillRect(stX-40,stY+25,80*prog,8);
     ctx.fillStyle=t().label;ctx.font='15px sans-serif';ctx.fillText(`卸载补给: ${(prog*100).toFixed(0)}%`,stX,stY+45);
-    if(prog>=1&&!s.goals[2]){s.goals[2]=true;
-      if(!completedLevels.has(6)){completedLevels.add(6);showResult(6);}}
+    if(prog>=1&&!s.goals[2]){s.goals[2]=true;completeLevel(6);}
   }
 }
 ctx.textAlign='left';
@@ -803,6 +821,69 @@ function goalHTML(names,goals){
 let h='';names.forEach((n,i)=>{
 h+=`<div class="goal-row"><span class="g-icon">${goals[i]?'✅':'⬜'}</span><span class="g-text${goals[i]?' done':''}">${n}</span></div>`;
 });return h;
+}
+
+function completeLevel(n){
+if(n!==currentLevel||!levelState.goals||!levelState.goals.every(Boolean)||goalReady.has(n))return;
+goalReady.add(n);
+renderPanel();
+}
+
+function setLifeSupport(key,el){
+levelState[key]=+el.value;
+const out=document.getElementById(key+'Val');
+if(out)out.textContent=levelState[key]+'%';
+}
+
+function setShieldThickness(el){
+levelState.thickness=+el.value;
+const out=document.getElementById('thicknessVal');
+if(out)out.textContent=levelState.thickness+' cm';
+}
+
+function canGoLevel(n){
+return n>=0&&n<levels.length&&(n===0||completedLevels.has(n)||completedLevels.has(n-1));
+}
+
+function stageNavHTML(){
+let h='<div class="stage-nav"><div class="sn-bar">';
+levels.forEach((l,i)=>{
+const unlocked=canGoLevel(i);
+const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
+h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+});
+h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${completedLevels.size}/${levels.length}</div>`;
+h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
+return h;
+}
+
+function quizHTML(n){
+const q=quizData[n],fb=quizFeedback[n];
+let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+h+=`<div class="quiz-q">${q.q}</div>`;
+q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${n},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;});
+if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+h+='</div>';
+return h;
+}
+
+function answerQuiz(n,optIdx){
+const q=quizData[n],ok=optIdx===q.ans;
+quizFeedback[n]={ok:ok,text:ok?q.ok:q.bad};
+if(ok){quizPassed.add(n);completedLevels.add(n);}
+renderPanel();
+}
+
+function summaryHTML(){
+let h='<div class="summary-box"><div class="summary-title">🏆 空间站生存工程通关</div>';
+h+='<div class="summary-sub">你已完成 7 个空间站工程主题</div><div class="summary-stats">';
+h+=`<div class="summary-stat"><div class="num">${levels.length}</div><div class="label">关卡完成</div></div>`;
+h+=`<div class="summary-stat"><div class="num">${completedLevels.size}</div><div class="label">测验通过</div></div>`;
+h+='<div class="summary-stat"><div class="num">100%</div><div class="label">知识闭环</div></div></div>';
+h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">📚 关键知识回顾</div>';
+levels.forEach(l=>{h+=`<div>✅ ${l.name}</div>`;});
+h+='</div></div>';
+return h;
 }
 
 /* ========== RENDER PANEL ========== */
@@ -833,12 +914,7 @@ function _diffNodes(o,n){
 
 function renderPanel(){
 const L=levels[currentLevel],s=levelState;
-let h='<div style="margin-bottom:8px">';
-levels.forEach((l,i)=>{
-let cls='level-btn';if(i===currentLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
-h+=`<span class="${cls}" onclick="initLevel(${i})">${l.icon}${i+1}</span>`;
-});
-h+='</div>';
+let h=stageNavHTML();
 h+=`<div class="m-title">${L.icon} ${L.name}</div><div class="m-sub">${L.sub}</div>`;
 if(currentLevel===0){
 h+=`<div class="concept-box"><div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>交会对接，轨道匹配，模块化组装</div>将模块拖拽到对接口，完成空间站组装。交会对接需要精确的轨道匹配。</div>`;
@@ -846,9 +922,9 @@ h+=goalHTML(['对接第1个模块','对接3个模块','完成全部4个模块对
 h+=`<div class="hint-box">💡 拖拽下方模块到虚线框位置完成对接</div>`;
 }else if(currentLevel===1){
 h+=`<div class="concept-box"><div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>ECLSS 生命支持，O₂/CO₂ 平衡，水回收 93%</div>调节O₂发生器、CO₂清除器和水回收系统，维持安全环境30秒。</div>`;
-h+=`<div class="slider-wrap"><label>O₂发生器: <span class="sv">${s.o2Gen}%</span></label><input type="range" min="0" max="100" value="${s.o2Gen}" oninput="levelState.o2Gen=+this.value;renderPanel()"></div>`;
-h+=`<div class="slider-wrap"><label>CO₂清除器: <span class="sv">${s.co2Remove}%</span></label><input type="range" min="0" max="100" value="${s.co2Remove}" oninput="levelState.co2Remove=+this.value;renderPanel()"></div>`;
-h+=`<div class="slider-wrap"><label>水回收: <span class="sv">${s.waterRecycle}%</span></label><input type="range" min="0" max="100" value="${s.waterRecycle}" oninput="levelState.waterRecycle=+this.value;renderPanel()"></div>`;
+h+=`<div class="slider-wrap"><label>O₂发生器: <span class="sv" id="o2GenVal">${s.o2Gen}%</span></label><input type="range" min="0" max="100" value="${s.o2Gen}" oninput="setLifeSupport('o2Gen',this)" onchange="this.blur();renderPanel()"></div>`;
+h+=`<div class="slider-wrap"><label>CO₂清除器: <span class="sv" id="co2RemoveVal">${s.co2Remove}%</span></label><input type="range" min="0" max="100" value="${s.co2Remove}" oninput="setLifeSupport('co2Remove',this)" onchange="this.blur();renderPanel()"></div>`;
+h+=`<div class="slider-wrap"><label>水回收: <span class="sv" id="waterRecycleVal">${s.waterRecycle}%</span></label><input type="range" min="0" max="100" value="${s.waterRecycle}" oninput="setLifeSupport('waterRecycle',this)" onchange="this.blur();renderPanel()"></div>`;
 if(!s.running)h+=`<button class="act-btn" onclick="levelState.running=true;renderPanel()">▶️ 启动生命支持系统</button>`;
 if(s.failed)h+=`<div class="hint-box" style="border-color:#ef4444;color:#f87171">⚠️ 系统失败！参数超出安全范围</div><button class="act-btn" onclick="initLevel(1)">🔄 重试</button>`;
 h+=goalHTML(['维持安全环境10秒','维持安全环境20秒','维持安全环境30秒'],s.goals||[]);
@@ -866,7 +942,7 @@ else{h+=`<div style="font-size:12px;color:var(--sv);margin:4px 0">当前实验: 
 h+=goalHTML(['观察流体行为','观察火焰形态','观察晶体生长'],s.goals||[]);
 }else if(currentLevel===4){
 h+=`<div class="concept-box"><div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>太阳粒子事件 SPE，辐射防护，聚乙烯屏蔽</div>选择防护材料和厚度，抵御太阳粒子事件的辐射。</div>`;
-h+=`<div class="slider-wrap"><label>防护厚度: <span class="sv">${s.thickness} cm</span></label><input type="range" min="1" max="30" value="${s.thickness}" oninput="levelState.thickness=+this.value;renderPanel()"></div>`;
+h+=`<div class="slider-wrap"><label>防护厚度: <span class="sv" id="thicknessVal">${s.thickness} cm</span></label><input type="range" min="1" max="30" value="${s.thickness}" oninput="setShieldThickness(this)" onchange="this.blur();renderPanel()"></div>`;
 h+=`<button class="act-btn${s.material==='aluminum'?' green':''}" onclick="levelState.material='aluminum';renderPanel()">铝</button>`;
 h+=`<button class="act-btn${s.material==='polyethylene'?' green':''}" onclick="levelState.material='polyethylene';renderPanel()">聚乙烯</button>`;
 h+=`<button class="act-btn${s.material==='water'?' green':''}" onclick="levelState.material='water';renderPanel()">水</button>`;
@@ -882,6 +958,15 @@ h+=`<div class="concept-box"><div style="padding:6px 8px;border-radius:6px;backg
 if(!s.shipLaunched)h+=`<button class="act-btn" onclick="launchShip()">🚀 发射补给飞船</button>`;
 h+=goalHTML(['发射补给飞船','在最佳窗口发射','成功对接并卸载补给'],s.goals||[]);
 h+=`<div class="hint-box">💡 霍曼转移是最省燃料的轨道转移方式</div>`;
+}
+if(s.goals&&s.goals.every(Boolean)){
+  if(!quizPassed.has(currentLevel)){
+    h+=quizHTML(currentLevel);
+  }else{
+    h+=`<div class="learn-box">${learnTexts[currentLevel]}</div>`;
+    if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="nextLevel()">下一关 →</button>`;
+    else h+=summaryHTML();
+  }
 }
 _patchPanel(panelEl,h);
 bbLeft.textContent=`关卡 ${currentLevel+1}/7: ${L.name}`;
@@ -899,15 +984,6 @@ const learnTexts=[
 '霍曼转移轨道是两个圆轨道之间最省燃料的转移方式。补给飞船从低轨道出发，经过半个椭圆轨道到达空间站轨道，全程约需2天。'
 ];
 
-function showResult(n){
-const rb=document.getElementById('resultBox');
-let isLast=n===levels.length-1;
-rb.innerHTML=`<div class="rb-icon">${levels[n].icon}</div><div class="rb-title">${levels[n].name} — 通关！</div><div class="rb-learn">${learnTexts[n]}</div>`+
-(isLast?`<button class="btn-next" onclick="closeResult()">🎉 全部通关！</button>`
-:`<button class="btn-next" onclick="nextLevel()">下一关 →</button>`)+
-`<button class="btn-retry" onclick="retryLevel()">重玩</button>`;
-document.getElementById('resultModal').classList.remove('hidden');
-}
 function closeResult(){document.getElementById('resultModal').classList.add('hidden');}
 function nextLevel(){closeResult();initLevel(currentLevel+1);renderPanel();}
 function retryLevel(){closeResult();initLevel(currentLevel);renderPanel();}
@@ -956,106 +1032,7 @@ else if(currentLevel===6)updateLevel6();
 }
 }
 
-function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeof curLevel!=="undefined")curLevel=i;if(typeof initLevel==="function")initLevel(i);if(typeof renderPanel==="function")renderPanel();}
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
+function goLevel(i){initLevel(i);}
 
 
 </script>

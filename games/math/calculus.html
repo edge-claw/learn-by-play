@@ -89,8 +89,9 @@ canvas{position:fixed;left:320px;top:0;width:calc(100vw - 320px);height:calc(100
 .stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
-.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
+.sn-hint{margin-top:4px;color:var(--stage-hint);font-size:12px;line-height:1.45}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -140,12 +141,24 @@ function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar');
 let W,H,li=0,animId,mouse={x:0,y:0,down:false,px:0,py:0};
 let levelObjs=Array.from({length:9},()=>[false,false,false]);
+let completedLevels=new Set(),quizPassed=Array(9).fill(false),quizFeedback='';
 let levelState={};
 
 function resize(){const dpr=devicePixelRatio||1;const r=cv.getBoundingClientRect();W=r.width;H=r.height;cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);draw()}
 window.addEventListener('resize',resize);
-function startGame(){document.getElementById('overlay').style.display='none';document.getElementById('game').style.display='block';panel.style.display='block';bar.style.display='flex';li=0;initLevel();renderPanel();renderBar();requestAnimationFrame(function(){resize();loop()})}
-function goLevel(n){li=n;initLevel();renderPanel();renderBar();draw()}
+function canGoLevel(n){return n>=0&&n<9&&(n===0||completedLevels.has(n)||completedLevels.has(n-1))}
+function startGame(){document.getElementById('overlay').style.display='none';document.getElementById('game').style.display='block';panel.style.display='block';bar.style.display='flex';li=0;quizFeedback='';initLevel();renderPanel();renderBar();requestAnimationFrame(function(){resize();loop()})}
+function goLevel(n){
+  n=Math.max(0,Math.min(8,n));
+  if(!canGoLevel(n)){
+    quizFeedback='请先通过当前关卡的小测验，再解锁第 '+(n+1)+' 关。';
+    renderPanel();
+    return;
+  }
+  li=n;quizFeedback='';initLevel();
+  if(quizPassed[n])levelObjs[n]=[true,true,true];
+  renderPanel();renderBar();draw();
+}
 function completeObj(i){if(!levelObjs[li][i]){levelObjs[li][i]=true;renderPanel();renderBar()}}
 
 // ===== SLIDER DRAG (lightweight update during drag) =====
@@ -218,6 +231,17 @@ const learnTexts=[
   '泰勒展开：f(x) ≈ Σ f⁽ⁿ⁾(a)/n! · (x-a)ⁿ。用多项式逼近复杂函数，项数越多逼近越好。但每个展开都有收敛半径——超出范围，加再多项也没用。1/(1-x) 在 |x|>1 时发散就是最好的例子。',
   '微分方程 dy/dx=F(x,y) 描述变化率。方向场在每点画出斜率，解曲线沿方向场流动。不同初始条件给出不同的解，但它们永不相交。平衡点是 F=0 的地方，稳定平衡点会"吸引"附近的解曲线。'
 ];
+const quizData=[
+  {q:'sin(x)/x 在 x→0 时的极限为什么是 1？',options:['单位圆中 sin(x)、x 和 tan(x) 互相夹逼，左右界都趋向 1','因为把 x=0 直接代入后得到 1','因为 sin(x) 在所有位置都等于 x'],answer:0,explain:'关键是"逼近"而不是代入。夹逼定理把 sin(x)/x 固定在两个都趋向 1 的边界之间。'},
+  {q:'一个函数在 a 点连续必须满足哪组条件？',options:['f(a) 有定义、极限存在，并且 f(a) 等于该极限','左右两边都有图像即可','只要 f(a) 有定义就连续'],answer:0,explain:'连续性把函数值和附近趋势绑定起来，三项缺一不可。'},
+  {q:'导数的几何意义是什么？',options:['割线在两点无限接近时得到的切线斜率','曲线下面积','函数值的平均大小'],answer:0,explain:'导数来自差商极限，画面中的割线收缩成切线。'},
+  {q:'链式法则描述的是哪类求导结构？',options:['复合函数的变化率等于外层变化率乘以内层变化率','两个函数相加时导数相乘','所有函数的导数都等于原函数'],answer:0,explain:'sin(x²) 这类嵌套函数需要逐层求导，再把每层变化率相乘。'},
+  {q:"在极值与优化中，为什么要关注 f'(x)=0？",options:['此时切线水平，可能出现极大值或极小值','此时函数一定没有定义','此时面积一定最大'],answer:0,explain:'临界点给出候选极值，二阶导数再帮助区分山顶和谷底。'},
+  {q:'黎曼和怎样逼近定积分？',options:['用越来越多、越来越窄的矩形逼近曲线下面积','用一条切线代替整条曲线','只计算区间端点的函数值'],answer:0,explain:'矩形数量增加时，有限近似逐步逼近精确面积。'},
+  {q:'微积分基本定理说明了什么关系？',options:['面积函数的导数等于原函数，微分和积分互为逆过程','所有积分都等于 0','导数只适用于直线'],answer:0,explain:'F(x)=∫f(t)dt 的变化率就是当前的 f(x)，这把斜率和面积连起来。'},
+  {q:'泰勒展开的核心思想是什么？',options:['用多项式在某点附近模仿复杂函数，并受收敛范围限制','用随机点连接曲线','把所有函数都改写成直线'],answer:0,explain:'项数越多通常越贴近，但像 1/(1-x) 这样的展开有明确收敛半径。'},
+  {q:'方向场在微分方程中提供了什么信息？',options:['每个点处解曲线应沿着的局部斜率方向','每个点的面积大小','所有解都必须经过同一个点'],answer:0,explain:'方向场把 dy/dx=F(x,y) 可视化为局部箭头，解曲线顺着箭头流动。'}
+];
 
 // ===== LEVEL STATE INIT =====
 function initLevel(){
@@ -254,10 +278,11 @@ function renderPanel(){
   // Stage nav
   let nav='<div class="stage-nav"><div class="sn-bar">';
   for(let i=0;i<9;i++){
-    const cls=levelObjs[i].every(Boolean)?'done':i===li?'cur':'';
+    const cls=(completedLevels.has(i)?'done ':i===li?'cur ':'')+(canGoLevel(i)?'':'locked');
     nav+='<div class="sn-d '+cls+'" onclick="goLevel('+i+')"></div>';
   }
-  nav+='</div><div class="sn-info">第 '+(li+1)+' / 9 关</div></div>';
+  nav+='</div><div class="sn-info">第 '+(li+1)+' / 9 关</div>';
+  nav+='<div class="sn-hint">'+completedLevels.size+'/9 已通关，完成目标后答对测验才解锁下一关</div></div>';
   // Objectives
   let objH='';
   for(let i=0;i<3;i++){
@@ -694,11 +719,23 @@ function renderPanel(){
       c+='</div>';
     }
   }
-  // Learn box (shown when all objectives complete)
+  // Quiz and learn box (shown when all objectives complete)
   if(obs.every(Boolean)){
-    c+='<div class="learn-box">'+learnTexts[li]+'</div>';
-    if(li<8)c+='<button class="act-btn" style="margin-top:8px" onclick="goLevel('+(li+1)+')">下一关 →</button>';
-    else c+='<button class="act-btn" style="margin-top:8px;background:linear-gradient(135deg,#22c55e,#4ade80)" onclick="showResult()">查看总结 🎉</button>';
+    if(quizPassed[li]){
+      c+='<div class="learn-box">'+learnTexts[li]+'</div>';
+      if(li<8)c+='<button class="act-btn" style="margin-top:8px" onclick="goLevel('+(li+1)+')">下一关 →</button>';
+      else c+='<button class="act-btn" style="margin-top:8px;background:linear-gradient(135deg,#22c55e,#4ade80)" onclick="showResult()">查看总结 🎉</button>';
+    }else{
+      const q=quizData[li];
+      c+='<div style="margin-top:12px;padding:10px;border-radius:8px;background:var(--quiz-bg);border:1px solid var(--quiz-border);font-size:13px;line-height:1.7">';
+      c+='<div style="font-weight:bold;color:var(--quiz-q);margin-bottom:8px">通关小测验</div>';
+      c+='<div style="margin-bottom:8px">'+q.q+'</div>';
+      q.options.forEach(function(opt,i){
+        c+='<button class="act-btn" style="background:var(--quiz-opt-bg);border:1px solid var(--quiz-opt-border);color:var(--quiz-opt-text);text-align:left" onclick="answerQuiz('+i+')">'+String.fromCharCode(65+i)+'. '+opt+'</button>';
+      });
+      if(quizFeedback)c+='<div style="margin-top:8px;color:'+(quizFeedback.indexOf('正确')>=0?'var(--quiz-correct-text)':'var(--quiz-wrong-text)')+'">'+quizFeedback+'</div>';
+      c+='</div>';
+    }
   }
   let html=nav+'<h2>'+lv.title+'</h2><div class="desc">'+lv.desc+'</div>'+objH+c;
   _patchPanel(panel,html);
@@ -708,7 +745,19 @@ function renderPanel(){
 function renderBar(){
   const done=levelObjs.flat().filter(Boolean).length;
   const total=27;
-  bar.innerHTML='<span style="color:var(--text-sub)">进度: '+done+'/'+total+'</span><span style="flex:1"></span><span style="color:var(--stage-info);cursor:pointer" onclick="goLevel(Math.max(0,li-1))">◀</span> <span style="margin:0 12px;font-variant-numeric:tabular-nums">'+(li+1)+'/9</span> <span style="color:var(--stage-info);cursor:pointer" onclick="goLevel(Math.min(8,li+1))">▶</span>';
+  bar.innerHTML='<span style="color:var(--text-sub)">进度: '+done+'/'+total+' ｜ 已通关: '+completedLevels.size+'/9</span><span style="flex:1"></span><span style="color:var(--stage-info);cursor:pointer" onclick="goLevel(Math.max(0,li-1))">◀</span> <span style="margin:0 12px;font-variant-numeric:tabular-nums">'+(li+1)+'/9</span> <span style="color:var(--stage-info);cursor:pointer" onclick="goLevel(Math.min(8,li+1))">▶</span>';
+}
+
+function answerQuiz(choice){
+  const q=quizData[li];
+  if(choice===q.answer){
+    quizPassed[li]=true;
+    completedLevels.add(li);
+    quizFeedback='正确！'+q.explain;
+  }else{
+    quizFeedback='还不对：回看本关画布中的操作证据，再试一次。';
+  }
+  renderPanel();renderBar();
 }
 
 // ===== MATH FUNCTIONS =====

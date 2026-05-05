@@ -82,6 +82,7 @@ canvas{position:fixed;left:320px;top:0;background:var(--bg)}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
@@ -133,15 +134,16 @@ function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':
 
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const panel=document.getElementById('panel'),bar=document.getElementById('bar'),barInner=document.getElementById('barInner');
-let W,H,curLevel=0;
+let W,H,curLevel=0,levelReady=false;
 let levelObjs=Array.from({length:7},()=>[false,false,false]);
 let LD={};
 
-function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';draw()}
+function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';if(levelReady)draw()}
 window.addEventListener('resize',resize);
 
 function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
-function goLevel(n){curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
+function isUnlocked(n){return n>=0&&n<LI.length&&(n===0||quizPassed.has(n)||quizPassed.has(n-1))}
+function goLevel(n){if(!isUnlocked(n))return;curLevel=n;initLevel(n);levelReady=true;renderBar();renderPanel();draw()}
 function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
 
 const LI=[
@@ -270,9 +272,9 @@ function renderBar(){barInner.innerHTML='<span style="color:var(--text-muted)">�
 
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<7;i++){let cls=levelObjs[i].every(Boolean)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`}
+  for(let i=0;i<7;i++){let cls=quizPassed.has(i)?'done':i===curLevel?'cur':isUnlocked(i)?'':'locked';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`}
   h+='</div><div class="sn-info">第 '+(curLevel+1)+'/7 关 — '+LI[curLevel].title+'</div>';
-  h+='<div class="sn-hint">'+LI[curLevel].sub+'</div></div>';return h;
+  h+='<div class="sn-hint">'+LI[curLevel].sub+' · '+quizPassed.size+'/7 已通关，答对测验才解锁下一关</div></div>';return h;
 }
 
 function renderQuiz(li){

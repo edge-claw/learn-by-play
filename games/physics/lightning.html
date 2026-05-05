@@ -116,8 +116,17 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;line-height:1.6;color:var(--quiz-q);margin-bottom:6px}
+.quiz-opt{display:block;width:100%;text-align:left;padding:8px;margin:4px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;cursor:pointer}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{border-radius:8px;padding:8px;margin:8px 0;font-size:13px;line-height:1.6}
+.quiz-feedback.ok{border:1px solid #22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{border:1px solid #ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -170,6 +179,9 @@ let CW,CH,time=0,animId;
 let gameState='start',currentLevel=0;
 let levelState={},bgStars=[],particles=[];
 const completedLevels=new Set();
+const quizPassed=new Set();
+const quizFeedback={};
+const goalReady=new Set();
 const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
 const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
 let mouseX=0,mouseY=0,mouseDown=false,dragObj=null;
@@ -182,6 +194,16 @@ const levels=[
 {name:'特斯拉线圈',sub:'LC谐振',icon:'🔌'},
 {name:'等离子球',sub:'辉光放电',icon:'🔮'},
 {name:'球状闪电',sub:'未解之谜',icon:'🌀'}
+];
+
+const quizData=[
+{q:'摩擦起电时，物体为什么会带电？',opts:['电子在不同材料之间转移','质子从原子核跑出','摩擦直接创造电荷'],ans:0,ok:'对。电荷守恒，带电来自电子重新分布。',bad:'本关重点是电子从束缚力弱的材料转移到束缚力强的材料。'},
+{q:'空气发生击穿放电的直接原因是什么？',opts:['电场足够强，空气分子被电离','温度低到空气冻结','两块电极完全接触'],ans:0,ok:'对。强电场把空气变成可导电的等离子体通道。',bad:'击穿阈值和电场强度有关，标准空气约 30kV/cm。'},
+{q:'阶梯先导在闪电形成中扮演什么角色？',opts:['从云底向地面逐步探路并形成分叉通道','从地面把云推开','只负责产生雷声'],ans:0,ok:'对。阶梯先导是下行的探路通道，常呈分叉形态。',bad:'先导不是最亮的回击，而是闪电连接前的探路阶段。'},
+{q:'闪电最亮的回击阶段通常从哪里向哪里传播？',opts:['从地面沿已连接通道向云端传播','从云顶横向绕地球传播','从太阳表面传到云层'],ans:0,ok:'对。上行流与先导连接后，回击沿通道向上传播并释放强光。',bad:'回击不是先导继续向下，而是连接后强电流沿通道回传。'},
+{q:'特斯拉线圈产生强电弧的关键是什么？',opts:['初级和次级线圈接近 LC 谐振','把线圈浸入水中','完全取消电容'],ans:0,ok:'对。频率匹配时能量传递效率最高，电弧最强。',bad:'本关核心公式是 f=1/(2π√LC)。'},
+{q:'等离子球里的光丝为什么会跟随手指？',opts:['手指改变局部电场分布，人体又能导电','手指把玻璃融化成通道','球内气体被手指吸走'],ans:0,ok:'对。触摸点改变电场，辉光放电路径集中到附近。',bad:'等离子球现象来自低压气体辉光放电和电场分布变化。'},
+{q:'球状闪电为什么仍被称为未解之谜？',opts:['观测稀少且理论尚不能完整解释其形成和稳定机制','它从未被任何人目击','它已经完全等同普通火花'],ans:0,ok:'对。球状闪电可持续数秒，但形成和维持机制仍有争议。',bad:'本关强调的是尚无广泛接受的完整解释。'}
 ];
 
 function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight}
@@ -206,6 +228,7 @@ initLevel(0);renderPanel();animate();
 }
 
 function initLevel(n){
+if(!canGoLevel(n))return;
 currentLevel=n;particles=[];
 const L=levels[n];
 if(n===0)initLevel0();
@@ -219,7 +242,10 @@ renderPanel();
 }
 
 function completeLevel(n){
-if(!completedLevels.has(n)){completedLevels.add(n);showResult(n);}
+if(n===currentLevel&&levelState&&levelState.goals&&levelState.goals.every(Boolean)&&!goalReady.has(n)){
+goalReady.add(n);
+renderPanel();
+}
 }
 
 /* ========== LEVEL 0: 静电 — 摩擦起电 ========== */
@@ -309,12 +335,7 @@ ctx.moveTo(x2,y2);ctx.lineTo(x2-8*Math.cos(a+0.4),y2-8*Math.sin(a+0.4));ctx.stro
 /* ========== PANEL ========== */
 function renderPanel(){
 const L=levels[currentLevel],s=levelState;
-let h='<div style="margin-bottom:8px">';
-levels.forEach((l,i)=>{
-let cls='level-btn';if(i===currentLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
-h+=`<span class="${cls}" onclick="initLevel(${i})">${l.icon}${i+1}</span>`;
-});
-h+='</div>';
+let h=stageNavHTML();
 h+=`<div class="m-title">${L.icon} ${L.name}</div><div class="m-sub">${L.sub}</div>`;
 /* PANEL_CONTENT */
 if(currentLevel===0){
@@ -361,9 +382,62 @@ h+=`<button class="act-btn" onclick="spawnBallLightning()">生成球状闪电</b
 h+=goalHTML(['生成球状等离子体','找到稳定参数','维持5秒不消散'],s.goals||[]);
 h+=`<div class="hint-box">💡 球状闪电至今仍是未解之谜，可能与等离子体涡旋或微波辐射有关。</div>`;
 }
+if(s.goals&&s.goals.every(Boolean)){
+if(!quizPassed.has(currentLevel))h+=quizHTML(currentLevel);
+else{
+h+=`<div class="learn-box">${learnTexts[currentLevel]}</div>`;
+if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="nextLevel()">下一关 →</button>`;
+else h+=summaryHTML();
+}
+}
 panelEl.innerHTML=h;
 bbLeft.textContent=`关卡 ${currentLevel+1}/7: ${L.name}`;
 bbRight.textContent=`已完成: ${completedLevels.size}/7`;
+}
+
+function canGoLevel(i){
+return i>=0&&i<levels.length&&(i===0||completedLevels.has(i)||completedLevels.has(i-1));
+}
+
+function stageNavHTML(){
+let h='<div class="stage-nav"><div class="sn-bar">';
+levels.forEach((l,i)=>{
+const unlocked=canGoLevel(i);
+const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
+h+=`<div class="sn-d ${cls}" onclick="${unlocked?'initLevel('+i+')':''}"></div>`;
+});
+h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${completedLevels.size}/${levels.length}</div>`;
+h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
+return h;
+}
+
+function quizHTML(i){
+const q=quizData[i],fb=quizFeedback[i];
+let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+h+=`<div class="quiz-q">${q.q}</div>`;
+q.opts.forEach((opt,idx)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${i},${idx})">${String.fromCharCode(65+idx)}. ${opt}</button>`;});
+if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+h+='</div>';
+return h;
+}
+
+function answerQuiz(i,optIdx){
+const q=quizData[i],ok=optIdx===q.ans;
+quizFeedback[i]={ok,text:ok?q.ok:q.bad};
+if(ok){quizPassed.add(i);completedLevels.add(i);}
+renderPanel();
+}
+
+function summaryHTML(){
+let h='<div class="summary-box"><div class="summary-title">🏆 闪电与等离子体探险通关</div>';
+h+='<div class="summary-sub">你已完成 7 个电离、放电与等离子体主题</div><div class="summary-stats">';
+h+=`<div class="summary-stat"><div class="num">${levels.length}</div><div class="label">关卡完成</div></div>`;
+h+=`<div class="summary-stat"><div class="num">${completedLevels.size}</div><div class="label">测验通过</div></div>`;
+h+='<div class="summary-stat"><div class="num">100%</div><div class="label">知识闭环</div></div></div>';
+h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">📚 关键知识回顾</div>';
+levels.forEach(l=>{h+=`<div>✅ ${l.name}</div>`;});
+h+='</div></div>';
+return h;
 }
 
 function goalHTML(names,goals){
@@ -965,106 +1039,7 @@ drawLightningBolt(mx,my,bx,by,displace/3,branchProb*0.5,width*0.6,color,glow);
 }
 
 
-function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeof curLevel!=="undefined")curLevel=i;if(typeof initLevel==="function")initLevel(i);if(typeof renderPanel==="function")renderPanel();}
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
+function goLevel(i){initLevel(i);}
 
 </script>
 </body>

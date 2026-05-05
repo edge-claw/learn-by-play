@@ -23,6 +23,10 @@
   --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
   --slider-label:#888;
   --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
 }
 [data-theme="light"]{
   --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
@@ -41,6 +45,10 @@
   --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
   --slider-label:#888;
   --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
 }
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;width:100vw}
 .overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
@@ -73,8 +81,17 @@ canvas{position:fixed;left:320px;top:0;background:var(--bg)}
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin-top:10px}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px 10px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:7px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -132,12 +149,15 @@ const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const panel=document.getElementById('panel'),bar=document.getElementById('bar'),barInner=document.getElementById('barInner');
 let W,H,curLevel=0;
 let levelObjs=Array.from({length:7},()=>[false,false,false]);
+const quizPassed=new Set();
+let quizFeedback={};
 let LD={};
 
-function resize(){W=window.innerWidth-320;H=window.innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';draw()}
+function resize(){W=window.innerWidth-320;H=window.innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';if(Object.keys(LD).length)draw()}
 window.addEventListener('resize',resize);
-function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
-function goLevel(n){if(n<0||n>=7){showSummary();return}curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
+function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';quizPassed.clear();quizFeedback={};resize();goLevel(0)}
+function isUnlocked(n){return n===0||quizPassed.has(n-1)}
+function goLevel(n){if(n<0||n>=7){showSummary();return}if(!isUnlocked(n))return;curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
 function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
 function allDone(li){return levelObjs[li].every(Boolean)}
 
@@ -154,6 +174,16 @@ const levelInfo=[
   {title:'收益等价定理',sub:'四种拍卖，同样的期望收益',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>定理：</b>在对称独立私人估值下，四种标准拍卖的期望收益相同</div>运行大量模拟，比较四种拍卖机制的平均卖方收益。',objs:['模拟 100 轮四种拍卖','观察平均收益趋于一致','理解收益等价的条件'],learn:'<b>收益等价定理</b>（Revenue Equivalence）：在对称、独立私人估值、风险中性的条件下，英式、荷式、密封一价、维克里四种拍卖给卖方带来相同的期望收益。这是拍卖理论最优美的结果之一。'},
   {title:'组合拍卖',sub:'多物品同时拍卖',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>场景：</b>3 件物品同时拍卖，物品之间可能互补或替代</div>为不同物品组合出价。互补品（如左鞋+右鞋）组合价值 > 单独价值之和。',objs:['为单个物品出价','为物品组合出价','利用互补性赢得最优组合'],learn:'<b>组合拍卖</b>允许对物品组合出价，解决了"暴露问题"——当物品互补时，单独拍卖可能导致买家只赢得一只鞋。FCC 频谱拍卖就采用组合拍卖机制。'},
   {title:'机制设计',sub:'激励相容与个体理性',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>目标：</b>设计一个机制，让每个人说真话是最优策略（激励相容）</div>你是机制设计者。选择分配规则和支付规则，让参与者自愿说真话。',objs:['设计一个分配规则','选择支付规则实现激励相容','验证个体理性约束满足'],learn:'<b>机制设计</b>是"逆博弈论"——不是分析给定规则下的行为，而是设计规则来实现目标。<b>激励相容</b>：说真话是最优策略。<b>个体理性</b>：参与不会亏损。VCG 机制同时满足两者。'}
+];
+
+const quizData=[
+  {q:'英式拍卖中理性竞拍者通常应该何时退出？',opts:['当价格达到自己的真实估值时','一开始就出最高价吓退别人','价格低于估值时立刻退出','等价格超过估值很多再退出'],ans:0},
+  {q:'荷式拍卖与哪类标准拍卖在策略上等价？',opts:['密封第一价格拍卖','维克里第二价格拍卖','英式公开递增拍卖','免费随机分配'],ans:0},
+  {q:'密封第一价格拍卖中为什么会出现出价遮蔽？',opts:['赢家支付自己的出价，低于估值出价才能保留利润','赢家只支付第二高价，所以必须报真值','出价越高利润越高','卖方会自动退还差价'],ans:0},
+  {q:'维克里拍卖的核心机制优势是什么？',opts:['最高出价者赢但支付第二高价，使说真话成为占优策略','最低出价者赢，鼓励压价','所有人支付平均价格','赢家支付自己的报价'],ans:0},
+  {q:'收益等价定理成立依赖哪类条件？',opts:['对称独立私人估值且竞拍者风险中性','竞拍者都知道彼此真实估值','拍卖品必须有互补性','卖方可以随意改变规则'],ans:0},
+  {q:'组合拍卖主要解决什么问题？',opts:['互补物品分开拍卖导致只赢得部分组合的暴露问题','单个物品无法估价的问题','拍卖速度太快的问题','竞拍者人数太少的问题'],ans:0},
+  {q:'机制设计中的激励相容指什么？',opts:['参与者说真话是自己的最优策略','参与者必须被强制参加','卖方收入一定最大','所有参与者支付相同价格'],ans:0}
 ];
 
 // === Level Init ===
@@ -303,9 +333,29 @@ function checkMechanism(){
 // === Stage Nav ===
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<7;i++){let cls=allDone(i)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="playSound('click');goLevel(${i})"></div>`}
-  h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关 · ${levelInfo[curLevel].title}</div>`;
-  h+=`<div class="sn-hint">${levelInfo[curLevel].sub}</div></div>`;return h;
+  for(let i=0;i<7;i++){
+    let unlocked=isUnlocked(i);
+    let cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${cls}" onclick="${unlocked?`playSound('click');goLevel(${i})`:''}"></div>`;
+  }
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关 · 进度 ${Math.round(quizPassed.size/7*100)}%</div>`;
+  h+=`<div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;return h;
+}
+
+function renderQuiz(){
+  let q=quizData[curLevel],fb=quizFeedback[curLevel];
+  let h=`<div class="quiz-box"><div class="quiz-title">通关小测验</div><div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="checkQuiz(${i})">${opt}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';return h;
+}
+
+function checkQuiz(oi){
+  if(quizPassed.has(curLevel))return;
+  let q=quizData[curLevel],ok=oi===q.ans;
+  quizFeedback[curLevel]={ok,text:ok?'答对了。先读学习总结，再进入下一关。':'还不对。回到本关规则、支付方式和最优策略再判断。'};
+  if(ok){quizPassed.add(curLevel);playSound('success')}
+  renderPanel();renderBar();
 }
 
 // === Panel ===
@@ -399,7 +449,10 @@ function renderPanel(){
       break;
   }
 
-  if(allDone(curLevel)){
+  if(allDone(curLevel)&&!quizPassed.has(curLevel)){
+    h+=renderQuiz();
+  }
+  if(quizPassed.has(curLevel)){
     h+=`<div class="learn-box">${info.learn}</div>`;
     if(curLevel<6)h+=`<button class="act-btn" onclick="playSound('click');goLevel(${curLevel+1})">下一关 →</button>`;
     else h+=`<button class="act-btn" onclick="showSummary()">查看总结 →</button>`;
@@ -548,7 +601,7 @@ function draw(){
 // === Summary ===
 function showSummary(){
   let done=levelObjs.flat().filter(Boolean).length;
-  panel.innerHTML=`<div class="summary-box"><div class="summary-title">🎉 拍卖与机制设计完成！</div><div class="summary-sub">你已掌握拍卖理论的核心概念</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标完成</div></div><div class="summary-stat"><div class="num">7</div><div class="label">关卡通关</div></div></div><div class="summary-keys"><div>🔼 英式拍卖: 出价到估值为止</div><div>🔽 荷式拍卖: 权衡价格与风险</div><div>📝 密封一价: 出价遮蔽策略</div><div>🏆 维克里拍卖: 说真话是最优</div><div>⚖️ 收益等价: 四种机制期望收益相同</div><div>📦 组合拍卖: 解决互补品问题</div><div>⚙️ 机制设计: 激励相容+个体理性</div></div></div><button class="act-btn" style="margin-top:12px" onclick="location.reload()">再玩一次</button>`;
+  panel.innerHTML=`<div class="summary-box"><div class="summary-title">🎉 拍卖与机制设计完成！</div><div class="summary-sub">你已掌握拍卖理论的核心概念</div><div class="summary-stats"><div class="summary-stat"><div class="num">${quizPassed.size}/7</div><div class="label">测验通过</div></div><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标完成</div></div></div><div class="summary-keys"><div>🔼 英式拍卖: 出价到估值为止</div><div>🔽 荷式拍卖: 权衡价格与风险</div><div>📝 密封一价: 出价遮蔽策略</div><div>🏆 维克里拍卖: 说真话是最优</div><div>⚖️ 收益等价: 四种机制期望收益相同</div><div>📦 组合拍卖: 解决互补品问题</div><div>⚙️ 机制设计: 激励相容+个体理性</div></div></div><button class="act-btn" style="margin-top:12px" onclick="location.reload()">再玩一次</button>`;
 }
 
 function mainLoop(){requestAnimationFrame(mainLoop);draw()}

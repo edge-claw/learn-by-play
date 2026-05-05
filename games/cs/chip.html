@@ -89,8 +89,25 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, 'S
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:#6366f1;font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--text-muted);font-size:12px;margin-top:3px}
+#learningPanel{position:fixed;left:12px;top:58px;width:320px;max-height:calc(100vh - 128px);overflow:auto;background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:8px;padding:12px;z-index:20;box-shadow:0 12px 32px rgba(0,0,0,.25)}
+.lesson-title{font-size:16px;font-weight:700;color:var(--title-color);margin:8px 0 4px}
+.lesson-sub{font-size:12px;color:var(--text-sub);line-height:1.6;margin-bottom:8px}
+.lesson-goal{border:1px solid var(--concept-border);background:var(--concept-bg);border-radius:8px;padding:9px 10px;font-size:13px;line-height:1.7;color:var(--concept-text);margin:8px 0}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin:10px 0;font-size:13px;line-height:1.7;color:var(--learn-text)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:9px 10px;margin:8px 0;font-size:12px;line-height:1.6;color:var(--hint-text)}
+.act-btn{display:block;width:100%;padding:9px 10px;margin:6px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:var(--btn-hover)}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;line-height:1.6;color:var(--concept-text);margin-bottom:8px}
+.quiz-option{display:block;width:100%;padding:8px 10px;margin:6px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
+.quiz-option:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:8px;color:var(--quiz-wrong-text)}
+.quiz-feedback.ok{color:var(--quiz-correct-text)}
 .summary-box{background:linear-gradient(135deg,#f0f4ff,#faf5ff);border:2px solid #c7d2fe;border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:#4f46e5;margin-bottom:6px}
 .summary-sub{color:var(--text-muted);font-size:13px;margin-bottom:12px}
@@ -142,6 +159,7 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, 'S
   <button id="btnHeat" onclick="toggleHeat()" class="">🌡 热力图</button>
 </div>
 <canvas id="canvas"></canvas>
+<div id="learningPanel"></div>
 <div id="panel">
   <span class="info">点击模块查看详情 · 点击按钮发起任务 · 观察数据流在总线上流动</span>
   <span class="highlight" id="taskInfo"></span>
@@ -158,7 +176,7 @@ const TH={
 };
 function t(){return isDark?TH.dark:TH.light}
 function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
-function startGame(){document.getElementById('ov').style.display='none';}
+function startGame(){document.getElementById('ov').style.display='none';renderPanel();}
 
 // ===== 全局状态 =====
 const canvas = document.getElementById('canvas');
@@ -173,6 +191,75 @@ let cam = { x: 0, y: 0, zoom: 1 };
 let time = 0;
 let particles = [];
 let taskCount = 0;
+const observedTasks = new Set();
+const comboTasks = new Set();
+let heatSeen = false;
+let curLevel = 0;
+const completedLevels = new Set();
+const quizPassed = new Set();
+const quizFeedback = {};
+
+const levels = [
+  { title: 'SoC 总览', sub: '识别 CPU、GPU、NPU、VPU、DDR 与外设', goal: '点击任意芯片模块，阅读模块职责与规格。', learn: 'SoC 把 CPU、GPU、NPU、视频编解码、ISP、内存控制器和外设控制器集成到同一芯片上。片上互联总线负责把这些模块连接成完整系统。' },
+  { title: 'AI 推理数据流', sub: 'DDR → NPU → DDR', goal: '发起一次 AI 推理任务，观察 tensor 和 result 粒子在 DDR 与三颗 NPU 核心之间移动。', learn: 'NPU 负责矩阵乘、卷积等 AI 推理密集计算。数据通常从 DDR 读入 NPU，计算后再把结果写回 DDR，三核心并行能提高吞吐量。' },
+  { title: '视频流水线', sub: 'VPU 解码、编码与内存往返', goal: '发起一次视频解码任务，观察码流、原始帧和编码结果的流向。', learn: 'VPU 用硬件专用单元处理视频编解码，比 CPU 软解更省电。视频帧会频繁经过 DDR，因此内存带宽直接影响 4K/8K 多媒体能力。' },
+  { title: 'GPU 渲染路径', sub: '顶点数据、帧缓冲与显示输出', goal: '发起一次 GPU 渲染任务，观察 GPU、DDR 和 HDMI 的协作。', learn: 'GPU 读取顶点/纹理数据生成帧缓冲，帧缓冲写入 DDR 后再交给显示控制器输出。图形性能既依赖 GPU 核心，也依赖内存带宽。' },
+  { title: 'NoC 与内存带宽', sub: '多模块并发访问 DDR', goal: '发起一次压力测试，观察多条路径同时占用总线和 DDR。', learn: 'NoC 片上网络负责仲裁多模块并发请求。AI、视频、GPU 同时工作时，DDR 和互联带宽往往成为系统瓶颈。' },
+  { title: '功耗与热设计', sub: '负载越高，热量越集中', goal: '打开热力图，观察高负载模块颜色变化。', learn: '芯片功耗会转化为热。热点通常出现在高负载计算单元和内存控制器附近，散热设计会限制持续性能释放。' },
+  { title: '系统级调度', sub: '专用硬件协同完成复杂任务', goal: '组合发起 AI、视频和渲染任务，比较专用模块分工。', learn: '现代 SoC 的效率来自异构计算：CPU 负责控制流，NPU/GPU/VPU/ISP 负责专用工作负载，软件调度要让数据少搬运、模块少等待。' }
+];
+
+const quizData = [
+  {
+    q: 'SoC 相比单独 CPU 芯片，核心优势是什么？',
+    opts: ['把多种专用硬件和互联集成在一颗芯片上', '只能运行一个任务', '不需要内存控制器'],
+    ans: 0,
+    ok: '正确。SoC 的价值在于集成异构模块和片上互联。',
+    bad: '再看模块布局：CPU、GPU、NPU、VPU、DDR 控制器都在同一芯片内协作。'
+  },
+  {
+    q: 'AI 推理任务为什么会经过 DDR 和 NPU？',
+    opts: ['模型数据从 DDR 读入 NPU，计算结果再写回内存', 'NPU 只负责显示输出', 'DDR 会替代 NPU 做卷积'],
+    ans: 0,
+    ok: '正确。NPU 是计算单元，DDR 是数据存储与交换中心。',
+    bad: '观察 tensor 和 result 粒子：数据先到 NPU，结果再回 DDR。'
+  },
+  {
+    q: '视频解码使用 VPU 的主要原因是什么？',
+    opts: ['专用硬件处理视频更高效、更省电', 'VPU 是网络接口', '视频解码必须由 GPU 完成'],
+    ans: 0,
+    ok: '正确。VPU 用固定功能硬件处理编解码，适合高分辨率视频。',
+    bad: '看视频任务路径：码流进入 VPU，处理后再经过内存。'
+  },
+  {
+    q: 'GPU 渲染后，帧缓冲通常会去哪里？',
+    opts: ['写入 DDR，再交给显示输出链路', '直接写进 NPU 核心', '只保存在 PCIe 控制器里'],
+    ans: 0,
+    ok: '正确。帧缓冲经过内存再被显示控制器取走输出。',
+    bad: '观察 render 任务：GPU 结果会回到 DDR，然后走向 HDMI。'
+  },
+  {
+    q: '压力测试中 DDR 负载升高说明什么？',
+    opts: ['多个模块同时搬运数据，内存带宽成为共享资源', 'DDR 正在替代所有计算模块', '总线完全不参与数据传输'],
+    ans: 0,
+    ok: '正确。多模块并发时，DDR 与 NoC 是关键共享瓶颈。',
+    bad: '看 flood 任务：很多粒子会从 DDR 发往多个模块。'
+  },
+  {
+    q: '热力图最适合帮助理解什么？',
+    opts: ['负载与发热热点的关系', '芯片封装颜色偏好', 'HTML 主题切换逻辑'],
+    ans: 0,
+    ok: '正确。高负载模块通常在热力图中更“热”。',
+    bad: '打开热力图后比较不同模块颜色，颜色变化反映当前负载。'
+  },
+  {
+    q: '异构 SoC 调度的关键思想是什么？',
+    opts: ['把任务交给最合适的专用模块，并减少不必要的数据搬运', '所有任务都强制交给 CPU 大核', '让每个模块永远满载才最高效'],
+    ans: 0,
+    ok: '正确。高效调度来自模块分工和数据流优化。',
+    bad: '回看三类任务：AI、视频、渲染分别由不同专用模块承担。'
+  }
+];
 
 // ===== 芯片模块定义 =====
 // 坐标基于 1000x700 的虚拟空间
@@ -245,6 +332,103 @@ const buses = [
   // 内存总线到外设总线
   { from: { x: 400, y: 370 }, to: { x: 400, y: 520 }, width: 2, color: '#44444480' },
 ];
+
+function isUnlocked(idx) {
+  return idx === 0 || completedLevels.has(idx - 1);
+}
+
+function goLevel(idx) {
+  if (!isUnlocked(idx)) return;
+  curLevel = idx;
+  renderPanel();
+}
+
+function markGoal(kind) {
+  if (kind === 'module' && curLevel === 0) renderPanel();
+  if (kind === 'inference' && curLevel === 1) renderPanel();
+  if (kind === 'video' && curLevel === 2) renderPanel();
+  if (kind === 'render' && curLevel === 3) renderPanel();
+  if (kind === 'flood' && curLevel === 4) renderPanel();
+  if (kind === 'heat' && curLevel === 5) renderPanel();
+  if (kind === 'combo' && curLevel === 6) renderPanel();
+}
+
+function levelGoalDone(idx) {
+  if (idx === 0) return !!selectedModule;
+  if (idx === 1) return observedTasks.has('inference');
+  if (idx === 2) return observedTasks.has('video');
+  if (idx === 3) return observedTasks.has('render');
+  if (idx === 4) return observedTasks.has('flood');
+  if (idx === 5) return heatSeen;
+  return comboTasks.has('inference') && comboTasks.has('video') && comboTasks.has('render');
+}
+
+function renderStageNav() {
+  let h = '<div class="stage-nav"><div class="sn-bar">';
+  for (let i = 0; i < levels.length; i++) {
+    let cls = 'sn-d';
+    if (completedLevels.has(i)) cls += ' done';
+    if (i === curLevel) cls += ' cur';
+    if (!isUnlocked(i)) cls += ' locked';
+    h += `<div class="${cls}" onclick="goLevel(${i})"></div>`;
+  }
+  h += `</div><div class="sn-info">第 ${curLevel + 1}/${levels.length} 关：${levels[curLevel].title}</div>`;
+  h += `<div class="sn-hint">${completedLevels.size}/${levels.length} 已通关，完成观察后答对测验才解锁下一关</div></div>`;
+  return h;
+}
+
+function renderQuiz() {
+  const qd = quizData[curLevel];
+  const fb = quizFeedback[curLevel];
+  let h = '<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h += `<div class="quiz-q">${qd.q}</div>`;
+  qd.opts.forEach((opt, i) => {
+    h += `<button class="quiz-option" onclick="answerQuiz(${i})">${String.fromCharCode(65 + i)}. ${opt}</button>`;
+  });
+  if (fb) h += `<div class="quiz-feedback${fb.ok ? ' ok' : ''}">${fb.ok ? '✅' : '💡'} ${fb.text}</div>`;
+  h += '</div>';
+  return h;
+}
+
+function answerQuiz(choice) {
+  const qd = quizData[curLevel];
+  const ok = choice === qd.ans;
+  quizFeedback[curLevel] = { ok, text: ok ? qd.ok : qd.bad };
+  if (ok) {
+    quizPassed.add(curLevel);
+    completedLevels.add(curLevel);
+  }
+  renderPanel();
+}
+
+function renderSummary() {
+  let h = '<div class="summary-box"><div class="summary-title">🎉 芯片架构探索完成</div>';
+  h += '<div class="summary-sub">你已经把 RK3588 的主要计算单元和数据流串起来了</div>';
+  h += `<div class="summary-stats"><div class="summary-stat"><div class="num">${completedLevels.size}/${levels.length}</div><div class="label">测验通过</div></div>`;
+  h += '<div class="summary-stat"><div class="num">6</div><div class="label">关键模块</div></div></div>';
+  h += '<div class="summary-keys"><div>✅ CPU 适合控制流与通用计算</div><div>✅ NPU/GPU/VPU 承担专用高吞吐任务</div><div>✅ DDR 与 NoC 决定多模块并发效率</div><div>✅ 热设计限制持续性能释放</div></div></div>';
+  return h;
+}
+
+function renderPanel() {
+  const p = document.getElementById('learningPanel');
+  if (!p) return;
+  const L = levels[curLevel];
+  const goalDone = levelGoalDone(curLevel);
+  let h = renderStageNav();
+  h += `<div class="lesson-title">${L.title}</div><div class="lesson-sub">${L.sub}</div>`;
+  h += `<div class="lesson-goal">${goalDone ? '✅' : '⬜'} ${L.goal}</div>`;
+  if (!goalDone) {
+    h += '<div class="hint-box">先完成本关观察任务，再回答小测验解锁下一关。</div>';
+  } else if (!quizPassed.has(curLevel)) {
+    h += renderQuiz();
+  } else {
+    h += `<div class="learn-box">🎓 ${L.learn}</div>`;
+    if (curLevel < levels.length - 1) h += `<button class="act-btn green" onclick="goLevel(${curLevel + 1})">下一关 →</button>`;
+    else h += renderSummary();
+  }
+  p.innerHTML = h;
+}
 
 // ===== 数据粒子 =====
 class DataParticle {
@@ -390,6 +574,8 @@ function sendTask(type) {
   const taskPaths = getTaskPaths(type);
   const names = { inference: '🧠 AI 推理', video: '🎬 视频解码', render: '🎨 GPU 渲染', flood: '🌊 压力测试' };
   taskCount++;
+  observedTasks.add(type);
+  if (type === 'inference' || type === 'video' || type === 'render') comboTasks.add(type);
   document.getElementById('taskInfo').textContent = `${names[type]} #${taskCount} 已发起`;
 
   // 增加模块负载
@@ -415,6 +601,8 @@ function sendTask(type) {
       particles.push(new DataParticle(tp.path, tp.color, tp.speed, tp.label));
     }, delay / timeScale);
   }
+  markGoal(type);
+  markGoal('combo');
 }
 
 // ===== 渲染 =====
@@ -649,6 +837,7 @@ canvas.addEventListener('click', (e) => {
   selectedModule = m;
   if (m) {
     document.getElementById('taskInfo').textContent = `选中: ${m.name} (${m.sub})`;
+    markGoal('module');
   }
 });
 
@@ -673,6 +862,10 @@ function cycleSpeed() {
 
 function toggleHeat() {
   showHeat = !showHeat;
+  if (showHeat) {
+    heatSeen = true;
+    markGoal('heat');
+  }
   document.getElementById('btnHeat').classList.toggle('active', showHeat);
 }
 
@@ -709,118 +902,6 @@ function loop(ts) {
 
 requestAnimationFrame(loop);
 
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
 try{renderPanel();}catch(e){}
 
 </script>

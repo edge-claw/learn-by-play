@@ -54,6 +54,14 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC'
 .act-btn:hover{background:rgba(139,92,246,0.3)}
 .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;line-height:1.8;color:var(--learn-text)}
 .learn-box b{color:#a78bfa}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 #bar{position:absolute;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:none;align-items:center;padding:0 12px;gap:8px;z-index:10}
 #bar .prog{margin-left:auto;font-size:12px;color:var(--text-muted)}
 canvas{position:absolute;left:320px;top:0;background:var(--bg)}
@@ -65,6 +73,7 @@ input[type=range].ctl{width:100%;accent-color:#8b5cf6;margin:4px 0}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -111,6 +120,16 @@ let mouseX=0,mouseY=0,dragging=null;
 
 const LEVEL_NAMES=['离子键','共价键','金属键','VSEPR模型','极性与非极性','氢键与分子间力','晶体结构'];
 const LEVEL_ICONS=['⚡','🤝','🌊','📐','🧲','💧','💎'];
+const quizData=[
+  {q:'离子键形成的直接原因是什么？',opts:['电子转移形成正负离子后相互吸引','两个原子共享完全相同的电子云','所有电子都变成自由电子海'],ans:0,ok:'对。离子键的核心是电子转移和静电引力。',bad:'离子键不是共享电子，也不是电子海；重点是正负离子之间的库仑吸引。'},
+  {q:'H₂ 分子中的共价键本质是什么？',opts:['两个氢原子共用一对电子','氢原子各自失去一个电子','氢原子之间只有范德华力'],ans:0,ok:'对。共用电子对被两个原子核共同吸引。',bad:'共价键的关键词是“共享电子对”。'},
+  {q:'金属具有良好导电性的主要原因是什么？',opts:['自由电子可以在金属晶格中移动','金属原子完全不带电','金属键都有固定方向'],ans:0,ok:'对。电子海中的自由电子能传递电荷。',bad:'金属键通常无方向性，导电性来自自由电子。'},
+  {q:'VSEPR 理论预测分子形状时依据什么？',opts:['价层电子对尽量相互远离','原子质量越大越靠中心','分子颜色决定键角'],ans:0,ok:'对。电子对互斥会决定空间构型和键角。',bad:'VSEPR 关注价层电子对排斥，不看颜色或质量排序。'},
+  {q:'CO₂ 是非极性分子的主要原因是什么？',opts:['两个 C=O 键偶极矩方向相反并相互抵消','C=O 键完全没有极性','CO₂ 不含电子'],ans:0,ok:'对。CO₂ 的线性对称结构让键偶极矩抵消。',bad:'C=O 键本身有极性，但分子整体因对称而非极性。'},
+  {q:'氢键通常比范德华力怎样？',opts:['更强，且需要 H 与 F/O/N 等强电负性原子相关','更弱，只能存在于金属中','完全等同于共价键'],ans:0,ok:'对。氢键是较强的分子间作用力，但仍弱于典型共价键。',bad:'氢键不是金属键，也不是普通共价键；它是特殊分子间作用力。'},
+  {q:'晶体类型差异主要由什么决定？',opts:['微粒种类和微粒间作用力','样品外表颜色','是否能被肉眼看到'],ans:0,ok:'对。离子、原子、分子、金属晶体的微粒和作用力不同。',bad:'晶体性质来自微观结构和作用力，不是外观颜色。'}
+];
+let quizPassed=new Set(),quizFeedback={};
 
 // === Level 0: Ionic bond - electron transfer ===
 let l0Na={x:0,y:0,electrons:[]},l0Cl={x:0,y:0,electrons:[]},l0transferred=0,l0dragE=null;
@@ -158,8 +177,9 @@ function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.st
 window.addEventListener('resize',()=>{resize();draw();});
 
 function startGame(){overlay.style.display='none';wrap.style.display='block';panel.style.display='block';bar.style.display='flex';resize();goLevel(0);animate();}
-function goLevel(n){if(n>6)return;curLevel=n;if(!unlocked[n])unlocked[n]=true;dragging=null;l0dragE=null;l1dragE=null;initLevel(n);renderPanel();draw();}
-function checkObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;if(levelObjs[li].every(v=>v)&&li<6)unlocked[li+1]=true;renderPanel();}}
+function goLevel(n){if(n<0||n>6||!isUnlocked(n))return;curLevel=n;unlocked[n]=true;dragging=null;l0dragE=null;l1dragE=null;initLevel(n);renderPanel();draw();}
+function checkObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();}}
+function isUnlocked(n){return n===0||quizPassed.has(n-1)}
 
 function initLevel(n){
   const cx=W/2,cy=H/2;
@@ -197,21 +217,50 @@ function initLevel(n){
 
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  LEVEL_NAMES.forEach((_,i)=>{const cls=i<curLevel?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})" title="${LEVEL_NAMES[i]}"></div>`;});
-  h+=`</div><div class="sn-info">${LEVEL_ICONS[curLevel]} ${curLevel+1}/${LEVEL_NAMES.length} ${LEVEL_NAMES[curLevel]}</div></div>`;
+  LEVEL_NAMES.forEach((_,i)=>{
+    const unlocked=isUnlocked(i),cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    const click=unlocked?`goLevel(${i})`:'';
+    h+=`<div class="sn-d ${cls}" onclick="${click}" title="${unlocked?LEVEL_NAMES[i]:'答对上一关测验后解锁'}"></div>`;
+  });
+  h+=`</div><div class="sn-info">${LEVEL_ICONS[curLevel]} ${curLevel+1}/${LEVEL_NAMES.length} ${LEVEL_NAMES[curLevel]}</div><div class="sn-info">${quizPassed.size}/${LEVEL_NAMES.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
   return h;
 }
 function summaryHTML(){
   const done=levelObjs.flat().filter(v=>v).length,total=levelObjs.flat().length;
   return `<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握化学键与分子形状的核心知识</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}/${total}</div><div class="label">目标完成</div></div><div class="summary-stat"><div class="num">7</div><div class="label">关卡通关</div></div></div><div class="summary-keys"><div>⚡ 离子键：电子转移形成正负离子</div><div>🤝 共价键：电子共享形成分子</div><div>🌊 金属键：自由电子海模型</div><div>📐 VSEPR：电子对互斥决定分子形状</div><div>🧲 极性：电负性差异与分子对称性</div><div>💧 氢键：特殊的分子间作用力</div><div>💎 晶体：四种晶体类型与性质</div></div></div>`;
 }
+function quizHTML(li){
+  const q=quizData[li],fb=quizFeedback[li];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`;});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+function answerQuiz(li,choice){
+  if(li!==curLevel||quizPassed.has(li))return;
+  const q=quizData[li],ok=choice===q.ans;
+  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  if(ok){
+    quizPassed.add(li);
+    if(li<6)unlocked[li+1]=true;
+  }
+  renderPanel();
+}
+window.answerQuiz=answerQuiz;
 function renderPanel(){
   let h=renderStageNav();
   switch(curLevel){case 0:h+=renderP0();break;case 1:h+=renderP1();break;case 2:h+=renderP2();break;case 3:h+=renderP3();break;case 4:h+=renderP4();break;case 5:h+=renderP5();break;case 6:h+=renderP6();break;}
-  if(levelObjs[curLevel].every(v=>v)&&curLevel<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
-  if(levelObjs[curLevel].every(v=>v)&&curLevel===6)h+=summaryHTML();
+  if(levelObjs[curLevel].every(v=>v)){
+    if(!quizPassed.has(curLevel))h+=quizHTML(curLevel);
+    if(quizPassed.has(curLevel)&&curLevel<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+    if(quizPassed.has(curLevel)&&curLevel===6)h+=summaryHTML();
+  }
   panel.innerHTML=h;
-  bar.innerHTML=`<span style="color:var(--text-muted)">⚛️ ${LEVEL_NAMES[curLevel]}</span><span class="prog">${levelObjs.flat().filter(v=>v).length}/${levelObjs.flat().length} 目标</span>`;
+  const done=levelObjs[curLevel].filter(Boolean).length;
+  const status=quizPassed.has(curLevel)?'已通关':levelObjs[curLevel].every(Boolean)?'待测验':'进行中';
+  bar.innerHTML=`<span style="color:var(--text-muted)">⚛️ ${LEVEL_NAMES[curLevel]}</span><span class="prog">目标 ${done}/3 · ${status} · 通关 ${quizPassed.size}/${LEVEL_NAMES.length}</span>`;
 }
 
 function renderP0(){

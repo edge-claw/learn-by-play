@@ -74,9 +74,16 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
-.sn-d.done{background:#22c55e}.sn-d.cur{background:#f59e0b;height:7px}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#f59e0b;height:7px}.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0}
+.quiz-title{font-size:14px;font-weight:700;color:var(--learn-text);margin-bottom:6px}
+.quiz-q{font-size:13px;line-height:1.6;color:var(--concept-text);margin-bottom:8px}
+.quiz-option{display:block;width:100%;padding:9px 10px;margin:6px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:13px;text-align:left;cursor:pointer}
+.quiz-option:hover{background:var(--btn-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:8px;color:var(--hint-text)}
+.quiz-feedback.ok{color:var(--goal-done)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -125,6 +132,8 @@ const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 let CW,CH,time=0,lastTime=0;
 let gameState='start',currentLevel=0,levelState={},particles=[];
 const completedLevels=new Set();
+const quizPassed=new Set();
+const quizFeedback={};
 
 const levels=[
   {title:'温度与分子运动',sub:'麦克斯韦速度分布',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心公式：</b>E<sub>k</sub> = ³⁄₂ kT &nbsp;（分子平均动能正比于温度）</div>温度的微观本质是分子无规则运动的剧烈程度。温度越高，分子运动越快，速度分布曲线越宽越矮。',goals:['调节温度观察分子速度变化','观察麦克斯韦速度分布曲线'],learn:'麦克斯韦-玻尔兹曼分布描述了理想气体分子的速度分布。温度升高时，分布曲线变宽变矮，峰值右移——更多分子获得高速。最概然速率 v_p = √(2kT/m)。这个分布是统计力学的基石，由麦克斯韦在1860年推导。'},
@@ -134,6 +143,58 @@ const levels=[
   {title:'熵与第二定律',sub:'不可逆过程',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>第二定律：</b>ΔS ≥ 0 &nbsp;（孤立系统的熵永不减少）</div>气体自由膨胀后不会自发回到原来的一半空间——这就是不可逆性。熵是无序度的量度。',goals:['释放气体观察自由膨胀','观察熵值只增不减'],learn:'熵(Entropy)由克劳修斯在1865年引入，玻尔兹曼给出统计解释：S = k·ln(Ω)，Ω是微观状态数。气体从半边膨胀到全部空间，Ω增大，S增大。这个过程不可逆——虽然所有分子同时回到左边不违反力学定律，但概率极小(~2^(-N))。熵增原理决定了时间的方向。'},
   {title:'卡诺循环',sub:'热机效率极限',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>卡诺效率：</b>η = 1 - T<sub>冷</sub>/T<sub>热</sub> &nbsp;（理想热机效率上限）</div>卡诺循环由四步组成：等温膨胀→绝热膨胀→等温压缩→绝热压缩。它是效率最高的理想热机。',goals:['观察四步循环动画','调节冷热源温度计算效率'],learn:'卡诺定理（1824年）指出：在相同冷热源之间工作的所有热机中，可逆卡诺热机效率最高。η=1-Tc/Th 说明：(1)效率永远小于100%；(2)温差越大效率越高；(3)冷源温度不可能为0K。这个定理是热力学第二定律的另一种表述，也解释了为什么永动机不可能。'},
   {title:'相变',sub:'物态变化',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键现象：</b>相变时温度不变，热量用于破坏/建立分子间作用力</div>加热冰→水→蒸汽的过程中，温度-时间曲线出现两个平台期（0°C和100°C），对应熔化和汽化潜热。',goals:['加热观察冰→水→蒸汽全过程','观察温度曲线的平台期'],learn:'相变是物质在不同相（固、液、气）之间的转变。熔化潜热(冰:334 kJ/kg)和汽化潜热(水:2260 kJ/kg)反映了破坏分子间作用力所需的能量。汽化潜热远大于熔化潜热，因为气化需要完全克服分子间引力。克拉伯龙方程 dP/dT = L/(TΔV) 描述了相变线的斜率。'}
+];
+
+const quizData=[
+  {
+    q:'温度升高时，麦克斯韦速度分布最明显的变化是什么？',
+    opts:['曲线变宽变矮，峰值向高速移动','所有分子速度完全相同','低速分子的比例必然变为 0'],
+    ans:0,
+    ok:'正确。温度越高，分子平均动能越大，速度分布更宽，峰值右移。',
+    bad:'再观察速度分布曲线：升温不是让分子同速，而是让更多分子进入高速区。'
+  },
+  {
+    q:'傅里叶定律中的热流方向由什么决定？',
+    opts:['温度梯度，热量自发从高温流向低温','物体颜色，深色一定导热更快','棒子的长度，越长热流方向越容易反转'],
+    ans:0,
+    ok:'正确。热流密度 q = -k dT/dx，负号表示热流沿温度降低方向。',
+    bad:'重点看两端温度差和稳态线：热流方向由温度梯度决定。'
+  },
+  {
+    q:'在固定温度的玻意耳实验中，压缩理想气体会怎样？',
+    opts:['体积减小，压强升高，PV 近似保持常数','体积减小，压强也必然减小','压强只取决于气体颜色'],
+    ans:0,
+    ok:'正确。固定 T 和 n 时，PV = nRT，因此 V 变小会让 P 变大。',
+    bad:'回到玻意耳模式拖动体积滑块：固定温度时，P 与 V 成反比。'
+  },
+  {
+    q:'热力学第一定律 ΔU = Q - W 中，W 表示什么？',
+    opts:['系统对外做的功','外界给系统的全部热量','系统的绝对温度'],
+    ans:0,
+    ok:'正确。按这里的约定，气体对外做功越多，留在内能里的能量越少。',
+    bad:'看能量条：吸热 Q 分成内能变化 ΔU 和对外做功 W 两部分。'
+  },
+  {
+    q:'自由膨胀为什么体现第二定律？',
+    opts:['孤立系统可达微观状态数增加，熵增大','分子失去全部动能，所以自动停下','熵会周期性变成负数'],
+    ans:0,
+    ok:'正确。气体扩散到更大空间后，可达微观状态数增加，宏观上不可逆。',
+    bad:'观察释放后的分布：系统从受限状态走向更可能、更无序的状态。'
+  },
+  {
+    q:'卡诺效率 η = 1 - Tc/Th 说明了什么？',
+    opts:['冷热源温差越大，理想热机效率上限越高','只要加润滑油，效率就能超过 100%','冷源温度越高，效率一定越高'],
+    ans:0,
+    ok:'正确。Th 越高、Tc 越低，1 - Tc/Th 越大，但仍不可能达到 100%。',
+    bad:'拖动冷热源温度看效率：温差越大，理论效率上限越高。'
+  },
+  {
+    q:'相变平台期中，持续输入的热量主要用于什么？',
+    opts:['改变分子间作用力和物态，而不是继续升温','让温度瞬间跳到无限大','让所有分子停止运动'],
+    ans:0,
+    ok:'正确。熔化和汽化时温度暂时不升高，热量主要转化为潜热。',
+    bad:'看 0°C 和 100°C 平台：热量进入系统，但温度不马上上升。'
+  }
 ];
 
 function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight}
@@ -205,13 +266,17 @@ function initLevel(idx){
   renderPanel();
 }
 
-function completeLevel(idx){if(!completedLevels.has(idx)){completedLevels.add(idx);renderPanel()}}
+function isUnlocked(idx){return idx===0||completedLevels.has(idx-1)}
+function completeLevel(idx){if(idx===currentLevel)renderPanel()}
+function canShowQuiz(){
+  return levelState.goalDone&&levelState.goalDone.every(g=>g)&&!quizPassed.has(currentLevel);
+}
 
 // === stage-nav ===
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   for(let i=0;i<levels.length;i++){
-    let cls='sn-d';if(completedLevels.has(i))cls+=' done';if(i===currentLevel)cls+=' cur';
+    let cls='sn-d';if(completedLevels.has(i))cls+=' done';if(i===currentLevel)cls+=' cur';if(!isUnlocked(i))cls+=' locked';
     h+=`<div class="${cls}" onclick="switchLevel(${i})"></div>`;
   }
   h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关：${levels[currentLevel].title}</div>`;
@@ -231,7 +296,9 @@ function renderPanel(){
     h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`;
   }
   h+=renderLevelActions();
-  if(S.goalDone&&S.goalDone.every(g=>g)){
+  if(canShowQuiz()){
+    h+=renderQuiz();
+  } else if(quizPassed.has(currentLevel)){
     h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
     if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
     else h+=summaryHTML();
@@ -241,7 +308,30 @@ function renderPanel(){
   document.getElementById('bbRight').textContent=`${completedLevels.size}/${levels.length} 已完成`;
 }
 
-function switchLevel(i){initLevel(i)}
+function switchLevel(i){if(isUnlocked(i))initLevel(i)}
+
+function renderQuiz(){
+  const qd=quizData[currentLevel];
+  const fb=quizFeedback[currentLevel];
+  let h='<div class="quiz-box">';
+  h+='<div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${qd.q}</div>`;
+  qd.opts.forEach((opt,i)=>{h+=`<button class="quiz-option" onclick="answerQuiz(${i})">${String.fromCharCode(65+i)}. ${opt}</button>`});
+  if(fb)h+=`<div class="quiz-feedback${fb.ok?' ok':''}">${fb.ok?'✅':'💡'} ${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+
+function answerQuiz(choice){
+  const qd=quizData[currentLevel];
+  const ok=choice===qd.ans;
+  quizFeedback[currentLevel]={ok,text:ok?qd.ok:qd.bad};
+  if(ok){
+    quizPassed.add(currentLevel);
+    completedLevels.add(currentLevel);
+  }
+  renderPanel();
+}
 
 function summaryHTML(){
   let h='<div class="summary-box"><div class="summary-title">🎉 热力学探险完成！</div>';

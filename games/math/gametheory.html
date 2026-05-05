@@ -78,6 +78,7 @@ canvas{position:fixed;left:320px;top:0;background:var(--bg)}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#ec4899;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
@@ -86,6 +87,9 @@ canvas{position:fixed;left:320px;top:0;background:var(--bg)}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
 .quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
 .quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text);border:1px solid #22c55e}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text);border:1px solid #ef4444}
 .features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
 .feat{text-align:center;color:#aaa;font-size:12px;width:80px}
 .feat .fi{font-size:26px;margin-bottom:4px}
@@ -127,11 +131,12 @@ const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const panel=document.getElementById('panel'),bar=document.getElementById('bar'),barInner=document.getElementById('barInner');
 let W,H,curLevel=0;
 let levelObjs=Array.from({length:7},()=>[false,false,false]);
+let th=t();
 
 function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';draw()}
 window.addEventListener('resize',resize);
 function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
-function goLevel(n){curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
+function goLevel(n){if(n<0||n>=7)return;if(n>0&&!quizPassed.has(n-1))return;curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
 function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
 
 const LI=[
@@ -145,15 +150,15 @@ const LI=[
 ];
 
 const quizData=[
-  {q:'囚徒困境中的占优策略是？',opts:['合作','背叛','随机','交替'],ans:1},
-  {q:'纳什均衡的核心特征是？',opts:['总收益最大','无人能单方面获益','所有人合作','零和'],ans:1},
-  {q:'石头剪刀布的纳什均衡是？',opts:['总出石头','总出剪刀','各1/3概率','交替出'],ans:2},
-  {q:'以牙还牙策略第一轮选择？',opts:['背叛','随机','合作','观望'],ans:2},
-  {q:'维克里拍卖中的占优策略是？',opts:['出低价','出高价','真实出价','不出价'],ans:2},
-  {q:'公共品博弈中搭便车指？',opts:['多投入','不投入但享受收益','退出博弈','惩罚他人'],ans:1},
-  {q:'ESS不能被什么入侵？',opts:['多数者','少数突变者','外来物种','随机策略'],ans:1}
+  {q:'囚徒困境中的占优策略是？',opts:['合作','背叛','随机','交替'],ans:1,ok:'对。无论对方合作还是背叛，单看个人收益时背叛都更好。',bad:'比较每一列里的个人收益：对方行动固定时你会选什么？'},
+  {q:'纳什均衡的核心特征是？',opts:['总收益最大','无人能单方面获益','所有人合作','零和'],ans:1,ok:'对。纳什均衡关注单方面偏离是否有利，不保证总收益最大。',bad:'关键不是总收益，而是没有玩家想单独改变策略。'},
+  {q:'石头剪刀布的纳什均衡是？',opts:['总出石头','总出剪刀','各1/3概率','交替出'],ans:2,ok:'对。任何固定偏好都会被针对，均衡需要三种策略等概率混合。',bad:'零和循环克制里，不能让对手预测你的偏好。'},
+  {q:'以牙还牙策略第一轮选择？',opts:['背叛','随机','合作','观望'],ans:2,ok:'对。TFT 先合作，之后复制对手上一轮行动。',bad:'TFT 的特点是善意开局，再对对方行为作出回应。'},
+  {q:'维克里拍卖中的占优策略是？',opts:['出低价','出高价','真实出价','不出价'],ans:2,ok:'对。第二价规则让真实估值出价成为占优策略。',bad:'想想你中标后支付的是第二高价，而不是自己的报价。'},
+  {q:'公共品博弈中搭便车指？',opts:['多投入','不投入但享受收益','退出博弈','惩罚他人'],ans:1,ok:'对。搭便车者不贡献成本，却分享公共池收益。',bad:'公共品困境来自“可以分享收益但不必贡献”的诱因。'},
+  {q:'ESS不能被什么入侵？',opts:['多数者','少数突变者','外来物种','随机策略'],ans:1,ok:'对。演化稳定策略要求少数突变策略无法获得扩张优势。',bad:'ESS 讨论的是少数新策略进入现有种群时能否扩散。'}
 ];
-let quizPassed=new Set(),quizLocked=false;
+let quizPassed=new Set(),quizFeedback={},quizLocked=false;
 
 // ===== Level states =====
 let L1={myChoice:'',oppChoice:'',history:[],round:0};
@@ -161,7 +166,7 @@ let L2={matrix:[[3,0],[5,1]],found:false,mixed:false};
 let L3={wins:0,losses:0,draws:0,rounds:0,history:[]};
 let L4={strategy:'tft',rounds:0,myScore:0,oppScore:0,history:[],oppStrategy:'tft'};
 let L5={type:'english',bid:0,value:50,price:0,done:{english:false,dutch:false,vickrey:false}};
-let L6={invest:10,multiplier:2,players:5,results:[]};
+let L6={invest:5,multiplier:2,players:5,results:[],testedMultipliers:new Set()};
 let L7={hawkRatio:0.5,V:4,C:6,history:[],gen:0};
 
 function initLevel(n){
@@ -171,7 +176,7 @@ function initLevel(n){
     case 2:L3={wins:0,losses:0,draws:0,rounds:0,history:[]};break;
     case 3:L4={strategy:'tft',rounds:0,myScore:0,oppScore:0,history:[],oppStrategy:'tft'};break;
     case 4:L5={type:'english',bid:0,value:Math.floor(30+Math.random()*40),price:0,done:{english:false,dutch:false,vickrey:false}};break;
-    case 5:L6={invest:10,multiplier:2,players:5,results:[]};break;
+    case 5:L6={invest:5,multiplier:2,players:5,results:[],testedMultipliers:new Set()};break;
     case 6:L7={hawkRatio:0.5,V:4,C:6,history:[],gen:0};break;
   }
 }
@@ -242,9 +247,10 @@ function runPublicGoods(){
   for(let i=1;i<L6.players;i++){let inv=Math.floor(Math.random()*11);total+=inv;L6.results.push(inv)}
   let pool=total*L6.multiplier;let share=pool/L6.players;
   L6.results.unshift(L6.invest);L6.poolTotal=pool;L6.share=share;L6.myProfit=(10-L6.invest)+share;
+  L6.testedMultipliers.add(L6.multiplier);
   if(L6.invest===10)completeObj(5,0);
   if(L6.invest===0)completeObj(5,1);
-  completeObj(5,2);
+  if(L6.testedMultipliers.size>=2)completeObj(5,2);
   renderPanel();draw();
 }
 
@@ -268,13 +274,18 @@ function evolve(steps){
 function renderBar(){barInner.innerHTML='<span style="color:var(--text-muted)">🎯 '+LI[curLevel].title+'</span><span class="progress">'+levelObjs.flat().filter(Boolean).length+'/'+levelObjs.flat().length+'</span>'}
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<7;i++){let cls=levelObjs[i].every(Boolean)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`}
-  h+='</div><div class="sn-info">第 '+(curLevel+1)+'/7 关 — '+LI[curLevel].title+'</div><div class="sn-hint">'+LI[curLevel].sub+'</div></div>';return h;
+  for(let i=0;i<7;i++){
+    let unlocked=i===0||quizPassed.has(i-1);
+    let cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+  }
+  h+='</div><div class="sn-info">第 '+(curLevel+1)+'/7 关 — '+LI[curLevel].title+'</div><div class="sn-hint">'+quizPassed.size+'/7 已通关，答对测验才解锁下一关</div></div>';return h;
 }
 function renderQuiz(li){
   let qd=quizData[li];if(!qd)return '';
   let h='<div class="quiz-box"><div class="quiz-q">📝 '+qd.q+'</div>';
   qd.opts.forEach((o,i)=>{let cls=quizPassed.has(li)?(i===qd.ans?'correct':''):'';h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${o}</div>`});
+  if(quizFeedback[li])h+=`<div class="quiz-feedback ${quizFeedback[li].ok?'ok':'bad'}">${quizFeedback[li].text}</div>`;
   if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过</div>';
   h+='</div>';return h;
 }
@@ -282,8 +293,8 @@ function answerQuiz(li,oi){
   if(quizLocked||quizPassed.has(li))return;quizLocked=true;
   let qd=quizData[li],opts=panel.querySelectorAll('.quiz-opt');
   opts.forEach((el,i)=>el.classList.add(i===qd.ans?'correct':'wrong'));
-  if(oi===qd.ans){quizPassed.add(li);setTimeout(()=>{quizLocked=false;if(curLevel<6)goLevel(curLevel+1);else showResult()},800)}
-  else setTimeout(()=>{quizLocked=false;renderPanel()},1000);
+  if(oi===qd.ans){quizPassed.add(li);quizFeedback[li]={ok:true,text:qd.ok};setTimeout(()=>{quizLocked=false;renderPanel();renderBar();if(li===6)showResult()},500)}
+  else{quizFeedback[li]={ok:false,text:qd.bad};setTimeout(()=>{quizLocked=false;renderPanel()},500)}
 }
 
 function renderPanel(){
@@ -321,17 +332,18 @@ function renderPanel(){
     case 5:h+=`<div class="slider-row"><label>你的投入</label><input type="range" min="0" max="10" value="${L6.invest}" oninput="L6.invest=+this.value;document.getElementById('invVal').textContent=this.value"><span class="val" id="invVal">${L6.invest}</span></div>`;
       h+=`<div class="slider-row"><label>乘数 M</label><input type="range" min="1" max="5" step="0.5" value="${L6.multiplier}" oninput="L6.multiplier=+this.value;document.getElementById('mulVal').textContent=this.value"><span class="val" id="mulVal">${L6.multiplier}</span></div>`;
       h+=`<button class="act-btn green" onclick="runPublicGoods()">开始博弈</button>`;
+      h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">已测试乘数: ${[...L6.testedMultipliers].join(', ')||'无'}</div>`;
       if(L6.results.length>0)h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">公共池: ${L6.poolTotal.toFixed(0)} | 人均: ${L6.share.toFixed(1)} | 你的利润: ${L6.myProfit.toFixed(1)}</div>`;break;
-    case 6:h+=`<div class="slider-row"><label>鹰比例</label><input type="range" min="0" max="100" value="${Math.round(L7.hawkRatio*100)}" oninput="L7.hawkRatio=this.value/100;L7.history=[];L7.gen=0;renderPanel();draw()"><span class="val">${(L7.hawkRatio*100).toFixed(0)}%</span></div>`;
-      h+=`<div class="slider-row"><label>资源 V</label><input type="range" min="1" max="10" value="${L7.V}" oninput="L7.V=+this.value;renderPanel()"><span class="val">${L7.V}</span></div>`;
-      h+=`<div class="slider-row"><label>代价 C</label><input type="range" min="1" max="10" value="${L7.C}" oninput="L7.C=+this.value;renderPanel()"><span class="val">${L7.C}</span></div>`;
+    case 6:h+=`<div class="slider-row"><label>鹰比例</label><input type="range" min="0" max="100" value="${Math.round(L7.hawkRatio*100)}" oninput="L7.hawkRatio=this.value/100;L7.history=[];L7.gen=0;this.nextElementSibling.textContent=this.value+'%';draw()" onchange="this.blur();renderPanel()"><span class="val">${(L7.hawkRatio*100).toFixed(0)}%</span></div>`;
+      h+=`<div class="slider-row"><label>资源 V</label><input type="range" min="1" max="10" value="${L7.V}" oninput="L7.V=+this.value;this.nextElementSibling.textContent=this.value;draw()" onchange="this.blur();renderPanel()"><span class="val">${L7.V}</span></div>`;
+      h+=`<div class="slider-row"><label>代价 C</label><input type="range" min="1" max="10" value="${L7.C}" oninput="L7.C=+this.value;this.nextElementSibling.textContent=this.value;draw()" onchange="this.blur();renderPanel()"><span class="val">${L7.C}</span></div>`;
       h+=`<div style="font-size:12px;color:var(--text-muted)">ESS鹰比例: ${L7.V<L7.C?(L7.V/L7.C*100).toFixed(0)+'%':'100% (V≥C)'}</div>`;
       h+=`<button class="act-btn green" onclick="evolve(10)">演化10代</button>`;
       h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">当前代数: ${L7.gen} | 鹰: ${(L7.hawkRatio*100).toFixed(1)}%</div>`;break;
   }
   if(done){h+=renderQuiz(curLevel);
     if(quizPassed.has(curLevel)&&curLevel<6)h+=`<button class="act-btn green" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
-    h+='<div class="learn-box">'+li.learn+'</div>';
+    if(quizPassed.has(curLevel))h+='<div class="learn-box">'+li.learn+'</div>';
   }
   panel.innerHTML=h;
 }
@@ -344,7 +356,7 @@ function showResult(){
 }
 
 function draw(){
-  ctx.clearRect(0,0,W,H);let th=t();
+  ctx.clearRect(0,0,W,H);th=t();
   ctx.fillStyle=th.bg;ctx.fillRect(0,0,W,H);
   ctx.strokeStyle=th.grid;ctx.lineWidth=1;
   for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
@@ -356,7 +368,7 @@ function drawL1(){
   let cx=W/2,cy=H/2;
   // payoff matrix
   let cw=120,ch=60,ox=cx-cw,oy=cy-ch;
-  ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillStyle=th=t().text;
+  ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillStyle=t().text;
   ctx.fillText('对手',cx,oy-30);ctx.save();ctx.translate(ox-30,cy);ctx.rotate(-Math.PI/2);ctx.fillText('你',0,0);ctx.restore();
   ctx.fillStyle='rgba(236,72,153,0.1)';
   ['合作','背叛'].forEach((l,i)=>{ctx.fillStyle=t().text;ctx.fillText(l,ox+cw/2+i*cw,oy-10);ctx.fillText(l,ox-15,oy+ch/2+i*ch+4)});

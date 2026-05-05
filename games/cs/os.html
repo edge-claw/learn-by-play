@@ -115,8 +115,17 @@ select,.num-input{background:var(--concept-bg);border:1px solid #2a2a5a;color:#c
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -172,12 +181,41 @@ window.addEventListener('resize',resize);
 const levelObjs=Array.from({length:7},()=>[false,false,false]);
 const levelNames=['进程管理','CPU 调度','内存管理','页面置换','同步与死锁','文件系统','磁盘调度'];
 const levelIcons=['🔄','📊','🧠','📄','🔒','📁','💿'];
-function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();checkAllDone(li)}}
-function checkAllDone(li){if(levelObjs[li].every(v=>v)){document.querySelectorAll('.learn-box').forEach(e=>e.style.display='block')}}
+const quizData=[
+  {q:'进程上下文切换时，操作系统主要保存和恢复什么？',opts:['寄存器、程序计数器等运行现场','显示器亮度','文件扩展名'],ans:0,ok:'对。上下文切换保存 PCB 中的运行现场，让进程稍后继续执行。',bad:'上下文切换发生在 CPU 执行权切换时，核心是保存和恢复运行现场。'},
+  {q:'Round Robin 调度相比 FCFS 更强调什么？',opts:['按时间片公平轮转','永远运行最短作业','只运行第一个进程'],ans:0,ok:'对。RR 通过时间片轮转改善交互式任务的响应性。',bad:'RR 的关键不是到达顺序，而是时间片轮转。'},
+  {q:'TLB 在分页内存管理中的作用是什么？',opts:['缓存页表项以加速地址转换','永久保存所有文件','替代 CPU 调度器'],ans:0,ok:'对。TLB 命中能减少页表访问开销。',bad:'TLB 是地址转换缓存，不是磁盘或调度结构。'},
+  {q:'LRU 页面置换会优先淘汰哪一页？',opts:['最久没有被访问的页','刚刚访问过的页','页号最大的页'],ans:0,ok:'对。LRU 用最近使用历史近似预测未来访问。',bad:'LRU 关注访问时间，不关注页号大小。'},
+  {q:'死锁四条件中，有序资源分配主要打破哪一个？',opts:['循环等待','互斥','进程创建'],ans:0,ok:'对。统一拿资源顺序可以避免形成等待环。',bad:'有序分配的目标是破坏循环等待条件。'},
+  {q:'inode 通常保存什么信息？',opts:['文件元数据和数据块指针','用户看到的文件名字符串本身','CPU 时间片长度'],ans:0,ok:'对。目录负责文件名到 inode 的映射，inode 负责元数据与块指针。',bad:'文件名通常在目录项中，inode 主要保存元数据和块映射。'},
+  {q:'SCAN 磁盘调度为什么也叫电梯算法？',opts:['磁头像电梯一样沿一个方向服务请求再折返','随机选择请求','只服务最远的请求'],ans:0,ok:'对。SCAN 通过单向扫描减少来回摆动和饥饿。',bad:'SCAN 的特征是方向性扫描，而不是随机或只选最远。'}
+];
+let quizPassed=new Set(),quizFeedback={};
+function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel()}}
+function checkAllDone(li){return levelObjs[li].every(v=>v)}
+function showLearnBoxIfPassed(li){if(levelObjs[li]&&levelObjs[li].every(v=>v)&&quizPassed.has(li))document.querySelectorAll('.learn-box').forEach(e=>e.style.display='block')}
 function startGame(){document.getElementById('startScreen').classList.add('hidden');panel.style.display='block';bar.style.display='flex';buildLevelBtns();goLevel(0)}
 function buildLevelBtns(){levelBtns.innerHTML='';for(let i=0;i<7;i++){const b=document.createElement('button');b.className='level-btn';b.textContent=(i+1);b.onclick=()=>goLevel(i);levelBtns.appendChild(b)}}
-function goLevel(i){curLevel=i;document.querySelectorAll('.level-btn').forEach((b,j)=>b.classList.toggle('active',j===i));barText.textContent=levelIcons[i]+' '+levelNames[i];initLevel(i);renderPanel()}
+function isUnlocked(i){return i===0||quizPassed.has(i-1)}
+function goLevel(i){if(i<0||i>=7||!isUnlocked(i))return;curLevel=i;document.querySelectorAll('.level-btn').forEach((b,j)=>b.classList.toggle('active',j===i));barText.textContent=levelIcons[i]+' '+levelNames[i];initLevel(i);renderPanel()}
 function objHTML(li){return levelObjs[li].map((v,i)=>`<div class="obj-row"><div class="dot${v?' done':''}"></div><span>${objTexts[li][i]}</span></div>`).join('')}
+function quizHTML(li){
+  const q=quizData[li],fb=quizFeedback[li];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+function answerQuiz(li,choice){
+  if(li!==curLevel||quizPassed.has(li))return;
+  const q=quizData[li],ok=choice===q.ans;
+  quizFeedback[li]={ok:ok,text:ok?q.ok:q.bad};
+  if(ok)quizPassed.add(li);
+  renderPanel();
+}
+window.answerQuiz=answerQuiz;
 const objTexts=[
 ['创建一个进程','触发状态转换到等待','观察上下文切换'],
 ['运行 FCFS 调度','运行 Round Robin','比较平均等待时间'],
@@ -426,9 +464,11 @@ else if(li===6){h+=`<h3>💿 关卡7: 磁盘调度</h3>
 <h3>目标</h3>${objHTML(6)}`;
 if(Object.keys(diskHistory).length>0){h+=`<div style="font-size:11px;color:#aaa;margin:4px 0">`;Object.entries(diskHistory).forEach(([k,v])=>{h+=`<span class="tag p">${k}: ${v}</span> `});h+=`</div>`}
 h+=`<div class="learn-box">✅ <span class="sv">SCAN</span>避免了SSTF的饥饿问题。现代SSD无机械寻道，调度算法影响小。HDD仍需优化，<span class="sv">NCQ</span>在硬件层做调度。</div>`}
-if(levelObjs[li].every(v=>v)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-if(levelObjs[li].every(v=>v)&&li===6)h+=`${_summaryHTML()}`;
-panel.innerHTML=h}
+if(levelObjs[li].every(v=>v)&&!quizPassed.has(li))h+=quizHTML(li);
+if(levelObjs[li].every(v=>v)&&quizPassed.has(li)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+if(levelObjs[li].every(v=>v)&&quizPassed.has(li)&&li===6)h+=`${_summaryHTML()}`;
+panel.innerHTML=h;
+showLearnBoxIfPassed(li)}
 function initLevel(i){if(animId)cancelAnimationFrame(animId);resize();
 if(i===0)initL1();else if(i===1)initL2();else if(i===2)initL3();else if(i===3)initL4();else if(i===4)initL5();else if(i===5)initL6();else if(i===6)initL7();
 animate()}
@@ -466,6 +506,7 @@ resize();
     return null;
   }
   function _isDone(i){
+    if(typeof quizPassed!=='undefined')return quizPassed.has(i);
     var o=_getObjs();
     if(o&&o[i])return o[i].every(function(v){return v;});
     if(typeof completedLevels!=='undefined')return completedLevels.has(i);
@@ -487,11 +528,14 @@ resize();
     var pct=s.total>0?Math.round(s.done/s.total*100):0;
     var h='<div class="stage-nav"><div class="sn-bar">';
     for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+      var unlocked=typeof isUnlocked==='function'?isUnlocked(i):true;
+      var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
+      var click=unlocked?"typeof goLevel==='function'&&goLevel("+i+")":'';
+      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+    if(typeof quizPassed!=='undefined')h+='<div class="sn-hint">'+quizPassed.size+'/'+total+' \u5DF2\u901A\u5173\uFF0C\u5B8C\u6210\u76EE\u6807\u540E\u7B54\u5BF9\u6D4B\u9A8C\u624D\u89E3\u9501\u4E0B\u4E00\u5173</div>';
 
     h+='</div>';
     return h;
@@ -526,6 +570,7 @@ resize();
       if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
         p.innerHTML=window._stageNavHTML()+p.innerHTML;
       }
+      if(typeof showLearnBoxIfPassed==='function')showLearnBoxIfPassed(_getCur());
     };
   }
   // 也处理全局 renderPanel
@@ -538,6 +583,7 @@ resize();
       if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
         p.innerHTML=window._stageNavHTML()+p.innerHTML;
       }
+      if(typeof showLearnBoxIfPassed==='function')showLearnBoxIfPassed(_getCur());
     };
   }
 })();

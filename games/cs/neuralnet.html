@@ -387,15 +387,9 @@ function renderPanel(){
  });
  h+=renderLevelControls();
  if(od.every(v=>v)){
-  if(!completedLevels.has(curLevel)){
-   completedLevels.add(curLevel);
-   playSound('success');
-   spawnParticles(W/2,H/2,50,'#fbbf24',{speed:4,life:80,size:4});
-   spawnParticles(W/2,H/2,30,'#f59e0b',{speed:3,life:60,size:3});
-  }
-  h+=`<div class="learn-box">💡 ${L.learn}</div>`;
   h+=renderQuiz();
   if(quizState.correct){
+   h+=`<div class="learn-box">💡 ${L.learn}</div>`;
    if(curLevel<levels.length-1){
     h+=`<button class="act-btn green" onclick="playSound('click');switchLevel(${curLevel+1})">进入第${curLevel+2}关 →</button>`;
    }else{
@@ -434,7 +428,14 @@ function answerQuiz(i){
  playSound('click');
  quizState.answered=true;quizState.selected=i;
  const q=levels[curLevel].quiz;
- if(i===q.ans){quizState.correct=true;playSound('success');}
+ if(i===q.ans){
+  quizState.correct=true;playSound('success');
+  if(!completedLevels.has(curLevel)){
+   completedLevels.add(curLevel);
+   spawnParticles(W/2,H/2,50,'#fbbf24',{speed:4,life:80,size:4});
+   spawnParticles(W/2,H/2,30,'#f59e0b',{speed:3,life:60,size:3});
+  }
+ }
  else{playSound('fail');setTimeout(()=>{quizState={answered:false,selected:-1,correct:false};renderPanel();},1000);}
  renderPanel();
 }
@@ -1477,8 +1478,11 @@ function drawOnCanvas(mx,my,pmx,pmy){
 }
 
 // ===== 关卡切换（淡入动画） =====
+function canGoLevel(n){
+ return n>=0&&n<levels.length&&(n===0||completedLevels.has(n)||completedLevels.has(n-1));
+}
 function switchLevel(n){
- if(n<0||n>=levels.length)return;
+ if(!canGoLevel(n))return;
  fadeAlpha=1; // 触发淡入
  curLevel=n;resetLevelState();
  quizState={answered:false,selected:-1,correct:false};

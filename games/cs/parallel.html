@@ -88,6 +88,7 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
@@ -109,6 +110,9 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .quiz-opt:hover{background:var(--quiz-opt-hover);border-color:#22c55e}
 .quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
 .quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .prog-bar{height:4px;background:var(--stage-bar);border-radius:2px;margin:6px 0}
 .prog-fill{height:100%;background:#3b82f6;border-radius:2px;transition:width .3s}
 #themeToggle{position:fixed;top:12px;right:12px;z-index:999;border-radius:20px;padding:6px 14px;font-size:13px;cursor:pointer;backdrop-filter:blur(8px);transition:all .3s}
@@ -185,6 +189,7 @@ const levels=[
 let levelObjs=levels.map(l=>l.objs.map(()=>false));
 let levelDone=levels.map(()=>false);
 let quizAnswered=levels.map(()=>false);
+let quizFeedback={};
 let showLearn=levels.map(()=>false);
 
 // === Level state ===
@@ -207,11 +212,13 @@ function startGame(){
 }
 
 function goLevel(i){
-  if(i<0||i>=TOTAL)return;
+  if(i<0||i>=TOTAL||!isUnlocked(i))return;
   curLevel=i;
   initLevel(i);
   renderPanel();
 }
+
+function isUnlocked(i){return i===0||levelDone[i-1]}
 
 // === initLevel ===
 function initLevel(idx){
@@ -462,6 +469,37 @@ function assignTask(taskIdx,proc){
   L.totalTime=Math.max(cpuT,gpuT,npuT);
   renderPanel();
 }
+function setInlineText(id,text){let el=document.getElementById(id);if(el)el.textContent=text}
+function formatAmdahl(){
+  let S=L.serialFrac,N=L.numCores;
+  let amdahl=1/(S+(1-S)/N);
+  let limit=1/S;
+  let gustafsonS=N-S*(N-1);
+  return {S,N,amdahl,limit,gustafsonS};
+}
+function dragCoreCount(el){
+  L.cores=+el.value;
+  setInlineText('coreCountVal',L.cores);
+  drawLevel(curLevel);
+}
+function dragAmdahlSerial(el){
+  L.serialFrac=+el.value/100;
+  let f=formatAmdahl();
+  setInlineText('serialFracVal',(f.S*100).toFixed(0)+'%');
+  setInlineText('amdahlSpeedVal',f.amdahl.toFixed(2)+'x');
+  setInlineText('amdahlLimitVal',f.limit.toFixed(2)+'x');
+  setInlineText('gustafsonVal',f.gustafsonS.toFixed(2)+'x');
+  drawLevel(curLevel);
+}
+function dragAmdahlCores(el){
+  L.numCores=+el.value;
+  let f=formatAmdahl();
+  setInlineText('amdahlCoreVal',f.N);
+  setInlineText('amdahlSpeedVal',f.amdahl.toFixed(2)+'x');
+  setInlineText('amdahlLimitVal',f.limit.toFixed(2)+'x');
+  setInlineText('gustafsonVal',f.gustafsonS.toFixed(2)+'x');
+  drawLevel(curLevel);
+}
 
 // === Panel rendering ===
 let _panelLock=false;
@@ -470,9 +508,14 @@ function renderPanel(){
   let idx=curLevel,lv=levels[idx],h='';
   // stage nav
   h+=`<div class="stage-nav"><div class="sn-bar">`;
-  for(let i=0;i<TOTAL;i++)h+=`<div class="sn-d${levelDone[i]?' done':''}${i===idx?' cur':''}" onclick="goLevel(${i})"></div>`;
+  for(let i=0;i<TOTAL;i++){
+    let unlocked=isUnlocked(i);
+    let cls=`${levelDone[i]?' done':''}${i===idx?' cur':''}${unlocked?'':' locked'}`;
+    h+=`<div class="sn-d${cls}" onclick="${unlocked?`goLevel(${i})`:''}"></div>`;
+  }
   h+=`</div><div class="sn-info">${lv.icon} ${idx+1}/${TOTAL} ${lv.name}</div>`;
-  h+=`<div class="sn-hint">${lv.desc}</div></div>`;
+  h+=`<div class="sn-hint">${levelDone.filter(Boolean).length}/${TOTAL} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
+  h+=`<div class="concept-box">${lv.desc}</div>`;
   // objectives
   h+=`<div class="sec-title">🎯 目标</div>`;
   lv.objs.forEach((o,i)=>{
@@ -485,18 +528,14 @@ function renderPanel(){
   // quiz
   if(allObjsDone()&&!quizAnswered[idx]){
     let q=lv.quiz;
-    h+=`<div class="quiz-box"><div class="quiz-q">❓ ${q.q}</div>`;
+    h+=`<div class="quiz-box"><div class="quiz-q">通关小测验：${q.q}</div>`;
     q.opts.forEach((o,i)=>{h+=`<div class="quiz-opt" onclick="answerQuiz(${i})">${o}</div>`});
+    if(quizFeedback[idx])h+=`<div class="quiz-feedback ${quizFeedback[idx].ok?'ok':'bad'}">${quizFeedback[idx].text}</div>`;
     h+=`</div>`;
-  }
-  if(quizAnswered[idx]&&!showLearn[idx]){
-    h+=`<div style="text-align:center;margin:8px 0"><button class="act-btn" onclick="showLearn[${idx}]=true;renderPanel()" style="border-color:#22c55e;color:#4ade80">💡 查看知识点</button></div>`;
   }
   if(showLearn[idx]){
     h+=`<div class="learn-box">${lv.learn}</div>`;
-    if(!levelDone[idx]){
-      h+=`<div style="text-align:center;margin:8px 0"><button class="act-btn" style="background:#22c55e;color:#fff;border:none" onclick="finishLevel()">进入下一关 →</button></div>`;
-    }
+    if(levelDone[idx]&&idx<TOTAL-1)h+=`<div style="text-align:center;margin:8px 0"><button class="act-btn" style="background:#22c55e;color:#fff;border:none" onclick="goLevel(${idx+1})">进入下一关 →</button></div>`;
   }
   // summary
   if(levelDone.every(v=>v)){
@@ -524,8 +563,8 @@ function renderLevelPanel(idx){
   let h='';
   switch(idx){
     case 0:
-      h+=`<div class="slider-label"><span>核心数</span><span style="color:var(--sv);font-weight:600">${L.cores}</span></div>`;
-      h+=`<input type="range" min="1" max="8" value="${L.cores}" oninput="L.cores=+this.value;renderPanel()" onchange="this.blur();renderPanel()">`;
+      h+=`<div class="slider-label"><span>核心数</span><span id="coreCountVal" style="color:var(--sv);font-weight:600">${L.cores}</span></div>`;
+      h+=`<input type="range" min="1" max="8" value="${L.cores}" oninput="dragCoreCount(this)" onchange="this.blur();renderPanel()">`;
       h+=`<div style="display:flex;gap:6px;margin:8px 0;flex-wrap:wrap">`;
       h+=`<button class="act-btn" onclick="runSerial()">▶ 串行执行</button>`;
       h+=`<button class="act-btn" onclick="runParallel()">⚡ 并行执行</button>`;
@@ -604,18 +643,15 @@ function renderLevelPanel(idx){
       }
       break;
     case 5:{
-      let S=L.serialFrac,N=L.numCores;
-      let amdahl=1/(S+(1-S)/N);
-      let limit=1/S;
-      let gustafsonS=N-S*(N-1);
-      h+=`<div class="slider-label"><span>串行比例 S</span><span style="color:#ef4444;font-weight:600">${(S*100).toFixed(0)}%</span></div>`;
-      h+=`<input type="range" min="1" max="90" value="${S*100|0}" oninput="L.serialFrac=+this.value/100;renderPanel()" onchange="this.blur();renderPanel()">`;
-      h+=`<div class="slider-label"><span>核心数 N</span><span style="color:var(--sv);font-weight:600">${N}</span></div>`;
-      h+=`<input type="range" min="1" max="64" value="${N}" oninput="L.numCores=+this.value;renderPanel()" onchange="this.blur();renderPanel()">`;
+      let {S,N,amdahl,limit,gustafsonS}=formatAmdahl();
+      h+=`<div class="slider-label"><span>串行比例 S</span><span id="serialFracVal" style="color:#ef4444;font-weight:600">${(S*100).toFixed(0)}%</span></div>`;
+      h+=`<input type="range" min="1" max="90" value="${S*100|0}" oninput="dragAmdahlSerial(this)" onchange="this.blur();renderPanel()">`;
+      h+=`<div class="slider-label"><span>核心数 N</span><span id="amdahlCoreVal" style="color:var(--sv);font-weight:600">${N}</span></div>`;
+      h+=`<input type="range" min="1" max="64" value="${N}" oninput="dragAmdahlCores(this)" onchange="this.blur();renderPanel()">`;
       h+=`<div class="concept-box">`;
-      h+=`Amdahl 加速比: <span style="color:var(--sv);font-size:16px;font-weight:700">${amdahl.toFixed(2)}x</span><br>`;
-      h+=`理论上限 (N→∞): <span style="color:#ef4444;font-weight:700">${limit.toFixed(2)}x</span><br>`;
-      h+=`Gustafson 加速比: <span style="color:#22c55e;font-weight:700">${gustafsonS.toFixed(2)}x</span>`;
+      h+=`Amdahl 加速比: <span id="amdahlSpeedVal" style="color:var(--sv);font-size:16px;font-weight:700">${amdahl.toFixed(2)}x</span><br>`;
+      h+=`理论上限 (N→∞): <span id="amdahlLimitVal" style="color:#ef4444;font-weight:700">${limit.toFixed(2)}x</span><br>`;
+      h+=`Gustafson 加速比: <span id="gustafsonVal" style="color:#22c55e;font-weight:700">${gustafsonS.toFixed(2)}x</span>`;
       h+=`</div>`;
       if(N>=2&&S>=0.1)completeObj(0);
       if(S>=0.2&&N>=16)completeObj(1);
@@ -652,11 +688,15 @@ function answerQuiz(i){
     else if(j===i&&j!==q.ans)el.classList.add('wrong');
     el.style.pointerEvents='none';
   });
-  if(i===q.ans){quizAnswered[curLevel]=true;setTimeout(()=>renderPanel(),600)}
+  let ok=i===q.ans;
+  quizFeedback[curLevel]={ok,text:ok?'答对了。继续查看知识点并进入下一关。':'再想想：先完成目标，再确认这个并行概念的关键取舍。'};
+  if(ok){quizAnswered[curLevel]=true;levelDone[curLevel]=true;showLearn[curLevel]=true;setTimeout(()=>renderPanel(),600)}
+  else setTimeout(()=>renderPanel(),600);
 }
 
 function finishLevel(){
   levelDone[curLevel]=true;
+  showLearn[curLevel]=true;
   if(curLevel<TOTAL-1){curLevel++;initLevel(curLevel)}
   renderPanel();
 }

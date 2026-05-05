@@ -106,8 +106,17 @@ canvas{position:fixed;left:320px;top:0;background:var(--bg)}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;line-height:1.6;color:var(--quiz-q);margin-bottom:6px}
+.quiz-opt{display:block;width:100%;text-align:left;padding:8px;margin:4px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;cursor:pointer}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{border-radius:8px;padding:8px;margin:8px 0;font-size:13px;line-height:1.6}
+.quiz-feedback.ok{border:1px solid #22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{border:1px solid #ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -164,6 +173,16 @@ const panel=document.getElementById('panel'),bar=document.getElementById('bar'),
 let W,H,curLevel=0,animId=null;
 let levelObjs=Array.from({length:7},()=>[false,false,false]);
 let levelData={};
+const quizData=[
+  {q:'大量重复抛硬币时，正面频率通常会怎样变化？',opts:['逐渐稳定在 0.5 附近','一定严格等于 0.5','样本越多越远离理论概率'],ans:0,ok:'对。频率会围绕理论概率波动，并随样本量增大趋于稳定。',bad:'注意是“趋近”理论概率，不是每一轮都完全相等。'},
+  {q:'贝叶斯更新中，后验概率主要由什么共同决定？',opts:['先验概率和新证据的似然','只由样本大小决定','只由图表颜色决定'],ans:0,ok:'对。先验给出原始信念，似然描述证据强度，两者共同给出后验。',bad:'贝叶斯定理连接的是先验、似然和后验。'},
+  {q:'二项分布 B(n,p) 适合描述什么？',opts:['n 次独立试验中的成功次数','连续身高的精确取值','两个变量的线性关系'],ans:0,ok:'对。固定次数、独立、每次成功概率相同，是二项分布的核心条件。',bad:'二项分布关注“成功次数”。'},
+  {q:'中心极限定理说明了什么？',opts:['样本均值在样本量足够大时趋近正态分布','原始数据一定本来就是正态分布','样本越少越接近总体均值'],ans:0,ok:'对。即使总体不是正态，样本均值的分布也常趋近正态。',bad:'CLT 说的是样本均值的分布，不是原始数据必然正态。'},
+  {q:'大数定律解释的是哪种收敛？',opts:['样本均值随样本量增大趋近总体期望','单次观测一定等于期望','p 值一定小于 0.05'],ans:0,ok:'对。样本量越大，随机波动在平均值中越被抵消。',bad:'大数定律的主角是样本均值。'},
+  {q:'p 值的含义最接近哪一项？',opts:['零假设为真时，出现当前或更极端结果的概率','研究假设为真的概率','效应量的大小'],ans:0,ok:'对。p 值不是假设为真的概率，而是零假设下结果极端性的度量。',bad:'p 值总是在“零假设为真”的前提下解释。'},
+  {q:'线性回归中的 R² 主要衡量什么？',opts:['模型解释因变量变异的比例','斜率一定为正的概率','离群点数量'],ans:0,ok:'对。R² 越高，线性模型解释的变异比例越大。',bad:'R² 是拟合优度指标，不是斜率概率。'}
+];
+let quizPassed=new Set(),quizFeedback={};
 
 function resize(){
   W=window.innerWidth-320;H=window.innerHeight-36;
@@ -178,7 +197,7 @@ function startGame(){
   resize();initLevel(0);renderBar();renderPanel();
 }
 
-function goLevel(n){curLevel=n;initLevel(n);renderBar();renderPanel();draw();}
+function goLevel(n){if(n<0||n>=7)return;if(n>0&&!quizPassed.has(n-1))return;curLevel=n;initLevel(n);renderBar();renderPanel();draw();}
 
 function completeObj(li,oi){
   if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar();}
@@ -186,6 +205,34 @@ function completeObj(li,oi){
 
 function renderBar(){
   barInner.innerHTML='<span style="color:var(--text-muted)">🎲 '+levelInfo[curLevel].title+'</span>';
+}
+function stageNavHTML(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<7;i++){
+    const unlocked=i===0||quizPassed.has(i-1);
+    const cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+  }
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关 — ${levelInfo[curLevel].title.replace(/^关卡\\d+: /,'')}</div>`;
+  h+=`<div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;
+  return h;
+}
+function quizHTML(li){
+  const q=quizData[li],fb=quizFeedback[li];let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((o,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${o}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';return h;
+}
+function answerQuiz(li,oi){
+  const q=quizData[li],ok=oi===q.ans;
+  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  if(ok)quizPassed.add(li);
+  renderPanel();renderBar();
+}
+function finalSummaryHTML(){
+  if(window._summaryHTML)return window._summaryHTML();
+  return '<div class="summary-box"><div class="summary-title">🏆 恭喜通关！</div><div class="summary-sub">你已完成全部 7 个关卡的学习</div><div class="summary-keys"><div>✅ 古典概率</div><div>✅ 条件概率与贝叶斯</div><div>✅ 随机变量与分布</div><div>✅ 中心极限定理</div><div>✅ 大数定律</div><div>✅ 假设检验</div><div>✅ 回归分析</div></div></div>';
 }
 
 const levelInfo=[
@@ -242,6 +289,13 @@ function updateBayes(){
   if(L2.posterior>0.9){L2.highPost=true;completeObj(1,2);}
   renderPanel();draw();
 }
+function dragBayes(el,key,fmt){
+  L2[key]=el.value/100;if(key==='prior')L2.adjusted=true;
+  let p=L2.prior,la=L2.likelihoodPos,lb=L2.likelihoodNeg;
+  L2.posterior=p*la/(p*la+(1-p)*lb);L2.lr=la/lb;
+  el.nextElementSibling.textContent=fmt==='pct'?L2[key].toFixed(2):el.value;
+  draw();
+}
 
 // ===== Level 3: Distributions =====
 let L3={dist:'binomial',binN:20,binP:0.5,poisLam:5,uniA:0,uniB:10,binAdj:false,poisAdj:false,compared:false};
@@ -253,6 +307,11 @@ function updateL3(){
   completeObj(2,L3.dist==='binomial'?0:L3.dist==='poisson'?1:2);
   if(L3.binAdj&&L3.poisAdj){L3.compared=true;completeObj(2,2);}
   renderPanel();draw();
+}
+function dragL3(el,key){
+  L3[key]=key==='binP'?el.value/100:+el.value;
+  el.nextElementSibling.textContent=key==='binP'?L3[key].toFixed(2):L3[key];
+  draw();
 }
 
 // ===== Level 4: CLT =====
@@ -309,6 +368,11 @@ function simulateHT(){
   if(L6.pVal<0.05){L6.sigFound=true;completeObj(5,1);}
   if(L6.power>0.8){L6.powerObs=true;completeObj(5,2);}
   renderPanel();draw();
+}
+function dragHT(el,key,scale){
+  L6[key]=scale?el.value/scale:+el.value;
+  el.nextElementSibling.textContent=key==='effectSize'?L6[key].toFixed(2):L6[key];
+  draw();
 }
 function randNorm(mu,sig){let u=1-Math.random(),v=1-Math.random();return mu+sig*Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
 function normalCDF(x){let t=1/(1+0.2316419*Math.abs(x)),d=0.3989422804*Math.exp(-x*x/2),
@@ -391,7 +455,7 @@ function _diffNodes(o,n){
 
 function renderPanel(){
   let li=curLevel,info=levelInfo[li];
-  let h=`<h2>${info.title}</h2><div class="level-title">${info.sub}</div>`;
+  let h=stageNavHTML()+`<h2>${info.title}</h2><div class="level-title">${info.sub}</div>`;
   h+=`<div class="desc-text">${info.desc}</div>`;
   h+=`<ul class="obj-list">`;
   for(let i=0;i<3;i++){
@@ -406,19 +470,19 @@ function renderPanel(){
     h+=`<button class="act-btn" onclick="rollDice(100)">掷骰子 ×100</button>`;
     h+=`<div style="margin-top:8px;font-size:12px;color:var(--text-muted)">硬币: ${L1.coins}次, 正面${L1.heads}次 (${L1.coins?((L1.heads/L1.coins*100).toFixed(1)):'0'}%)<br>骰子: ${L1.diceRolls}次</div>`;
   }else if(li===1){
-    h+=`<div class="slider-row"><label>先验 P(A)</label><input type="range" min="1" max="99" value="${Math.round(L2.prior*100)}" oninput="L2.prior=this.value/100;L2.adjusted=true;updateBayes()"><span class="val">${(L2.prior).toFixed(2)}</span></div>`;
-    h+=`<div class="slider-row"><label>P(B|A)</label><input type="range" min="1" max="99" value="${Math.round(L2.likelihoodPos*100)}" oninput="L2.likelihoodPos=this.value/100;updateBayes()"><span class="val">${(L2.likelihoodPos).toFixed(2)}</span></div>`;
-    h+=`<div class="slider-row"><label>P(B|¬A)</label><input type="range" min="1" max="99" value="${Math.round(L2.likelihoodNeg*100)}" oninput="L2.likelihoodNeg=this.value/100;updateBayes()"><span class="val">${(L2.likelihoodNeg).toFixed(2)}</span></div>`;
+    h+=`<div class="slider-row"><label>先验 P(A)</label><input type="range" min="1" max="99" value="${Math.round(L2.prior*100)}" oninput="dragBayes(this,'prior','pct')" onchange="this.blur();updateBayes()"><span class="val">${(L2.prior).toFixed(2)}</span></div>`;
+    h+=`<div class="slider-row"><label>P(B|A)</label><input type="range" min="1" max="99" value="${Math.round(L2.likelihoodPos*100)}" oninput="dragBayes(this,'likelihoodPos','pct')" onchange="this.blur();updateBayes()"><span class="val">${(L2.likelihoodPos).toFixed(2)}</span></div>`;
+    h+=`<div class="slider-row"><label>P(B|¬A)</label><input type="range" min="1" max="99" value="${Math.round(L2.likelihoodNeg*100)}" oninput="dragBayes(this,'likelihoodNeg','pct')" onchange="this.blur();updateBayes()"><span class="val">${(L2.likelihoodNeg).toFixed(2)}</span></div>`;
     h+=`<div style="margin-top:8px;font-size:12px;color:var(--text-muted)">似然比: ${L2.lr?L2.lr.toFixed(2):'-'} | 后验: ${L2.posterior?(L2.posterior*100).toFixed(1)+'%':'-'}</div>`;
   }else if(li===2){
     h+=`<button class="act-btn" onclick="setDist('binomial')" style="${L3.dist==='binomial'?'background:rgba(16,185,129,0.3)':''}">二项分布</button>`;
     h+=`<button class="act-btn" onclick="setDist('poisson')" style="${L3.dist==='poisson'?'background:rgba(16,185,129,0.3)':''}">泊松分布</button>`;
     h+=`<button class="act-btn" onclick="setDist('uniform')" style="${L3.dist==='uniform'?'background:rgba(16,185,129,0.3)':''}">均匀分布</button>`;
     if(L3.dist==='binomial'){
-      h+=`<div class="slider-row"><label>n</label><input type="range" min="1" max="50" value="${L3.binN}" oninput="L3.binN=+this.value;updateL3()"><span class="val">${L3.binN}</span></div>`;
-      h+=`<div class="slider-row"><label>p</label><input type="range" min="1" max="99" value="${Math.round(L3.binP*100)}" oninput="L3.binP=this.value/100;updateL3()"><span class="val">${L3.binP.toFixed(2)}</span></div>`;
+      h+=`<div class="slider-row"><label>n</label><input type="range" min="1" max="50" value="${L3.binN}" oninput="dragL3(this,'binN')" onchange="this.blur();updateL3()"><span class="val">${L3.binN}</span></div>`;
+      h+=`<div class="slider-row"><label>p</label><input type="range" min="1" max="99" value="${Math.round(L3.binP*100)}" oninput="dragL3(this,'binP')" onchange="this.blur();updateL3()"><span class="val">${L3.binP.toFixed(2)}</span></div>`;
     }else if(L3.dist==='poisson'){
-      h+=`<div class="slider-row"><label>λ</label><input type="range" min="1" max="20" value="${L3.poisLam}" oninput="L3.poisLam=+this.value;updateL3()"><span class="val">${L3.poisLam}</span></div>`;
+      h+=`<div class="slider-row"><label>λ</label><input type="range" min="1" max="20" value="${L3.poisLam}" oninput="dragL3(this,'poisLam')" onchange="this.blur();updateL3()"><span class="val">${L3.poisLam}</span></div>`;
     }
   }else if(li===3){
     h+=`<button class="act-btn" onclick="sampleCLT(10)">采样 ×10</button>`;
@@ -433,8 +497,8 @@ function renderPanel(){
     h+=`<button class="act-btn" onclick="addSamplesLLN(2000)">+2000 样本</button>`;
     h+=`<div style="margin-top:8px;font-size:12px;color:var(--text-muted)">样本量: ${L5.n} | 当前均值: ${L5.n?(L5.runningMean[L5.n-1]).toFixed(4):'-'} | 期望: ${L5.trueMean}</div>`;
   }else if(li===5){
-    h+=`<div class="slider-row"><label>样本量 n</label><input type="range" min="10" max="200" value="${L6.sampleSize}" oninput="L6.sampleSize=+this.value;renderPanel()"><span class="val">${L6.sampleSize}</span></div>`;
-    h+=`<div class="slider-row"><label>效应量 d</label><input type="range" min="0" max="200" value="${Math.round(L6.effectSize*100)}" oninput="L6.effectSize=this.value/100;renderPanel()"><span class="val">${L6.effectSize.toFixed(2)}</span></div>`;
+    h+=`<div class="slider-row"><label>样本量 n</label><input type="range" min="10" max="200" value="${L6.sampleSize}" oninput="dragHT(this,'sampleSize')" onchange="this.blur();renderPanel()"><span class="val">${L6.sampleSize}</span></div>`;
+    h+=`<div class="slider-row"><label>效应量 d</label><input type="range" min="0" max="200" value="${Math.round(L6.effectSize*100)}" oninput="dragHT(this,'effectSize',100)" onchange="this.blur();renderPanel()"><span class="val">${L6.effectSize.toFixed(2)}</span></div>`;
     h+=`<button class="act-btn" onclick="simulateHT()">运行检验</button>`;
     if(L6.simulated)h+=`<div style="margin-top:8px;font-size:12px;color:var(--text-muted)">p 值: ${L6.pVal.toFixed(4)} ${L6.pVal<0.05?'✓ 显著':'✗ 不显著'}<br>检验功效: ${(L6.power*100).toFixed(1)}%</div>`;
   }else if(li===6){
@@ -444,9 +508,12 @@ function renderPanel(){
   }
   // Learn box + next level
   if(levelObjs[li].every(v=>v)){
-    h+=`<div class="learn-box">${info.learn}</div>`;
-    if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-    if(li===6)h+=`${_summaryHTML()}`;
+    if(!quizPassed.has(li))h+=quizHTML(li);
+    if(quizPassed.has(li)){
+      h+=`<div class="learn-box">${info.learn}</div>`;
+      if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+      if(li===6)h+=`${finalSummaryHTML()}`;
+    }
   }
   _patchPanel(panel,h);
 }
@@ -800,6 +867,7 @@ resize();
     return null;
   }
   function _isDone(i){
+    if(typeof quizPassed!=='undefined')return quizPassed.has(i);
     var o=_getObjs();
     if(o&&o[i])return o[i].every(function(v){return v;});
     if(typeof completedLevels!=='undefined')return completedLevels.has(i);
@@ -821,8 +889,10 @@ resize();
     var pct=s.total>0?Math.round(s.done/s.total*100):0;
     var h='<div class="stage-nav"><div class="sn-bar">';
     for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+      var unlocked=i===0||(typeof quizPassed!=='undefined'&&quizPassed.has(i-1));
+      var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
+      var click=unlocked?('typeof goLevel==="function"&&goLevel('+i+')'):'';
+      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';

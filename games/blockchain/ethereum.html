@@ -173,6 +173,13 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .roadmap-title{font-size:16px;font-weight:bold;color:var(--sv);margin-bottom:12px;text-align:center}
 .roadmap-item{display:flex;align-items:flex-start;gap:10px;margin:8px 0;font-size:14px;color:var(--roadmap-text);line-height:1.6}
 .roadmap-num{width:24px;height:24px;border-radius:50%;background:var(--roadmap-num-bg);color:var(--roadmap-num-text);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;flex-shrink:0}
+.stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin:10px}
+.sn-bar{display:flex;gap:3px;margin-bottom:6px}
+.sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
+.sn-d.done{background:#22c55e}
+.sn-d.cur{background:#627eea;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
+.sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 12px}
 .quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
 .quiz-opt{font-size:12px;color:var(--quiz-opt-text);padding:6px 8px;margin:3px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);transition:all .2s}
@@ -632,8 +639,7 @@ function renderLevel(){
   const quiz=QUIZZES[qi];
   const allDone=lv.goals.every(g=>g.check(ls));
 
-  // Stage navigation dots (handled by IIFE-injected stage-nav)
-  let h='';
+  let h=renderStageNav();
 
   h+=`<div class="mission">
     <div class="m-lv">第 ${lv.id} 关</div>
@@ -668,6 +674,28 @@ function renderLevel(){
   }
 
   el.innerHTML=h;
+}
+
+function canGoLevel(idx){
+  return idx>=0&&idx<LEVELS.length&&(idx===0||completedLevels.has(idx)||completedLevels.has(idx-1));
+}
+
+function goLevel(idx){
+  if(!canGoLevel(idx))return;
+  loadLevel(idx);
+}
+
+function renderStageNav(){
+  const pct=Math.round(completedLevels.size/LEVELS.length*100);
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<LEVELS.length;i++){
+    const cls=completedLevels.has(i)?'done':(i===currentLevel?'cur':(canGoLevel(i)?'':'locked'));
+    h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;
+  }
+  h+='</div>';
+  h+=`<div class="sn-info">📍 第${currentLevel+1}/${LEVELS.length}关 | 进度 ${pct}%</div>`;
+  h+='</div>';
+  return h;
 }
 
 function updateInfo(){
@@ -930,7 +958,7 @@ function checkLevel(){
   if(body)setTimeout(()=>{body.scrollTop=body.scrollHeight;},100);
 }
 
-function nextLevel(){loadLevel(currentLevel+1)}
+function nextLevel(){if(canGoLevel(currentLevel+1))loadLevel(currentLevel+1)}
 function retryLevel(){loadLevel(currentLevel)}
 
 // ============ 渲染 ============

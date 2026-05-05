@@ -101,6 +101,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
@@ -154,6 +155,7 @@ let CW,CH,time=0,animId;
 let gameState='start',currentLevel=0;
 let levelState={},stars=[],particles=[];
 const completedLevels=new Set();
+const readyForQuiz=new Set();
 const quizPassed=new Set();
 let quizLocked=false;
 let totalScore=0;
@@ -197,7 +199,7 @@ function completeObj(idx){
   if(!levelState.goals)return;
   if(!levelState.goals[idx]){levelState.goals[idx]=true;playSound('success');
     const done=levelState.goals.filter(Boolean).length;
-    if(done>=3){completedLevels.add(currentLevel);levelScores[currentLevel]=30}
+    if(done>=3&&!readyForQuiz.has(currentLevel)&&!completedLevels.has(currentLevel)){readyForQuiz.add(currentLevel);levelScores[currentLevel]=30}
     renderPanel();
   }
 }
@@ -849,13 +851,16 @@ function updateLevel(idx,dt){
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   levels.forEach((_,i)=>{
-    const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':'';
-    h+=`<div class="sn-d ${cls}" onclick="switchLevel(${i})"></div>`;
+    const unlocked=canSwitchLevel(i);
+    const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'switchLevel('+i+')':''}"></div>`;
   });
   h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 — ${levels[currentLevel].title}</div>`;
   h+=`<div class="sn-hint">${levels[currentLevel].sub}</div></div>`;
   return h;
 }
+
+function canSwitchLevel(idx){return idx>=0&&idx<levels.length&&(idx===0||completedLevels.has(idx)||completedLevels.has(idx-1))}
 
 function renderGoals(){
   const lv=levels[currentLevel];const s=levelState;
@@ -946,12 +951,12 @@ function renderPanel(){
   }
 
   // 知识点
-  if(completedLevels.has(currentLevel)){
+  if(readyForQuiz.has(currentLevel)||completedLevels.has(currentLevel)){
     h+=`<div class="learn-box">📚 ${lv.learn}</div>`;
   }
 
   // quiz
-  if(completedLevels.has(currentLevel)){
+  if(readyForQuiz.has(currentLevel)||completedLevels.has(currentLevel)){
     h+=renderQuiz(currentLevel);
     if(quizPassed.has(currentLevel)&&currentLevel<levels.length-1){
       h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
@@ -992,7 +997,7 @@ function answerQuiz(li,oi){
   const opts=document.getElementById('panel').querySelectorAll('.quiz-opt');
   opts.forEach((el,i)=>{el.classList.add(i===qd.ans?'correct':'wrong')});
   if(oi===qd.ans){
-    quizPassed.add(li);playSound('success');levelScores[li]+=10;totalScore+=10;
+    quizPassed.add(li);completedLevels.add(li);readyForQuiz.delete(li);playSound('success');levelScores[li]+=10;totalScore+=10;
     setTimeout(()=>{quizLocked=false;if(li<levels.length-1)switchLevel(li+1);else showResult()},800);
   }else{playSound('fail');setTimeout(()=>{quizLocked=false;renderPanel()},1000)}
 }
@@ -1036,7 +1041,7 @@ function sliderDrag(id,val){
   }
 }
 
-function switchLevel(idx){if(idx<0||idx>=levels.length)return;playSound('click');initLevel(idx);renderPanel()}
+function switchLevel(idx){if(!canSwitchLevel(idx))return;playSound('click');initLevel(idx);renderPanel()}
 
 // === 拖拽交互 ===
 canvas.addEventListener('mousedown',e=>{

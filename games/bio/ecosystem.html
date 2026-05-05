@@ -49,6 +49,16 @@ canvas{display:block}
 .panel .obj .dot{width:14px;height:14px;border-radius:50%;border:2px solid #22c55e;flex-shrink:0}
 .panel .obj .dot.done{background:#22c55e}
 .panel .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:var(--learn-text);line-height:1.8}
+.quiz-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin-top:10px}
+.quiz-q{font-size:13px;color:var(--title-color);font-weight:700;margin-bottom:8px;line-height:1.6}
+.quiz-opt{font-size:13px;color:var(--text-sub);padding:8px 10px;margin:5px 0;border-radius:6px;cursor:pointer;border:1px solid var(--concept-border);background:rgba(255,255,255,0.03);transition:all .2s}
+.quiz-opt:hover{border-color:#22c55e;color:var(--text)}
+.quiz-opt.correct{background:#0a2a1a;border-color:#22c55e;color:#4ade80}
+.quiz-opt.wrong{background:#2a0a0a;border-color:#ef4444;color:#f87171}
+[data-theme="light"] .quiz-opt{background:#fff}
+[data-theme="light"] .quiz-opt.correct{background:#dcfce7;color:#166534}
+[data-theme="light"] .quiz-opt.wrong{background:#fef2f2;color:#991b1b}
+.quiz-feedback{font-size:12px;line-height:1.7;margin-top:8px;color:var(--text-sub)}
 .act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-size:15px;cursor:pointer;transition:background .2s}
 .act-btn:hover{background:#16a34a}
 .bar{position:fixed;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--panel-border);display:none;z-index:10;padding:0 16px;font-size:13px;align-items:center}
@@ -124,7 +134,17 @@ const learnTexts=[
 '💡 初生演替从裸岩开始：地衣(先锋种)→苔藓→草本→灌木→乔木(顶极群落)，耗时数百年。次生演替从已有土壤开始(如火灾后)，速度快得多(数十年)。演替的驱动力：物种改变环境→为后续物种创造条件(促进模型)。顶极群落与气候匹配：热带→雨林，温带→落叶林，寒带→针叶林。',
 '💡 全球34个生物多样性热点区域标准：①至少1500种特有维管植物②原始栖息地丧失≥70%。热点区域仅占地表2.3%，却拥有约50%的维管植物和42%的陆生脊椎动物。主要威胁：栖息地破坏(首要)、外来入侵种、过度利用、气候变化、污染。保护策略：建立保护区、生态廊道、可持续利用。'
 ];
+const quizData=[
+  {q:'为什么生产者必须放在食物链的起点？',opts:['它们数量最多','它们把太阳能转成化学能，是生态系统能量入口','它们不会被吃掉'],ans:1,why:'生产者通过光合作用把无机环境中的能量带入生物群落，消费者和分解者都依赖这部分能量。'},
+  {q:'如果生产者有10000 kcal能量，三级消费者大约能获得多少？',opts:['1000 kcal','100 kcal','10 kcal'],ans:2,why:'能量每升高一个营养级大约只保留10%，10000→1000→100→10。'},
+  {q:'移除关键种后，生态系统为什么可能剧烈变化？',opts:['关键种通常数量最多','关键种连接或控制多个营养关系，会触发营养级联','关键种只影响自己'],ans:1,why:'关键种的影响不取决于数量，而取决于它在食物网中的调控位置。'},
+  {q:'哪一种生态金字塔一定是正金字塔？',opts:['能量金字塔','数量金字塔','生物量金字塔'],ans:0,why:'能量流动会逐级耗散为热，不能循环回上一级，所以能量金字塔必然向上变窄。'},
+  {q:'Lotka-Volterra曲线中通常谁的峰值先出现？',opts:['捕食者先达到峰值','猎物先达到峰值','两者总是同时达到峰值'],ans:1,why:'猎物增加后捕食者才有更多食物并滞后增长，因此猎物峰值通常领先捕食者。'},
+  {q:'为什么次生演替通常比初生演替快？',opts:['次生演替已经有土壤和部分种子库','次生演替没有竞争','次生演替不需要生产者'],ans:0,why:'土壤、微生物和残留种子保留了重建群落的基础，裸岩起步则慢得多。'},
+  {q:'生物多样性热点的保护优先级高，核心原因是？',opts:['面积很大且无人居住','小面积承载大量特有物种且栖息地损失严重','所有热点都没有人类活动'],ans:1,why:'热点区域用较小保护面积覆盖大量不可替代物种，同时面临高威胁。'}
+];
 let levelObjs=levelObjTexts.map(a=>a.map(()=>false));
+let quizPassed=new Set(),quizFeedback=null;
 let L={};
 function resetLevel(li){
   L={};levelObjs[li]=levelObjs[li].map(()=>false);
@@ -171,8 +191,22 @@ function goLevel(li){if(li<0||li>6)return;curLevel=li;resetLevel(li);renderPanel
 window.goLevel=goLevel;
 function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel();renderBar();}}
 function renderBar(){bar.innerHTML='<span style="color:var(--text-muted)">🌿 '+levelNames[curLevel]+'</span>';}
-function _stageNav(){let h='<div class="stage-nav"><div class="sn-bar">';for(let i=0;i<7;i++){let cls=levelObjs[i].every(v=>v)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;}h+=`</div><div class="sn-info">第${curLevel+1}/7关 · ${levelNames[curLevel]}</div></div>`;return h;}
-function _summaryHTML(){let done=levelObjs.filter(a=>a.every(v=>v)).length;return '<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握生态学的核心知识</div><div class="summary-stats"><div class="summary-stat"><div class="num">'+done+'</div><div class="label">完成关卡</div></div><div class="summary-stat"><div class="num">'+(done*3)+'</div><div class="label">达成目标</div></div></div><div class="summary-keys"><div>🔗 能量单向流动，每级损失90%</div><div>🕸️ 食物网中关键种维持生态平衡</div><div>📈 Lotka-Volterra：捕食者-猎物振荡</div><div>🦋 生物多样性热点：2.3%面积，50%物种</div></div></div>';}
+function _stageNav(){let h='<div class="stage-nav"><div class="sn-bar">';for(let i=0;i<7;i++){let cls=quizPassed.has(i)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;}h+=`</div><div class="sn-info">第${curLevel+1}/7关 · ${levelNames[curLevel]}</div></div>`;return h;}
+function _summaryHTML(){let done=quizPassed.size;return '<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握生态学的核心知识</div><div class="summary-stats"><div class="summary-stat"><div class="num">'+done+'</div><div class="label">完成关卡</div></div><div class="summary-stat"><div class="num">'+(done*3)+'</div><div class="label">达成目标</div></div></div><div class="summary-keys"><div>🔗 能量单向流动，每级损失90%</div><div>🕸️ 食物网中关键种维持生态平衡</div><div>📈 Lotka-Volterra：捕食者-猎物振荡</div><div>🦋 生物多样性热点：2.3%面积，50%物种</div></div></div>';}
+function _quizHTML(li){
+  let q=quizData[li],h=`<div class="quiz-box"><div class="quiz-q">📝 通关小测验：${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{
+    let cls='';
+    if(quizFeedback&&quizFeedback.level===li){if(i===q.ans)cls='correct';else if(i===quizFeedback.chosen)cls='wrong';}
+    h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${opt}</div>`;
+  });
+  if(quizFeedback&&quizFeedback.level===li){
+    h+=`<div class="quiz-feedback">${quizFeedback.correct?'回答正确。':'再想想。'}${q.why}</div>`;
+  }else{
+    h+='<div class="quiz-feedback">先完成三个目标，再回答这个问题确认你抓住了机制。</div>';
+  }
+  return h+'</div>';
+}
 function renderPanel(){
   let li=curLevel,h=_stageNav();
   h+=`<h2>${levelNames[li]}</h2><p style="color:var(--text-sub);font-size:14px;margin:6px 0 10px">${levelDescs[li]}</p>`;
@@ -200,8 +234,8 @@ function renderPanel(){
   if(li===4){
     h+=`<h3>操作</h3>`;
     h+=`<button class="act-btn" onclick="runLV()">⏩ 运行10步 (步数:${L.gen})</button>`;
-    h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-sub)">猎物增长率r: ${L.r.toFixed(2)}</label><br><input type="range" min="1" max="30" value="${Math.round(L.r*100)}" style="width:100%" oninput="L.r=+this.value/100;L.paramChanged=true;renderPanel()"></div>`;
-    h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-sub)">捕食者死亡率m: ${L.m.toFixed(2)}</label><br><input type="range" min="1" max="30" value="${Math.round(L.m*100)}" style="width:100%" oninput="L.m=+this.value/100;L.paramChanged=true;renderPanel()"></div>`;
+    h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-sub)">猎物增长率r: <span>${L.r.toFixed(2)}</span></label><br><input type="range" min="1" max="30" value="${Math.round(L.r*100)}" style="width:100%" oninput="L.r=+this.value/100;L.paramChanged=true;this.parentElement.querySelector('span').textContent=L.r.toFixed(2)" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-sub)">捕食者死亡率m: <span>${L.m.toFixed(2)}</span></label><br><input type="range" min="1" max="30" value="${Math.round(L.m*100)}" style="width:100%" oninput="L.m=+this.value/100;L.paramChanged=true;this.parentElement.querySelector('span').textContent=L.m.toFixed(2)" onchange="this.blur();renderPanel()"></div>`;
     h+=`<p style="color:var(--text-sub);font-size:12px">猎物: ${Math.round(L.prey)} | 捕食者: ${Math.round(L.pred)}</p>`;
   }
   if(li===5){
@@ -214,12 +248,24 @@ function renderPanel(){
     h+=`<p style="color:var(--text-sub);font-size:12px">已探索: ${L.explored.size}/6 个热点</p>`;
     if(L.explored.size>0){let last=L.hotspots[[...L.explored].pop()];h+=`<div style="background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:6px;padding:8px;margin-top:6px;font-size:12px"><b>${last.name}</b><br>物种数: ${last.species} | 特有率: ${last.endemic}%<br>主要威胁: ${last.threat}</div>`;}
   }
-  if(levelObjs[li].every(v=>v)){
+  const goalsDone=levelObjs[li].every(v=>v);
+  if(goalsDone&&!quizPassed.has(li)){
+    h+=_quizHTML(li);
+  }
+  if(goalsDone&&quizPassed.has(li)){
     h+=`<div class="learn-box">${learnTexts[li]}</div>`;
     if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
     if(li===6)h+=_summaryHTML();
   }
   panel.innerHTML=h;
+}
+function answerQuiz(li,choice){
+  if(quizPassed.has(li))return;
+  let q=quizData[li],correct=choice===q.ans;
+  quizFeedback={level:li,chosen:choice,correct};
+  if(correct)quizPassed.add(li);
+  renderPanel();
+  if(correct)renderBar();
 }
 // Actions
 window.addToChain=function(i){if(!L.chain.includes(i)){L.chain.push(i);if(L.chain.length>=3)completeObj(0);}renderPanel();};

@@ -116,8 +116,18 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;color:var(--learn-text);font-size:13px;line-height:1.8}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -180,6 +190,7 @@ const panel = $('#panel'), barText = $('#barText'), levelNav = $('#levelNav');
 let W, H, curLevel = 0, animId, time = 0;
 const levelObjs = Array.from({length:7}, () => [false,false,false]);
 const levelCompleted = Array(7).fill(false);
+let quizFeedback = {};
 
 // Level definitions
 const levels = [
@@ -199,6 +210,16 @@ const levels = [
    learn:'FSM 是数字系统的控制核心。Moore 机输出仅取决于当前状态；Mealy 机输出还取决于输入。自动售货机是经典 FSM 应用，状态随投币金额转移。'}
 ];
 
+const quizData = [
+  {q:'为什么 BCD 常用于十进制显示？',opts:['每 4 位表示一位十进制数，便于直接驱动显示','它比二进制更节省所有位数','它只能表示奇数'],ans:0,ok:'对。BCD 牺牲一些编码效率，换来十进制显示和转换的便利。',bad:'BCD 的核心是“4 位对应 1 位十进制”，不是最省位数。'},
+  {q:'卡诺图化简的本质是什么？',opts:['合并相邻的 1 来消去变量','把所有 0 改成 1','随机删除输入变量'],ans:0,ok:'对。相邻格只差一个变量，合并后该变量被消去。',bad:'卡诺图不是改真值表，而是利用相邻项找最简表达式。'},
+  {q:'译码器的输入输出关系通常是？',opts:['n 位输入展开为 2^n 路输出','2^n 路输入压缩成 n 位输出','只把模拟信号放大'],ans:0,ok:'对。译码器把二进制编码展开成独热输出。',bad:'编码器是压缩，译码器是展开。'},
+  {q:'D 触发器在时钟上升沿会做什么？',opts:['把 D 输入采样到 Q 输出','把 Q 永远清零','忽略所有输入'],ans:0,ok:'对。D 触发器是最常用的边沿采样存储单元。',bad:'触发器的重点是边沿采样和状态保持。'},
+  {q:'同步计数器相比异步计数器的主要优势是什么？',opts:['所有触发器共用时钟，累积延迟更小','不需要触发器','只能计到 2'],ans:0,ok:'对。同步计数器速度更可控，适合高频数字系统。',bad:'异步计数器会逐级传播，延迟会累积。'},
+  {q:'LFSR 为什么能产生伪随机序列？',opts:['通过抽头异或反馈不断移位','因为每一位都由用户手动输入','因为它不需要时钟'],ans:0,ok:'对。抽头选择决定反馈多项式和序列周期。',bad:'LFSR 的关键是移位寄存器加线性反馈。'},
+  {q:'Moore 型状态机的输出取决于什么？',opts:['当前状态','只取决于下一次输入','只取决于时钟频率'],ans:0,ok:'对。Moore 机输出只由状态决定，Mealy 机输出还看输入。',bad:'Moore 与 Mealy 的区别就在输出是否直接依赖输入。'}
+];
+
 function resize(){
   const wrap = $('#canvasWrap');
   W = canvas.width = wrap.clientWidth;
@@ -211,11 +232,49 @@ function completeObj(li, oi){
   levelObjs[li][oi] = true;
   updatePanel();
   if(levelObjs[li].every(v=>v)){
-    levelCompleted[li] = true;
     updateNav();
-    showLearn(li);
+    updatePanel();
   }
 }
+
+function isUnlocked(i){
+  return i === 0 || levelCompleted[i - 1];
+}
+
+function stageNavHTML(){
+  const passed = levelCompleted.filter(Boolean).length;
+  let html = '<div class="stage-nav"><div class="sn-bar">';
+  levels.forEach((_, i) => {
+    const unlocked = isUnlocked(i);
+    const cls = levelCompleted[i] ? 'done' : i === curLevel ? 'cur' : unlocked ? '' : 'locked';
+    html += `<div class="sn-d ${cls}" onclick="${unlocked ? `goLevel(${i})` : ''}"></div>`;
+  });
+  html += `</div><div class="sn-info">📍 第 ${curLevel + 1}/${levels.length} 关 | 进度 ${Math.round(passed / levels.length * 100)}%</div>`;
+  html += `<div class="sn-hint">${passed}/${levels.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
+  return html;
+}
+
+function quizHTML(li){
+  const q = quizData[li], fb = quizFeedback[li];
+  let html = '<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  html += `<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt, i) => { html += `<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`; });
+  if(fb) html += `<div class="quiz-feedback ${fb.ok ? 'ok' : 'bad'}">${fb.text}</div>`;
+  html += '</div>';
+  return html;
+}
+
+window.answerQuiz = function(li, choice){
+  if(li !== curLevel || levelCompleted[li]) return;
+  const q = quizData[li], ok = choice === q.ans;
+  quizFeedback[li] = {ok, text: ok ? q.ok : q.bad};
+  if(ok){
+    levelCompleted[li] = true;
+    showLearn(li);
+  }
+  updateNav();
+  updatePanel();
+};
 
 function showLearn(li){
   $('#learnTitle').textContent = '🎓 ' + levels[li].name + ' — 知识总结';
@@ -224,27 +283,27 @@ function showLearn(li){
 }
 function closeLearn(){
   $('#learnOverlay').style.display = 'none';
-  if(curLevel < 6){ switchLevel(curLevel+1); }
 }
 
 function updateNav(){
-  levelNav.innerHTML = '';
+  levelNav.innerHTML = levels.map((_, i) => `<button class="${i===curLevel?'active ':''}${levelCompleted[i]?'completed ':''}" onclick="goLevel(${i})" ${isUnlocked(i)?'':'disabled'}>${i+1}</button>`).join('');
   barText.textContent = '💡 ' + levels[curLevel].name;
 }
 
 function switchLevel(i){
+  if(i < 0 || i >= levels.length || !isUnlocked(i)) return;
   curLevel = i;
-  updateNav();
-  updatePanel();
   if(animId) cancelAnimationFrame(animId);
   time = 0;
   initLevel(i);
+  updateNav();
+  updatePanel();
   animate();
 }
 
 function updatePanel(){
   const L = levels[curLevel];
-  let html = `<h2>关卡 ${curLevel+1}: ${L.name}</h2>`;
+  let html = stageNavHTML() + `<h2>关卡 ${curLevel+1}: ${L.name}</h2>`;
   if(L.desc) html += L.desc;
   html += `<ul class="objectives">`;
   L.objectives.forEach((o,i)=>{
@@ -252,6 +311,11 @@ function updatePanel(){
   });
   html += `</ul>`;
   html += `<div id="controls"></div>`;
+  if(levelObjs[curLevel].every(Boolean) && !levelCompleted[curLevel]) html += quizHTML(curLevel);
+  if(levelCompleted[curLevel]){
+    html += `<div class="learn-box">${L.learn}</div>`;
+    html += curLevel < levels.length - 1 ? `<button class="btn" onclick="goLevel(${curLevel+1})">下一关 →</button>` : '<button class="btn" onclick="showSummary()">查看总总结 🎉</button>';
+  }
   panel.innerHTML = html;
   buildControls(curLevel);
 }
@@ -1261,6 +1325,19 @@ function animate(){
   animId = requestAnimationFrame(animate);
 }
 
+function showSummary(){
+  if(!levelCompleted.every(Boolean)) return;
+  panel.innerHTML = `<div class="summary-box"><div class="summary-title">🏆 恭喜通关！</div><div class="summary-sub">你已完成数字电路 7 个核心主题</div>
+    <div class="summary-stats"><div class="summary-stat"><div class="num">7/7</div><div class="label">关卡完成</div></div><div class="summary-stat"><div class="num">21</div><div class="label">目标达成</div></div></div>
+    <div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">📚 关键知识回顾</div>
+      <div>✅ 数制编码：二进制、BCD、格雷码各有工程用途</div>
+      <div>✅ 组合逻辑：真值表到卡诺图，再到最简门电路</div>
+      <div>✅ 编码译码：编码器压缩，译码器展开，MUX 选通</div>
+      <div>✅ 时序逻辑：触发器、计数器、寄存器构成状态系统</div>
+      <div>✅ FSM：用状态和转移描述数字控制流程</div>
+    </div><button class="btn" onclick="curLevel=0;levelObjs.forEach(r=>r.fill(false));levelCompleted.fill(false);quizFeedback={};switchLevel(0)">重新探索</button></div>`;
+}
+
 // ========== INIT ==========
 $('#startBtn').onclick = ()=>{
   $('#overlay').style.display='none';
@@ -1273,105 +1350,6 @@ updateNav();
 
 
 function goLevel(i){switchLevel(i);}
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
 
 </script>
 </body>

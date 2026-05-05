@@ -51,6 +51,16 @@ canvas{display:block}
 .panel .obj .dot{width:14px;height:14px;border-radius:50%;border:2px solid #f59e0b;flex-shrink:0}
 .panel .obj .dot.done{background:#f59e0b}
 .panel .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:var(--learn-text);line-height:1.8}
+.quiz-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin-top:10px}
+.quiz-q{font-size:13px;color:var(--title-color);font-weight:700;margin-bottom:8px;line-height:1.6}
+.quiz-opt{font-size:13px;color:var(--text-sub);padding:8px 10px;margin:5px 0;border-radius:6px;cursor:pointer;border:1px solid var(--concept-border);background:rgba(255,255,255,0.03);transition:all .2s}
+.quiz-opt:hover{border-color:#22c55e;color:var(--text)}
+.quiz-opt.correct{background:#0a2a1a;border-color:#22c55e;color:#4ade80}
+.quiz-opt.wrong{background:#2a0a0a;border-color:#ef4444;color:#f87171}
+[data-theme="light"] .quiz-opt{background:#fff}
+[data-theme="light"] .quiz-opt.correct{background:#dcfce7;color:#166534}
+[data-theme="light"] .quiz-opt.wrong{background:#fef2f2;color:#991b1b}
+.quiz-feedback{font-size:12px;line-height:1.7;margin-top:8px;color:var(--text-sub)}
 .act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#f59e0b;color:#fff;font-size:15px;cursor:pointer;transition:background .2s}
 .act-btn:hover{background:#d97706}
 .bar{position:fixed;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--panel-border);display:none;z-index:10;padding:0 16px;font-size:13px;align-items:center}
@@ -126,11 +136,22 @@ const learnTexts=[
 '💡 分子钟假说：DNA突变以大致恒定的速率积累，序列差异与分化时间成正比。人与黑猩猩DNA差异约1.2%，分化约600-700万年前。系统发育树用最大似然法或贝叶斯方法构建，反映物种间的进化关系。注意：分子钟不是完美的钟——不同基因、不同谱系的突变速率有差异。',
 '💡 人类进化关键节点：700万年前与黑猩猩分化→400万年前南方古猿(Lucy，直立行走)→250万年前能人(最早石器)→180万年前直立人(走出非洲，用火)→30万年前智人(非洲起源)→7万年前走出非洲→1万年前农业革命。脑容量：400ml(南方古猿)→900ml(直立人)→1400ml(智人)。'
 ];
+const quizData=[
+{q:'达尔文雀喙形差异能被自然选择放大的前提是什么？',opts:['喙形差异能遗传，且不同食物环境下影响取食成功率','所有雀鸟会主动把喙变成想要的形状','只有岛屿面积决定喙形'],ans:0,why:'自然选择需要可遗传变异和差异繁殖；环境只筛选已有差异，不会按需求定向制造变异。'},
+{q:'在捕食模拟中，为什么接近背景色的猎物更容易保留下来？',opts:['伪装降低被发现概率，存活个体更可能繁殖','背景色会直接改变猎物DNA','捕食者只会捕食颜色鲜艳的物种名'],ans:0,why:'伪装色提升的是相对存活率；多代后，相关体色在种群中比例会上升。'},
+{q:'温度或食物变化在模拟中代表什么？',opts:['选择压力，改变不同性状个体的相对适合度','个体的主观愿望','遗传漂变的随机抽样误差'],ans:0,why:'选择压力来自环境，决定哪些已有性状更容易留下后代。'},
+{q:'遗传漂变为什么在小种群中更明显？',opts:['随机抽样误差占比更大，等位基因可能偶然固定或丢失','小种群突变一定更多','大种群没有DNA'],ans:0,why:'漂变不是适应性过程，小样本里的随机波动更容易改变等位基因频率。'},
+{q:'地理屏障推动物种形成的关键机制是什么？',opts:['阻断基因流，使两个种群独立积累差异','让两个种群立即变成完全不同物种','让所有个体停止繁殖'],ans:0,why:'基因流被切断后，突变、选择和漂变分别作用，长期可形成生殖隔离。'},
+{q:'分子钟估算分化时间依赖什么关系？',opts:['DNA差异随时间大致累积','体型越大分化越早','序列越短越古老'],ans:0,why:'分子钟把序列差异转换为时间估计，但不同基因和谱系速率会有差别。'},
+{q:'人类进化时间线说明了什么？',opts:['人类演化是多阶段积累过程，包含直立行走、工具、用火、脑容量变化等节点','智人一出现就完成农业革命','人类由现代黑猩猩直接变来'],ans:0,why:'人类和黑猩猩共享共同祖先；现代人类特征是在数百万年中逐步积累的。'}
+];
 let levelObjs=levelObjTexts.map(a=>a.map(()=>false));
+const quizPassed=new Set();
+let quizFeedback=null;
 let L={};
 function resetLevel(li){
   L={};levelObjs[li]=levelObjs[li].map(()=>false);
-  if(li===0){L.beakType=0;L.foodType=0;L.beaksSeen=new Set();L.matched=new Set();
+  if(li===0){L.beakType=0;L.foodType=0;L.beaksSeen=new Set();L.matched=new Set();L.matchFeedback='';
     L.beaks=[{name:'粗壮喙',food:'硬种子',shape:'thick',color:'#ef4444'},{name:'细长喙',food:'花蜜',shape:'thin',color:'#3b82f6'},{name:'尖锐喙',food:'昆虫',shape:'sharp',color:'#22c55e'}];
     L.foods=['硬种子','花蜜','昆虫'];}
   if(li===1){L.prey=[];L.gen=0;L.caught=0;L.bgColor='#4a7c3a';
@@ -174,17 +195,33 @@ function goLevel(li){if(li<0||li>6)return;curLevel=li;resetLevel(li);renderPanel
 window.goLevel=goLevel;
 function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel();renderBar();}}
 function renderBar(){bar.innerHTML='<span style="color:var(--text-muted)">🦎 '+levelNames[curLevel]+'</span>';}
-function _stageNav(){let h='<div class="stage-nav"><div class="sn-bar">';for(let i=0;i<7;i++){let cls=levelObjs[i].every(v=>v)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;}h+=`</div><div class="sn-info">第${curLevel+1}/7关 · ${levelNames[curLevel]}</div></div>`;return h;}
-function _summaryHTML(){let done=levelObjs.filter(a=>a.every(v=>v)).length;let h='<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握进化论的核心知识</div><div class="summary-stats"><div class="summary-stat"><div class="num">'+done+'</div><div class="label">完成关卡</div></div><div class="summary-stat"><div class="num">'+(done*3)+'</div><div class="label">达成目标</div></div></div><div class="summary-keys"><div>🐦 变异+遗传+差异繁殖=自然选择</div><div>🎲 遗传漂变：小种群随机效应</div><div>🏔️ 地理隔离→生殖隔离→新物种</div><div>🧑 人类进化：700万年的旅程</div></div></div>';return h;}
+function _stageNav(){let h='<div class="stage-nav"><div class="sn-bar">';for(let i=0;i<7;i++){let cls=quizPassed.has(i)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;}h+=`</div><div class="sn-info">第${curLevel+1}/7关 · ${levelNames[curLevel]}</div></div>`;return h;}
+function _summaryHTML(){let done=quizPassed.size;let h='<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握进化论的核心知识</div><div class="summary-stats"><div class="summary-stat"><div class="num">'+done+'</div><div class="label">完成关卡</div></div><div class="summary-stat"><div class="num">'+(done*3)+'</div><div class="label">达成目标</div></div></div><div class="summary-keys"><div>🐦 变异+遗传+差异繁殖=自然选择</div><div>🎲 遗传漂变：小种群随机效应</div><div>🏔️ 地理隔离→生殖隔离→新物种</div><div>🧑 人类进化：700万年的旅程</div></div></div>';return h;}
+function _quizHTML(li){
+  let q=quizData[li],h=`<div class="quiz-box"><div class="quiz-q">📝 通关小测验：${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{
+    let cls='';
+    if(quizFeedback&&quizFeedback.level===li){if(i===q.ans)cls='correct';else if(i===quizFeedback.chosen)cls='wrong';}
+    h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${opt}</div>`;
+  });
+  if(quizFeedback&&quizFeedback.level===li)h+=`<div class="quiz-feedback">${quizFeedback.correct?'回答正确。':'再想想。'}${q.why}</div>`;
+  else h+='<div class="quiz-feedback">完成三个目标后，答对这个问题才会解锁学习总结。</div>';
+  h+='</div>';return h;
+}
 function renderPanel(){
   let li=curLevel,h=_stageNav();
   h+=`<h2>${levelNames[li]}</h2><p style="color:var(--text-sub);font-size:14px;margin:6px 0 10px">${levelDescs[li]}</p>`;
   h+=`<h3>🎯 目标</h3>`;
-  for(let i=0;i<3;i++){let d=levelObjs[li][i]?'done':'';h+=`<div class="obj"><div class="dot ${d}"></div>${levelObjTexts[li][i]}</div>`;}
+  for(let i=0;i<3;i++){let d=(quizPassed.has(li)||levelObjs[li][i])?'done':'';h+=`<div class="obj"><div class="dot ${d}"></div>${levelObjTexts[li][i]}</div>`;}
   if(li===0){
     h+=`<h3>操作</h3>`;
     L.beaks.forEach((b,i)=>{h+=`<button class="act-btn" onclick="viewBeak(${i})">🐦 ${b.name} → ${b.food}</button>`;});
     h+=`<p style="color:var(--text-sub);font-size:12px;margin-top:4px">已观察: ${L.beaksSeen.size}/3 种喙形</p>`;
+    h+=`<h3>食物匹配</h3>`;
+    L.foods.forEach((f,i)=>{h+=`<button class="act-btn" style="${L.foodType===i?'background:#22c55e':''}" onclick="selectFood(${i})">${L.foodType===i?'✅':'🍽️'} ${f}</button>`;});
+    h+=`<button class="act-btn" onclick="testBeakMatch()">测试当前喙形与食物</button>`;
+    if(L.matchFeedback)h+=`<p style="color:${L.matchFeedback.startsWith('匹配')?'#22c55e':'#f87171'};font-size:12px;margin-top:4px">${L.matchFeedback}</p>`;
+    h+=`<p style="color:var(--text-sub);font-size:12px;margin-top:4px">已匹配: ${L.matched.size}/3 组</p>`;
   }
   if(li===1){
     h+=`<h3>操作</h3><p style="color:var(--text-sub);font-size:13px">点击画布上的猎物来捕食（与背景色接近的更难发现）</p>`;
@@ -193,8 +230,8 @@ function renderPanel(){
   }
   if(li===2){
     h+=`<h3>操作</h3>`;
-    h+=`<div style="margin:6px 0"><label style="font-size:13px;color:var(--text-sub)">温度: ${L.temp}°C</label><br><input type="range" min="-20" max="50" value="${L.temp}" style="width:100%" oninput="L.temp=+this.value;renderPanel()"></div>`;
-    h+=`<div style="margin:6px 0"><label style="font-size:13px;color:var(--text-sub)">食物丰度: ${L.food}%</label><br><input type="range" min="0" max="100" value="${L.food}" style="width:100%" oninput="L.food=+this.value;renderPanel()"></div>`;
+    h+=`<div style="margin:6px 0"><label style="font-size:13px;color:var(--text-sub)">温度: <span>${L.temp}°C</span></label><br><input type="range" min="-20" max="50" value="${L.temp}" style="width:100%" oninput="updateEnvSlider(this,'temp','°C')" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div style="margin:6px 0"><label style="font-size:13px;color:var(--text-sub)">食物丰度: <span>${L.food}%</span></label><br><input type="range" min="0" max="100" value="${L.food}" style="width:100%" oninput="updateEnvSlider(this,'food','%')" onchange="this.blur();renderPanel()"></div>`;
     h+=`<button class="act-btn" onclick="runAdaptGen()">⏩ 运行一代 (第${L.gen}代)</button>`;
     h+=`<p style="color:var(--text-sub);font-size:12px">种群特征均值: ${L.avgTrait.toFixed(1)}</p>`;
   }
@@ -223,7 +260,9 @@ function renderPanel(){
     h+=`<h3>操作</h3><p style="color:var(--text-sub);font-size:13px">点击画布上的时间节点探索人类进化历程</p>`;
     h+=`<p style="color:var(--text-sub);font-size:12px">已探索: ${L.explored.size}/7 个节点</p>`;
   }
-  if(levelObjs[li].every(v=>v)){
+  const goalsDone=levelObjs[li].every(v=>v);
+  if(goalsDone&&!quizPassed.has(li))h+=_quizHTML(li);
+  if(quizPassed.has(li)){
     h+=`<div class="learn-box">${learnTexts[li]}</div>`;
     if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
     if(li===6)h+=_summaryHTML();
@@ -231,7 +270,11 @@ function renderPanel(){
   panel.innerHTML=h;
 }
 // Actions
-window.viewBeak=function(i){L.beakType=i;L.beaksSeen.add(i);if(L.beaksSeen.size>=3){completeObj(0);completeObj(1);completeObj(2);}renderPanel();};
+window.answerQuiz=function(li,choice){if(li!==curLevel||quizPassed.has(li))return;let q=quizData[li],correct=choice===q.ans;quizFeedback={level:li,chosen:choice,correct};if(correct)quizPassed.add(li);renderPanel();renderBar();};
+window.updateEnvSlider=function(input,key,suffix){L[key]=+input.value;let out=input.parentElement.querySelector('span');if(out)out.textContent=L[key]+suffix;};
+window.viewBeak=function(i){L.beakType=i;L.beaksSeen.add(i);if(L.beaksSeen.size>=3)completeObj(0);renderPanel();};
+window.selectFood=function(i){L.foodType=i;renderPanel();};
+window.testBeakMatch=function(){let b=L.beaks[L.beakType],food=L.foods[L.foodType];if(b.food===food){L.matched.add(L.beakType);L.matchFeedback='匹配成功：'+b.name+'适合取食'+food;if(L.matched.size>=3)completeObj(1);if(L.beaksSeen.size>=3&&L.matched.size>=3)completeObj(2);}else{L.matchFeedback='匹配失败：'+b.name+'并不适合取食'+food;}renderPanel();};
 window.nextGenPrey=function(){
   let survivors=L.prey.filter(p=>p.alive);if(survivors.length===0)return;
   L.prey=[];for(let i=0;i<30;i++){let parent=survivors[Math.floor(Math.random()*survivors.length)];
@@ -252,7 +295,8 @@ window.driftGen=function(type){
 };
 window.placeBarrier=function(){L.barrier=true;completeObj(0);renderPanel();};
 window.evolveSpeciation=function(){
-  for(let i=0;i<10;i++){L.pop1Trait+=(Math.random()-0.5)*3;L.pop2Trait+=(Math.random()-0.5)*3;}
+  L.pop1Trait=Math.max(10,L.pop1Trait-(3+Math.random()));
+  L.pop2Trait=Math.min(90,L.pop2Trait+(3+Math.random()));
   L.gen+=10;L.divergence=Math.abs(L.pop1Trait-L.pop2Trait);
   if(L.gen>=50){completeObj(1);if(L.divergence>20){L.isolated=true;completeObj(2);}}renderPanel();
 };

@@ -111,17 +111,22 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .result-box .btn-next{background:#7c3aed;color:#fff}
 .result-box .btn-retry{background:var(--stage-bar);color:var(--text-sub)}
 .quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 12px}
+.quiz-title{font-size:12px;color:var(--quiz-q);font-weight:700;margin-bottom:6px}
 .quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
 .quiz-opt{font-size:12px;color:var(--text-sub);padding:6px 8px;margin:3px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);transition:all .2s}
 .quiz-opt:hover{background:var(--quiz-opt-hover);border-color:var(--quiz-border)}
 .quiz-opt.correct{background:var(--quiz-correct-bg);border-color:var(--quiz-correct-text);color:var(--quiz-correct-text);pointer-events:none}
 .quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:var(--quiz-wrong-text);color:var(--quiz-wrong-text)}
 .quiz-opt.disabled{pointer-events:none;opacity:.5}
+.learn-box{background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.25);border-radius:8px;padding:10px 12px;margin:10px 12px;font-size:13px;line-height:1.7;color:var(--text-sub)}
+.learn-box b{color:var(--sv)}
 .stage-nav{display:flex;gap:2px;margin:10px 12px 6px;flex-wrap:wrap}
 .stage-dot{width:28px;height:28px;border-radius:50%;border:2px solid #cbd5e1;background:var(--btn-bg);display:flex;align-items:center;justify-content:center;font-size:11px;color:#94a3b8;cursor:pointer;transition:all .2s;font-weight:600}
 .stage-dot.done{border-color:#22c55e;background:rgba(34,197,94,0.15);color:#22c55e}
 .stage-dot.cur{border-color:#7c3aed;background:rgba(124,58,237,0.15);color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.2)}
+.stage-dot.locked{opacity:.35;cursor:not-allowed}
 .stage-dot:hover{transform:scale(1.15)}
+.stage-dot.locked:hover{transform:none}
 #particle-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:100}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -173,7 +178,6 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 <div id="info-bar"></div>
 
 <script>
-/* PLACEHOLDER_SCRIPT */
 // === 主题 ===
 let isDark=true;
 const TH={
@@ -233,6 +237,15 @@ const QUIZZES=[
   {q:'代理合约升级模式中最大的风险是？',opts:['A. Gas 消耗增加','B. 存储布局冲突导致数据损坏','C. 代码变长'],ans:1},
   {q:'模糊测试 (Fuzzing) 的原理是什么？',opts:['A. 手动检查每行代码','B. 用随机输入大量测试寻找异常行为','C. 只测试正常情况'],ans:1}
 ];
+const LEARNS=[
+  'EVM 是确定性的栈式虚拟机。Gas 给每个操作计价，既衡量链上计算成本，也防止合约无限循环拖垮网络。',
+  'Storage 是永久链上状态，按 slot 存储且最贵；memory 是函数执行期临时空间；calldata 是只读输入，适合外部调用参数。',
+  '重入攻击通常发生在外部调用早于状态更新时。CEI 模式先检查、再更新状态、最后交互，可以切断递归提款路径。',
+  '整数溢出会让数值绕回，tx.origin 会把用户身份误传给恶意中间合约。现代 Solidity 溢出检查和 msg.sender 权限判断更安全。',
+  '访问控制要遵循最小权限。关键操作应由角色权限、多签和时间锁共同保护，避免单个私钥或瞬时操作造成灾难。',
+  '代理升级把状态留在 Proxy，把逻辑放在实现合约。升级时必须保持存储布局一致，否则 delegatecall 会写坏旧数据。',
+  '审计不是只读代码。模糊测试负责寻找异常输入，形式化验证证明关键性质，Bug Bounty 让外部研究者持续补充风险发现。'
+];
 
 // Level states
 let l0_gasUsed=0,l0_opcodes=[],l0_deployed=false,l0_executed=false;
@@ -265,9 +278,9 @@ function startGame(){
   initLevel(0);renderPanel();
   for(let i=0;i<80;i++)stars_bg.push({x:Math.random()*2000,y:Math.random()*1200,s:Math.random()*1.5+0.5,b:Math.random()});
 }
-function goLevel(idx){if(idx<0||idx>=TOTAL)return;curLevel=idx;initLevel(idx);renderPanel()}
+function goLevel(idx){if(idx<0||idx>=TOTAL||!isUnlocked(idx))return;curLevel=idx;initLevel(idx);renderPanel()}
+function isUnlocked(idx){return idx===0||quizPassedSet.has(idx-1)}
 
-// === PANEL_PLACEHOLDER ===
 // === 面板渲染 ===
 function renderPanel(){
   const lv=LEVELS[curLevel];
@@ -276,8 +289,9 @@ function renderPanel(){
   const body=document.getElementById('lp-body');
   let h='<div class="stage-nav">';
   for(let i=0;i<TOTAL;i++){
-    const cls=completedLevels.has(i)?'done':(i===curLevel?'cur':'');
-    h+=`<div class="stage-dot ${cls}" onclick="goLevel(${i})">${i+1}</div>`;
+    const unlocked=isUnlocked(i);
+    const cls=quizPassedSet.has(i)?'done':(i===curLevel?'cur':(unlocked?'':'locked'));
+    h+=`<div class="stage-dot ${cls}" onclick="goLevel(${i})" title="${unlocked?LEVELS[i].title:'答对上一关测验后解锁'}">${i+1}</div>`;
   }
   h+='</div>';
   h+=`<div class="mission"><div class="m-level">第 ${curLevel+1} 关</div><div class="m-title">${lv.title}</div><div class="m-desc">${lv.desc}</div></div>`;
@@ -289,9 +303,12 @@ function renderPanel(){
   h+=renderLevelPanel(curLevel);
   if(goals[curLevel][0]&&goals[curLevel][1]&&goals[curLevel][2]&&!quizPassedSet.has(curLevel)){
     const quiz=QUIZZES[curLevel];
-    h+=`<div class="quiz-box" id="quiz-${curLevel}"><div class="quiz-q">🧠 ${quiz.q}</div>`;
+    h+=`<div class="quiz-box" id="quiz-${curLevel}"><div class="quiz-title">通关小测验</div><div class="quiz-q">🧠 ${quiz.q}</div>`;
     quiz.opts.forEach((o,i)=>h+=`<div class="quiz-opt" onclick="checkQuiz(${curLevel},${i})">${o}</div>`);
     h+='</div>';
+  }
+  if(quizPassedSet.has(curLevel)){
+    h+=`<div class="learn-box"><b>关键知识：</b>${LEARNS[curLevel]}</div>`;
   }
   if(quizPassedSet.has(curLevel)&&curLevel<TOTAL-1){
     h+=`<div class="act-section"><button class="act-btn green" onclick="goLevel(${curLevel+1})">进入下一关 →</button></div>`;
@@ -447,7 +464,6 @@ function renderInfoBar(){
   bar.innerHTML=h;
 }
 
-// === ACTIONS_PLACEHOLDER ===
 // === Level actions ===
 // L0
 function deployContract(){
@@ -516,6 +532,7 @@ function checkQuiz(levelIdx,chosen){
   if(quizCooldown)return;
   const quiz=QUIZZES[levelIdx];
   const opts=document.querySelectorAll(`#quiz-${levelIdx} .quiz-opt`);
+  if(!opts[chosen]||!opts[quiz.ans])return;
   if(chosen===quiz.ans){
     opts[chosen].classList.add('correct');quizPassedSet.add(levelIdx);completedLevels.add(levelIdx);
     playSound('success');spawnParticles(160,300,30);
@@ -555,7 +572,6 @@ function renderSummary(){
   </div>`;
 }
 
-// === DRAW_PLACEHOLDER ===
 // === 绘制 ===
 function drawStars(){
   if(!t().showStars)return;
@@ -563,7 +579,6 @@ function drawStars(){
 }
 
 function roundRect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
-function drawArrow(x,y,dir,color){ctx.fillStyle=color;ctx.beginPath();if(dir==='down'){ctx.moveTo(x-5,y-5);ctx.lineTo(x+5,y-5);ctx.lineTo(x,y+2)}ctx.fill()}
 
 function drawLevel(idx){
   const ox=340,oy=60,w=CW-ox-20,h=CH-80;

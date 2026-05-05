@@ -17,6 +17,10 @@
   --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
   --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
   --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
   --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
   --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
 }
@@ -31,6 +35,10 @@
   --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
   --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
   --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
   --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
   --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
 }
@@ -38,9 +46,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC'
 #overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100}
 #overlay h1{font-size:36px;color:#f59e0b;text-shadow:0 0 30px rgba(245,158,11,0.5);margin-bottom:8px}
 #overlay h2{font-size:18px;color:#fbbf24;margin-bottom:30px;font-weight:normal}
-</style>
-</head>
-<body data-theme="dark">
 .features{display:flex;gap:18px;margin-top:28px;justify-content:center;flex-wrap:wrap}
 .feat{text-align:center;color:var(--feat-text);font-size:12px;width:80px;padding:8px;background:var(--feat-bg);border:1px solid var(--feat-border);border-radius:8px}
 .feat .fi{font-size:26px;margin-bottom:4px}
@@ -57,6 +62,14 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC'
 .act-btn:hover{background:rgba(245,158,11,0.3)}
 .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;line-height:1.8;color:var(--learn-text)}
 .learn-box b{color:#f59e0b}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 #bar{position:absolute;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:none;align-items:center;padding:0 12px;gap:8px;z-index:10}
 #bar .prog{margin-left:auto;font-size:12px;color:var(--text-muted)}
 canvas{position:absolute;left:320px;top:0;background:var(--bg)}
@@ -68,6 +81,7 @@ input[type=range].ctl{width:100%;accent-color:#f59e0b;margin:4px 0}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
@@ -114,6 +128,16 @@ let levelObjs=[[false,false,false],[false,false,false],[false,false,false],[fals
 
 const LEVEL_NAMES=['氧化还原反应','原电池(伏打电池)','电极电位','电解原理','法拉第定律','腐蚀与防护','锂电池原理'];
 const LEVEL_ICONS=['⚡','🔋','📊','🔌','⚖️','🛡️','🔋'];
+const quizData=[
+  {q:'氧化还原反应的本质是什么？',opts:['电子转移','质子数量不变','溶液颜色改变'],ans:0,ok:'对。氧化和还原是一对同时发生的电子转移过程。',bad:'颜色变化可能伴随反应，但本质是电子转移。'},
+  {q:'丹尼尔电池中电子从哪里流向哪里？',opts:['从锌负极流向铜正极','从铜正极流向锌负极','在盐桥中以电子形式流动'],ans:0,ok:'对。锌被氧化释放电子，电子经外电路流向铜电极。',bad:'盐桥负责离子迁移维持电中性，电子走外电路。'},
+  {q:'标准电极电位越负通常说明金属怎样？',opts:['越容易失电子、越活泼','越难被氧化','一定是贵金属'],ans:0,ok:'对。E° 越负，还原倾向弱，失电子倾向强。',bad:'Li、Na、Zn 这类活泼金属的电极电位通常更负。'},
+  {q:'电解过程中阴极发生什么反应？',opts:['还原反应','氧化反应','没有电子参与'],ans:0,ok:'对。无论原电池还是电解池，阴极都发生还原。',bad:'记忆口诀：阳氧阴还。阴极得到电子发生还原。'},
+  {q:'法拉第定律中析出物质量与什么成正比？',opts:['通过的电荷量','电极颜色','烧杯体积'],ans:0,ok:'对。m 与 Q=I·t 成正比。',bad:'公式 m=(M·I·t)/(n·F)，关键变量是电荷量。'},
+  {q:'牺牲阳极保护为什么能保护铁？',opts:['更活泼金属先被氧化','铁被完全隔绝成真空','让铁变成非金属'],ans:0,ok:'对。锌等更活泼金属作为阳极先腐蚀，铁被保护。',bad:'牺牲阳极不是把铁隔绝，而是提供更容易氧化的金属。'},
+  {q:'锂离子电池充放电的关键迁移粒子是什么？',opts:['Li⁺ 在正负极间嵌入/脱出','电子穿过电解液来回移动','铜离子在电极间沉积'],ans:0,ok:'对。Li⁺ 的可逆嵌入/脱出构成摇椅式电池机制。',bad:'电子走外电路，电解液中迁移的关键离子是 Li⁺。'}
+];
+let quizPassed=new Set(),quizFeedback={};
 
 // === Level 0: Redox ===
 let l0oxState=0,l0redState=0,l0connected=false,l0electrons=[];
@@ -137,9 +161,10 @@ window.addEventListener('resize',()=>{resize();draw();});
 
 function startGame(){overlay.style.display='none';wrap.style.display='block';panel.style.display='block';bar.style.display='flex';resize();goLevel(0);animate();}
 
-function goLevel(n){if(n>6)return;curLevel=n;if(!unlocked[n])unlocked[n]=true;initLevel(n);renderPanel();draw();}
+function goLevel(n){if(n<0||n>6||!isUnlocked(n))return;curLevel=n;unlocked[n]=true;initLevel(n);renderPanel();draw();}
 
-function checkObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;if(levelObjs[li].every(v=>v)&&li<6)unlocked[li+1]=true;renderPanel();}}
+function checkObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();}}
+function isUnlocked(n){return n===0||quizPassed.has(n-1)}
 
 function initLevel(n){
   switch(n){
@@ -155,8 +180,12 @@ function initLevel(n){
 
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  LEVEL_NAMES.forEach((_,i)=>{const cls=i<curLevel?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})" title="${LEVEL_NAMES[i]}"></div>`;});
-  h+=`</div><div class="sn-info">${LEVEL_ICONS[curLevel]} ${curLevel+1}/${LEVEL_NAMES.length} ${LEVEL_NAMES[curLevel]}</div></div>`;
+  LEVEL_NAMES.forEach((_,i)=>{
+    const unlocked=isUnlocked(i),cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    const click=unlocked?`goLevel(${i})`:'';
+    h+=`<div class="sn-d ${cls}" onclick="${click}" title="${unlocked?LEVEL_NAMES[i]:'答对上一关测验后解锁'}"></div>`;
+  });
+  h+=`</div><div class="sn-info">${LEVEL_ICONS[curLevel]} ${curLevel+1}/${LEVEL_NAMES.length} ${LEVEL_NAMES[curLevel]}</div><div class="sn-hint">${quizPassed.size}/${LEVEL_NAMES.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
   return h;
 }
 
@@ -164,6 +193,26 @@ function summaryHTML(){
   const done=levelObjs.flat().filter(v=>v).length,total=levelObjs.flat().length;
   return `<div class="summary-box"><div class="summary-title">🎉 电化学探险完成！</div><div class="summary-sub">你已掌握电化学核心概念</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}</div><div class="label">完成目标</div></div><div class="summary-stat"><div class="num">7</div><div class="label">探索关卡</div></div></div><div class="summary-keys"><div>⚡ 氧化还原：电子转移的本质</div><div>🔋 原电池：化学能→电能</div><div>📊 电极电位：活动性序列</div><div>🔌 电解：电能→化学能</div><div>⚖️ 法拉第定律：定量计算</div><div>🛡️ 腐蚀防护：牺牲阳极/阴极保护</div><div>🔋 锂电池：可逆嵌入脱出</div></div></div>`;
 }
+function quizHTML(li){
+  const q=quizData[li],fb=quizFeedback[li];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`;});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+function answerQuiz(li,choice){
+  if(li!==curLevel||quizPassed.has(li))return;
+  const q=quizData[li],ok=choice===q.ans;
+  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  if(ok){
+    quizPassed.add(li);
+    if(li<6)unlocked[li+1]=true;
+  }
+  renderPanel();
+}
+window.answerQuiz=answerQuiz;
 
 function renderPanel(){
   let h=renderStageNav();
@@ -171,10 +220,15 @@ function renderPanel(){
     case 0:h+=renderP0();break;case 1:h+=renderP1();break;case 2:h+=renderP2();break;
     case 3:h+=renderP3();break;case 4:h+=renderP4();break;case 5:h+=renderP5();break;case 6:h+=renderP6();break;
   }
-  if(levelObjs[curLevel].every(v=>v)&&curLevel<6)h+=`<button class="act-btn" style="background:#f59e0b;color:#fff;margin-top:8px" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
-  if(levelObjs[curLevel].every(v=>v)&&curLevel===6)h+=summaryHTML();
+  if(levelObjs[curLevel].every(v=>v)){
+    if(!quizPassed.has(curLevel))h+=quizHTML(curLevel);
+    if(quizPassed.has(curLevel)&&curLevel<6)h+=`<button class="act-btn" style="background:#f59e0b;color:#fff;margin-top:8px" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+    if(quizPassed.has(curLevel)&&curLevel===6)h+=summaryHTML();
+  }
   panel.innerHTML=h;
-  bar.innerHTML=`<span style="color:var(--text-muted)">⚡ ${LEVEL_NAMES[curLevel]}</span><span class="prog">${levelObjs.flat().filter(v=>v).length}/${levelObjs.flat().length} 目标</span>`;
+  const done=levelObjs[curLevel].filter(Boolean).length;
+  const status=quizPassed.has(curLevel)?'已通关':levelObjs[curLevel].every(Boolean)?'待测验':'进行中';
+  bar.innerHTML=`<span style="color:var(--text-muted)">⚡ ${LEVEL_NAMES[curLevel]}</span><span class="prog">目标 ${done}/3 · ${status} · 通关 ${quizPassed.size}/${LEVEL_NAMES.length}</span>`;
 }
 
 function renderP0(){

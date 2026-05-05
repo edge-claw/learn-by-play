@@ -147,8 +147,17 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 12px}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -213,7 +222,35 @@ function drawParticles(){particles.forEach(p=>{ctx.globalAlpha=p.life;ctx.fillSt
 
 // Level objectives tracking
 const levelObjs=Array.from({length:7},()=>[false,false,false]);
-function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;updateObjDisplay();spawnParticles(160,200,ACCENT,20);if(levelObjs[li].every(v=>v)){completedLevels.add(li);setTimeout(()=>buildPanel(li),600)}}}
+const quizData=[
+  {q:'词法分析器输出的核心结果是什么？',opts:['Token 序列','机器码文件','数据库索引'],ans:0,ok:'对。词法分析把字符流切成带类型和值的 Token。',bad:'词法分析还没有生成语法树或机器码，它先输出 Token 流。'},
+  {q:'为什么 3 + 4 * 2 的 AST 中乘法通常更深一层？',opts:['乘法优先级高，先结合成子树','加法一定不能出现在根节点','数字越大越靠近根节点'],ans:0,ok:'对。高优先级运算先组成子树，再被低优先级运算引用。',bad:'AST 结构由文法、优先级和结合性决定，不由数字大小决定。'},
+  {q:'语义分析主要捕获哪类问题？',opts:['类型不匹配和未声明变量','代码缩进样式','图片压缩比例'],ans:0,ok:'对。类型检查、作用域解析和符号表查询是语义分析重点。',bad:'语义分析关注程序含义是否正确，不是格式化阶段。'},
+  {q:'三地址码中的临时变量 t1、t2 常用于什么？',opts:['保存中间计算结果','直接代表 CPU 风扇速度','替代所有源文件名'],ans:0,ok:'对。临时变量把复杂表达式拆成线性步骤。',bad:'三地址码是中间表示，临时变量服务于表达式分解。'},
+  {q:'常量折叠的含义是什么？',opts:['在编译期计算常量表达式','运行时随机改写变量','删除所有 return 语句'],ans:0,ok:'对。3*4 这类确定表达式可以提前化简。',bad:'优化不能改变程序语义，常量折叠只是提前计算确定结果。'},
+  {q:'目标代码生成为什么要做寄存器分配？',opts:['寄存器有限，需要决定哪些值放入寄存器','让变量名更长','把源码注释写入显存'],ans:0,ok:'对。好的分配能减少内存访问，提高生成代码效率。',bad:'目标代码生成面向机器资源，寄存器是稀缺的高速存储。'},
+  {q:'完整编译流水线的典型顺序是什么？',opts:['词法→语法→语义→IR→优化→目标代码','优化→词法→目标代码→语义','语义→图片渲染→网络请求'],ans:0,ok:'对。编译过程逐步降低抽象层次，直到目标代码。',bad:'编译器通常先理解源码结构，再生成和优化低层表示。'}
+];
+let quizPassed=new Set(),quizFeedback={};
+function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;updateObjDisplay();spawnParticles(160,200,ACCENT,20);if(levelObjs[li].every(v=>v)){setTimeout(()=>buildPanel(li),600)}}}
+function isUnlocked(i){return i===0||quizPassed.has(i-1)}
+function quizHTML(li){
+  const q=quizData[li],fb=quizFeedback[li];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+function answerQuiz(li,choice){
+  if(li!==currentLevel||quizPassed.has(li))return;
+  const q=quizData[li],ok=choice===q.ans;
+  quizFeedback[li]={ok:ok,text:ok?q.ok:q.bad};
+  if(ok){quizPassed.add(li);completedLevels.add(li)}
+  buildPanel(li);
+}
+window.answerQuiz=answerQuiz;
 function updateObjDisplay(){const el=document.getElementById('objList');if(!el)return;const items=el.querySelectorAll('.obj-item');items.forEach((it,i)=>{if(levelObjs[currentLevel][i])it.classList.add('done')})}
 
 // Level definitions
@@ -255,9 +292,10 @@ function hidePanel(){$('lp').style.display='none';$('bar').style.display='none'}
 function setBar(lv,info){const b=document.getElementById('bar');b.innerHTML='<span style="color:var(--text-muted)">'+lv+'</span>';}
 
 function startGame(){$('startScreen').classList.add('hidden');loadLevel(0)}
-function loadLevel(idx){
+function loadLevel(idx,forceReset){
+  if(idx<0||idx>=levels.length||!isUnlocked(idx))return;
   currentLevel=idx;gameState='play';levelState={};
-  levelObjs[idx]=[false,false,false];
+  if(forceReset||!quizPassed.has(idx))levelObjs[idx]=[false,false,false];
   $('lpTitle').textContent=levels[idx].icon+' '+levels[idx].title;
   $('lpStep').textContent=(idx+1)+'/7';
   setBar(levels[idx].icon+' '+levels[idx].title,'');
@@ -277,9 +315,12 @@ function buildPanel(idx){
   h+='</div>';
   h+='<div id="controls"></div>';
   if(levelObjs[idx].every(v=>v)){
-    h+='<div class="learn-box">'+learnTexts[idx]+'</div>';
-    if(idx<6)h+='<div class="act-section"><button class="act-btn" onclick="loadLevel('+(idx+1)+')">下一关 →</button></div>';
-    else h+='<div class="act-section"><button class="act-btn" onclick="showFinal()">查看总结 🏆</button></div>';
+    if(!quizPassed.has(idx))h+=quizHTML(idx);
+    if(quizPassed.has(idx)){
+      h+='<div class="learn-box">'+learnTexts[idx]+'</div>';
+      if(idx<6)h+='<div class="act-section"><button class="act-btn" onclick="loadLevel('+(idx+1)+')">下一关 →</button></div>';
+      if(idx===6)h+=(window._summaryHTML?window._summaryHTML():'<div class="act-section"><button class="act-btn" onclick="showFinal()">查看总结 🏆</button></div>');
+    }
   }
   $('lp-body').innerHTML=h;
   buildControls(idx);
@@ -308,17 +349,22 @@ const learnTexts=[
 ];
 
 function showResult(li){
-  const L=levels[li];completedLevels.add(li);
+  const L=levels[li];
   let h='<div class="rb-icon">🎉</div><div class="rb-title">'+L.title+' 通关！</div>';
-  h+='<div class="rb-desc">你已掌握编译器的'+L.title+'阶段</div>';
-  h+='<div class="rb-learn">'+learnTexts[li]+'</div>';
-  if(li<6)h+='<button class="btn-next" onclick="nextLevel()">下一关 →</button>';
-  else h+='<button class="btn-next" onclick="showFinal()">查看总结 🏆</button>';
+  if(quizPassed.has(li)){
+    h+='<div class="rb-desc">你已掌握编译器的'+L.title+'阶段</div>';
+    h+='<div class="rb-learn">'+learnTexts[li]+'</div>';
+    if(li<6)h+='<button class="btn-next" onclick="nextLevel()">下一关 →</button>';
+    else h+='<button class="btn-next" onclick="showFinal()">查看总结 🏆</button>';
+  }else{
+    h+='<div class="rb-desc">目标已完成，请先答对左侧通关小测验，才能解锁下一关。</div>';
+    h+='<button class="btn-next" onclick="$(`resultModal`).classList.add(`hidden`);buildPanel(currentLevel)">去答测验</button>';
+  }
   h+='<button class="btn-retry" onclick="retryLevel()">重玩</button>';
   $('resultBox').innerHTML=h;$('resultModal').classList.remove('hidden');
 }
 function nextLevel(){$('resultModal').classList.add('hidden');loadLevel(currentLevel+1)}
-function retryLevel(){$('resultModal').classList.add('hidden');loadLevel(currentLevel)}
+function retryLevel(){$('resultModal').classList.add('hidden');loadLevel(currentLevel,true)}
 function showFinal(){
   let h='<div class="rb-icon">🏆</div><div class="rb-title">全部通关！</div>';
   h+='<div class="rb-desc">你已完成从源代码到机器码的完整旅程</div>';
@@ -699,13 +745,13 @@ function showPipeQuiz(){
   let h='<div class="act-section"><div class="as-label">总结问题</div>';
   h+='<div style="font-size:13px;color:#eee;margin:8px 12px;line-height:1.6">'+quizQ.q+'</div>';
   quizQ.opts.forEach((o,i)=>{
-    h+='<div class="ir-line" onclick="answerQuiz('+i+')" id="quiz'+i+'">'+o+'</div>';
+    h+='<div class="ir-line" onclick="answerPipelineQuiz('+i+')" id="quiz'+i+'">'+o+'</div>';
   });
   h+='</div>';
   $('pipeQuiz').style.display='block';
   $('pipeQuiz').innerHTML=h;
 }
-function answerQuiz(i){
+function answerPipelineQuiz(i){
   if(levelState.quizAnswered)return;
   if(i===quizQ.ans){
     levelState.quizAnswered=true;
@@ -1105,6 +1151,7 @@ function goLevel(i){loadLevel(i);}
     return null;
   }
   function _isDone(i){
+    if(typeof quizPassed!=='undefined')return quizPassed.has(i);
     var o=_getObjs();
     if(o&&o[i])return o[i].every(function(v){return v;});
     if(typeof completedLevels!=='undefined')return completedLevels.has(i);
@@ -1126,11 +1173,14 @@ function goLevel(i){loadLevel(i);}
     var pct=s.total>0?Math.round(s.done/s.total*100):0;
     var h='<div class="stage-nav"><div class="sn-bar">';
     for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+      var unlocked=typeof isUnlocked==='function'?isUnlocked(i):true;
+      var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
+      var click=unlocked?"typeof goLevel==='function'&&goLevel("+i+")":'';
+      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+    if(typeof quizPassed!=='undefined')h+='<div class="sn-hint">'+quizPassed.size+'/'+total+' \u5DF2\u901A\u5173\uFF0C\u5B8C\u6210\u76EE\u6807\u540E\u7B54\u5BF9\u6D4B\u9A8C\u624D\u89E3\u9501\u4E0B\u4E00\u5173</div>';
 
     h+='</div>';
     return h;

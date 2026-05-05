@@ -106,8 +106,17 @@ canvas{display:block}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -173,6 +182,16 @@ const levels=[
   {name:'哈希表',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>数据结构：</b>哈希表 — 哈希函数 + 冲突解决</div>理解哈希映射与冲突解决策略',objs:['插入3个键值对','观察一次哈希冲突','切换冲突解决方式']},
   {name:'堆与优先队列',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>数据结构：</b>最小堆 — 上浮 / 下沉 / 堆排序</div>理解堆的性质与堆排序过程',objs:['构建一个最小堆','执行堆排序','观察上浮下沉动画']}
 ];
+const quizData=[
+  {q:'数组和链表最核心的取舍是什么？',opts:['数组随机访问快，链表插入删除更灵活','两者内存布局完全一样','链表一定能 O(1) 随机访问'],ans:0,ok:'对。数组连续存储支持快速下标访问，链表靠指针链接更适合局部插删。',bad:'关键区别在内存布局：数组连续，链表分散并靠指针连接。'},
+  {q:'栈和队列分别遵循什么访问规则？',opts:['栈 LIFO，队列 FIFO','栈 FIFO，队列 LIFO','两者都随机访问'],ans:0,ok:'对。栈后进先出，队列先进先出。',bad:'括号匹配常用栈，BFS 常用队列，规则不同。'},
+  {q:'快速排序平均时间复杂度通常是多少？',opts:['O(n log n)','O(1)','O(n³)'],ans:0,ok:'对。快速排序平均 O(n log n)，但最坏可退化。',bad:'排序需要比较和划分，通常不可能对任意输入 O(1)。'},
+  {q:'二叉搜索树的中序遍历会得到什么结果？',opts:['有序序列','层序随机序列','只输出根节点'],ans:0,ok:'对。BST 左 < 根 < 右，所以中序遍历有序。',bad:'中序遍历是左、根、右，正好对应 BST 的有序关系。'},
+  {q:'AVL 树旋转的目的是什么？',opts:['保持树高平衡，避免退化','让所有节点值变大','删除所有叶子节点'],ans:0,ok:'对。旋转能恢复平衡，让查找保持 O(log n)。',bad:'旋转改变局部结构，不改变中序有序性。'},
+  {q:'哈希表冲突指什么？',opts:['不同 key 映射到同一个槽位','数组越界必然发生','key 不能计算哈希值'],ans:0,ok:'对。链地址法或开放寻址法都在处理这种槽位冲突。',bad:'冲突是多个 key 命中同一个 bucket，不是哈希表不能工作。'},
+  {q:'最小堆的性质是什么？',opts:['父节点不大于子节点','根节点一定最大','所有叶子必须相等'],ans:0,ok:'对。最小堆根节点是全局最小值。',bad:'最小堆要求父节点 <= 子节点，不要求左右子树完全有序。'}
+];
+let quizPassed=new Set(),quizFeedback={};
 
 // ===== 关卡状态 =====
 let arrData=[],llData=[],arrOps=0,llOps=0,arrDel=false,llDel=false;
@@ -234,7 +253,8 @@ function gameLoop(ts){
   drawLevel();animId=requestAnimationFrame(gameLoop);
 }
 
-function goLevel(n){curLevel=n;initLevel(n)}
+function isUnlocked(n){return n===0||quizPassed.has(n-1)}
+function goLevel(n){if(n<0||n>=levels.length||!isUnlocked(n))return;curLevel=n;initLevel(n)}
 function initLevel(n){
   curLevel=n;
   switch(n){
@@ -307,11 +327,29 @@ function renderPanel(){
   // 知识点
   if(levelObjs[li].every(v=>v)){
     h+=`<div class="learn-box"><h4>📚 知识点</h4><p>${getLearnText(li)}</p></div>`;
-    if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-    if(li===6)h+=`${_summaryHTML()}`;
+    if(!quizPassed.has(li))h+=quizHTML(li);
+    if(quizPassed.has(li)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+    if(quizPassed.has(li)&&li===6&&window._summaryHTML)h+=`${window._summaryHTML()}`;
   }
   panel.innerHTML=h;
 }
+function quizHTML(li){
+  const q=quizData[li],fb=quizFeedback[li];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`;});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+function answerQuiz(li,choice){
+  if(li!==curLevel||quizPassed.has(li))return;
+  const q=quizData[li],ok=choice===q.ans;
+  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  if(ok)quizPassed.add(li);
+  renderPanel();
+}
+window.answerQuiz=answerQuiz;
 function getLearnText(li){
   const texts=[
     '数组支持 O(1) 随机访问，但插入/删除需要移动元素 O(n)。链表插入/删除 O(1)，但访问需要遍历 O(n)。选择取决于操作频率。',
@@ -941,6 +979,7 @@ function drawHeapVis(){
     return null;
   }
   function _isDone(i){
+    if(typeof quizPassed!=='undefined')return quizPassed.has(i);
     var o=_getObjs();
     if(o&&o[i])return o[i].every(function(v){return v;});
     if(typeof completedLevels!=='undefined')return completedLevels.has(i);
@@ -962,12 +1001,14 @@ function drawHeapVis(){
     var pct=s.total>0?Math.round(s.done/s.total*100):0;
     var h='<div class="stage-nav"><div class="sn-bar">';
     for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+      var unlocked=typeof isUnlocked==='function'?isUnlocked(i):true;
+      var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
+      var click=unlocked?"typeof goLevel==='function'&&goLevel("+i+")":'';
+      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
+    if(typeof quizPassed!=='undefined')h+='<div class="sn-hint">'+quizPassed.size+'/'+total+' \u5DF2\u901A\u5173\uFF0C\u5B8C\u6210\u76EE\u6807\u540E\u7B54\u5BF9\u6D4B\u9A8C\u624D\u89E3\u9501\u4E0B\u4E00\u5173</div>';
     h+='</div>';
     return h;
   };

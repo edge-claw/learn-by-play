@@ -138,8 +138,17 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:12px}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px 10px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:7px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -205,6 +214,8 @@ let bubbles = [];
 let particles = [];
 let animId;
 let completedLevels = new Set();
+let quizPassed = new Set();
+let quizFeedback = {};
 let panelRendered = false;
 
 function resize() {
@@ -325,6 +336,49 @@ function drawSubmersible(x, y, scale, opts) {
   ctx.restore();
 }
 
+function areaInfo() {
+  return { x: 320, y: 0, w: Math.max(0, CW - 320), h: CH };
+}
+function getScreenPos(nx, ny) {
+  const a = areaInfo();
+  return { x: a.x + a.w * nx, y: a.y + a.h * ny };
+}
+function drawLabel(text, x, y, color) {
+  ctx.fillStyle = color || '#dbeafe';
+  ctx.font = '12px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, x, y);
+}
+function drawSeabed(depthScale) {
+  const a = areaInfo();
+  const baseY = CH * (depthScale || 0.82);
+  const grd = ctx.createLinearGradient(0, baseY - 30, 0, CH);
+  grd.addColorStop(0, 'rgba(50,40,60,0.45)');
+  grd.addColorStop(1, 'rgba(20,14,24,0.9)');
+  ctx.fillStyle = grd;
+  ctx.beginPath();
+  ctx.moveTo(a.x, CH);
+  ctx.lineTo(a.x, baseY);
+  for (let x = a.x; x <= CW + 20; x += 40) {
+    const y = baseY + Math.sin(x * 0.018 + time * 0.01) * 12 + Math.sin(x * 0.041) * 8;
+    ctx.lineTo(x, y);
+  }
+  ctx.lineTo(CW, CH);
+  ctx.closePath();
+  ctx.fill();
+}
+function drawInfoPill(text, x, y, color) {
+  ctx.font = '12px sans-serif';
+  const w = ctx.measureText(text).width + 18;
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(x - w / 2, y - 15, w, 24);
+  ctx.strokeStyle = color || '#00bfff';
+  ctx.strokeRect(x - w / 2, y - 15, w, 24);
+  ctx.fillStyle = color || '#00bfff';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, x, y + 2);
+}
+
 // ============ 关卡定义 ============
 const LEVELS = [
   // 第1关：水压
@@ -334,6 +388,7 @@ const LEVELS = [
     concept:'<b>帕斯卡定律</b>：密闭液体中任一点的压力变化会等值传递到各处。\n\n海水压力公式：P = ρgh\n其中 ρ=1025kg/m³（海水密度），g=9.8m/s²，h=深度',
     goals:[{label:'将深度调到5000m以上',check:s=>s.depth>=5000},{label:'观察潜器在11000m的变形',check:s=>s.maxDepth>=11000}],
     hint:'拖动滑块控制下潜深度，观察压力表和潜器外壳的变化！',
+    quiz:{q:'深度每增加约10米，海水压力会怎样变化？',opts:['减少1个大气压','增加约1个大气压','保持不变','只受温度影响'],ans:1},
     actions: s => {
       let h = `<div class="slider-wrap"><label>下潜深度: <span class="sv">${s.depth} m</span></label>`;
       h += `<input type="range" min="0" max="11000" step="100" value="${s.depth}" oninput="doAction('setDepth',this.value)"></div>`;
@@ -344,7 +399,7 @@ const LEVELS = [
       const zone = s.depth < 200 ? '透光层' : s.depth < 1000 ? '弱光层' : s.depth < 4000 ? '无光层' : s.depth < 6000 ? '深渊层' : '超深渊层';
       h += `海洋分区: <span style="color:#4af">${zone}</span>`;
       h += `</div>`;
-      if (s.depth >= 5000 && s.maxDepth >= 11000) h += `<button class="act-btn green" onclick="checkLevel()">🎉 完成探索！查看总结</button>`;
+      if (s.depth >= 5000 && s.maxDepth >= 11000) h += `<button class="act-btn green" onclick="checkLevel()">🎉 完成探索！进入小测验</button>`;
       return h;
     },
     init: () => ({ depth: 0, maxDepth: 0 }),
@@ -357,6 +412,7 @@ const LEVELS = [
     concept:'<b>阿基米德原理</b>：浸在液体中的物体受到向上的浮力，大小等于排开液体的重力。\n\n浮力 = ρ_水 × V_排 × g\n注水→重力增大→下沉\n排水→重力减小→上浮',
     goals:[{label:'理解注水下沉/排水上浮',check:s=>s.operated},{label:'到达目标深度(±50m)',check:s=>s.reached}],
     hint:'用按钮控制压载水舱的注水和排水，让潜器到达目标深度（红色虚线）！',
+    quiz:{q:'潜水器注入压载水后为什么会下沉？',opts:['浮力突然消失','自身重量增大，重力超过浮力','海水密度降低','声呐推着它下沉'],ans:1},
     actions: s => {
       let h = `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin:8px 0">`;
       h += `当前深度: <span style="color:#00bfff;font-size:16px;font-weight:700">${s.subDepth.toFixed(0)} m</span><br>`;
@@ -370,7 +426,7 @@ const LEVELS = [
       h += `<input type="range" min="0" max="100" value="${(s.ballast * 100).toFixed(0)}" oninput="doAction('setBallast',this.value)"></div>`;
       h += `<button class="act-btn" onclick="doAction('inject')">💧 注水（下沉）</button>`;
       h += `<button class="act-btn blue" onclick="doAction('drain')">🫧 排水（上浮）</button>`;
-      if (s.reached) h += `<button class="act-btn green" onclick="checkLevel()">🎉 到达目标！查看总结</button>`;
+      if (s.reached) h += `<button class="act-btn green" onclick="checkLevel()">🎉 到达目标！进入小测验</button>`;
       return h;
     },
     init: () => ({ subDepth: 0, velocity: 0, ballast: 0.3, targetDepth: 800, operated: false, reached: false }),
@@ -383,6 +439,7 @@ const LEVELS = [
     concept:'<b>声呐原理</b>：发射声波脉冲→碰到海底反射→接收回波\n\n深度 = (声速 × 回波时间) / 2\n海水中声速 ≈ 1500 m/s\n\n多次测量可绘制海底地形图。',
     goals:[{label:'发射3次以上声波',check:s=>s.pingCount>=3},{label:'绘制出海底地形轮廓',check:s=>s.profilePoints>=5}],
     hint:'点击"发射声波"，观察声波扩散和回波。多次发射可以绘制海底地形！',
+    quiz:{q:'声呐用回波时间计算深度时，为什么公式要除以2？',opts:['声波速度会减半','声波走了发射和返回两段路程','海水密度约为2','接收器只能测一半'],ans:1},
     actions: s => {
       let h = `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin:8px 0">`;
       h += `已发射: <span style="color:#00bfff;font-weight:700">${s.pingCount} 次</span><br>`;
@@ -393,7 +450,7 @@ const LEVELS = [
       }
       h += `</div>`;
       h += `<button class="act-btn" onclick="doAction('ping')" ${s.pinging?'disabled':''}>📡 发射声波</button>`;
-      if (s.pingCount >= 3 && s.profilePoints >= 5) h += `<button class="act-btn green" onclick="checkLevel()">🎉 地形绘制完成！查看总结</button>`;
+      if (s.pingCount >= 3 && s.profilePoints >= 5) h += `<button class="act-btn green" onclick="checkLevel()">🎉 地形绘制完成！进入小测验</button>`;
       return h;
     },
     init: () => {
@@ -412,6 +469,7 @@ const LEVELS = [
     concept:'<b>深海生物适应</b>：\n• 透光层(0-200m)：光合作用，水母等\n• 弱光层(200-1000m)：生物发光，灯笼鱼\n• 无光层(1000-4000m)：管虫、巨型章鱼\n• 深渊层(6000m+)：盲虾、端足类\n\n深海生物通过<b>生物发光</b>、<b>耐压蛋白</b>等适应极端环境。',
     goals:[{label:'下潜发现3种以上生物',check:s=>s.discovered>=3},{label:'到达11000m发现端足类',check:s=>s.foundAmphipod}],
     hint:'缓慢下潜，在不同深度会遇到不同的深海生物。点击生物查看介绍！',
+    quiz:{q:'万米深渊的端足类能生存，关键适应之一是什么？',opts:['依靠光合作用','体内有耐压相关物质如TMAO','完全不需要蛋白质','靠肺呼吸空气'],ans:1},
     actions: s => {
       let h = `<div class="slider-wrap"><label>下潜深度: <span class="sv">${s.depth} m</span></label>`;
       h += `<input type="range" min="0" max="11000" step="50" value="${s.depth}" oninput="doAction('setDiveDepth',this.value)"></div>`;
@@ -429,7 +487,7 @@ const LEVELS = [
           h += `<div style="font-size:12px;color:#999;line-height:1.6">${c.info}</div></div>`;
         }
       }
-      if (s.discovered >= 3 && s.foundAmphipod) h += `<button class="act-btn green" onclick="checkLevel()">🎉 生态探索完成！查看总结</button>`;
+      if (s.discovered >= 3 && s.foundAmphipod) h += `<button class="act-btn green" onclick="checkLevel()">🎉 生态探索完成！进入小测验</button>`;
       return h;
     },
     init: () => ({
@@ -451,6 +509,7 @@ const LEVELS = [
     concept:'<b>化能自养</b>：不依赖阳光，而是利用化学能（如H₂S氧化）合成有机物。\n\n热液喷口是地球上最极端的生态系统之一，可能是生命起源的地方。\n\n喷出物含有：H₂S（硫化氢）、Fe（铁）、Mn（锰）、Cu（铜）等。',
     goals:[{label:'发现黑烟囱并观察温度',check:s=>s.foundChimney},{label:'采集并分析化学成分',check:s=>s.analyzed}],
     hint:'下潜到海底寻找热液喷口（黑烟囱），点击采样分析化学成分！',
+    quiz:{q:'热液喷口生态系统的基础能量来源是什么？',opts:['阳光光合作用','硫化氢等化学能','潮汐月光','海底磁场'],ans:1},
     actions: s => {
       let h = `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin:8px 0">`;
       h += `深度: <span style="color:#00bfff;font-weight:700">2500 m</span><br>`;
@@ -477,7 +536,7 @@ const LEVELS = [
         h += `</div></div>`;
         h += `<button class="act-btn blue" onclick="doAction('analyze')">📊 确认分析</button>`;
       }
-      if (s.analyzed) h += `<button class="act-btn green" onclick="checkLevel()">🎉 分析完成！查看总结</button>`;
+      if (s.analyzed) h += `<button class="act-btn green" onclick="checkLevel()">🎉 分析完成！进入小测验</button>`;
       return h;
     },
     init: () => ({ foundChimney: false, temperature: 2, sampled: false, analyzed: false, chimneyParticles: [], searchProgress: 0 }),
@@ -490,6 +549,7 @@ const LEVELS = [
     concept:'<b>耐压壳体设计</b>：\n• 球形壳体受力最均匀\n• 材料强度决定极限深度\n• 观察窗是最薄弱环节\n\n钛合金：强度高、密度低，但昂贵\n高强钢：成本低，但重\n陶瓷：超高强度，但脆性大',
     goals:[{label:'选择材料并通过3000m测试',check:s=>s.pass3000},{label:'通过10000m极限测试',check:s=>s.pass10000}],
     hint:'选择壳体材料和厚度，再选观察窗材料，然后进行压力测试！',
+    quiz:{q:'深潜器耐压壳常采用球形，主要原因是什么？',opts:['最容易涂色','各方向受力更均匀','可以减小浮力','方便声呐反射'],ans:1},
     actions: s => {
       let h = '';
       const materials = [{name:'钛合金',strength:900,density:4.5,color:'#4af'},{name:'高强钢',strength:700,density:7.8,color:'#ff6a33'},{name:'陶瓷',strength:1200,density:3.9,color:'#2aaa5a'}];
@@ -528,7 +588,7 @@ const LEVELS = [
         const ok = s.testResult === 'pass';
         h += `<div style="color:${ok?'#2aaa5a':'#ff6b6b'};font-size:13px;padding:8px;text-align:center">${ok?'✅ 测试通过！结构完好':'❌ 结构破裂！需要更强的材料或更厚的壳体'}</div>`;
       }
-      if (s.pass3000 && s.pass10000) h += `<button class="act-btn green" onclick="checkLevel()">🎉 设计验证完成！查看总结</button>`;
+      if (s.pass3000 && s.pass10000) h += `<button class="act-btn green" onclick="checkLevel()">🎉 设计验证完成！进入小测验</button>`;
       return h;
     },
     init: () => ({ shellMat: 0, winMat: 0, thickness: 60, testing: false, testDepth: 0, testTarget: 0, testResult: null, pass3000: false, pass10000: false }),
@@ -541,6 +601,7 @@ const LEVELS = [
     concept:'<b>深海采样</b>：\n• 锰结核：海底多金属矿物，含锰、铁、镍、钴\n• 管虫样本：研究极端环境生物适应机制\n• 机械臂：液压驱动，7个自由度\n\n采样需要极其精细的操作，避免破坏脆弱的深海生态。',
     goals:[{label:'采集锰结核样本',check:s=>s.collectedMineral},{label:'采集管虫样本',check:s=>s.collectedBio}],
     hint:'移动鼠标控制机械臂角度，靠近目标后点击抓取，再移到采样箱上方点击释放！',
+    quiz:{q:'深海采样为什么要强调精细操作和生态保护？',opts:['样本没有科研价值','深海生态脆弱，恢复很慢','机械臂越粗暴越准确','锰结核会主动逃跑'],ans:1},
     actions: s => {
       let h = `<div style="background:#0e0e20;border-radius:8px;padding:10px;font-size:12px;color:#aaa;margin:8px 0">`;
       h += `深度: <span style="color:#00bfff;font-weight:700">10900 m</span><br>`;
@@ -553,7 +614,7 @@ const LEVELS = [
       h += `🖱️ 移动鼠标 → 控制机械臂<br>`;
       h += `🖱️ 点击目标 → 抓取样本<br>`;
       h += `🖱️ 点击采样箱 → 放入样本</div>`;
-      if (s.collectedMineral && s.collectedBio) h += `<button class="act-btn green" onclick="checkLevel()">🎉 采样完成！查看总结</button>`;
+      if (s.collectedMineral && s.collectedBio) h += `<button class="act-btn green" onclick="checkLevel()">🎉 采样完成！进入小测验</button>`;
       return h;
     },
     init: () => ({
@@ -571,7 +632,37 @@ const LEVELS = [
   }
 ];
 
-// PLACEHOLDER_ENGINE
+// ============ 学习闭环与关卡解锁 ============
+
+function isLevelDone(idx) {
+  const lv = LEVELS[idx];
+  return lv.goals.every(g => g.check(idx === currentLevel ? levelState : (lv._state || {})));
+}
+function isUnlocked(idx) {
+  return idx === 0 || quizPassed.has(idx - 1);
+}
+function renderStageNav() {
+  const passed = quizPassed.size;
+  let h = '<div class="stage-nav"><div class="sn-bar">';
+  for (let i = 0; i < LEVELS.length; i++) {
+    const unlocked = isUnlocked(i);
+    const cls = quizPassed.has(i) ? 'done' : i === currentLevel ? 'cur' : unlocked ? '' : 'locked';
+    h += `<div class="sn-d ${cls}" onclick="${unlocked ? `goLevel(${i})` : ''}"></div>`;
+  }
+  h += `</div><div class="sn-info">第 ${currentLevel + 1}/${LEVELS.length} 关 | 进度 ${Math.round(passed / LEVELS.length * 100)}%</div>`;
+  h += `<div class="sn-hint">${passed}/${LEVELS.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
+  return h;
+}
+function renderQuiz(lv) {
+  const fb = quizFeedback[currentLevel];
+  let h = `<div class="quiz-box"><div class="quiz-title">通关小测验</div><div class="quiz-q">${lv.quiz.q}</div>`;
+  lv.quiz.opts.forEach((opt, i) => {
+    h += `<button class="quiz-opt" onclick="checkQuiz(${currentLevel},${i})">${opt}</button>`;
+  });
+  if (fb) h += `<div class="quiz-feedback ${fb.ok ? 'ok' : 'bad'}">${fb.text}</div>`;
+  h += '</div>';
+  return h;
+}
 
 // ============ 面板渲染 ============
 function renderPanel() {
@@ -579,7 +670,9 @@ function renderPanel() {
   const s = levelState;
   document.getElementById('lpTitle').textContent = `第 ${currentLevel + 1} 关`;
   document.getElementById('lpStep').textContent = `${currentLevel + 1}/${LEVELS.length}`;
-  let h = `<div class="mission"><div class="m-level">${lv.icon} 关卡 ${currentLevel + 1}</div>`;
+  const allDone = lv.goals.every(g => g.check(s));
+  let h = renderStageNav();
+  h += `<div class="mission"><div class="m-level">${lv.icon} 关卡 ${currentLevel + 1}</div>`;
   h += `<div class="m-title">${lv.title}</div>`;
   h += `<div class="m-desc">${lv.desc}</div>`;
   h += `<div class="m-concept">${lv.concept.replace(/\n/g, '<br>')}</div></div>`;
@@ -591,6 +684,7 @@ function renderPanel() {
   h += `</div>`;
   h += `<div class="hint-b">${lv.hint}</div>`;
   h += `<div class="act-section"><div class="as-label">操作</div>${lv.actions(s)}</div>`;
+  if (allDone && !quizPassed.has(currentLevel)) h += renderQuiz(lv);
   document.getElementById('lp-body').innerHTML = h;
 }
 
@@ -601,6 +695,8 @@ function startGame() {
   gameState = 'playing';
   currentLevel = 0;
   completedLevels.clear();
+  quizPassed.clear();
+  quizFeedback = {};
   initLevel();
 }
 
@@ -635,7 +731,8 @@ function doAction(action, value) {
       if (action === 'ping' && !s.pinging) {
         s.pinging = true;
         s.pingTime = 0;
-        s.pingX = 320 + (CW - 320) * (0.3 + Math.random() * 0.4);
+        const scanSlots = [0.18, 0.34, 0.5, 0.66, 0.82];
+        s.pingX = 320 + (CW - 320) * scanSlots[s.pingCount % scanSlots.length];
         s.waves.push({ x: s.pingX, y: CH * 0.15, r: 0, returning: false, echoR: 0 });
         s.pingCount++;
       }
@@ -676,6 +773,10 @@ function doAction(action, value) {
         s.testResult = null;
       }
       break;
+    case 6: // 深渊采样
+      if (action === 'grab') grabSample(value);
+      if (action === 'release') releaseSample();
+      break;
   }
   renderPanel();
 }
@@ -684,17 +785,31 @@ function checkLevel() {
   const lv = LEVELS[currentLevel];
   const allDone = lv.goals.every(g => g.check(levelState));
   if (!allDone) return;
-  if (!completedLevels.has(currentLevel)) {
-    completedLevels.add(currentLevel);
-  }
-  showResult(true);
+  renderPanel();
 }
 
-function showResult(success) {
+function checkQuiz(levelIdx, picked) {
+  if (levelIdx !== currentLevel || quizPassed.has(levelIdx)) return;
+  const q = LEVELS[levelIdx].quiz;
+  const ok = picked === q.ans;
+  quizFeedback[levelIdx] = {
+    ok,
+    text: ok ? '答对了。先看本关深海知识总结，再进入下一关。' : '还不对。回到目标现象和关键词，再判断核心机制。'
+  };
+  if (ok) {
+    completedLevels.add(levelIdx);
+    quizPassed.add(levelIdx);
+    showResult(true);
+  } else {
+    renderPanel();
+  }
+}
+
+function showResult(success, finalSummary) {
   const lv = LEVELS[currentLevel];
   const isLast = currentLevel === LEVELS.length - 1;
   let h = `<div class="rb-icon">${success ? '🎉' : '❌'}</div>`;
-  h += `<div class="rb-title">${success ? '关卡完成！' : '再试一次'}</div>`;
+  h += `<div class="rb-title">${finalSummary ? '深海探索完成！' : success ? '关卡完成！' : '再试一次'}</div>`;
   h += `<div class="rb-desc">${lv.title}</div>`;
   if (success) h += `<div class="rb-learn">${lv.learn}</div>`;
   if (success && !isLast) {
@@ -722,10 +837,115 @@ function restartGame() {
   document.getElementById('resultModal').classList.add('hidden');
   currentLevel = 0;
   completedLevels.clear();
+  quizPassed.clear();
+  quizFeedback = {};
   initLevel();
 }
 
-// PLACEHOLDER_UPDATE_DRAW
+function goLevel(i) {
+  if (i < 0 || i >= LEVELS.length || !isUnlocked(i)) return;
+  document.getElementById('resultModal').classList.add('hidden');
+  currentLevel = i;
+  initLevel();
+}
+
+// ============ 画布交互与状态栏 ============
+
+function getSampleArmTip(s) {
+  const a = areaInfo();
+  const base = getScreenPos(0.28, 0.42);
+  const l1 = Math.min(120, a.w * 0.18);
+  const l2 = Math.min(95, a.w * 0.14);
+  const joint = {
+    x: base.x + Math.cos(s.armAngle1) * l1,
+    y: base.y + Math.sin(s.armAngle1) * l1
+  };
+  const tip = {
+    x: joint.x + Math.cos(s.armAngle2) * l2,
+    y: joint.y + Math.sin(s.armAngle2) * l2
+  };
+  return { base, joint, tip };
+}
+function nearestTarget(s, maxDist) {
+  const arm = getSampleArmTip(s);
+  let best = null;
+  for (const target of s.targets) {
+    if (target.collected) continue;
+    const p = getScreenPos(target.x, target.y);
+    const d = Math.hypot(arm.tip.x - p.x, arm.tip.y - p.y);
+    if (d <= maxDist && (!best || d < best.d)) best = { target, d };
+  }
+  return best && best.target;
+}
+function grabSample(targetId) {
+  const s = levelState;
+  if (currentLevel !== 6 || s.holding) return;
+  const target = targetId ? s.targets.find(t => t.id === targetId && !t.collected) : nearestTarget(s, 45);
+  if (!target) return;
+  s.holding = true;
+  s.holdingId = target.id;
+  s.holdingName = target.name;
+  target.collected = true;
+}
+function releaseSample() {
+  const s = levelState;
+  if (currentLevel !== 6 || !s.holding) return;
+  const arm = getSampleArmTip(s);
+  const box = getScreenPos(s.boxX, s.boxY);
+  if (Math.hypot(arm.tip.x - box.x, arm.tip.y - box.y) > 70) return;
+  if (s.holdingId && s.holdingId.indexOf('mineral') === 0) s.collectedMineral = true;
+  if (s.holdingId === 'bio') s.collectedBio = true;
+  s.holding = false;
+  s.holdingId = null;
+  s.holdingName = '';
+}
+function updateInfoBar() {
+  const ib = document.getElementById('info-bar');
+  if (!ib || gameState !== 'playing') return;
+  ib.style.display = 'block';
+  const lv = LEVELS[currentLevel];
+  const done = lv.goals.filter(g => g.check(levelState)).length;
+  ib.innerHTML = `<div class="ib-title">${lv.icon} ${lv.title}</div>` +
+    `<div class="ib-row"><span class="ib-k">目标</span><span class="ib-v">${done}/${lv.goals.length}</span></div>` +
+    `<div class="ib-row"><span class="ib-k">测验</span><span class="ib-v">${quizPassed.has(currentLevel) ? '已通过' : '待完成'}</span></div>` +
+    `<div class="ib-row"><span class="ib-k">总进度</span><span class="ib-v">${quizPassed.size}/${LEVELS.length}</span></div>`;
+  document.getElementById('bbLeft').textContent = `关卡 ${currentLevel + 1}/${LEVELS.length} — ${lv.title}`;
+  document.getElementById('bbRight').textContent = `测验通过 ${quizPassed.size}/${LEVELS.length}`;
+}
+function handlePointerMove(e) {
+  if (currentLevel !== 6 || !levelState.targets) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const s = levelState;
+  const arm = getSampleArmTip(s);
+  s.armAngle1 = Math.atan2(my - arm.base.y, mx - arm.base.x);
+  const jointX = arm.base.x + Math.cos(s.armAngle1) * Math.min(120, areaInfo().w * 0.18);
+  const jointY = arm.base.y + Math.sin(s.armAngle1) * Math.min(120, areaInfo().w * 0.18);
+  s.armAngle2 = Math.atan2(my - jointY, mx - jointX);
+}
+function handleCanvasClick(e) {
+  if (currentLevel !== 6 || !levelState.targets) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const s = levelState;
+  const box = getScreenPos(s.boxX, s.boxY);
+  if (s.holding && Math.hypot(mx - box.x, my - box.y) < 75) {
+    const arm = getSampleArmTip(s);
+    s.armAngle1 = Math.atan2(my - arm.base.y, mx - arm.base.x);
+    releaseSample();
+    renderPanel();
+    return;
+  }
+  const target = s.targets.find(t => !t.collected && Math.hypot(mx - getScreenPos(t.x, t.y).x, my - getScreenPos(t.x, t.y).y) < 45);
+  if (target) {
+    grabSample(target.id);
+    renderPanel();
+  }
+}
+canvas.addEventListener('mousemove', handlePointerMove);
+canvas.addEventListener('click', handleCanvasClick);
 
 // ============ 关卡更新逻辑 ============
 function updateLevel(dt) {
@@ -886,213 +1106,167 @@ function drawLevel() {
       ctx.fillText(`${s.subDepth.toFixed(0)} m`, ox + ow * 0.5, CH - 20);
       break;
     }
-    // PLACEHOLDER_DRAW_CASES
+    case 2: { // 声呐
+      drawOceanBg(3500);
+      drawBubbles();
+      const a = areaInfo();
+      const sub = getScreenPos(0.5, 0.14);
+      drawSubmersible(sub.x, sub.y, 1.1);
+      ctx.strokeStyle = '#4af';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < s.terrain.length; i++) {
+        const x = a.x + a.w * (i / (s.terrain.length - 1));
+        const y = s.terrain[i] / 11000 * CH;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.lineTo(CW, CH); ctx.lineTo(a.x, CH); ctx.closePath();
+      ctx.fillStyle = 'rgba(18,14,24,0.78)';
+      ctx.fill();
+      ctx.stroke();
+      for (const w of s.waves) {
+        ctx.strokeStyle = w.returning ? 'rgba(74,222,128,0.85)' : 'rgba(0,191,255,0.65)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(w.x, w.y, Math.max(1, w.returning ? w.echoR : w.r), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#22c55e';
+      for (const p of s.profileData) {
+        const y = p.depth / 11000 * CH;
+        ctx.beginPath(); ctx.arc(p.x, y, 5, 0, Math.PI * 2); ctx.fill();
+      }
+      drawInfoPill(`声呐采样 ${s.profilePoints}/5`, sub.x, sub.y - 42, '#00bfff');
+      break;
+    }
+    case 3: { // 深海生态
+      drawOceanBg(s.depth);
+      drawBubbles();
+      drawSubmersible(ox + ow * 0.28, CH * 0.28, 1.0);
+      const zone = s.depth < 200 ? '透光层' : s.depth < 1000 ? '弱光层' : s.depth < 4000 ? '无光层' : s.depth < 6000 ? '深渊层' : '超深渊层';
+      drawInfoPill(`${zone} ${s.depth}m`, ox + ow * 0.5, CH * 0.11, '#00bfff');
+      for (const c of s.creatures) {
+        const mid = (c.minD + c.maxD) / 2;
+        const visible = Math.abs(s.depth - mid) < Math.max(450, (c.maxD - c.minD) * 0.7) || c.found;
+        if (!visible) continue;
+        const x = ox + ow * (0.18 + (c.minD / 11000) * 0.68);
+        const y = CH * (0.34 + (c.maxD / 11000) * 0.45);
+        ctx.globalAlpha = c.found ? 1 : 0.35;
+        ctx.font = c.found ? '34px sans-serif' : '26px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(c.icon, x, y);
+        drawLabel(c.name, x, y + 25, c.found ? '#93c5fd' : '#64748b');
+        ctx.globalAlpha = 1;
+      }
+      break;
+    }
+    case 4: { // 热液喷口
+      drawOceanBg(2500);
+      drawBubbles();
+      drawSeabed(0.78);
+      drawSubmersible(ox + ow * 0.28, CH * 0.42, 1.05);
+      const chimneyX = ox + ow * 0.62, baseY = CH * 0.78;
+      ctx.fillStyle = '#20202a';
+      ctx.fillRect(chimneyX - 20, baseY - 110, 40, 110);
+      ctx.fillRect(chimneyX + 18, baseY - 70, 24, 70);
+      if (s.foundChimney) {
+        for (let i = 0; i < 18; i++) {
+          const py = baseY - 115 - ((time * 24 + i * 18) % 170);
+          const px = chimneyX + Math.sin(i + time * 0.04) * 26;
+          ctx.fillStyle = `rgba(80,80,92,${0.45 - i * 0.012})`;
+          ctx.beginPath(); ctx.arc(px, py, 10 + i * 0.7, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.fillStyle = '#ff6a33';
+        ctx.beginPath(); ctx.arc(chimneyX, baseY - 112, 8, 0, Math.PI * 2); ctx.fill();
+        drawInfoPill(`${s.temperature.toFixed(0)}°C 黑烟囱`, chimneyX, baseY - 145, '#ff6a33');
+      } else {
+        drawInfoPill('搜索热液喷口', chimneyX, baseY - 130, '#ffcc80');
+      }
+      if (s.sampled) drawInfoPill(s.analyzed ? 'H2S 驱动化能生态' : '样本已采集，待分析', ox + ow * 0.5, CH * 0.18, s.analyzed ? '#22c55e' : '#ffcc80');
+      break;
+    }
+    case 5: { // 耐压设计
+      drawOceanBg(Math.min(s.testDepth || 3000, 11000));
+      drawBubbles();
+      const cx = ox + ow * 0.5, cy = CH * 0.46;
+      const pressure = 1 + (s.testing ? s.testDepth : s.testTarget || 0) / 10;
+      const stress = Math.min(1, pressure / 1000);
+      ctx.strokeStyle = s.testResult === 'fail' ? '#ff6b6b' : '#00bfff';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(cx, cy, 95 - stress * 8, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = 'rgba(0,191,255,0.12)';
+      ctx.beginPath(); ctx.arc(cx, cy, 95 - stress * 8, 0, Math.PI * 2); ctx.fill();
+      drawSubmersible(cx, cy, 1.35, { deform: stress });
+      for (let i = 0; i < 12; i++) {
+        const a2 = i / 12 * Math.PI * 2;
+        const x1 = cx + Math.cos(a2) * 150;
+        const y1 = cy + Math.sin(a2) * 150;
+        const x2 = cx + Math.cos(a2) * 110;
+        const y2 = cy + Math.sin(a2) * 110;
+        ctx.strokeStyle = '#ff6a33';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      }
+      const label = s.testing ? `测试 ${s.testDepth.toFixed(0)} / ${s.testTarget}m` : s.testResult ? (s.testResult === 'pass' ? '结构完好' : '结构破裂') : '选择材料并测试';
+      drawInfoPill(label, cx, CH * 0.16, s.testResult === 'fail' ? '#ff6b6b' : '#00bfff');
+      break;
+    }
+    case 6: { // 深渊采样
+      drawOceanBg(10900);
+      drawBubbles();
+      drawSeabed(0.78);
+      const a = areaInfo();
+      drawSubmersible(a.x + a.w * 0.26, CH * 0.38, 1.0);
+      const box = getScreenPos(s.boxX, s.boxY);
+      ctx.fillStyle = 'rgba(0,191,255,0.16)';
+      ctx.fillRect(box.x - 45, box.y - 25, 90, 50);
+      ctx.strokeStyle = '#00bfff';
+      ctx.strokeRect(box.x - 45, box.y - 25, 90, 50);
+      drawLabel('采样箱', box.x, box.y + 45, '#00bfff');
+      for (const target of s.targets) {
+        if (target.collected) continue;
+        const p = getScreenPos(target.x, target.y);
+        ctx.font = '27px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(target.id === 'bio' ? '🪱' : '⚫', p.x, p.y);
+        drawLabel(target.name, p.x, p.y + 22, target.id === 'bio' ? '#22c55e' : '#cbd5e1');
+      }
+      const arm = getSampleArmTip(s);
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.moveTo(arm.base.x, arm.base.y); ctx.lineTo(arm.joint.x, arm.joint.y); ctx.lineTo(arm.tip.x, arm.tip.y); ctx.stroke();
+      ctx.fillStyle = '#64748b';
+      [arm.base, arm.joint, arm.tip].forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, Math.PI * 2); ctx.fill(); });
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(arm.tip.x - 10, arm.tip.y + 8); ctx.lineTo(arm.tip.x, arm.tip.y); ctx.lineTo(arm.tip.x + 10, arm.tip.y + 8); ctx.stroke();
+      if (s.holding) drawInfoPill(`持有 ${s.holdingName}，移到采样箱释放`, arm.tip.x, arm.tip.y - 20, '#ffcc80');
+      else drawInfoPill('点击样本抓取', a.x + a.w * 0.5, CH * 0.15, '#00bfff');
+      break;
+    }
   }
 }
 
-// PLACEHOLDER_MAIN_LOOP
-function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeof curLevel!=="undefined")curLevel=i;if(typeof initLevel==="function")initLevel(i);if(typeof renderPanel==="function")renderPanel();}
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
+// ============ 主循环 ============
 
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
+let lastTs = 0;
+function mainLoop(ts) {
+  animId = requestAnimationFrame(mainLoop);
+  const dt = Math.min((ts - lastTs) / 1000 || 0, 0.05);
+  lastTs = ts;
+  time += dt * 60;
+  drawOceanBg(currentLevel === 0 && levelState.depth ? levelState.depth : 1200);
+  drawBubbles();
+  if (gameState === 'playing') {
+    updateLevel(dt);
+    drawLevel();
+    updateParticles(dt);
+    drawParticles();
+    updateInfoBar();
   }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
+}
 
-
-function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeof curLevel!=="undefined")curLevel=i;if(typeof initLevel==="function")initLevel(i);if(typeof renderPanel==="function")renderPanel();}
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
+animId = requestAnimationFrame(mainLoop);
 
 </script>
 </body>

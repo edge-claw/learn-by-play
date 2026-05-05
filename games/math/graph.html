@@ -107,8 +107,17 @@ canvas{position:fixed;left:320px;top:0;background:var(--bg);display:none}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;line-height:1.6;color:var(--quiz-q);margin-bottom:6px}
+.quiz-opt{display:block;width:100%;text-align:left;padding:8px;margin:4px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;cursor:pointer}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{border-radius:8px;padding:8px;margin:8px 0;font-size:13px;line-height:1.6}
+.quiz-feedback.ok{border:1px solid #22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{border:1px solid #ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -157,6 +166,7 @@ function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),hintEl=document.getElementById('hint'),overlay=document.getElementById('overlay');
 let W,H,curLevel=0,animId=null,nodes=[],edges=[],dragging=null,dragOff={x:0,y:0},mousePos={x:0,y:0};
 let levelObjs=[[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false]];
+let completedLevels=new Set(),quizPassed=new Set(),quizFeedback={};
 let levelState={};
 const COLORS=['#f59e0b','#3b82f6','#22c55e','#ef4444','#a855f7','#ec4899','#06b6d4','#84cc16'];
 const NODE_R=22;
@@ -175,6 +185,15 @@ const levelInfo=[
 {title:'网络流',sub:'关卡 6/7',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>定理：</b>最大流 = 最小割（Ford-Fulkerson）</div>在网络中找从<b>源点 S</b> 到<b>汇点 T</b> 的最大流。观察 <b>Ford-Fulkerson</b> 算法如何沿增广路径逐步增加流量。',objs:['观察第一条增广路径','运行至最大流','理解最大流 = 最小割'],learn:'<b>最大流最小割定理</b>：网络的最大流等于最小割的容量。<b>Ford-Fulkerson</b> 反复寻找增广路径（残余网络中 S→T 的路径），沿路径增加流量，直到无增广路径。应用于交通规划、网络带宽分配等。'},
 {title:'欧拉与哈密顿',sub:'关卡 7/7',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>问题：</b>欧拉路径（每边一次）/ 哈密顿路径（每点一次）</div><b>欧拉路径</b>经过每条边恰好一次（七桥问题）。<b>哈密顿路径</b>经过每个节点恰好一次（旅行商问题）。点击边/节点来尝试构造路径。',objs:['找到欧拉路径（经过每条边一次）','找到哈密顿路径（经过每个节点一次）','理解两者的判定条件'],learn:'<b>欧拉路径</b>存在条件：连通图中奇数度节点为 0 或 2 个。<b>哈密顿路径</b>没有简单的充要条件，判定是 NP 完全问题。七桥问题（1736年欧拉）是图论的起源。旅行商问题（TSP）是经典 NP-hard 问题。'}
 ];
+const quizData=[
+{q:'图 G=(V,E) 中的 V 和 E 分别表示什么？',opts:['顶点集合和边集合','访问顺序和边权总和','颜色集合和路径集合'],ans:0,ok:'对。图由顶点和边组成，后续算法都在这个结构上运行。',bad:'回看本关概念框：V 是顶点集，E 是边集。'},
+{q:'BFS 与 DFS 最核心的差别是什么？',opts:['BFS 逐层扩散，DFS 沿路径深入再回溯','BFS 只能用于有权图，DFS 只能用于无权图','二者访问顺序必然相同'],ans:0,ok:'对。BFS 像水波逐层扩散，DFS 像走迷宫一路到底。',bad:'比较面板里的 BFS/DFS 顺序，它们的推进策略不同。'},
+{q:'Dijkstra 算法每一步主要做什么？',opts:['选当前未访问的最近节点，并松弛它的邻边','随机选择一条边加入路径','优先选择权重最大的边'],ans:0,ok:'对。贪心选最近点，再更新邻居距离。',bad:'Dijkstra 的关键词是最近未访问节点和松弛。'},
+{q:'最小生成树必须满足什么？',opts:['连接所有顶点、没有环、总边权尽量小','经过每条边恰好一次','让所有顶点颜色不同'],ans:0,ok:'对。MST 是连通所有顶点的最小权重无环边集。',bad:'Kruskal 和 Prim 都在避免成环的同时选择较小边。'},
+{q:'合法图着色要求什么？',opts:['相邻节点不能同色','所有节点必须用不同颜色','边权必须相等'],ans:0,ok:'对。图着色约束只发生在相邻节点之间。',bad:'注意目标写的是“没有相邻节点同色”。'},
+{q:'Ford-Fulkerson 求最大流时反复寻找什么？',opts:['从源点到汇点的增广路径','度数最大的节点','颜色冲突最少的边'],ans:0,ok:'对。每条增广路径都会增加一部分可行流量，直到没有可增广路径。',bad:'最大流动画中的每一步都是一条增广路径。'},
+{q:'欧拉路径和哈密顿路径的区别是什么？',opts:['欧拉路径关注每条边一次，哈密顿路径关注每个点一次','二者都只关注最短距离','二者都要求所有边权相同'],ans:0,ok:'对。欧拉看边，哈密顿看点，这是两类经典路径问题的分界。',bad:'七桥问题是每条边一次；旅行商问题更接近每个点一次。'}
+];
 
 /* ===== GRAPH UTILITIES ===== */
 function mkNode(x,y,label){return{x,y,label:label||'',color:null,dist:Infinity,visited:false,prev:null,inMST:false,highlight:0}}
@@ -185,7 +204,6 @@ function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
 function nodeAt(x,y){for(let i=nodes.length-1;i>=0;i--)if(dist({x,y},nodes[i])<=NODE_R)return i;return-1}
 function showHint(msg){hintEl.textContent=msg;hintEl.style.display='block';clearTimeout(hintEl._t);hintEl._t=setTimeout(()=>hintEl.style.display='none',3000)}
 function stopAnim(){if(animTimer){clearInterval(animTimer);animTimer=null}animRunning=false;animQueue=[]}
-/* PLACEHOLDER_B */
 
 /* ===== LEVEL SETUP ===== */
 function setupLevel(li){
@@ -237,7 +255,6 @@ function setupLevel(li){
     levelState.clickedEdges=[];levelState.clickedNodes=[];levelState.lastNode=-1;
   }
 }
-/* PLACEHOLDER_C */
 
 /* ===== PRECOMPUTE FLOW (Level 6) ===== */
 function precomputeFlow(){
@@ -321,7 +338,6 @@ function animateTraversal(order,cb){
     idx++;draw();
   },400);
 }
-/* PLACEHOLDER_D */
 
 /* ===== DIJKSTRA (Level 3) ===== */
 function runDijkstra(){
@@ -401,7 +417,6 @@ function runKruskal(){
     if(!steps[idx-1].accept)setTimeout(()=>{edges[steps[idx-1].edge].highlight=0;draw()},300);
   },700);
 }
-/* PLACEHOLDER_E */
 
 /* ===== PRIM (Level 4) ===== */
 function runPrim(){
@@ -486,7 +501,6 @@ function checkHamComplete(){
     checkObjs();renderPanel();
   }
 }
-/* PLACEHOLDER_F */
 
 /* ===== CHECK OBJECTIVES ===== */
 function checkObjs(){
@@ -512,7 +526,7 @@ function checkObjs(){
 /* ===== RENDER PANEL ===== */
 function renderPanel(){
   let li=curLevel,info=levelInfo[li];
-  let h=`<h2>${info.title}</h2><div class="level-sub">${info.sub}</div>`;
+  let h=stageNavHTML()+`<h2>${info.title}</h2><div class="level-sub">${info.sub}</div>`;
   h+=`<div class="desc">${info.desc}</div>`;
   h+=`<ul class="obj-list">`;
   info.objs.forEach((o,i)=>{
@@ -575,13 +589,52 @@ function renderPanel(){
   }
   // Learn box + next level button
   if(levelObjs[li].every(v=>v)){
-    h+=`<div class="learn-box">${info.learn}</div>`;
-    if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-    if(li===6)h+=`${_summaryHTML()}`;
+    if(!quizPassed.has(li))h+=quizHTML(li);
+    else{
+      h+=`<div class="learn-box">${info.learn}</div>`;
+      if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+      if(li===6)h+=summaryHTML();
+    }
   }
   panel.innerHTML=h;
 }
-/* PLACEHOLDER_G */
+
+function canGoLevel(li){
+  return li>=0&&li<levelInfo.length&&(li===0||completedLevels.has(li)||completedLevels.has(li-1));
+}
+function stageNavHTML(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<levelInfo.length;i++){
+    const unlocked=canGoLevel(i);
+    const cls=completedLevels.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+  }
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/${levelInfo.length} 关 | 已通关 ${completedLevels.size}/${levelInfo.length}</div>`;
+  h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
+  return h;
+}
+function quizHTML(li){
+  const q=quizData[li],fb=quizFeedback[li];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((o,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${String.fromCharCode(65+i)}. ${o}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+function answerQuiz(li,oi){
+  const q=quizData[li],ok=oi===q.ans;
+  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  if(ok){quizPassed.add(li);completedLevels.add(li);}
+  renderPanel();renderBar();
+}
+function summaryHTML(){
+  let h='<div class="summary-box"><div class="summary-title">🏆 图论探险通关</div>';
+  h+='<div class="summary-sub">你已完成 7 个图论与算法主题</div><div class="summary-keys">';
+  levelInfo.forEach(info=>{h+=`<div>✅ ${info.title}</div>`});
+  h+='</div></div>';
+  return h;
+}
 
 /* ===== RENDER BAR ===== */
 function renderBar(){
@@ -590,6 +643,7 @@ function renderBar(){
 
 /* ===== GO TO LEVEL ===== */
 function goLevel(li){
+  if(!canGoLevel(li))return;
   curLevel=li;stopAnim();
   setupLevel(li);
   renderPanel();renderBar();draw();
@@ -688,7 +742,6 @@ function draw(){
     }
   });
 }
-/* PLACEHOLDER_H */
 
 /* ===== MOUSE EVENTS ===== */
 cv.addEventListener('mousedown',e=>{
@@ -845,7 +898,6 @@ cv.addEventListener('contextmenu',e=>{
   e.preventDefault();
   if(curLevel===0){directed=!directed;showHint(directed?'有向图模式':'无向图模式');renderPanel();draw()}
 });
-/* PLACEHOLDER_I */
 
 /* ===== ANIMATION LOOP ===== */
 function gameLoop(){
@@ -864,106 +916,6 @@ function gameLoop(){
 // Don't start game loop until startGame is called
 // But set up resize
 resize();
-
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
 
 </script>
 </body>

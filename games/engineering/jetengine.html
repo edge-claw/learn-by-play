@@ -103,6 +103,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .quiz-opt.wrong{background:#2a0a0a;border-color:#ef4444;color:#f87171}
 [data-theme="light"] .quiz-opt.correct{background:#dcfce7;border-color:#22c55e;color:#166534}
 [data-theme="light"] .quiz-opt.wrong{background:#fef2f2;border-color:#ef4444;color:#991b1b}
+.quiz-feedback{font-size:12px;line-height:1.7;margin-top:8px;color:var(--text-sub)}
 </style>
 </head>
 <body data-theme="dark">
@@ -152,6 +153,71 @@ const levels=[
 {title:'未来动力',sub:'变循环与新能源',concept:'未来航空动力正在探索：变循环发动机（可在涡喷/涡扇间切换）、超燃冲压发动机（Ma5+）、电推进（短途航线）、氢燃料（零碳排放）。',goals:['对比变循环发动机的两种模式','观察超燃冲压的工作原理','评估电推进与氢燃料方案'],learn:'变循环发动机（如GE的XA100）可根据飞行状态改变涵道比——起飞时高涵道比省油，超音速时低涵道比增推。超燃冲压发动机在Ma5以上让空气超音速通过燃烧室，是高超音速飞行的唯一选择。空客计划2035年推出氢燃料客机，实现零碳飞行。'}
 ];
 
+const quizData=[
+{q:'喷气发动机产生推力的直接原因是什么？',opts:['向后加速空气和燃气，获得向前反作用力','发动机越热就会自动向前移动','压气机把飞机往前拉'],ans:0,why:'推力来自动量变化：工质向后加速排出，发动机获得反方向作用力。'},
+{q:'涡喷发动机的布雷顿循环中，涡轮的主要任务是什么？',opts:['提取燃气能量驱动压气机','把外涵空气全部排掉','把燃油直接压缩成固体'],ans:0,why:'涡轮从高温燃气中取出部分功，带动前方压气机，剩余能量再在喷管中转化为喷流动能。'},
+{q:'高涵道比涡扇发动机为什么更适合民航？',opts:['大量空气以较低速度排出，推进效率高且噪声低','外涵空气越少越省油','只靠核心机喷流，不需要风扇'],ans:0,why:'相同推力下，加速更多空气到较低速度通常更高效，也能降低喷流噪声。'},
+{q:'压气机喘振危险在哪里？',opts:['气流可能反向并引发强振动，短时间内损伤发动机','只是仪表盘颜色变化','会让涵道比自动变大'],ans:0,why:'喘振是压气机失稳，可能出现流量大幅振荡或反向流动，必须靠失速裕度和控制系统避免。'},
+{q:'燃烧室为什么需要气膜冷却？',opts:['用冷空气在壁面形成保护层，降低壁温','让火焰完全熄灭','把出口温度变得越不均匀越好'],ans:0,why:'燃烧温度远高于壁面材料可承受温度，气膜冷却能隔开高温燃气，保护燃烧室结构。'},
+{q:'单晶涡轮叶片相比多晶叶片的关键优势是什么？',opts:['消除晶界，提升高温蠕变抗力','让叶片不再承受离心力','把燃气温度降到室温'],ans:0,why:'晶界是高温蠕变和疲劳的薄弱环节，单晶叶片配合冷却和热障涂层才能接近材料极限工作。'},
+{q:'变循环发动机的核心思想是什么？',opts:['根据飞行状态改变涵道和核心机工作分配','永远固定在一种涵道比','只在地面工作，空中关闭'],ans:0,why:'变循环发动机可在省油的高涵道模式和高推力的低涵道模式之间切换，兼顾不同任务段。'}
+];
+let quizFeedback=null;
+
+const rangeDefs={
+  exitVel:{from:v=>v,to:v=>v,label:v=>`${v} m/s`},
+  massFlow:{from:v=>v,to:v=>v,label:v=>`${v} kg/s`},
+  throttle:{from:v=>v/100,to:v=>v*100,label:v=>`${(v*100).toFixed(0)}%`},
+  bpr:{from:v=>v/10,to:v=>v*10,label:v=>v.toFixed(1)},
+  stages:{from:v=>v,to:v=>v,label:v=>`${v}`},
+  stallMargin:{from:v=>v,to:v=>v,label:v=>`${v}%`},
+  fuelFlow:{from:v=>v/100,to:v=>v*100,label:v=>`${(v*100).toFixed(0)}%`},
+  coolingHoles:{from:v=>v,to:v=>v,label:v=>`${v}`}
+};
+function rangeHTML(key,label,min,max){
+  const def=rangeDefs[key],value=levelState[key],raw=def.to(value);
+  return `<div class="slider-wrap"><label>${label}: <span class="sv">${def.label(value)}</span></label><input type="range" min="${min}" max="${max}" value="${raw}" oninput="updateRange(this,'${key}')" onchange="this.blur();renderPanel()"></div>`;
+}
+function updateRange(input,key){
+  const def=rangeDefs[key],value=def.from(+input.value);
+  levelState[key]=value;
+  if(key==='throttle')calcSections();
+  if(key==='bpr')levelState.triedBpr=true;
+  if(key==='stages'){levelState.triedStages=true;levelState.surging=false;}
+  if(key==='stallMargin'&&levelState.surgeTriggered&&value>15)levelState.surging=false;
+  const out=input.parentElement.querySelector('.sv');
+  if(out)out.textContent=def.label(value);
+}
+function quizHTML(li){
+  const q=quizData[li];
+  let h=`<div class="quiz-box"><div class="quiz-q">📝 通关小测验：${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{
+    let cls='';
+    if(quizFeedback&&quizFeedback.level===li){
+      if(i===q.ans)cls='correct';
+      else if(i===quizFeedback.chosen)cls='wrong';
+    }
+    h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${opt}</div>`;
+  });
+  if(quizFeedback&&quizFeedback.level===li){
+    h+=`<div class="quiz-feedback">${quizFeedback.correct?'回答正确。':'再想想。'}${q.why}</div>`;
+  }else{
+    h+='<div class="quiz-feedback">先完成三个目标，再用这个问题确认你抓住了发动机机制。</div>';
+  }
+  h+='</div>';
+  return h;
+}
+function answerQuiz(li,choice){
+  if(li!==currentLevel||completedLevels.has(li))return;
+  const q=quizData[li],correct=choice===q.ans;
+  quizFeedback={level:li,chosen:choice,correct};
+  if(correct){
+    completedLevels.add(li);
+    addP(CW/2+160,CH/2,'#22c55e',18);
+  }
+  renderPanel();
+}
+
 function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
 function initStars(){stars=[];for(let i=0;i<80;i++)stars.push({x:Math.random()*CW,y:Math.random()*CH,r:Math.random()*1.5+.3,tw:Math.random()*Math.PI*2,sp:Math.random()*.02+.005})}
 function drawStars(){if(!t().showStars)return;for(let s of stars){const a=.4+.6*Math.abs(Math.sin(s.tw+time*s.sp));ctx.fillStyle=`rgba(255,255,255,${a})`;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill()}}
@@ -172,15 +238,15 @@ function initLevel(idx){
     levelState={throttle:0.3,sections:[],goalDone:[false,false,false],elapsed:0,observed:false};
     calcSections();
   }else if(idx===2){
-    levelState={bpr:2,goalDone:[false,false,false],elapsed:0,triedHigh:false};
+    levelState={bpr:2,goalDone:[false,false,false],elapsed:0,triedBpr:false};
   }else if(idx===3){
-    levelState={stages:5,stallMargin:20,surging:false,goalDone:[false,false,false],elapsed:0,surgeTriggered:false};
+    levelState={stages:5,stallMargin:20,surging:false,goalDone:[false,false,false],elapsed:0,surgeTriggered:false,triedStages:false};
   }else if(idx===4){
     levelState={fuelFlow:0.5,coolingHoles:0,goalDone:[false,false,false],elapsed:0};
   }else if(idx===5){
-    levelState={material:'poly',cooling:false,tbc:false,goalDone:[false,false,false],elapsed:0};
+    levelState={material:'poly',cooling:false,tbc:false,goalDone:[false,false,false],elapsed:0,triedMaterial:false};
   }else if(idx===6){
-    levelState={mode:'turbojet',viewType:'adaptive',goalDone:[false,false,false],elapsed:0,seenScramjet:false,seenElectric:false};
+    levelState={mode:'turbojet',viewType:'adaptive',goalDone:[false,false,false],elapsed:0,seenScramjet:false,seenElectric:false,triedMode:false};
   }
   renderPanel();
 }
@@ -203,14 +269,16 @@ function calcSections(){
 function renderPanel(){
   const L=levels[currentLevel],S=levelState,p=document.getElementById('panel');
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<levels.length;i++){let cls=i<currentLevel||completedLevels.has(i)?'done':i===currentLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="switchLevel(${i})"></div>`}
+  for(let i=0;i<levels.length;i++){let cls=completedLevels.has(i)?'done ':'';if(i===currentLevel)cls+='cur';h+=`<div class="sn-d ${cls}" onclick="switchLevel(${i})"></div>`}
   h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关</div><div class="sn-hint">${L.title} — ${L.sub}</div></div>`;
   h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
   h+=`<div class="concept-box">${L.concept}</div>`;
+  const actionsHTML=renderLevelActions();
   h+='<div style="margin:8px 0;font-size:12px;color:var(--text-muted);font-weight:600">目标清单</div>';
-  for(let i=0;i<L.goals.length;i++){const done=S.goalDone&&S.goalDone[i];h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`}
-  h+=renderLevelActions();
-  if(S.goalDone&&S.goalDone.every(g=>g)&&!completedLevels.has(currentLevel))completedLevels.add(currentLevel);
+  for(let i=0;i<L.goals.length;i++){const done=completedLevels.has(currentLevel)||(S.goalDone&&S.goalDone[i]);h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`}
+  h+=actionsHTML;
+  const goalsDone=S.goalDone&&S.goalDone.every(g=>g);
+  if(goalsDone&&!completedLevels.has(currentLevel))h+=quizHTML(currentLevel);
   if(completedLevels.has(currentLevel)){
     h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
     if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
@@ -237,52 +305,54 @@ function summaryHTML(){
 function renderLevelActions(){
   const S=levelState;let h='';
   if(currentLevel===0){
-    h+=`<div class="slider-wrap"><label>排气速度: <span class="sv">${S.exitVel} m/s</span></label><input type="range" min="50" max="800" value="${S.exitVel}" oninput="levelState.exitVel=+this.value;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
-    h+=`<div class="slider-wrap"><label>质量流量: <span class="sv">${S.massFlow} kg/s</span></label><input type="range" min="1" max="200" value="${S.massFlow}" oninput="levelState.massFlow=+this.value;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=rangeHTML('exitVel','排气速度',50,800);
+    h+=rangeHTML('massFlow','质量流量',1,200);
     const thrust=S.massFlow*(S.exitVel-S.inletVel);
-    const isp=thrust>0?thrust/(S.massFlow*9.81):0;
+    const fuelRatio=0.03;
+    const isp=thrust>0?thrust/(S.massFlow*fuelRatio*9.81):0;
     h+=`<div style="font-size:12px;margin:6px 0;color:var(--text-sub)">推力: <span class="sv">${(thrust/1000).toFixed(1)} kN</span> | 比冲: <span class="sv">${isp.toFixed(0)} s</span></div>`;
     if(thrust>0)S.goalDone[0]=true;
     if(S.massFlow>50)S.goalDone[1]=true;
     if(isp>1000)S.goalDone[2]=true;
   }else if(currentLevel===1){
-    h+=`<div class="slider-wrap"><label>油门: <span class="sv">${(S.throttle*100).toFixed(0)}%</span></label><input type="range" min="10" max="100" value="${S.throttle*100}" oninput="levelState.throttle=this.value/100;calcSections();renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=rangeHTML('throttle','油门',10,100);
     if(S.sections.length>0){
       h+='<div style="font-size:11px;margin:6px 0">';
       S.sections.forEach(sec=>{h+=`<div style="color:var(--text-sub);margin:2px 0">${sec.name}: <span class="sv">${sec.P.toFixed(1)}atm</span> / <span style="color:#f97316">${sec.T.toFixed(0)}K</span> / ${sec.V.toFixed(0)}m/s</div>`});
       h+='</div>';
       S.goalDone[0]=true;
     }
-    if(S.throttle>0.5)S.goalDone[1]=true;
     const lastSec=S.sections[S.sections.length-1];
-    if(lastSec&&S.massFlow){const thr2=50*(lastSec.V-250);if(S.throttle>0.8)S.goalDone[2]=true;}
+    const thrust=lastSec?Math.max(0,(lastSec.V-250)*0.08):0;
+    h+=`<div style="font-size:12px;color:var(--text-sub)">估算推力: <span class="sv">${thrust.toFixed(1)} kN</span></div>`;
+    if(S.throttle>0.5)S.goalDone[1]=true;
+    if(thrust>50)S.goalDone[2]=true;
   }else if(currentLevel===2){
-    h+=`<div class="slider-wrap"><label>涵道比 BPR: <span class="sv">${S.bpr.toFixed(1)}</span></label><input type="range" min="5" max="120" value="${S.bpr*10}" oninput="levelState.bpr=this.value/10;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=rangeHTML('bpr','涵道比 BPR',5,120);
     const coreThrust=100/(1+S.bpr);const bypassThrust=100-coreThrust;
     const eta=25+S.bpr*2.5;
     h+=`<div style="font-size:12px;margin:6px 0;color:var(--text-sub)">内涵推力: <span class="sv">${coreThrust.toFixed(1)}%</span> | 外涵推力: <span class="sv">${bypassThrust.toFixed(1)}%</span></div>`;
     h+=`<div style="font-size:12px;color:var(--text-sub)">推进效率: <span class="sv">${Math.min(eta,55).toFixed(1)}%</span></div>`;
-    S.goalDone[0]=true;
+    if(S.triedBpr)S.goalDone[0]=true;
     if(bypassThrust>80)S.goalDone[1]=true;
     if(eta>40)S.goalDone[2]=true;
-    if(S.bpr>6)S.triedHigh=true;
   }else if(currentLevel===3){
-    h+=`<div class="slider-wrap"><label>压气机级数: <span class="sv">${S.stages}</span></label><input type="range" min="1" max="22" value="${S.stages}" oninput="levelState.stages=+this.value;levelState.surging=false;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=rangeHTML('stages','压气机级数',1,22);
     const pr=Math.pow(1.35,S.stages);
     h+=`<div style="font-size:12px;margin:4px 0;color:var(--text-sub)">总压比: <span class="sv">${pr.toFixed(1)}:1</span></div>`;
-    h+=`<div class="slider-wrap"><label>失速裕度: <span class="sv">${S.stallMargin}%</span></label><input type="range" min="0" max="40" value="${S.stallMargin}" oninput="levelState.stallMargin=+this.value;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=rangeHTML('stallMargin','失速裕度',0,40);
     h+=`<button class="act-btn" onclick="triggerSurge()">模拟极端工况</button>`;
     if(S.surging)h+=`<div style="font-size:12px;color:#ef4444;font-weight:bold">🚨 喘振！气流反向，发动机剧烈振动！</div>`;
-    S.goalDone[0]=true;
+    if(S.triedStages)S.goalDone[0]=true;
     if(S.surgeTriggered)S.goalDone[1]=true;
     if(S.surgeTriggered&&!S.surging&&S.stallMargin>15)S.goalDone[2]=true;
   }else if(currentLevel===4){
-    h+=`<div class="slider-wrap"><label>燃油流量: <span class="sv">${(S.fuelFlow*100).toFixed(0)}%</span></label><input type="range" min="10" max="100" value="${S.fuelFlow*100}" oninput="levelState.fuelFlow=this.value/100;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=rangeHTML('fuelFlow','燃油流量',10,100);
     const Tmax=1200+S.fuelFlow*700;
-    const wallT=S.coolingHoles>0?Tmax-S.coolingHoles*60:Tmax;
-    const uniformity=S.coolingHoles>=5?3+Math.random()*2:8+Math.random()*5;
+    const wallT=S.coolingHoles>0?Tmax-S.coolingHoles*80:Tmax;
+    const uniformity=Math.max(3,12-S.coolingHoles*1.2-S.fuelFlow*0.8);
     h+=`<div style="font-size:12px;margin:4px 0;color:var(--text-sub)">燃气温度: <span style="color:#f97316">${Tmax.toFixed(0)}°C</span> | 壁面温度: <span style="color:${wallT>900?'#ef4444':'#4ade80'}">${wallT.toFixed(0)}°C</span></div>`;
-    h+=`<div class="slider-wrap"><label>冷却孔排数: <span class="sv">${S.coolingHoles}</span></label><input type="range" min="0" max="8" value="${S.coolingHoles}" oninput="levelState.coolingHoles=+this.value;renderPanel()" onchange="this.blur();renderPanel()"></div>`;
+    h+=rangeHTML('coolingHoles','冷却孔排数',0,8);
     h+=`<div style="font-size:12px;color:var(--text-sub)">出口温度均匀度: <span class="sv">${uniformity.toFixed(1)}%</span></div>`;
     if(S.fuelFlow>0.3)S.goalDone[0]=true;
     if(S.coolingHoles>=3&&wallT<900)S.goalDone[1]=true;
@@ -295,12 +365,12 @@ function renderLevelActions(){
     if(S.tbc)effectiveT-=130;
     h+=`<div style="font-size:12px;margin:4px 0;color:var(--text-sub)">当前材料: <span class="sv">${mat.name}</span> (耐温 ${mat.maxT}°C)</div>`;
     h+=`<div style="font-size:12px;color:var(--text-sub)">叶片金属温度: <span style="color:${effectiveT>mat.maxT?'#ef4444':'#4ade80'}">${effectiveT}°C</span></div>`;
-    h+=`<button class="act-btn" onclick="levelState.material='poly';renderPanel()" ${S.material==='poly'?'disabled':''}>多晶合金</button>`;
-    h+=`<button class="act-btn" onclick="levelState.material='ds';renderPanel()" ${S.material==='ds'?'disabled':''}>定向凝固</button>`;
-    h+=`<button class="act-btn" onclick="levelState.material='sx';renderPanel()" ${S.material==='sx'?'disabled':''}>单晶合金</button>`;
+    h+=`<button class="act-btn" onclick="levelState.material='poly';levelState.triedMaterial=true;renderPanel()" ${S.material==='poly'?'disabled':''}>多晶合金</button>`;
+    h+=`<button class="act-btn" onclick="levelState.material='ds';levelState.triedMaterial=true;renderPanel()" ${S.material==='ds'?'disabled':''}>定向凝固</button>`;
+    h+=`<button class="act-btn" onclick="levelState.material='sx';levelState.triedMaterial=true;renderPanel()" ${S.material==='sx'?'disabled':''}>单晶合金</button>`;
     h+=`<button class="act-btn" onclick="levelState.cooling=!levelState.cooling;renderPanel()">${S.cooling?'关闭气膜冷却':'开启气膜冷却'}</button>`;
     h+=`<button class="act-btn" onclick="levelState.tbc=!levelState.tbc;renderPanel()">${S.tbc?'移除热障涂层':'施加热障涂层'}</button>`;
-    S.goalDone[0]=true;
+    if(S.triedMaterial)S.goalDone[0]=true;
     if(S.cooling)S.goalDone[1]=true;
     if(S.tbc&&effectiveT<=mat.maxT)S.goalDone[2]=true;
   }else if(currentLevel===6){
@@ -308,8 +378,8 @@ function renderLevelActions(){
     h+=`<button class="act-btn" onclick="levelState.viewType='scramjet';levelState.seenScramjet=true;renderPanel()" ${S.viewType==='scramjet'?'disabled':''}>超燃冲压发动机</button>`;
     h+=`<button class="act-btn" onclick="levelState.viewType='electric';levelState.seenElectric=true;renderPanel()" ${S.viewType==='electric'?'disabled':''}>电推进/氢燃料</button>`;
     if(S.viewType==='adaptive'){
-      h+=`<button class="act-btn" onclick="levelState.mode=levelState.mode==='turbojet'?'turbofan':'turbojet';renderPanel()">切换模式: ${S.mode==='turbojet'?'涡喷(超音速)':'涡扇(亚音速)'}</button>`;
-      S.goalDone[0]=true;
+      h+=`<button class="act-btn" onclick="levelState.mode=levelState.mode==='turbojet'?'turbofan':'turbojet';levelState.triedMode=true;renderPanel()">切换模式: ${S.mode==='turbojet'?'涡喷(超音速)':'涡扇(亚音速)'}</button>`;
+      if(S.triedMode)S.goalDone[0]=true;
     }
     if(S.seenScramjet)S.goalDone[1]=true;
     if(S.seenElectric)S.goalDone[2]=true;

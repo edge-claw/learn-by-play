@@ -81,9 +81,17 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
-.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--concept-bg);border:1px solid var(--learn-border);border-radius:10px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--sv);margin-bottom:6px}
+.quiz-q{font-size:13px;line-height:1.6;color:var(--concept-text);margin-bottom:6px}
+.quiz-opt{display:block;width:100%;text-align:left;padding:8px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:13px;cursor:pointer}
+.quiz-opt:hover{background:var(--btn-hover)}
+.quiz-feedback{border-radius:8px;padding:8px;margin:8px 0;font-size:13px;line-height:1.6}
+.quiz-feedback.ok{border:1px solid #22c55e;background:#0a2a1a;color:#4ade80}
+.quiz-feedback.bad{border:1px solid #ef4444;background:#2a0a0a;color:#fca5a5}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -127,7 +135,16 @@ let audioCtx;function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext|
 function playSound(tp){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(tp==='ok'){o.frequency.value=523;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else if(tp==='no'){o.frequency.value=300;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}else{o.frequency.value=800;g.gain.value=0.08;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}}
 
 const LEVELS=[{name:'蒸发与凝结',icon:'☀️'},{name:'云的形成',icon:'☁️'},{name:'降水类型',icon:'🌧️'},{name:'地表径流',icon:'🏞️'},{name:'地下水与含水层',icon:'🕳️'},{name:'冰川与水库',icon:'🏔️'},{name:'人类活动影响',icon:'🏭'}];
-let cur=0,gameState='title',S={},done=new Array(7).fill(false),particles=[];
+const quizData=[
+  {q:'蒸发和凝结分别更容易在什么条件下发生？',opts:['高温促进蒸发，降温且湿度高促进凝结','低温促进蒸发，高温干燥促进凝结','二者只由风向决定'],ans:0,ok:'对。温度提高会增加分子动能；空气冷却到接近饱和时水汽凝结成水滴。',bad:'看温度和湿度如何改变水分子状态。'},
+  {q:'暖湿空气上升形成云的关键过程是什么？',opts:['上升膨胀冷却，达到露点后水汽凝结','空气上升后温度一定升高','云只由灰尘直接堆积形成'],ans:0,ok:'对。气团上升会绝热冷却，低于露点后形成云滴。',bad:'重点是上升、冷却、达到露点。'},
+  {q:'冰雹通常需要什么环境？',opts:['低温云层和强上升气流让水滴反复冻结','温暖无云且没有气流','只有地面温度高就够了'],ans:0,ok:'对。强上升气流把冰粒反复带回云中，逐层冻结长大。',bad:'冰雹不只是低温，还需要足够强的上升气流。'},
+  {q:'哪组条件最容易产生高地表径流和洪水风险？',opts:['陡坡、低渗透、少植被、强降雨','缓坡、高渗透、多植被、小雨','所有水都能立即渗入地下'],ans:0,ok:'对。这些条件都会减少下渗或加快地表汇流。',bad:'比较水是留在地表，还是渗入土壤。'},
+  {q:'过度抽取地下水最直接的表现是什么？',opts:['地下水位下降，含水层失衡','水井越抽水位越高','孔隙率自动变成 100%'],ans:0,ok:'对。抽水超过补给会降低水位，严重时还会导致地面沉降。',bad:'看抽水速率和补给/储水能力之间的平衡。'},
+  {q:'冰川质量平衡主要取决于哪两类过程？',opts:['降雪积累与融化消融','海浪颜色与风向','山峰高度固定不变所以冰川不变'],ans:0,ok:'对。积累大于消融时冰川增长，反之退缩并贡献海平面上升。',bad:'冰川像账户：收入是降雪，支出是融化。'},
+  {q:'人类活动会怎样改变水循环？',opts:['污染、水坝、灌溉、砍伐都会改变水质、流量、蒸散和补给','只影响城市，不影响河流和地下水','只要建水坝就能消除所有水问题'],ans:0,ok:'对。水循环是连通系统，单个活动会传导到多个环节。',bad:'把河流、地下水、植被蒸腾和水质看成一个系统。'}
+];
+let cur=0,gameState='title',S={},done=new Array(7).fill(false),quizPassed=new Set(),quizFeedback={},particles=[];
 
 function initLevel(i){
   S={phase:0,obj:[false,false,false],anim:0};particles=[];
@@ -143,20 +160,39 @@ function initLevel(i){
 }
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  LEVELS.forEach((_,i)=>{const c=i<cur?'done':i===cur?'cur':'';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`});
-  h+=`</div><div class="sn-info">第 ${cur+1}/7 关 — ${LEVELS[cur].name}</div><div class="sn-hint">${done.filter(Boolean).length}/7 已完成</div></div>`;return h;
+  LEVELS.forEach((_,i)=>{
+    const unlocked=i===0||quizPassed.has(i-1);
+    const c=quizPassed.has(i)?'done':i===cur?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${c}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+  });
+  h+=`</div><div class="sn-info">第 ${cur+1}/7 关 — ${LEVELS[cur].name}</div><div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;return h;
 }
 let _panelBusy=false;
+function renderSummary(){
+  return `<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握水循环的核心知识</div><div class="summary-keys"><div>☀️ 太阳能驱动蒸发，温度降低引起凝结</div><div>☁️ 气团上升绝热冷却到露点形成云</div><div>🌧️ 雨/雪/冰雹取决于云内温度与气流</div><div>🏞️ 坡度、土壤和植被决定径流比例</div><div>🕳️ 地下水储存在含水层孔隙中</div><div>🏔️ 冰川是地球最大淡水储库</div><div>🏭 人类活动深刻改变水循环每个环节</div></div></div>`;
+}
+function quizHTML(i){
+  const q=quizData[i],fb=quizFeedback[i];let h='<div class="quiz-box">';
+  h+='<div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,j)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${i},${j})">${opt}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';return h;
+}
+function answerQuiz(i,choice){
+  const q=quizData[i],ok=choice===q.ans;
+  quizFeedback[i]={ok,text:ok?q.ok:q.bad};
+  if(ok){quizPassed.add(i);playSound('ok')}else{playSound('no')}
+  renderPanel();updateInfobar();
+}
 function renderPanel(){
   if(_panelBusy)return;_panelBusy=true;
   const p=document.getElementById('panel');let h=renderStageNav();
   h+=`<h2>${LEVELS[cur].icon} ${LEVELS[cur].name}</h2>`;
   h+=renderLevelPanel(cur);
-  if(done[cur]&&cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
-  if(done.every(Boolean)){
-    h+=`<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握水循环的核心知识</div>`;
-    h+=`<div class="summary-keys"><div>☀️ 太阳能驱动蒸发，温度降低引起凝结</div><div>☁️ 气团上升绝热冷却到露点形成云</div><div>🌧️ 雨/雪/冰雹取决于云内温度与气流</div><div>🏞️ 坡度、土壤和植被决定径流比例</div><div>🕳️ 地下水储存在含水层孔隙中</div><div>🏔️ 冰川是地球最大淡水储库</div><div>🏭 人类活动深刻改变水循环每个环节</div></div></div>`;
-  }
+  if(done[cur]&&!quizPassed.has(cur))h+=quizHTML(cur);
+  if(quizPassed.has(cur)&&cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
+  if(quizPassed.size===7)h+=renderSummary();
   p.innerHTML=h;_panelBusy=false;
 }
 function sliderDrag(){
@@ -214,12 +250,12 @@ function updateSliderLabels(){
     }break;
   }
 }
-function completeObj(idx){if(S.obj[idx])return;S.obj[idx]=true;playSound('ok');if(idx===0)S.phase=1;if(idx===2){done[cur]=true;document.getElementById('ib-status').textContent='已完成'}renderPanel()}
+function completeObj(idx){if(S.obj[idx])return;S.obj[idx]=true;playSound('ok');if(idx===0)S.phase=1;if(idx===2)done[cur]=true;updateInfobar();renderPanel()}
 function checkObj(){
   switch(cur){
-    case 0:if(!S.obj[0]&&S.temp>=30&&S.evapRate>0.4)completeObj(0);if(!S.obj[1]&&S.humidity>=70&&S.temp<=15)completeObj(1);if(!S.obj[2]&&S.obj[1]&&S.evapRate>0.3&&S.condensePt>0)completeObj(2);break;
+    case 0:if(!S.obj[0]&&S.temp>=30&&S.evapRate>0.4)completeObj(0);if(!S.obj[1]&&S.humidity>=70&&S.temp<=15)completeObj(1);if(!S.obj[2]&&S.obj[0]&&S.obj[1])completeObj(2);break;
     case 1:if(!S.obj[0]&&S.altitude>=2000)completeObj(0);if(!S.obj[1]&&S.cloudBase>0)completeObj(1);if(!S.obj[2]&&S.altitude>=3000&&S.cloudBase>0)completeObj(2);break;
-    case 2:if(!S.obj[0]&&S.precipType==='rain')completeObj(0);if(!S.obj[1]&&S.precipType==='snow')completeObj(1);if(!S.obj[2]&&S.precipType==='hail')completeObj(2);break;
+    case 2:if(!S.obj[0]&&S.precipType==='rain'&&S.cloudTemp>=8)completeObj(0);if(!S.obj[1]&&S.precipType==='snow')completeObj(1);if(!S.obj[2]&&S.precipType==='hail')completeObj(2);break;
     case 3:if(!S.obj[0]&&S.runoffPct>60)completeObj(0);if(!S.obj[1]&&S.runoffPct<20)completeObj(1);if(!S.obj[2]&&S.obj[0]&&S.obj[1])completeObj(2);break;
     case 4:if(!S.obj[0]&&S.porosity>=50)completeObj(0);if(!S.obj[1]&&S.pumpRate>=60&&S.waterTable<50)completeObj(1);if(!S.obj[2]&&S.obj[0]&&S.obj[1])completeObj(2);break;
     case 5:if(!S.obj[0]&&S.globalTemp>=3)completeObj(0);if(!S.obj[1]&&S.glacierMass<40)completeObj(1);if(!S.obj[2]&&S.seaLevel>30)completeObj(2);break;
@@ -237,7 +273,7 @@ function renderLevelPanel(i){
       h+=`<div class="slider-wrap"><label>空气湿度</label><input type="range" id="sl-hum" min="0" max="100" value="${S.humidity}" oninput="sliderDrag()" onchange="this.blur();renderPanel()"><span class="slider-val" id="vl-hum">${S.humidity}%</span></div>`;
       h+=`<div class="concept-box">蒸发速率: <span class="sv">${(S.evapRate*100).toFixed(0)}%</span><br>凝结: <span style="color:${S.condensePt?'#4ade80':'#ef4444'}">${S.condensePt?'发生中':'未发生'}</span></div>`;
       if(S.phase>=1)h+=`<div class="learn-box">💡 温度越高，水分子动能越大，蒸发越快。当空气湿度高且温度降低时，水蒸气凝结成小水滴。</div>`;
-      h+=goalHTML(['提高温度到30°C以上，加速蒸发','降温+加湿，触发凝结','同时维持蒸发和凝结']);
+      h+=goalHTML(['提高温度到30°C以上，加速蒸发','降温+加湿，触发凝结','完成蒸发与凝结两种相变对比']);
       if(!S.obj[0])h+=`<div class="hint-box">💡 把温度拖到 30°C 以上</div>`;
     }break;
     case 1:{
@@ -256,7 +292,7 @@ function renderLevelPanel(i){
       const typeNames={rain:'🌧️ 雨',snow:'❄️ 雪',sleet:'🌨️ 雨夹雪',hail:'🧊 冰雹',none:'无'};
       h+=`<div class="concept-box">降水类型: <span class="sv">${typeNames[S.precipType]||'无'}</span></div>`;
       if(S.phase>=1)h+=`<div class="learn-box">💡 云温>0°C→雨；-5~2°C→雨夹雪；<-5°C+弱气流→雪；<-5°C+强上升气流→冰雹（水滴反复升降冻结）。</div>`;
-      h+=goalHTML(['产生降雨（云温>2°C）','产生降雪（云温<-5°C，弱气流）','产生冰雹（云温<-5°C，强上升气流≥50）']);
+      h+=goalHTML(['产生明显降雨（云温≥8°C）','产生降雪（云温<-5°C，弱气流）','产生冰雹（云温<-5°C，强上升气流≥50）']);
     }break;
     case 3:{
       h+=`<div class="desc desc-hl">雨水落到地面后，一部分沿地表流走（径流），一部分渗入土壤。调节地形和植被，观察径流比例变化。</div>`;
@@ -520,7 +556,8 @@ function drawHumanImpact(c){
   ctx.font='12px system-ui';ctx.fillStyle=c.text;ctx.textAlign='center';ctx.fillText(`综合影响 ${S.impactScore.toFixed(0)}%`,CW/2,my+25);
 }
 
-function goLevel(i){if(i>LEVELS.length-1)return;cur=i;initLevel(i);gameState='play';document.getElementById('panel').style.display='block';document.getElementById('ib-level').textContent=`关卡 ${i+1}/7`;document.getElementById('ib-title').textContent=LEVELS[i].name;document.getElementById('ib-status').textContent=done[i]?'已完成':'进行中';renderPanel();draw()}
+function updateInfobar(){document.getElementById('ib-level').textContent=`关卡 ${cur+1}/7`;document.getElementById('ib-title').textContent=LEVELS[cur].name;document.getElementById('ib-status').textContent=quizPassed.has(cur)?'✅ 已通关':done[cur]?'待测验':'进行中'}
+function goLevel(i){if(i<0||i>LEVELS.length-1)return;if(i>0&&!quizPassed.has(i-1))return;cur=i;initLevel(i);gameState='play';document.getElementById('panel').style.display='block';updateInfobar();renderPanel();draw()}
 function startGame(){document.getElementById('startScreen').classList.add('hidden');goLevel(0)}
 function handleClick(x,y){}
 cv.addEventListener('click',e=>{if(gameState!=='play')return;const r=cv.getBoundingClientRect();handleClick(e.clientX-r.left,e.clientY-r.top)});

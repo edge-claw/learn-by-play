@@ -104,8 +104,17 @@ canvas{display:block}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -181,7 +190,17 @@ const learnTexts=[
 '💡 P300拼写器利用"奇异刺激"效应：6×6字母矩阵中，目标字母所在行/列闪烁时诱发P300，系统识别后输出字母，速度约5-8字/分钟。脑控轮椅结合SSVEP(稳态视觉诱发电位)实现方向控制。脑控机械臂(如BrainGate)已实现瘫痪患者自主进食，解码精度持续提升。',
 '💡 双向BCI不仅读取大脑信号，还能向大脑写入信息。微电刺激可产生人工触觉，让假肢使用者"感受"物体。脑脑接口(BBI)已在动物实验中实现：一只大鼠的运动意图通过互联网传递给另一只。记忆增强通过海马体电刺激改善记忆编码。伦理问题包括：隐私(思维读取)、公平(认知增强)、身份认同等。'
 ];
+const quizData=[
+  {q:'动作电位的关键触发条件是什么？',opts:['膜电位超过阈值后产生全或无放电','树突越长电位越低','轴突只负责储存记忆'],ans:0,ok:'对。阈值触发后，动作电位会沿轴突快速传导。',bad:'回看膜电位图：重点是超过阈值后触发全或无动作电位。'},
+  {q:'EEG 10-20 系统主要解决什么问题？',opts:['用标准位置放置头皮电极','把电极直接植入皮层','自动消除所有噪声'],ans:0,ok:'对。10-20 系统让不同实验和设备的电极位置可比较。',bad:'10-20 是头皮电极定位标准，不是侵入植入或万能降噪。'},
+  {q:'FFT 在脑电处理中常用于什么？',opts:['把时域信号转换为频域以分析频段功率','把脑电变成肌肉信号','直接控制机械臂关节'],ans:0,ok:'对。频谱能显示 α、β 等频段的功率分布。',bad:'FFT 的核心作用是频域分析，而不是直接执行控制。'},
+  {q:'运动想象 BCI 通常依赖哪类信号差异？',opts:['左右运动皮层的节律去同步模式','眼睛颜色变化','心跳声音大小'],ans:0,ok:'对。左右手想象会在对侧运动皮层产生可分类的 ERD 差异。',bad:'运动想象解码看的是脑区节律变化，不是外部体征。'},
+  {q:'侵入式 BCI 相比 EEG 的核心优势是什么？',opts:['更接近神经元，信号空间分辨率和质量更高','完全没有手术风险','不需要任何电极'],ans:0,ok:'对。植入电极能记录更高质量甚至单神经元信号。',bad:'侵入式方案的优势来自接近信号源，但也伴随手术和长期稳定性风险。'},
+  {q:'P300 拼写器利用了什么脑电现象？',opts:['目标刺激出现后约 300ms 的事件相关正波','肌肉收缩产生的力量','随机闪烁即可直接输出文字'],ans:0,ok:'对。目标行列闪烁会诱发 P300，系统据此识别字符。',bad:'P300 是事件相关电位，不是随机闪烁本身。'},
+  {q:'双向 BCI 与单向读取式 BCI 的主要区别是什么？',opts:['既读取大脑信号，也能向神经系统写入反馈','只能读取更多通道','只用于打字'],ans:0,ok:'对。双向 BCI 增加了触觉、电刺激等反馈写入路径。',bad:'关键区别是“读”和“写”同时存在，不只是通道更多。'}
+];
 let levelObjs=levelObjTexts.map(a=>a.map(()=>false));
+let quizPassed=new Set(),quizFeedback={};
 // Level state
 let L={};
 function resetLevel(li){
@@ -197,7 +216,6 @@ function resetLevel(li){
 }
 function genTarget3(){let t={x:0.2+Math.random()*0.6,y:0.15+Math.random()*0.6};L.targets.push(t);}
 function initP300(){L.p300Grid=[];const chars='ABCDEF脑机接口控制GHIJKL思维读取MNOPQR神经元素STUVWX信号处理YZ1234';for(let i=0;i<36;i++)L.p300Grid.push(chars[i]||String.fromCharCode(65+i%26));L.p300Target=L.p300Word[L.p300Typed.length]||'脑';}
-// CHUNK2_PLACEHOLDER
 function resize(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight-36;}
 window.onresize=resize;resize();
 cv.onmousemove=e=>{const r=cv.getBoundingClientRect();mouse.x=e.clientX-r.left;mouse.y=e.clientY-r.top;};
@@ -217,12 +235,33 @@ cv.onmousedown=e=>{
 };
 cv.onmouseup=()=>{mouse.down=false;};
 function startGame(){ov.style.display='none';panel.style.display='block';bar.style.display='flex';resetLevel(0);renderPanel();renderBar();}
-function goLevel(li){if(li<0||li>6)return;curLevel=li;resetLevel(li);renderPanel();renderBar();}
+function isUnlocked(li){return li===0||quizPassed.has(li-1);}
+function goLevel(li){if(li<0||li>6||!isUnlocked(li))return;curLevel=li;resetLevel(li);renderPanel();renderBar();}
 window.goLevel=goLevel;
 function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel();renderBar();}}
 function renderBar(){
-  bar.innerHTML='<span style="color:var(--text-muted)">🧠 '+levelNames[curLevel]+'</span>';
+  const done=levelObjs[curLevel].filter(Boolean).length;
+  const status=quizPassed.has(curLevel)?'已通关':levelObjs[curLevel].every(Boolean)?'待测验':'进行中';
+  bar.innerHTML='<span style="color:var(--text-muted)">🧠 '+levelNames[curLevel]+'</span><span class="info">目标 '+done+'/3 · '+status+' · 通关 '+quizPassed.size+'/'+levelNames.length+'</span>';
 }
+function quizHTML(li){
+  const q=quizData[li],fb=quizFeedback[li];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`;});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+function answerQuiz(li,choice){
+  if(li!==curLevel||quizPassed.has(li))return;
+  const q=quizData[li],ok=choice===q.ans;
+  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  if(ok)quizPassed.add(li);
+  renderPanel();
+  renderBar();
+}
+window.answerQuiz=answerQuiz;
 function renderPanel(){
   let li=curLevel;
   let h=`<h2>关卡${li+1}: ${levelNames[li]}</h2>`;
@@ -280,13 +319,15 @@ function renderPanel(){
     h+=`<button class="act-btn" onclick="answerEthics()">💬 伦理讨论</button>`;
   }
   if(levelObjs[li].every(v=>v)){
-    h+=`<div class="learn-box">${learnTexts[li]}</div>`;
-    if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-    if(li===6)h+=`${_summaryHTML()}`;
+    if(!quizPassed.has(li))h+=quizHTML(li);
+    if(quizPassed.has(li)){
+      h+=`<div class="learn-box">${learnTexts[li]}</div>`;
+      if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+      if(li===6)h+=`${window._summaryHTML?window._summaryHTML():''}`;
+    }
   }
   panel.innerHTML=h;
 }
-// CHUNK3_PLACEHOLDER
 // Level action handlers
 window.identifyPart=function(part){L.identified.add(part);if(L.identified.size>=3)completeObj(2);};
 window.placeElectrode=function(){if(L.electrodes.length<21){let a=Math.random()*Math.PI*2,r=30+Math.random()*80;L.electrodes.push({x:0.5+Math.cos(a)*r/300,y:0.4+Math.sin(a)*r/300});if(L.electrodes.length>=5)completeObj(0);}};
@@ -311,7 +352,6 @@ window.grabArm=function(){L.armPhase++;if(L.armPhase>=3){L.armGrab=true;complete
 window.stimulate=function(){L.stimPhase++;if(L.stimPhase>=2){L.stimDone=true;completeObj(0);}renderPanel();};
 window.startBBI=function(){L.bbiPhase++;if(L.bbiPhase>=2){L.bbiDone=true;completeObj(1);}renderPanel();};
 window.answerEthics=function(){L.ethicsAnswered=true;L.ethicsDone=true;completeObj(2);renderPanel();};
-// CHUNK4_PLACEHOLDER
 // Drawing helpers
 function cx(r){return PL+(W-PL)*r;}
 function cy(r){return H*r;}
@@ -367,7 +407,6 @@ function drawWave(x,y,w,h,freq,amp,color,noise,label){
   if(label){ctx.fillStyle=color;ctx.font='17px sans-serif';ctx.textAlign='left';ctx.fillText(label,x+4,y+14);}
   ctx.restore();
 }
-// CHUNK5_PLACEHOLDER
 // Level draw functions
 function drawLevel0(){
   if(!L.channels)return;
@@ -425,7 +464,6 @@ function drawLevel1(){
   ctx.fillStyle=t().label;ctx.font='16px sans-serif';ctx.textAlign='left';ctx.fillText(`信噪比: ${L.snr}%`,PL+cw*0.05,wy+wh*2+18);
   ctx.fillStyle='rgba(124,58,237,0.2)';ctx.fillRect(PL+cw*0.3,wy+wh*2+8,cw*0.4,8);ctx.fillStyle=L.snr>=60?'#22c55e':'#f97316';ctx.fillRect(PL+cw*0.3,wy+wh*2+8,cw*0.4*L.snr/100,8);
 }
-// CHUNK6_PLACEHOLDER
 function drawLevel2(){
   let cw=W-PL,ch=H-36,ox=PL+cw*0.05,ow=cw*0.9;
   // Raw signal
@@ -487,7 +525,6 @@ function drawLevel3(){
     drawWave(PL+cw*0.55,wy,ww,ch*0.08,0.8,0.5*(L.imagining==='right'?0.3:1),'#f97316',0.05,'C4 (右运动皮层)');
   }
 }
-// CHUNK7_PLACEHOLDER
 function drawLevel4(){
   let cw=W-PL,ch=H-36;
   // Brain cross-section
@@ -583,7 +620,6 @@ function drawLevel5(){
   if(L.armGrab){objX=ex;objY=ey-15;}
   ctx.fillStyle='#f97316';ctx.fillRect(objX-10,objY-10,20,20);ctx.fillStyle=t().label;ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText('📦',objX,objY+4);
 }
-// CHUNK8_PLACEHOLDER
 function drawLevel6(){
   let cw=W-PL,ch=H-36;
   // Three sections
@@ -670,6 +706,7 @@ draw();
     return null;
   }
   function _isDone(i){
+    if(typeof quizPassed!=='undefined')return quizPassed.has(i);
     var o=_getObjs();
     if(o&&o[i])return o[i].every(function(v){return v;});
     if(typeof completedLevels!=='undefined')return completedLevels.has(i);
@@ -691,11 +728,14 @@ draw();
     var pct=s.total>0?Math.round(s.done/s.total*100):0;
     var h='<div class="stage-nav"><div class="sn-bar">';
     for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+      var unlocked=i===0||(typeof quizPassed!=='undefined'&&quizPassed.has(i-1));
+      var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
+      var click=unlocked?'typeof goLevel===\'function\'&&goLevel('+i+')':'';
+      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+    if(typeof quizPassed!=='undefined')h+='<div class="sn-hint">'+quizPassed.size+'/'+total+' 已通关，完成目标后答对测验才解锁下一关</div>';
 
     h+='</div>';
     return h;

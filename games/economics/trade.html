@@ -23,6 +23,10 @@
   --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
   --slider-label:#888;
   --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
 }
 [data-theme="light"]{
   --bg:#f0f2f5;--text:#1a1a2e;--text-sub:#64748b;--text-muted:#aaa;
@@ -41,6 +45,10 @@
   --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
   --slider-label:#888;
   --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
 }
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;width:100vw}
 .overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
@@ -73,8 +81,17 @@ canvas{position:fixed;left:320px;top:0;background:var(--bg)}
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin-top:10px}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px 10px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:7px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -129,12 +146,15 @@ const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const panel=document.getElementById('panel'),bar=document.getElementById('bar'),barInner=document.getElementById('barInner');
 let W,H,curLevel=0;
 let levelObjs=Array.from({length:7},()=>[false,false,false]);
+const quizPassed=new Set();
+let quizFeedback={};
 let LD={};
 
-function resize(){W=window.innerWidth-320;H=window.innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';draw()}
+function resize(){W=window.innerWidth-320;H=window.innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';if(Object.keys(LD).length)draw()}
 window.addEventListener('resize',resize);
-function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
-function goLevel(n){if(n<0||n>=7){showSummary();return}curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
+function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';quizPassed.clear();quizFeedback={};resize();goLevel(0)}
+function isUnlocked(n){return n===0||quizPassed.has(n-1)}
+function goLevel(n){if(n<0||n>=7){showSummary();return}if(!isUnlocked(n))return;curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
 function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
 function allDone(li){return levelObjs[li].every(Boolean)}
 
@@ -151,6 +171,16 @@ const levelInfo=[
   {title:'关税效应',sub:'保护主义的代价',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关税：</b>对进口商品征税 → 国内价格↑ → 消费者受损，生产者受益</div>调整关税税率，观察国内价格、进口量、消费者剩余和生产者剩余的变化。',objs:['设置小额关税观察效果','增大关税看进口量减少','观察关税的无谓损失'],learn:'<b>关税</b>提高了进口品价格，保护了国内生产者，但损害了消费者。关税收入归政府，但总有两个三角形的无谓损失——生产扭曲和消费扭曲。这就是保护主义的效率代价。'},
   {title:'汇率与外汇市场',sub:'货币的价格',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>汇率：</b>一种货币兑换另一种货币的比率<br>由外汇市场供需决定</div>调整影响汇率的因素（利率、通胀、贸易差额），观察汇率如何变动。',objs:['调整利率差观察汇率变化','调整贸易差额观察影响','理解汇率对进出口的反馈'],learn:'<b>汇率</b>由外汇市场的供需决定。利率↑ → 资本流入 → 本币升值。贸易顺差 → 外汇供给增加 → 本币升值。但本币升值又会抑制出口，形成自动调节机制。'},
   {title:'全球化与产业链',sub:'分工深化与相互依赖',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>全球价值链：</b>一件产品的设计、零件、组装分布在不同国家</div>模拟一条全球产业链，调整各环节的分布，观察效率与风险的权衡。',objs:['构建一条跨国产业链','优化产业链降低总成本','模拟供应链中断观察风险'],learn:'<b>全球化</b>使产业链跨越国界——iPhone 在美国设计、韩国/日本供应芯片和屏幕、中国组装。这提高了效率但增加了脆弱性。新冠疫情和地缘政治让"供应链安全"成为热词，各国在效率与韧性之间寻找平衡。'}
+];
+
+const quizData=[
+  {q:'绝对优势强调的是哪一点？',opts:['某国生产某商品的效率高于另一国','某国所有商品都必须更便宜','进口一定比自产更好','贸易条件必须完全相等'],ans:0},
+  {q:'比较优势判断的关键是什么？',opts:['机会成本，而不是谁在绝对效率上更强','人口数量最多的国家获胜','谁出口更多谁有优势','只看工资水平高低'],ans:0},
+  {q:'贸易为什么能让消费点超越 PPF？',opts:['专业化和交换让消费组合不再受单国生产组合限制','PPF 会因为画图自动外移','贸易消除了所有资源约束','进口商品不需要生产成本'],ans:0},
+  {q:'互利贸易的贸易条件通常需要落在哪里？',opts:['两国机会成本之间','只等于出口国机会成本','只等于进口国机会成本','任意价格都一定互利'],ans:0},
+  {q:'关税带来的效率代价主要是什么？',opts:['生产扭曲和消费扭曲形成无谓损失','政府完全没有收入','国内价格一定下降','进口量无限增加'],ans:0},
+  {q:'本币升值通常会怎样影响出口？',opts:['出口商品对外国买家更贵，出口受到抑制','出口商品更便宜，出口必然暴增','与进出口完全无关','只影响国内工资'],ans:0},
+  {q:'全球价值链的核心权衡是什么？',opts:['效率提升与供应链韧性风险之间的权衡','所有环节必须集中在一个国家','成本越高越安全','分工越少效率越高'],ans:0}
 ];
 
 // === Level Init ===
@@ -257,9 +287,29 @@ function resetChain(){LD.disrupted=-1;LD.nodes[3].cost=10;LD.optimized=false;ini
 // === Stage Nav ===
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<7;i++){let cls=allDone(i)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="playSound('click');goLevel(${i})"></div>`}
-  h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关 · ${levelInfo[curLevel].title}</div>`;
-  h+=`<div class="sn-hint">${levelInfo[curLevel].sub}</div></div>`;return h;
+  for(let i=0;i<7;i++){
+    let unlocked=isUnlocked(i);
+    let cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${cls}" onclick="${unlocked?`playSound('click');goLevel(${i})`:''}"></div>`;
+  }
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关 · 进度 ${Math.round(quizPassed.size/7*100)}%</div>`;
+  h+=`<div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;return h;
+}
+
+function renderQuiz(){
+  let q=quizData[curLevel],fb=quizFeedback[curLevel];
+  let h=`<div class="quiz-box"><div class="quiz-title">通关小测验</div><div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="checkQuiz(${i})">${opt}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';return h;
+}
+
+function checkQuiz(oi){
+  if(quizPassed.has(curLevel))return;
+  let q=quizData[curLevel],ok=oi===q.ans;
+  quizFeedback[curLevel]={ok,text:ok?'答对了。先读学习总结，再进入下一关。':'还不对。回到本关图表、规则和关键概念再判断。'};
+  if(ok){quizPassed.add(curLevel);playSound('success')}
+  renderPanel();renderBar();
 }
 
 // === Panel ===
@@ -333,7 +383,10 @@ function renderPanel(){
       break;
   }
 
-  if(allDone(curLevel)){
+  if(allDone(curLevel)&&!quizPassed.has(curLevel)){
+    h+=renderQuiz();
+  }
+  if(quizPassed.has(curLevel)){
     h+=`<div class="learn-box">${info.learn}</div>`;
     if(curLevel<6)h+=`<button class="act-btn" onclick="playSound('click');goLevel(${curLevel+1})">下一关 →</button>`;
     else h+=`<button class="act-btn" onclick="showSummary()">查看总结 →</button>`;
@@ -559,7 +612,7 @@ function draw(){
 // === Summary ===
 function showSummary(){
   let done=levelObjs.flat().filter(Boolean).length;
-  panel.innerHTML=`<div class="summary-box"><div class="summary-title">🎉 国际贸易探险完成！</div><div class="summary-sub">你已掌握国际贸易的核心理论</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标完成</div></div><div class="summary-stat"><div class="num">7</div><div class="label">关卡通关</div></div></div><div class="summary-keys"><div>💪 绝对优势: 效率高者专业化</div><div>🔄 比较优势: 机会成本决定分工</div><div>📐 PPF: 贸易突破生产边界</div><div>🤝 贸易条件: 在机会成本之间</div><div>🏛️ 关税: 保护主义有代价</div><div>💱 汇率: 供需决定货币价格</div><div>🌐 全球化: 效率与韧性的权衡</div></div></div><button class="act-btn" style="margin-top:12px" onclick="location.reload()">再玩一次</button>`;
+  panel.innerHTML=`<div class="summary-box"><div class="summary-title">🎉 国际贸易探险完成！</div><div class="summary-sub">你已掌握国际贸易的核心理论</div><div class="summary-stats"><div class="summary-stat"><div class="num">${quizPassed.size}/7</div><div class="label">测验通过</div></div><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标完成</div></div></div><div class="summary-keys"><div>💪 绝对优势: 效率高者专业化</div><div>🔄 比较优势: 机会成本决定分工</div><div>📐 PPF: 贸易突破生产边界</div><div>🤝 贸易条件: 在机会成本之间</div><div>🏛️ 关税: 保护主义有代价</div><div>💱 汇率: 供需决定货币价格</div><div>🌐 全球化: 效率与韧性的权衡</div></div></div><button class="act-btn" style="margin-top:12px" onclick="location.reload()">再玩一次</button>`;
 }
 
 function mainLoop(){requestAnimationFrame(mainLoop);draw()}

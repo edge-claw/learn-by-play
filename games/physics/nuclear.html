@@ -133,6 +133,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
@@ -207,6 +208,7 @@ let gameState = 'start', currentLevel = 0;
 let levelState = {}, stars = [], particles = [];
 const completedLevels = new Set();
 const quizPassed = new Set();
+const readyForQuiz = new Set();
 let levelFadeAlpha = 1;
 let celebrationParticles = [];
 let screenShake = {x:0,y:0,intensity:0};
@@ -244,6 +246,8 @@ function answerQuiz(levelIdx,chosen){
     el.classList.add('correct');
     playSound('success');
     quizPassed.add(levelIdx);
+    completedLevels.add(levelIdx);
+    readyForQuiz.delete(levelIdx);
     // 通关庆祝粒子
     spawnCelebration();
     setTimeout(()=>renderPanel(),500);
@@ -329,13 +333,14 @@ function renderPanel(){
   h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
   h+=`<div class="concept-box">${L.concept}</div>`;
   h+='<div style="margin:8px 0;font-size:12px;color:var(--text-muted);font-weight:600">目标清单</div>';
+  const showCompletedGoals = completedLevels.has(currentLevel)||readyForQuiz.has(currentLevel);
   for(let i=0;i<L.goals.length;i++){
-    const done=S.goalDone&&S.goalDone[i];
+    const done=showCompletedGoals||(S.goalDone&&S.goalDone[i]);
     h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`;
   }
   // actions per level
   h+=renderLevelActions();
-  const allGoalsDone = S.goalDone&&S.goalDone.every(g=>g);
+  const allGoalsDone = (S.goalDone&&S.goalDone.every(g=>g))||readyForQuiz.has(currentLevel)||completedLevels.has(currentLevel);
   if(allGoalsDone && !quizPassed.has(currentLevel)){
     h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
     h+=renderQuiz(currentLevel);
@@ -351,7 +356,8 @@ function renderPanel(){
   document.getElementById('bbRight').textContent=`${completedLevels.size}/${levels.length} 已完成`;
 }
 
-function switchLevel(i){playSound('click');initLevel(i);renderPanel()}
+function canGoLevel(i){return i>=0&&i<levels.length&&(i===0||completedLevels.has(i)||completedLevels.has(i-1))}
+function switchLevel(i){if(!canGoLevel(i))return;playSound('click');initLevel(i);renderPanel()}
 
 function renderLevelActions(){
   const S=levelState;let h='';
@@ -743,7 +749,7 @@ function updateReactor(dt){
   if(S.elapsed%0.3<dt)renderPanel();
 }
 
-function completeLevel(idx){completedLevels.add(idx);playSound('success');renderPanel()}
+function completeLevel(idx){if(!readyForQuiz.has(idx)&&!completedLevels.has(idx)){readyForQuiz.add(idx);playSound('success')}renderPanel()}
 
 // Level 6: Arc Reactor
 function updateArc(dt){
@@ -1400,6 +1406,10 @@ function goLevel(i){switchLevel(i);}
     if(typeof completedLevels!=='undefined')return completedLevels.has(i);
     return false;
   }
+  function _canGo(i){
+    if(typeof canGoLevel==='function')return canGoLevel(i);
+    return i===0||_isDone(i)||_isDone(i-1);
+  }
   function _countDone(){
     var o=_getObjs(),d=0,t=0;
     if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
@@ -1416,7 +1426,7 @@ function goLevel(i){switchLevel(i);}
     var pct=s.total>0?Math.round(s.done/s.total*100):0;
     var h='<div class="stage-nav"><div class="sn-bar">';
     for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
+      var cls=_isDone(i)?'done':i===cur?'cur':_canGo(i)?'':'locked';
       h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
     }
     h+='</div>';

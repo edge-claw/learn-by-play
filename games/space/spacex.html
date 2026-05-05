@@ -104,8 +104,17 @@ canvas{position:absolute;left:320px;top:0;background:var(--bg)}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;line-height:1.6;color:var(--quiz-q);margin-bottom:6px}
+.quiz-opt{display:block;width:100%;text-align:left;padding:8px;margin:4px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;cursor:pointer}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{border-radius:8px;padding:8px;margin:8px 0;font-size:13px;line-height:1.6}
+.quiz-feedback.ok{border:1px solid #22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{border:1px solid #ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -154,12 +163,15 @@ const TH={
   dark:{bg1:'#0a0a2e',bg2:'#0d0d1a',bg3:'#0a0a1a',grid:'rgba(99,102,241,0.06)',text:'#fff',textSec:'rgba(255,255,255,0.6)',textMut:'rgba(255,255,255,0.4)',label:'#f0f2f5',electron:'#fff',electronGlow:'rgba(255,255,255,0.3)',shell:'rgba(100,100,200,0.15)',barBg:'#1a1a3a',showStars:true},
   light:{bg1:'#e8edf5',bg2:'#f0f2f5',bg3:'#e0e7f0',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',label:'#334155',electron:'#334155',electronGlow:'rgba(51,65,85,0.3)',shell:'rgba(100,100,200,0.15)',barBg:'#c7d2fe',showStars:false}
 };
-function t(){return isDark?TH.dark:TH.light}
+function theme(){return isDark?TH.dark:TH.light}
 function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
 
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay');
 var W,H,curLevel=0,animId=0,t=0;
 var levelObjs=[[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false]];
+const completedLevels=new Set();
+const quizPassed=new Set();
+const quizFeedback={};
 const levelNames=['可回收着陆基础','栅格翼与着陆腿','猎鹰9号任务','星链组网','星舰设计','火星任务','太空经济'];
 const levelDescs=[
 '<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>推力矢量控制 TVC，hoverslam 着陆</div>控制推力矢量让一级火箭垂直着陆在海上平台。调整推力大小和角度，克服风力干扰，安全降落。',
@@ -189,6 +201,16 @@ const learnTexts=[
 ['<b>可回收经济学：</b>猎鹰9号一级火箭已实现20+次复用，将每公斤入轨成本从约$20000降至约$2700。星舰目标是$10/kg。<br><b>星链商业模式：</b>2024年收入约66亿美元，用户超400万。低轨卫星互联网填补了全球30亿无网络人口的市场空白。<br><b>火星殖民：</b>SpaceX目标2030年代建立永久基地，需要约1000艘星舰运送100万人和物资。']
 ];
 
+const quizData=[
+{q:'猎鹰9号一级火箭为什么采用 hoverslam 着陆？',opts:['最低推力仍大于空箭重量，不能长期悬停','火箭没有发动机节流能力','海上平台会主动托住火箭'],ans:0,ok:'对。它必须精确计算点火，让速度在触地瞬间接近零。',bad:'本关重点是最低推力大于空重，所以不能像直升机一样悬停。'},
+{q:'栅格翼在一级火箭再入时主要负责什么？',opts:['在高速气流中提供姿态和方向控制','储存液氧燃料','替代着陆腿承受冲击'],ans:0,ok:'对。栅格翼在超音速再入中帮助稳定和修正姿态。',bad:'栅格翼不是腿，它的作用是气动控制。'},
+{q:'Max-Q 阶段为什么通常要节流？',opts:['减小最大动压带来的结构载荷','让火箭完全停止上升','让二级提前入轨'],ans:0,ok:'对。最大动压时气动载荷最高，节流能保护结构。',bad:'Max-Q 是最大动压点，不是分离点。'},
+{q:'星链星间激光链路的意义是什么？',opts:['卫星之间可直接传输数据，降低对地面中继依赖','让卫星获得太阳能','把卫星固定在同一位置'],ans:0,ok:'对。星间链路让数据在太空中跨卫星转发。',bad:'激光链路是通信链路，不是推进或供电系统。'},
+{q:'星舰选择不锈钢的重要原因之一是什么？',opts:['低温和再入高温环境下仍有强度且成本低','不锈钢比所有材料都更轻','不锈钢能自动产生燃料'],ans:0,ok:'对。不锈钢兼顾温度适应性、制造和成本。',bad:'星舰不是因为不锈钢最轻，而是综合强度、温度和成本。'},
+{q:'火星任务中的 ISRU 指什么？',opts:['利用当地资源生产燃料和补给','在地球预先装满全部返程燃料','绕过转移窗口直接瞬移'],ans:0,ok:'对。用火星 CO2 和水冰生产甲烷/氧气是返程闭环关键。',bad:'ISRU 是原位资源利用，不是单纯携带更多物资。'},
+{q:'可回收火箭改变太空经济的核心是什么？',opts:['复用硬件摊薄发射成本，降低每公斤入轨价格','每次发射都丢弃更多部件','只靠提高票价盈利'],ans:0,ok:'对。复用让昂贵硬件多次使用，发射成本显著下降。',bad:'太空经济的关键变量是复用次数和单位入轨成本。'}
+];
+
 // === Level state variables ===
 // L1: Landing
 var l1={vy:0,vx:0,y:0,x:0,thrust:50,angle:0,wind:0,fuel:100,landed:false,crashed:false,groundY:0,platX:0,platW:80,running:false};
@@ -204,8 +226,6 @@ var l5={tiles:[],tileCount:0,docked:false,caught:false,phase:'tiles',dockX:0,doc
 var l6={phase:'window',earthAngle:0,marsAngle:0,launched:false,shipAngle:0,shipR:0,aerobrake:false,landed:false,isru:0,t:0,running:false,landingSite:-1,sites:[]};
 // L7: Economy
 var l7={reusePct:0,starlinkRev:0,marsSupply:0,phase:'cost',simRunning:false,launches:0,savings:0};
-
-// === PLACEHOLDER_GAME_LOGIC ===
 
 function resize(){
   W=window.innerWidth-320;H=window.innerHeight-36;
@@ -232,6 +252,7 @@ function startGame(){
 }
 
 function goLevel(n){
+  if(!canGoLevel(n))return;
   curLevel=n;
   cancelAnimationFrame(animId);
   initLevel(n);
@@ -241,7 +262,9 @@ function goLevel(n){
 }
 
 function renderBar(){
-  bar.innerHTML='<span style="color:var(--text-muted)">🚀 '+levelNames[curLevel]+'</span>';
+  let h='<span style="color:var(--text-muted)">🚀 '+levelNames[curLevel]+'</span>';
+  h+='<span class="prog">已通关 '+completedLevels.size+'/'+levelNames.length+'</span>';
+  bar.innerHTML=h;
 }
 
 // Lightweight DOM patcher: preserves focused range inputs during panel updates
@@ -271,7 +294,7 @@ function _diffNodes(o,n){
 
 function renderPanel(){
   let li=curLevel;
-  let h=`<h3>🚀 关卡${li+1}: ${levelNames[li]}</h3>`;
+  let h=stageNavHTML()+`<h3>🚀 关卡${li+1}: ${levelNames[li]}</h3>`;
   h+=`<p style="font-size:12px;color:#94a3b8;margin-bottom:10px;line-height:1.6">${levelDescs[li]}</p>`;
   h+=`<div style="margin-bottom:8px">`;
   for(let i=0;i<3;i++){
@@ -282,20 +305,96 @@ function renderPanel(){
   h+=getLevelControls(li);
   // Learn box
   if(levelObjs[li].every(v=>v)){
-    h+=`<div class="learn-box">${learnTexts[li][0]}</div>`;
+    if(!quizPassed.has(li))h+=quizHTML(li);
+    else h+=`<div class="learn-box">${learnTexts[li][0]}</div>`;
   }
-  if(levelObjs[li].every(v=>v)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-  if(levelObjs[li].every(v=>v)&&li===6)h+=`${_summaryHTML()}`;
+  if(levelObjs[li].every(v=>v)&&quizPassed.has(li)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+  if(levelObjs[li].every(v=>v)&&quizPassed.has(li)&&li===6)h+=summaryHTML();
   _patchPanel(panel,h);
 }
 
-// === PLACEHOLDER_CONTROLS ===
+function canGoLevel(li){
+  return li>=0&&li<levelNames.length&&(li===0||completedLevels.has(li)||completedLevels.has(li-1));
+}
+
+function stageNavHTML(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<levelNames.length;i++){
+    const unlocked=canGoLevel(i);
+    const cls=completedLevels.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+  }
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/${levelNames.length} 关 | 已通关 ${completedLevels.size}/${levelNames.length}</div>`;
+  h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
+  return h;
+}
+
+function quizHTML(li){
+  const q=quizData[li],fb=quizFeedback[li];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+
+function answerQuiz(li,optIdx){
+  const q=quizData[li],ok=optIdx===q.ans;
+  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  if(ok){quizPassed.add(li);completedLevels.add(li);renderBar();}
+  renderPanel();
+}
+
+function summaryHTML(){
+  let h='<div class="summary-box"><div class="summary-title">🏆 SpaceX 探险通关</div>';
+  h+='<div class="summary-sub">你已完成 7 个可回收火箭与太空经济主题</div><div class="summary-stats">';
+  h+=`<div class="summary-stat"><div class="num">${levelNames.length}</div><div class="label">关卡完成</div></div>`;
+  h+=`<div class="summary-stat"><div class="num">${completedLevels.size}</div><div class="label">测验通过</div></div>`;
+  h+='<div class="summary-stat"><div class="num">100%</div><div class="label">知识闭环</div></div></div>';
+  h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">📚 关键知识回顾</div>';
+  levelNames.forEach(n=>{h+=`<div>✅ ${n}</div>`;});
+  h+='</div></div>';
+  return h;
+}
+
+function setL1Control(key,el){
+  l1[key]=+el.value;
+  const out=document.getElementById(key==='thrust'?'l1ThrustVal':'l1AngleVal');
+  if(out)out.textContent=l1[key]+(key==='thrust'?'%':'°');
+}
+
+function setL3Throttle(el){
+  l3.throttle=+el.value;
+  const out=document.getElementById('l3ThrottleVal');
+  if(out)out.textContent=l3.throttle+'%';
+}
+
+function setL5DockVx(el){
+  l5.dockVx=+el.value;
+  const out=document.getElementById('l5DockVxVal');
+  if(out)out.textContent=l5.dockVx;
+}
+
+function setL7Slider(key,el){
+  l7[key]=+el.value;
+  checkL7();
+  if(key==='starlinkRev'){
+    const users=document.getElementById('l7UsersVal');
+    const rev=document.getElementById('l7RevenueVal');
+    if(users)users.textContent=(l7.starlinkRev/10).toFixed(0);
+    if(rev)rev.textContent='年收入: $'+(l7.starlinkRev*1).toFixed(0)+'亿';
+  }else{
+    const out=document.getElementById('l7MarsSupplyVal');
+    if(out)out.textContent=l7.marsSupply+'%';
+  }
+}
 
 function getLevelControls(li){
   let h='';
   if(li===0){
-    h+=`<div class="ctrl-group"><label>推力 (${l1.thrust}%)</label><input type="range" min="0" max="100" value="${l1.thrust}" oninput="l1.thrust=+this.value;renderPanel()"><div class="val">${l1.thrust}%</div></div>`;
-    h+=`<div class="ctrl-group"><label>角度 (${l1.angle}°)</label><input type="range" min="-30" max="30" value="${l1.angle}" oninput="l1.angle=+this.value;renderPanel()"><div class="val">${l1.angle}°</div></div>`;
+    h+=`<div class="ctrl-group"><label>推力 (<span id="l1ThrustVal">${l1.thrust}%</span>)</label><input type="range" min="0" max="100" value="${l1.thrust}" oninput="setL1Control('thrust',this)" onchange="this.blur();renderPanel()"><div class="val">${l1.thrust}%</div></div>`;
+    h+=`<div class="ctrl-group"><label>角度 (<span id="l1AngleVal">${l1.angle}°</span>)</label><input type="range" min="-30" max="30" value="${l1.angle}" oninput="setL1Control('angle',this)" onchange="this.blur();renderPanel()"><div class="val">${l1.angle}°</div></div>`;
     h+=`<div class="ctrl-group" style="font-size:12px;color:#94a3b8">风力: ${l1.wind>0?'→':'←'} ${Math.abs(l1.wind).toFixed(1)} m/s | 燃料: ${l1.fuel.toFixed(0)}%</div>`;
     h+=`<div class="ctrl-group" style="font-size:12px;color:#f97316">下降速度: ${Math.abs(l1.vy).toFixed(1)} m/s | 水平偏移: ${Math.abs(l1.x).toFixed(1)} m</div>`;
     if(l1.landed)h+=`<div style="text-align:center;color:#4ade80;margin-top:8px;font-size:14px">✅ 着陆成功！</div>`;
@@ -312,7 +411,7 @@ function getLevelControls(li){
     if(!l2.running&&!l2.landed&&!l2.crashed)h+=`<button class="act-btn" onclick="l2.running=true;renderPanel()">开始再入</button>`;
   }else if(li===2){
     h+=`<div class="ctrl-group" style="font-size:12px;color:#94a3b8">阶段: ${getL3PhaseName()}<br>高度: ${l3.alt.toFixed(0)} km | 推力: ${l3.throttle}%</div>`;
-    h+=`<div class="ctrl-group"><label>推力 (${l3.throttle}%)</label><input type="range" min="0" max="100" value="${l3.throttle}" oninput="l3.throttle=+this.value;renderPanel()"></div>`;
+    h+=`<div class="ctrl-group"><label>推力 (<span id="l3ThrottleVal">${l3.throttle}%</span>)</label><input type="range" min="0" max="100" value="${l3.throttle}" oninput="setL3Throttle(this)" onchange="this.blur();renderPanel()"></div>`;
     if(l3.phase==='prelaunch')h+=`<button class="act-btn" onclick="l3Launch()">点火发射 🔥</button>`;
     if(l3.phase==='ascent'&&!l3.separated)h+=`<button class="act-btn" onclick="l3Separate()">一二级分离</button>`;
     if(l3.crashed)h+=`<button class="act-btn" onclick="initLevel(2);runLevel(2);renderPanel()">重试</button>`;
@@ -325,7 +424,7 @@ function getLevelControls(li){
     h+=`<div class="ctrl-group" style="font-size:12px;color:#94a3b8">阶段: ${l5.phase==='tiles'?'安装瓦片':l5.phase==='dock'?'在轨加注':'筷子回收'}<br>瓦片覆盖: ${l5.tileCount}% | 对接: ${l5.docked?'✅':'❌'} | 回收: ${l5.caught?'✅':'❌'}</div>`;
     if(l5.phase==='tiles')h+=`<button class="act-btn" onclick="l5InstallTile()">安装瓦片区域</button>`;
     if(l5.phase==='dock'){
-      h+=`<div class="ctrl-group"><label>对接横向速度</label><input type="range" min="-5" max="5" value="${l5.dockVx}" oninput="l5.dockVx=+this.value;renderPanel()"><div class="val">${l5.dockVx}</div></div>`;
+      h+=`<div class="ctrl-group"><label>对接横向速度</label><input type="range" min="-5" max="5" value="${l5.dockVx}" oninput="setL5DockVx(this)" onchange="this.blur();renderPanel()"><div class="val" id="l5DockVxVal">${l5.dockVx}</div></div>`;
       h+=`<button class="act-btn" onclick="l5Dock()">执行对接</button>`;
     }
     if(l5.phase==='catch'){
@@ -347,18 +446,16 @@ function getLevelControls(li){
       if(l7.launches>=5)h+=`<button class="act-btn" style="background:#f97316" onclick="l7.phase='starlink';renderPanel()">进入星链商业 →</button>`;
     }
     if(l7.phase==='starlink'){
-      h+=`<div class="ctrl-group"><label>用户数(百万): ${(l7.starlinkRev/10).toFixed(0)}</label><input type="range" min="0" max="100" value="${l7.starlinkRev}" oninput="l7.starlinkRev=+this.value;checkL7();renderPanel()"><div class="val">年收入: $${(l7.starlinkRev*1).toFixed(0)}亿</div></div>`;
+      h+=`<div class="ctrl-group"><label>用户数(百万): <span id="l7UsersVal">${(l7.starlinkRev/10).toFixed(0)}</span></label><input type="range" min="0" max="100" value="${l7.starlinkRev}" oninput="setL7Slider('starlinkRev',this)" onchange="this.blur();renderPanel()"><div class="val" id="l7RevenueVal">年收入: $${(l7.starlinkRev*1).toFixed(0)}亿</div></div>`;
       if(l7.starlinkRev>=50)h+=`<button class="act-btn" style="background:#f97316" onclick="l7.phase='mars';renderPanel()">进入火星殖民 →</button>`;
     }
     if(l7.phase==='mars'){
-      h+=`<div class="ctrl-group"><label>火星基地自给率: ${l7.marsSupply}%</label><input type="range" min="0" max="100" value="${l7.marsSupply}" oninput="l7.marsSupply=+this.value;checkL7();renderPanel()"><div class="val">${l7.marsSupply}%</div></div>`;
+      h+=`<div class="ctrl-group"><label>火星基地自给率: <span id="l7MarsSupplyVal">${l7.marsSupply}%</span></label><input type="range" min="0" max="100" value="${l7.marsSupply}" oninput="setL7Slider('marsSupply',this)" onchange="this.blur();renderPanel()"><div class="val">${l7.marsSupply}%</div></div>`;
       h+=`<button class="act-btn" onclick="l7Plan()">制定殖民计划</button>`;
     }
   }
   return h;
 }
-
-// === PLACEHOLDER_LEVEL_INIT ===
 
 function initLevel(n){
   cancelAnimationFrame(animId);t=0;
@@ -484,11 +581,9 @@ function l7Plan(){
   checkL7();renderPanel();
 }
 
-// === PLACEHOLDER_DRAW ===
-
 // Drawing helpers
 function drawStars(){
-  ctx.fillStyle=t().bg1;ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=theme().bg1;ctx.fillRect(0,0,W,H);
   for(let i=0;i<60;i++){
     let sx=(i*137.5)%W,sy=(i*97.3)%H;
     ctx.fillStyle=`rgba(255,255,255,${0.3+Math.sin(t*0.02+i)*0.3})`;
@@ -556,8 +651,6 @@ function drawOcean(y){
     ctx.stroke();
   }
 }
-
-// === PLACEHOLDER_RENDER_LEVELS ===
 
 // Level 1: Landing
 function updateL1(){
@@ -658,8 +751,6 @@ function drawL2(){
   ctx.fillText(`角度: ${(l2.angle*180/Math.PI).toFixed(1)}°`,W-150,42);
   ctx.fillText(`速度: ${l2.vy.toFixed(0)} m/s`,W-150,56);
 }
-
-// === PLACEHOLDER_RENDER_L3_L4 ===
 
 // Level 3: Falcon 9 mission
 function updateL3(){
@@ -775,8 +866,6 @@ function drawL4(){
   ctx.fillStyle='#334155';ctx.font='20px sans-serif';ctx.textAlign='center';
   ctx.fillText(`全球覆盖率: ${l4.coverage.toFixed(0)}%`,W/2,H-30);
 }
-
-// === PLACEHOLDER_RENDER_L5_L6_L7 ===
 
 // Level 5: Starship
 function updateL5(){
@@ -1032,108 +1121,6 @@ function runLevel(n){
   }
   loop();
 }
-
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-  // 1. 开头路线图
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
-
 
 </script>
 </body>

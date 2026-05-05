@@ -53,6 +53,16 @@ canvas{display:block}
 .panel .obj .dot{width:14px;height:14px;border-radius:50%;border:2px solid #6366f1;flex-shrink:0}
 .panel .obj .dot.done{background:#6366f1}
 .panel .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:var(--learn-text);line-height:1.8}
+.quiz-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:10px;margin-top:10px}
+.quiz-q{font-size:13px;color:var(--title-color);font-weight:700;margin-bottom:8px;line-height:1.6}
+.quiz-opt{font-size:13px;color:var(--text-sub);padding:8px 10px;margin:5px 0;border-radius:6px;cursor:pointer;border:1px solid var(--concept-border);background:rgba(255,255,255,0.03);transition:all .2s}
+.quiz-opt:hover{border-color:#22c55e;color:var(--text)}
+.quiz-opt.correct{background:#0a2a1a;border-color:#22c55e;color:#4ade80}
+.quiz-opt.wrong{background:#2a0a0a;border-color:#ef4444;color:#f87171}
+[data-theme="light"] .quiz-opt{background:#fff}
+[data-theme="light"] .quiz-opt.correct{background:#dcfce7;color:#166534}
+[data-theme="light"] .quiz-opt.wrong{background:#fef2f2;color:#991b1b}
+.quiz-feedback{font-size:12px;line-height:1.7;margin-top:8px;color:var(--text-sub)}
 .act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#6366f1;color:#fff;font-size:15px;cursor:pointer;transition:background .2s}
 .act-btn:hover{background:#4f46e5}
 .bar{position:fixed;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--panel-border);display:none;z-index:10;padding:0 16px;font-size:13px;align-items:center}
@@ -132,7 +142,18 @@ const learnTexts=[
 '💡 表观遗传修饰不改变DNA序列但影响基因表达。DNA甲基化：甲基转移酶在CpG二核苷酸的胞嘧啶5位加甲基基团，招募甲基化结合蛋白→组蛋白去乙酰化→染色质紧缩→基因沉默。这是可逆的：去甲基化酶(TET)可移除甲基。X染色体失活、基因组印记都依赖甲基化。',
 '💡 中心法则(Crick, 1958)：遗传信息从DNA→RNA→蛋白质单向流动。DNA复制(DNA→DNA)保证遗传信息传递；转录(DNA→RNA)将信息转为可移动形式；翻译(RNA→蛋白质)将信息转为功能分子。例外：逆转录(RNA→DNA，如HIV)、RNA复制(RNA→RNA，如流感病毒)。'
 ];
+const quizData=[
+{q:'DNA双链稳定配对的规则是什么？',opts:['A与T配对，G与C配对','A与G配对，T与C配对','任意碱基都能等概率配对'],ans:0,why:'A-T形成2个氢键，G-C形成3个氢键；互补配对保证复制和转录的信息准确性。'},
+{q:'转录过程中，RNA聚合酶的产物是什么？',opts:['以DNA模板合成mRNA','把蛋白质拆成氨基酸','直接复制出另一条蛋白质'],ans:0,why:'转录把DNA中的遗传信息写成RNA序列，mRNA随后可被核糖体读取。'},
+{q:'翻译为什么以三个碱基为一组读取mRNA？',opts:['每个密码子由3个碱基组成，通常对应一个氨基酸或终止信号','每个碱基单独编码一个完整蛋白质','核糖体随机读取任意长度片段'],ans:0,why:'三联体密码子提供64种组合，足以编码20种氨基酸和终止信号。'},
+{q:'lac操纵子中乳糖存在时会发生什么？',opts:['阻遏蛋白脱落，结构基因可以被转录','阻遏蛋白更牢固地结合DNA','乳糖直接变成RNA聚合酶'],ans:0,why:'乳糖的异构体与阻遏蛋白结合，使其构象改变并离开操纵基因。'},
+{q:'为什么插入或缺失突变常比单个替换更严重？',opts:['若不是3的倍数，会造成移码并改变下游密码子','它一定不会影响蛋白质','它只改变DNA颜色'],ans:0,why:'移码会重新划分阅读框，后续氨基酸序列通常全部改变。'},
+{q:'DNA甲基化属于表观遗传的原因是什么？',opts:['它改变基因表达但不改变DNA碱基序列','它把A改成T','它只发生在蛋白质上'],ans:0,why:'甲基化等修饰可影响染色质状态和转录活性，但DNA字母序列不变。'},
+{q:'中心法则描述的主干信息流是什么？',opts:['DNA → RNA → 蛋白质','蛋白质 → RNA → DNA','糖类 → DNA → 脂质'],ans:0,why:'中心法则概括了遗传信息从存储分子到功能分子的主要流向。'}
+];
 let levelObjs=levelObjTexts.map(a=>a.map(()=>false));
+const quizPassed=new Set();
+let quizFeedback=null;
 let L={};
 const BASES={A:{pair:'T',color:'#ef4444',rna:'U'},T:{pair:'A',color:'#3b82f6',rna:'A'},G:{pair:'C',color:'#22c55e',rna:'C'},C:{pair:'G',color:'#f59e0b',rna:'G'}};
 const CODON_TABLE={AUG:'Met',UUU:'Phe',UUC:'Phe',UUA:'Leu',UUG:'Leu',UCU:'Ser',UCC:'Ser',UCA:'Ser',UCG:'Ser',UAU:'Tyr',UAC:'Tyr',UGU:'Cys',UGC:'Cys',UGG:'Trp',CUU:'Leu',CUC:'Leu',CUA:'Leu',CUG:'Leu',CCU:'Pro',CCC:'Pro',CCA:'Pro',CCG:'Pro',CAU:'His',CAC:'His',CAA:'Gln',CAG:'Gln',CGU:'Arg',CGC:'Arg',CGA:'Arg',CGG:'Arg',AUU:'Ile',AUC:'Ile',AUA:'Ile',ACU:'Thr',ACC:'Thr',ACA:'Thr',ACG:'Thr',AAU:'Asn',AAC:'Asn',AAA:'Lys',AAG:'Lys',AGU:'Ser',AGC:'Ser',AGA:'Arg',AGG:'Arg',GUU:'Val',GUC:'Val',GUA:'Val',GUG:'Val',GCU:'Ala',GCC:'Ala',GCA:'Ala',GCG:'Ala',GAU:'Asp',GAC:'Asp',GAA:'Glu',GAG:'Glu',GGU:'Gly',GGC:'Gly',GGA:'Gly',GGG:'Gly',UAA:'STOP',UAG:'STOP',UGA:'STOP'};
@@ -140,8 +161,8 @@ function resetLevel(li){
   L={};levelObjs[li]=levelObjs[li].map(()=>false);
   if(li===0){L.template=['A','T','G','C','A','G','T','C'];L.paired=new Array(8).fill(null);L.pairCount=0;L.helixAngle=0;L.showHelix=false;L.selectedBase=null;}
   if(li===1){L.started=false;L.polyPos=0;L.mRNA='';L.template='TACGAATTC';L.done=false;}
-  if(li===2){L.mRNA='AUGUCUAAAGCUGAA';L.riboPos=0;L.peptide=[];L.done=false;L.codonsRead=0;}
-  if(li===3){L.lactose=false;L.repressorOn=true;L.transcribing=false;L.transcribed=false;}
+  if(li===2){L.mRNA='AUGUCUAAAGCUUAA';L.riboPos=0;L.peptide=[];L.done=false;L.codonsRead=0;}
+  if(li===3){L.lactose=false;L.repressorOn=true;L.repressorObserved=false;L.transcribing=false;L.transcribed=false;}
   if(li===4){L.original='ATGCGATCG';L.current=L.original;L.mutType=null;L.mutations=new Set();}
   if(li===5){L.cpgSites=[{pos:0.25,methylated:false},{pos:0.5,methylated:false},{pos:0.75,methylated:false}];L.silenced=false;L.restored=false;L.methylCount=0;}
   if(li===6){L.dnaToRna=false;L.rnaToProtein=false;L.connected=false;L.animPhase=0;}
@@ -160,17 +181,28 @@ function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;
 function renderBar(){bar.innerHTML='<span style="color:var(--text-muted)">🧬 '+levelNames[curLevel]+'</span>';}
 function _stageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<7;i++){let cls=levelObjs[i].every(v=>v)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;}
+  for(let i=0;i<7;i++){let cls=quizPassed.has(i)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;}
   h+=`</div><div class="sn-info">第${curLevel+1}/7关 · ${levelNames[curLevel]}</div></div>`;return h;
 }
 function _summaryHTML(){
-  let done=levelObjs.filter(a=>a.every(v=>v)).length;
+  let done=quizPassed.size;
   let h='<div class="summary-box"><div class="summary-title">🎉 全部通关！</div>';
   h+=`<div class="summary-sub">你已掌握基因表达的核心知识</div>`;
   h+=`<div class="summary-stats"><div class="summary-stat"><div class="num">${done}</div><div class="label">完成关卡</div></div>`;
   h+=`<div class="summary-stat"><div class="num">${done*3}</div><div class="label">达成目标</div></div></div>`;
   h+=`<div class="summary-keys"><div>🔗 碱基配对：A-T(2氢键) G-C(3氢键)</div><div>📝 转录：DNA→mRNA，RNA聚合酶催化</div><div>🏭 翻译：mRNA→蛋白质，核糖体+tRNA</div><div>🔄 中心法则：DNA→RNA→蛋白质</div></div></div>`;
   return h;
+}
+function _quizHTML(li){
+  let q=quizData[li],h=`<div class="quiz-box"><div class="quiz-q">📝 通关小测验：${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{
+    let cls='';
+    if(quizFeedback&&quizFeedback.level===li){if(i===q.ans)cls='correct';else if(i===quizFeedback.chosen)cls='wrong';}
+    h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${opt}</div>`;
+  });
+  if(quizFeedback&&quizFeedback.level===li)h+=`<div class="quiz-feedback">${quizFeedback.correct?'回答正确。':'再想想。'}${q.why}</div>`;
+  else h+='<div class="quiz-feedback">完成三个目标后，答对这个问题才会解锁学习总结。</div>';
+  h+='</div>';return h;
 }
 function handleClick(mx,my){
   if(curLevel===0){
@@ -212,7 +244,7 @@ function renderPanel(){
   h+=`<h2>${levelNames[li]}</h2>`;
   h+=`<p style="color:var(--text-sub);font-size:14px;margin:6px 0 10px">${levelDescs[li]}</p>`;
   h+=`<h3>🎯 目标</h3>`;
-  for(let i=0;i<3;i++){let d=levelObjs[li][i]?'done':'';h+=`<div class="obj"><div class="dot ${d}"></div>${levelObjTexts[li][i]}</div>`;}
+  for(let i=0;i<3;i++){let d=(quizPassed.has(li)||levelObjs[li][i])?'done':'';h+=`<div class="obj"><div class="dot ${d}"></div>${levelObjTexts[li][i]}</div>`;}
   if(li===0){
     h+=`<h3>操作</h3><p style="color:var(--text-sub);font-size:13px">先点击底部碱基选择，再点击右侧空位配对</p>`;
     h+=`<p style="color:var(--text-sub);font-size:12px">已选: <span style="color:#f59e0b;font-weight:bold">${L.selectedBase||'无'}</span> | 已配对: ${L.pairCount}/8</p>`;
@@ -231,7 +263,8 @@ function renderPanel(){
   if(li===3){
     h+=`<h3>操作</h3>`;
     h+=`<button class="act-btn" onclick="addLactose()" ${L.lactose?'disabled':''}>${L.lactose?'✅ 乳糖已添加':'🥛 添加乳糖'}</button>`;
-    h+=`<button class="act-btn" onclick="transcribeOperon()" ${!L.lactose||L.transcribed?'disabled':''}>📝 转录结构基因</button>`;
+    h+=`<button class="act-btn" onclick="observeRepressor()" ${!L.lactose||L.repressorObserved?'disabled':''}>👀 观察阻遏蛋白脱落</button>`;
+    h+=`<button class="act-btn" onclick="transcribeOperon()" ${!L.repressorObserved||L.transcribed?'disabled':''}>📝 转录结构基因</button>`;
     h+=`<p style="color:var(--text-sub);font-size:12px;margin-top:4px">阻遏蛋白: ${L.repressorOn?'🔴 结合中':'🟢 已脱落'}</p>`;
   }
   if(li===4){
@@ -251,7 +284,9 @@ function renderPanel(){
     h+=`<button class="act-btn" onclick="centralStep(1)" ${!L.dnaToRna||L.rnaToProtein?'disabled':''}>🏭 RNA → 蛋白质 翻译</button>`;
     h+=`<button class="act-btn" onclick="centralStep(2)" ${!L.rnaToProtein||L.connected?'disabled':''}>🔗 连接全流程</button>`;
   }
-  if(levelObjs[li].every(v=>v)){
+  const goalsDone=levelObjs[li].every(v=>v);
+  if(goalsDone&&!quizPassed.has(li))h+=_quizHTML(li);
+  if(quizPassed.has(li)){
     h+=`<div class="learn-box">${learnTexts[li]}</div>`;
     if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
     if(li===6)h+=_summaryHTML();
@@ -259,6 +294,7 @@ function renderPanel(){
   panel.innerHTML=h;
 }
 // Action handlers
+window.answerQuiz=function(li,choice){if(li!==curLevel||quizPassed.has(li))return;let q=quizData[li],correct=choice===q.ans;quizFeedback={level:li,chosen:choice,correct};if(correct)quizPassed.add(li);renderPanel();renderBar();};
 window.startTranscription=function(){L.started=true;completeObj(0);renderPanel();};
 window.advanceTranscription=function(){
   if(L.polyPos<L.template.length){
@@ -278,7 +314,8 @@ window.moveRibosome=function(){
     L.riboPos+=3;renderPanel();
   }
 };
-window.addLactose=function(){L.lactose=true;L.repressorOn=false;completeObj(0);completeObj(1);renderPanel();};
+window.addLactose=function(){L.lactose=true;completeObj(0);renderPanel();};
+window.observeRepressor=function(){if(!L.lactose)return;L.repressorOn=false;L.repressorObserved=true;completeObj(1);renderPanel();};
 window.transcribeOperon=function(){L.transcribing=true;setTimeout(()=>{L.transcribed=true;completeObj(2);renderPanel();},800);renderPanel();};
 window.mutate=function(type){
   L.mutType=type;L.mutations.add(type);

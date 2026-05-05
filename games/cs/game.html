@@ -108,6 +108,24 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, 'S
 /* 提示气泡 */
 .hint-bubble { margin: 0 12px; padding: 10px 14px; background: #1a1a38; border-left: 3px solid #4d96ff; border-radius: 0 8px 8px 0; font-size: 12px; color: #8ab4ff; line-height: 1.5; }
 
+/* 关卡进度与小测验 */
+.stage-nav { margin: 12px; padding: 10px 12px; background: var(--stage-bg); border: 1px solid var(--stage-border); border-radius: 8px; }
+.sn-bar { display: flex; gap: 3px; margin-bottom: 6px; }
+.sn-d { flex: 1; height: 5px; border-radius: 3px; background: var(--stage-bar); cursor: pointer; transition: all .2s; }
+.sn-d.done { background: #22c55e; }
+.sn-d.cur { background: #6366f1; height: 7px; }
+.sn-d.locked { opacity: .35; cursor: not-allowed; }
+.sn-info { color: var(--stage-info); font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; }
+.sn-hint { color: var(--stage-hint); font-size: 12px; margin-top: 3px; line-height: 1.5; }
+.quiz-box { margin: 12px; padding: 10px; background: var(--quiz-bg); border: 1px solid var(--quiz-border); border-radius: 8px; }
+.quiz-title { font-weight: 700; color: var(--quiz-q); margin-bottom: 6px; }
+.quiz-q { font-size: 13px; color: var(--quiz-q); line-height: 1.6; margin-bottom: 8px; }
+.quiz-opt { display: block; width: 100%; padding: 8px; margin: 5px 0; border: 1px solid var(--quiz-opt-border); border-radius: 6px; background: var(--quiz-opt-bg); color: var(--quiz-opt-text); cursor: pointer; text-align: left; }
+.quiz-opt:hover { background: var(--quiz-opt-hover); }
+.quiz-feedback { font-size: 12px; line-height: 1.6; margin-top: 6px; padding: 7px; border-radius: 6px; }
+.quiz-feedback.ok { background: var(--quiz-correct-bg); color: var(--quiz-correct-text); }
+.quiz-feedback.bad { background: var(--quiz-wrong-bg); color: var(--quiz-wrong-text); }
+
 /* 操作区 */
 .action-section { margin: 12px; }
 .action-section .as-label { font-size: 12px; color: #888; margin-bottom: 8px; font-weight: 600; }
@@ -388,6 +406,48 @@ let simFps = 0, simPower = 0, simAcc = 0;
 let particles = [];
 let time = 0;
 let hwLoad = { npu: 0, cpu: 0, mem: 0.1 };
+let levelPassed = LEVELS.map(() => false);
+let quizFeedback = {};
+let pendingResult = null;
+let deployNotice = '';
+
+const quizData = [
+  {
+    q: '为什么 INT8 量化常适合 NPU 加速？',
+    opts: ['NPU 常对 INT8 矩阵运算做硬件优化', 'INT8 一定比 FP32 更精确', 'INT8 会增加模型大小'],
+    ans: 0,
+    ok: '对。许多边缘 NPU 针对 INT8 推理吞吐和功耗优化。',
+    bad: 'INT8 的价值在更小、更快，通常会有少量精度损失。'
+  },
+  {
+    q: '量化部署最典型的取舍是什么？',
+    opts: ['速度、模型大小和精度之间的平衡', '只追求最大模型', '完全不看硬件'],
+    ans: 0,
+    ok: '对。部署时要同时看 FPS、mAP、模型大小和硬件支持。',
+    bad: '量化不是单纯越低越好，要看精度和硬件收益。'
+  },
+  {
+    q: '电池供电设备上部署 AI 时，除 FPS 外还必须关注什么？',
+    opts: ['功耗和温度', '网页配色', '文件名长度'],
+    ans: 0,
+    ok: '对。边缘设备受功耗、散热和续航约束。',
+    bad: '移动/边缘场景的瓶颈常常是能耗和热设计。'
+  },
+  {
+    q: '没有 NPU 的树莓派跑同一模型通常会怎样？',
+    opts: ['更多依赖 CPU，推理速度明显下降', '自动变成云端推理', '精度必然变成 100%'],
+    ans: 0,
+    ok: '对。缺少专用加速器时，CPU 推理吞吐通常低很多。',
+    bad: '硬件加速器决定了可用算力，量化收益也依赖硬件支持。'
+  },
+  {
+    q: 'Jetson Nano 上 FP16 常比 FP32 更实用，原因是什么？',
+    opts: ['GPU 对半精度吞吐和显存占用更友好', 'FP16 永远无精度损失', 'FP16 不需要模型'],
+    ans: 0,
+    ok: '对。FP16 可减小带宽/显存压力，并利用 GPU 半精度能力。',
+    bad: 'FP16 是性能与精度折中的常见甜点，不是无代价。'
+  }
+];
 
 // ========== Canvas ==========
 const canvas = document.getElementById('canvas');
@@ -407,7 +467,12 @@ function startGame() {
   loadLevel(0);
 }
 
+function isUnlocked(idx) {
+  return idx === 0 || levelPassed[idx - 1];
+}
+
 function loadLevel(idx) {
+  if (idx < 0 || idx >= LEVELS.length || !isUnlocked(idx)) return;
   currentLevel = idx;
   const lv = LEVELS[idx];
   selectedModel = null;
@@ -417,9 +482,58 @@ function loadLevel(idx) {
   simFps = 0; simPower = 0; simAcc = 0;
   particles = [];
   hwLoad = { npu: 0, cpu: 0.05, mem: 0.1 };
+  pendingResult = null;
+  deployNotice = '';
 
   document.getElementById('lpTitle').textContent = `第 ${lv.id} 关 / ${LEVELS.length}`;
   renderLevelContent();
+}
+
+function stageNavHTML() {
+  const done = levelPassed.filter(Boolean).length;
+  const pct = Math.round(done / LEVELS.length * 100);
+  let html = '<div class="stage-nav"><div class="sn-bar">';
+  LEVELS.forEach((lv, i) => {
+    const unlocked = isUnlocked(i);
+    const cls = levelPassed[i] ? 'done' : i === currentLevel ? 'cur' : unlocked ? '' : 'locked';
+    const click = unlocked ? `loadLevel(${i})` : '';
+    html += `<div class="sn-d ${cls}" onclick="${click}"></div>`;
+  });
+  html += '</div>';
+  html += `<div class="sn-info">📍 第 ${currentLevel + 1}/${LEVELS.length} 关 | 进度 ${pct}%</div>`;
+  html += `<div class="sn-hint">${done}/${LEVELS.length} 已通关，完成目标后答对测验才解锁下一关</div>`;
+  html += '</div>';
+  return html;
+}
+
+function quizHTML(idx) {
+  const q = quizData[idx];
+  const fb = quizFeedback[idx];
+  let html = '<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  html += `<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt, i) => {
+    html += `<button class="quiz-opt" onclick="answerQuiz(${idx},${i})">${opt}</button>`;
+  });
+  if (fb) html += `<div class="quiz-feedback ${fb.ok ? 'ok' : 'bad'}">${fb.text}</div>`;
+  html += '</div>';
+  return html;
+}
+
+function answerQuiz(idx, choice) {
+  if (idx !== currentLevel || levelPassed[idx]) return;
+  const q = quizData[idx];
+  const ok = choice === q.ans;
+  quizFeedback[idx] = { ok, text: ok ? q.ok : q.bad };
+  if (!ok) {
+    renderLevelContent();
+    return;
+  }
+
+  const result = pendingResult || { stars: LEVELS[idx].stars(getState()), lv: LEVELS[idx] };
+  levelPassed[idx] = true;
+  pendingResult = null;
+  renderLevelContent();
+  showResult(result.stars, result.lv);
 }
 
 function renderLevelContent() {
@@ -427,7 +541,7 @@ function renderLevelContent() {
   const dev = DEVICES[lv.device];
   const el = document.getElementById('levelContent');
 
-  let html = `
+  let html = stageNavHTML() + `
     <div class="mission-card">
       <div class="mc-level">关卡 ${lv.id} · ${dev.icon} ${dev.name}</div>
       <div class="mc-title">${lv.title}</div>
@@ -442,6 +556,9 @@ function renderLevelContent() {
   }
   html += `</div></div>`;
   html += `<div class="hint-bubble">${lv.hint}</div>`;
+  if (deployNotice) {
+    html += `<div class="hint-bubble" style="border-left-color:#ff4444;color:#fca5a5;background:#2a0a0a">${deployNotice}</div>`;
+  }
 
   // 模型选择
   html += `<div class="action-section"><div class="as-label">1️⃣ 选择模型</div>`;
@@ -492,16 +609,26 @@ function renderLevelContent() {
     const allPass = lv.goals.every(g => g.check(getState()));
     html += `<div class="action-section" style="margin-top:8px">
       <button class="deploy-btn" style="background:${allPass?'#2aaa5a':'#ff4444'}" onclick="checkResult()">
-        ${allPass ? '🎉 验证通过！查看结果' : '🔄 未达标，重新选择'}
+        ${allPass ? '🎉 验证通过！进入测验' : '🔄 未达标，重新选择'}
       </button>
     </div>`;
+  }
+
+  if (pendingResult && pendingResult.lv === lv && !levelPassed[currentLevel]) {
+    html += quizHTML(currentLevel);
   }
 
   el.innerHTML = html;
 }
 
-function pickModel(id) { selectedModel = id; selectedQuant = null; deployed = false; deployAnim = 0; simFps=0; particles=[]; hwLoad={npu:0,cpu:0.05,mem:0.1}; renderLevelContent(); }
-function pickQuant(q) { selectedQuant = q; deployed = false; deployAnim = 0; simFps=0; particles=[]; hwLoad={npu:0,cpu:0.05,mem:0.1}; renderLevelContent(); }
+function clearAttemptState() {
+  pendingResult = null;
+  deployNotice = '';
+  delete quizFeedback[currentLevel];
+}
+
+function pickModel(id) { selectedModel = id; selectedQuant = null; deployed = false; deployAnim = 0; simFps=0; particles=[]; hwLoad={npu:0,cpu:0.05,mem:0.1}; clearAttemptState(); renderLevelContent(); }
+function pickQuant(q) { selectedQuant = q; deployed = false; deployAnim = 0; simFps=0; particles=[]; hwLoad={npu:0,cpu:0.05,mem:0.1}; clearAttemptState(); renderLevelContent(); }
 
 function getState() {
   return { fps: simFps, power: simPower, accuracy: simAcc, deployed };
@@ -509,6 +636,7 @@ function getState() {
 
 function doDeploy() {
   if (!selectedModel || !selectedQuant) return;
+  clearAttemptState();
   const lv = LEVELS[currentLevel];
   const m = MODELS[selectedModel];
   const qd = m.quant[selectedQuant];
@@ -516,7 +644,8 @@ function doDeploy() {
 
   // 内存检查
   if (qd.size / 1000 > dev.mem * 0.9) {
-    alert(`❌ 内存不足！模型需要 ${qd.size}MB，设备只有 ${dev.mem}GB`);
+    deployNotice = `内存不足：${m.name}(${selectedQuant.toUpperCase()}) 需要 ${qd.size}MB，${dev.name} 只有 ${dev.mem}GB。请选择更小模型或更低位宽量化。`;
+    renderLevelContent();
     return;
   }
 
@@ -575,12 +704,13 @@ function checkResult() {
     // 重置让用户重选
     deployed = false; deployAnim = 0; simFps = 0; particles = [];
     hwLoad = { npu:0, cpu:0.05, mem:0.1 };
+    clearAttemptState();
     renderLevelContent();
     return;
   }
-  // 成功！
   const stars = lv.stars(getState());
-  showResult(stars, lv);
+  pendingResult = { stars, lv };
+  renderLevelContent();
 }
 
 function showResult(stars, lv) {
@@ -608,7 +738,8 @@ function showResult(stars, lv) {
 function nextLevel() {
   document.getElementById('resultModal').classList.add('hidden');
   gameState = 'playing';
-  loadLevel(currentLevel + 1);
+  const next = currentLevel + 1;
+  if (next < LEVELS.length && isUnlocked(next)) loadLevel(next);
 }
 
 function retryLevel() {
@@ -620,6 +751,9 @@ function retryLevel() {
 function restartGame() {
   document.getElementById('resultModal').classList.add('hidden');
   gameState = 'playing';
+  levelPassed = LEVELS.map(() => false);
+  quizFeedback = {};
+  pendingResult = null;
   loadLevel(0);
 }
 

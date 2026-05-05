@@ -112,8 +112,17 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px 10px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:7px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -165,15 +174,17 @@ let CW,CH,time=0,animId,lastTime=0;
 let gameState='start',currentLevel=0;
 let levelState={},stars=[],particles=[];
 const completedLevels=new Set();
+const quizPassed=new Set();
+let quizFeedback={};
 
 const levels=[
-  {title:'电阻与温度',sub:'超导转变',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键现象：</b>T &lt; Tc 时电阻突降为零</div>普通导体的电阻随温度降低而减小，但超导体在临界温度Tc以下电阻突然降为零——这就是超导转变。1911年昂内斯发现汞在4.2K时电阻消失。',goals:['将温度降到临界温度Tc以下','观察电阻突然降为零'],learn:'超导转变是一种量子相变。在Tc以上，电子被晶格振动（声子）散射产生电阻；在Tc以下，电子配对形成库珀对，以零电阻的超流态运动。这个发现让昂内斯获得了1913年诺贝尔物理学奖。'},
-  {title:'迈斯纳效应',sub:'完全抗磁性',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心效应：</b>超导体完全排斥磁场 → 磁铁悬浮</div>超导体不仅零电阻，还能完全排斥磁场——这就是迈斯纳效应。降温到Tc以下时，超导体内部磁场被完全排出，磁力线绕开超导体。',goals:['降温到Tc以下进入超导态','观察磁力线被排斥','磁铁悬浮起来'],learn:'迈斯纳效应证明超导不仅仅是"零电阻"。完美导体只是不产生新的电阻，但超导体会主动排出已有的磁场。这是因为超导体表面产生感应电流，其磁场恰好抵消外部磁场。这个效应是磁悬浮列车的物理基础。'},
-  {title:'库珀对',sub:'BCS理论',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>微观机制：</b>电子 + 声子交换 + 电子 → 库珀对（玻色子）</div>一个电子经过晶格时，正离子被吸引产生局部正电荷密集区，吸引第二个电子——两个电子通过声子交换配对，形成库珀对。库珀对可以无阻碍地流动。',goals:['观察晶格变形','两个电子成功配对','库珀对无阻碍运动'],learn:'BCS理论（巴丁-库珀-施里弗，1957年）解释了超导的微观机制。关键洞察：虽然电子之间有库仑排斥，但通过晶格振动（声子）的间接作用，两个动量相反的电子可以形成束缚态。库珀对的能隙阻止了散射，实现零电阻。三位科学家因此获得1972年诺贝尔奖。'},
-  {title:'磁通量子化',sub:'量子化的磁通',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>量子化：</b>&#934;&#8320; = h/2e &#8776; 2.07&#215;10&#8315;&#185;&#8309; Wb</div>超导环中的磁通量不能连续变化，只能是磁通量子&#934;&#8320;的整数倍。这是因为库珀对波函数的单值性要求——绕环一圈相位必须变化2&#960;的整数倍。',goals:['增加外磁场观察磁通','发现磁通只能阶梯跳变','理解磁通量子Φ₀=h/2e'],learn:'磁通量子化是超导体量子本质的直接证据。Φ₀=h/2e≈2.07×10⁻¹⁵ Wb，分母中的2e（而非e）证实了载流子是库珀对（电荷2e）。这个精确的量子化被用于定义电压标准（约瑟夫森电压标准），精度达10⁻¹⁰。'},
-  {title:'约瑟夫森结',sub:'量子隧穿',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>结构：</b>超导体 | 绝缘层(~1nm) | 超导体</div>库珀对可以隧穿过绝缘层。无电压时有直流超电流（直流约瑟夫森效应）；加电压时电流以频率 f=2eV/h 振荡（交流约瑟夫森效应）。',goals:['观察库珀对隧穿绝缘层','调节电压观察电流振荡','理解交流约瑟夫森效应'],learn:'约瑟夫森效应（1962年预言，1963年实验证实）是宏观量子现象的典范。它的应用极其广泛：SQUID（超导量子干涉仪）可探测10⁻¹⁵特斯拉的微弱磁场，用于脑磁图和地质勘探；约瑟夫森结也是超导量子计算机的基本单元（超导量子比特）。'},
-  {title:'高温超导',sub:'材料探索',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>突破：</b>YBCO Tc = 93K（液氮 77K 以上即可冷却）</div>传统超导体Tc极低（汞4.2K，铌9.3K）。1986年发现铜氧化物高温超导体。寻找室温超导是物理学的圣杯。',goals:['比较不同材料的Tc','用YBCO实现液氮温区超导','探索压力对Tc的影响'],learn:'高温超导的发现（贝德诺兹和缪勒，1986年，次年即获诺贝尔奖）震惊了物理学界。YBCO（钇钡铜氧）在93K超导，首次突破液氮温度（77K），大幅降低了超导应用成本。但高温超导的机制至今未完全理解——它不遵循BCS理论，可能涉及自旋涨落。2023年的"室温超导"LK-99最终被证伪，真正的室温超导仍是梦想。'},
-  {title:'磁悬浮列车',sub:'工程应用',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>应用：</b>超导磁悬浮 — 日本 L0 系列时速 603 km/h</div>超导磁悬浮利用迈斯纳效应或电动悬浮，让列车无接触运行。关键参数：线圈间距影响磁场均匀性，载重决定所需悬浮力，速度影响稳定性。',goals:['调节参数使列车稳定悬浮','达到目标速度300km/h','保持悬浮高度稳定'],learn:'超导磁悬浮列车是超导技术最壮观的应用。日本的SCMaglev使用超导线圈产生强磁场，列车悬浮在轨道上方10cm，时速可达603km/h。上海磁浮列车（常导型）时速430km/h。超导磁悬浮的优势：无摩擦、无噪音、高速稳定。挑战：超导线圈需要低温冷却，成本高昂。'}
+  {title:'电阻与温度',sub:'超导转变',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键现象：</b>T &lt; Tc 时电阻突降为零</div>普通导体的电阻随温度降低而减小，但超导体在临界温度Tc以下电阻突然降为零——这就是超导转变。1911年昂内斯发现汞在4.2K时电阻消失。',goals:['将温度降到临界温度Tc以下','观察电阻突然降为零'],quiz:{q:'超导转变最直接的电学特征是什么？',opts:['低于Tc时电阻突降为零','温度越高电阻越小','电阻变成负值','只改变颜色不改变电阻'],ans:0},learn:'超导转变是一种量子相变。在Tc以上，电子被晶格振动（声子）散射产生电阻；在Tc以下，电子配对形成库珀对，以零电阻的超流态运动。这个发现让昂内斯获得了1913年诺贝尔物理学奖。'},
+  {title:'迈斯纳效应',sub:'完全抗磁性',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心效应：</b>超导体完全排斥磁场 → 磁铁悬浮</div>超导体不仅零电阻，还能完全排斥磁场——这就是迈斯纳效应。降温到Tc以下时，超导体内部磁场被完全排出，磁力线绕开超导体。',goals:['降温到Tc以下进入超导态','观察磁力线被排斥','磁铁悬浮起来'],quiz:{q:'迈斯纳效应说明超导体具有什么性质？',opts:['主动排斥内部磁场的完全抗磁性','只是不发热','只能吸引磁场','只在高温下出现磁性'],ans:0},learn:'迈斯纳效应证明超导不仅仅是"零电阻"。完美导体只是不产生新的电阻，但超导体会主动排出已有的磁场。这是因为超导体表面产生感应电流，其磁场恰好抵消外部磁场。这个效应是磁悬浮列车的物理基础。'},
+  {title:'库珀对',sub:'BCS理论',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>微观机制：</b>电子 + 声子交换 + 电子 → 库珀对（玻色子）</div>一个电子经过晶格时，正离子被吸引产生局部正电荷密集区，吸引第二个电子——两个电子通过声子交换配对，形成库珀对。库珀对可以无阻碍地流动。',goals:['观察晶格变形','两个电子成功配对','库珀对无阻碍运动'],quiz:{q:'BCS理论中电子为什么能形成库珀对？',opts:['通过晶格振动声子产生间接吸引','靠重力直接吸引','因为电子电荷变成正电','因为温度越高配对越强'],ans:0},learn:'BCS理论（巴丁-库珀-施里弗，1957年）解释了超导的微观机制。关键洞察：虽然电子之间有库仑排斥，但通过晶格振动（声子）的间接作用，两个动量相反的电子可以形成束缚态。库珀对的能隙阻止了散射，实现零电阻。三位科学家因此获得1972年诺贝尔奖。'},
+  {title:'磁通量子化',sub:'量子化的磁通',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>量子化：</b>&#934;&#8320; = h/2e &#8776; 2.07&#215;10&#8315;&#185;&#8309; Wb</div>超导环中的磁通量不能连续变化，只能是磁通量子&#934;&#8320;的整数倍。这是因为库珀对波函数的单值性要求——绕环一圈相位必须变化2&#960;的整数倍。',goals:['增加外磁场观察磁通','发现磁通只能阶梯跳变','理解磁通量子Φ₀=h/2e'],quiz:{q:'磁通量子Φ₀=h/2e中的2e来自哪里？',opts:['载流子是电荷2e的库珀对','两个独立磁铁相加','电子质量翻倍','单位换算需要乘2'],ans:0},learn:'磁通量子化是超导体量子本质的直接证据。Φ₀=h/2e≈2.07×10⁻¹⁵ Wb，分母中的2e（而非e）证实了载流子是库珀对（电荷2e）。这个精确的量子化被用于定义电压标准（约瑟夫森电压标准），精度达10⁻¹⁰。'},
+  {title:'约瑟夫森结',sub:'量子隧穿',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>结构：</b>超导体 | 绝缘层(~1nm) | 超导体</div>库珀对可以隧穿过绝缘层。无电压时有直流超电流（直流约瑟夫森效应）；加电压时电流以频率 f=2eV/h 振荡（交流约瑟夫森效应）。',goals:['观察库珀对隧穿绝缘层','调节电压观察电流振荡','理解交流约瑟夫森效应'],quiz:{q:'给约瑟夫森结加电压后会出现什么现象？',opts:['超电流按 f=2eV/h 振荡','绝缘层立刻变金属','库珀对完全消失','磁通不再量子化'],ans:0},learn:'约瑟夫森效应（1962年预言，1963年实验证实）是宏观量子现象的典范。它的应用极其广泛：SQUID（超导量子干涉仪）可探测10⁻¹⁵特斯拉的微弱磁场，用于脑磁图和地质勘探；约瑟夫森结也是超导量子计算机的基本单元（超导量子比特）。'},
+  {title:'高温超导',sub:'材料探索',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>突破：</b>YBCO Tc = 93K（液氮 77K 以上即可冷却）</div>传统超导体Tc极低（汞4.2K，铌9.3K）。1986年发现铜氧化物高温超导体。寻找室温超导是物理学的圣杯。',goals:['比较不同材料的Tc','用YBCO实现液氮温区超导','探索压力对Tc的影响'],quiz:{q:'YBCO的重要工程意义是什么？',opts:['Tc高于液氮温度，冷却成本显著降低','只能在室温超导','不需要任何低温环境','它不是超导材料'],ans:0},learn:'高温超导的发现（贝德诺兹和缪勒，1986年，次年即获诺贝尔奖）震惊了物理学界。YBCO（钇钡铜氧）在93K超导，首次突破液氮温度（77K），大幅降低了超导应用成本。但高温超导的机制至今未完全理解——它不遵循BCS理论，可能涉及自旋涨落。2023年的"室温超导"LK-99最终被证伪，真正的室温超导仍是梦想。'},
+  {title:'磁悬浮列车',sub:'工程应用',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>应用：</b>超导磁悬浮 — 日本 L0 系列时速 603 km/h</div>超导磁悬浮利用迈斯纳效应或电动悬浮，让列车无接触运行。关键参数：线圈间距影响磁场均匀性，载重决定所需悬浮力，速度影响稳定性。',goals:['调节参数使列车稳定悬浮','达到目标速度300km/h','保持悬浮高度稳定'],quiz:{q:'超导磁悬浮列车的核心优势是什么？',opts:['无接触运行，摩擦和噪声显著降低','车轮更大所以更快','不需要轨道','载重越大悬浮越容易'],ans:0},learn:'超导磁悬浮列车是超导技术最壮观的应用。日本的SCMaglev使用超导线圈产生强磁场，列车悬浮在轨道上方10cm，时速可达603km/h。上海磁浮列车（常导型）时速430km/h。超导磁悬浮的优势：无摩擦、无噪音、高速稳定。挑战：超导线圈需要低温冷却，成本高昂。'}
 ];
 
 function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
@@ -189,6 +200,7 @@ function startGame(){
   document.getElementById('startScreen').classList.add('hidden');
   document.getElementById('panel').style.display='block';
   document.getElementById('bottom-bar').style.display='flex';
+  completedLevels.clear();quizPassed.clear();quizFeedback={};
   gameState='play';currentLevel=0;initLevel(0);renderPanel();
 }
 
@@ -220,17 +232,51 @@ function initLevel(idx){
 }
 
 function completeLevel(idx){
-  if(!completedLevels.has(idx)){completedLevels.add(idx);renderPanel()}
+  renderPanel();
+}
+
+function isUnlocked(idx){return idx===0||quizPassed.has(idx-1)}
+function renderStageNav(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<levels.length;i++){
+    const unlocked=isUnlocked(i);
+    const cls=quizPassed.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${cls}" onclick="${unlocked?`switchLevel(${i})`:''}"></div>`;
+  }
+  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 进度 ${Math.round(quizPassed.size/levels.length*100)}%</div>`;
+  h+=`<div class="sn-hint">${quizPassed.size}/${levels.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
+  return h;
+}
+function renderQuiz(L){
+  const fb=quizFeedback[currentLevel];
+  let h=`<div class="quiz-box"><div class="quiz-title">通关小测验</div><div class="quiz-q">${L.quiz.q}</div>`;
+  L.quiz.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="checkQuiz(${currentLevel},${i})">${opt}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+function renderSummary(){
+  let h='<div class="summary-box"><div class="summary-title">🏆 超导体实验室通关！</div>';
+  h+=`<div class="summary-sub">你已完成全部 ${levels.length} 个超导实验关卡</div>`;
+  h+='<div class="summary-stats">';
+  h+=`<div class="summary-stat"><div class="num">${quizPassed.size}/${levels.length}</div><div class="label">测验通过</div></div>`;
+  h+='<div class="summary-stat"><div class="num">7</div><div class="label">核心概念</div></div>';
+  h+='</div><div class="summary-keys"><div style="font-weight:bold;color:var(--summary-title);margin-bottom:6px">📚 关键知识回顾</div>';
+  levels.forEach(l=>{h+=`<div>✅ ${l.title}</div>`});
+  h+='</div></div>';
+  return h;
+}
+function checkQuiz(levelIdx,picked){
+  if(levelIdx!==currentLevel||quizPassed.has(levelIdx))return;
+  const q=levels[levelIdx].quiz,ok=picked===q.ans;
+  quizFeedback[levelIdx]={ok,text:ok?'答对了。先看本关超导机制总结，再进入下一关。':'还不对。回到实验现象和关键公式，再判断核心机制。'};
+  if(ok){quizPassed.add(levelIdx);completedLevels.add(levelIdx)}
+  renderPanel();
 }
 
 function renderPanel(){
   const L=levels[currentLevel],S=levelState,p=document.getElementById('panel');
-  let h='<div style="margin-bottom:8px">';
-  for(let i=0;i<levels.length;i++){
-    let cls='level-btn';if(i===currentLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
-    h+=`<span class="${cls}" onclick="switchLevel(${i})">第${i+1}关</span>`;
-  }
-  h+='</div>';
+  let h=renderStageNav();
   h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
   h+=`<div class="concept-box">${L.concept}</div>`;
   h+='<div style="margin:8px 0;font-size:12px;color:var(--text-muted);font-weight:600">目标清单</div>';
@@ -240,16 +286,19 @@ function renderPanel(){
   }
   h+=renderLevelActions();
   if(S.goalDone&&S.goalDone.every(g=>g)){
+    if(!quizPassed.has(currentLevel))h+=renderQuiz(L);
+  }
+  if(quizPassed.has(currentLevel)){
     h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
     if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
-    else h+=`${_summaryHTML()}`;
+    else h+=renderSummary();
   }
   p.innerHTML=h;
   document.getElementById('bbLeft').textContent=`第 ${currentLevel+1} 关：${L.title}`;
-  document.getElementById('bbRight').textContent=`${completedLevels.size}/${levels.length} 已完成`;
+  document.getElementById('bbRight').textContent=`${quizPassed.size}/${levels.length} 已通关`;
 }
 
-function switchLevel(i){initLevel(i);renderPanel()}
+function switchLevel(i){if(!isUnlocked(i))return;initLevel(i);renderPanel()}
 
 function renderLevelActions(){
   const S=levelState;let h='';
@@ -953,107 +1002,6 @@ function mainLoop(ts){
 }
 lastTime=performance.now();
 animId=requestAnimationFrame(mainLoop);
-
-function goLevel(i){switchLevel(i);}
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
 
 </script>
 </body>

@@ -149,6 +149,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
@@ -238,6 +239,7 @@ let CW,CH,time=0,animId;
 let gameState='start',currentLevel=0;
 let levelState={},bgStars=[],particles=[];
 const completedLevels=new Set();
+const readyForQuiz=new Set();
 const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
 const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
 let panelDirty=true;
@@ -313,8 +315,8 @@ function markGoal(i){
   if(!levelState.goals[i]){levelState.goals[i]=true;panelDirty=true;AudioEngine.play('success');checkComplete();}
 }
 function checkComplete(){
-  if(levelState.goals.every(g=>g)&&!completedLevels.has(currentLevel)){
-    completedLevels.add(currentLevel);panelDirty=true;
+  if(levelState.goals.every(g=>g)&&!readyForQuiz.has(currentLevel)&&!completedLevels.has(currentLevel)){
+    readyForQuiz.add(currentLevel);panelDirty=true;
     celebrationParticles((CW+320)/2,CH/2);
     setTimeout(()=>showResult(),600);
   }
@@ -349,6 +351,7 @@ function answerQuiz(idx){
   quizState.selected=idx;
   if(idx===qd.ans){
     quizState.answered=true;quizState.correct=true;
+    completedLevels.add(currentLevel);readyForQuiz.delete(currentLevel);panelDirty=true;renderPanel();
     document.getElementById('qopt'+idx).classList.add('correct');
     document.getElementById('quizResult').className='quiz-result pass';
     document.getElementById('quizResult').textContent='✅ 回答正确！';
@@ -367,7 +370,7 @@ function answerQuiz(idx){
 }
 function nextLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel+1);}
 function retryLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel);}
-function restartAll(){document.getElementById('resultModal').classList.add('hidden');completedLevels.clear();initLevel(0);}
+function restartAll(){document.getElementById('resultModal').classList.add('hidden');completedLevels.clear();readyForQuiz.clear();initLevel(0);}
 
 // Lightweight DOM patcher: preserves focused range inputs during panel updates
 function _patchPanel(el,html){
@@ -397,12 +400,7 @@ function _diffNodes(o,n){
 function renderPanel(){
   if(!panelDirty)return;panelDirty=false;
   const lv=levels[currentLevel];
-  let h='<div style="margin-bottom:8px">';
-  levels.forEach((l,i)=>{
-    let cls='level-btn';if(i===currentLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
-    h+=`<span class="${cls}" onclick="initLevel(${i})">${i+1}</span>`;
-  });
-  h+='</div>';
+  let h=stageNavHTML();
   h+=`<div class="m-title">${lv.icon} ${lv.name}</div>`;
   h+=`<div class="m-sub">关卡 ${currentLevel+1} / ${levels.length}</div>`;
   if(lv.desc)h+=lv.desc;
@@ -419,10 +417,24 @@ function renderPanel(){
   else if(currentLevel===4)h+=panelL4();
   else if(currentLevel===5)h+=panelL5();
   else if(currentLevel===6)h+=panelL6();
+  if(readyForQuiz.has(currentLevel)&&!completedLevels.has(currentLevel))h+='<div class="hint-box">目标已完成。请答对弹窗中的通关测验，解锁下一关。</div>';
   h+=`<div class="learn-box">💡 ${lv.learn}</div>`;
   _patchPanel(panelEl,h);
   bbLeft.textContent=`关卡 ${currentLevel+1}: ${lv.name}`;
   bbRight.textContent=`已完成 ${completedLevels.size}/${levels.length}`;
+}
+
+function canGoLevel(i){return i>=0&&i<levels.length&&(i===0||completedLevels.has(i)||completedLevels.has(i-1));}
+function stageNavHTML(){
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  for(let i=0;i<levels.length;i++){
+    const unlocked=canGoLevel(i);
+    const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+  }
+  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${completedLevels.size}/${levels.length}</div>`;
+  h+='<div class="sn-hint">完成目标后答对通关测验，才解锁下一关</div></div>';
+  return h;
 }
 
 function drawBg(){
@@ -472,8 +484,8 @@ let l0={mass:5,created:{wd:false,ns:false,bh:false},anim:null,animT:0,animType:'
 function initL0(){l0={mass:5,created:{wd:false,ns:false,bh:false},anim:null,animT:0,animType:'',starParticles:[],
   prediction:'',predResult:'',predShown:false};}
 function panelL0(){
-  let h=`<div class="slider-wrap"><label>恒星质量: <span class="sv">${l0.mass.toFixed(1)} M☉</span></label>`;
-  h+=`<input type="range" min="0.5" max="30" step="0.1" value="${l0.mass}" oninput="l0.mass=+this.value;l0.prediction='';l0.predResult='';l0.predShown=false;panelDirty=true;renderPanel()"></div>`;
+  let h=`<div class="slider-wrap"><label>恒星质量: <span class="sv" id="l0MassVal">${l0.mass.toFixed(1)} M☉</span></label>`;
+  h+=`<input type="range" min="0.5" max="30" step="0.1" value="${l0.mass}" oninput="setL0Mass(this)" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
   // Prediction buttons
   h+=`<div style="font-size:12px;color:#aaa;margin:6px 0">🔮 先预测这颗恒星的命运：</div>`;
   h+=`<div style="text-align:center">`;
@@ -493,6 +505,11 @@ function panelL0(){
   h+=status;
   h+=`<div class="hint-box">💡 先预测再验证！&lt;1.4M☉→白矮星，1.4~3M☉→中子星，&gt;3M☉→黑洞</div>`;
   return h;
+}
+function setL0Mass(el){
+  l0.mass=+el.value;l0.prediction='';l0.predResult='';l0.predShown=false;
+  const out=document.getElementById('l0MassVal');
+  if(out)out.textContent=l0.mass.toFixed(1)+' M☉';
 }
 function evolveStarL0(){
   if(!l0.prediction)return;
@@ -753,8 +770,8 @@ function panelL4(){
     h+=`<div style="border:2px solid #f59e0b;border-radius:8px;padding:10px;margin:8px 0;background:#1a1a0a">`;
     h+=`<div style="font-size:13px;font-weight:700;color:#f59e0b;margin-bottom:6px">🚀 逃生挑战</div>`;
     h+=`<div style="font-size:11px;color:#cca;margin-bottom:8px">宇航员被困在危险距离！调整推力，在被面条化前逃离！</div>`;
-    h+=`<div class="slider-wrap"><label>推进器推力: <span class="sv">${l4.escapeThrust}%</span></label>`;
-    h+=`<input type="range" min="0" max="100" step="1" value="${l4.escapeThrust}" oninput="l4.escapeThrust=+this.value;panelDirty=true;renderPanel()"></div>`;
+    h+=`<div class="slider-wrap"><label>推进器推力: <span class="sv" id="l4ThrustVal">${l4.escapeThrust}%</span></label>`;
+    h+=`<input type="range" min="0" max="100" step="1" value="${l4.escapeThrust}" oninput="setL4Thrust(this)" onchange="this.blur();panelDirty=true;renderPanel()"></div>`;
     h+=`<button class="act-btn red" onclick="startEscape()">🔥 启动推进器！</button></div>`;
   }
   if(l4.escapeMode){
@@ -768,6 +785,11 @@ function panelL4(){
   }
   h+=`<div class="hint-box">💡 拖动滑块改变距离观察潮汐力。完成三个观察后解锁逃生挑战！推力需要≥70%才能逃脱。</div>`;
   return h;
+}
+function setL4Thrust(el){
+  l4.escapeThrust=+el.value;
+  const out=document.getElementById('l4ThrustVal');
+  if(out)out.textContent=l4.escapeThrust+'%';
 }
 function setL4Dist(v){
   l4.distance=v;
@@ -1068,7 +1090,7 @@ function loop(){
   }
 }
 
-function goLevel(i){if(typeof currentLevel!=="undefined")currentLevel=i;if(typeof curLevel!=="undefined")curLevel=i;if(typeof initLevel==="function")initLevel(i);if(typeof renderPanel==="function")renderPanel();}
+function goLevel(i){if(!canGoLevel(i))return;if(typeof currentLevel!=="undefined")currentLevel=i;if(typeof curLevel!=="undefined")curLevel=i;if(typeof initLevel==="function")initLevel(i);if(typeof renderPanel==="function")renderPanel();}
 // === 总分总认知结构增强 ===
 // 延迟重新渲染确保增强生效
 (function(){

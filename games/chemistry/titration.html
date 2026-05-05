@@ -17,6 +17,10 @@
   --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
   --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
   --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-text:#a0c0a0;--quiz-opt-border:#1a3a1a;--quiz-opt-bg:#111;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;
+  --quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
   --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
   --summary-title:#60a5fa;--summary-sub:#888;--summary-keys-bg:rgba(99,102,241,0.1);--summary-keys-text:#a0a0c0;
 }
@@ -31,6 +35,10 @@
   --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
   --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
   --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-text:#334155;--quiz-opt-border:#d1d5db;--quiz-opt-bg:#fff;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;
+  --quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
   --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
   --summary-title:#4f46e5;--summary-sub:#64748b;--summary-keys-bg:rgba(99,102,241,0.06);--summary-keys-text:#334155;
 }
@@ -54,6 +62,14 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC'
 .act-btn:hover{background:rgba(20,184,166,0.3)}
 .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;line-height:1.8;color:var(--learn-text)}
 .learn-box b{color:#5eead4}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 #bar{position:absolute;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:none;align-items:center;padding:0 12px;gap:8px;z-index:10}
 #bar .prog{margin-left:auto;font-size:12px;color:var(--text-muted)}
 canvas{position:absolute;left:320px;top:0;background:var(--bg)}
@@ -65,7 +81,9 @@ input[type=range].ctl{width:100%;accent-color:#14b8a6;margin:4px 0}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
+.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -110,6 +128,16 @@ let levelObjs=[[false,false,false],[false,false,false],[false,false,false],[fals
 
 const LEVEL_NAMES=['pH值与指示剂','强酸强碱','弱酸弱碱','缓冲溶液','酸碱滴定曲线','氧化还原滴定','水质检测应用'];
 const LEVEL_ICONS=['🌈','⚡','🔄','🛡️','📈','⚗️','💧'];
+const quizData=[
+  {q:'pH 值的定义与什么直接相关？',opts:['溶液中 H⁺ 浓度','溶液颜色深浅','烧杯体积'],ans:0,ok:'对。pH=-log[H⁺]，H⁺ 越多 pH 越低。',bad:'指示剂颜色只是观察结果，pH 的本质来自 H⁺ 浓度。'},
+  {q:'强酸强碱在水中的典型特征是什么？',opts:['几乎完全电离','完全不产生离子','只在高温下电离'],ans:0,ok:'对。强电解质在水中基本完全电离。',bad:'弱酸弱碱才是部分电离并存在平衡。'},
+  {q:'弱酸被稀释时，电离度通常怎样变化？',opts:['增大','一定变为 0','与浓度无关'],ans:0,ok:'对。稀释会促进弱电解质电离，电离度增大。',bad:'弱电解质存在电离平衡，浓度改变会影响电离度。'},
+  {q:'缓冲溶液抵抗 pH 变化的原因是什么？',opts:['弱酸/共轭碱共同消耗少量外加酸碱','里面没有任何离子','pH 永远固定不变'],ans:0,ok:'对。缓冲对能消耗少量 H⁺ 或 OH⁻，所以 pH 变化较小。',bad:'缓冲不是 pH 完全不变，而是对少量酸碱有抵抗能力。'},
+  {q:'酸碱滴定曲线中等当量点附近通常会出现什么？',opts:['pH 突跃','温度恒为 0°C','体积突然变小'],ans:0,ok:'对。等当量点附近反应物比例迅速改变，pH 会突变。',bad:'滴定终点判断依赖 pH 突跃和指示剂变色，不是体积突然消失。'},
+  {q:'高锰酸钾滴定 Fe²⁺ 常被称作自身指示剂，是因为？',opts:['过量 KMnO₄ 本身呈紫色','Fe²⁺ 会发光','水会变成固体'],ans:0,ok:'对。终点后微量过量 MnO₄⁻ 会留下淡紫色。',bad:'自身指示剂指滴定剂本身颜色可指示终点。'},
+  {q:'水质检测中 pH、硬度、余氯这些指标主要用于判断什么？',opts:['水样是否适合饮用或使用','水分子是否消失','水的重量是否固定'],ans:0,ok:'对。综合指标能判断水样是否达标以及可能的处理需求。',bad:'水质检测关注安全和适用性，不是判断水分子是否存在。'}
+];
+let quizPassed=new Set(),quizFeedback={};
 
 // pH color mapping
 function phColor(pH){
@@ -181,8 +209,9 @@ function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.st
 window.addEventListener('resize',()=>{resize();draw();});
 
 function startGame(){overlay.style.display='none';wrap.style.display='block';panel.style.display='block';bar.style.display='flex';resize();goLevel(0);animate();}
-function goLevel(n){if(n>6)return;curLevel=n;if(!unlocked[n])unlocked[n]=true;initLevel(n);renderPanel();draw();}
-function checkObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;if(levelObjs[li].every(v=>v)&&li<6)unlocked[li+1]=true;renderPanel();}}
+function goLevel(n){if(n<0||n>6||!isUnlocked(n))return;curLevel=n;unlocked[n]=true;initLevel(n);renderPanel();draw();}
+function checkObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();}}
+function isUnlocked(n){return n===0||quizPassed.has(n-1)}
 
 function initLevel(n){
   switch(n){
@@ -221,21 +250,50 @@ function buildTitrationCurve(){
 
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  LEVEL_NAMES.forEach((_,i)=>{const cls=i<curLevel?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})" title="${LEVEL_NAMES[i]}"></div>`;});
-  h+=`</div><div class="sn-info">${LEVEL_ICONS[curLevel]} ${curLevel+1}/${LEVEL_NAMES.length} ${LEVEL_NAMES[curLevel]}</div></div>`;
+  LEVEL_NAMES.forEach((_,i)=>{
+    const unlocked=isUnlocked(i),cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    const click=unlocked?`goLevel(${i})`:'';
+    h+=`<div class="sn-d ${cls}" onclick="${click}" title="${unlocked?LEVEL_NAMES[i]:'答对上一关测验后解锁'}"></div>`;
+  });
+  h+=`</div><div class="sn-info">${LEVEL_ICONS[curLevel]} ${curLevel+1}/${LEVEL_NAMES.length} ${LEVEL_NAMES[curLevel]}</div><div class="sn-hint">${quizPassed.size}/${LEVEL_NAMES.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
   return h;
 }
 function summaryHTML(){
   const done=levelObjs.flat().filter(v=>v).length,total=levelObjs.flat().length;
   return `<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握酸碱化学与滴定分析的核心知识</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}/${total}</div><div class="label">目标完成</div></div><div class="summary-stat"><div class="num">7</div><div class="label">关卡通关</div></div></div><div class="summary-keys"><div>🌈 pH值范围0-14，指示剂变色判断酸碱</div><div>⚡ 强酸强碱完全电离</div><div>🔄 弱酸弱碱部分电离，存在平衡</div><div>🛡️ 缓冲溶液抵抗pH变化</div><div>📈 滴定曲线的等当量点</div><div>⚗️ 氧化还原滴定的终点判断</div><div>💧 水质检测的实际应用</div></div></div>`;
 }
+function quizHTML(li){
+  const q=quizData[li],fb=quizFeedback[li];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`;});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+function answerQuiz(li,choice){
+  if(li!==curLevel||quizPassed.has(li))return;
+  const q=quizData[li],ok=choice===q.ans;
+  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  if(ok){
+    quizPassed.add(li);
+    if(li<6)unlocked[li+1]=true;
+  }
+  renderPanel();
+}
+window.answerQuiz=answerQuiz;
 function renderPanel(){
   let h=renderStageNav();
   switch(curLevel){case 0:h+=renderP0();break;case 1:h+=renderP1();break;case 2:h+=renderP2();break;case 3:h+=renderP3();break;case 4:h+=renderP4();break;case 5:h+=renderP5();break;case 6:h+=renderP6();break;}
-  if(levelObjs[curLevel].every(v=>v)&&curLevel<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
-  if(levelObjs[curLevel].every(v=>v)&&curLevel===6)h+=summaryHTML();
+  if(levelObjs[curLevel].every(v=>v)){
+    if(!quizPassed.has(curLevel))h+=quizHTML(curLevel);
+    if(quizPassed.has(curLevel)&&curLevel<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+    if(quizPassed.has(curLevel)&&curLevel===6)h+=summaryHTML();
+  }
   panel.innerHTML=h;
-  bar.innerHTML=`<span style="color:var(--text-muted)">🧪 ${LEVEL_NAMES[curLevel]}</span><span class="prog">${levelObjs.flat().filter(v=>v).length}/${levelObjs.flat().length} 目标</span>`;
+  const done=levelObjs[curLevel].filter(Boolean).length;
+  const status=quizPassed.has(curLevel)?'已通关':levelObjs[curLevel].every(Boolean)?'待测验':'进行中';
+  bar.innerHTML=`<span style="color:var(--text-muted)">🧪 ${LEVEL_NAMES[curLevel]}</span><span class="prog">目标 ${done}/3 · ${status} · 通关 ${quizPassed.size}/${LEVEL_NAMES.length}</span>`;
 }
 
 function renderP0(){

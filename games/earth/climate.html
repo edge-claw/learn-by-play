@@ -114,8 +114,17 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px 10px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:7px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -170,6 +179,8 @@ function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel');
 let W,H,curLevel=0,frame=0,animId;
 const completedLevels=new Set();
+const quizPassed=new Set();
+let quizFeedback={};
 const levelObjs=Array.from({length:7},()=>[false,false,false]);
 function resize(){cv.width=W=cv.clientWidth;cv.height=H=cv.clientHeight}
 window.addEventListener('resize',resize);resize();
@@ -182,36 +193,73 @@ let dragItem=null,dragOffX=0,dragOffY=0;
 const levels=[
 {name:'能量平衡',sub:'调节辐射收支使温度稳定',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>太阳常数 1361 W/m²，反照率，辐射收支平衡</div>地球接收太阳短波辐射，同时向太空发射长波辐射。当收入=支出时，温度稳定。调节太阳辐射和反照率使天平平衡。',
  objs:['调节太阳辐射强度','调节地球反照率','使能量收支平衡'],
+ quiz:{q:'地球长期温度稳定的直接条件是什么？',opts:['吸收的太阳能约等于向外发射的红外能','太阳辐射越强越稳定','反照率越低越稳定','只要没有云就稳定'],ans:0},
  learn:'地球能量平衡：太阳辐射到达地球约<span class="sv">1361 W/m²</span>（太阳常数），地球平均反照率约<span class="sv">0.30</span>，即30%的太阳辐射被反射回太空。吸收的能量加热地球，地球以红外辐射形式散热。当收入=支出时，无温室效应的平衡温度约<span class="sv">-18°C</span>。实际地球约15°C，差值由温室效应贡献（下一关）。'},
 {name:'温室效应',sub:'CO₂如何加热地球',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>CO₂ 红外截留，温室气体，280→420 ppm</div>地面发出的红外辐射被大气中CO₂分子截留并反射回地面，导致温度升高。调节CO₂浓度观察温度变化。',
  objs:['将CO₂升至400ppm','观察红外辐射被截留','对比有无温室气体温差'],
+ quiz:{q:'CO₂等温室气体主要通过什么方式增暖地表？',opts:['吸收并再发射地面红外辐射','直接产生太阳光','阻止地球自转','把海水变成冰'],ans:0},
  learn:'没有温室效应，地球平均温度将是<span class="sv">-18°C</span>而非15°C。CO₂从工业革命前的<span class="sv">280ppm</span>升至如今超过<span class="sv">420ppm</span>。CO₂分子吸收特定波长（<span class="sv">15μm</span>）的红外辐射，振动后重新发射，部分返回地面——这就是温室效应的分子机制。'},
 {name:'大气环流',sub:'三圈环流驱动全球风系',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>哈德利/费雷尔/极地三圈环流，科里奥利力</div>赤道受热空气上升→高空向极地流动→极地冷却下沉→地面回流。形成哈德利环流、费雷尔环流和极地环流三个环流圈。',
  objs:['启动赤道加热','观察哈德利环流形成','完成三圈环流'],
+ quiz:{q:'哈德利环流的根本驱动力是什么？',opts:['赤道受热导致空气上升','月球潮汐拉动空气','海底火山喷发','人造卫星推动气团'],ans:0},
  learn:'赤道接收最多太阳辐射，空气受热膨胀上升，在高空向两极流动。受<span class="sv">科里奥利力</span>偏转，在纬度30°附近下沉形成<span class="sv">哈德利环流</span>。中纬度的<span class="sv">费雷尔环流</span>和高纬度的<span class="sv">极地环流</span>共同构成三圈环流，驱动全球风带和天气系统。'},
 {name:'海洋传送带',sub:'温盐环流驱动深海循环',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>温盐环流 AMOC，密度驱动，1000 年周期</div>高盐度冷水密度大→下沉到深海→缓慢流向赤道→上升流带回表面。调节盐度和温度观察传送带运转。',
  objs:['调节盐度使海水下沉','形成完整传送带环流','观察传送带断裂效应'],
+ quiz:{q:'北大西洋深水下沉通常需要什么条件？',opts:['高盐、低温使密度增大','低盐、高温使密度增大','海水完全静止','没有风就会下沉'],ans:0},
  learn:'全球温盐环流（<span class="sv">大西洋经向翻转环流 AMOC</span>）周期约<span class="sv">1000年</span>。北大西洋高盐冷水下沉是驱动力。若格陵兰冰盖融化注入大量淡水，盐度降低→下沉减弱→传送带可能<span class="sv">断裂</span>→欧洲失去暖流加热，可能骤冷5-10°C。'},
 {name:'冰反馈',sub:'正反馈加速全球变暖',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>冰-反照率正反馈，北极放大效应</div>升温→冰融化→白色冰面减少→反照率降低→吸收更多热量→更多融化。这是一个危险的正反馈循环。',
  objs:['设置初始温度','观察冰盖开始融化','见证正反馈加速'],
+ quiz:{q:'冰-反照率正反馈为什么会放大变暖？',opts:['冰融后反照率降低，海水吸收更多热量','冰融后地球反射更多阳光','冰会制造更多CO₂','海水反照率比冰雪更高'],ans:0},
  learn:'冰雪反照率约<span class="sv">0.8-0.9</span>（反射80-90%阳光），海水仅<span class="sv">0.06</span>。北极海冰自1979年以来减少了<span class="sv">40%</span>。这种<span class="sv">冰-反照率正反馈</span>是气候系统中最强的放大机制之一，使北极变暖速度是全球平均的<span class="sv">2-3倍</span>（北极放大效应）。'},
 {name:'碳循环',sub:'碳在四大储库间流动',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>碳储库（大气/海洋/植被/岩石），年排放 10 GtC</div>碳在大气、海洋、植被和岩石四个储库间循环。拖拽碳球在储库间移动，观察碳量变化。砍伐森林会释放碳到大气。',
  objs:['将碳从植被移到大气','将碳从大气移到海洋','使大气碳量低于800GtC'],
+ quiz:{q:'人类排放的碳为什么会持续推高大气CO₂？',opts:['海洋和陆地只能吸收一部分，剩余留在大气中','岩石圈每年主动释放全部碳','植物完全不吸收CO₂','大气碳没有任何去向'],ans:0},
  learn:'地球碳储量：岩石圈<span class="sv">6600万GtC</span>、海洋<span class="sv">38000GtC</span>、土壤<span class="sv">1500GtC</span>、大气<span class="sv">870GtC</span>、植被<span class="sv">450GtC</span>。人类每年排放约<span class="sv">10GtC</span>，海洋和陆地各吸收约25%，剩余50%留在大气中。碳循环的平衡被打破是全球变暖的根本原因。'},
 {name:'情景预测',sub:'不同排放路径下的未来',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>RCP 排放路径（2.6/4.5/8.5），升温 1.5-4.5°C</div>选择不同的排放路径(RCP2.6/4.5/8.5)，运行百年模拟，观察温度和海平面变化曲线。',
  objs:['选择一个排放路径','运行百年模拟','对比不同情景结果'],
+ quiz:{q:'RCP8.5相对RCP2.6通常代表什么？',opts:['更高排放、更大升温和海平面上升','更强力减排、更低升温','没有任何排放','只影响海平面不影响温度'],ans:0},
  learn:'IPCC代表性浓度路径：<span class="sv">RCP2.6</span>（强力减排）升温约1.5°C；<span class="sv">RCP4.5</span>（中等减排）升温约2.5°C；<span class="sv">RCP8.5</span>（无控制排放）升温约4.5°C。海平面上升：RCP2.6约<span class="sv">0.4m</span>，RCP8.5可达<span class="sv">1.0m+</span>。每0.5°C升温都意味着更多极端天气、物种灭绝和粮食危机。'}
 ];
 
 /* ===== PANEL ===== */
 let panelDirty=true;
 function markDirty(){panelDirty=true}
+function isUnlocked(idx){return idx===0||quizPassed.has(idx-1)}
+function renderStageNav(){
+  const passed=quizPassed.size;
+  let h='<div class="stage-nav"><div class="sn-bar">';
+  levels.forEach((l,i)=>{
+    const unlocked=isUnlocked(i);
+    const cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${cls}" onclick="${unlocked?`loadLevel(${i})`:''}"></div>`;
+  });
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/${levels.length} 关 | 进度 ${Math.round(passed/levels.length*100)}%</div>`;
+  h+=`<div class="sn-hint">${passed}/${levels.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
+  return h;
+}
+function renderQuiz(lv){
+  const fb=quizFeedback[curLevel];
+  let h=`<div class="quiz-box"><div class="quiz-title">通关小测验</div><div class="quiz-q">${lv.quiz.q}</div>`;
+  lv.quiz.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="checkQuiz(${curLevel},${i})">${opt}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+function renderSummary(){
+  let h='<div class="summary-box">';
+  h+='<div class="summary-title">🏆 气候系统通关！</div>';
+  h+=`<div class="summary-sub">你已完成全部 ${levels.length} 个气候系统关卡</div>`;
+  h+='<div class="summary-stats">';
+  h+=`<div class="summary-stat"><div class="num">${quizPassed.size}/${levels.length}</div><div class="label">测验通过</div></div>`;
+  h+='<div class="summary-stat"><div class="num">21/21</div><div class="label">目标达成</div></div>';
+  h+='</div><div class="summary-keys"><div style="font-weight:bold;color:var(--summary-title);margin-bottom:6px">📚 关键知识回顾</div>';
+  levels.forEach(l=>{h+=`<div>✅ ${l.name}</div>`});
+  h+='</div></div>';
+  return h;
+}
 function renderPanel(){
   if(!panelDirty)return;panelDirty=false;
-  const lv=levels[curLevel];let h='<div style="margin-bottom:8px">';
-  levels.forEach((l,i)=>{let c='level-btn';if(i===curLevel)c+=' active';if(completedLevels.has(i))c+=' done';
-  h+=`<span class="${c}" onclick="loadLevel(${i})">${i+1}</span>`});
-  h+='</div>';
+  const lv=levels[curLevel];let h=renderStageNav();
   h+=`<div class="title">${lv.name}</div><div class="sub">${lv.sub}</div>`;
   h+=`<div class="concept-box">${lv.concept}</div>`;
   h+='<div class="progress-row">';
@@ -219,11 +267,13 @@ function renderPanel(){
   h+='</div>';
   h+=`<div id="actionArea"></div>`;
   const allDone=levelObjs[curLevel].every(v=>v);
-  if(allDone){
-    if(!completedLevels.has(curLevel)){completedLevels.add(curLevel);panelDirty=true}
+  if(allDone&&!quizPassed.has(curLevel)){
+    h+=renderQuiz(lv);
+  }
+  if(quizPassed.has(curLevel)){
     h+=`<div class="learn-box">💡 ${lv.learn}</div>`;
     if(curLevel<levels.length-1)h+=`<button class="act-btn green" onclick="loadLevel(${curLevel+1})">下一关 →</button>`;
-    else h+=`${_summaryHTML()}`;
+    else h+=renderSummary();
   }
   panel.innerHTML=h;
   setupLevelUI();
@@ -232,10 +282,26 @@ function renderPanel(){
   document.getElementById('ib-status').textContent=allDone?'已完成':'进行中';
 }
 function completeObj(li,oi){if(levelObjs[li][oi])return;levelObjs[li][oi]=true;markDirty()}
-function checkLevelDone(){if(levelObjs[curLevel].every(v=>v)&&!completedLevels.has(curLevel)){completedLevels.add(curLevel);markDirty()}}
+function checkLevelDone(){if(levelObjs[curLevel].every(v=>v))markDirty()}
+function checkQuiz(li,oi){
+  if(li!==curLevel||quizPassed.has(li))return;
+  const q=levels[li].quiz;
+  const ok=oi===q.ans;
+  quizFeedback[li]={ok,text:ok?'答对了。先看本关气候机制总结，再进入下一关。':'还不对。回到关键词和模拟现象，再判断因果机制。'};
+  if(ok){quizPassed.add(li);completedLevels.add(li)}
+  markDirty();
+  renderPanel();
+}
+function resetProgress(){
+  completedLevels.clear();
+  quizPassed.clear();
+  quizFeedback={};
+  levelObjs.forEach(row=>row.fill(false));
+}
 
 /* ===== LEVEL LOADER ===== */
 function loadLevel(n){
+  if(n<0||n>=levels.length||!isUnlocked(n))return;
   if(animId){cancelAnimationFrame(animId);animId=0}
   cv.onmousedown=e=>{mouseDown=true;clicked=true;const r=cv.getBoundingClientRect();mouseX=(e.clientX-r.left)*(W/r.width);mouseY=(e.clientY-r.top)*(H/r.height)};
   cv.onmousemove=e=>{const r=cv.getBoundingClientRect();mouseX=(e.clientX-r.left)*(W/r.width);mouseY=(e.clientY-r.top)*(H/r.height)};
@@ -301,7 +367,7 @@ function drawWavyArrow(x1,y1,x2,y2,color,t,amp){
   ctx.lineTo(x2-Math.cos(a-0.4)*8,y2-Math.sin(a-0.4)*8);
   ctx.lineTo(x2-Math.cos(a+0.4)*8,y2-Math.sin(a+0.4)*8);ctx.closePath();ctx.fill();
 }
-function drawCO2(x,y,s,t){
+function drawCO2(x,y,s,tick){
   ctx.fillStyle='rgba(200,100,50,0.8)';
   ctx.beginPath();ctx.moveTo(x,y-s);ctx.lineTo(x-s*0.87,y+s*0.5);ctx.lineTo(x+s*0.87,y+s*0.5);ctx.closePath();ctx.fill();
   ctx.fillStyle=t().label;ctx.font=`${Math.max(8,s*0.7)}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
@@ -965,107 +1031,7 @@ function initL7(){
 }
 
 /* ===== START ===== */
-function startGame(){document.getElementById('startScreen').classList.add('hidden');loadLevel(0)}
-
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
+function startGame(){document.getElementById('startScreen').classList.add('hidden');resetProgress();loadLevel(0)}
 
 </script>
 </body>

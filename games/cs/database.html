@@ -83,6 +83,7 @@ select,.num-input{background:var(--concept-bg);border:1px solid var(--concept-bo
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -165,11 +166,12 @@ const quizData=[
 
 function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel()}}
 function startGame(){document.getElementById('startScreen').classList.add('hidden');panel.style.display='block';bar.style.display='flex';resize();goLevel(0);requestAnimationFrame(loop)}
-function goLevel(i){if(i>=TOTAL){showResult();return}curLevel=i;barText.textContent=levelIcons[i]+' '+levelNames[i];initLevel(i);renderPanel()}
+function isUnlocked(i){return i>=0&&i<TOTAL&&(i===0||quizPassed.has(i)||quizPassed.has(i-1))}
+function goLevel(i){if(i>=TOTAL){showResult();return}if(!isUnlocked(i))return;curLevel=i;barText.textContent=levelIcons[i]+' '+levelNames[i];initLevel(i);renderPanel()}
 
 function stageNavHTML(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<TOTAL;i++){const c=i<curLevel?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`}
+  for(let i=0;i<TOTAL;i++){const c=quizPassed.has(i)?'done':i===curLevel?'cur':isUnlocked(i)?'':'locked';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`}
   h+=`</div><div class="sn-info">第 ${curLevel+1}/${TOTAL} 关 · ${levelNames[curLevel]}</div></div>`;return h;
 }
 function objHTML(li){return levelObjs[li].map((v,i)=>`<div class="obj-row"><div class="dot${v?' done':''}"></div><span>${objTexts[li][i]}</span></div>`).join('')}

@@ -88,6 +88,7 @@ canvas{position:fixed;left:320px;top:0;background:var(--bg)}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
@@ -106,11 +107,15 @@ canvas{position:fixed;left:320px;top:0;background:var(--bg)}
 [data-theme="dark"] #themeToggle{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#aaa}
 [data-theme="light"] #themeToggle{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.12);color:#666}
 .quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:8px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
 .quiz-q{font-size:13px;color:var(--quiz-q);margin-bottom:8px;font-weight:600}
-.quiz-opt{font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg)}
+.quiz-opt{display:block;width:100%;font-size:13px;color:var(--quiz-opt-text);padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);text-align:left}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
 .quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
 .quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:7px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 </style>
 </head>
 <body data-theme="dark">
@@ -150,13 +155,16 @@ const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const panel=document.getElementById('panel'),bar=document.getElementById('bar'),barInner=document.getElementById('barInner');
 let W,H,curLevel=0;
 let levelObjs=Array.from({length:7},()=>[false,false,false]);
+const quizPassed=new Set();
+let quizFeedback={};
 let LD={};
 
-function resize(){W=window.innerWidth-320;H=window.innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';draw()}
+function resize(){W=window.innerWidth-320;H=window.innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';if(Object.keys(LD).length)draw()}
 window.addEventListener('resize',resize);
 
-function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
-function goLevel(n){if(n<0||n>=7){showSummary();return}curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
+function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';quizPassed.clear();quizFeedback={};resize();goLevel(0)}
+function isUnlocked(n){return n===0||quizPassed.has(n-1)}
+function goLevel(n){if(n<0||n>=7){showSummary();return}if(!isUnlocked(n))return;curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
 function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
 function allDone(li){return levelObjs[li].every(Boolean)}
 
@@ -174,6 +182,16 @@ const levelInfo=[
   {title:'税收与无谓损失',sub:'税收的效率代价',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>原理：</b>税收 = 楔子插入供需之间<br>无谓损失 ∝ 税率²</div>调整税率滑块，观察<span style="color:#a855f7">紫色税收收入</span>和<span style="color:#f59e0b">橙色无谓损失</span>三角形的变化。',objs:['设置小额税收观察效果','增大税率看无谓损失扩大','找到税收收入最大化的税率'],learn:'<b>税收</b>在供需之间插入一个楔子，使交易量减少。<b>无谓损失</b>（黄色三角形）随税率的平方增长——税率翻倍，无谓损失翻四倍。拉弗曲线说明存在一个使税收收入最大化的税率。'},
   {title:'垄断与完全竞争',sub:'市场结构对比',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>对比：</b>完全竞争 P=MC → 效率最优<br>垄断 MR=MC → 价高量少</div>切换市场结构，对比完全竞争和垄断下的价格、产量和社会福利。',objs:['观察完全竞争均衡','切换到垄断观察价格上升','比较两种结构的无谓损失'],learn:'<b>完全竞争</b>下企业是价格接受者，P=MC，社会福利最大。<b>垄断</b>企业面对整条需求曲线，MR=MC 决定产量，P>MC，产生无谓损失。这就是反垄断法存在的原因。'},
   {title:'外部性与市场失灵',sub:'看不见的手失灵了',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>外部性：</b>负外部性 → 社会成本 > 私人成本<br>正外部性 → 社会收益 > 私人收益</div>调整外部性大小，观察市场均衡偏离社会最优的程度。用庇古税/补贴纠正。',objs:['观察负外部性导致过度生产','观察正外部性导致生产不足','用庇古税/补贴纠正到社会最优'],learn:'<b>外部性</b>是市场交易对第三方的影响。工厂污染（负外部性）使社会成本高于私人成本，市场过度生产。教育（正外部性）使社会收益高于私人收益，市场生产不足。庇古税/补贴可以内化外部性。'}
+];
+
+const quizData=[
+  {q:'供给需求模型中，市场均衡点表示什么？',opts:['需求量等于供给量时的价格和数量','政府指定的最高价格','消费者愿意支付的最高价格','生产者最低成本点'],ans:0},
+  {q:'需求价格弹性主要衡量什么？',opts:['需求量对价格变化的敏感程度','供给曲线是否向上倾斜','企业利润是否为正','市场是否存在税收'],ans:0},
+  {q:'自由竞争市场均衡为什么重要？',opts:['它在没有外部性时最大化消费者剩余和生产者剩余之和','它让所有商品免费','它保证生产者剩余为零','它只让消费者获益'],ans:0},
+  {q:'有效的价格上限通常会导致什么？',opts:['短缺，因为价格低于均衡价时需求量大于供给量','过剩，因为供给量大于需求量','均衡数量自动增加','无谓损失完全消失'],ans:0},
+  {q:'税收为什么会产生无谓损失？',opts:['税收楔子减少了原本互利的交易数量','政府获得税收收入','买卖双方价格完全不变','交易量一定增加'],ans:0},
+  {q:'垄断相对完全竞争的典型结果是什么？',opts:['价格更高、产量更低，并产生无谓损失','价格更低、产量更高','P 总是等于 MC','社会福利必然最大'],ans:0},
+  {q:'负外部性下市场失灵的原因是什么？',opts:['私人成本低于社会成本，市场会过度生产','私人收益高于社会收益，市场生产不足','政府税收过高','需求曲线不存在'],ans:0}
 ];
 
 // === Level State Init ===
@@ -281,9 +299,29 @@ function readSliders(){
 // === Stage Nav ===
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<7;i++){let cls=allDone(i)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="playSound('click');goLevel(${i})"></div>`}
-  h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关 · ${levelInfo[curLevel].title}</div>`;
-  h+=`<div class="sn-hint">${levelInfo[curLevel].sub}</div></div>`;return h;
+  for(let i=0;i<7;i++){
+    let unlocked=isUnlocked(i);
+    let cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${cls}" onclick="${unlocked?`playSound('click');goLevel(${i})`:''}"></div>`;
+  }
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关 · 进度 ${Math.round(quizPassed.size/7*100)}%</div>`;
+  h+=`<div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;return h;
+}
+
+function renderQuiz(){
+  let q=quizData[curLevel],fb=quizFeedback[curLevel];
+  let h=`<div class="quiz-box"><div class="quiz-title">通关小测验</div><div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="checkQuiz(${i})">${opt}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';return h;
+}
+
+function checkQuiz(oi){
+  if(quizPassed.has(curLevel))return;
+  let q=quizData[curLevel],ok=oi===q.ans;
+  quizFeedback[curLevel]={ok,text:ok?'答对了。先读学习总结，再进入下一关。':'还不对。回到图上的曲线、区域和关键定义再判断。'};
+  if(ok){quizPassed.add(curLevel);playSound('success')}
+  renderPanel();renderBar();
 }
 
 // === Panel ===
@@ -357,7 +395,10 @@ function renderPanel(){
       break;
   }
 
-  if(allDone(curLevel)){
+  if(allDone(curLevel)&&!quizPassed.has(curLevel)){
+    h+=renderQuiz();
+  }
+  if(quizPassed.has(curLevel)){
     h+=`<div class="learn-box">${info.learn}</div>`;
     if(curLevel<6)h+=`<button class="act-btn" onclick="playSound('click');goLevel(${curLevel+1})">下一关 →</button>`;
     else h+=`<button class="act-btn" onclick="showSummary()">查看总结 →</button>`;
@@ -568,7 +609,7 @@ function draw(){
 // === Summary ===
 function showSummary(){
   let done=levelObjs.flat().filter(Boolean).length;
-  panel.innerHTML=`<div class="summary-box"><div class="summary-title">🎉 市场经济探险完成！</div><div class="summary-sub">你已掌握市场经济的核心机制</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标完成</div></div><div class="summary-stat"><div class="num">7</div><div class="label">关卡通关</div></div></div><div class="summary-keys"><div>📊 供给与需求决定均衡价格</div><div>📐 弹性衡量价格敏感度</div><div>💰 自由市场最大化总剩余</div><div>⚖️ 价格管制造成短缺或过剩</div><div>🏛️ 税收产生无谓损失</div><div>🏭 垄断导致效率损失</div><div>🌍 外部性需要政府干预</div></div></div><button class="act-btn" style="margin-top:12px" onclick="location.reload()">再玩一次</button>`;
+  panel.innerHTML=`<div class="summary-box"><div class="summary-title">🎉 市场经济探险完成！</div><div class="summary-sub">你已掌握市场经济的核心机制</div><div class="summary-stats"><div class="summary-stat"><div class="num">${quizPassed.size}/7</div><div class="label">测验通过</div></div><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标完成</div></div></div><div class="summary-keys"><div>📊 供给与需求决定均衡价格</div><div>📐 弹性衡量价格敏感度</div><div>💰 自由市场最大化总剩余</div><div>⚖️ 价格管制造成短缺或过剩</div><div>🏛️ 税收产生无谓损失</div><div>🏭 垄断导致效率损失</div><div>🌍 外部性需要政府干预</div></div></div><button class="act-btn" style="margin-top:12px" onclick="location.reload()">再玩一次</button>`;
 }
 
 // === Animation loop ===
@@ -577,4 +618,3 @@ requestAnimationFrame(mainLoop);
 </script>
 </body>
 </html>
-

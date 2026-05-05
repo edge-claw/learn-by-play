@@ -119,8 +119,17 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;line-height:1.6;color:var(--quiz-q);margin-bottom:6px}
+.quiz-opt{display:block;width:100%;text-align:left;padding:8px;margin:4px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;cursor:pointer}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{border-radius:8px;padding:8px;margin:8px 0;font-size:13px;line-height:1.6}
+.quiz-feedback.ok{border:1px solid #22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{border:1px solid #ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -173,6 +182,8 @@ let CW,CH,time=0,animId;
 let gameState='start',currentLevel=0;
 let levelState={},stars=[],particles=[];
 const completedLevels=new Set();
+const quizPassed=new Set();
+const quizFeedback={};
 
 const levels=[
 {title:'能级跃迁',sub:'玻尔原子模型',highlight:'玻尔模型：E<sub>光子</sub> = E<sub>高</sub> − E<sub>低</sub>（光子能量 = 能级差）',concept:'原子中电子只能在特定能级轨道上运动。吸收光子→电子跳到高能级（激发）；释放光子→电子跳回低能级（退激发），发出的光子能量等于两能级之差。',goals:['吸收光子使电子跃迁到高能级','释放光子使电子回到低能级','完成3次完整跃迁循环'],learn:'这就是玻尔模型的核心：电子轨道是量子化的，只有特定能量的光子才能被吸收或发射。不同能级差对应不同颜色的光——这是光谱学的基础，也是激光的起点。'},
@@ -182,6 +193,16 @@ const levels=[
 {title:'激光类型',sub:'三大激光器',highlight:'三大激光器：He-Ne (632.8nm) / Nd:YAG (532nm) / GaAs (808nm)',concept:'气体激光器（He-Ne）：氦氖混合气体，输出632.8nm红光，用于精密测量。固体激光器（Nd:YAG）：掺钕钇铝石榴石晶体，1064nm倍频后532nm绿光，用于工业加工。半导体激光器（GaAs）：砷化镓PN结，808nm红外光，用于光纤通信。',goals:['查看气体激光器(He-Ne)','查看固体激光器(Nd:YAG)','查看半导体激光器(GaAs)'],learn:'三种激光器各有所长：He-Ne激光器光束质量极好，是精密测量的标准；Nd:YAG功率大，是工业切割焊接的主力；半导体激光器体积小、效率高，是光纤通信和日常应用（激光笔、CD）的核心。'},
 {title:'锁模',sub:'飞秒脉冲',highlight:'锁模脉冲：宽度 &#8776; 1/(N&#215;&#916;&#957;)，峰值功率 = N &#215; 平均功率',concept:'激光腔内同时存在多个纵模（不同频率）。未锁模时各模式相位随机，输出近似连续。锁模=强制所有模式相位同步，干涉叠加产生超短脉冲（飞秒级，10⁻¹⁵秒），峰值功率极高。',goals:['观察未锁模的连续输出','锁定所有模式的相位','产生飞秒级超短脉冲'],learn:'锁模是产生超短脉冲的核心技术。N个模式锁模后，脉冲宽度≈1/(N×Δν)，峰值功率是平均功率的N倍。飞秒激光（10⁻¹⁵秒）能在材料来不及传热时完成加工——这就是"冷加工"，可以切割任何材料而不产生热损伤。'},
 {title:'激光应用',sub:'改变世界的光',highlight:'三大应用：精密切割（&#956;m聚焦）/ 光纤通信（Tbit/s）/ 激光冷却（&#956;K超低温）',concept:'激光在现代科技中无处不在：精密切割（聚焦能量密度极高）、光纤通信（激光脉冲编码信息，光速传输）、激光冷却（用光子动量减速原子，达到微开尔文超低温）。',goals:['完成精密切割任务','完成光纤通信编码','完成激光冷却实验'],learn:'激光应用展示了光的三个极致：①极高能量密度——聚焦到微米级切割任何材料；②极高信息容量——单根光纤每秒传输数十太比特数据；③极低温度——激光冷却把原子减速到接近绝对零度，是玻色-爱因斯坦凝聚的关键技术。'}
+];
+
+const quizData=[
+{q:'电子吸收或释放光子时，光子能量由什么决定？',opts:['两个能级之间的能量差','电子绕核运动的半径总和','光子飞行的距离'],ans:0,ok:'对。能级差决定吸收或发射光子的能量，也决定对应光的颜色。',bad:'回看本关公式：E光子 = E高 - E低。'},
+{q:'受激辐射放大的关键是什么？',opts:['新光子与入射光子同频率、同方向、同相位','原子随机发出不同颜色的光','镜子把任何光都变成红光'],ans:0,ok:'对。受激发射产生“相同”的光子，这是激光相干性的来源。',bad:'注意本关强调的三同：频率、方向、相位都一致。'},
+{q:'为什么激光器需要粒子数反转？',opts:['让高能级粒子多于低能级粒子，使受激辐射超过吸收','让所有粒子都停在基态','降低光速以便光停在腔内'],ans:0,ok:'对。只有 N2>N1 时，光通过介质才更可能被放大。',bad:'热平衡下低能级粒子更多，泵浦就是为了打破这个平衡。'},
+{q:'谐振腔的主要作用是什么？',opts:['让满足驻波条件的光反复通过增益介质并被选择放大','只负责给激光染色','把电子固定在一个能级上'],ans:0,ok:'对。谐振腔提供正反馈并选择满足 L=nλ/2 的纵模。',bad:'两面镜子的核心作用是反馈放大和模式选择。'},
+{q:'半导体激光器相比大型固体激光器的典型优势是什么？',opts:['体积小、效率高，适合通信和日常设备','只能产生微开尔文低温','必须使用氦氖混合气体'],ans:0,ok:'对。半导体激光器紧凑高效，是通信、激光笔、光驱等设备的基础。',bad:'本关对比了气体、固体、半导体三类激光器的结构和用途。'},
+{q:'锁模为什么能产生超短脉冲？',opts:['多个纵模相位同步后相干叠加，能量集中成脉冲','减少所有纵模直到只剩一个','把连续光完全吸收掉'],ans:0,ok:'对。相位锁定让多个纵模在同一时刻叠加成窄脉冲。',bad:'锁模的关键词是多纵模相位同步，不是删除模式。'},
+{q:'激光冷却能够降低原子温度，主要利用了光子的什么？',opts:['光子动量改变原子运动速度','光子质量很大能压住原子','光纤把热量直接带走'],ans:0,ok:'对。反向激光束用光子动量持续减速原子，温度随运动变慢而降低。',bad:'温度对应粒子热运动强弱，激光冷却靠光子动量减速。'}
 ];
 
 function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
@@ -204,7 +225,7 @@ if(idx===0){
   const ax=cx,ay=cy;
   for(let i=0;i<20;i++){const a=Math.random()*Math.PI*2,d=Math.random()*180+40;levelState.atoms.push({x:ax+Math.cos(a)*d,y:ay+Math.sin(a)*d,excited:true,r:12})}
 }else if(idx===2){
-  levelState={pumpPower:0,n1:100,n2:0,n3:0,inverted:false,invertedTime:0,goalDone:[false,false,false],sawNormal:false};
+  levelState={pumpPower:0,n1:100,n2:0,n3:0,inverted:false,invertedTime:0,goalDone:[true,false,false],sawNormal:true};
 }else if(idx===3){
   levelState={mirrorDist:200,photons:[],outputPhotons:[],modeNum:3,started:false,outputCount:0,goalDone:[false,false,false],adjustedDist:false};
 }else if(idx===4){
@@ -222,7 +243,11 @@ if(idx===0){
 renderPanel();
 }
 
-function switchLevel(idx){if(idx>=0&&idx<levels.length){initLevel(idx);renderPanel()}}
+function canGoLevel(idx){
+return idx>=0&&idx<levels.length&&(idx===0||completedLevels.has(idx)||completedLevels.has(idx-1));
+}
+
+function switchLevel(idx){if(canGoLevel(idx)){initLevel(idx);renderPanel()}}
 
 function completeLevel(idx){
 if(!completedLevels.has(idx)){completedLevels.add(idx);renderPanel()}
@@ -230,12 +255,7 @@ if(!completedLevels.has(idx)){completedLevels.add(idx);renderPanel()}
 
 function renderPanel(){
 const L=levels[currentLevel],S=levelState,p=document.getElementById('panel');
-let h='<div style="margin-bottom:8px">';
-for(let i=0;i<levels.length;i++){
-  let cls='level-btn';if(i===currentLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
-  h+=`<span class="${cls}" onclick="switchLevel(${i})">第${i+1}关</span>`;
-}
-h+='</div>';
+let h=stageNavHTML();
 h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
 if(L.highlight)h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>${L.highlight}</div>`;
 h+=`<div class="concept-box">${L.concept}</div>`;
@@ -246,13 +266,57 @@ for(let i=0;i<L.goals.length;i++){
 }
 h+=renderLevelActions();
 if(S.goalDone&&S.goalDone.every(g=>g)){
-  h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
-  if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
-  else h+=`${_summaryHTML()}`;
+  if(!quizPassed.has(currentLevel))h+=quizHTML(currentLevel);
+  else{
+    h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
+    if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
+    else h+=summaryHTML();
+  }
 }
 p.innerHTML=h;
 document.getElementById('bbLeft').textContent=`第 ${currentLevel+1} 关：${L.title}`;
 document.getElementById('bbRight').textContent=`已完成 ${completedLevels.size}/${levels.length}`;
+}
+
+function stageNavHTML(){
+let h='<div class="stage-nav"><div class="sn-bar">';
+for(let i=0;i<levels.length;i++){
+  const unlocked=canGoLevel(i);
+  const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
+  h+=`<div class="sn-d ${cls}" onclick="${unlocked?'switchLevel('+i+')':''}"></div>`;
+}
+h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${completedLevels.size}/${levels.length}</div>`;
+h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
+return h;
+}
+
+function quizHTML(idx){
+const q=quizData[idx],fb=quizFeedback[idx];
+let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+h+=`<div class="quiz-q">${q.q}</div>`;
+q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${idx},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`});
+if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+h+='</div>';
+return h;
+}
+
+function answerQuiz(idx,optIdx){
+const q=quizData[idx],ok=optIdx===q.ans;
+quizFeedback[idx]={ok,text:ok?q.ok:q.bad};
+if(ok){quizPassed.add(idx);completeLevel(idx);}
+else renderPanel();
+}
+
+function summaryHTML(){
+let h='<div class="summary-box"><div class="summary-title">🏆 激光物理探险通关</div>';
+h+='<div class="summary-sub">你已完成 7 个激光物理主题</div><div class="summary-stats">';
+h+=`<div class="summary-stat"><div class="num">${levels.length}</div><div class="label">关卡完成</div></div>`;
+h+=`<div class="summary-stat"><div class="num">${completedLevels.size}</div><div class="label">测验通过</div></div>`;
+h+='<div class="summary-stat"><div class="num">100%</div><div class="label">知识闭环</div></div></div>';
+h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">📚 关键知识回顾</div>';
+levels.forEach(L=>{h+=`<div>✅ ${L.title}</div>`});
+h+='</div></div>';
+return h;
 }
 
 function renderLevelActions(){
@@ -267,10 +331,10 @@ if(currentLevel===0){
   else h+=`<button class="act-btn" onclick="resetStimulated()">重置实验</button>`;
 }else if(currentLevel===2){
   h+=`<div class="hint-box">E1粒子：${Math.round(S.n1)} | E2粒子：${Math.round(S.n2)} | E3粒子：${Math.round(S.n3)}<br>状态：${S.n2>S.n1?'<span style="color:#4ade80">已反转!</span>':'<span style="color:#f87171">未反转</span>'}</div>`;
-  h+=`<div class="slider-wrap"><label>泵浦功率：<span class="sv">${S.pumpPower}%</span></label><input type="range" min="0" max="100" value="${S.pumpPower}" oninput="setPumpPower(this.value)"></div>`;
+  h+=`<div class="slider-wrap"><label>泵浦功率：<span class="sv">${S.pumpPower}%</span></label><input type="range" min="0" max="100" value="${S.pumpPower}" oninput="setPumpPower(this.value,this)"></div>`;
 }else if(currentLevel===3){
   h+=`<div class="hint-box">镜距：${S.mirrorDist}px | 纵模数：${S.modeNum} | 输出光子：${S.outputCount}</div>`;
-  h+=`<div class="slider-wrap"><label>镜间距离：<span class="sv">${S.mirrorDist}px</span></label><input type="range" min="100" max="400" value="${S.mirrorDist}" oninput="setMirrorDist(this.value)"></div>`;
+  h+=`<div class="slider-wrap"><label>镜间距离：<span class="sv">${S.mirrorDist}px</span></label><input type="range" min="100" max="400" value="${S.mirrorDist}" oninput="setMirrorDist(this.value,this)"></div>`;
   if(!S.started)h+=`<button class="act-btn" onclick="startCavity()">注入光子</button>`;
   else h+=`<button class="act-btn" onclick="resetCavity()">重置</button>`;
 }else if(currentLevel===4){
@@ -280,7 +344,7 @@ if(currentLevel===0){
   }
 }else if(currentLevel===5){
   h+=`<div class="hint-box">纵模数：${S.modeCount} | 状态：${S.locked?'已锁模 🔒':'未锁模 🔓'}</div>`;
-  h+=`<div class="slider-wrap"><label>纵模数量：<span class="sv">${S.modeCount}</span></label><input type="range" min="3" max="15" value="${S.modeCount}" oninput="setModeCount(this.value)"></div>`;
+  h+=`<div class="slider-wrap"><label>纵模数量：<span class="sv">${S.modeCount}</span></label><input type="range" min="3" max="15" value="${S.modeCount}" oninput="setModeCount(this.value,this)"></div>`;
   if(!S.locked)h+=`<button class="act-btn" onclick="lockModes()">锁定相位 🔒</button>`;
   else h+=`<button class="act-btn" onclick="unlockModes()">解锁相位 🔓</button>`;
 }else if(currentLevel===6){
@@ -333,15 +397,21 @@ S.goalDone=[false,false,false];renderPanel();
 }
 
 // === Level 2: Population Inversion ===
-function setPumpPower(v){
+function updateSliderLabel(input,text){
+const label=input&&input.previousElementSibling;
+const valueEl=label&&label.querySelector?label.querySelector('.sv'):null;
+if(valueEl)valueEl.textContent=text;
+}
+function setPumpPower(v,input){
 levelState.pumpPower=parseInt(v);
+updateSliderLabel(input,levelState.pumpPower+'%');
 if(!levelState.sawNormal&&levelState.pumpPower===0){levelState.sawNormal=true;levelState.goalDone[0]=true;}
-renderPanel();
 }
 
 // === Level 3: Resonant Cavity ===
-function setMirrorDist(v){
+function setMirrorDist(v,input){
 const S=levelState;S.mirrorDist=parseInt(v);S.modeNum=Math.max(1,Math.round(S.mirrorDist/60));
+updateSliderLabel(input,S.mirrorDist+'px');
 if(!S.adjustedDist){S.adjustedDist=true;S.goalDone[1]=true;renderPanel();}
 }
 function startCavity(){
@@ -364,10 +434,10 @@ renderPanel();
 }
 
 // === Level 5: Mode Locking ===
-function setModeCount(v){
+function setModeCount(v,input){
 const S=levelState;S.modeCount=parseInt(v);
 S.modes=[];for(let i=0;i<S.modeCount;i++)S.modes.push({freq:1+i*0.5,phase:S.locked?0:Math.random()*Math.PI*2,amp:1});
-renderPanel();
+updateSliderLabel(input,S.modeCount);
 }
 function lockModes(){
 const S=levelState;S.locked=true;
@@ -891,112 +961,12 @@ if(gameState==='play'){
 function checkCompletion(){
 const S=levelState;
 if(!S.goalDone||!S.goalDone.every(g=>g))return;
-const idx=currentLevel;
-if(!completedLevels.has(idx)){completeLevel(idx);}
+if(quizPassed.has(currentLevel)&&!completedLevels.has(currentLevel))completeLevel(currentLevel);
 }
 
 requestAnimationFrame(gameLoop);
 
 function goLevel(i){switchLevel(i);}
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
 
 </script>
 </body>

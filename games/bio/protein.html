@@ -96,8 +96,17 @@ canvas{display:block;position:absolute;top:0;left:320px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -200,6 +209,16 @@ const levels=[
  objs:['输入氨基酸序列','AI分析完成','生成3D结构预测'],
  learn:'AlphaFold已预测了超过2亿种蛋白质的结构，覆盖几乎所有已知蛋白质。2024年诺贝尔化学奖授予了AlphaFold的开发者Demis Hassabis和John Jumper。'}
 ];
+const quizData=[
+ {q:'疏水氨基酸在水环境中通常倾向于位于蛋白质哪里？',opts:['内部核心','外部表面','随机漂浮不参与折叠'],ans:0,ok:'对。疏水残基聚到内部，能减少与水接触。',bad:'看橙色残基的位置：它们会逃离水环境并聚成内部核心。'},
+ {q:'α-螺旋和β-折叠主要由哪种相互作用稳定？',opts:['蛋白质骨架氢键','DNA碱基配对','ATP直接焊接'],ans:0,ok:'对。二级结构来自骨架 N-H 与 C=O 之间的规律氢键。',bad:'二级结构关注的是蛋白质骨架上的氢键模式。'},
+ {q:'疏水坍缩为什么能推动折叠？',opts:['疏水基团聚集释放有序水分子，提高总熵','所有残基都被水拉直','带电残基全部消失'],ans:0,ok:'对。疏水效应本质上有很强的熵驱动。',bad:'油滴在水中聚集是同类直觉：减少疏水表面积。'},
+ {q:'折叠漏斗模型解释了什么？',opts:['蛋白质沿多条路径走向低能天然态','蛋白质必须随机穷举所有构象','蛋白质只能直线运动'],ans:0,ok:'对。漏斗形能量景观让搜索不必随机穷举。',bad:'Levinthal 悖论的答案正是漏斗状能量景观。'},
+ {q:'GroEL/GroES 分子伴侣的核心作用是什么？',opts:['提供隔离折叠腔帮助错误折叠蛋白重折叠','把所有蛋白质分解成氨基酸','复制 DNA'],ans:0,ok:'对。它像折叠笼，消耗 ATP 给蛋白质重新折叠机会。',bad:'分子伴侣不是遗传机器，重点是辅助折叠。'},
+ {q:'朊病毒危险的关键原因是什么？',opts:['错误折叠构象能诱导正常蛋白也错误折叠','它是一段会自我复制的 DNA','它只会提高蛋白质稳定性'],ans:0,ok:'对。朊病毒通过构象模板触发链式错误折叠。',bad:'朊病毒的传染性来自蛋白质构象，而不是核酸复制。'},
+ {q:'AlphaFold 解决的核心任务是什么？',opts:['从氨基酸序列预测三维结构','把蛋白质变成糖','测量细胞电压'],ans:0,ok:'对。它把序列信息转化为高精度结构预测。',bad:'AlphaFold 面向的是“序列到结构”的预测问题。'}
+];
+let quizPassed=new Set(),quizFeedback={};
 let lState={},panelDirty=true,dragAA=null,mouseX=0,mouseY=0;
 function resetLevelState(){
  switch(curLevel){
@@ -209,7 +228,7 @@ function resetLevelState(){
   case 3:lState={balls:[],paths:[],startCount:0,arrived:0,objDone:[false,false,false]};break;
   case 4:lState={phase:0,captureT:0,foldT:0,releaseT:0,misfolded:true,objDone:[false,false,false]};break;
   case 5:lState={prions:[{x:0.3,y:0.5,bad:true}],normals:[],convertQueue:[],phase:0,spreadCount:0,objDone:[false,false,false]};initPrions();break;
-  case 6:lState={seq:'',phase:0,scanT:0,predictT:0,buildT:0,rotAngle:0,objDone:[false,false,false]};break;
+  case 6:lState={seq:'',phase:0,scanT:0,predictT:0,buildT:0,rotAngle:0,seqNotice:'',objDone:[false,false,false]};break;
  }
 }
 function initHydrophobic(){
@@ -227,9 +246,26 @@ function initPrions(){
   lState.normals.push({x:0.3+Math.random()*0.5,y:0.2+Math.random()*0.6,bad:false,converting:false,convertT:0});
  }
 }
-function switchLevel(n){curLevel=n;resetLevelState();panelDirty=true;}
+function isUnlocked(n){return n===0||quizPassed.has(n-1);}
+function switchLevel(n){if(n<0||n>=levels.length||!isUnlocked(n))return;curLevel=n;resetLevelState();panelDirty=true;}
 function resize(){W=innerWidth-320;H=innerHeight;cv.width=W;cv.height=H;panelDirty=true;}
 window.onresize=resize;resize();resetLevelState();
+function quizHTML(li){
+ const q=quizData[li],fb=quizFeedback[li];
+ let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+ h+=`<div class="quiz-q">${q.q}</div>`;
+ q.opts.forEach((o,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${o}</button>`;});
+ if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+ h+='</div>';
+ return h;
+}
+function answerQuiz(li,choice){
+ if(li!==curLevel||quizPassed.has(li))return;
+ const q=quizData[li],ok=choice===q.ans;
+ quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+ if(ok){quizPassed.add(li);completedLevels.add(li);}
+ panelDirty=true;renderPanel();
+}
 function renderPanel(){
  let h='<h3 style="margin-bottom:8px">🧬 蛋白质折叠</h3><div style="margin-bottom:8px">';
  levels.forEach((l,i)=>{
@@ -245,12 +281,14 @@ function renderPanel(){
  L.objs.forEach((o,i)=>{h+=`<div class="obj-item${od[i]?' done':''}">${od[i]?'✅':'⬜'} ${o}</div>`;});
  h+=renderLevelControls();
  if(od.every(v=>v)){
-  if(!completedLevels.has(curLevel)){completedLevels.add(curLevel);panelDirty=true;}
-  h+=`<div class="learn-box">💡 ${L.learn}</div>`;
-  if(curLevel<levels.length-1){
-   h+=`<button class="act-btn green" onclick="switchLevel(${curLevel+1})">进入第${curLevel+2}关 →</button>`;
-  }else{
-   h+=''+_summaryHTML()+'';
+  if(!quizPassed.has(curLevel))h+=quizHTML(curLevel);
+  if(quizPassed.has(curLevel)){
+   h+=`<div class="learn-box">💡 ${L.learn}</div>`;
+   if(curLevel<levels.length-1){
+    h+=`<button class="act-btn green" onclick="switchLevel(${curLevel+1})">进入第${curLevel+2}关 →</button>`;
+   }else{
+    h+=(window._summaryHTML?window._summaryHTML():'');
+   }
   }
  }
  panel.innerHTML=h;
@@ -309,6 +347,7 @@ function renderLevelControls(){
   h+='<button class="act-btn" style="font-size:12px;padding:8px;background:linear-gradient(135deg,#3b82f6,#60a5fa);color:#fff" onclick="pickSeq(\'GIVEQCCTSICSLYQ\',\'胰岛素B链\')">💉 胰岛素 B 链 (GIVEQCCTSIC...)</button>';
   h+='<button class="act-btn" style="font-size:12px;padding:8px;background:linear-gradient(135deg,#a855f7,#c084fc);color:#fff" onclick="pickSeq(\'DAEFRHDSGYEVHHQ\',\'淀粉样蛋白\')">🧠 淀粉样蛋白 Aβ (DAEFRHDSGY...)</button>';
   h+='</div>';
+  if(lState.seqNotice)h+=`<div class="hint-box">${lState.seqNotice}</div>`;
   h+=`<div class="concept-box">当前序列：<code>${lState.seq||'未选择'}</code><br>阶段：<span class="sv">${['等待选择','序列扫描中','结构预测中','3D构建中','完成'][lState.phase]}</span></div>`;
   if(lState.seq&&lState.phase===0)h+=`<button class="act-btn" onclick="startAlphaFold()">🧬 开始 AlphaFold 预测</button>`;
   break;
@@ -349,10 +388,14 @@ function startRelease(){lState.phase=3;lState.releaseT=0;panelDirty=true;}
 // Level 5 actions
 function startPrionSpread(){lState.phase=1;lState.objDone[0]=true;panelDirty=true;}
 // Level 6 actions
-function pickSeq(seq,name){lState.seq=seq;lState.seqName=name;panelDirty=true;}
+function pickSeq(seq,name){lState.seq=seq;lState.seqName=name;lState.seqNotice='';panelDirty=true;}
 function startAlphaFold(){
  const s=lState.seq.trim();
- if(s.length<5){alert('请输入至少5个氨基酸（单字母代码）');return;}
+ if(s.length<5){
+  lState.seqNotice='序列太短。AlphaFold 需要至少 5 个氨基酸，才能形成可分析的局部结构片段。';
+  panelDirty=true;renderPanel();
+  return;
+ }
  lState.phase=1;lState.scanT=0;lState.predictT=0;lState.buildT=0;lState.objDone[0]=true;panelDirty=true;
 }
 // Mouse handling
@@ -973,6 +1016,7 @@ function goLevel(i){switchLevel(i);}
     return null;
   }
   function _isDone(i){
+    if(typeof quizPassed!=='undefined')return quizPassed.has(i);
     var o=_getObjs();
     if(o&&o[i])return o[i].every(function(v){return v;});
     if(typeof completedLevels!=='undefined')return completedLevels.has(i);
@@ -1008,11 +1052,14 @@ function goLevel(i){switchLevel(i);}
     var pct=s.total>0?Math.round(s.done/s.total*100):0;
     var h='<div class="stage-nav"><div class="sn-bar">';
     for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+      var unlocked=i===0||(typeof quizPassed!=='undefined'&&quizPassed.has(i-1));
+      var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
+      var click=unlocked?'typeof goLevel===\'function\'&&goLevel('+i+')':'';
+      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+    if(typeof quizPassed!=='undefined')h+='<div class="sn-hint">'+quizPassed.size+'/'+total+' 已通关，完成目标后答对测验才解锁下一关</div>';
 
     h+='</div>';
     return h;

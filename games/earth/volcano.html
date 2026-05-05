@@ -74,9 +74,17 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .stage-nav{background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px}
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
-.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--concept-bg);border:1px solid var(--learn-border);border-radius:10px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--sv);margin-bottom:6px}
+.quiz-q{font-size:13px;line-height:1.6;color:var(--concept-text);margin-bottom:6px}
+.quiz-opt{display:block;width:100%;text-align:left;padding:8px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:13px;cursor:pointer}
+.quiz-opt:hover{background:var(--btn-hover)}
+.quiz-feedback{border-radius:8px;padding:8px;margin:8px 0;font-size:13px;line-height:1.6}
+.quiz-feedback.ok{border:1px solid #22c55e;background:#0a2a1a;color:#4ade80}
+.quiz-feedback.bad{border:1px solid #ef4444;background:#2a0a0a;color:#fca5a5}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -132,13 +140,22 @@ const LEVELS=[
   {name:'岩浆形成',icon:'🔥'},{name:'火山类型',icon:'⛰️'},{name:'喷发机制',icon:'💥'},
   {name:'碎屑流',icon:'🌫️'},{name:'气候影响',icon:'🌡️'},{name:'热点火山',icon:'🏝️'},{name:'监测预警',icon:'📡'}
 ];
-let cur=0,gameState='title',S={},done=new Array(7).fill(false),particles=[];
+const quizData=[
+  {q:'哪一组条件最容易让地幔岩石发生部分熔融？',opts:['温度高、压力低、含水量高','温度低、压力高、完全干燥','只有压力升高，温度不变'],ans:0,ok:'对。减压和加入水分都会降低有效熔点，配合高温更容易形成岩浆。',bad:'再想想熔点条件：减压和水分会让岩石更容易熔融。'},
+  {q:'火山外形主要受哪种岩浆性质控制？',opts:['岩浆粘度','当地风向','火山口颜色'],ans:0,ok:'对。低粘度熔岩能流很远，常形成坡缓的盾状火山；高粘度岩浆更容易堆成陡坡。',bad:'关键不是颜色或风，而是岩浆能不能流动。'},
+  {q:'高粘度且富含气体的岩浆更容易产生什么喷发？',opts:['猛烈爆发式喷发','完全安静的熔岩湖','没有任何火山活动'],ans:0,ok:'对。气体难以逃逸会积累压力，粘度越高越容易爆发。',bad:'看气体和粘度的组合：气体被困住时压力会上升。'},
+  {q:'为什么碎屑流比普通熔岩流更难逃生？',opts:['高温且高速沿坡面贴地流动','只在海底缓慢移动','温度很低但颜色显眼'],ans:0,ok:'对。碎屑流是高温气体和碎屑混合物，速度可达数百 km/h。',bad:'比较危险性时同时看速度、温度和贴地流动方式。'},
+  {q:'火山 SO₂ 到达平流层后造成短期降温的主要机制是什么？',opts:['形成气溶胶反射部分太阳辐射','直接把地球内部热量抽走','永久消耗大气中的氧气'],ans:0,ok:'对。硫酸盐气溶胶提高反照率，短期内减少到达地表的太阳能。',bad:'火山降温主要和气溶胶反射阳光有关。'},
+  {q:'热点火山岛链为什么能记录板块运动方向？',opts:['热点近似固定，板块移动会把较老火山带离热点','每座岛都会主动向同一方向游动','海水只允许火山沿纬线喷发'],ans:0,ok:'对。新火山靠近热点，老火山被板块带走，岛链排列就留下运动轨迹。',bad:'抓住“热点相对固定、板块在移动”这组关系。'},
+  {q:'火山预警为什么要综合地震、气体和形变数据？',opts:['单一信号可能误判，多参数同时异常更能指向岩浆活动','只看一种数据就永远足够','这些数据都和岩浆运动无关'],ans:0,ok:'对。岩浆上升会引起微震、气体释放和地表隆起，综合判断更可靠。',bad:'预警依赖多证据交叉验证，而不是只看一个指标。'}
+];
+let cur=0,gameState='title',S={},done=new Array(7).fill(false),quizPassed=new Set(),quizFeedback={},particles=[],th=t();
 
 function initLevel(i){
   S={anim:0};particles=[];
   switch(i){
     case 0:S.temp=800;S.pressure=1;S.water=5;S.meltPct=0;break;
-    case 1:S.selType=-1;S.types=[
+    case 1:S.selType=-1;S.viewedTypes=new Set();S.types=[
       {name:'盾状火山',desc:'坡度平缓，玄武岩质熔岩流动性好',slope:0.15,color:'#ef4444',w:0.4},
       {name:'层状火山',desc:'陡峭锥形，交替的熔岩和火山灰层',slope:0.5,color:'#f59e0b',w:0.25},
       {name:'火山穹丘',desc:'粘稠岩浆堆积，坡度最陡',slope:0.8,color:'#8b5cf6',w:0.15}
@@ -153,16 +170,35 @@ function initLevel(i){
 
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  LEVELS.forEach((_,i)=>{const c=i<cur?'done':i===cur?'cur':'';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`});
+  LEVELS.forEach((_,i)=>{
+    const unlocked=i===0||quizPassed.has(i-1);
+    const c=quizPassed.has(i)?'done':i===cur?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${c}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+  });
   h+=`</div><div class="sn-info">第 ${cur+1}/7 关 — ${LEVELS[cur].name}</div>`;
-  h+=`<div class="sn-hint">${done.filter(Boolean).length}/7 已完成</div></div>`;return h;
+  h+=`<div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;return h;
+}
+function quizHTML(i){
+  const q=quizData[i],fb=quizFeedback[i];let h='<div class="quiz-box">';
+  h+='<div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,j)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${i},${j})">${opt}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';return h;
+}
+function answerQuiz(i,choice){
+  const q=quizData[i],ok=choice===q.ans;
+  quizFeedback[i]={ok,text:ok?q.ok:q.bad};
+  if(ok){quizPassed.add(i);playSound('ok')}else{playSound('click')}
+  renderPanel();updateInfobar();
 }
 function renderPanel(){
   const p=document.getElementById('panel');let h=renderStageNav();
   h+=`<h2>${LEVELS[cur].icon} ${LEVELS[cur].name}</h2>`;
   h+=renderLevelPanel(cur);
-  if(done[cur]&&cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
-  if(done.every(Boolean))h+=`<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握火山的核心知识</div><div class="summary-keys"><div>🔥 减压和加水降低岩石熔点形成岩浆</div><div>⛰️ 盾状、层状、穹丘三种火山形态</div><div>💥 气体含量和粘度决定喷发方式</div><div>🌫️ 碎屑流是最致命的火山灾害</div><div>🌡️ 大喷发可导致全球降温</div><div>🏝️ 热点火山形成岛链记录板块运动</div><div>📡 多参数监测实现火山预警</div></div></div>`;
+  if(done[cur]&&!quizPassed.has(cur))h+=quizHTML(cur);
+  if(quizPassed.has(cur)&&cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
+  if(quizPassed.size===7)h+=`<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握火山的核心知识</div><div class="summary-keys"><div>🔥 减压和加水降低岩石熔点形成岩浆</div><div>⛰️ 盾状、层状、穹丘三种火山形态</div><div>💥 气体含量和粘度决定喷发方式</div><div>🌫️ 碎屑流是最致命的火山灾害</div><div>🌡️ 大喷发可导致全球降温</div><div>🏝️ 热点火山形成岛链记录板块运动</div><div>📡 多参数监测实现火山预警</div></div></div>`;
   p.innerHTML=h;
 }
 function renderLevelPanel(i){
@@ -178,10 +214,11 @@ function renderLevelPanel(i){
       break;
     case 1:
       h+=`<div class="concept-box">火山按形态分三类：<b>盾状火山</b>（夏威夷型，坡缓）、<b>层状火山</b>（富士山型，锥形）、<b>火山穹丘</b>（粘稠岩浆堆积）。形态由岩浆粘度决定。</div>`;
-      h+=`<div class="desc">点击画布上的三座火山，了解它们的形态差异。</div>`;
+      h+=`<div class="desc">依次查看三种火山，比较坡度和岩浆粘度关系。</div>`;
       S.types.forEach((tp,j)=>{
-        h+=`<div class="sel-btn ${S.selType===j?'correct':''}" onclick="S.selType=${j};done[1]=true;playSound('ok');renderPanel();draw()" style="display:block;margin:4px 0;padding:8px;width:100%">${tp.name}${S.selType===j?' — '+tp.desc:''}</div>`;
+        h+=`<div class="sel-btn ${S.selType===j?'correct':''}" onclick="selectType(${j})" style="display:block;margin:4px 0;padding:8px;width:100%">${tp.name}${S.selType===j?' — '+tp.desc:''}</div>`;
       });
+      h+=`<div style="font-size:12px;margin:6px 0">已比较: <span class="sv">${S.viewedTypes.size}/3</span></div>`;
       break;
     case 2:
       h+=`<div class="concept-box">喷发方式取决于<b>气体含量</b>和<b>岩浆粘度</b>。低粘度+少气体→宁静溢流（夏威夷式）；高粘度+多气体→猛烈爆发（普林尼式）。气体是驱动喷发的"引擎"。</div>`;
@@ -189,12 +226,14 @@ function renderLevelPanel(i){
       h+=`<div class="slider-wrap"><label>岩浆粘度: <span class="slider-val">${S.viscosity}</span></label><input type="range" min="10" max="100" step="5" value="${S.viscosity}" oninput="S.viscosity=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.viscosity;draw()" onchange="this.blur();renderPanel()"></div>`;
       h+=`<button class="act-btn" onclick="erupt()">🌋 触发喷发</button>`;
       if(S.erupting)h+=`<div class="learn-box">喷发类型: <b>${S.eruptType}</b></div>`;
+      if(done[2])h+=`<div class="hint-box">已制造高气体、高粘度喷发，进入测验确认机制理解。</div>`;
       break;
     case 3:
       h+=`<div class="concept-box"><b>火山碎屑流</b>是高温气体和碎屑的混合物，沿山坡高速流动（可达700 km/h），温度超过300°C。它是火山喷发中最致命的灾害，几乎无法逃脱。</div>`;
       h+=`<div class="desc">点击"触发碎屑流"，观察它如何沿山坡高速流下。</div>`;
       h+=`<button class="act-btn" onclick="triggerFlow()">${S.running?'⏹ 重置':'🌫️ 触发碎屑流'}</button>`;
-      if(S.running)h+=`<div style="font-size:12px;margin:6px 0">速度: <span class="sv">${S.flowSpeed.toFixed(0)} km/h</span> | 距离: <span class="sv">${S.flowDist.toFixed(1)} km</span> | 温度: <span class="sv" style="color:#ef4444">${S.temp2.toFixed(0)}°C</span></div>`;
+      h+=`<div style="font-size:12px;margin:6px 0">速度: <span class="sv">${S.flowSpeed.toFixed(0)} km/h</span> | 距离: <span class="sv">${S.flowDist.toFixed(1)} km</span> | 温度: <span class="sv" style="color:#ef4444">${S.temp2.toFixed(0)}°C</span></div>`;
+      if(done[3])h+=`<div class="hint-box">碎屑流已超过 2 km，观察它为何难以撤离。</div>`;
       break;
     case 4:
       h+=`<div class="concept-box">大规模火山喷发向平流层注入<b>SO₂</b>和火山灰，形成气溶胶层反射阳光，导致全球降温。1815年坦博拉火山喷发导致"无夏之年"，全球降温约0.5°C。</div>`;
@@ -223,15 +262,16 @@ function renderLevelPanel(i){
 
 /* === 关卡逻辑 === */
 function calcMelt(){const meltT=1200-S.water*30-S.pressure*(-50);S.meltPct=Math.max(0,Math.min(100,(S.temp-meltT+200)/4));if(S.meltPct>60&&!done[0]){done[0]=true;playSound('ok')}}
-function erupt(){S.erupting=true;S.eruptParticles=[];if(S.viscosity>60&&S.gasContent>4){S.eruptType='普林尼式（猛烈爆发）';for(let i=0;i<40;i++)S.eruptParticles.push({x:0.5,y:0.4,vx:(Math.random()-0.5)*0.01,vy:-Math.random()*0.015,life:2+Math.random()*2})}else if(S.viscosity<40){S.eruptType='夏威夷式（宁静溢流）';for(let i=0;i<20;i++)S.eruptParticles.push({x:0.5+(Math.random()-0.5)*0.05,y:0.4,vx:(Math.random()-0.5)*0.003,vy:-Math.random()*0.005,life:3+Math.random()*2})}else{S.eruptType='斯通博利式（间歇爆发）';for(let i=0;i<25;i++)S.eruptParticles.push({x:0.5,y:0.4,vx:(Math.random()-0.5)*0.006,vy:-Math.random()*0.01,life:1.5+Math.random()})}if(!done[2]){done[2]=true;playSound('ok')}renderPanel()}
-function triggerFlow(){S.running=!S.running;if(S.running){S.flowDist=0;S.flowSpeed=0;S.temp2=800;if(!done[3]){done[3]=true;playSound('ok')}}renderPanel()}
+function selectType(j){S.selType=j;S.viewedTypes.add(j);if(S.viewedTypes.size>=3&&!done[1]){done[1]=true;playSound('ok')}else{playSound('click')}renderPanel();draw()}
+function erupt(){S.erupting=true;S.eruptParticles=[];if(S.viscosity>60&&S.gasContent>4){S.eruptType='普林尼式（猛烈爆发）';for(let i=0;i<40;i++)S.eruptParticles.push({x:0.5,y:0.4,vx:(Math.random()-0.5)*0.01,vy:-Math.random()*0.015,life:2+Math.random()*2})}else if(S.viscosity<40){S.eruptType='夏威夷式（宁静溢流）';for(let i=0;i<20;i++)S.eruptParticles.push({x:0.5+(Math.random()-0.5)*0.05,y:0.4,vx:(Math.random()-0.5)*0.003,vy:-Math.random()*0.005,life:3+Math.random()*2})}else{S.eruptType='斯通博利式（间歇爆发）';for(let i=0;i<25;i++)S.eruptParticles.push({x:0.5,y:0.4,vx:(Math.random()-0.5)*0.006,vy:-Math.random()*0.01,life:1.5+Math.random()})}if(S.viscosity>60&&S.gasContent>4&&!done[2]){done[2]=true;playSound('ok')}renderPanel()}
+function triggerFlow(){S.running=!S.running;if(S.running){S.flowDist=0;S.flowSpeed=0;S.temp2=800}else{S.flowDist=0;S.flowSpeed=0;S.temp2=800}renderPanel();draw()}
 function calcClimate(){S.tempDrop=S.so2*0.005*(S.ashAlt>15?2:1);if(S.tempDrop>0.3&&!done[4]){done[4]=true;playSound('ok')}}
 function addIsland(){S.islands.push({x:S.plateX,age:0});S.plateX+=0.08;if(S.islands.length>=4&&!done[5]){done[5]=true;playSound('ok')}renderPanel();draw()}
 function calcAlert(){const score=S.seismic/100+S.gas/5000+S.deform/50;S.alert=score<0.3?'green':score<0.6?'yellow':score<0.85?'orange':'red';if(S.alert==='red'&&!done[6]){done[6]=true;playSound('ok')}}
 
 /* === 绘制 === */
 function draw(){
-  ctx.clearRect(0,0,CW,CH);const th=t();
+  ctx.clearRect(0,0,CW,CH);th=t();
   ctx.fillStyle=th.bg;ctx.fillRect(0,0,CW,CH);
   ctx.strokeStyle=th.grid;ctx.lineWidth=1;
   for(let x=0;x<CW;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke()}
@@ -349,9 +389,9 @@ function drawMonitor(){
 }
 
 /* === 交互 === */
-function goLevel(i){if(i<0||i>=7)return;cur=i;initLevel(i);renderPanel();draw();updateInfobar();playSound('click')}
+function goLevel(i){if(i<0||i>=7)return;if(i>0&&!quizPassed.has(i-1))return;cur=i;initLevel(i);renderPanel();draw();updateInfobar();playSound('click')}
 function startGame(){playSound('click');document.getElementById('startScreen').classList.add('hidden');document.getElementById('panel').style.display='block';gameState='play';goLevel(0);anim()}
-function updateInfobar(){document.getElementById('ib-level').textContent=`关卡 ${cur+1}/7`;document.getElementById('ib-title').textContent=LEVELS[cur].name;document.getElementById('ib-status').textContent=done[cur]?'✅ 已完成':'进行中'}
+function updateInfobar(){document.getElementById('ib-level').textContent=`关卡 ${cur+1}/7`;document.getElementById('ib-title').textContent=LEVELS[cur].name;document.getElementById('ib-status').textContent=quizPassed.has(cur)?'✅ 已通关':done[cur]?'待测验':'进行中'}
 
 let lastT=0;
 function anim(ts){
@@ -360,7 +400,7 @@ function anim(ts){
   if(gameState!=='play')return;
   S.anim=(S.anim||0)+dt;
   if(cur===2&&S.erupting){S.eruptParticles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.0001;p.life-=dt})}
-  if(cur===3&&S.running){S.flowSpeed=Math.min(700,S.flowSpeed+dt*200);S.flowDist+=S.flowSpeed*dt*0.001;S.temp2=Math.max(200,S.temp2-dt*30);if(S.flowDist>5){S.running=false}renderPanel()}
+  if(cur===3&&S.running){S.flowSpeed=Math.min(700,S.flowSpeed+dt*200);S.flowDist+=S.flowSpeed*dt*0.001;S.temp2=Math.max(200,S.temp2-dt*30);if(S.flowDist>=2&&!done[3]){done[3]=true;playSound('ok');renderPanel();updateInfobar()}if(S.flowDist>5){S.running=false;renderPanel()}}
   draw();
 }
 </script>

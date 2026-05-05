@@ -72,8 +72,17 @@ canvas{display:block}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--concept-bg);border:1px solid var(--learn-border);border-radius:10px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--sv);margin-bottom:6px}
+.quiz-q{font-size:13px;line-height:1.6;color:var(--concept-text);margin-bottom:6px}
+.quiz-opt{display:block;width:100%;text-align:left;padding:8px;margin:4px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:13px;cursor:pointer}
+.quiz-opt:hover{background:var(--btn-hover)}
+.quiz-feedback{border-radius:8px;padding:8px;margin:8px 0;font-size:13px;line-height:1.6}
+.quiz-feedback.ok{border:1px solid #22c55e;background:#0a2a1a;color:#4ade80}
+.quiz-feedback.bad{border:1px solid #ef4444;background:#2a0a0a;color:#fca5a5}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -149,6 +158,16 @@ const learnTexts=[
 '💡 有丝分裂：1次分裂→2个2n子细胞，用于生长和修复；减数分裂：2次分裂→4个n配子，用于有性生殖。关键区别：减数分裂I有同源配对和交叉互换(有丝分裂没有)，减数分裂使染色体数目减半(有丝分裂不变)。两者都需要纺锤体，都经历PMAT阶段。',
 '💡 细胞周期由CDK(周期蛋白依赖性激酶)和Cyclin(周期蛋白)调控。G1检查点(限制点)检查细胞大小和DNA损伤；S期检查DNA复制完整性；G2检查点确认复制完成；M检查点(纺锤体组装检查点)确保所有染色体正确连接纺锤丝。p53是"基因组卫士"，检测到损伤时阻止细胞周期进行。'
 ];
+const quizData=[
+  {q:'细胞核在细胞中最核心的功能是什么？',opts:['保存 DNA 并调控基因表达','产生全部 ATP','只负责控制水分进出'],ans:0,ok:'对。细胞核保存遗传信息，并通过基因表达调控细胞活动。',bad:'回想细胞核里最重要的分子：DNA。'},
+  {q:'DNA 复制被称为半保留复制，是因为？',opts:['每条新双链都保留一条旧链并合成一条新链','两条旧链完全丢弃','只有一半基因会被复制'],ans:0,ok:'对。每个子代 DNA 分子都由一条亲代链和一条新链组成。',bad:'半保留指的是“旧链保留一半”，不是只复制一半基因。'},
+  {q:'有丝分裂的主要结果是什么？',opts:['形成两个遗传信息基本相同的二倍体子细胞','形成四个单倍体配子','让同源染色体发生交叉互换'],ans:0,ok:'对。有丝分裂用于生长修复，保持染色体数目不变。',bad:'有丝分裂和减数分裂的产物数量、倍性不同。'},
+  {q:'减数分裂 I 最能增加遗传多样性的事件是？',opts:['同源染色体配对并发生交叉互换','姐妹染色单体完全不分离','细胞膜停止工作'],ans:0,ok:'对。交叉互换会重组同源染色体上的等位基因。',bad:'减数分裂 I 的特色是同源配对和重组。'},
+  {q:'减数分裂 II 的直接分离对象是什么？',opts:['姐妹染色单体','同源染色体对','细胞器'],ans:0,ok:'对。减数 II 类似有丝分裂，分离姐妹染色单体。',bad:'同源染色体主要在减数 I 分离。'},
+  {q:'有丝分裂和减数分裂最关键的区别之一是？',opts:['减数分裂产生单倍体配子，有丝分裂保持体细胞倍性','有丝分裂一定产生 4 个细胞','减数分裂没有纺锤体'],ans:0,ok:'对。减数分裂让染色体数目减半，用于有性生殖。',bad:'比较它们的产物数量、倍性和是否有交叉互换。'},
+  {q:'细胞周期检查点的意义是什么？',opts:['在 DNA 损伤或染色体连接异常时阻止继续分裂','让细胞无条件快速分裂','只负责产生 ATP'],ans:0,ok:'对。检查点让细胞先修复问题，降低突变和异常分裂风险。',bad:'检查点像质量控制，不是加速器。'}
+];
+let quizPassed=new Set(),quizFeedback={};
 let levelObjs=levelObjTexts.map(a=>a.map(()=>false));
 let L={};
 function resetLevel(li){
@@ -181,14 +200,14 @@ cv.onmouseup=()=>{mouse.down=false;mouse.dragIdx=-1;};
 function cx(r){return PL+(W-PL)*r;}
 function cy(r){return H*r;}
 function startGame(){ov.style.display='none';panel.style.display='block';bar.style.display='flex';resetLevel(0);renderPanel();renderBar();}
-function goLevel(li){if(li<0||li>6)return;curLevel=li;resetLevel(li);renderPanel();renderBar();}
+function goLevel(li){if(li<0||li>6)return;if(li>0&&!quizPassed.has(li-1))return;curLevel=li;resetLevel(li);renderPanel();renderBar();}
 window.goLevel=goLevel;
 function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel();renderBar();}}
 function renderBar(){bar.innerHTML='<span style="color:var(--text-muted)">🧬 '+levelNames[curLevel]+'</span>';}
 function _stageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<7;i++){let cls=levelObjs[i].every(v=>v)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;}
-  h+=`</div><div class="sn-info">第${curLevel+1}/7关 · ${levelNames[curLevel]}</div></div>`;return h;
+  for(let i=0;i<7;i++){let unlocked=i===0||quizPassed.has(i-1);let cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;}
+  h+=`</div><div class="sn-info">第${curLevel+1}/7关 · ${levelNames[curLevel]}</div><div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;return h;
 }
 function _summaryHTML(){
   let done=levelObjs.filter(a=>a.every(v=>v)).length;
@@ -198,6 +217,19 @@ function _summaryHTML(){
   h+=`<div class="summary-stat"><div class="num">${done*3}</div><div class="label">达成目标</div></div></div>`;
   h+=`<div class="summary-keys"><div>🧬 DNA半保留复制：解旋→引物→延伸→连接</div><div>🔄 有丝分裂：2n→2n，用于生长修复</div><div>🎭 减数分裂：2n→n，产生配子，交叉互换增加多样性</div><div>🛡️ 细胞周期检查点：G1/S/G2/M，p53守护基因组</div></div></div>`;
   return h;
+}
+function quizHTML(li){
+  const q=quizData[li],fb=quizFeedback[li];let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((o,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${o}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';return h;
+}
+function answerQuiz(li,oi){
+  const q=quizData[li],ok=oi===q.ans;
+  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  if(ok)quizPassed.add(li);
+  renderPanel();renderBar();
 }
 function renderPanel(){
   let li=curLevel,h=_stageNav();
@@ -238,18 +270,28 @@ function renderPanel(){
     h+=`<p style="color:var(--text-sub);font-size:13px">点击画布上的标签，拖到正确的分类区域</p>`;
     h+=`<p style="color:var(--text-sub);font-size:12px;margin-top:4px">已正确分类: ${L.correct}/6</p>`;
     if(L.correct>=6&&!L.quizDone)h+=`<button class="act-btn" onclick="quizCompare()">📝 回答对比测验</button>`;
+    if(L.quizAttempted&&!L.quizDone){
+      h+=`<div class="quiz-box"><div class="quiz-title">对比测验</div><div class="quiz-q">哪一种分裂会发生同源染色体配对和交叉互换？</div>`;
+      h+=`<button class="quiz-opt" onclick="answerCompare('mitosis')">有丝分裂</button>`;
+      h+=`<button class="quiz-opt" onclick="answerCompare('meiosis')">减数分裂 I</button>`;
+      if(L.compareAnswer==='mitosis')h+=`<div class="quiz-feedback bad">不对。同源染色体配对和交叉互换是减数分裂 I 的标志。</div>`;
+      h+=`</div>`;
+    }
   }
   if(li===6){
     h+=`<h3>操作</h3>`;
     h+=`<p style="color:var(--text-sub);font-size:13px">调节CDK和Cyclin水平让细胞通过检查点</p>`;
-    h+=`<div style="margin:8px 0"><label style="font-size:13px;color:var(--text-sub)">CDK: ${L.cdkLevel}%</label><br><input type="range" min="0" max="100" value="${L.cdkLevel}" style="width:100%" oninput="L.cdkLevel=+this.value;checkCheckpoints();renderPanel()"></div>`;
-    h+=`<div style="margin:8px 0"><label style="font-size:13px;color:var(--text-sub)">Cyclin: ${L.cyclinLevel}%</label><br><input type="range" min="0" max="100" value="${L.cyclinLevel}" style="width:100%" oninput="L.cyclinLevel=+this.value;checkCheckpoints();renderPanel()"></div>`;
+    h+=`<div style="margin:8px 0"><label style="font-size:13px;color:var(--text-sub)">CDK: <span id="cdkVal">${L.cdkLevel}</span>%</label><br><input type="range" min="0" max="100" value="${L.cdkLevel}" style="width:100%" oninput="L.cdkLevel=+this.value;document.getElementById('cdkVal').textContent=this.value;checkCheckpoints();drawLevel6()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div style="margin:8px 0"><label style="font-size:13px;color:var(--text-sub)">Cyclin: <span id="cycVal">${L.cyclinLevel}</span>%</label><br><input type="range" min="0" max="100" value="${L.cyclinLevel}" style="width:100%" oninput="L.cyclinLevel=+this.value;document.getElementById('cycVal').textContent=this.value;checkCheckpoints();drawLevel6()" onchange="this.blur();renderPanel()"></div>`;
     h+=`<p style="color:var(--text-sub);font-size:12px">阶段: <span style="color:#22c55e;font-weight:bold">${L.phase}</span></p>`;
   }
   if(levelObjs[li].every(v=>v)){
-    h+=`<div class="learn-box">${learnTexts[li]}</div>`;
-    if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-    if(li===6)h+=_summaryHTML();
+    if(!quizPassed.has(li))h+=quizHTML(li);
+    if(quizPassed.has(li)){
+      h+=`<div class="learn-box">${learnTexts[li]}</div>`;
+      if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+      if(li===6)h+=_summaryHTML();
+    }
   }
   panel.innerHTML=h;
 }
@@ -309,7 +351,8 @@ window.alignMeio2=function(){L.aligned=true;L.animT=60;completeObj(0);renderPane
 window.splitSisters=function(){L.splitDone=true;L.animT=60;completeObj(1);renderPanel();};
 window.formFourCells=function(){L.fourCells=true;L.animT=60;completeObj(2);renderPanel();};
 // Level 5 actions
-window.quizCompare=function(){L.quizDone=true;completeObj(2);renderPanel();};
+window.quizCompare=function(){L.quizAttempted=true;renderPanel();};
+window.answerCompare=function(ans){L.quizAttempted=true;L.compareAnswer=ans;if(ans==='meiosis'){L.quizDone=true;completeObj(2)}else renderPanel();};
 // Level 6 actions
 window.checkCheckpoints=function(){
   let cdk=L.cdkLevel,cyc=L.cyclinLevel;
@@ -514,6 +557,7 @@ function mainLoop(){
   else if(curLevel===6)drawLevel6();
   if(L.animT>0)L.animT--;
 }
+resetLevel(0);
 requestAnimationFrame(mainLoop);
 </script>
 </body>

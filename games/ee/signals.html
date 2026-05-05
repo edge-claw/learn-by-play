@@ -111,8 +111,17 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -185,6 +194,17 @@ const levels = [
 
 const levelObjs = levels.map(l => l.objs.map(() => false));
 const levelCompleted = levels.map(() => false);
+let quizFeedback = {};
+
+const quizData = [
+  {q:'为什么正弦波在信号分析中最基础？',opts:['许多周期信号可分解为正弦波叠加','正弦波不能被测量','正弦波没有频率'],ans:0,ok:'对。傅里叶思想就是用正弦/余弦基函数表示复杂信号。',bad:'正弦波的核心价值在于频率明确，并能作为分解基。'},
+  {q:'信号乘法在通信里常对应什么操作？',opts:['调制，把频谱搬移到载波附近','永久删除信号','只改变画布颜色'],ans:0,ok:'对。乘以载波会让基带频谱搬移，是调制的核心。',bad:'乘法不是简单混合音量，它会改变频域位置。'},
+  {q:'卷积描述 LTI 系统时，h(t) 通常代表什么？',opts:['系统的冲激响应','输入信号的文件名','随机噪声颜色'],ans:0,ok:'对。输入与冲激响应卷积得到系统输出。',bad:'卷积的系统含义来自冲激响应 h(t)。'},
+  {q:'方波傅里叶级数的典型特征是什么？',opts:['主要由奇次谐波叠加逼近','只含直流分量','不能用正弦波表示'],ans:0,ok:'对。理想方波由奇次谐波按幅度递减叠加。',bad:'方波可以用正弦波逼近，关键是奇次谐波。'},
+  {q:'采样定理要求采样频率至少满足什么？',opts:['大于信号最高频率的 2 倍','小于最高频率一半','等于 0'],ans:0,ok:'对。低于奈奎斯特频率会产生混叠。',bad:'采样不足会把高频伪装成低频，也就是混叠。'},
+  {q:'低通滤波器主要保留什么？',opts:['低频分量','所有高频噪声','只保留负频率'],ans:0,ok:'对。低通保留低频、抑制高频。',bad:'高通和低通的区别就在保留频段。'},
+  {q:'AM 调制中调制深度 m<1 时常用什么方式解调？',opts:['包络检波','把时间倒放','删除载波频率'],ans:0,ok:'对。欠调制 AM 的包络仍能跟随基带信号。',bad:'AM 的可视化重点是包络，m<1 时包络检波有效。'}
+];
 
 // 每关的控件状态
 const S = {
@@ -280,12 +300,46 @@ function completeObj(li, oi) {
   levelObjs[li][oi] = true;
   updatePanel();
   if (levelObjs[li].every(Boolean)) {
-    levelCompleted[li] = true;
-    const lb = document.querySelector('.learn-box');
-    if (lb) lb.style.display = 'block';
     updateBar();
+    updatePanel();
   }
 }
+
+function isUnlocked(i) {
+  return i === 0 || levelCompleted[i - 1];
+}
+
+function stageNavHTML() {
+  const passed = levelCompleted.filter(Boolean).length;
+  let html = '<div class="stage-nav"><div class="sn-bar">';
+  levels.forEach((_, i) => {
+    const unlocked = isUnlocked(i);
+    const cls = levelCompleted[i] ? 'done' : i === curLevel ? 'cur' : unlocked ? '' : 'locked';
+    html += `<div class="sn-d ${cls}" onclick="${unlocked ? `goLevel(${i})` : ''}"></div>`;
+  });
+  html += `</div><div class="sn-info">📍 第 ${curLevel + 1}/${levels.length} 关 | 进度 ${Math.round(passed / levels.length * 100)}%</div>`;
+  html += `<div class="sn-hint">${passed}/${levels.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
+  return html;
+}
+
+function quizHTML(li) {
+  const q = quizData[li], fb = quizFeedback[li];
+  let html = '<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  html += `<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt, i) => { html += `<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`; });
+  if (fb) html += `<div class="quiz-feedback ${fb.ok ? 'ok' : 'bad'}">${fb.text}</div>`;
+  html += '</div>';
+  return html;
+}
+
+window.answerQuiz = function(li, choice) {
+  if (li !== curLevel || levelCompleted[li]) return;
+  const q = quizData[li], ok = choice === q.ans;
+  quizFeedback[li] = {ok, text: ok ? q.ok : q.bad};
+  if (ok) levelCompleted[li] = true;
+  updateBar();
+  updatePanel();
+};
 
 // ========== 关卡渲染 ==========
 function renderLevel0() {
@@ -619,7 +673,7 @@ const renderFns = [renderLevel0, renderLevel1, renderLevel2, renderLevel3, rende
 function buildPanel() {
   const p = document.getElementById('panel');
   const L = levels[curLevel];
-  let html = `<h2>${L.title}</h2><p class="desc">${L.desc}</p>`;
+  let html = stageNavHTML() + `<h2>${L.title}</h2><p class="desc">${L.desc}</p>`;
   html += '<div class="objectives">';
   L.objs.forEach((o, i) => {
     const done = levelObjs[curLevel][i];
@@ -628,10 +682,12 @@ function buildPanel() {
   html += '</div><div class="controls">';
   html += getPanelControls(curLevel);
   html += '</div>';
-  html += `<div class="learn-box" ${levelCompleted[curLevel]?'style="display:block"':''}><h3>💡 知识点</h3><p>${L.learn}</p></div>`;
+  if (levelObjs[curLevel].every(Boolean) && !levelCompleted[curLevel]) html += quizHTML(curLevel);
+  if (levelCompleted[curLevel]) html += `<div class="learn-box" style="display:block"><h3>💡 知识点</h3><p>${L.learn}</p></div>`;
   html += '<div class="nav-btns">';
   html += `<button onclick="goLevel(${curLevel-1})" ${curLevel===0?'disabled':''}>← 上一关</button>`;
-  html += `<button onclick="goLevel(${curLevel+1})" ${curLevel===6?'disabled':''}>下一关 →</button>`;
+  if (curLevel < levels.length - 1) html += `<button onclick="goLevel(${curLevel+1})" ${isUnlocked(curLevel+1)?'':'disabled'}>下一关 →</button>`;
+  else html += `<button onclick="showSummary()" ${levelCompleted.every(Boolean)?'':'disabled'}>总总结 🎉</button>`;
   html += '</div>';
   p.innerHTML = html;
   bindControls(curLevel);
@@ -749,14 +805,28 @@ function updatePanel() { buildPanel(); }
 
 function updateBar() {
   const bar = document.getElementById('bar');
-  bar.innerHTML = '<span style="color:var(--text-muted)">📶 ' + levels[curLevel].title + '</span>';
+  bar.innerHTML = '<span style="color:var(--text-muted)">📶 ' + levels[curLevel].title + '</span><div class="level-dots">' +
+    levels.map((_, i) => `<span class="${i===curLevel?'active ':''}${levelCompleted[i]?'completed ':''}" onclick="${isUnlocked(i)?`goLevel(${i})`:''}"></span>`).join('') + '</div>';
 }
 
 function goLevel(n) {
-  if (n < 0 || n > 6) return;
+  if (n < 0 || n >= levels.length || !isUnlocked(n)) return;
   curLevel = n;
   buildPanel();
   updateBar();
+}
+
+function showSummary() {
+  if (!levelCompleted.every(Boolean)) return;
+  document.getElementById('panel').innerHTML = `<div class="summary-box"><div class="summary-title">🏆 恭喜通关！</div><div class="summary-sub">你已完成信号与系统 7 个核心实验</div>
+    <div class="summary-stats"><div class="summary-stat"><div class="num">7/7</div><div class="label">关卡完成</div></div><div class="summary-stat"><div class="num">21</div><div class="label">目标达成</div></div></div>
+    <div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">📚 关键知识回顾</div>
+      <div>✅ 时域波形：频率、幅度、相位决定信号形态</div>
+      <div>✅ 信号运算：加法混合，乘法调制，时移改变出现时刻</div>
+      <div>✅ 卷积：输入与冲激响应决定 LTI 系统输出</div>
+      <div>✅ 傅里叶：复杂信号可从频率分量角度理解</div>
+      <div>✅ 滤波与调制：选择频段、搬移频谱是通信系统基础</div>
+    </div><div class="nav-btns"><button onclick="levelObjs.forEach(r=>r.fill(false));levelCompleted.fill(false);quizFeedback={};curLevel=0;buildPanel();updateBar()">重新探索</button></div></div>`;
 }
 
 function animate() {
@@ -786,120 +856,6 @@ document.getElementById('startBtn').onclick = () => {
 };
 
 window.addEventListener('resize', resize);
-
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
 
 </script>
 </body>

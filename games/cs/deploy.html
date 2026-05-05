@@ -156,8 +156,25 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, 'S
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:#6366f1;font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--text-muted);font-size:12px;margin-top:3px}
+#learningPanel{position:absolute;left:12px;top:12px;width:320px;max-height:calc(100% - 24px);overflow:auto;background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:10px;padding:12px;z-index:30;display:none;box-shadow:0 16px 36px rgba(0,0,0,.28)}
+.lesson-title{font-size:16px;font-weight:700;color:var(--title-color);margin:8px 0 4px}
+.lesson-sub{font-size:12px;color:var(--text-sub);line-height:1.6;margin-bottom:8px}
+.lesson-goal{border:1px solid var(--concept-border);background:var(--concept-bg);border-radius:8px;padding:9px 10px;font-size:13px;line-height:1.7;color:var(--concept-text);margin:8px 0}
+.learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin:10px 0;font-size:13px;line-height:1.7;color:var(--learn-text)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:9px 10px;margin:8px 0;font-size:12px;line-height:1.6;color:var(--hint-text)}
+.act-btn{display:block;width:100%;padding:9px 10px;margin:6px 0;border-radius:8px;border:1px solid var(--btn-border);background:var(--btn-bg);color:var(--btn-text);font-size:13px;cursor:pointer;text-align:center}
+.act-btn:hover{background:var(--btn-hover)}
+.act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;line-height:1.6;color:var(--concept-text);margin-bottom:8px}
+.quiz-option{display:block;width:100%;padding:8px 10px;margin:6px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
+.quiz-option:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:8px;color:var(--quiz-wrong-text)}
+.quiz-feedback.ok{color:var(--quiz-correct-text)}
 .summary-box{background:linear-gradient(135deg,#f0f4ff,#faf5ff);border:2px solid #c7d2fe;border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:#4f46e5;margin-bottom:6px}
 .summary-sub{color:var(--text-muted);font-size:13px;margin-bottom:12px}
@@ -213,6 +230,7 @@ body { background: var(--bg); color: var(--text); font-family: -apple-system, 'S
   </div>
   <div id="canvas-wrap">
     <canvas id="canvas"></canvas>
+    <div id="learningPanel"></div>
     <div id="drop-hint">拖拽左侧模型到芯片上部署<br>或点击模型后点击「部署」</div>
     <div id="score-bar">
       <div class="score-label">部署得分</div>
@@ -283,7 +301,7 @@ const TH={
 };
 function t(){return isDark?TH.dark:TH.light}
 function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
-function startGame(){document.getElementById('ov').style.display='none';}
+function startGame(){document.getElementById('ov').style.display='none';document.getElementById('learningPanel').style.display='block';renderPanel();}
 
 // ===== 设备定义 =====
 const DEVICES = [
@@ -395,6 +413,77 @@ let hwState = { npuLoad: 0, cpuLoad: 0.05, memUsed: 0.8, temp: 35, power: 2.1 };
 let simFps = 0;
 let simLatency = 0;
 let detections = [];
+let curLevel = 0;
+let selectedModel = null;
+let selectedQuantSeen = false;
+let heatSeen = false;
+const deployedQuants = new Set();
+const deployedDevices = new Set();
+const completedLevels = new Set();
+const quizPassed = new Set();
+const quizFeedback = {};
+
+const levels = [
+  { title: '模型仓库', sub: '理解模型体积、参数量与精度指标', goal: '点击任意模型卡片，展开量化与部署选项。', learn: '边缘部署首先要理解模型本身：体积影响内存占用，FLOPS 影响算力需求，精度指标决定任务效果。' },
+  { title: '量化选择', sub: '比较 FP32、FP16、INT8 的取舍', goal: '选择一次 INT8 或 FP16 量化方案，观察体积、精度和 FPS 变化。', learn: '量化通过降低数值精度换取更小模型和更快推理。INT8 常适合 NPU，FP16 常适合 GPU，但都可能带来轻微精度损失。' },
+  { title: '首次部署', sub: '把模型部署到当前边缘设备', goal: '部署任意模型并观察 FPS、延迟、NPU/CPU/内存指标。', learn: '部署不是“能跑”就结束，还要看延迟、吞吐、内存、功耗和温度。实时 AI 通常需要稳定 FPS 和可控延迟。' },
+  { title: '设备适配', sub: '比较 RK3588、Jetson Nano、Raspberry Pi 5', goal: '切换到另一个设备，观察设备算力和硬件模块变化。', learn: '同一个模型在不同硬件上表现不同。NPU/GPU/CPU 的加速路径、内存带宽和功耗上限都会改变部署策略。' },
+  { title: '性能优化', sub: '用量化和轻量模型提升效率', goal: '至少部署两种不同量化方案，比较部署历史中的 FPS 与得分。', learn: '优化是多目标权衡：更高 FPS、更低功耗、更小内存和可接受精度。历史记录能帮助你比较不同配置。' },
+  { title: '热与功耗', sub: '观察高负载下的温度和热力图', goal: '打开热力图，并在已部署模型时观察芯片热点。', learn: '边缘设备受散热和功耗限制明显。高负载会推高温度，长期过热可能触发降频，导致 FPS 不稳定。' },
+  { title: '部署复盘', sub: '形成边缘 AI 部署决策链', goal: '完成一次模型选择、量化、部署、设备比较和热力观察。', learn: '完整部署链路包括：选模型、选量化、选设备、部署测试、监控指标、根据瓶颈继续优化。' }
+];
+
+const quizData = [
+  {
+    q:'边缘部署前为什么要关注模型大小和 FLOPS？',
+    opts:['它们影响内存占用、推理速度和能否在设备上运行','它们只影响模型名字显示','它们和部署性能完全无关'],
+    ans:0,
+    ok:'正确。模型资源需求决定设备能否稳定运行。',
+    bad:'看模型卡片里的大小、参数量和 FLOPS，这些会影响部署表现。'
+  },
+  {
+    q:'INT8 量化通常带来的主要收益是什么？',
+    opts:['模型更小、推理更快，但可能轻微损失精度','精度一定无限提高','模型体积一定变成 0'],
+    ans:0,
+    ok:'正确。量化是速度、体积和精度之间的工程权衡。',
+    bad:'比较 FP32、FP16、INT8：体积和 FPS 会变化，精度也可能变化。'
+  },
+  {
+    q:'部署后最应该同时观察哪些指标？',
+    opts:['FPS、延迟、内存、负载、温度和功耗','只看模型图标颜色','只看分数，不看硬件状态'],
+    ans:0,
+    ok:'正确。边缘 AI 部署需要同时看性能和资源。',
+    bad:'右侧监控面板展示的就是部署后的关键运行指标。'
+  },
+  {
+    q:'同一模型在不同设备上 FPS 不同的主要原因是什么？',
+    opts:['硬件算力、加速单元、内存和功耗上限不同','HTML 按钮文字不同','模型文件会自动变成另一个任务'],
+    ans:0,
+    ok:'正确。部署策略必须结合目标设备。',
+    bad:'切换设备后，NPU/GPU/CPU 模块和性能估算都会变化。'
+  },
+  {
+    q:'为什么要比较多种量化方案的部署历史？',
+    opts:['为了找到速度、功耗、内存和精度之间的较优折中','为了让历史列表更长','为了避免真正部署模型'],
+    ans:0,
+    ok:'正确。部署历史帮助你用数据比较优化方案。',
+    bad:'不同量化方案会改变 FPS、得分和硬件负载。'
+  },
+  {
+    q:'热力图在边缘 AI 部署中帮助判断什么？',
+    opts:['哪些模块负载高、可能成为发热热点','模型分类标签是否正确','网页主题是否为暗色'],
+    ans:0,
+    ok:'正确。热热点会影响持续性能和稳定性。',
+    bad:'打开热力图后看高负载模块颜色，结合温度和功耗判断风险。'
+  },
+  {
+    q:'完整的边缘 AI 部署闭环应包含什么？',
+    opts:['选模型、量化、选设备、部署测试、监控并继续优化','只点击一次开始按钮','只看模型精度，不看设备资源'],
+    ans:0,
+    ok:'正确。部署是持续迭代的工程闭环。',
+    bad:'回顾本模拟器流程：选择、部署、监控、比较、优化。'
+  }
+];
 
 // ===== Canvas =====
 const canvas = document.getElementById('canvas');
@@ -408,7 +497,99 @@ function init() {
   buildModelList();
   buildDeviceGrid();
   updateDeviceLabel();
+  renderPanel();
   requestAnimationFrame(loop);
+}
+
+function isUnlocked(idx) {
+  return idx === 0 || completedLevels.has(idx - 1);
+}
+
+function goLevel(idx) {
+  if (!isUnlocked(idx)) return;
+  curLevel = idx;
+  renderPanel();
+}
+
+function levelGoalDone(idx) {
+  if (idx === 0) return !!selectedModel;
+  if (idx === 1) return selectedQuantSeen;
+  if (idx === 2) return !!deployedModel;
+  if (idx === 3) return deployedDevices.size >= 2 || currentDevice.id !== 'rk3588';
+  if (idx === 4) return deployedQuants.size >= 2;
+  if (idx === 5) return heatSeen && !!deployedModel;
+  return !!selectedModel && selectedQuantSeen && !!deployedModel && (deployedDevices.size >= 2 || currentDevice.id !== 'rk3588') && heatSeen;
+}
+
+function markProgress() {
+  renderPanel();
+}
+
+function renderStageNav() {
+  let h = '<div class="stage-nav"><div class="sn-bar">';
+  for (let i = 0; i < levels.length; i++) {
+    let cls = 'sn-d';
+    if (completedLevels.has(i)) cls += ' done';
+    if (i === curLevel) cls += ' cur';
+    if (!isUnlocked(i)) cls += ' locked';
+    h += `<div class="${cls}" onclick="goLevel(${i})"></div>`;
+  }
+  h += `</div><div class="sn-info">第 ${curLevel + 1}/${levels.length} 关：${levels[curLevel].title}</div>`;
+  h += `<div class="sn-hint">${completedLevels.size}/${levels.length} 已通关，完成操作后答对测验才解锁下一关</div></div>`;
+  return h;
+}
+
+function renderQuiz() {
+  const qd = quizData[curLevel];
+  const fb = quizFeedback[curLevel];
+  let h = '<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h += `<div class="quiz-q">${qd.q}</div>`;
+  qd.opts.forEach((opt, i) => {
+    h += `<button class="quiz-option" onclick="answerQuiz(${i})">${String.fromCharCode(65 + i)}. ${opt}</button>`;
+  });
+  if (fb) h += `<div class="quiz-feedback${fb.ok ? ' ok' : ''}">${fb.ok ? '✅' : '💡'} ${fb.text}</div>`;
+  h += '</div>';
+  return h;
+}
+
+function answerQuiz(choice) {
+  const qd = quizData[curLevel];
+  const ok = choice === qd.ans;
+  quizFeedback[curLevel] = { ok, text: ok ? qd.ok : qd.bad };
+  if (ok) {
+    quizPassed.add(curLevel);
+    completedLevels.add(curLevel);
+  }
+  renderPanel();
+}
+
+function renderSummary() {
+  let h = '<div class="summary-box"><div class="summary-title">🎉 边缘 AI 部署闭环完成</div>';
+  h += '<div class="summary-sub">你已经完成模型选择、量化、部署、设备比较和热力观察</div>';
+  h += `<div class="summary-stats"><div class="summary-stat"><div class="num">${completedLevels.size}/${levels.length}</div><div class="label">测验通过</div></div>`;
+  h += '<div class="summary-stat"><div class="num">' + history.length + '</div><div class="label">部署记录</div></div></div>';
+  h += '<div class="summary-keys"><div>✅ 模型大小、FLOPS 和精度共同决定部署难度</div><div>✅ 量化是性能和精度的折中</div><div>✅ 不同设备需要不同加速路径</div><div>✅ 热与功耗决定持续性能</div></div></div>';
+  return h;
+}
+
+function renderPanel() {
+  const p = document.getElementById('learningPanel');
+  if (!p) return;
+  const L = levels[curLevel];
+  const goalDone = levelGoalDone(curLevel);
+  let h = renderStageNav();
+  h += `<div class="lesson-title">${L.title}</div><div class="lesson-sub">${L.sub}</div>`;
+  h += `<div class="lesson-goal">${goalDone ? '✅' : '⬜'} ${L.goal}</div>`;
+  if (!goalDone) {
+    h += '<div class="hint-box">先在模拟器中完成本关操作，再回答小测验解锁下一关。</div>';
+  } else if (!quizPassed.has(curLevel)) {
+    h += renderQuiz();
+  } else {
+    h += `<div class="learn-box">🎓 ${L.learn}</div>`;
+    if (curLevel < levels.length - 1) h += `<button class="act-btn green" onclick="goLevel(${curLevel + 1})">下一关 →</button>`;
+    else h += renderSummary();
+  }
+  p.innerHTML = h;
 }
 
 function buildModelList() {
@@ -452,6 +633,8 @@ function buildDeviceGrid() {
 
 // ===== 模型操作 =====
 function selectModel(model, cardEl) {
+  selectedModel = model;
+  markProgress();
   // 收起所有卡片的展开区
   document.querySelectorAll('.mc-expand').forEach(e => e.style.display = 'none');
 
@@ -482,7 +665,7 @@ function selectModel(model, cardEl) {
         <div style="font-size:10px;color:var(--text-muted)">${qData.size}MB · ${model.accLabel} ${qData.acc} · ~${fps.toFixed(1)} FPS</div>
       </div>
     `;
-    opt.onclick = (e) => { e.stopPropagation(); currentQuant = q.key; selectModel(model, cardEl); };
+    opt.onclick = (e) => { e.stopPropagation(); currentQuant = q.key; selectedQuantSeen = true; markProgress(); selectModel(model, cardEl); };
     expandDiv.appendChild(opt);
   }
   // 部署按钮 - 直接在卡片内
@@ -506,6 +689,7 @@ function selectModel(model, cardEl) {
 }
 
 function deployModel(model) {
+  selectedModel = model;
   const qData = model.quant[currentQuant];
   // 检查内存
   if (qData.size / 1000 > currentDevice.mem * 0.9) {
@@ -514,6 +698,8 @@ function deployModel(model) {
     return;
   }
   deployedModel = model;
+  deployedQuants.add(currentQuant);
+  deployedDevices.add(currentDevice.id);
   inferRunning = true;
   const fps = estimateFps(model, currentQuant, currentDevice);
   simFps = fps;
@@ -553,6 +739,7 @@ function deployModel(model) {
   document.getElementById('statusText').textContent = `✅ ${model.name} (${currentQuant.toUpperCase()}) 已部署到 ${currentDevice.name} — ${fps.toFixed(1)} FPS`;
   document.getElementById('drop-hint').style.display = 'none';
   buildModelList();
+  markProgress();
 }
 
 function spawnDeployParticles() {
@@ -864,7 +1051,9 @@ function togglePause() {
 
 function toggleHeat() {
   showHeat = !showHeat;
+  if (showHeat) heatSeen = true;
   document.getElementById('btnHeat').classList.toggle('active', showHeat);
+  markProgress();
 }
 
 function toggleDeviceSelector() {
@@ -874,6 +1063,7 @@ function toggleDeviceSelector() {
 
 function switchDevice(dev) {
   currentDevice = dev;
+  deployedDevices.add(dev.id);
   deployedModel = null;
   inferRunning = false;
   hwState = { npuLoad: 0, cpuLoad: 0.05, memUsed: 0.8, temp: 35, power: 2.1 };
@@ -887,6 +1077,7 @@ function switchDevice(dev) {
   document.getElementById('deviceSelector').style.display = 'none';
   document.getElementById('quant-panel').style.display = 'none';
   document.getElementById('monModelInfo').innerHTML = '未部署模型';
+  markProgress();
 }
 
 function updateDeviceLabel() {
@@ -902,6 +1093,7 @@ function resetAll() {
   particles = [];
   score = 0;
   history = [];
+  deployedQuants.clear();
   document.getElementById('scoreVal').textContent = '0';
   document.getElementById('statusText').textContent = '就绪 — 选择模型开始部署';
   document.getElementById('drop-hint').style.display = '';
@@ -909,6 +1101,7 @@ function resetAll() {
   document.getElementById('monModelInfo').innerHTML = '未部署模型';
   updateHistory();
   buildModelList();
+  markProgress();
 }
 
 function updateMonitor() {
@@ -1016,118 +1209,6 @@ function loop(ts) {
 
 init();
 
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
 try{renderPanel();}catch(e){}
 
 </script>

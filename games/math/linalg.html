@@ -105,8 +105,17 @@ input[type=number]{background:var(--concept-bg);border:1px solid #333;color:#e2e
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{margin-top:12px;padding:12px;background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{margin-top:8px;padding:8px;border-radius:6px;font-size:12px;line-height:1.6}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -201,6 +210,16 @@ const learnTexts=[
 '<b>正交投影</b>是向量在另一方向上的"影子"。Gram-Schmidt 过程将一组线性无关向量转化为正交基，是 QR 分解的基础。',
 '<b>SVD</b>（奇异值分解）将任意矩阵分解为 UΣV^T：先旋转(V^T)、再缩放(Σ)、再旋转(U)。奇异值的大小反映了各方向的重要性，可用于数据压缩和降噪。'
 ];
+const quizData=[
+  {q:'向量数乘 k·a 最直接改变的是什么？',opts:['向量长度，k<0 时方向也会反向','只改变向量起点','只改变坐标轴颜色'],ans:0,ok:'对。数乘会缩放向量，负数倍还会让方向反转。',bad:'回到画布看粉色 k·a：它和 a 共线，但长度随 k 改变。'},
+  {q:'二维线性变换为什么可以用矩阵表示？',opts:['矩阵列向量描述基向量被送到哪里','矩阵只负责储存像素颜色','矩阵一定把所有图形变成圆'],ans:0,ok:'对。知道 e1、e2 的新位置，就能确定任意向量的线性变换结果。',bad:'观察 e1 和 e2 的箭头，矩阵列向量就是基向量的新方向。'},
+  {q:'高斯消元的核心动作是什么？',opts:['用合法行变换把方程组化成阶梯形','随机删除一个方程','只画出三条直线'],ans:0,ok:'对。行变换保持解集不变，同时把矩阵整理到更容易回代的形态。',bad:'高斯消元不是猜答案，而是用行变换逐步消去未知量。'},
+  {q:'行列式 det(A)=0 表示什么几何意义？',opts:['面积被压缩为 0，变换不可逆','面积扩大一倍','所有方向都保持不变'],ans:0,ok:'对。二维面积塌缩到 0 时，平面被压到线或点，无法唯一还原。',bad:'看平行四边形面积，det 接近 0 时两个向量几乎共线。'},
+  {q:'特征向量满足 Av=λv，说明它经过矩阵变换后？',opts:['方向不变，只按 λ 拉伸或压缩','一定旋转 90°','一定变成零向量'],ans:0,ok:'对。特征向量揭示了矩阵最稳定的作用方向。',bad:'特征向量的关键是“方向不变”，不是长度不变。'},
+  {q:'Gram-Schmidt 正交化中，投影步骤的作用是什么？',opts:['从一个向量中去掉沿另一个向量的分量','把所有向量都变成零','计算矩阵的行列式'],ans:0,ok:'对。去掉投影分量后，剩下的向量与基向量正交。',bad:'投影是影子；正交化要把这个影子从原向量里减掉。'},
+  {q:'SVD A=UΣVᵀ 中，奇异值主要表示什么？',opts:['不同方向上的缩放强度','矩阵元素的颜色深浅','向量起点的位置'],ans:0,ok:'对。大的奇异值保留了更重要的结构，低秩近似会优先保留它们。',bad:'看压缩模式：秩越低，保留的主要方向越少。'}
+];
+let quizPassed=new Set(),quizFeedback={};
 
 function resize(){
   W=window.innerWidth-320;H=window.innerHeight-36;
@@ -219,11 +238,30 @@ function startGame(){
   requestAnimationFrame(loop);
 }
 
-function goLevel(n){curLevel=n;renderPanel();renderBar();}
+function isUnlocked(n){return n===0||quizPassed.has(n-1);}
+function goLevel(n){if(n<0||n>=levelNames.length||!isUnlocked(n))return;curLevel=n;renderPanel();renderBar();}
 
 function renderBar(){
   const done=levelObjs[curLevel].filter(v=>v).length;
-  bar.innerHTML='<span style="color:var(--text-muted)">📐 目标 '+done+'/3</span>';
+  bar.innerHTML='<span style="color:var(--text-muted)">📐 目标 '+done+'/3 · 通关 '+quizPassed.size+'/'+levelNames.length+'</span>';
+}
+
+function quizHTML(li){
+  const q=quizData[li],fb=quizFeedback[li];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`;});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+
+function answerQuiz(li,choice){
+  if(li!==curLevel||quizPassed.has(li))return;
+  const q=quizData[li],ok=choice===q.ans;
+  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  if(ok)quizPassed.add(li);
+  renderPanel();renderBar();
 }
 
 // Lightweight DOM patcher: preserves focused range inputs during panel updates
@@ -269,11 +307,50 @@ function renderPanel(){
   else if(li===6) h+=renderL6Controls();
   // Learn box
   if(levelObjs[li].every(v=>v)){
-    h+=`<div class="learn-box">${learnTexts[li]}</div>`;
-    if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-    if(li===6)h+=`${_summaryHTML()}`;
+    if(!quizPassed.has(li))h+=quizHTML(li);
+    if(quizPassed.has(li)){
+      h+=`<div class="learn-box">${learnTexts[li]}</div>`;
+      if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+      if(li===6)h+=window._summaryHTML?window._summaryHTML():'';
+    }
   }
   _patchPanel(panel,h);
+  renderBar();
+}
+
+function updateSliderValue(el,text){
+  if(el&&el.nextElementSibling)el.nextElementSibling.textContent=text;
+}
+function dragV0Scalar(el){
+  v0scalar=+el.value;
+  checkL0();
+  updateSliderValue(el,v0scalar.toFixed(1));
+  renderBar();
+}
+function dragM1(el,key){
+  if(key==='angle')m1angle=+el.value;
+  else if(key==='sx')m1sx=+el.value;
+  else if(key==='sy')m1sy=+el.value;
+  else if(key==='shx')m1shx=+el.value;
+  updateM1();
+  updateSliderValue(el,key==='angle'?(m1angle*180/Math.PI).toFixed(0)+'°':(+el.value).toFixed(1));
+  renderBar();
+}
+function dragE4(el,r,c){
+  e4[r][c]=+el.value;
+  checkL4();
+  updateSliderValue(el,e4[r][c].toFixed(1));
+  renderBar();
+}
+function dragSvdM(el,r,c){
+  svdM[r][c]=+el.value;
+  updateSliderValue(el,svdM[r][c].toFixed(1));
+  renderBar();
+}
+function dragSvdRank(el){
+  svdRank=+el.value;
+  levelObjs[6][2]=true;
+  updateSliderValue(el,String(svdRank));
   renderBar();
 }
 
@@ -344,7 +421,7 @@ function renderL0Controls(){
   let h='<h3>操作</h3>';
   h+=`<button class="act-btn ${v0mode==='add'?'style="background:rgba(99,102,241,.4)"':''}" onclick="v0mode='add';renderPanel()">向量加法 a+b</button>`;
   h+=`<button class="act-btn ${v0mode==='scalar'?'style="background:rgba(99,102,241,.4)"':''}" onclick="v0mode='scalar';renderPanel()">数乘 k·a</button>`;
-  h+=`<div class="slider-row"><label>系数 k</label><input type="range" min="-3" max="3" step="0.1" value="${v0scalar}" oninput="v0scalar=+this.value;checkL0();renderPanel()"><span class="val">${v0scalar.toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>系数 k</label><input type="range" min="-3" max="3" step="0.1" value="${v0scalar}" oninput="dragV0Scalar(this)" onchange="this.blur();renderPanel()"><span class="val">${v0scalar.toFixed(1)}</span></div>`;
   h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:8px">a = (${v0a.x.toFixed(1)}, ${v0a.y.toFixed(1)})　b = (${v0b.x.toFixed(1)}, ${v0b.y.toFixed(1)})</div>`;
   if(v0mode==='add'){
     let r={x:v0a.x+v0b.x,y:v0a.y+v0b.y};
@@ -404,10 +481,10 @@ function updateM1(){
 function matMul2(a,b){return[[a[0][0]*b[0][0]+a[0][1]*b[1][0],a[0][0]*b[0][1]+a[0][1]*b[1][1]],[a[1][0]*b[0][0]+a[1][1]*b[1][0],a[1][0]*b[0][1]+a[1][1]*b[1][1]]];}
 function renderL1Controls(){
   let h='<h3>变换参数</h3>';
-  h+=`<div class="slider-row"><label>旋转</label><input type="range" min="0" max="${(Math.PI*2).toFixed(2)}" step="0.01" value="${m1angle}" oninput="m1angle=+this.value;updateM1();renderPanel()"><span class="val">${(m1angle*180/Math.PI).toFixed(0)}°</span></div>`;
-  h+=`<div class="slider-row"><label>缩放X</label><input type="range" min="0.1" max="3" step="0.1" value="${m1sx}" oninput="m1sx=+this.value;updateM1();renderPanel()"><span class="val">${m1sx.toFixed(1)}</span></div>`;
-  h+=`<div class="slider-row"><label>缩放Y</label><input type="range" min="0.1" max="3" step="0.1" value="${m1sy}" oninput="m1sy=+this.value;updateM1();renderPanel()"><span class="val">${m1sy.toFixed(1)}</span></div>`;
-  h+=`<div class="slider-row"><label>剪切X</label><input type="range" min="-2" max="2" step="0.1" value="${m1shx}" oninput="m1shx=+this.value;updateM1();renderPanel()"><span class="val">${m1shx.toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>旋转</label><input type="range" min="0" max="${(Math.PI*2).toFixed(2)}" step="0.01" value="${m1angle}" oninput="dragM1(this,'angle')" onchange="this.blur();renderPanel()"><span class="val">${(m1angle*180/Math.PI).toFixed(0)}°</span></div>`;
+  h+=`<div class="slider-row"><label>缩放X</label><input type="range" min="0.1" max="3" step="0.1" value="${m1sx}" oninput="dragM1(this,'sx')" onchange="this.blur();renderPanel()"><span class="val">${m1sx.toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>缩放Y</label><input type="range" min="0.1" max="3" step="0.1" value="${m1sy}" oninput="dragM1(this,'sy')" onchange="this.blur();renderPanel()"><span class="val">${m1sy.toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>剪切X</label><input type="range" min="-2" max="2" step="0.1" value="${m1shx}" oninput="dragM1(this,'shx')" onchange="this.blur();renderPanel()"><span class="val">${m1shx.toFixed(1)}</span></div>`;
   h+=`<button class="act-btn" onclick="m1angle=0;m1sx=1;m1sy=1;m1shx=0;updateM1();renderPanel()">重置</button>`;
   h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:8px">矩阵 M = [${m1[0][0].toFixed(2)}, ${m1[0][1].toFixed(2)}; ${m1[1][0].toFixed(2)}, ${m1[1][1].toFixed(2)}]</div>`;
   h+=`<div style="font-size:12px;color:var(--text-muted)">det(M) = ${(m1[0][0]*m1[1][1]-m1[0][1]*m1[1][0]).toFixed(3)}</div>`;
@@ -603,10 +680,10 @@ function eigenCalc(m){
 }
 function renderL4Controls(){
   let h='<h3>矩阵 A</h3>';
-  h+=`<div class="slider-row"><label>a₁₁</label><input type="range" min="-3" max="3" step="0.1" value="${e4[0][0]}" oninput="e4[0][0]=+this.value;checkL4();renderPanel()"><span class="val">${e4[0][0].toFixed(1)}</span></div>`;
-  h+=`<div class="slider-row"><label>a₁₂</label><input type="range" min="-3" max="3" step="0.1" value="${e4[0][1]}" oninput="e4[0][1]=+this.value;checkL4();renderPanel()"><span class="val">${e4[0][1].toFixed(1)}</span></div>`;
-  h+=`<div class="slider-row"><label>a₂₁</label><input type="range" min="-3" max="3" step="0.1" value="${e4[1][0]}" oninput="e4[1][0]=+this.value;checkL4();renderPanel()"><span class="val">${e4[1][0].toFixed(1)}</span></div>`;
-  h+=`<div class="slider-row"><label>a₂₂</label><input type="range" min="-3" max="3" step="0.1" value="${e4[1][1]}" oninput="e4[1][1]=+this.value;checkL4();renderPanel()"><span class="val">${e4[1][1].toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>a₁₁</label><input type="range" min="-3" max="3" step="0.1" value="${e4[0][0]}" oninput="dragE4(this,0,0)" onchange="this.blur();renderPanel()"><span class="val">${e4[0][0].toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>a₁₂</label><input type="range" min="-3" max="3" step="0.1" value="${e4[0][1]}" oninput="dragE4(this,0,1)" onchange="this.blur();renderPanel()"><span class="val">${e4[0][1].toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>a₂₁</label><input type="range" min="-3" max="3" step="0.1" value="${e4[1][0]}" oninput="dragE4(this,1,0)" onchange="this.blur();renderPanel()"><span class="val">${e4[1][0].toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>a₂₂</label><input type="range" min="-3" max="3" step="0.1" value="${e4[1][1]}" oninput="dragE4(this,1,1)" onchange="this.blur();renderPanel()"><span class="val">${e4[1][1].toFixed(1)}</span></div>`;
   let eg=eigenCalc(e4);
   h+=`<div style="font-size:12px;color:#f472b6;margin-top:8px">λ₁ = ${eg.l1.toFixed(3)}　λ₂ = ${eg.l2.toFixed(3)}</div>`;
   if(eg.complex)h+=`<div style="font-size:11px;color:#f87171">复数特征值（旋转变换）</div>`;
@@ -735,17 +812,17 @@ function svdCalc(m){
 }
 function renderL6Controls(){
   let h='<h3>矩阵 M</h3>';
-  h+=`<div class="slider-row"><label>m₁₁</label><input type="range" min="-4" max="4" step="0.1" value="${svdM[0][0]}" oninput="svdM[0][0]=+this.value;renderPanel()"><span class="val">${svdM[0][0].toFixed(1)}</span></div>`;
-  h+=`<div class="slider-row"><label>m₁₂</label><input type="range" min="-4" max="4" step="0.1" value="${svdM[0][1]}" oninput="svdM[0][1]=+this.value;renderPanel()"><span class="val">${svdM[0][1].toFixed(1)}</span></div>`;
-  h+=`<div class="slider-row"><label>m₂₁</label><input type="range" min="-4" max="4" step="0.1" value="${svdM[1][0]}" oninput="svdM[1][0]=+this.value;renderPanel()"><span class="val">${svdM[1][0].toFixed(1)}</span></div>`;
-  h+=`<div class="slider-row"><label>m₂₂</label><input type="range" min="-4" max="4" step="0.1" value="${svdM[1][1]}" oninput="svdM[1][1]=+this.value;renderPanel()"><span class="val">${svdM[1][1].toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>m₁₁</label><input type="range" min="-4" max="4" step="0.1" value="${svdM[0][0]}" oninput="dragSvdM(this,0,0)" onchange="this.blur();renderPanel()"><span class="val">${svdM[0][0].toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>m₁₂</label><input type="range" min="-4" max="4" step="0.1" value="${svdM[0][1]}" oninput="dragSvdM(this,0,1)" onchange="this.blur();renderPanel()"><span class="val">${svdM[0][1].toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>m₂₁</label><input type="range" min="-4" max="4" step="0.1" value="${svdM[1][0]}" oninput="dragSvdM(this,1,0)" onchange="this.blur();renderPanel()"><span class="val">${svdM[1][0].toFixed(1)}</span></div>`;
+  h+=`<div class="slider-row"><label>m₂₂</label><input type="range" min="-4" max="4" step="0.1" value="${svdM[1][1]}" oninput="dragSvdM(this,1,1)" onchange="this.blur();renderPanel()"><span class="val">${svdM[1][1].toFixed(1)}</span></div>`;
   let sv=svdCalc(svdM);
   h+=`<div style="font-size:12px;color:#f472b6;margin-top:6px">σ₁ = ${sv.s1.toFixed(3)}　σ₂ = ${sv.s2.toFixed(3)}</div>`;
   h+=`<h3>分解步骤</h3>`;
   h+=`<button class="act-btn ${svdStep===0?'style="background:rgba(99,102,241,.4)"':''}" onclick="svdStep=0;svdImgMode=false;levelObjs[6][0]=true;renderPanel()">几何分解 (V^T → Σ → U)</button>`;
   h+=`<button class="act-btn ${svdImgMode?'style="background:rgba(99,102,241,.4)"':''}" onclick="svdImgMode=true;levelObjs[6][1]=true;renderPanel()">图像压缩模式</button>`;
   if(svdImgMode){
-    h+=`<div class="slider-row"><label>秩 k</label><input type="range" min="1" max="2" step="1" value="${svdRank}" oninput="svdRank=+this.value;levelObjs[6][2]=true;renderPanel()"><span class="val">${svdRank}</span></div>`;
+    h+=`<div class="slider-row"><label>秩 k</label><input type="range" min="1" max="2" step="1" value="${svdRank}" oninput="dragSvdRank(this)" onchange="this.blur();renderPanel()"><span class="val">${svdRank}</span></div>`;
     h+=`<div style="font-size:11px;color:var(--text-muted);margin-top:4px">秩 k=1: 仅保留最大奇异值，有损压缩<br>秩 k=2: 完整重建，无损</div>`;
   }
   h+=`<button class="act-btn" onclick="svdM=[[3,1],[1,3]];svdStep=0;svdImgMode=false;svdRank=2;renderPanel()">重置</button>`;
@@ -987,6 +1064,7 @@ function loop(){
     return null;
   }
   function _isDone(i){
+    if(typeof quizPassed!=='undefined')return quizPassed.has(i);
     var o=_getObjs();
     if(o&&o[i])return o[i].every(function(v){return v;});
     if(typeof completedLevels!=='undefined')return completedLevels.has(i);
@@ -1008,11 +1086,14 @@ function loop(){
     var pct=s.total>0?Math.round(s.done/s.total*100):0;
     var h='<div class="stage-nav"><div class="sn-bar">';
     for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+      var unlocked=i===0||(typeof quizPassed!=='undefined'&&quizPassed.has(i-1));
+      var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
+      var click=unlocked?'typeof goLevel===\'function\'&&goLevel('+i+')':'';
+      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+    if(typeof quizPassed!=='undefined')h+='<div class="sn-hint">'+quizPassed.size+'/'+total+' 已通关，完成目标后答对测验才解锁下一关</div>';
 
     h+='</div>';
     return h;

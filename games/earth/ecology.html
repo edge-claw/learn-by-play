@@ -82,8 +82,17 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--concept-bg);border:1px solid var(--btn-green-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-size:13px;font-weight:700;color:var(--btn-green-text);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--goal-text);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px 10px;margin:5px 0;border:1px solid var(--sel-border);border-radius:6px;background:var(--sel-bg);color:var(--sel-text);font-size:13px;text-align:left;cursor:pointer}
+.quiz-opt:hover{border-color:var(--sel-active-border);color:var(--sel-active-text)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:7px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--sel-correct-bg);color:var(--sel-correct-text)}
+.quiz-feedback.bad{background:var(--sel-wrong-bg);color:var(--sel-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -131,7 +140,17 @@ let audioCtx;function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext|
 function playSound(tp){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(tp==='ok'){o.frequency.value=523;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else if(tp==='no'){o.frequency.value=300;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}else{o.frequency.value=800;g.gain.value=0.08;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}}
 
 const LEVELS=[{name:'食物链与食物网',icon:'🔗'},{name:'能量金字塔',icon:'🔺'},{name:'碳循环',icon:'♻️'},{name:'氮循环',icon:'⚗️'},{name:'种群增长',icon:'📈'},{name:'生物多样性',icon:'🦋'},{name:'生态平衡',icon:'⚖️'}];
+const QUIZ=[
+  {q:'食物网比单条食物链更稳定，主要原因是什么？',opts:['能量路径更多，某个物种波动时还有替代联系','所有物种都只吃一种食物','顶级捕食者越多越稳定','生产者不参与食物网'],ans:0},
+  {q:'为什么顶级捕食者通常数量很少？',opts:['每级营养级只传递约10%能量','它们不需要能量','生产者会直接变成捕食者','能量会在高营养级增加'],ans:0},
+  {q:'化石燃料燃烧会怎样影响碳循环？',opts:['把地质封存的碳快速释放到大气','永久移除大气CO₂','让光合作用停止','只增加海洋盐度'],ans:0},
+  {q:'过量施肥导致水体富营养化，关键原因是什么？',opts:['氮随径流进入水体，促进藻类过度生长','氮会让水温瞬间降低','反硝化完全停止空气流动','植物不能吸收任何氮'],ans:0},
+  {q:'逻辑斯蒂增长模型中的 K 表示什么？',opts:['环境容纳量','种群初始值','捕食者数量','随机死亡率'],ans:0},
+  {q:'移除关键物种可能造成级联效应，是因为？',opts:['依赖它的物种会失去食物或生态功能','所有物种互不相关','灭绝只影响单个个体','多样性越低越稳定'],ans:0},
+  {q:'生态系统从崩溃恢复到稳定，通常需要什么组合？',opts:['降低压力并增加保护力度','继续过度捕猎','减少栖息地面积','放任入侵物种扩张'],ans:0}
+];
 let cur=0,gameState='title',S={},done=new Array(7).fill(false);
+let quizPassed=new Set(),quizFeedback={};
 
 /* Species database */
 const SPECIES={
@@ -162,8 +181,20 @@ function initLevel(i){
 }
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  LEVELS.forEach((_,i)=>{const c=i<cur?'done':i===cur?'cur':'';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`});
-  h+=`</div><div class="sn-info">第 ${cur+1}/7 关 — ${LEVELS[cur].name}</div><div class="sn-hint">${done.filter(Boolean).length}/7 已完成</div></div>`;return h;
+  LEVELS.forEach((_,i)=>{
+    const unlocked=i===0||quizPassed.has(i-1);
+    const c=quizPassed.has(i)?'done':i===cur?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${c}" onclick="${unlocked?`goLevel(${i})`:''}"></div>`;
+  });
+  h+=`</div><div class="sn-info">第 ${cur+1}/7 关 — ${LEVELS[cur].name}</div><div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;return h;
+}
+function renderQuiz(){
+  const q=QUIZ[cur],fb=quizFeedback[cur];
+  let h=`<div class="quiz-box"><div class="quiz-title">通关小测验</div><div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="checkQuiz(${cur},${i})">${opt}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
 }
 let _panelBusy=false;
 function renderPanel(){
@@ -171,8 +202,9 @@ function renderPanel(){
   const p=document.getElementById('panel');let h=renderStageNav();
   h+=`<h2>${LEVELS[cur].icon} ${LEVELS[cur].name}</h2>`;
   h+=renderLevelPanel(cur);
-  if(done[cur]&&cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
-  if(done.every(Boolean)){
+  if(done[cur]&&!quizPassed.has(cur))h+=renderQuiz();
+  if(quizPassed.has(cur)&&cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
+  if(quizPassed.size===7){
     h+=`<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握生态系统的核心知识</div>`;
     h+=`<div class="summary-keys"><div>🔗 食物链连接生产者→消费者→顶级捕食者</div><div>🔺 每级营养级只传递约10%的能量</div><div>♻️ 碳在大气、海洋、生物和化石燃料间循环</div><div>⚗️ 氮循环依赖固氮菌和反硝化细菌</div><div>📈 种群增长受环境容纳量K限制</div><div>🦋 物种消失会引发级联效应</div><div>⚖️ 生态平衡需要人类主动保护</div></div></div>`;
   }
@@ -216,7 +248,14 @@ function updateSliderLabels(){
     }break;
   }
 }
-function completeObj(idx){if(S.obj[idx])return;S.obj[idx]=true;playSound('ok');if(idx===0)S.phase=1;if(idx===2){done[cur]=true;document.getElementById('ib-status').textContent='已完成'}renderPanel()}
+function completeObj(idx){if(S.obj[idx])return;S.obj[idx]=true;playSound('ok');if(idx===0)S.phase=1;if(idx===2){done[cur]=true;document.getElementById('ib-status').textContent='待测验'}renderPanel()}
+function checkQuiz(levelIdx,picked){
+  if(levelIdx!==cur||quizPassed.has(levelIdx))return;
+  const q=QUIZ[levelIdx],ok=picked===q.ans;
+  quizFeedback[levelIdx]={ok,text:ok?'答对了。先看本关生态机制总结，再进入下一关。':'还不对。回到食物网、能量流或物质循环的因果关系再判断。'};
+  if(ok){quizPassed.add(levelIdx);document.getElementById('ib-status').textContent='已完成'}
+  renderPanel();
+}
 function checkObj(){
   switch(cur){
     case 0:if(!S.obj[0]&&S.chain.length>=3)completeObj(0);if(!S.obj[1]&&S.webSpecies.size>=6)completeObj(1);if(!S.obj[2]&&S.webSpecies.size>=8)completeObj(2);break;
@@ -583,8 +622,9 @@ function drawBalance(c){
   ctx.fillText(`生态平衡 ${S.balance.toFixed(0)}% — ${S.ecosystem==='stable'?'稳定':S.ecosystem==='stressed'?'受压':'崩溃'}`,CW/2,my+30);
 }
 
-function goLevel(i){if(i>LEVELS.length-1)return;cur=i;initLevel(i);gameState='play';document.getElementById('panel').style.display='block';document.getElementById('ib-level').textContent=`关卡 ${i+1}/7`;document.getElementById('ib-title').textContent=LEVELS[i].name;document.getElementById('ib-status').textContent=done[i]?'已完成':'进行中';renderPanel();draw()}
-function startGame(){document.getElementById('startScreen').classList.add('hidden');goLevel(0)}
+function goLevel(i){if(i>LEVELS.length-1||i<0)return;if(i>0&&!quizPassed.has(i-1))return;cur=i;initLevel(i);gameState='play';document.getElementById('panel').style.display='block';document.getElementById('ib-level').textContent=`关卡 ${i+1}/7`;document.getElementById('ib-title').textContent=LEVELS[i].name;document.getElementById('ib-status').textContent=quizPassed.has(i)?'已完成':done[i]?'待测验':'进行中';renderPanel();draw()}
+function resetProgress(){done=new Array(7).fill(false);quizPassed=new Set();quizFeedback={}}
+function startGame(){document.getElementById('startScreen').classList.add('hidden');resetProgress();goLevel(0)}
 function handleClick(x,y){}
 cv.addEventListener('click',e=>{if(gameState!=='play')return;const r=cv.getBoundingClientRect();handleClick(e.clientX-r.left,e.clientY-r.top)});
 

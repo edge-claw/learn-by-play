@@ -103,8 +103,17 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
+.quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
+.quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
+.quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
+.quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -198,10 +207,37 @@ const levels=[
  objs:['注射疫苗','观察首次免疫响应','见证二次免疫快速响应'],
  learn:'首次免疫需<span class="sv">7-14天</span>产生足够抗体，二次免疫仅需<span class="sv">1-3天</span>且抗体量高10-100倍。这就是<span class="sv">免疫记忆</span>——疫苗的核心原理。记忆B细胞可存活<span class="sv">数十年</span>，这就是为什么天花疫苗能终身保护。'}
 ];
+const quizData=[
+  {q:'皮肤屏障属于人体免疫系统的哪一类防线？',opts:['第一道物理和化学屏障','专门识别抗体的适应性免疫','只在二次感染时出现'],ans:0,ok:'对。完整皮肤、汗液和皮脂共同阻挡病原体进入。',bad:'先想“病原体还没进入体内”时是谁在挡住它。'},
+  {q:'巨噬细胞清除细菌的主要方式是什么？',opts:['吞噬并消化病原体','产生大量抗体','形成免疫记忆'],ans:0,ok:'对。巨噬细胞通过模式识别受体发现细菌，然后吞噬。',bad:'巨噬细胞的名字就来自“大吃货”，重点是吞噬。'},
+  {q:'炎症反应中的细胞因子主要起什么作用？',opts:['发出信号并招募免疫细胞到感染区','直接变成抗体','让病原体获得能量'],ans:0,ok:'对。细胞因子会促进血管扩张和免疫细胞趋化。',bad:'红肿热痛背后就是信号释放和细胞招募。'},
+  {q:'抗原呈递为什么关键？',opts:['它把先天免疫获得的信息交给T细胞','它直接修补皮肤伤口','它让抗体失去特异性'],ans:0,ok:'对。树突细胞通过 MHC 呈递抗原，启动适应性免疫。',bad:'抗原呈递是先天免疫与适应性免疫之间的桥梁。'},
+  {q:'杀伤性T细胞消灭感染细胞常用哪组武器？',opts:['穿孔素和颗粒酶','汗液和皮脂','抗原和MHC凹槽'],ans:0,ok:'对。穿孔素打孔，颗粒酶诱导靶细胞凋亡。',bad:'T细胞杀伤是定点清除感染细胞，不是简单吞噬。'},
+  {q:'抗体识别病毒依赖什么特征？',opts:['可变区与抗原表位的特异性匹配','抗体随机粘住所有细胞','抗体只识别细胞核'],ans:0,ok:'对。抗体像锁钥模型一样识别特定抗原。',bad:'B细胞抗体的强项是特异性识别。'},
+  {q:'疫苗保护人的核心机制是什么？',opts:['提前建立记忆细胞，让二次反应更快更强','让所有病原体无法进入皮肤','直接杀死所有T细胞'],ans:0,ok:'对。免疫记忆让再次感染时快速大量产生抗体和效应细胞。',bad:'疫苗不是当场永远消灭所有病原体，而是训练免疫记忆。'}
+];
+let quizPassed=new Set(),quizFeedback={};
 
 /* ===== PANEL ===== */
 let panelDirty=true;
 function markDirty(){panelDirty=true}
+function isUnlocked(n){return n===0||quizPassed.has(n-1)}
+function quizHTML(li){
+  const q=quizData[li],fb=quizFeedback[li];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((o,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${o}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+function answerQuiz(li,choice){
+  if(li!==curLevel||quizPassed.has(li))return;
+  const q=quizData[li],ok=choice===q.ans;
+  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  if(ok)completedLevels.add(li),quizPassed.add(li);
+  markDirty();renderPanel();
+}
 function renderPanel(){
   if(!panelDirty)return;panelDirty=false;
   const lv=levels[curLevel];let h='<div style="margin-bottom:8px">';
@@ -216,26 +252,29 @@ function renderPanel(){
   h+=`<div id="actionArea"></div>`;
   const allDone=levelObjs[curLevel].every(v=>v);
   if(allDone){
-    if(!completedLevels.has(curLevel)){completedLevels.add(curLevel);panelDirty=true}
-    h+=`<div class="learn-box">💡 ${lv.learn}</div>`;
-    if(curLevel<levels.length-1)h+=`<button class="act-btn green" onclick="loadLevel(${curLevel+1})">下一关 →</button>`;
-    else h+=`${_summaryHTML()}`;
+    if(!quizPassed.has(curLevel))h+=quizHTML(curLevel);
+    if(quizPassed.has(curLevel)){
+      h+=`<div class="learn-box">💡 ${lv.learn}</div>`;
+      if(curLevel<levels.length-1)h+=`<button class="act-btn green" onclick="loadLevel(${curLevel+1})">下一关 →</button>`;
+      else h+=(window._summaryHTML?window._summaryHTML():'');
+    }
   }
   panel.innerHTML=h;
   setupLevelUI();
   document.getElementById('ib-level').textContent=`关卡 ${curLevel+1}/7`;
   document.getElementById('ib-title').textContent=lv.name;
-  document.getElementById('ib-status').textContent=allDone?'已完成':'进行中';
+  document.getElementById('ib-status').textContent=quizPassed.has(curLevel)?'已通关':allDone?'待测验':'进行中';
 }
 function completeObj(li,oi){
   if(levelObjs[li][oi])return;levelObjs[li][oi]=true;markDirty();
 }
 function checkLevelDone(){
-  if(levelObjs[curLevel].every(v=>v)&&!completedLevels.has(curLevel)){completedLevels.add(curLevel);markDirty()}
+  if(levelObjs[curLevel].every(v=>v))markDirty()
 }
 
 /* ===== LEVEL LOADER ===== */
 function loadLevel(n){
+  if(n<0||n>=levels.length||!isUnlocked(n))return;
   if(animId){cancelAnimationFrame(animId);animId=0}
   cv.onmousedown=e=>{mouseDown=true;clicked=true};
   cv.onmousemove=e=>{const r=cv.getBoundingClientRect();mouseX=(e.clientX-r.left)*(W/r.width);mouseY=(e.clientY-r.top)*(H/r.height)};
@@ -930,6 +969,7 @@ function initL7(){
 
 /* ===== INIT ===== */
 loadLevel(0);
+function goLevel(i){loadLevel(i)}
 
 // === 总分总认知结构增强 ===
 // 延迟重新渲染确保增强生效
@@ -954,6 +994,7 @@ loadLevel(0);
     return null;
   }
   function _isDone(i){
+    if(typeof quizPassed!=='undefined')return quizPassed.has(i);
     var o=_getObjs();
     if(o&&o[i])return o[i].every(function(v){return v;});
     if(typeof completedLevels!=='undefined')return completedLevels.has(i);
@@ -989,11 +1030,14 @@ loadLevel(0);
     var pct=s.total>0?Math.round(s.done/s.total*100):0;
     var h='<div class="stage-nav"><div class="sn-bar">';
     for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+      var unlocked=i===0||(typeof quizPassed!=='undefined'&&quizPassed.has(i-1));
+      var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
+      var click=unlocked?'typeof goLevel===\'function\'&&goLevel('+i+')':'';
+      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
+    if(typeof quizPassed!=='undefined')h+='<div class="sn-hint">'+quizPassed.size+'/'+total+' 已通关，完成目标后答对测验才解锁下一关</div>';
 
     h+='</div>';
     return h;

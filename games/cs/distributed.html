@@ -85,6 +85,7 @@ canvas{flex:1;display:block;background:var(--bg)}
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
@@ -634,7 +635,7 @@ function answerQuiz(li,oi){
 // === Stage nav ===
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  LEVELS.forEach((_,i)=>{h+='<div class="sn-d'+(i<curLevel?' done':i===curLevel?' cur':'')+'" onclick="switchLevel('+i+')"></div>'});
+  LEVELS.forEach((_,i)=>{h+='<div class="sn-d'+(quizPassed.has(i)?' done':i===curLevel?' cur':isUnlocked(i)?'':' locked')+'" onclick="switchLevel('+i+')"></div>'});
   h+='</div><div class="sn-info">第 '+(curLevel+1)+'/'+LEVELS.length+' 关 — '+LEVELS[curLevel].name+'</div></div>';
   return h
 }
@@ -666,8 +667,9 @@ function showResult(){
 }
 
 // === Main loop ===
-function goLevel(idx){if(idx>=LEVELS.length){showResult();return}curLevel=idx;initLevel(idx);renderPanel()}
-function switchLevel(idx){playSound('click');goLevel(idx)}
+function isUnlocked(idx){return idx>=0&&idx<LEVELS.length&&(idx===0||quizPassed.has(idx)||quizPassed.has(idx-1))}
+function goLevel(idx){if(idx>=LEVELS.length){showResult();return}if(!isUnlocked(idx))return;curLevel=idx;initLevel(idx);renderPanel()}
+function switchLevel(idx){if(!isUnlocked(idx))return;playSound('click');goLevel(idx)}
 function startGame(){overlay.style.display='none';document.getElementById('wrap').style.display='flex';bar.style.display='flex';panel.style.display='block';resize();initLevel(0);renderPanel();loop()}
 function draw(){
   ctx.clearRect(0,0,W,H);drawGrid();

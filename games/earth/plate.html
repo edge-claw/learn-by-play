@@ -82,8 +82,17 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
+.quiz-box{background:var(--concept-bg);border:1px solid var(--btn-green-border);border-radius:10px;padding:12px;margin:10px 0}
+.quiz-title{font-weight:700;color:var(--btn-green-text);font-size:14px;margin-bottom:8px}
+.quiz-q{font-size:13px;color:var(--concept-text);line-height:1.6;margin-bottom:8px}
+.quiz-opt{display:block;width:100%;padding:9px 10px;margin:6px 0;border-radius:8px;border:1px solid var(--concept-border);background:var(--btn-bg);color:var(--btn-text);font-size:13px;text-align:left;cursor:pointer}
+.quiz-opt:hover{background:var(--btn-hover)}
+.quiz-feedback{border-radius:8px;padding:8px;margin-top:8px;font-size:12px;line-height:1.6}
+.quiz-feedback.ok{background:var(--btn-green-bg);color:var(--btn-green-text)}
+.quiz-feedback.bad{background:#2a0a0a;color:#f87171}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
 .summary-sub{color:var(--summary-sub);font-size:13px;margin-bottom:12px}
@@ -151,6 +160,16 @@ const LEVELS=[
   {name:'地震带分布',icon:'📍'}
 ];
 let cur=0,gameState='title',S={},done=new Array(7).fill(false);
+const completedLevels=new Set(),quizPassed=new Set(),quizFeedback={};
+const quizData=[
+  {q:'地球内部从外到内的主要结构顺序是什么？',opts:['地壳、地幔、外核、内核','内核、地壳、外核、地幔','海洋、大气、云层、太阳'],ans:0,ok:'对。板块运动发生在地球外层，能量与地幔对流有关。',bad:'先记住从外到内：地壳、地幔、外核、内核。'},
+  {q:'大陆漂移假说的重要证据不包括哪一项？',opts:['相邻大陆海岸线、化石和岩层能对应','南美洲和非洲海岸线相似','所有大陆每天都能肉眼看到快速移动'],ans:2,ok:'对。大陆漂移很慢，证据来自海岸线、化石和岩层对比。',bad:'大陆不会以肉眼可见速度移动，关键证据是地质和古生物线索。'},
+  {q:'离散型板块边界通常会发生什么？',opts:['板块分离，岩浆上涌形成新地壳','两个板块完全静止','所有岩石瞬间消失'],ans:0,ok:'对。大洋中脊就是典型离散型边界。',bad:'离散型边界的关键词是分离和新地壳生成。'},
+  {q:'海底扩张学说预测大洋中脊两侧岩石年龄如何变化？',opts:['离中脊越远越老，并且两侧大体对称','离中脊越远越新','所有地方年龄完全相同'],ans:0,ok:'对。对称年龄和磁异常条带支持海底扩张。',bad:'新地壳在中脊生成，随后向两侧移动并变老。'},
+  {q:'俯冲带常见的地貌或地质现象是什么？',opts:['海沟、火山弧和倾斜地震带','沙丘和冰川裂缝','只形成平坦平原'],ans:0,ok:'对。大洋板块下沉会形成海沟、熔融和火山弧。',bad:'俯冲带的关键词是海沟、火山弧和地震带。'},
+  {q:'喜马拉雅山形成的主要机制是什么？',opts:['印度板块与欧亚板块汇聚碰撞挤压','海浪把沙子堆高','陨石连续撞击同一地点'],ans:0,ok:'对。大陆碰撞挤压使地壳缩短加厚并隆起。',bad:'造山运动主要来自板块汇聚和地壳挤压。'},
+  {q:'全球强震为什么常集中在特定带状区域？',opts:['这些区域多是活跃板块边界','地震只喜欢沿经线排列','地图绘制时随机点在一起'],ans:0,ok:'对。板块边界积累并释放应力，是地震密集带。',bad:'地震带分布反映了板块边界和应力释放位置。'}
+];
 
 /* === 关卡初始化 === */
 function initLevel(i){
@@ -187,9 +206,13 @@ function initLevel(i){
 /* === 面板渲染 === */
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  LEVELS.forEach((_,i)=>{const c=i<cur?'done':i===cur?'cur':'';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`});
+  LEVELS.forEach((_,i)=>{
+    const unlocked=canGoLevel(i);
+    const c=completedLevels.has(i)?'done':i===cur?'cur':unlocked?'':'locked';
+    h+=`<div class="sn-d ${c}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+  });
   h+=`</div><div class="sn-info">第 ${cur+1}/${LEVELS.length} 关 — ${LEVELS[cur].name}</div>`;
-  h+=`<div class="sn-hint">${done.filter(Boolean).length}/${LEVELS.length} 已完成</div></div>`;
+  h+=`<div class="sn-hint">${completedLevels.size}/${LEVELS.length} 已通关，完成目标后答对测验解锁下一关</div></div>`;
   return h;
 }
 function renderPanel(){
@@ -197,8 +220,15 @@ function renderPanel(){
   let h=renderStageNav();
   h+=`<h2>${LEVELS[cur].icon} ${LEVELS[cur].name}</h2>`;
   h+=renderLevelPanel(cur);
-  if(done[cur]&&cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
-  if(done.every(Boolean))h+=renderSummary();
+  if(done[cur]){
+    if(!quizPassed.has(cur)){
+      h+=renderQuiz(cur);
+    }else{
+      h+=`<div class="learn-box">${learnText(cur)}</div>`;
+      if(cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
+      else if(completedLevels.size===LEVELS.length)h+=renderSummary();
+    }
+  }
   p.innerHTML=h;
 }
 function renderLevelPanel(i){
@@ -209,8 +239,7 @@ function renderLevelPanel(i){
       h+=`<div class="desc">画布上显示了地球的剖面图。点击不同的圈层来探索每一层的特性。</div>`;
       if(S.selLayer>=0){const l=S.layers[S.selLayer];h+=`<div class="learn-box"><b>${l.name}</b><br>温度: <span class="sv">${l.temp}</span><br>${l.desc}</div>`}
       h+=`<div class="hint-box">💡 点击地球剖面的不同颜色区域，了解每层结构</div>`;
-      if(S.revealed>=5&&!S.obj[0]){S.obj[0]=true}
-      if(S.obj[0])h+=`<button class="act-btn" onclick="startQuiz0()">开始测验</button>`;
+      if(S.revealed>=5&&!S.obj[0]){S.obj[0]=true;done[0]=true;playSound('ok')}
       break;
     case 1:
       h+=`<div class="concept-box">1912年魏格纳提出<b>大陆漂移假说</b>：各大陆曾连为一体（盘古大陆），后逐渐分裂漂移到现在的位置。证据包括海岸线吻合、化石分布和岩层对比。</div>`;
@@ -258,12 +287,44 @@ function renderLevelPanel(i){
 function renderSummary(){
   return `<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握板块构造的核心知识</div><div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡完成</div></div><div class="summary-stat"><div class="num">100%</div><div class="label">完成率</div></div></div><div class="summary-keys"><div>🌐 地球由地壳、地幔、外核、内核组成</div><div>🗺️ 大陆曾连为盘古大陆后分裂漂移</div><div>🔀 三种板块边界：离散、汇聚、转换</div><div>🌊 海底在大洋中脊处不断扩张</div><div>⬇️ 俯冲带形成海沟和火山弧</div><div>⛰️ 板块碰撞挤压形成褶皱山脉</div><div>📍 地震集中在板块边界形成地震带</div></div></div>`;
 }
+
+function renderQuiz(i){
+  const q=quizData[i],fb=quizFeedback[i];
+  let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
+  h+=`<div class="quiz-q">${q.q}</div>`;
+  q.opts.forEach((opt,j)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${i},${j})">${String.fromCharCode(65+j)}. ${opt}</button>`});
+  if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  h+='</div>';
+  return h;
+}
+
+function answerQuiz(i,j){
+  const q=quizData[i],ok=j===q.ans;
+  quizFeedback[i]={ok:ok,text:ok?q.ok:q.bad};
+  if(ok){quizPassed.add(i);completedLevels.add(i);playSound('ok');}
+  else playSound('no');
+  renderPanel();updateInfobar();
+}
+
+function learnText(i){
+  return [
+    '地球内部结构决定了板块运动的能量来源。地幔并非液体海洋，而是能在漫长时间尺度上缓慢流动的固态物质。',
+    '大陆漂移最初是解释证据的假说，后来与海底扩张、古地磁和板块边界观测一起发展为板块构造理论。',
+    '三类板块边界对应不同运动：离散生成新地壳，汇聚消耗或加厚地壳，转换边界释放水平错动应力。',
+    '海底扩张把大洋中脊的新生岩石推向两侧，岩石年龄和磁异常条带呈对称分布，是板块运动的重要证据。',
+    '俯冲带把冷而密的大洋岩石圈带入地幔，形成深海沟、火山弧和从浅到深排列的地震。',
+    '造山运动本质是地壳缩短、褶皱和增厚。喜马拉雅仍在变化，因为板块碰撞尚未停止。',
+    '地震带不是随机图案，而是板块边界活动的可视化结果。识别地震带能反推出板块边界位置。'
+  ][i];
+}
+
+function canGoLevel(i){return i>=0&&i<LEVELS.length&&(i===0||completedLevels.has(i)||completedLevels.has(i-1))}
 /* === 关卡逻辑 === */
 function calcSubduction(){S.trenchDepth=4+S.angle*0.1;S.volcDist=300-S.angle*2.5;S.showMelt=S.angle>20;if(S.angle>=20&&S.angle<=70&&!S.obj[0]){S.obj[0]=true;done[4]=true;playSound('ok')}}
 function calcMountain(){S.height=S.compression*8848;S.foldAngle=S.compression*75;if(S.compression>=0.8&&!S.obj[0]){S.obj[0]=true;done[5]=true;playSound('ok')}}
 function toggleSpread(){S.spreading=!S.spreading;renderPanel()}
 function selBoundary(j){S.selBound=j;S.matched.add(j);if(S.matched.size>=3&&!done[2]){done[2]=true;playSound('ok')}renderPanel();draw()}
-function startQuiz0(){if(S.revealed>=5){done[0]=true;playSound('ok');renderPanel()}}
+function startQuiz0(){if(S.revealed>=5&&!done[0]){done[0]=true;playSound('ok');renderPanel()}}
 
 /* === 绘制 === */
 function draw(){
@@ -495,7 +556,7 @@ cv.addEventListener('mouseup',()=>{
 });
 
 /* === 游戏流程 === */
-function goLevel(i){if(i<0||i>=7)return;cur=i;initLevel(i);renderPanel();draw();updateInfobar();playSound('click')}
+function goLevel(i){if(!canGoLevel(i))return;cur=i;initLevel(i);renderPanel();draw();updateInfobar();playSound('click')}
 function startGame(){
   playSound('click');document.getElementById('startScreen').classList.add('hidden');
   document.getElementById('panel').style.display='block';gameState='play';

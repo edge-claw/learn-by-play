@@ -235,16 +235,13 @@ function updateLevel(idx,dt){
   const s=levelState;
   switch(idx){
     case 0:// 压强与深度
-      s.pressure=101.325+1000*9.81*s.depth/1000;
-      if(s.depth>s.maxDepthReached)s.maxDepthReached=s.depth;
+      updateL0State();
       s.waterParticles.forEach(p=>{p.x+=p.vx*dt*0.1;p.y+=p.vy*dt*0.1;if(p.x<0)p.x=1;if(p.x>1)p.x=0;if(p.y<0)p.y=1;if(p.y>1)p.y=0});
       break;
     case 1:// 帕斯卡原理
-      s.ratio=s.areaOut/s.areaIn;
-      s.forceOut=s.forceIn*s.ratio;
+      updateL1State();
       s.pistonY+=(s.forceOut>=800?-1:0.5)*dt;
       s.pistonY=Math.max(-1,Math.min(0,s.pistonY));
-      if(s.forceOut>=800)s.lifted=true;
       break;
     case 2:{// 浮力
       const rhoW=1000,g=9.81,V=0.001;
@@ -253,15 +250,12 @@ function updateLevel(idx,dt){
       s.objVy-=acc*dt;s.objVy*=0.92;
       s.objY+=s.objVy*dt;
       s.objY=Math.max(0.1,Math.min(0.9,s.objY));
-      if(s.objDensity<1000){s.floated=true;if(s.objY<s.waterLevel-0.12)s.objY=s.waterLevel-0.12}
-      if(s.objDensity>1000){s.sunk=true}
+      updateL2State();
+      if(s.objDensity<1000&&s.objY<s.waterLevel-0.12)s.objY=s.waterLevel-0.12;
       if(s.objDensity===1000){s.objY+=(s.waterLevel-s.objY)*dt*2}
       break;}
     case 3:{// 伯努利
-      const A1=Math.PI*(s.d1/2)**2,A2=Math.PI*(s.d2/2)**2;
-      s.v2=s.v1*A1/A2;
-      s.p1=100;s.p2=s.p1+0.5*1000*(s.v1**2-s.v2**2)/1000;
-      if(s.p2<s.p1)s.pressureDrop=true;
+      updateL3State();
       s.flowParticles.forEach(p=>{p.x+=p.speed*dt*0.15;if(p.x>1)p.x=0});
       break;}
     case 4:// 粘性
@@ -270,24 +264,174 @@ function updateLevel(idx,dt){
       else s.viscosity=10;
       break;
     case 5:{// 雷诺数
-      s.re=s.density*s.velocity*s.diameter/s.viscosity;
-      if(s.re>2300)s.seenTurbulent=true;
+      updateL5State();
       s.streamlines.forEach(sl=>{sl.phase+=dt*2});
       break;}
     case 6:{// 升力
-      const aRad=s.angle*Math.PI/180;
-      let cl;
-      if(s.angle<=12) cl=2*Math.PI*aRad*0.9;// 线性区
-      else if(s.angle<=18) cl=2*Math.PI*(12*Math.PI/180)*0.9*(1-(s.angle-12)/12);// 失速过渡
-      else cl=Math.max(0,0.3-0.02*(s.angle-18));// 深度失速
-      if(s.angle<0) cl=2*Math.PI*aRad*0.8;
-      const cd=0.01+cl*cl/(Math.PI*6*0.9)+(s.angle>15?0.05*(s.angle-15):0);
-      const q=0.5*1.225*s.windSpeed**2;
-      s.lift=cl*q*1;s.drag=cd*q*1;
-      const ldRatio=s.drag>0.1?s.lift/s.drag:0;
-      if(ldRatio>s.maxLDRatio&&s.lift>0){s.maxLDRatio=ldRatio;if(ldRatio>10)s.bestRatio=true}
+      updateL6State();
       break;}
   }
+}
+
+function updateL0State(){
+  const s=levelState;
+  s.pressure=101.325+1000*9.81*s.depth/1000;
+  if(s.depth>s.maxDepthReached)s.maxDepthReached=s.depth;
+}
+function updateL0Metrics(){
+  updateL0State();
+  const depth=document.getElementById('l0DepthVal');
+  const pressure=document.getElementById('l0PressureVal');
+  const formulaDepth=document.getElementById('l0FormulaDepth');
+  if(depth)depth.textContent=levelState.depth.toFixed(1)+' m';
+  if(pressure)pressure.textContent=levelState.pressure.toFixed(1)+' kPa';
+  if(formulaDepth)formulaDepth.textContent=levelState.depth.toFixed(1);
+}
+function setL0Depth(el){
+  const wasDone=isLevelDone(0);
+  levelState.depth=+el.value;
+  updateL0Metrics();
+  if(!wasDone&&isLevelDone(0))renderPanel();
+}
+function updateL1State(){
+  const s=levelState;
+  s.ratio=s.areaOut/s.areaIn;
+  s.forceOut=s.forceIn*s.ratio;
+  if(s.forceOut>=800)s.lifted=true;
+}
+function updateL1Metrics(){
+  updateL1State();
+  const forceIn=document.getElementById('l1ForceInVal');
+  const areaOut=document.getElementById('l1AreaOutVal');
+  const ratio=document.getElementById('l1RatioVal');
+  const forceOut=document.getElementById('l1ForceOutVal');
+  if(forceIn)forceIn.textContent=levelState.forceIn+' N';
+  if(areaOut)areaOut.textContent=levelState.areaOut+' cm²';
+  if(ratio)ratio.textContent=levelState.ratio.toFixed(1);
+  if(forceOut)forceOut.textContent=levelState.forceOut.toFixed(0)+' N';
+}
+function setL1Hydraulics(key,el){
+  const wasDone=isLevelDone(1);
+  levelState[key]=+el.value;
+  updateL1Metrics();
+  if(!wasDone&&isLevelDone(1))renderPanel();
+}
+function updateL2State(){
+  const s=levelState;
+  if(s.objDensity<1000)s.floated=true;
+  if(s.objDensity>1000)s.sunk=true;
+}
+function getL2StateInfo(){
+  if(levelState.objDensity<1000)return{text:'漂浮',color:'#22c55e'};
+  if(levelState.objDensity>1000)return{text:'下沉',color:'#ef4444'};
+  return{text:'悬浮',color:'#f59e0b'};
+}
+function updateL2Metrics(){
+  updateL2State();
+  const density=document.getElementById('l2DensityVal');
+  const state=document.getElementById('l2StateVal');
+  const info=getL2StateInfo();
+  if(density)density.textContent=levelState.objDensity+' kg/m³';
+  if(state){state.textContent=info.text;state.style.color=info.color}
+}
+function setL2Density(el){
+  const wasDone=isLevelDone(2);
+  levelState.objDensity=+el.value;
+  updateL2Metrics();
+  if(!wasDone&&isLevelDone(2))renderPanel();
+}
+function updateL3State(){
+  const s=levelState;
+  const A1=Math.PI*(s.d1/2)**2,A2=Math.PI*(s.d2/2)**2;
+  s.v2=s.v1*A1/A2;
+  s.p1=100;s.p2=s.p1+0.5*1000*(s.v1**2-s.v2**2)/1000;
+  if(s.p2<s.p1)s.pressureDrop=true;
+}
+function updateL3Metrics(){
+  updateL3State();
+  const v1=document.getElementById('l3V1Val');
+  const d2=document.getElementById('l3D2Val');
+  const v2=document.getElementById('l3V2Val');
+  const p2=document.getElementById('l3P2Val');
+  if(v1)v1.textContent=levelState.v1.toFixed(1)+' m/s';
+  if(d2)d2.textContent=(levelState.d2*100).toFixed(0)+' cm';
+  if(v2)v2.textContent=levelState.v2.toFixed(1)+' m/s';
+  if(p2){p2.textContent=levelState.p2.toFixed(1)+' kPa';p2.style.color=levelState.p2<levelState.p1?'#ef4444':'#3b82f6'}
+}
+function setL3Flow(key,el){
+  const wasDone=isLevelDone(3);
+  levelState[key]=+el.value;
+  updateL3Metrics();
+  if(!wasDone&&isLevelDone(3))renderPanel();
+}
+function updateL5State(){
+  const s=levelState;
+  s.re=s.density*s.velocity*s.diameter/s.viscosity;
+  if(s.re>2300)s.seenTurbulent=true;
+}
+function getL5FlowInfo(){
+  if(levelState.re>2300)return{text:'湍流 (Re>2300)',color:'#ef4444'};
+  return{text:'层流 (Re<2300)',color:'#22c55e'};
+}
+function updateL5Metrics(){
+  updateL5State();
+  const velocity=document.getElementById('l5VelocityVal');
+  const diameter=document.getElementById('l5DiameterVal');
+  const formulaVelocity=document.getElementById('l5FormulaVelocity');
+  const formulaDiameter=document.getElementById('l5FormulaDiameter');
+  const re=document.getElementById('l5ReVal');
+  const state=document.getElementById('l5FlowStateVal');
+  const info=getL5FlowInfo();
+  if(velocity)velocity.textContent=levelState.velocity.toFixed(2)+' m/s';
+  if(diameter)diameter.textContent=(levelState.diameter*100).toFixed(1)+' cm';
+  if(formulaVelocity)formulaVelocity.textContent=levelState.velocity.toFixed(2);
+  if(formulaDiameter)formulaDiameter.textContent=levelState.diameter.toFixed(3);
+  if(re){re.textContent=levelState.re.toFixed(0);re.style.color=info.color}
+  if(state){state.textContent=info.text;state.style.color=info.color}
+}
+function setL5Reynolds(key,el){
+  const wasDone=isLevelDone(5);
+  levelState[key]=+el.value;
+  updateL5Metrics();
+  if(!wasDone&&isLevelDone(5))renderPanel();
+}
+function updateL6State(){
+  const s=levelState;
+  const aRad=s.angle*Math.PI/180;
+  let cl;
+  if(s.angle<=12) cl=2*Math.PI*aRad*0.9;// 线性区
+  else if(s.angle<=18) cl=2*Math.PI*(12*Math.PI/180)*0.9*(1-(s.angle-12)/12);// 失速过渡
+  else cl=Math.max(0,0.3-0.02*(s.angle-18));// 深度失速
+  if(s.angle<0) cl=2*Math.PI*aRad*0.8;
+  const cd=0.01+cl*cl/(Math.PI*6*0.9)+(s.angle>15?0.05*(s.angle-15):0);
+  const q=0.5*1.225*s.windSpeed**2;
+  s.lift=cl*q*1;s.drag=cd*q*1;
+  const ldRatio=s.drag>0.1?s.lift/s.drag:0;
+  if(ldRatio>s.maxLDRatio&&s.lift>0){s.maxLDRatio=ldRatio;if(ldRatio>10)s.bestRatio=true}
+}
+function getL6LdRatio(){
+  return levelState.drag>0?(levelState.lift/levelState.drag).toFixed(1):'--';
+}
+function updateL6Metrics(){
+  updateL6State();
+  const angle=document.getElementById('l6AngleVal');
+  const windSpeed=document.getElementById('l6WindSpeedVal');
+  const lift=document.getElementById('l6LiftVal');
+  const drag=document.getElementById('l6DragVal');
+  const ldRatio=document.getElementById('l6LdRatioVal');
+  const best=document.getElementById('l6BestRatioVal');
+  if(angle)angle.textContent=levelState.angle+'°';
+  if(windSpeed)windSpeed.textContent=levelState.windSpeed+' m/s';
+  if(lift)lift.textContent=levelState.lift.toFixed(0)+' N';
+  if(drag)drag.textContent=levelState.drag.toFixed(0)+' N';
+  if(ldRatio)ldRatio.textContent=getL6LdRatio();
+  if(best)best.textContent=levelState.bestRatio?'✅ 找到最佳!':'';
+}
+function setL6Wing(key,el){
+  const wasDone=isLevelDone(6);
+  levelState[key]=+el.value;
+  updateL6Metrics();
+  if(!wasDone&&isLevelDone(6))renderPanel();
 }
 
 // === 绘制背景 ===
@@ -712,38 +856,43 @@ function renderControls(idx,s){
   let h='';
   switch(idx){
     case 0:
-      h+=`<div class="slider-wrap"><label>深度 h: <span class="sv">${s.depth.toFixed(1)} m</span></label>`;
-      h+=`<input type="range" min="0" max="20" step="0.1" value="${s.depth}" oninput="levelState.depth=+this.value;this.previousElementSibling.querySelector('.sv').textContent=this.value+' m';renderPanel()"></div>`;
+      updateL0State();
+      h+=`<div class="slider-wrap"><label>深度 h: <span class="sv" id="l0DepthVal">${s.depth.toFixed(1)} m</span></label>`;
+      h+=`<input type="range" min="0" max="20" step="0.1" value="${s.depth}" oninput="setL0Depth(this)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div style="padding:8px;background:var(--concept-bg);border-radius:6px;font-size:12px;color:var(--concept-text);margin-top:8px">`;
-      h+=`压强 P = <span style="color:#ef4444;font-weight:700">${s.pressure.toFixed(1)} kPa</span><br>`;
-      h+=`= 大气压(101.3) + ρgh = 101.3 + 1000×9.81×${s.depth.toFixed(1)}/1000</div>`;
+      h+=`压强 P = <span id="l0PressureVal" style="color:#ef4444;font-weight:700">${s.pressure.toFixed(1)} kPa</span><br>`;
+      h+=`= 大气压(101.3) + ρgh = 101.3 + 1000×9.81×<span id="l0FormulaDepth">${s.depth.toFixed(1)}</span>/1000</div>`;
       break;
     case 1:
-      h+=`<div class="slider-wrap"><label>输入力 F₁: <span class="sv">${s.forceIn} N</span></label>`;
-      h+=`<input type="range" min="10" max="500" step="10" value="${s.forceIn}" oninput="levelState.forceIn=+this.value;renderPanel()"></div>`;
-      h+=`<div class="slider-wrap"><label>大活塞面积 A₂: <span class="sv">${s.areaOut} cm²</span></label>`;
-      h+=`<input type="range" min="10" max="200" step="5" value="${s.areaOut}" oninput="levelState.areaOut=+this.value;renderPanel()"></div>`;
+      updateL1State();
+      h+=`<div class="slider-wrap"><label>输入力 F₁: <span class="sv" id="l1ForceInVal">${s.forceIn} N</span></label>`;
+      h+=`<input type="range" min="10" max="500" step="10" value="${s.forceIn}" oninput="setL1Hydraulics('forceIn',this)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>大活塞面积 A₂: <span class="sv" id="l1AreaOutVal">${s.areaOut} cm²</span></label>`;
+      h+=`<input type="range" min="10" max="200" step="5" value="${s.areaOut}" oninput="setL1Hydraulics('areaOut',this)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div style="padding:8px;background:var(--concept-bg);border-radius:6px;font-size:12px;color:var(--concept-text);margin-top:8px">`;
       h+=`小活塞面积 A₁ = ${s.areaIn} cm²<br>`;
-      h+=`面积比 = <span style="color:#f59e0b;font-weight:700">${s.ratio.toFixed(1)}</span><br>`;
-      h+=`输出力 F₂ = <span style="color:#22c55e;font-weight:700">${s.forceOut.toFixed(0)} N</span></div>`;
+      h+=`面积比 = <span id="l1RatioVal" style="color:#f59e0b;font-weight:700">${s.ratio.toFixed(1)}</span><br>`;
+      h+=`输出力 F₂ = <span id="l1ForceOutVal" style="color:#22c55e;font-weight:700">${s.forceOut.toFixed(0)} N</span></div>`;
       break;
     case 2:
-      h+=`<div class="slider-wrap"><label>物体密度: <span class="sv">${s.objDensity} kg/m³</span></label>`;
-      h+=`<input type="range" min="100" max="3000" step="50" value="${s.objDensity}" oninput="levelState.objDensity=+this.value;renderPanel()"></div>`;
+      updateL2State();
+      const l2Info=getL2StateInfo();
+      h+=`<div class="slider-wrap"><label>物体密度: <span class="sv" id="l2DensityVal">${s.objDensity} kg/m³</span></label>`;
+      h+=`<input type="range" min="100" max="3000" step="50" value="${s.objDensity}" oninput="setL2Density(this)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div style="padding:8px;background:var(--concept-bg);border-radius:6px;font-size:12px;color:var(--concept-text);margin-top:8px">`;
       h+=`水密度 ρ水 = 1000 kg/m³<br>`;
-      h+=`状态: <span style="color:${s.objDensity<1000?'#22c55e':(s.objDensity>1000?'#ef4444':'#f59e0b')};font-weight:700">${s.objDensity<1000?'漂浮':(s.objDensity>1000?'下沉':'悬浮')}</span></div>`;
+      h+=`状态: <span id="l2StateVal" style="color:${l2Info.color};font-weight:700">${l2Info.text}</span></div>`;
       break;
     case 3:
-      h+=`<div class="slider-wrap"><label>入口流速 v₁: <span class="sv">${s.v1.toFixed(1)} m/s</span></label>`;
-      h+=`<input type="range" min="1" max="10" step="0.1" value="${s.v1}" oninput="levelState.v1=+this.value;renderPanel()"></div>`;
-      h+=`<div class="slider-wrap"><label>窄管直径 d₂: <span class="sv">${(s.d2*100).toFixed(0)} cm</span></label>`;
-      h+=`<input type="range" min="0.02" max="0.1" step="0.005" value="${s.d2}" oninput="levelState.d2=+this.value;renderPanel()"></div>`;
+      updateL3State();
+      h+=`<div class="slider-wrap"><label>入口流速 v₁: <span class="sv" id="l3V1Val">${s.v1.toFixed(1)} m/s</span></label>`;
+      h+=`<input type="range" min="1" max="10" step="0.1" value="${s.v1}" oninput="setL3Flow('v1',this)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>窄管直径 d₂: <span class="sv" id="l3D2Val">${(s.d2*100).toFixed(0)} cm</span></label>`;
+      h+=`<input type="range" min="0.02" max="0.1" step="0.005" value="${s.d2}" oninput="setL3Flow('d2',this)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div style="padding:8px;background:var(--concept-bg);border-radius:6px;font-size:12px;color:var(--concept-text);margin-top:8px">`;
       h+=`宽管直径 d₁ = ${(s.d1*100).toFixed(0)} cm<br>`;
-      h+=`窄管流速 v₂ = <span style="color:#f59e0b;font-weight:700">${s.v2.toFixed(1)} m/s</span><br>`;
-      h+=`窄管压强 P₂ = <span style="color:${s.p2<s.p1?'#ef4444':'#3b82f6'};font-weight:700">${s.p2.toFixed(1)} kPa</span></div>`;
+      h+=`窄管流速 v₂ = <span id="l3V2Val" style="color:#f59e0b;font-weight:700">${s.v2.toFixed(1)} m/s</span><br>`;
+      h+=`窄管压强 P₂ = <span id="l3P2Val" style="color:${s.p2<s.p1?'#ef4444':'#3b82f6'};font-weight:700">${s.p2.toFixed(1)} kPa</span></div>`;
       break;
     case 4:
       h+=`<div style="display:flex;gap:6px;flex-wrap:wrap">`;
@@ -759,25 +908,27 @@ function renderControls(idx,s){
       h+=`特征: ${s.fluid==='water'?'低粘度，抛物线速度分布':s.fluid==='oil'?'中等粘度，分布稍平坦':'高粘度，速度分布很平坦'}</div>`;
       break;
     case 5:
-      h+=`<div class="slider-wrap"><label>流速 v: <span class="sv">${s.velocity.toFixed(2)} m/s</span></label>`;
-      h+=`<input type="range" min="0.01" max="5" step="0.01" value="${s.velocity}" oninput="levelState.velocity=+this.value;renderPanel()"></div>`;
-      h+=`<div class="slider-wrap"><label>管径 D: <span class="sv">${(s.diameter*100).toFixed(1)} cm</span></label>`;
-      h+=`<input type="range" min="0.01" max="0.2" step="0.005" value="${s.diameter}" oninput="levelState.diameter=+this.value;renderPanel()"></div>`;
+      updateL5State();
+      const l5Info=getL5FlowInfo();
+      h+=`<div class="slider-wrap"><label>流速 v: <span class="sv" id="l5VelocityVal">${s.velocity.toFixed(2)} m/s</span></label>`;
+      h+=`<input type="range" min="0.01" max="5" step="0.01" value="${s.velocity}" oninput="setL5Reynolds('velocity',this)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>管径 D: <span class="sv" id="l5DiameterVal">${(s.diameter*100).toFixed(1)} cm</span></label>`;
+      h+=`<input type="range" min="0.01" max="0.2" step="0.005" value="${s.diameter}" oninput="setL5Reynolds('diameter',this)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div style="padding:8px;background:var(--concept-bg);border-radius:6px;font-size:12px;color:var(--concept-text);margin-top:8px">`;
-      h+=`Re = ρvD/μ = ${s.density}×${s.velocity.toFixed(2)}×${s.diameter.toFixed(3)}/${s.viscosity}<br>`;
-      h+=`= <span style="color:${s.re>2300?'#ef4444':'#22c55e'};font-weight:700;font-size:16px">${s.re.toFixed(0)}</span><br>`;
-      h+=`状态: <span style="color:${s.re>2300?'#ef4444':'#22c55e'};font-weight:700">${s.re>2300?'湍流 (Re>2300)':'层流 (Re<2300)'}</span></div>`;
+      h+=`Re = ρvD/μ = ${s.density}×<span id="l5FormulaVelocity">${s.velocity.toFixed(2)}</span>×<span id="l5FormulaDiameter">${s.diameter.toFixed(3)}</span>/${s.viscosity}<br>`;
+      h+=`= <span id="l5ReVal" style="color:${l5Info.color};font-weight:700;font-size:16px">${s.re.toFixed(0)}</span><br>`;
+      h+=`状态: <span id="l5FlowStateVal" style="color:${l5Info.color};font-weight:700">${l5Info.text}</span></div>`;
       break;
     case 6:
-      h+=`<div class="slider-wrap"><label>攻角 α: <span class="sv">${s.angle}°</span></label>`;
-      h+=`<input type="range" min="-5" max="25" step="1" value="${s.angle}" oninput="levelState.angle=+this.value;renderPanel()"></div>`;
-      h+=`<div class="slider-wrap"><label>风速: <span class="sv">${s.windSpeed} m/s</span></label>`;
-      h+=`<input type="range" min="5" max="80" step="1" value="${s.windSpeed}" oninput="levelState.windSpeed=+this.value;renderPanel()"></div>`;
+      updateL6State();
+      h+=`<div class="slider-wrap"><label>攻角 α: <span class="sv" id="l6AngleVal">${s.angle}°</span></label>`;
+      h+=`<input type="range" min="-5" max="25" step="1" value="${s.angle}" oninput="setL6Wing('angle',this)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>风速: <span class="sv" id="l6WindSpeedVal">${s.windSpeed} m/s</span></label>`;
+      h+=`<input type="range" min="5" max="80" step="1" value="${s.windSpeed}" oninput="setL6Wing('windSpeed',this)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div style="padding:8px;background:var(--concept-bg);border-radius:6px;font-size:12px;color:var(--concept-text);margin-top:8px">`;
-      h+=`升力 = <span style="color:#22c55e;font-weight:700">${s.lift.toFixed(0)} N</span><br>`;
-      h+=`阻力 = <span style="color:#ef4444;font-weight:700">${s.drag.toFixed(0)} N</span><br>`;
-      const ldR2=s.drag>0?(s.lift/s.drag).toFixed(1):'--';
-      h+=`升阻比 = <span style="color:#f59e0b;font-weight:700">${ldR2}</span> ${s.bestRatio?'✅ 找到最佳!':''}</div>`;
+      h+=`升力 = <span id="l6LiftVal" style="color:#22c55e;font-weight:700">${s.lift.toFixed(0)} N</span><br>`;
+      h+=`阻力 = <span id="l6DragVal" style="color:#ef4444;font-weight:700">${s.drag.toFixed(0)} N</span><br>`;
+      h+=`升阻比 = <span id="l6LdRatioVal" style="color:#f59e0b;font-weight:700">${getL6LdRatio()}</span> <span id="l6BestRatioVal">${s.bestRatio?'✅ 找到最佳!':''}</span></div>`;
       break;
   }
   return h;
