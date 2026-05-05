@@ -380,15 +380,16 @@ function renderPanel(){
  h+=`<h3>第${curLevel+1}关：${L.name}</h3>`;
  h+=`<div class="concept-box">${L.concept}</div>`;
  h+='<h4>目标</h4>';
- const od=lState.objDone||[];
+ const levelPassed=completedLevels.has(curLevel);
+ const od=levelPassed?L.objs.map(()=>true):(lState.objDone||[]);
  L.objs.forEach((o,i)=>{
   const done=od[i];
   h+=`<div class="obj-item${done?' done':''}">${done?'✅':'⬜'} ${o}</div>`;
  });
  h+=renderLevelControls();
  if(od.every(v=>v)){
-  h+=renderQuiz();
-  if(quizState.correct){
+  if(!levelPassed)h+=renderQuiz();
+  if(levelPassed||quizState.correct){
    h+=`<div class="learn-box">💡 ${L.learn}</div>`;
    if(curLevel<levels.length-1){
     h+=`<button class="act-btn green" onclick="playSound('click');switchLevel(${curLevel+1})">进入第${curLevel+2}关 →</button>`;

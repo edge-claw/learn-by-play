@@ -219,7 +219,9 @@ const quizData=[
   {q:'2023年FDA批准的首个CRISPR疗法治疗什么病？',opts:['癌症','镰刀型贫血','糖尿病'],ans:1},
 ];
 let quizActive=false;
+function objectivesDone(i){return levelObjs[i].every(Boolean);}
 function showQuiz(levelIdx){
+  if(quizActive||completedLevels.has(levelIdx))return;
   quizActive=true;
   const qd=quizData[levelIdx];
   const overlay=document.createElement('div');overlay.className='quiz-overlay';overlay.id='quiz-overlay';
@@ -233,6 +235,8 @@ window.quizAnswer=function(lvl,idx,btn){
   btns.forEach(b=>b.disabled=true);
   if(idx===qd.ans){
     btn.classList.add('correct');playSound('success');
+    completedLevels.add(lvl);
+    panelDirty=true;renderPanel();
     document.getElementById('quiz-result').innerHTML='<span style="color:#4ade80">回答正确！</span>';
   }else{
     btn.classList.add('wrong');playSound('fail');
@@ -246,6 +250,7 @@ window.quizAnswer=function(lvl,idx,btn){
 };
 window.closeQuiz=function(){
   const ov=document.getElementById('quiz-overlay');if(ov)ov.remove();quizActive=false;
+  panelDirty=true;renderPanel();
 };
 
 function resize(){cv.width=W=cv.clientWidth;cv.height=H=cv.clientHeight;}
@@ -294,6 +299,9 @@ function renderPanel(){
     h+=`<div class="learn-box">💡 ${L.learn}</div>`;
     if(curLevel<levels.length-1) h+=`<button class="act-btn green" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
     else h+=`<div class="learn-box" style="border-color:#22c55e;color:#4ade80;text-align:center;font-size:14px">🎉 恭喜通关！你已掌握CRISPR基因编辑的核心原理！</div>`;
+  }else if(objectivesDone(curLevel)){
+    h+=`<div class="hint-box">目标已完成，请答对通关小测验后解锁下一关。</div>`;
+    h+=`<button class="act-btn green" onclick="showQuiz(${curLevel})">进入通关小测验</button>`;
   }
   panel.innerHTML=h;
   if(typeof renderActions==='function')renderActions();
@@ -308,13 +316,14 @@ function markObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;pane
 function checkComplete(){
   const lo=levelObjs[curLevel];
   if(lo[0]&&lo[1]&&lo[2]&&!completedLevels.has(curLevel)){
-    completedLevels.add(curLevel);playSound('success');
+    playSound('success');
     spawnGoldParticles(W*0.5,H*0.5,50);
     panelDirty=true;renderPanel();
     setTimeout(()=>showQuiz(curLevel),600);
   }
 }
-function goLevel(n){curLevel=n;levelFadeAlpha=0;resetLevel();panelDirty=true;renderPanel();}
+function isUnlocked(n){return n===0||completedLevels.has(n-1);}
+function goLevel(n){if(n<0||n>=levels.length||!isUnlocked(n))return;curLevel=n;levelFadeAlpha=0;resetLevel();panelDirty=true;renderPanel();}
 
 /* ===== LEVEL STATE ===== */
 let lState={};

@@ -210,7 +210,7 @@ function _stageNav(){
   h+=`</div><div class="sn-info">第${curLevel+1}/7关 · ${levelNames[curLevel]}</div><div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;return h;
 }
 function _summaryHTML(){
-  let done=levelObjs.filter(a=>a.every(v=>v)).length;
+  let done=quizPassed.size;
   let h='<div class="summary-box"><div class="summary-title">🎉 全部通关！</div>';
   h+=`<div class="summary-sub">你已掌握细胞分裂的核心知识</div>`;
   h+=`<div class="summary-stats"><div class="summary-stat"><div class="num">${done}</div><div class="label">完成关卡</div></div>`;
@@ -233,10 +233,11 @@ function answerQuiz(li,oi){
 }
 function renderPanel(){
   let li=curLevel,h=_stageNav();
+  const levelComplete=quizPassed.has(li);
   h+=`<h2>${levelNames[li]}</h2>`;
   h+=`<p style="color:var(--text-sub);font-size:14px;margin:6px 0 10px">${levelDescs[li]}</p>`;
   h+=`<h3>🎯 目标</h3>`;
-  for(let i=0;i<3;i++){let d=levelObjs[li][i]?'done':'';h+=`<div class="obj"><div class="dot ${d}"></div>${levelObjTexts[li][i]}</div>`;}
+  for(let i=0;i<3;i++){let d=levelComplete||levelObjs[li][i]?'done':'';h+=`<div class="obj"><div class="dot ${d}"></div>${levelObjTexts[li][i]}</div>`;}
   if(li===0){
     h+=`<h3>操作</h3>`;
     h+=`<button class="act-btn" onclick="startMatch()">🔗 开始功能配对</button>`;
@@ -285,7 +286,7 @@ function renderPanel(){
     h+=`<div style="margin:8px 0"><label style="font-size:13px;color:var(--text-sub)">Cyclin: <span id="cycVal">${L.cyclinLevel}</span>%</label><br><input type="range" min="0" max="100" value="${L.cyclinLevel}" style="width:100%" oninput="L.cyclinLevel=+this.value;document.getElementById('cycVal').textContent=this.value;checkCheckpoints();drawLevel6()" onchange="this.blur();renderPanel()"></div>`;
     h+=`<p style="color:var(--text-sub);font-size:12px">阶段: <span style="color:#22c55e;font-weight:bold">${L.phase}</span></p>`;
   }
-  if(levelObjs[li].every(v=>v)){
+  if(levelComplete||levelObjs[li].every(v=>v)){
     if(!quizPassed.has(li))h+=quizHTML(li);
     if(quizPassed.has(li)){
       h+=`<div class="learn-box">${learnTexts[li]}</div>`;

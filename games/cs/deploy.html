@@ -417,6 +417,10 @@ let curLevel = 0;
 let selectedModel = null;
 let selectedQuantSeen = false;
 let heatSeen = false;
+let deviceSwitchSeen = false;
+let heatLevelSeen = false;
+const levelProgress = new Set();
+const optimizationQuants = new Set();
 const deployedQuants = new Set();
 const deployedDevices = new Set();
 const completedLevels = new Set();
@@ -512,12 +516,13 @@ function goLevel(idx) {
 }
 
 function levelGoalDone(idx) {
-  if (idx === 0) return !!selectedModel;
-  if (idx === 1) return selectedQuantSeen;
-  if (idx === 2) return !!deployedModel;
-  if (idx === 3) return deployedDevices.size >= 2 || currentDevice.id !== 'rk3588';
-  if (idx === 4) return deployedQuants.size >= 2;
-  if (idx === 5) return heatSeen && !!deployedModel;
+  if (completedLevels.has(idx)) return true;
+  if (idx === 0) return levelProgress.has(0);
+  if (idx === 1) return levelProgress.has(1);
+  if (idx === 2) return levelProgress.has(2);
+  if (idx === 3) return deviceSwitchSeen;
+  if (idx === 4) return optimizationQuants.size >= 2;
+  if (idx === 5) return heatLevelSeen && !!deployedModel;
   return !!selectedModel && selectedQuantSeen && !!deployedModel && (deployedDevices.size >= 2 || currentDevice.id !== 'rk3588') && heatSeen;
 }
 
@@ -634,6 +639,7 @@ function buildDeviceGrid() {
 // ===== 模型操作 =====
 function selectModel(model, cardEl) {
   selectedModel = model;
+  if (curLevel === 0) levelProgress.add(0);
   markProgress();
   // 收起所有卡片的展开区
   document.querySelectorAll('.mc-expand').forEach(e => e.style.display = 'none');
@@ -665,7 +671,7 @@ function selectModel(model, cardEl) {
         <div style="font-size:10px;color:var(--text-muted)">${qData.size}MB · ${model.accLabel} ${qData.acc} · ~${fps.toFixed(1)} FPS</div>
       </div>
     `;
-    opt.onclick = (e) => { e.stopPropagation(); currentQuant = q.key; selectedQuantSeen = true; markProgress(); selectModel(model, cardEl); };
+    opt.onclick = (e) => { e.stopPropagation(); currentQuant = q.key; selectedQuantSeen = true; if (curLevel === 1) levelProgress.add(1); markProgress(); selectModel(model, cardEl); };
     expandDiv.appendChild(opt);
   }
   // 部署按钮 - 直接在卡片内
@@ -699,6 +705,8 @@ function deployModel(model) {
   }
   deployedModel = model;
   deployedQuants.add(currentQuant);
+  if (curLevel === 2) levelProgress.add(2);
+  if (curLevel === 4) optimizationQuants.add(currentQuant);
   deployedDevices.add(currentDevice.id);
   inferRunning = true;
   const fps = estimateFps(model, currentQuant, currentDevice);
@@ -1052,6 +1060,7 @@ function togglePause() {
 function toggleHeat() {
   showHeat = !showHeat;
   if (showHeat) heatSeen = true;
+  if (showHeat && curLevel === 5) heatLevelSeen = true;
   document.getElementById('btnHeat').classList.toggle('active', showHeat);
   markProgress();
 }
@@ -1064,6 +1073,7 @@ function toggleDeviceSelector() {
 function switchDevice(dev) {
   currentDevice = dev;
   deployedDevices.add(dev.id);
+  if (curLevel === 3) deviceSwitchSeen = true;
   deployedModel = null;
   inferRunning = false;
   hwState = { npuLoad: 0, cpuLoad: 0.05, memUsed: 0.8, temp: 35, power: 2.1 };

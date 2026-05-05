@@ -455,11 +455,13 @@ function _diffNodes(o,n){
 
 function renderPanel(){
   let li=curLevel,info=levelInfo[li];
+  const levelComplete=quizPassed.has(li);
   let h=stageNavHTML()+`<h2>${info.title}</h2><div class="level-title">${info.sub}</div>`;
   h+=`<div class="desc-text">${info.desc}</div>`;
   h+=`<ul class="obj-list">`;
   for(let i=0;i<3;i++){
-    h+=`<li class="${levelObjs[li][i]?'done':''}">${info.objs[i]}</li>`;
+    const done=levelComplete||levelObjs[li][i];
+    h+=`<li class="${done?'done':''}">${info.objs[i]}</li>`;
   }
   h+=`</ul>`;
   // Level-specific controls
@@ -507,7 +509,7 @@ function renderPanel(){
     h+=`<div style="margin-top:8px;font-size:12px;color:var(--text-muted)">斜率: ${L7.slope.toFixed(3)} | 截距: ${L7.intercept.toFixed(3)}<br>R²: ${L7.r2.toFixed(4)}</div>`;
   }
   // Learn box + next level
-  if(levelObjs[li].every(v=>v)){
+  if(levelComplete||levelObjs[li].every(v=>v)){
     if(!quizPassed.has(li))h+=quizHTML(li);
     if(quizPassed.has(li)){
       h+=`<div class="learn-box">${info.learn}</div>`;
@@ -875,7 +877,7 @@ resize();
   }
   function _countDone(){
     var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
+    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(_isDone(i)||o[i][j])d++;}}
     else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
     return{done:d,total:t};
   }
