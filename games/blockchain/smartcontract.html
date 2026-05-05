@@ -127,6 +127,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .stage-dot.locked{opacity:.35;cursor:not-allowed}
 .stage-dot:hover{transform:scale(1.15)}
 .stage-dot.locked:hover{transform:none}
+.stage-hint{width:100%;margin-top:4px;color:var(--text-muted);font-size:12px;line-height:1.45}
 #particle-canvas{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:100}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -287,17 +288,19 @@ function renderPanel(){
   document.getElementById('lpTitle').textContent=lv.icon+' '+lv.title;
   document.getElementById('lpStep').textContent=`${curLevel+1}/${TOTAL}`;
   const body=document.getElementById('lp-body');
+  const isReview=quizPassedSet.has(curLevel);
   let h='<div class="stage-nav">';
   for(let i=0;i<TOTAL;i++){
     const unlocked=isUnlocked(i);
     const cls=quizPassedSet.has(i)?'done':(i===curLevel?'cur':(unlocked?'':'locked'));
     h+=`<div class="stage-dot ${cls}" onclick="goLevel(${i})" title="${unlocked?LEVELS[i].title:'答对上一关测验后解锁'}">${i+1}</div>`;
   }
+  h+=`<div class="stage-hint">${completedLevels.size}/${TOTAL} 已通关，完成目标后答对测验才解锁下一关</div>`;
   h+='</div>';
   h+=`<div class="mission"><div class="m-level">第 ${curLevel+1} 关</div><div class="m-title">${lv.title}</div><div class="m-desc">${lv.desc}</div></div>`;
   const gLabels=getGoalLabels(curLevel);
   for(let g=0;g<3;g++){
-    const done=goals[curLevel][g];
+    const done=isReview||goals[curLevel][g];
     h+=`<div class="goal-row${done?' done':''}"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text">${gLabels[g]}</span></div>`;
   }
   h+=renderLevelPanel(curLevel);

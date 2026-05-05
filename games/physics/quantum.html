@@ -366,12 +366,13 @@ function renderPanel(){
  });
  h+='</div>';
  const L=levels[curLevel];
+ const levelPassed=completedLevels.has(curLevel);
  h+=`<h3>第${curLevel+1}关：${L.name}</h3>`;
  h+=`<div class="concept-box">${L.concept}</div>`;
  h+='<h4>目标</h4>';
  const od=lState.objDone||[];
  L.objs.forEach((o,i)=>{
-  const done=od[i];
+  const done=levelPassed||od[i];
   h+=`<div class="obj-item${done?' done':''}">${done?'✅':'⬜'} ${o}</div>`;
  });
  // 错误提示
@@ -381,8 +382,8 @@ function renderPanel(){
  // 关卡特定控件
  h+=renderLevelControls();
  // 通关检测+小测验
- if(od.every(v=>v)){
-  if(!completedLevels.has(curLevel)){
+ if(levelPassed||od.every(v=>v)){
+  if(!levelPassed){
    if(!readyForQuiz.has(curLevel)){
     readyForQuiz.add(curLevel);
     playSound('success');
@@ -393,8 +394,8 @@ function renderPanel(){
   }
   h+=`<div class="learn-box">💡 ${L.learn}</div>`;
   // 小测验
-  h+=renderQuiz();
-  if(quizState.correct){
+  if(!levelPassed)h+=renderQuiz();
+  if(levelPassed||quizState.correct){
    if(curLevel<levels.length-1){
     h+=`<button class="act-btn green" onclick="switchLevel(${curLevel+1})">进入第${curLevel+2}关 →</button>`;
    }else{

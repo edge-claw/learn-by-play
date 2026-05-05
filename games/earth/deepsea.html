@@ -670,6 +670,7 @@ function renderPanel() {
   const s = levelState;
   document.getElementById('lpTitle').textContent = `第 ${currentLevel + 1} 关`;
   document.getElementById('lpStep').textContent = `${currentLevel + 1}/${LEVELS.length}`;
+  const levelPassed = quizPassed.has(currentLevel) || completedLevels.has(currentLevel);
   const allDone = lv.goals.every(g => g.check(s));
   let h = renderStageNav();
   h += `<div class="mission"><div class="m-level">${lv.icon} 关卡 ${currentLevel + 1}</div>`;
@@ -678,13 +679,17 @@ function renderPanel() {
   h += `<div class="m-concept">${lv.concept.replace(/\n/g, '<br>')}</div></div>`;
   h += `<div style="margin:0 12px">`;
   for (const g of lv.goals) {
-    const done = g.check(s);
+    const done = levelPassed || g.check(s);
     h += `<div class="goal-row"><span class="g-icon">${done ? '✅' : '⬜'}</span><span class="g-text">${g.label}</span></div>`;
   }
   h += `</div>`;
   h += `<div class="hint-b">${lv.hint}</div>`;
   h += `<div class="act-section"><div class="as-label">操作</div>${lv.actions(s)}</div>`;
   if (allDone && !quizPassed.has(currentLevel)) h += renderQuiz(lv);
+  if (levelPassed) {
+    h += `<div class="learn-box">${lv.learn}</div>`;
+    if (currentLevel < LEVELS.length - 1) h += `<button class="act-btn green" onclick="goLevel(${currentLevel + 1})">下一关 →</button>`;
+  }
   document.getElementById('lp-body').innerHTML = h;
 }
 

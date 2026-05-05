@@ -332,23 +332,23 @@ function renderLevelControls(){
   let h='<div class="section-title">操作区</div>';
   const s = levelState;
   if(currentLevel===0){
-    h+=`<div class="slider-wrap"><label>发射角度: <span class="sv">${s.angle||45}°</span></label><input type="range" min="5" max="85" value="${s.angle||45}" oninput="setAngle(this.value)"></div>`;
-    h+=`<div class="slider-wrap"><label>发射速度: <span class="sv">${s.speed||30} m/s</span></label><input type="range" min="10" max="50" value="${s.speed||30}" oninput="setSpeed(this.value)"></div>`;
+    h+=`<div class="slider-wrap"><label>发射角度: <span class="sv">${s.angle||45}°</span></label><input type="range" min="5" max="85" value="${s.angle||45}" oninput="setAngle(this.value,this)" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div class="slider-wrap"><label>发射速度: <span class="sv">${s.speed||30} m/s</span></label><input type="range" min="10" max="50" value="${s.speed||30}" oninput="setSpeed(this.value,this)" onchange="this.blur();renderPanel()"></div>`;
     h+=`<button class="act-btn" onclick="doFire()">发射</button>`;
     h+=`<button class="act-btn" style="border-color:#f44;color:#f88" onclick="clearTrails()">清除轨迹</button>`;
     h+=`<div class="hint-box">提示：调整角度和速度，尝试命中右侧靶子。试试 45° 看看是不是飞得最远！</div>`;
   } else if(currentLevel===1){
-    h+=`<div class="slider-wrap"><label>发射角度: <span class="sv">${s.angle||45}°</span></label><input type="range" min="10" max="80" value="${s.angle||45}" oninput="setAngle(this.value)"></div>`;
-    h+=`<div class="slider-wrap"><label>发射速度: <span class="sv">${s.speed||30} m/s</span></label><input type="range" min="10" max="50" value="${s.speed||30}" oninput="setSpeed(this.value)"></div>`;
+    h+=`<div class="slider-wrap"><label>发射角度: <span class="sv">${s.angle||45}°</span></label><input type="range" min="10" max="80" value="${s.angle||45}" oninput="setAngle(this.value,this)" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div class="slider-wrap"><label>发射速度: <span class="sv">${s.speed||30} m/s</span></label><input type="range" min="10" max="50" value="${s.speed||30}" oninput="setSpeed(this.value,this)" onchange="this.blur();renderPanel()"></div>`;
     h+=`<button class="act-btn" onclick="doFire()">同时发射对比</button>`;
     h+=`<button class="act-btn" style="border-color:#f44;color:#f88" onclick="clearTrails()">清除轨迹</button>`;
     h+=`<div class="hint-box">提示：左边是真空，右边有空气阻力。提高速度观察差异变大！</div>`;
   } else if(currentLevel===2){
-    h+=`<div class="slider-wrap"><label>拉起球数: <span class="sv">${s.pullCount||1}</span></label><input type="range" min="1" max="3" value="${s.pullCount||1}" oninput="setPullCount(this.value)"></div>`;
+    h+=`<div class="slider-wrap"><label>拉起球数: <span class="sv">${s.pullCount||1}</span></label><input type="range" min="1" max="3" value="${s.pullCount||1}" oninput="setPullCount(this.value,this)" onchange="this.blur();renderPanel()"></div>`;
     h+=`<button class="act-btn" onclick="doRelease()">释放</button>`;
     h+=`<div class="hint-box">提示：选择拉起 1~3 个球，释放后观察另一侧弹起几个球。</div>`;
   } else if(currentLevel===3){
-    h+=`<div class="slider-wrap"><label>方向补偿: <span class="sv">${(s.offset||0).toFixed(1)}°</span></label><input type="range" min="-10" max="10" step="0.5" value="${s.offset||0}" oninput="setOffset(this.value)"></div>`;
+    h+=`<div class="slider-wrap"><label>方向补偿: <span class="sv">${(s.offset||0).toFixed(1)}°</span></label><input type="range" min="-10" max="10" step="0.5" value="${s.offset||0}" oninput="setOffset(this.value,this)" onchange="this.blur();renderPanel()"></div>`;
     h+=`<button class="act-btn" onclick="doFireCoriolis()">发射</button>`;
     h+=`<button class="act-btn" style="border-color:#f44;color:#f88" onclick="clearTrails()">清除轨迹</button>`;
     h+=`<div class="hint-box">提示：从南向北发射，物体会向右偏。调整补偿角度来命中目标！</div>`;
@@ -385,8 +385,9 @@ function initLevel0(){
   const targetX = ox + 500 + Math.random()*200;
   levelState = { angle:45, speed:30, trails:[], ball:null, ox, groundY, targetX, targetR:25, fireCount:0 };
 }
-function setAngle(v){ levelState.angle=+v; renderPanel(); }
-function setSpeed(v){ levelState.speed=+v; renderPanel(); }
+function updateSliderLabel(input,text){const sv=input&&input.previousElementSibling&&input.previousElementSibling.querySelector('.sv');if(sv)sv.textContent=text}
+function setAngle(v,input){ levelState.angle=+v; updateSliderLabel(input,`${levelState.angle}°`); }
+function setSpeed(v,input){ levelState.speed=+v; updateSliderLabel(input,`${levelState.speed} m/s`); }
 function clearTrails(){ levelState.trails=[]; if(levelState.trailsV) levelState.trailsV=[]; if(levelState.trailsA) levelState.trailsA=[]; }
 
 function doFire0(){
@@ -566,7 +567,7 @@ function initLevel2(){
   }
   levelState = { cx, cy, ropeLen, ballR, gap, balls, pullCount:1, phase:'idle', t:0, damping:0.999 };
 }
-function setPullCount(v){ levelState.pullCount=+v; renderPanel(); }
+function setPullCount(v,input){ levelState.pullCount=+v; updateSliderLabel(input,levelState.pullCount); }
 
 function doRelease(){
   const s=levelState;
@@ -654,7 +655,7 @@ function initLevel3(){
     targetAngle: Math.PI*0.08, // 目标在北方偏东一点
   };
 }
-function setOffset(v){ levelState.offset=+v; renderPanel(); }
+function setOffset(v,input){ levelState.offset=+v; updateSliderLabel(input,`${levelState.offset.toFixed(1)}°`); }
 
 function doFireCoriolis(){
   const s=levelState;

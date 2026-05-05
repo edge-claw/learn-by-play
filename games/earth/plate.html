@@ -56,6 +56,9 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:13px;line-height:1.8;color:var(--learn-text)}
 .sv{color:var(--sv);font-weight:bold}
 .desc{font-size:13px;color:var(--text-sub);line-height:1.6;margin:6px 0}
+.goal-list{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:8px 10px;margin:8px 0}
+.goal-row{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-sub);padding:3px 0}
+.goal-row.done{color:#4ade80}
 .slider-wrap{margin:8px 0}
 .slider-wrap label{font-size:11px;color:var(--slider-label);display:block;margin-bottom:4px}
 .slider-wrap input[type=range]{width:100%;accent-color:#3b82f6}
@@ -217,10 +220,13 @@ function renderStageNav(){
 }
 function renderPanel(){
   const p=document.getElementById('panel');
+  const levelPassed=quizPassed.has(cur)||completedLevels.has(cur);
+  const levelComplete=done[cur]||levelPassed;
   let h=renderStageNav();
   h+=`<h2>${LEVELS[cur].icon} ${LEVELS[cur].name}</h2>`;
+  h+=renderGoals(cur,levelPassed);
   h+=renderLevelPanel(cur);
-  if(done[cur]){
+  if(levelComplete){
     if(!quizPassed.has(cur)){
       h+=renderQuiz(cur);
     }else{
@@ -230,6 +236,22 @@ function renderPanel(){
     }
   }
   p.innerHTML=h;
+}
+function renderGoals(i,levelPassed){
+  const goals=[
+    ['点击并识别全部5个地球圈层'],
+    ['拼合6块大陆碎片形成盘古大陆'],
+    ['查看并匹配3种板块边界'],
+    ['启动扩张并把速率提高到3 cm/年以上'],
+    ['调整俯冲角度观察海沟与火山弧'],
+    ['把挤压力提高到80%以上形成褶皱山脉'],
+    ['识别3条主要地震带']
+  ][i];
+  const doneNow=levelPassed||done[i];
+  let h='<div class="goal-list">';
+  goals.forEach(g=>{h+=`<div class="goal-row ${doneNow?'done':''}"><span>${doneNow?'✅':'⬜'}</span><span>${g}</span></div>`});
+  h+='</div>';
+  return h;
 }
 function renderLevelPanel(i){
   let h='';

@@ -335,6 +335,8 @@ ctx.moveTo(x2,y2);ctx.lineTo(x2-8*Math.cos(a+0.4),y2-8*Math.sin(a+0.4));ctx.stro
 /* ========== PANEL ========== */
 function renderPanel(){
 const L=levels[currentLevel],s=levelState;
+const levelPassed=quizPassed.has(currentLevel)||completedLevels.has(currentLevel);
+const goalsDone=s.goals&&s.goals.every(Boolean);
 let h=stageNavHTML();
 h+=`<div class="m-title">${L.icon} ${L.name}</div><div class="m-sub">${L.sub}</div>`;
 /* PANEL_CONTENT */
@@ -382,7 +384,7 @@ h+=`<button class="act-btn" onclick="spawnBallLightning()">生成球状闪电</b
 h+=goalHTML(['生成球状等离子体','找到稳定参数','维持5秒不消散'],s.goals||[]);
 h+=`<div class="hint-box">💡 球状闪电至今仍是未解之谜，可能与等离子体涡旋或微波辐射有关。</div>`;
 }
-if(s.goals&&s.goals.every(Boolean)){
+if(goalsDone||levelPassed){
 if(!quizPassed.has(currentLevel))h+=quizHTML(currentLevel);
 else{
 h+=`<div class="learn-box">${learnTexts[currentLevel]}</div>`;
@@ -441,15 +443,21 @@ return h;
 }
 
 function goalHTML(names,goals){
+const levelPassed=quizPassed.has(currentLevel)||completedLevels.has(currentLevel);
 let h='';names.forEach((n,i)=>{
-h+=`<div class="goal-row"><span class="g-icon">${goals[i]?'✅':'⬜'}</span><span class="g-text${goals[i]?' done':''}">${n}</span></div>`;
+const done=levelPassed||!!goals[i];
+h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${n}</span></div>`;
 });return h;
 }
 function sliderHTML(key,label,val,min,max,unit){
-return `<div class="slider-wrap"><label>${label}: <span class="sv">${Math.round(val)} ${unit}</span></label><input type="range" min="${min}" max="${max}" value="${val}" oninput="onSlider('${key}',this.value)"></div>`;
+return `<div class="slider-wrap"><label>${label}: <span class="sv">${Math.round(val)} ${unit}</span></label><input type="range" min="${min}" max="${max}" value="${val}" oninput="onSlider('${key}',this.value,this)" onchange="this.blur();renderPanel()"></div>`;
 }
-function onSlider(key,val){
-levelState[key]=parseFloat(val);renderPanel();
+function onSlider(key,val,input){
+levelState[key]=parseFloat(val);
+if(input){
+const label=input.parentElement&&input.parentElement.querySelector('.sv');
+if(label)label.textContent=`${Math.round(levelState[key])} ${label.textContent.replace(/^-?\d+\s*/,'')}`;
+}
 }
 
 /* ========== RESULT ========== */
