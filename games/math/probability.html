@@ -175,12 +175,12 @@ let levelObjs=Array.from({length:7},()=>[false,false,false]);
 let levelData={};
 const quizData=[
   {q:'大量重复抛硬币时，正面频率通常会怎样变化？',opts:['逐渐稳定在 0.5 附近','一定严格等于 0.5','样本越多越远离理论概率'],ans:0,ok:'对。频率会围绕理论概率波动，并随样本量增大趋于稳定。',bad:'注意是“趋近”理论概率，不是每一轮都完全相等。'},
-  {q:'贝叶斯更新中，后验概率主要由什么共同决定？',opts:['先验概率和新证据的似然','只由样本大小决定','只由图表颜色决定'],ans:0,ok:'对。先验给出原始信念，似然描述证据强度，两者共同给出后验。',bad:'贝叶斯定理连接的是先验、似然和后验。'},
-  {q:'二项分布 B(n,p) 适合描述什么？',opts:['n 次独立试验中的成功次数','连续身高的精确取值','两个变量的线性关系'],ans:0,ok:'对。固定次数、独立、每次成功概率相同，是二项分布的核心条件。',bad:'二项分布关注“成功次数”。'},
-  {q:'中心极限定理说明了什么？',opts:['样本均值在样本量足够大时趋近正态分布','原始数据一定本来就是正态分布','样本越少越接近总体均值'],ans:0,ok:'对。即使总体不是正态，样本均值的分布也常趋近正态。',bad:'CLT 说的是样本均值的分布，不是原始数据必然正态。'},
-  {q:'大数定律解释的是哪种收敛？',opts:['样本均值随样本量增大趋近总体期望','单次观测一定等于期望','p 值一定小于 0.05'],ans:0,ok:'对。样本量越大，随机波动在平均值中越被抵消。',bad:'大数定律的主角是样本均值。'},
-  {q:'p 值的含义最接近哪一项？',opts:['零假设为真时，出现当前或更极端结果的概率','研究假设为真的概率','效应量的大小'],ans:0,ok:'对。p 值不是假设为真的概率，而是零假设下结果极端性的度量。',bad:'p 值总是在“零假设为真”的前提下解释。'},
-  {q:'线性回归中的 R² 主要衡量什么？',opts:['模型解释因变量变异的比例','斜率一定为正的概率','离群点数量'],ans:0,ok:'对。R² 越高，线性模型解释的变异比例越大。',bad:'R² 是拟合优度指标，不是斜率概率。'}
+  {q:'贝叶斯更新中，后验概率主要由什么共同决定？',opts:['只由样本大小决定','先验概率和新证据的似然','只由图表颜色决定'],ans:1,ok:'对。先验给出原始信念，似然描述证据强度，两者共同给出后验。',bad:'贝叶斯定理连接的是先验、似然和后验。'},
+  {q:'二项分布 B(n,p) 适合描述什么？',opts:['连续身高的精确取值','两个变量的线性关系','n 次独立试验中的成功次数'],ans:2,ok:'对。固定次数、独立、每次成功概率相同，是二项分布的核心条件。',bad:'二项分布关注“成功次数”。'},
+  {q:'中心极限定理说明了什么？',opts:['原始数据一定本来就是正态分布','样本均值在样本量足够大时趋近正态分布','样本越少越接近总体均值'],ans:1,ok:'对。即使总体不是正态，样本均值的分布也常趋近正态。',bad:'CLT 说的是样本均值的分布，不是原始数据必然正态。'},
+  {q:'大数定律解释的是哪种收敛？',opts:['单次观测一定等于期望','p 值一定小于 0.05','样本均值随样本量增大趋近总体期望'],ans:2,ok:'对。样本量越大，随机波动在平均值中越被抵消。',bad:'大数定律的主角是样本均值。'},
+  {q:'p 值的含义最接近哪一项？',opts:['研究假设为真的概率','零假设为真时，出现当前或更极端结果的概率','效应量的大小'],ans:1,ok:'对。p 值不是假设为真的概率，而是零假设下结果极端性的度量。',bad:'p 值总是在“零假设为真”的前提下解释。'},
+  {q:'线性回归中的 R² 主要衡量什么？',opts:['斜率一定为正的概率','离群点数量','模型解释因变量变异的比例'],ans:2,ok:'对。R² 越高，线性模型解释的变异比例越大。',bad:'R² 是拟合优度指标，不是斜率概率。'}
 ];
 let quizPassed=new Set(),quizFeedback={};
 
@@ -197,9 +197,10 @@ function startGame(){
   resize();initLevel(0);renderBar();renderPanel();
 }
 
-function goLevel(n){if(n<0||n>=7)return;if(n>0&&!quizPassed.has(n-1))return;curLevel=n;initLevel(n);renderBar();renderPanel();draw();}
+function goLevel(n){if(!Number.isInteger(n)||n<0||n>=7)return;if(n>0&&!quizPassed.has(n-1))return;curLevel=n;initLevel(n);renderBar();renderPanel();draw();}
 
 function completeObj(li,oi){
+  if(li!==curLevel||!levelObjs[li])return;
   if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar();}
 }
 
@@ -211,7 +212,7 @@ function stageNavHTML(){
   for(let i=0;i<7;i++){
     const unlocked=i===0||quizPassed.has(i-1);
     const cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    h+=unlocked&&i!==curLevel?`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${cls}"></div>`;
   }
   h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关 — ${levelInfo[curLevel].title.replace(/^关卡\\d+: /,'')}</div>`;
   h+=`<div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;
@@ -279,8 +280,8 @@ function rollDice(n){
   renderPanel();draw();
 }
 // ===== Level 2: Bayes =====
-let L2={prior:0.5,likelihoodPos:0.9,likelihoodNeg:0.05,adjusted:false,highLR:false,highPost:false};
-function initL2(){L2={prior:0.5,likelihoodPos:0.9,likelihoodNeg:0.05,adjusted:false,highLR:false,highPost:false};}
+let L2={prior:0.5,likelihoodPos:0.6,likelihoodNeg:0.4,adjusted:false,highLR:false,highPost:false};
+function initL2(){L2={prior:0.5,likelihoodPos:0.6,likelihoodNeg:0.4,adjusted:false,highLR:false,highPost:false};}
 function updateBayes(){
   let p=L2.prior,la=L2.likelihoodPos,lb=L2.likelihoodNeg;
   L2.posterior=p*la/(p*la+(1-p)*lb);

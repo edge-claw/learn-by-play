@@ -246,8 +246,16 @@ function initPrions(){
   lState.normals.push({x:0.3+Math.random()*0.5,y:0.2+Math.random()*0.6,bad:false,converting:false,convertT:0});
  }
 }
-function isUnlocked(n){return n===0||quizPassed.has(n-1);}
-function switchLevel(n){if(n<0||n>=levels.length||!isUnlocked(n))return;curLevel=n;resetLevelState();panelDirty=true;}
+function isUnlocked(n){
+ n=Number(n);
+ return Number.isInteger(n)&&n>=0&&n<levels.length&&(n===0||quizPassed.has(n-1));
+}
+function switchLevel(n){
+ n=Number(n);
+ if(!isUnlocked(n))return false;
+ curLevel=n;resetLevelState();panelDirty=true;
+ return true;
+}
 function resize(){W=innerWidth-320;H=innerHeight;cv.width=W;cv.height=H;panelDirty=true;}
 window.onresize=resize;resize();resetLevelState();
 function quizHTML(li){
@@ -260,11 +268,16 @@ function quizHTML(li){
  return h;
 }
 function answerQuiz(li,choice){
- if(li!==curLevel||quizPassed.has(li)||!lState.objDone||!lState.objDone.every(v=>v))return;
- const q=quizData[li],ok=choice===q.ans;
+ li=Number(li);choice=Number(choice);
+ if(li!==curLevel||quizPassed.has(li)||!lState.objDone||!lState.objDone.every(v=>v))return false;
+ if(li>0&&!quizPassed.has(li-1))return false;
+ const q=quizData[li];
+ if(!q||!Number.isInteger(choice)||choice<0||choice>=q.opts.length)return false;
+ const ok=choice===q.ans;
  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
  if(ok){quizPassed.add(li);completedLevels.add(li);}
  panelDirty=true;renderPanel();
+ return ok;
 }
 function renderPanel(){
  let h='<h3 style="margin-bottom:8px">🧬 蛋白质折叠</h3><div style="margin-bottom:8px">';
@@ -304,7 +317,7 @@ function renderLevelControls(){
   });
   h+='</div>';
   h+=`<div class="concept-box">链上氨基酸：<span class="sv">${lState.chain.length}</span>/5</div>`;
-  if(lState.chain.length>0)h+=`<button class="act-btn" onclick="lState.chain=[];lState.objDone=[false,false,false];panelDirty=true">清空链</button>`;
+  if(lState.chain.length>0)h+=`<button class="act-btn" onclick="clearAAChain()">清空链</button>`;
   h+='<div class="hint-box">💡 点击氨基酸添加到肽链上，注意不同类型的性质差异</div>';
   break;
  }
@@ -364,6 +377,11 @@ function addAAToChain(idx){
  if(c.some(a=>a.type==='hydrophobic')&&!lState.objDone[1]){lState.objDone[1]=true;}
  if(c.some(a=>a.type==='positive'||a.type==='negative')&&!lState.objDone[2]){lState.objDone[2]=true;}
  panelDirty=true;
+}
+function clearAAChain(){
+ if(curLevel!==0)return false;
+ lState.chain=[];lState.objDone=[false,false,false];panelDirty=true;renderPanel();
+ return true;
 }
 // Level 1 actions
 function startHelix(){lState.phase=1;lState.showHelix=true;lState.helixAnim=0;lState.objDone[0]=true;panelDirty=true;}
@@ -992,7 +1010,7 @@ function mainLoop(){
 renderPanel();
 mainLoop();
 
-function goLevel(i){switchLevel(i);}
+function goLevel(i){return switchLevel(i);}
 // === 总分总认知结构增强 ===
 // 延迟重新渲染确保增强生效
 (function(){

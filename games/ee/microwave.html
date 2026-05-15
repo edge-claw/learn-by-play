@@ -115,6 +115,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .quiz-q{font-size:13px;line-height:1.6;color:var(--quiz-q);margin-bottom:6px}
 .quiz-opt{display:block;width:100%;text-align:left;padding:8px;margin:4px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;cursor:pointer}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);color:var(--quiz-correct-text);border-color:var(--quiz-correct-text)}
 .quiz-feedback{border-radius:8px;padding:8px;margin:8px 0;font-size:13px;line-height:1.6}
 .quiz-feedback.ok{border:1px solid #22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
 .quiz-feedback.bad{border:1px solid #ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
@@ -221,12 +222,12 @@ const levelLearn=[
 ];
 const quizData=[
   {q:'电磁波中电场、磁场和传播方向的关系是什么？',opts:['三者两两垂直','电场和磁场总是同向','只有电场会传播'],ans:0,ok:'对。电场、磁场和传播方向两两正交，这是横电磁波的核心图像。',bad:'观察画布中 E 场和 B 场的两个方向，它们与传播轴正交。'},
-  {q:'传输线完美匹配时 VSWR 等于多少？',opts:['1','无穷大','负数'],ans:0,ok:'对。VSWR=1 表示没有反射，功率完全送入负载。',bad:'VSWR 越接近 1 越好，开路/短路才会走向极大。'},
-  {q:'史密斯圆图中心代表什么？',opts:['归一化阻抗 1+j0 的匹配点','短路点','开路点'],ans:0,ok:'对。圆心就是匹配点，反射系数为 0。',bad:'左端是短路，右端是开路，中心才是匹配。'},
-  {q:'矩形波导 TE10 模式能传播的条件是什么？',opts:['工作频率高于截止频率','工作频率必须为 0','只要波导足够长就能传播'],ans:0,ok:'对。低于截止频率时场沿波导衰减，不能有效传输。',bad:'波导模式有截止频率，f 必须大于 fc。'},
-  {q:'半波偶极子长度大约是多少？',opts:['λ/2','2λ','λ/20'],ans:0,ok:'对。半波偶极子是最常见的基本谐振天线。',bad:'本关目标要求把长度调到 0.5λ。'},
-  {q:'相控阵靠什么实现波束偏转？',opts:['调节阵元之间的相位差','只改变背景颜色','让所有阵元短路'],ans:0,ok:'对。相位差改变各方向叠加结果，从而移动主瓣。',bad:'波束扫描的关键是阵元相位控制。'},
-  {q:'自由空间链路中距离翻倍，路径损耗约增加多少？',opts:['6 dB','0 dB','60 dB'],ans:0,ok:'对。20log10(2)≈6dB，频率翻倍也一样增加约 6dB。',bad:'FSPL 对距离是 20log10(d)，翻倍不是线性加倍，而是约 +6dB。'}
+  {q:'传输线完美匹配时 VSWR 等于多少？',opts:['无穷大','1','负数'],ans:1,ok:'对。VSWR=1 表示没有反射，功率完全送入负载。',bad:'VSWR 越接近 1 越好，开路/短路才会走向极大。'},
+  {q:'史密斯圆图中心代表什么？',opts:['短路点','开路点','归一化阻抗 1+j0 的匹配点'],ans:2,ok:'对。圆心就是匹配点，反射系数为 0。',bad:'左端是短路，右端是开路，中心才是匹配。'},
+  {q:'矩形波导 TE10 模式能传播的条件是什么？',opts:['工作频率必须为 0','工作频率高于截止频率','只要波导足够长就能传播'],ans:1,ok:'对。低于截止频率时场沿波导衰减，不能有效传输。',bad:'波导模式有截止频率，f 必须大于 fc。'},
+  {q:'半波偶极子长度大约是多少？',opts:['2λ','λ/20','λ/2'],ans:2,ok:'对。半波偶极子是最常见的基本谐振天线。',bad:'本关目标要求把长度调到 0.5λ。'},
+  {q:'相控阵靠什么实现波束偏转？',opts:['只改变背景颜色','调节阵元之间的相位差','让所有阵元短路'],ans:1,ok:'对。相位差改变各方向叠加结果，从而移动主瓣。',bad:'波束扫描的关键是阵元相位控制。'},
+  {q:'自由空间链路中距离翻倍，路径损耗约增加多少？',opts:['0 dB','60 dB','6 dB'],ans:2,ok:'对。20log10(2)≈6dB，频率翻倍也一样增加约 6dB。',bad:'FSPL 对距离是 20log10(d)，翻倍不是线性加倍，而是约 +6dB。'}
 ];
 
 function resize(){
@@ -249,7 +250,7 @@ function buildNav(){
   let h='';
   for(let i=0;i<levelNames.length;i++){
     const unlocked=canLoadLevel(i);
-    h+=`<button class="${i===curLevel?'active ':''}${levelCompleted[i]?'completed ':''}" ${unlocked?'':'disabled'} onclick="${unlocked?'loadLevel('+i+')':''}">${i+1}</button>`;
+    h+=`<button class="${i===curLevel?'active ':''}${levelCompleted[i]?'completed ':''}" ${unlocked?`onclick="loadLevel(${i})"`:'disabled'}>${i+1}</button>`;
   }
   document.getElementById('levelNav').innerHTML=h;
 }
@@ -260,10 +261,18 @@ function updateNav(){
 }
 
 function completeObj(li,oi){
-  if(levelObjs[li][oi])return;
+  if(li!==curLevel||!levelObjs[li]||levelObjs[li][oi])return;
   levelObjs[li][oi]=true;
   updatePanel();
 }
+
+function demoLevel0(){lv1.freq=3e9;lv1.showE=true;lv1.showB=true;completeObj(0,0);completeObj(0,1);completeObj(0,2);updatePanel()}
+function demoLevel1(){lv2.zLoad=150;completeObj(1,2);lv2.zLoad=0;completeObj(1,1);lv2.zLoad=50;completeObj(1,0);updatePanel()}
+function demoLevel2(){lv3.clickR=0;lv3.clickX=0;completeObj(2,1);lv3.clickR=1;lv3.clickX=0;completeObj(2,0);completeObj(2,2);updatePanel()}
+function demoLevel3(){lv4.mode='TE20';completeObj(3,2);lv4.mode='TE10';lv4.freq=C/(2*lv4.wgA);completeObj(3,0);lv4.freq*=0.8;completeObj(3,1);updatePanel()}
+function demoLevel4(){const wl=C/lv5.freqD;lv5.length=0.5*wl;completeObj(4,0);lv5.length=1.0*wl;completeObj(4,1);lv5.length=0.75*wl;completeObj(4,2);updatePanel()}
+function demoLevel5(){lv6.nElem=8;lv6.phaseDiff=45;lv6.spacing=0.5;completeObj(5,0);completeObj(5,1);completeObj(5,2);updatePanel()}
+function demoLevel6(){lv7.dist=1000;completeObj(6,0);lv7.dist=2000;completeObj(6,1);lv7.ptx=50;lv7.gtx=40;lv7.grx=40;lv7.freq=1e9;lv7.dist=100;completeObj(6,2);updatePanel()}
 
 function updatePanel(){loadLevel(curLevel,true);}
 
@@ -281,8 +290,8 @@ function loadLevel(idx,keepState){
   html+=`</ul>`;
   html+=buildControls(idx);
   if(levelObjs[idx].every(Boolean)){
-    if(!quizPassed[idx])html+=quizHTML(idx);
-    else{
+    html+=quizHTML(idx);
+    if(quizPassed[idx]){
       html+=`<div class="learn-box" style="display:block">💡 ${levelLearn[idx]}</div>`;
       if(idx<levelNames.length-1)html+=`<div class="ctrl-group"><button onclick="loadLevel(${idx+1})">下一关 →</button></div>`;
       else html+=summaryHTML();
@@ -295,7 +304,8 @@ function loadLevel(idx,keepState){
 }
 
 function canLoadLevel(idx){
-  return idx>=0&&idx<levelNames.length&&(idx===0||levelCompleted[idx]||levelCompleted[idx-1]);
+  idx=Number(idx);
+  return Number.isInteger(idx)&&idx>=0&&idx<levelNames.length&&(idx===0||levelCompleted[idx]||levelCompleted[idx-1]);
 }
 
 function stageNavHTML(){
@@ -303,7 +313,7 @@ function stageNavHTML(){
   for(let i=0;i<levelNames.length;i++){
     const unlocked=canLoadLevel(i);
     const cls=levelCompleted[i]?'done':i===curLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'loadLevel('+i+')':''}"></div>`;
+    h+=`<div class="sn-d ${cls}" ${unlocked?`onclick="loadLevel(${i})"`:''}></div>`;
   }
   h+=`</div><div class="sn-info">第 ${curLevel+1}/${levelNames.length} 关 | 已通关 ${levelCompleted.filter(Boolean).length}/${levelNames.length}</div>`;
   h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
@@ -314,17 +324,23 @@ function quizHTML(idx){
   const q=quizData[idx],fb=quizFeedback[idx];
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
   h+=`<div class="quiz-q">${q.q}</div>`;
-  q.opts.forEach((o,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${idx},${i})">${String.fromCharCode(65+i)}. ${o}</button>`});
+  q.opts.forEach((o,i)=>{const cls=quizPassed[idx]&&i===q.ans?' correct':'';h+=`<button class="quiz-opt${cls}" onclick="answerQuiz(${idx},${i})">${String.fromCharCode(65+i)}. ${o}</button>`});
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
   h+='</div>';
   return h;
 }
 
 function answerQuiz(idx,choice){
-  const q=quizData[idx],ok=choice===q.ans;
+  idx=Number(idx);choice=Number(choice);
+  if(!Number.isInteger(idx)||!Number.isInteger(choice)||idx!==curLevel||quizPassed[idx]||levelCompleted[idx]||!levelObjs[idx]||!levelObjs[idx].every(v=>v))return false;
+  const q=quizData[idx];
+  if(!q||choice<0||choice>=q.opts.length)return false;
+  if(idx>0&&!levelCompleted[idx-1])return false;
+  const ok=choice===q.ans;
   quizFeedback[idx]={ok,text:ok?q.ok:q.bad};
   if(ok){quizPassed[idx]=true;levelCompleted[idx]=true;}
   updatePanel();updateNav();
+  return ok;
 }
 
 function summaryHTML(){
@@ -346,16 +362,18 @@ function buildControls(idx){
     h+=`<div class="ctrl-group">
       <label><input type="checkbox" id="chkE" ${lv1.showE?'checked':''}> 显示电场 (E)</label>
       <label><input type="checkbox" id="chkB" ${lv1.showB?'checked':''}> 显示磁场 (B)</label></div>`;
+    h+=`<div class="ctrl-group"><button onclick="demoLevel0()">微波传播演示</button></div>`;
   }else if(idx===1){
     h+=`<div class="ctrl-group"><label>负载阻抗 ZL (Ω)</label>
       <input type="range" id="sl1" min="0" max="200" value="${lv2.zLoad}" step="1">
       <div class="val" id="v1">ZL = ${lv2.zLoad} Ω</div></div>`;
     h+=`<div class="ctrl-group"><label>特性阻抗 Z0 = ${lv2.z0} Ω</label>
       <div class="val" id="v1b">Γ = ${((lv2.zLoad-lv2.z0)/(lv2.zLoad+lv2.z0)).toFixed(3)}, VSWR = ${calcVSWR().toFixed(2)}</div></div>`;
+    h+=`<div class="ctrl-group"><button onclick="demoLevel1()">匹配/反射/驻波演示</button></div>`;
   }else if(idx===2){
     h+=`<div class="ctrl-group"><label>点击圆图选择阻抗点</label>
       <div class="val" id="v2">Z = ${lv3.clickR.toFixed(2)} + j${lv3.clickX.toFixed(2)}</div></div>`;
-    h+=`<div class="ctrl-group"><button id="btnReset2">重置</button></div>`;
+    h+=`<div class="ctrl-group"><button id="btnReset2">重置</button><button onclick="demoLevel2()">标出短路/匹配/开路</button></div>`;
   }else if(idx===3){
     const fGHz=(lv4.freq/1e9).toFixed(1);
     const fc=C/(2*lv4.wgA)/1e9;
@@ -369,12 +387,14 @@ function buildControls(idx){
       <select id="sel3"><option value="TE10" ${lv4.mode==='TE10'?'selected':''}>TE10</option>
       <option value="TE20" ${lv4.mode==='TE20'?'selected':''}>TE20</option>
       <option value="TE01" ${lv4.mode==='TE01'?'selected':''}>TE01</option></select></div>`;
+    h+=`<div class="ctrl-group"><button onclick="demoLevel3()">截止与模式演示</button></div>`;
   }else if(idx===4){
     const wl=C/lv5.freqD;
     const ratio=lv5.length/wl;
     h+=`<div class="ctrl-group"><label>天线长度 (λ 倍数)</label>
       <input type="range" id="sl4" min="0.1" max="3" value="${ratio.toFixed(2)}" step="0.01">
       <div class="val" id="v4">L = ${ratio.toFixed(2)}λ</div></div>`;
+    h+=`<div class="ctrl-group"><button onclick="demoLevel4()">半波/全波方向图演示</button></div>`;
   }else if(idx===5){
     h+=`<div class="ctrl-group"><label>阵元数量</label>
       <input type="range" id="sl5a" min="2" max="16" value="${lv6.nElem}" step="1">
@@ -385,6 +405,7 @@ function buildControls(idx){
     h+=`<div class="ctrl-group"><label>相位差 (°)</label>
       <input type="range" id="sl5c" min="-180" max="180" value="${lv6.phaseDiff}" step="1">
       <div class="val" id="v5c">Δφ = ${lv6.phaseDiff}°</div></div>`;
+    h+=`<div class="ctrl-group"><button onclick="demoLevel5()">阵列波束演示</button></div>`;
   }else if(idx===6){
     h+=`<div class="ctrl-group"><label>发射功率 (dBm)</label>
       <input type="range" id="sl6a" min="0" max="50" value="${lv7.ptx}" step="1">
@@ -404,6 +425,7 @@ function buildControls(idx){
     const fspl=calcFSPL();const prx=lv7.ptx+lv7.gtx+lv7.grx-fspl;
     h+=`<div class="ctrl-group"><div class="val">FSPL = ${fspl.toFixed(1)} dB</div>
       <div class="val">Prx = ${prx.toFixed(1)} dBm</div></div>`;
+    h+=`<div class="ctrl-group"><button onclick="demoLevel6()">链路预算演示</button></div>`;
   }
   return h;
 }

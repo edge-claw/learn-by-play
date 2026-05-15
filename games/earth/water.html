@@ -131,18 +131,18 @@ function t(){return isDark?{bg:'#0a0a2e',grid:'rgba(99,102,241,0.06)',text:'#fff
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 let CW,CH;function resize(){const r=cv.getBoundingClientRect();CW=cv.width=r.width;CH=cv.height=r.height}
 resize();window.addEventListener('resize',()=>{resize();draw()});
-let audioCtx;function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
-function playSound(tp){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(tp==='ok'){o.frequency.value=523;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else if(tp==='no'){o.frequency.value=300;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}else{o.frequency.value=800;g.gain.value=0.08;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}}
+let audioCtx;function initAudio(){const AudioCtor=window.AudioContext||window.webkitAudioContext;if(!AudioCtor)return null;try{if(!audioCtx)audioCtx=new AudioCtor();return audioCtx}catch(e){return null}}
+function playSound(tp){const ac=initAudio();if(!ac)return false;try{const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);if(tp==='ok'){o.frequency.value=523;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(659,ac.currentTime+0.1);o.frequency.setValueAtTime(784,ac.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.4);o.stop(ac.currentTime+0.4)}else if(tp==='no'){o.frequency.value=300;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(200,ac.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.3);o.stop(ac.currentTime+0.3)}else{o.frequency.value=800;g.gain.value=0.08;o.start();g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.1);o.stop(ac.currentTime+0.1)}return true}catch(e){return false}}
 
 const LEVELS=[{name:'蒸发与凝结',icon:'☀️'},{name:'云的形成',icon:'☁️'},{name:'降水类型',icon:'🌧️'},{name:'地表径流',icon:'🏞️'},{name:'地下水与含水层',icon:'🕳️'},{name:'冰川与水库',icon:'🏔️'},{name:'人类活动影响',icon:'🏭'}];
 const quizData=[
   {q:'蒸发和凝结分别更容易在什么条件下发生？',opts:['高温促进蒸发，降温且湿度高促进凝结','低温促进蒸发，高温干燥促进凝结','二者只由风向决定'],ans:0,ok:'对。温度提高会增加分子动能；空气冷却到接近饱和时水汽凝结成水滴。',bad:'看温度和湿度如何改变水分子状态。'},
-  {q:'暖湿空气上升形成云的关键过程是什么？',opts:['上升膨胀冷却，达到露点后水汽凝结','空气上升后温度一定升高','云只由灰尘直接堆积形成'],ans:0,ok:'对。气团上升会绝热冷却，低于露点后形成云滴。',bad:'重点是上升、冷却、达到露点。'},
-  {q:'冰雹通常需要什么环境？',opts:['低温云层和强上升气流让水滴反复冻结','温暖无云且没有气流','只有地面温度高就够了'],ans:0,ok:'对。强上升气流把冰粒反复带回云中，逐层冻结长大。',bad:'冰雹不只是低温，还需要足够强的上升气流。'},
-  {q:'哪组条件最容易产生高地表径流和洪水风险？',opts:['陡坡、低渗透、少植被、强降雨','缓坡、高渗透、多植被、小雨','所有水都能立即渗入地下'],ans:0,ok:'对。这些条件都会减少下渗或加快地表汇流。',bad:'比较水是留在地表，还是渗入土壤。'},
-  {q:'过度抽取地下水最直接的表现是什么？',opts:['地下水位下降，含水层失衡','水井越抽水位越高','孔隙率自动变成 100%'],ans:0,ok:'对。抽水超过补给会降低水位，严重时还会导致地面沉降。',bad:'看抽水速率和补给/储水能力之间的平衡。'},
-  {q:'冰川质量平衡主要取决于哪两类过程？',opts:['降雪积累与融化消融','海浪颜色与风向','山峰高度固定不变所以冰川不变'],ans:0,ok:'对。积累大于消融时冰川增长，反之退缩并贡献海平面上升。',bad:'冰川像账户：收入是降雪，支出是融化。'},
-  {q:'人类活动会怎样改变水循环？',opts:['污染、水坝、灌溉、砍伐都会改变水质、流量、蒸散和补给','只影响城市，不影响河流和地下水','只要建水坝就能消除所有水问题'],ans:0,ok:'对。水循环是连通系统，单个活动会传导到多个环节。',bad:'把河流、地下水、植被蒸腾和水质看成一个系统。'}
+  {q:'暖湿空气上升形成云的关键过程是什么？',opts:['空气上升后温度一定升高','上升膨胀冷却，达到露点后水汽凝结','云只由灰尘直接堆积形成'],ans:1,ok:'对。气团上升会绝热冷却，低于露点后形成云滴。',bad:'重点是上升、冷却、达到露点。'},
+  {q:'冰雹通常需要什么环境？',opts:['温暖无云且没有气流','只有地面温度高就够了','低温云层和强上升气流让水滴反复冻结'],ans:2,ok:'对。强上升气流把冰粒反复带回云中，逐层冻结长大。',bad:'冰雹不只是低温，还需要足够强的上升气流。'},
+  {q:'哪组条件最容易产生高地表径流和洪水风险？',opts:['缓坡、高渗透、多植被、小雨','陡坡、低渗透、少植被、强降雨','所有水都能立即渗入地下'],ans:1,ok:'对。这些条件都会减少下渗或加快地表汇流。',bad:'比较水是留在地表，还是渗入土壤。'},
+  {q:'过度抽取地下水最直接的表现是什么？',opts:['水井越抽水位越高','孔隙率自动变成 100%','地下水位下降，含水层失衡'],ans:2,ok:'对。抽水超过补给会降低水位，严重时还会导致地面沉降。',bad:'看抽水速率和补给/储水能力之间的平衡。'},
+  {q:'冰川质量平衡主要取决于哪两类过程？',opts:['海浪颜色与风向','降雪积累与融化消融','山峰高度固定不变所以冰川不变'],ans:1,ok:'对。积累大于消融时冰川增长，反之退缩并贡献海平面上升。',bad:'冰川像账户：收入是降雪，支出是融化。'},
+  {q:'人类活动会怎样改变水循环？',opts:['只影响城市，不影响河流和地下水','只要建水坝就能消除所有水问题','污染、水坝、灌溉、砍伐都会改变水质、流量、蒸散和补给'],ans:2,ok:'对。水循环是连通系统，单个活动会传导到多个环节。',bad:'把河流、地下水、植被蒸腾和水质看成一个系统。'}
 ];
 let cur=0,gameState='title',S={},done=new Array(7).fill(false),quizPassed=new Set(),quizFeedback={},particles=[];
 
@@ -163,7 +163,7 @@ function renderStageNav(){
   LEVELS.forEach((_,i)=>{
     const unlocked=i===0||quizPassed.has(i-1);
     const c=quizPassed.has(i)?'done':i===cur?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${c}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    h+=unlocked&&i!==cur?`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${c}"></div>`;
   });
   h+=`</div><div class="sn-info">第 ${cur+1}/7 关 — ${LEVELS[cur].name}</div><div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;return h;
 }
@@ -180,6 +180,7 @@ function quizHTML(i){
   h+='</div>';return h;
 }
 function answerQuiz(i,choice){
+  if(i!==cur||quizPassed.has(i)||!done[i])return;
   const q=quizData[i],ok=choice===q.ans;
   quizFeedback[i]={ok,text:ok?q.ok:q.bad};
   if(ok){quizPassed.add(i);playSound('ok')}else{playSound('no')}
@@ -231,7 +232,7 @@ function updateSliderLabels(){
       if(ps){S.porosity=+ps.value;document.getElementById('vl-poro').textContent=S.porosity+'%'}
       if(ws){S.wellDepth=+ws.value;document.getElementById('vl-well').textContent=S.wellDepth+'m'}
       if(rs){S.pumpRate=+rs.value;document.getElementById('vl-pump').textContent=S.pumpRate}
-      S.waterTable=70-S.pumpRate*0.3+S.porosity*0.2;
+      S.waterTable=70-S.pumpRate*0.45+S.porosity*0.15;
     }break;
     case 5:{
       const ts=document.getElementById('sl-gtemp'),ss=document.getElementById('sl-snow');
@@ -557,7 +558,7 @@ function drawHumanImpact(c){
 }
 
 function updateInfobar(){document.getElementById('ib-level').textContent=`关卡 ${cur+1}/7`;document.getElementById('ib-title').textContent=LEVELS[cur].name;document.getElementById('ib-status').textContent=quizPassed.has(cur)?'✅ 已通关':done[cur]?'待测验':'进行中'}
-function goLevel(i){if(i<0||i>LEVELS.length-1)return;if(i>0&&!quizPassed.has(i-1))return;cur=i;initLevel(i);gameState='play';document.getElementById('panel').style.display='block';updateInfobar();renderPanel();draw()}
+function goLevel(i){if(!Number.isInteger(i)||i<0||i>=LEVELS.length)return;if(i>0&&!quizPassed.has(i-1))return;cur=i;initLevel(i);gameState='play';document.getElementById('panel').style.display='block';updateInfobar();renderPanel();draw()}
 function startGame(){document.getElementById('startScreen').classList.add('hidden');goLevel(0)}
 function handleClick(x,y){}
 cv.addEventListener('click',e=>{if(gameState!=='play')return;const r=cv.getBoundingClientRect();handleClick(e.clientX-r.left,e.clientY-r.top)});

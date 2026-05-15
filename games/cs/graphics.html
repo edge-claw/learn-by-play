@@ -140,7 +140,7 @@ function th(){return isDark?TH.dark:TH.light}
 function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').innerHTML=isDark?'&#127769; 暗色':'&#9728;&#65039; 亮色';renderPanel()}
 
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay');
-let W,H,curLevel=0,animId,time=0,particles=[];
+let W,H,curLevel=0,animId,time=0,particles=[],drawPending=false;
 let levelObjs=Array.from({length:7},()=>[false,false,false]);
 let ls={};
 
@@ -149,18 +149,36 @@ window.addEventListener('resize',()=>{resize();draw()});
 
 // === Audio ===
 let audioCtx;
-function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function initAudio(){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;try{if(!audioCtx)audioCtx=new A();return audioCtx}catch(e){return null}}
 function playSound(type){
-  initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-  o.connect(g);g.connect(audioCtx.destination);
-  if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}
-  else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}
-  else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}
+  const ac=initAudio();if(!ac)return false;
+  try{
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    const now=ac.currentTime;
+    if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start(now);g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.stop(now+0.1)}
+    else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(659,now+0.1);o.frequency.setValueAtTime(784,now+0.2);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);o.stop(now+0.4)}
+    else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(200,now+0.15);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);o.stop(now+0.3)}
+    return true;
+  }catch(e){return false}
 }
 function spawnP(x,y,color,n){for(let i=0;i<(n||10);i++){const a=Math.random()*Math.PI*2,sp=1+Math.random()*3;particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:0.6+Math.random()*0.4,color,r:2+Math.random()*3})}}
 function updateP(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life-=dt;if(p.life<=0){particles.splice(i,1);continue}ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
 
-function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;playSound('success');totalScore+=10;levelScores[li]+=10;spawnP(W/2,H/2,'#4ade80');renderPanel()}}
+function completeObj(li,oi){if(li!==curLevel||!levelObjs[li]||levelObjs[li][oi])return;levelObjs[li][oi]=true;playSound('success');totalScore+=10;levelScores[li]+=10;spawnP(W/2,H/2,'#4ade80');renderPanel()}
+function clampNumber(value,fallback,min,max){var n=Number(value);return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback}
+function setSliderValue(el,value,formatter){el.value=value;var label=el.nextElementSibling;if(label)label.textContent=formatter?formatter(value):value}
+function scheduleDraw(){if(drawPending)return;drawPending=true;requestAnimationFrame(function(){drawPending=false;draw()})}
+function updateTransformSlider(el,key,min,max,doneKey,objIndex,formatter){
+  ls[key]=clampNumber(el&&el.value,ls[key],min,max);setSliderValue(el,ls[key],formatter);
+  if(!ls[doneKey]){ls[doneKey]=true;completeObj(1,objIndex)}
+  scheduleDraw()
+}
+function updateUniformSlider(el,key,min,max,doneKey,objIndex,formatter){
+  var v=clampNumber(el&&el.value,ls[key]*100,min,max);ls[key]=v/100;setSliderValue(el,v,formatter);
+  if(doneKey&&!ls[doneKey]){ls[doneKey]=true;completeObj(3,objIndex)}
+  scheduleDraw()
+}
 function isLevelDone(li){return levelObjs[li].every(Boolean)}
 function lerp(a,b,t){return a+(b-a)*t}
 
@@ -175,13 +193,13 @@ const LEVELS=[
 {name:'GPU 渲染管线',desc:'顶点着色器 → 光栅化 → 片段着色器 → 帧缓冲',objs:['执行顶点着色阶段','观察光栅化过程','完成片段着色输出']}
 ];
 const quizData=[
-{q:'Bresenham 画线算法的核心优势是什么？',opts:['只用整数运算，无需浮点计算','画出的线更平滑','可以画曲线'],ans:0},
-{q:'2D 旋转矩阵中，旋转 90 度时 cos(90)=?',opts:['1','0','-1'],ans:1},
-{q:'透视投影与正交投影的主要区别是？',opts:['透视投影有近大远小效果','正交投影更真实','透视投影不能显示 3D 物体'],ans:0},
-{q:'Phong 光照模型由哪三个分量组成？',opts:['RGB 三通道','环境光 + 漫反射 + 镜面反射','顶点 + 法线 + 纹理'],ans:1},
-{q:'双线性插值使用几个相邻像素？',opts:['2 个','4 个','8 个'],ans:1},
-{q:'光线追踪中，射线与球体相交需要求解什么方程？',opts:['一次方程','二次方程','三次方程'],ans:1},
-{q:'GPU 渲染管线中，光栅化的作用是？',opts:['计算顶点位置','将图元转换为片段（像素）','输出到屏幕'],ans:1}
+{q:'Bresenham 画线算法的核心优势是什么？',opts:['只用整数运算，无需浮点计算','画出的线更平滑','可以画曲线'],ans:0,why:'Bresenham 用误差项在相邻像素间选择最接近直线的位置，避免浮点乘除，适合硬件和实时光栅化。'},
+{q:'2D 旋转矩阵中，旋转 90 度时 cos(90)=?',opts:['1','0','-1'],ans:1,why:'二维旋转矩阵包含 cos 和 sin；90 度时 cos 为 0，点的 x/y 分量主要通过 sin 项交换。'},
+{q:'透视投影与正交投影的主要区别是？',opts:['正交投影更真实','透视投影不能显示 3D 物体','透视投影有近大远小效果'],ans:2,why:'透视投影会按深度缩放坐标，远处物体投影更小；正交投影保留平行关系，不体现距离缩放。'},
+{q:'Phong 光照模型由哪三个分量组成？',opts:['RGB 三通道','环境光 + 漫反射 + 镜面反射','顶点 + 法线 + 纹理'],ans:1,why:'环境光提供基础亮度，漫反射描述粗糙表面受光方向影响，镜面反射形成随视角变化的高光。'},
+{q:'双线性插值使用几个相邻像素？',opts:['2 个','8 个','4 个'],ans:2,why:'双线性插值在纹理坐标周围取 2x2 四个采样点，先横向再纵向加权混合，减少马赛克感。'},
+{q:'光线追踪中，射线与球体相交需要求解什么方程？',opts:['二次方程','一次方程','三次方程'],ans:0,why:'把射线方程代入球体方程会得到关于距离参数 t 的二次方程，判别式决定是否相交。'},
+{q:'GPU 渲染管线中，光栅化的作用是？',opts:['计算顶点位置','输出到屏幕','将图元转换为片段（像素）'],ans:2,why:'顶点着色后仍是几何图元，光栅化负责找出三角形覆盖的屏幕片段，交给片段着色器计算颜色。'}
 ];
 let quizPassed=new Set(),quizLocked=false,totalScore=0;
 const levelScores=new Array(7).fill(0);
@@ -417,21 +435,21 @@ function renderLevelPanel(idx){
     if(ls.showBresenham){h+='<div class="learn-box"><b>Bresenham 算法</b>：只用整数加法和位移，逐像素决定最接近理想直线的网格点。比浮点 DDA 算法快得多，是光栅化的基础。</div>'}
   } else if(idx===1){
     h+='<p style="margin:8px 0;font-size:13px;color:var(--concept-text)">画布中央有一个蓝色正方形（半透明为原始位置）。拖动滑块应用平移、旋转、缩放变换。</p>';
-    h+='<div class="slider-row"><span>平移X</span><input type="range" min="-200" max="200" value="'+ls.tx+'" oninput="ls.tx=+this.value;if(!ls.translated){ls.translated=true;completeObj(1,0)};draw()" onchange="this.blur();renderPanel()"><span>'+ls.tx.toFixed(0)+'</span></div>';
-    h+='<div class="slider-row"><span>平移Y</span><input type="range" min="-200" max="200" value="'+ls.ty+'" oninput="ls.ty=+this.value;if(!ls.translated){ls.translated=true;completeObj(1,0)};draw()" onchange="this.blur();renderPanel()"><span>'+ls.ty.toFixed(0)+'</span></div>';
-    h+='<div class="slider-row"><span>旋转</span><input type="range" min="-180" max="180" value="'+ls.angle+'" oninput="ls.angle=+this.value;if(!ls.rotated){ls.rotated=true;completeObj(1,1)};draw()" onchange="this.blur();renderPanel()"><span>'+ls.angle.toFixed(0)+'°</span></div>';
-    h+='<div class="slider-row"><span>缩放</span><input type="range" min="20" max="300" value="'+(ls.sx*100)+'" oninput="ls.sx=ls.sy=+this.value/100;if(!ls.scaled){ls.scaled=true;completeObj(1,2)};draw()" onchange="this.blur();renderPanel()"><span>'+ls.sx.toFixed(1)+'x</span></div>';
+    h+='<div class="slider-row"><span>平移X</span><input type="range" min="-200" max="200" value="'+ls.tx+'" oninput="updateTransformSlider(this,\'tx\',-200,200,\'translated\',0,function(v){return v.toFixed(0)})" onchange="this.blur();renderPanel()"><span>'+ls.tx.toFixed(0)+'</span></div>';
+    h+='<div class="slider-row"><span>平移Y</span><input type="range" min="-200" max="200" value="'+ls.ty+'" oninput="updateTransformSlider(this,\'ty\',-200,200,\'translated\',0,function(v){return v.toFixed(0)})" onchange="this.blur();renderPanel()"><span>'+ls.ty.toFixed(0)+'</span></div>';
+    h+='<div class="slider-row"><span>旋转</span><input type="range" min="-180" max="180" value="'+ls.angle+'" oninput="updateTransformSlider(this,\'angle\',-180,180,\'rotated\',1,function(v){return v.toFixed(0)+\'°\'})" onchange="this.blur();renderPanel()"><span>'+ls.angle.toFixed(0)+'°</span></div>';
+    h+='<div class="slider-row"><span>缩放</span><input type="range" min="20" max="300" value="'+(ls.sx*100)+'" oninput="var v=clampNumber(this.value,ls.sx*100,20,300);ls.sx=ls.sy=v/100;setSliderValue(this,v,function(x){return (x/100).toFixed(1)+\'x\'});if(!ls.scaled){ls.scaled=true;completeObj(1,2)};scheduleDraw()" onchange="this.blur();renderPanel()"><span>'+ls.sx.toFixed(1)+'x</span></div>';
   } else if(idx===2){
     h+='<p style="margin:8px 0;font-size:13px;color:var(--concept-text)">一个旋转的 3D 立方体。切换正交/透视投影，观察近大远小效果的差异。</p>';
     h+='<button class="act-btn" onclick="setProjMode(\'ortho\')">正交投影</button>';
     h+='<button class="act-btn" onclick="setProjMode(\'persp\')">透视投影</button>';
-    if(ls.projMode==='persp'){h+='<div class="slider-row"><span>FOV</span><input type="range" min="20" max="120" value="'+ls.fov+'" oninput="ls.fov=+this.value;if(!ls.fovAdjusted){ls.fovAdjusted=true;completeObj(2,2)};draw()" onchange="this.blur();renderPanel()"><span>'+ls.fov+'°</span></div>'}
+    if(ls.projMode==='persp'){h+='<div class="slider-row"><span>FOV</span><input type="range" min="20" max="120" value="'+ls.fov+'" oninput="ls.fov=clampNumber(this.value,ls.fov,20,120);setSliderValue(this,ls.fov,function(v){return v.toFixed(0)+\'°\'});if(!ls.fovAdjusted){ls.fovAdjusted=true;completeObj(2,2)};scheduleDraw()" onchange="this.blur();renderPanel()"><span>'+ls.fov+'°</span></div>'}
   } else if(idx===3){
     h+='<p style="margin:8px 0;font-size:13px;color:var(--concept-text)">画布上是一个 Phong 光照模型渲染的球体。拖动滑块调节三个光照分量，观察效果变化。黄色圆点是光源方向。</p>';
-    h+='<div class="slider-row"><span style="color:#f59e0b">环境光</span><input type="range" min="0" max="100" value="'+(ls.ambient*100)+'" oninput="ls.ambient=+this.value/100;if(!ls.ambientDone){ls.ambientDone=true;completeObj(3,0)};draw()" onchange="this.blur();renderPanel()"><span>'+ls.ambient.toFixed(2)+'</span></div>';
-    h+='<div class="slider-row"><span style="color:#60a5fa">漫反射</span><input type="range" min="0" max="100" value="'+(ls.diffuse*100)+'" oninput="ls.diffuse=+this.value/100;if(!ls.diffuseDone){ls.diffuseDone=true;completeObj(3,1)};draw()" onchange="this.blur();renderPanel()"><span>'+ls.diffuse.toFixed(2)+'</span></div>';
-    h+='<div class="slider-row"><span style="color:#22c55e">镜面反射</span><input type="range" min="0" max="100" value="'+(ls.specular*100)+'" oninput="ls.specular=+this.value/100;if(!ls.specularDone){ls.specularDone=true;completeObj(3,2)};draw()" onchange="this.blur();renderPanel()"><span>'+ls.specular.toFixed(2)+'</span></div>';
-    h+='<div class="slider-row"><span>高光指数</span><input type="range" min="1" max="128" value="'+ls.shininess+'" oninput="ls.shininess=+this.value;draw()" onchange="this.blur();renderPanel()"><span>'+ls.shininess+'</span></div>';
+    h+='<div class="slider-row"><span style="color:#f59e0b">环境光</span><input type="range" min="0" max="100" value="'+(ls.ambient*100)+'" oninput="updateUniformSlider(this,\'ambient\',0,100,\'ambientDone\',0,function(x){return (x/100).toFixed(2)})" onchange="this.blur();renderPanel()"><span>'+ls.ambient.toFixed(2)+'</span></div>';
+    h+='<div class="slider-row"><span style="color:#60a5fa">漫反射</span><input type="range" min="0" max="100" value="'+(ls.diffuse*100)+'" oninput="updateUniformSlider(this,\'diffuse\',0,100,\'diffuseDone\',1,function(x){return (x/100).toFixed(2)})" onchange="this.blur();renderPanel()"><span>'+ls.diffuse.toFixed(2)+'</span></div>';
+    h+='<div class="slider-row"><span style="color:#22c55e">镜面反射</span><input type="range" min="0" max="100" value="'+(ls.specular*100)+'" oninput="updateUniformSlider(this,\'specular\',0,100,\'specularDone\',2,function(x){return (x/100).toFixed(2)})" onchange="this.blur();renderPanel()"><span>'+ls.specular.toFixed(2)+'</span></div>';
+    h+='<div class="slider-row"><span>高光指数</span><input type="range" min="1" max="128" value="'+ls.shininess+'" oninput="ls.shininess=clampNumber(this.value,ls.shininess,1,128);setSliderValue(this,ls.shininess,function(v){return v.toFixed(0)});scheduleDraw()" onchange="this.blur();renderPanel()"><span>'+ls.shininess+'</span></div>';
   } else if(idx===4){
     h+='<p style="margin:8px 0;font-size:13px;color:var(--concept-text)">画布上是一个棋盘格纹理。UV 坐标将 2D 纹理映射到表面。切换插值模式和法线贴图观察差异。</p>';
     h+='<button class="act-btn" onclick="setUVMode(\'nearest\')">最近邻插值</button>';
@@ -530,21 +548,26 @@ function renderQuiz(li){
   var qd=quizData[li];if(!qd)return '';
   var h='<div class="quiz-box"><div class="quiz-q">&#128221; 通关测验：'+qd.q+'</div>';
   qd.opts.forEach(function(opt,i){var cls=quizPassed.has(li)?(i===qd.ans?'correct':''):'';h+='<div class="quiz-opt '+cls+'" onclick="answerQuiz('+li+','+i+')">'+opt+'</div>'});
-  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">&#9989; 已通过</div>';
+  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">&#9989; 小测要点：'+(qd.why||'已掌握本关核心概念')+'</div>';
   h+='</div>';return h
 }
 function answerQuiz(li,oi){
-  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  li=Number(li);oi=Number(oi);
+  if(!Number.isInteger(li)||!Number.isInteger(oi))return false;
+  if(li<0||li>=LEVELS.length||oi<0||!quizData[li]||oi>=quizData[li].opts.length)return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  if(li!==curLevel||quizLocked||quizPassed.has(li)||!levelObjs[li]||!isLevelDone(li))return false;quizLocked=true;
   var qd=quizData[li],opts=panel.querySelectorAll('.quiz-opt');
+  if(!opts[oi]||!opts[qd.ans]){quizLocked=false;return false}
   opts.forEach(function(el,i){el.classList.add(i===qd.ans?'correct':'wrong')});
-  if(oi===qd.ans){quizPassed.add(li);playSound('success');totalScore+=10;levelScores[li]+=10;setTimeout(function(){quizLocked=false;goLevel(curLevel+1)},800)}
-  else{playSound('fail');setTimeout(function(){quizLocked=false;renderPanel()},1000)}
+  if(oi===qd.ans){quizPassed.add(li);playSound('success');totalScore+=10;levelScores[li]+=10;setTimeout(function(){quizLocked=false;if(li<LEVELS.length-1)goLevel(li+1);else renderPanel()},800);return true}
+  else{playSound('fail');setTimeout(function(){quizLocked=false;renderPanel()},1000);return false}
 }
 
 // === Stage nav ===
 function renderStageNav(){
   var h='<div class="stage-nav"><div class="sn-bar">';
-  LEVELS.forEach(function(_,i){h+='<div class="sn-d'+(quizPassed.has(i)?' done':i===curLevel?' cur':isUnlocked(i)?'':' locked')+'" onclick="switchLevel('+i+')"></div>'});
+  LEVELS.forEach(function(_,i){var unlocked=isUnlocked(i);h+='<div class="sn-d'+(quizPassed.has(i)?' done':i===curLevel?' cur':unlocked?'':' locked')+'"'+(unlocked?' onclick="switchLevel('+i+')"':'')+'></div>'});
   h+='</div><div class="sn-info">第 '+(curLevel+1)+'/'+LEVELS.length+' 关 — '+LEVELS[curLevel].name+'</div></div>';
   return h
 }
@@ -557,6 +580,7 @@ function renderPanel(){
   if(isLevelDone(curLevel)){
     h+=renderQuiz(curLevel);
     if(quizPassed.has(curLevel)&&curLevel<LEVELS.length-1){h+='<button class="act-btn green" onclick="switchLevel('+(curLevel+1)+')">下一关 &#8594;</button>'}
+    if(quizPassed.has(curLevel)&&curLevel===LEVELS.length-1){h+='<button class="act-btn green" onclick="showResult()">查看总结 &#8594;</button>'}
   }
   h+='<div style="margin-top:12px;padding:8px;background:var(--concept-bg);border-radius:8px;font-size:12px;color:var(--stage-hint)">总分: <span style="color:var(--sv);font-weight:bold">'+totalScore+'</span> | 已通过: <span style="color:var(--sv);font-weight:bold">'+quizPassed.size+'/'+LEVELS.length+'</span></div>';
   panel.innerHTML=h
@@ -564,6 +588,7 @@ function renderPanel(){
 
 // === Result ===
 function showResult(){
+  if(quizPassed.size<LEVELS.length)return;
   overlay.style.display='flex';
   var h='<div style="text-align:center;max-width:420px;background:var(--result-bg);border:1px solid var(--result-border);border-radius:16px;padding:28px 36px">';
   h+='<div class="summary-title">&#127942; 探险完成！</div>';
@@ -576,8 +601,8 @@ function showResult(){
 }
 
 // === Main loop ===
-function isUnlocked(idx){return idx>=0&&idx<LEVELS.length&&(idx===0||quizPassed.has(idx)||quizPassed.has(idx-1))}
-function goLevel(idx){if(idx>=LEVELS.length){showResult();return}if(!isUnlocked(idx))return;curLevel=idx;initLevel(idx);renderPanel()}
+function isUnlocked(idx){return idx>=0&&idx<LEVELS.length&&(idx===0||quizPassed.has(idx-1))}
+function goLevel(idx){if(idx<0||idx>=LEVELS.length)return;if(!isUnlocked(idx))return;curLevel=idx;initLevel(idx);renderPanel()}
 function switchLevel(idx){if(!isUnlocked(idx))return;playSound('click');goLevel(idx)}
 function startGame(){overlay.style.display='none';document.getElementById('wrap').style.display='flex';bar.style.display='flex';panel.style.display='block';resize();initLevel(0);renderPanel();loop()}
 function draw(){

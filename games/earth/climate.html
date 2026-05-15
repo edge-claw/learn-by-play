@@ -186,6 +186,37 @@ function resize(){cv.width=W=cv.clientWidth;cv.height=H=cv.clientHeight}
 window.addEventListener('resize',resize);resize();
 function rand(a,b){return a+Math.random()*(b-a)}
 function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v))}
+function clampNumber(value,min,max,fallback){
+  const n=String(value).trim()===''?NaN:Number(value);
+  const base=Number.isFinite(Number(fallback))?Number(fallback):min;
+  return clamp(Number.isFinite(n)?n:base,min,max);
+}
+function setSliderText(id,text){
+  const el=document.getElementById(id);
+  if(el)el.textContent=text;
+}
+function setClimateValue(input,key,min,max,labelId,formatter,onChange){
+  const value=clampNumber(input&&input.value,min,max,state[key]);
+  state[key]=value;
+  if(input)input.value=String(value);
+  setSliderText(labelId,formatter?formatter(value):String(value));
+  if(onChange)onChange(value);
+}
+function setAlbedoInput(input){
+  const current=state.albedo!=null?state.albedo*100:30;
+  const value=clampNumber(input&&input.value,5,80,current);
+  state.albedo=value/100;
+  if(input)input.value=String(value);
+  setSliderText('sv2',state.albedo.toFixed(2));
+  if(!levelObjs[0][1])completeObj(0,1);
+}
+function setTempAnomalyInput(input){
+  const value=clampNumber(input&&input.value,0,40,state.tempSlider||0);
+  state.tempSlider=value;state.tempAnomaly=value/10;
+  if(input)input.value=String(value);
+  setSliderText('sv7','+'+state.tempAnomaly.toFixed(1));
+  if(!state.iceStarted){state.iceStarted=true;completeObj(4,0)}
+}
 let state={},keys={};
 let mouseX=0,mouseY=0,mouseDown=false,clicked=false;
 let dragItem=null,dragOffX=0,dragOffY=0;
@@ -197,27 +228,27 @@ const levels=[
  learn:'地球能量平衡：太阳辐射到达地球约<span class="sv">1361 W/m²</span>（太阳常数），地球平均反照率约<span class="sv">0.30</span>，即30%的太阳辐射被反射回太空。吸收的能量加热地球，地球以红外辐射形式散热。当收入=支出时，无温室效应的平衡温度约<span class="sv">-18°C</span>。实际地球约15°C，差值由温室效应贡献（下一关）。'},
 {name:'温室效应',sub:'CO₂如何加热地球',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>CO₂ 红外截留，温室气体，280→420 ppm</div>地面发出的红外辐射被大气中CO₂分子截留并反射回地面，导致温度升高。调节CO₂浓度观察温度变化。',
  objs:['将CO₂升至400ppm','观察红外辐射被截留','对比有无温室气体温差'],
- quiz:{q:'CO₂等温室气体主要通过什么方式增暖地表？',opts:['吸收并再发射地面红外辐射','直接产生太阳光','阻止地球自转','把海水变成冰'],ans:0},
+ quiz:{q:'CO₂等温室气体主要通过什么方式增暖地表？',opts:['直接产生太阳光','吸收并再发射地面红外辐射','阻止地球自转','把海水变成冰'],ans:1},
  learn:'没有温室效应，地球平均温度将是<span class="sv">-18°C</span>而非15°C。CO₂从工业革命前的<span class="sv">280ppm</span>升至如今超过<span class="sv">420ppm</span>。CO₂分子吸收特定波长（<span class="sv">15μm</span>）的红外辐射，振动后重新发射，部分返回地面——这就是温室效应的分子机制。'},
 {name:'大气环流',sub:'三圈环流驱动全球风系',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>哈德利/费雷尔/极地三圈环流，科里奥利力</div>赤道受热空气上升→高空向极地流动→极地冷却下沉→地面回流。形成哈德利环流、费雷尔环流和极地环流三个环流圈。',
  objs:['启动赤道加热','观察哈德利环流形成','完成三圈环流'],
- quiz:{q:'哈德利环流的根本驱动力是什么？',opts:['赤道受热导致空气上升','月球潮汐拉动空气','海底火山喷发','人造卫星推动气团'],ans:0},
+ quiz:{q:'哈德利环流的根本驱动力是什么？',opts:['月球潮汐拉动空气','海底火山喷发','赤道受热导致空气上升','人造卫星推动气团'],ans:2},
  learn:'赤道接收最多太阳辐射，空气受热膨胀上升，在高空向两极流动。受<span class="sv">科里奥利力</span>偏转，在纬度30°附近下沉形成<span class="sv">哈德利环流</span>。中纬度的<span class="sv">费雷尔环流</span>和高纬度的<span class="sv">极地环流</span>共同构成三圈环流，驱动全球风带和天气系统。'},
 {name:'海洋传送带',sub:'温盐环流驱动深海循环',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>温盐环流 AMOC，密度驱动，1000 年周期</div>高盐度冷水密度大→下沉到深海→缓慢流向赤道→上升流带回表面。调节盐度和温度观察传送带运转。',
  objs:['调节盐度使海水下沉','形成完整传送带环流','观察传送带断裂效应'],
- quiz:{q:'北大西洋深水下沉通常需要什么条件？',opts:['高盐、低温使密度增大','低盐、高温使密度增大','海水完全静止','没有风就会下沉'],ans:0},
+ quiz:{q:'北大西洋深水下沉通常需要什么条件？',opts:['低盐、高温使密度增大','高盐、低温使密度增大','海水完全静止','没有风就会下沉'],ans:1},
  learn:'全球温盐环流（<span class="sv">大西洋经向翻转环流 AMOC</span>）周期约<span class="sv">1000年</span>。北大西洋高盐冷水下沉是驱动力。若格陵兰冰盖融化注入大量淡水，盐度降低→下沉减弱→传送带可能<span class="sv">断裂</span>→欧洲失去暖流加热，可能骤冷5-10°C。'},
 {name:'冰反馈',sub:'正反馈加速全球变暖',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>冰-反照率正反馈，北极放大效应</div>升温→冰融化→白色冰面减少→反照率降低→吸收更多热量→更多融化。这是一个危险的正反馈循环。',
  objs:['设置初始温度','观察冰盖开始融化','见证正反馈加速'],
- quiz:{q:'冰-反照率正反馈为什么会放大变暖？',opts:['冰融后反照率降低，海水吸收更多热量','冰融后地球反射更多阳光','冰会制造更多CO₂','海水反照率比冰雪更高'],ans:0},
+ quiz:{q:'冰-反照率正反馈为什么会放大变暖？',opts:['冰融后地球反射更多阳光','冰会制造更多CO₂','冰融后反照率降低，海水吸收更多热量','海水反照率比冰雪更高'],ans:2},
  learn:'冰雪反照率约<span class="sv">0.8-0.9</span>（反射80-90%阳光），海水仅<span class="sv">0.06</span>。北极海冰自1979年以来减少了<span class="sv">40%</span>。这种<span class="sv">冰-反照率正反馈</span>是气候系统中最强的放大机制之一，使北极变暖速度是全球平均的<span class="sv">2-3倍</span>（北极放大效应）。'},
 {name:'碳循环',sub:'碳在四大储库间流动',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>碳储库（大气/海洋/植被/岩石），年排放 10 GtC</div>碳在大气、海洋、植被和岩石四个储库间循环。拖拽碳球在储库间移动，观察碳量变化。砍伐森林会释放碳到大气。',
  objs:['将碳从植被移到大气','将碳从大气移到海洋','使大气碳量低于800GtC'],
- quiz:{q:'人类排放的碳为什么会持续推高大气CO₂？',opts:['海洋和陆地只能吸收一部分，剩余留在大气中','岩石圈每年主动释放全部碳','植物完全不吸收CO₂','大气碳没有任何去向'],ans:0},
+ quiz:{q:'人类排放的碳为什么会持续推高大气CO₂？',opts:['岩石圈每年主动释放全部碳','海洋和陆地只能吸收一部分，剩余留在大气中','植物完全不吸收CO₂','大气碳没有任何去向'],ans:1},
  learn:'地球碳储量：岩石圈<span class="sv">6600万GtC</span>、海洋<span class="sv">38000GtC</span>、土壤<span class="sv">1500GtC</span>、大气<span class="sv">870GtC</span>、植被<span class="sv">450GtC</span>。人类每年排放约<span class="sv">10GtC</span>，海洋和陆地各吸收约25%，剩余50%留在大气中。碳循环的平衡被打破是全球变暖的根本原因。'},
 {name:'情景预测',sub:'不同排放路径下的未来',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>RCP 排放路径（2.6/4.5/8.5），升温 1.5-4.5°C</div>选择不同的排放路径(RCP2.6/4.5/8.5)，运行百年模拟，观察温度和海平面变化曲线。',
  objs:['选择一个排放路径','运行百年模拟','对比不同情景结果'],
- quiz:{q:'RCP8.5相对RCP2.6通常代表什么？',opts:['更高排放、更大升温和海平面上升','更强力减排、更低升温','没有任何排放','只影响海平面不影响温度'],ans:0},
+ quiz:{q:'RCP8.5相对RCP2.6通常代表什么？',opts:['更强力减排、更低升温','没有任何排放','更高排放、更大升温和海平面上升','只影响海平面不影响温度'],ans:2},
  learn:'IPCC代表性浓度路径：<span class="sv">RCP2.6</span>（强力减排）升温约1.5°C；<span class="sv">RCP4.5</span>（中等减排）升温约2.5°C；<span class="sv">RCP8.5</span>（无控制排放）升温约4.5°C。海平面上升：RCP2.6约<span class="sv">0.4m</span>，RCP8.5可达<span class="sv">1.0m+</span>。每0.5°C升温都意味着更多极端天气、物种灭绝和粮食危机。'}
 ];
 
@@ -231,7 +262,7 @@ function renderStageNav(){
   levels.forEach((l,i)=>{
     const unlocked=isUnlocked(i);
     const cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?`loadLevel(${i})`:''}"></div>`;
+    h+=`<div class="sn-d ${cls}" ${unlocked?`onclick="loadLevel(${i})"`:''}></div>`;
   });
   h+=`</div><div class="sn-info">第 ${curLevel+1}/${levels.length} 关 | 进度 ${Math.round(passed/levels.length*100)}%</div>`;
   h+=`<div class="sn-hint">${passed}/${levels.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
@@ -240,12 +271,13 @@ function renderStageNav(){
 function renderQuiz(lv){
   const fb=quizFeedback[curLevel];
   let h=`<div class="quiz-box"><div class="quiz-title">通关小测验</div><div class="quiz-q">${lv.quiz.q}</div>`;
-  lv.quiz.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="checkQuiz(${curLevel},${i})">${opt}</button>`});
+  lv.quiz.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${curLevel},${i})">${opt}</button>`});
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
   h+='</div>';
   return h;
 }
 function renderSummary(){
+  if(quizPassed.size<levels.length)return '';
   let h='<div class="summary-box">';
   h+='<div class="summary-title">🏆 气候系统通关！</div>';
   h+=`<div class="summary-sub">你已完成全部 ${levels.length} 个气候系统关卡</div>`;
@@ -281,10 +313,11 @@ function renderPanel(){
   document.getElementById('ib-title').textContent=lv.name;
   document.getElementById('ib-status').textContent=allDone?'已完成':'进行中';
 }
-function completeObj(li,oi){if(levelObjs[li][oi])return;levelObjs[li][oi]=true;markDirty()}
+function completeObj(li,oi){if(li!==curLevel||!levelObjs[li]||levelObjs[li][oi])return;levelObjs[li][oi]=true;markDirty()}
 function checkLevelDone(){if(levelObjs[curLevel].every(v=>v))markDirty()}
-function checkQuiz(li,oi){
-  if(li!==curLevel||quizPassed.has(li))return;
+function answerQuiz(li,oi){
+  if(li!==curLevel||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(v=>v))return;
+  if(li>0&&!quizPassed.has(li-1))return;
   const q=levels[li].quiz;
   const ok=oi===q.ans;
   quizFeedback[li]={ok,text:ok?'答对了。先看本关气候机制总结，再进入下一关。':'还不对。回到关键词和模拟现象，再判断因果机制。'};
@@ -301,6 +334,7 @@ function resetProgress(){
 
 /* ===== LEVEL LOADER ===== */
 function loadLevel(n){
+  if(!Number.isInteger(n))return;
   if(n<0||n>=levels.length||!isUnlocked(n))return;
   if(animId){cancelAnimationFrame(animId);animId=0}
   cv.onmousedown=e=>{mouseDown=true;clicked=true;const r=cv.getBoundingClientRect();mouseX=(e.clientX-r.left)*(W/r.width);mouseY=(e.clientY-r.top)*(H/r.height)};
@@ -378,9 +412,9 @@ function drawCO2(x,y,s,tick){
 function setupUI1(area){
   area.innerHTML=`
   <div class="slider-wrap"><label>太阳辐射强度: <span class="slider-val" id="sv1">${state.solar||1361}</span> W/m²</label>
-  <input type="range" min="1000" max="1800" value="${state.solar||1361}" oninput="state.solar=+this.value;document.getElementById('sv1').textContent=this.value;if(!levelObjs[0][0]){completeObj(0,0)}"></div>
+  <input type="range" min="1000" max="1800" value="${state.solar||1361}" oninput="setClimateValue(this,'solar',1000,1800,'sv1',null,()=>{if(!levelObjs[0][0])completeObj(0,0)})"></div>
   <div class="slider-wrap"><label>地球反照率: <span class="slider-val" id="sv2">${state.albedo!=null?state.albedo:0.30}</span></label>
-  <input type="range" min="5" max="80" value="${state.albedo!=null?state.albedo*100:30}" oninput="state.albedo=+this.value/100;document.getElementById('sv2').textContent=(+this.value/100).toFixed(2);if(!levelObjs[0][1]){completeObj(0,1)}"></div>
+  <input type="range" min="5" max="80" value="${state.albedo!=null?state.albedo*100:30}" oninput="setAlbedoInput(this)"></div>
   <div class="hint-box">提示：当吸收能量≈发射能量时天平平衡，温度稳定</div>`;
 }
 function initL1(){
@@ -459,7 +493,7 @@ function initL1(){
 function setupUI2(area){
   area.innerHTML=`
   <div class="slider-wrap"><label>CO₂浓度: <span class="slider-val" id="sv3">${state.co2||280}</span> ppm</label>
-  <input type="range" min="280" max="800" value="${state.co2||280}" oninput="state.co2=+this.value;document.getElementById('sv3').textContent=this.value;if(state.co2>=400&&!levelObjs[1][0])completeObj(1,0)"></div>
+  <input type="range" min="280" max="800" value="${state.co2||280}" oninput="setClimateValue(this,'co2',280,800,'sv3',null,v=>{if(v>=400&&!levelObjs[1][0])completeObj(1,0)})"></div>
   <div class="hint-box">当前温度: <span id="tempDisp2">${(state.tempG||(15)).toFixed(1)}</span>°C<br>工业革命前(280ppm)温度: 15°C</div>`;
 }
 function initL2(){
@@ -535,7 +569,7 @@ function initL2(){
 function setupUI3(area){
   area.innerHTML=`
   <div class="slider-wrap"><label>赤道加热强度: <span class="slider-val" id="sv4">${state.eqHeat||50}</span>%</label>
-  <input type="range" min="0" max="100" value="${state.eqHeat||50}" oninput="state.eqHeat=+this.value;document.getElementById('sv4').textContent=this.value;if(state.eqHeat>=30&&!levelObjs[2][0])completeObj(2,0)"></div>
+  <input type="range" min="0" max="100" value="${state.eqHeat||50}" oninput="setClimateValue(this,'eqHeat',0,100,'sv4',null,v=>{if(v>=30&&!levelObjs[2][0])completeObj(2,0)})"></div>
   <button class="act-btn" onclick="state.showAll3=true;if(!levelObjs[2][2])completeObj(2,2)">显示三圈环流</button>
   <div class="hint-box">增大赤道加热→空气上升→形成环流</div>`;
 }
@@ -639,9 +673,9 @@ function initL3(){
 function setupUI4(area){
   area.innerHTML=`
   <div class="slider-wrap"><label>海水盐度: <span class="slider-val" id="sv5">${state.salinity!=null?state.salinity:35}</span> ‰</label>
-  <input type="range" min="20" max="40" value="${state.salinity!=null?state.salinity:35}" oninput="state.salinity=+this.value;document.getElementById('sv5').textContent=this.value;if(state.salinity>=33&&!levelObjs[3][0])completeObj(3,0)"></div>
+  <input type="range" min="20" max="40" value="${state.salinity!=null?state.salinity:35}" oninput="setClimateValue(this,'salinity',20,40,'sv5',null,v=>{if(v>=33&&!levelObjs[3][0])completeObj(3,0)})"></div>
   <div class="slider-wrap"><label>海水温度: <span class="slider-val" id="sv6">${state.seaTemp!=null?state.seaTemp:2}</span> °C</label>
-  <input type="range" min="-2" max="25" value="${state.seaTemp!=null?state.seaTemp:2}" oninput="state.seaTemp=+this.value;document.getElementById('sv6').textContent=this.value"></div>
+  <input type="range" min="-2" max="25" value="${state.seaTemp!=null?state.seaTemp:2}" oninput="setClimateValue(this,'seaTemp',-2,25,'sv6')"></div>
   <button class="act-btn" onclick="state.meltwater=true;markDirty()" ${state.meltwater?'disabled':''}>注入冰盖融水（降低盐度）</button>
   <div class="hint-box">高盐+低温→密度大→海水下沉→驱动环流</div>`;
 }
@@ -717,7 +751,7 @@ function initL4(){
 function setupUI5(area){
   area.innerHTML=`
   <div class="slider-wrap"><label>初始温度异常: <span class="slider-val" id="sv7">${state.tempAnomaly!=null?state.tempAnomaly.toFixed(1):'+0.0'}</span> °C</label>
-  <input type="range" min="0" max="40" value="${state.tempSlider||0}" oninput="state.tempSlider=+this.value;state.tempAnomaly=this.value/10;document.getElementById('sv7').textContent='+'+state.tempAnomaly.toFixed(1);if(!state.iceStarted){state.iceStarted=true;completeObj(4,0)}"></div>
+  <input type="range" min="0" max="40" value="${state.tempSlider||0}" oninput="setTempAnomalyInput(this)"></div>
   <button class="act-btn" onclick="state.runIce=true">开始模拟反馈循环</button>
   <div class="hint-box">升温→冰融→反照率↓→吸热↑→更多融化</div>`;
 }
@@ -919,7 +953,7 @@ function setupUI7(area){
     <span class="sel-btn ${sel==='rcp85'?'active':''}" onclick="state.rcp='rcp85';markDirty();if(!levelObjs[6][0])completeObj(6,0)">RCP 8.5</span>
   </div>
   <button class="act-btn" onclick="startSim7()" ${!state.rcp?'disabled':''}>▶ 运行百年模拟</button>
-  <button class="act-btn" onclick="state.showAll7=true;runAllScenarios();markDirty()" ${state.simDone?'':'disabled'}>对比所有情景</button>
+  <button class="act-btn" onclick="compareScenarios()" ${state.simDone?'':'disabled'}>对比所有情景</button>
   <div class="hint-box">选择排放路径后点击运行，观察2000-2100年变化</div>`;
 }
 function startSim7(){
@@ -943,6 +977,11 @@ function runAllScenarios(){
     state.allCurves[rcp]={temp:tc,sea:sc};
   });
   if(!levelObjs[6][2])completeObj(6,2);
+}
+function compareScenarios(){
+  if(!state.simDone||state.simYear<=2100)return false;
+  state.showAll7=true;runAllScenarios();markDirty();
+  return true;
 }
 function initL7(){
   state.rcp='';state.simYear=2000;state.simRunning=false;state.simDone=false;

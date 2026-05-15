@@ -203,11 +203,11 @@ const learnTexts=[
 
 const quizData=[
 {q:'猎鹰9号一级火箭为什么采用 hoverslam 着陆？',opts:['最低推力仍大于空箭重量，不能长期悬停','火箭没有发动机节流能力','海上平台会主动托住火箭'],ans:0,ok:'对。它必须精确计算点火，让速度在触地瞬间接近零。',bad:'本关重点是最低推力大于空重，所以不能像直升机一样悬停。'},
-{q:'栅格翼在一级火箭再入时主要负责什么？',opts:['在高速气流中提供姿态和方向控制','储存液氧燃料','替代着陆腿承受冲击'],ans:0,ok:'对。栅格翼在超音速再入中帮助稳定和修正姿态。',bad:'栅格翼不是腿，它的作用是气动控制。'},
-{q:'Max-Q 阶段为什么通常要节流？',opts:['减小最大动压带来的结构载荷','让火箭完全停止上升','让二级提前入轨'],ans:0,ok:'对。最大动压时气动载荷最高，节流能保护结构。',bad:'Max-Q 是最大动压点，不是分离点。'},
+{q:'栅格翼在一级火箭再入时主要负责什么？',opts:['储存液氧燃料','在高速气流中提供姿态和方向控制','替代着陆腿承受冲击'],ans:1,ok:'对。栅格翼在超音速再入中帮助稳定和修正姿态。',bad:'栅格翼不是腿，它的作用是气动控制。'},
+{q:'Max-Q 阶段为什么通常要节流？',opts:['让火箭完全停止上升','让二级提前入轨','减小最大动压带来的结构载荷'],ans:2,ok:'对。最大动压时气动载荷最高，节流能保护结构。',bad:'Max-Q 是最大动压点，不是分离点。'},
 {q:'星链星间激光链路的意义是什么？',opts:['卫星之间可直接传输数据，降低对地面中继依赖','让卫星获得太阳能','把卫星固定在同一位置'],ans:0,ok:'对。星间链路让数据在太空中跨卫星转发。',bad:'激光链路是通信链路，不是推进或供电系统。'},
-{q:'星舰选择不锈钢的重要原因之一是什么？',opts:['低温和再入高温环境下仍有强度且成本低','不锈钢比所有材料都更轻','不锈钢能自动产生燃料'],ans:0,ok:'对。不锈钢兼顾温度适应性、制造和成本。',bad:'星舰不是因为不锈钢最轻，而是综合强度、温度和成本。'},
-{q:'火星任务中的 ISRU 指什么？',opts:['利用当地资源生产燃料和补给','在地球预先装满全部返程燃料','绕过转移窗口直接瞬移'],ans:0,ok:'对。用火星 CO2 和水冰生产甲烷/氧气是返程闭环关键。',bad:'ISRU 是原位资源利用，不是单纯携带更多物资。'},
+{q:'星舰选择不锈钢的重要原因之一是什么？',opts:['不锈钢比所有材料都更轻','低温和再入高温环境下仍有强度且成本低','不锈钢能自动产生燃料'],ans:1,ok:'对。不锈钢兼顾温度适应性、制造和成本。',bad:'星舰不是因为不锈钢最轻，而是综合强度、温度和成本。'},
+{q:'火星任务中的 ISRU 指什么？',opts:['在地球预先装满全部返程燃料','绕过转移窗口直接瞬移','利用当地资源生产燃料和补给'],ans:2,ok:'对。用火星 CO2 和水冰生产甲烷/氧气是返程闭环关键。',bad:'ISRU 是原位资源利用，不是单纯携带更多物资。'},
 {q:'可回收火箭改变太空经济的核心是什么？',opts:['复用硬件摊薄发射成本，降低每公斤入轨价格','每次发射都丢弃更多部件','只靠提高票价盈利'],ans:0,ok:'对。复用让昂贵硬件多次使用，发射成本显著下降。',bad:'太空经济的关键变量是复用次数和单位入轨成本。'}
 ];
 
@@ -252,6 +252,8 @@ function startGame(){
 }
 
 function goLevel(n){
+  n=Number(n);
+  if(!Number.isInteger(n))return;
   if(!canGoLevel(n))return;
   curLevel=n;
   cancelAnimationFrame(animId);
@@ -263,7 +265,7 @@ function goLevel(n){
 
 function renderBar(){
   let h='<span style="color:var(--text-muted)">🚀 '+levelNames[curLevel]+'</span>';
-  h+='<span class="prog">已通关 '+completedLevels.size+'/'+levelNames.length+'</span>';
+  h+='<span class="prog">已通关 '+quizPassed.size+'/'+levelNames.length+'</span>';
   bar.innerHTML=h;
 }
 
@@ -314,17 +316,19 @@ function renderPanel(){
 }
 
 function canGoLevel(li){
-  return li>=0&&li<levelNames.length&&(li===0||completedLevels.has(li)||completedLevels.has(li-1));
+  li=Number(li);
+  if(!Number.isInteger(li))return false;
+  return li>=0&&li<levelNames.length&&(li===0||quizPassed.has(li-1));
 }
 
 function stageNavHTML(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   for(let i=0;i<levelNames.length;i++){
     const unlocked=canGoLevel(i);
-    const cls=completedLevels.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    const cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    h+=unlocked&&i!==curLevel?`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${cls}"></div>`;
   }
-  h+=`</div><div class="sn-info">第 ${curLevel+1}/${levelNames.length} 关 | 已通关 ${completedLevels.size}/${levelNames.length}</div>`;
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/${levelNames.length} 关 | 已通关 ${quizPassed.size}/${levelNames.length}</div>`;
   h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
   return h;
 }
@@ -340,17 +344,25 @@ function quizHTML(li){
 }
 
 function answerQuiz(li,optIdx){
-  const q=quizData[li],ok=optIdx===q.ans;
+  li=Number(li);optIdx=Number(optIdx);
+  if(!Number.isInteger(li)||!Number.isInteger(optIdx))return false;
+  if(li!==curLevel||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(v=>v))return false;
+  const q=quizData[li];
+  if(!q||optIdx<0||optIdx>=q.opts.length)return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  const ok=optIdx===q.ans;
   quizFeedback[li]={ok,text:ok?q.ok:q.bad};
   if(ok){quizPassed.add(li);completedLevels.add(li);renderBar();}
   renderPanel();
+  return ok;
 }
 
 function summaryHTML(){
+  if(quizPassed.size<levelNames.length)return '';
   let h='<div class="summary-box"><div class="summary-title">🏆 SpaceX 探险通关</div>';
   h+='<div class="summary-sub">你已完成 7 个可回收火箭与太空经济主题</div><div class="summary-stats">';
   h+=`<div class="summary-stat"><div class="num">${levelNames.length}</div><div class="label">关卡完成</div></div>`;
-  h+=`<div class="summary-stat"><div class="num">${completedLevels.size}</div><div class="label">测验通过</div></div>`;
+  h+=`<div class="summary-stat"><div class="num">${quizPassed.size}</div><div class="label">测验通过</div></div>`;
   h+='<div class="summary-stat"><div class="num">100%</div><div class="label">知识闭环</div></div></div>';
   h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">📚 关键知识回顾</div>';
   levelNames.forEach(n=>{h+=`<div>✅ ${n}</div>`;});
@@ -358,26 +370,36 @@ function summaryHTML(){
   return h;
 }
 
+function clampNumber(value,fallback,min,max){
+  const n=Number(value);
+  return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback;
+}
+
 function setL1Control(key,el){
-  l1[key]=+el.value;
+  const range=key==='thrust'?[0,100]:[-30,30];
+  l1[key]=clampNumber(el.value,l1[key],range[0],range[1]);
+  el.value=l1[key];
   const out=document.getElementById(key==='thrust'?'l1ThrustVal':'l1AngleVal');
   if(out)out.textContent=l1[key]+(key==='thrust'?'%':'°');
 }
 
 function setL3Throttle(el){
-  l3.throttle=+el.value;
+  l3.throttle=clampNumber(el.value,l3.throttle,0,100);
+  el.value=l3.throttle;
   const out=document.getElementById('l3ThrottleVal');
   if(out)out.textContent=l3.throttle+'%';
 }
 
 function setL5DockVx(el){
-  l5.dockVx=+el.value;
+  l5.dockVx=clampNumber(el.value,l5.dockVx,-5,5);
+  el.value=l5.dockVx;
   const out=document.getElementById('l5DockVxVal');
   if(out)out.textContent=l5.dockVx;
 }
 
 function setL7Slider(key,el){
-  l7[key]=+el.value;
+  l7[key]=clampNumber(el.value,l7[key],0,100);
+  el.value=l7[key];
   checkL7();
   if(key==='starlinkRev'){
     const users=document.getElementById('l7UsersVal');
@@ -458,6 +480,8 @@ function getLevelControls(li){
 }
 
 function initLevel(n){
+  n=Number(n);
+  if(!canGoLevel(n))return;
   cancelAnimationFrame(animId);t=0;
   if(n===0){
     l1={vy:0,vx:0,y:50,x:0,thrust:50,angle:0,wind:(Math.random()-0.5)*6,fuel:100,landed:false,crashed:false,groundY:H-60,platX:0,platW:80,running:false};

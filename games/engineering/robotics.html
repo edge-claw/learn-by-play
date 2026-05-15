@@ -97,7 +97,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .slider-wrap label{font-size:11px;color:#888}
 .slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#0ea5e9}
 .sv{color:var(--sv);font-weight:bold}
-.m-title{font-size:17px;font-weight:700;margin:8px 0 4px;color:#1e293b}
+.m-title{font-size:17px;font-weight:700;margin:8px 0 4px;color:var(--title-color)}
 .m-sub{font-size:12px;color:#888;margin-bottom:8px}
 #bottom-bar{position:absolute;bottom:0;left:0;right:0;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
 #bottom-bar .bb-left{flex:1}
@@ -127,6 +127,8 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
 .quiz-opt{display:block;width:100%;padding:9px 10px;margin:6px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{border-color:#22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-opt.wrong{border-color:#ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .quiz-feedback{border-radius:8px;padding:8px;margin-top:8px;font-size:12px;line-height:1.6}
 .quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
 .quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
@@ -175,12 +177,12 @@ const TH={
   light:{bg1:'#e8edf5',bg2:'#f0f2f5',bg3:'#e0e7f0',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',label:'#334155',electron:'#334155',electronGlow:'rgba(51,65,85,0.3)',shell:'rgba(100,100,200,0.15)',barBg:'#c7d2fe',showStars:false}
 };
 function t(){return isDark?TH.dark:TH.light}
-function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')renderPanel();if(typeof draw==='function')draw()}catch(e){}}
 
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 const panel=document.getElementById('panel'),bar=document.getElementById('bottom-bar');
 const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
-let CW,CH,PW=320,time=0,animId,curLevel=0,mouse={x:0,y:0,down:false};
+let CW,CH,PW=320,time=0,animId,curLevel=0,mouse={x:0,y:0,down:false},animating=false;
 let levelObjs=[[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false]];
 const completedLevels=new Set(),quizPassed=new Set(),quizFeedback={};
 let stars=[];
@@ -213,23 +215,29 @@ const learnTexts=[
 '🐜 群体机器人受蚁群、鸟群启发。去中心化控制：每个个体遵循简单规则，涌现出复杂集体行为。信息素机制实现间接通信(Stigmergy)。'
 ];
 const quizData=[
-{q:'机器人运动学中，FK 和 IK 分别表示什么关系？',opts:['FK 从关节角求末端位置，IK 从目标位置求关节角','FK 只负责供电，IK 只负责通信','FK 和 IK 都只用于图像滤镜'],ans:0,ok:'对。FK 是正向计算位姿，IK 是反向求解关节配置。',bad:'运动学关注关节空间与任务空间之间的映射。'},
-{q:'常说的 6DOF 位姿通常由哪些自由度组成？',opts:['3 个平移自由度和 3 个旋转自由度','6 个颜色通道','6 个电池容量等级'],ans:0,ok:'对。空间刚体位姿需要位置和姿态两部分。',bad:'6DOF 指空间位置和方向，不是设备数量。'},
-{q:'A* 和 RRT 在路径规划中的典型差异是什么？',opts:['A* 用启发式搜索最短路，RRT 用随机采样探索高维空间','A* 只能画图标，RRT 只能测温','两者都不处理障碍物'],ans:0,ok:'对。A* 适合网格最短路，RRT 适合连续和高维配置空间。',bad:'路径规划算法的核心是搜索可行路径并避开障碍。'},
-{q:'SLAM 这个缩写描述的核心任务是什么？',opts:['机器人同时估计自身位置并构建环境地图','只给机器人播放音频','只读取电池电压'],ans:0,ok:'对。SLAM 的难点就在定位和建图相互依赖。',bad:'SLAM 是自主导航的基础能力。'},
-{q:'安全抓取易碎物体时，机器人最需要控制什么？',opts:['接触点、摩擦条件和夹爪力，避免压坏物体','尽量用最大力度夹紧','忽略物体形状只看颜色'],ans:0,ok:'对。抓取规划要满足稳定性，也要控制接触力。',bad:'易碎物体不能只追求夹得牢，还要限制作用力。'},
-{q:'卡尔曼滤波在传感器融合中的基本循环是什么？',opts:['先预测状态，再用测量更新估计','先删除所有传感器，再随机猜位置','只保留噪声最大的读数'],ans:0,ok:'对。预测和更新让系统在噪声中得到更稳定估计。',bad:'融合算法会综合模型预测和传感器测量。'},
-{q:'群体机器人为什么能产生复杂协作行为？',opts:['每个个体遵循简单局部规则，整体涌现出协同行为','所有机器人必须由一个巨型机械臂拖动','个体完全随机移动就一定最优'],ans:0,ok:'对。去中心化规则和间接通信能产生集体智能。',bad:'群体智能强调简单个体规则带来的整体涌现。'}
+{q:'机器人运动学中，FK 和 IK 分别表示什么关系？',opts:['FK 从关节角求末端位置，IK 从目标位置求关节角','FK 只负责供电，IK 只负责通信','FK 和 IK 都只用于图像滤镜'],ans:0,ok:'对。FK 是正向计算位姿，IK 是反向求解关节配置。',bad:'运动学关注关节空间与任务空间之间的映射。',why:'机械臂控制通常在关节空间和任务空间之间转换，FK 用来预测末端位置，IK 用来反推关节角。'},
+{q:'常说的 6DOF 位姿通常由哪些自由度组成？',opts:['6 个颜色通道','3 个平移自由度和 3 个旋转自由度','6 个电池容量等级'],ans:1,ok:'对。空间刚体位姿需要位置和姿态两部分。',bad:'6DOF 指空间位置和方向，不是设备数量。',why:'一个刚体在三维空间中需要 x/y/z 位置和 roll/pitch/yaw 姿态，合起来就是 6 个自由度。'},
+{q:'A* 和 RRT 在路径规划中的典型差异是什么？',opts:['A* 只能画图标，RRT 只能测温','两者都不处理障碍物','A* 用启发式搜索最短路，RRT 用随机采样探索高维空间'],ans:2,ok:'对。A* 适合网格最短路，RRT 适合连续和高维配置空间。',bad:'路径规划算法的核心是搜索可行路径并避开障碍。',why:'A* 依赖代价和启发函数在离散图上搜索，RRT 则通过随机扩展树快速覆盖连续空间。'},
+{q:'SLAM 这个缩写描述的核心任务是什么？',opts:['只给机器人播放音频','机器人同时估计自身位置并构建环境地图','只读取电池电压'],ans:1,ok:'对。SLAM 的难点就在定位和建图相互依赖。',bad:'SLAM 是自主导航的基础能力。',why:'机器人不知道精确位置时很难建图，而地图又能帮助修正位置估计，这两个问题必须一起解决。'},
+{q:'安全抓取易碎物体时，机器人最需要控制什么？',opts:['尽量用最大力度夹紧','忽略物体形状只看颜色','接触点、摩擦条件和夹爪力，避免压坏物体'],ans:2,ok:'对。抓取规划要满足稳定性，也要控制接触力。',bad:'易碎物体不能只追求夹得牢，还要限制作用力。',why:'稳定抓取需要足够摩擦和合适接触点，但易碎物体还要求夹爪力低于损伤阈值。'},
+{q:'卡尔曼滤波在传感器融合中的基本循环是什么？',opts:['先删除所有传感器，再随机猜位置','先预测状态，再用测量更新估计','只保留噪声最大的读数'],ans:1,ok:'对。预测和更新让系统在噪声中得到更稳定估计。',bad:'融合算法会综合模型预测和传感器测量。',why:'卡尔曼滤波先用运动模型预测状态，再根据测量可信度修正预测，从而降低噪声影响。'},
+{q:'群体机器人为什么能产生复杂协作行为？',opts:['所有机器人必须由一个巨型机械臂拖动','个体完全随机移动就一定最优','每个个体遵循简单局部规则，整体涌现出协同行为'],ans:2,ok:'对。去中心化规则和间接通信能产生集体智能。',bad:'群体智能强调简单个体规则带来的整体涌现。',why:'每台机器人只处理邻居、目标和局部信号，许多个体叠加后会形成编队、搬运和路径优化等整体行为。'}
 ];
 
 // === Level-specific state ===
 let arm={joints:[],angles:[],lengths:[],target:null,mode:2,targets:[],hitCount:0,showFK:false,switched3:false};
 let dof={jointTypes:[],angle6:[],showWorkspace:false,targetPoses:[],hitPose:0,mode:'rotate'};
-let pathPlan={grid:[],start:null,goal:null,obstacles:[],astarPath:[],rrtTree:[],rrtPath:[],algo:'astar',searching:false,searchStep:0,openSet:[],closedSet:[],found:false,compared:false,astarLen:0,rrtLen:0};
+const dofBaseTypes=['R','R','R','P','R','R'];
+const dofPoseTargets=[
+  {name:'抬腕取件',values:[25,-35,20,42,15,-10]},
+  {name:'前伸定位',values:[-20,30,-25,55,-10,20]},
+  {name:'侧向避障',values:[40,15,-35,24,25,-20]}
+];
+let pathPlan={grid:[],start:null,goal:null,obstacles:[],astarPath:[],rrtTree:[],rrtPath:[],algo:'astar',searching:false,searchStep:0,openSet:[],closedSet:[],found:false,compared:false,astarLen:0,rrtLen:0,rrtAttempts:0,lastFail:'',runId:0};
 let slam={robot:{x:0,y:0,angle:0},map:[],revealed:[],lidarRays:[],explored:0,posError:0,truePos:{x:0,y:0},mapComplete:false,walls:[],speed:2};
 let grab={gripper:{x:0,y:0,angle:0,force:50,open:80,holding:null},objects:[],stacked:0,grabbed:0,fragileOk:false};
 let sensor={truePos:{x:0,y:0},camPos:{x:0,y:0},lidarPos:{x:0,y:0},imuPos:{x:0,y:0},fusedPos:{x:0,y:0},kalman:false,noiseObserved:false,fusionGood:false,path:[],kf:{x:0,y:0,vx:0,vy:0,P:[1,0,0,1]}};
-let swarm={bots:[],target:null,formation:'line',carrying:false,pheromones:[],taskDone:false,formationOk:false,pathOpt:false,cargo:null,cargoTarget:null};
+let swarm={bots:[],target:null,formation:'line',carrying:false,pheromones:[],taskDone:false,formationOk:false,pathOpt:false,cargo:null,cargoTarget:null,carryPlanConfirmed:false};
 
 function resize(){canvas.width=CW=innerWidth;canvas.height=CH=innerHeight;for(let i=stars.length;i<80;i++)stars.push({x:Math.random()*CW,y:Math.random()*CH,s:Math.random()*1.5+0.5,b:Math.random()});}
 resize();window.onresize=resize;
@@ -237,13 +245,33 @@ resize();window.onresize=resize;
 function startGame(){
   document.getElementById('startScreen').classList.add('hidden');
   panel.style.display='block';bar.style.display='flex';
-  initLevel(0);renderPanel();renderBar();loop();
+  resetProgress();
+  if(!animating){animating=true;loop();}
 }
-function canGoLevel(n){return n>=0&&n<levelNames.length&&(n===0||completedLevels.has(n)||completedLevels.has(n-1));}
-function goLevel(n){if(!canGoLevel(n))return;curLevel=n;initLevel(n);renderPanel();renderBar();}
+function resetProgress(){
+  curLevel=0;
+  levelObjs=Array.from({length:levelNames.length},()=>[false,false,false]);
+  completedLevels.clear();
+  quizPassed.clear();
+  Object.keys(quizFeedback).forEach(k=>delete quizFeedback[k]);
+  dragging=null;
+  initLevel(0);renderPanel();renderBar();
+}
+function canGoLevel(n){
+  n=Number(n);
+  return Number.isInteger(n)&&n>=0&&n<levelNames.length&&(n===0||quizPassed.has(n-1));
+}
+function goLevel(n){
+  n=Number(n);
+  if(!canGoLevel(n))return false;
+  curLevel=n;initLevel(n);renderPanel();renderBar();return true;
+}
 
 // ========== INIT LEVELS ==========
 function initLevel(n){
+  n=Number(n);
+  if(!Number.isInteger(n)||!canGoLevel(n))return false;
+  if(!quizPassed.has(n))delete quizFeedback[n];
   let cx=PW+(CW-PW)/2, cy=CH/2-18;
   if(n===0){
     arm.mode=2;arm.switched3=false;arm.showFK=false;arm.hitCount=0;
@@ -252,10 +280,14 @@ function initLevel(n){
     for(let i=0;i<3;i++){let a=Math.random()*Math.PI*2,r=80+Math.random()*100;arm.targets.push({x:cx+Math.cos(a)*r,y:cy+Math.sin(a)*r,hit:false});}
     arm.target=null;
   }else if(n===1){
-    dof.jointTypes=['R','R','R','P','R','R'];dof.angle6=[0,0.3,-0.2,30,0.1,0];
+    dof.jointTypes=dofBaseTypes.slice();dof.angle6=[0,0.3,-0.2,30,0.1,0];
     dof.showWorkspace=false;dof.hitPose=0;dof.mode='rotate';
-    dof.targetPoses=[];
-    for(let i=0;i<3;i++)dof.targetPoses.push({angles:Array.from({length:6},()=>(Math.random()-0.5)*1.2),hit:false});
+    dof.targetPoses=dofPoseTargets.map(t=>({
+      name:t.name,
+      types:dofBaseTypes.slice(),
+      angles:t.values.map((v,i)=>dofBaseTypes[i]==='R'?v*Math.PI/180:v),
+      hit:false
+    }));
   }else if(n===2){
     let gs=20,cols=Math.floor((CW-PW-40)/gs),rows=Math.floor((CH-80)/gs);
     pathPlan.grid=[];pathPlan.obstacles=[];pathPlan.gs=gs;pathPlan.cols=cols;pathPlan.rows=rows;
@@ -264,9 +296,11 @@ function initLevel(n){
     for(let i=0;i<Math.floor(cols*rows*0.25);i++){let r=Math.floor(Math.random()*rows),c=Math.floor(Math.random()*cols);pathPlan.grid[r][c]=1;pathPlan.obstacles.push({r,c});}
     pathPlan.start={r:1,c:1};pathPlan.goal={r:rows-2,c:cols-2};
     pathPlan.grid[1][1]=0;pathPlan.grid[rows-2][cols-2]=0;
+    carvePathPlanCorridor();
     pathPlan.astarPath=[];pathPlan.rrtTree=[];pathPlan.rrtPath=[];
-    pathPlan.algo='astar';pathPlan.searching=false;pathPlan.found=false;pathPlan.compared=false;
-    pathPlan.openSet=[];pathPlan.closedSet=[];pathPlan.searchStep=0;pathPlan.astarLen=0;pathPlan.rrtLen=0;
+    pathPlan.algo='astar';pathPlan.searching=false;pathPlan.found=false;pathPlan.compared=false;pathPlan.lastFail='';
+    pathPlan.openSet=[];pathPlan.closedSet=[];pathPlan.searchStep=0;pathPlan.astarLen=0;pathPlan.rrtLen=0;pathPlan.rrtAttempts=0;
+    pathPlan.runId=(pathPlan.runId||0)+1;
   }else if(n===3){
     let gw=40,cols=Math.floor((CW-PW-40)/gw),rows=Math.floor((CH-80)/gw);
     slam.gw=gw;slam.cols=cols;slam.rows=rows;slam.ox=PW+20;slam.oy=20;
@@ -275,7 +309,7 @@ function initLevel(n){
     for(let i=0;i<Math.floor(cols*rows*0.2);i++){let r=Math.floor(Math.random()*rows),c=Math.floor(Math.random()*cols);if(r>1||c>1)slam.map[r][c]=1;}
     slam.robot={x:slam.ox+gw*1.5,y:slam.oy+gw*1.5,angle:0};
     slam.truePos={x:slam.robot.x,y:slam.robot.y};
-    slam.explored=0;slam.posError=0;slam.mapComplete=false;slam.lidarRays=[];
+    slam.explored=0;slam.posError=0;slam.mapComplete=false;slam.lidarRays=[];slam.movedDistance=0;slam.lastRobot={x:slam.robot.x,y:slam.robot.y};
   }else if(n===4){
     grab.gripper={x:cx,y:cy-80,angle:0,force:50,open:80,holding:null};
     grab.objects=[
@@ -295,12 +329,13 @@ function initLevel(n){
     sensor.kf={x:sx,y:sy,vx:0,vy:0,P:[10,0,0,10]};
   }else if(n===6){
     swarm.bots=[];swarm.pheromones=[];swarm.formation='line';swarm.carrying=false;
-    swarm.taskDone=false;swarm.formationOk=false;swarm.pathOpt=false;
+    swarm.taskDone=false;swarm.formationOk=false;swarm.pathOpt=false;swarm.carryPlanConfirmed=false;
     for(let i=0;i<3;i++)swarm.bots.push({x:cx-60+i*60,y:cy+80,tx:0,ty:0,color:['#f87171','#60a5fa','#4ade80'][i]});
     swarm.cargo={x:cx,y:cy-60,w:60,h:40,carried:false};
     swarm.cargoTarget={x:cx+180,y:cy+100};
     swarm.target={x:cx+100,y:cy};
   }
+  return true;
 }
 
 // ========== RENDER PANEL ==========
@@ -331,6 +366,7 @@ function _diffNodes(o,n){
 
 function renderPanel(){
   let li=curLevel,h='';
+  const levelPassed=quizPassed.has(li);
   h+=stageNavHTML();
   h+=`<div class="m-title">${levelNames[li]}</div>`;
   const _kw=['正运动学(FK)：关节角→末端位置；逆运动学(IK)：目标→关节角','6自由度 = 3平移 + 3旋转，旋转关节(R) vs 移动关节(P)','A*：启发式最优路径；RRT：随机采样探索高维空间','SLAM：同时定位与建图，激光雷达+粒子滤波','力封闭抓取 + 阻抗控制（像弹簧一样柔顺）','卡尔曼滤波：预测+更新，多传感器优势互补','去中心化控制：简单规则 → 涌现复杂集体行为'][li];
@@ -338,15 +374,16 @@ function renderPanel(){
   h+=`<div class="m-sub">${levelDescs[li]}</div>`;
   h+='<div style="margin:8px 0">';
   for(let i=0;i<3;i++){
-    let done=levelObjs[li][i];
+    let done=levelPassed||levelObjs[li][i];
     h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${levelGoals[li][i]}</span></div>`;
   }
   h+='</div>';
   // Level-specific controls
   if(li===0){
     h+=`<div class="concept-box">拖动蓝色末端执行器到黄色目标点。<br>观察关节角度的实时变化。</div>`;
-    h+=`<button class="act-btn" onclick="arm.showFK=!arm.showFK;renderPanel()">显示/隐藏角度信息</button>`;
+    h+=`<button class="act-btn" onclick="toggleArmAngles()">显示/隐藏角度信息</button>`;
     h+=`<button class="act-btn" onclick="switchArmMode()">切换${arm.mode===2?'3':'2'}关节模式</button>`;
+    if(arm.hitCount<3)h+=`<button class="act-btn" onclick="moveArmToNextTarget()">移动到下一个目标点</button>`;
     if(arm.showFK){
       h+='<div class="concept-box">';
       for(let i=0;i<arm.angles.length;i++)h+=`关节${i+1}: ${(arm.angles[i]*180/Math.PI).toFixed(1)}°<br>`;
@@ -354,23 +391,25 @@ function renderPanel(){
     }
   }else if(li===1){
     h+=`<div class="concept-box">点击关节切换类型(R旋转/P移动)。<br>展开工作空间查看可达范围。</div>`;
-    h+=`<button class="act-btn" onclick="dof.showWorkspace=!dof.showWorkspace;checkDofObj();renderPanel()">展开/收起工作空间</button>`;
+    h+=`<button class="act-btn" onclick="toggleDofWorkspace()">展开/收起工作空间</button>`;
     h+=`<div class="concept-box">关节类型: ${dof.jointTypes.join(' - ')}</div>`;
     for(let i=0;i<6;i++){
-      h+=`<div class="slider-wrap"><label>关节${i+1} (${dof.jointTypes[i]==='R'?'旋转':'移动'}): <span class="sv">${dof.jointTypes[i]==='R'?(dof.angle6[i]*180/Math.PI).toFixed(0)+'°':dof.angle6[i].toFixed(0)+'mm'}</span></label>`;
-      h+=`<input type="range" min="${dof.jointTypes[i]==='R'?-180:0}" max="${dof.jointTypes[i]==='R'?180:60}" value="${dof.jointTypes[i]==='R'?Math.round(dof.angle6[i]*180/Math.PI):dof.angle6[i]}" oninput="setDofJoint(${i},this.value)"></div>`;
+      h+=`<div class="slider-wrap"><label>关节${i+1} (${dof.jointTypes[i]==='R'?'旋转':'移动'}): <span class="sv" id="dofVal${i}">${formatDofJoint(i)}</span></label>`;
+      h+=`<input type="range" min="${dof.jointTypes[i]==='R'?-180:0}" max="${dof.jointTypes[i]==='R'?180:60}" value="${dof.jointTypes[i]==='R'?Math.round(dof.angle6[i]*180/Math.PI):dof.angle6[i]}" oninput="dragDofJoint(${i},this.value)" onchange="this.blur();renderPanel()"></div>`;
     }
+    h+=dofTargetHTML();
   }else if(li===2){
     h+=`<div class="concept-box">选择算法，点击"开始搜索"观察路径规划过程。</div>`;
-    h+=`<button class="act-btn${pathPlan.algo==='astar'?' green':''}" onclick="pathPlan.algo='astar';renderPanel()">A* 算法</button>`;
-    h+=`<button class="act-btn${pathPlan.algo==='rrt'?' green':''}" onclick="pathPlan.algo='rrt';renderPanel()">RRT 算法</button>`;
+    h+=`<button class="act-btn${pathPlan.algo==='astar'?' green':''}" onclick="setPathAlgo('astar')">A* 算法</button>`;
+    h+=`<button class="act-btn${pathPlan.algo==='rrt'?' green':''}" onclick="setPathAlgo('rrt')">RRT 算法</button>`;
     h+=`<button class="act-btn" onclick="startPathSearch()">开始搜索</button>`;
-    h+=`<button class="act-btn" onclick="initLevel(2);renderPanel()">重置地图</button>`;
+    h+=`<button class="act-btn" onclick="resetPathPlanning()">重置地图</button>`;
     if(pathPlan.astarLen>0)h+=`<div class="concept-box">A*路径长度: ${pathPlan.astarLen}<br>RRT路径长度: ${pathPlan.rrtLen||'未搜索'}</div>`;
+    if(pathPlan.lastFail)h+=`<div class="hint-box">${pathPlan.lastFail}</div>`;
   }else if(li===3){
     h+=`<div class="concept-box">用方向键或WASD控制机器人移动。<br>激光雷达自动扫描周围环境。</div>`;
     h+=`<div class="concept-box">已探索: ${slam.explored.toFixed(0)}%<br>定位误差: ${slam.posError.toFixed(1)}px</div>`;
-    h+=`<button class="act-btn" onclick="slam.speed=slam.speed===2?4:2;renderPanel()">速度: ${slam.speed===2?'正常':'快速'}</button>`;
+    h+=`<button class="act-btn" onclick="toggleSlamSpeed()">速度: ${slam.speed===2?'正常':'快速'}</button>`;
   }else if(li===4){
     h+=`<div class="concept-box">拖动夹爪到物体上方，调整力度后抓取。<br>将物体放到右侧堆叠区。</div>`;
     h+=`<div class="slider-wrap"><label>夹爪力度: <span class="sv" id="gripForceVal">${grab.gripper.force}N</span></label>`;
@@ -380,22 +419,31 @@ function renderPanel(){
     h+=`<button class="act-btn" onclick="tryGrab()">抓取/释放</button>`;
     h+=`<div class="concept-box">已抓取: ${grab.grabbed}/3 | 堆叠: ${grab.stacked}/3</div>`;
   }else if(li===5){
+    const fusionErr=Math.hypot(sensor.fusedPos.x-sensor.truePos.x,sensor.fusedPos.y-sensor.truePos.y);
+    const fusionHint=sensor.kalman?(fusionErr<2?'融合误差已进入目标范围。':'滤波正在收敛，继续观察预测-更新循环。'):'先开启卡尔曼滤波，把多传感器读数融合成更稳定估计。';
     h+=`<div class="concept-box">观察各传感器的噪声特性。<br>启用卡尔曼滤波查看融合效果。</div>`;
-    h+=`<button class="act-btn${sensor.kalman?' green':''}" onclick="sensor.kalman=!sensor.kalman;renderPanel()">卡尔曼滤波: ${sensor.kalman?'开启':'关闭'}</button>`;
+    h+=`<button class="act-btn${sensor.kalman?' green':''}" onclick="toggleKalman()">卡尔曼滤波: ${sensor.kalman?'开启':'关闭'}</button>`;
     h+=`<div class="concept-box">摄像头噪声: ±15px (低频)<br>激光雷达噪声: ±5px (高频)<br>IMU漂移: 累积误差</div>`;
+    h+=`<div class="hint-box">当前融合误差: <span class="sv">${fusionErr.toFixed(1)}px</span> / 目标 &lt;2px<br>${fusionHint}</div>`;
   }else if(li===6){
     h+=`<div class="concept-box">控制3个机器人协作搬运货物。<br>选择编队后点击目标位置。</div>`;
-    h+=`<button class="act-btn${swarm.formation==='line'?' green':''}" onclick="swarm.formation='line';renderPanel()">一字编队</button>`;
-    h+=`<button class="act-btn${swarm.formation==='triangle'?' green':''}" onclick="swarm.formation='triangle';renderPanel()">三角编队</button>`;
-    h+=`<button class="act-btn${swarm.formation==='circle'?' green':''}" onclick="swarm.formation='circle';renderPanel()">环形编队</button>`;
-    h+=`<button class="act-btn" onclick="startSwarmCarry()">开始协作搬运</button>`;
-    h+=`<button class="act-btn" onclick="optimizeSwarmPath()">蚁群路径优化</button>`;
+    h+=`<button class="act-btn${swarm.formation==='line'?' green':''}" onclick="setSwarmFormation('line')">一字编队</button>`;
+    h+=`<button class="act-btn${swarm.formation==='triangle'?' green':''}" onclick="setSwarmFormation('triangle')">三角编队</button>`;
+    h+=`<button class="act-btn${swarm.formation==='circle'?' green':''}" onclick="setSwarmFormation('circle')">环形编队</button>`;
+    const carryReady=swarm.formation==='triangle'&&swarm.formationOk;
+    h+=`<button class="act-btn" onclick="startSwarmCarry()" ${carryReady?'':'disabled'}>开始协作搬运</button>`;
+    h+=`<button class="act-btn" onclick="confirmSwarmCarry()" ${swarm.taskDone&&!swarm.carryPlanConfirmed?'':'disabled'}>确认协作搬运分工</button>`;
+    h+=`<button class="act-btn" onclick="optimizeSwarmPath()" ${swarm.carrying?'':'disabled'}>蚁群路径优化</button>`;
+    if(!carryReady)h+=`<div class="hint-box">先切换到三角编队并等队形稳定：前车牵引，两侧机器人支撑和纠偏。</div>`;
+    else if(!swarm.carrying)h+=`<div class="hint-box">三角编队已稳定，可以启动协作搬运。</div>`;
+    else if(!swarm.taskDone)h+=`<div class="hint-box">搬运中：保持三角编队，货物到达目标后确认三机分工。</div>`;
+    else if(!swarm.carryPlanConfirmed)h+=`<div class="hint-box">货物已到达目标。确认牵引、支撑、纠偏分工后完成协作搬运目标。</div>`;
   }
   // Learn box & next level
-  if(levelObjs[li].every(v=>v)){
-    if(!quizPassed.has(li)){
-      h+=quizHTML(li);
-    }else{
+  const goalsDone=levelPassed||levelObjs[li].every(v=>v);
+  if(goalsDone){
+    h+=quizHTML(li);
+    if(levelPassed){
       h+=`<div class="learn-box">${learnTexts[li]}</div>`;
       if(li<6)h+=`<button class="act-btn green" style="margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
       if(li===6)h+=summaryHTML();
@@ -406,56 +454,79 @@ function renderPanel(){
 
 function renderBar(){
   bbLeft.textContent='🤖 '+levelNames[curLevel];
-  bbRight.textContent=`${completedLevels.size}/${levelNames.length} 已通关`;
+  bbRight.textContent=`${quizPassed.size}/${levelNames.length} 已通关`;
 }
 
-function completeObj(li,idx){if(!levelObjs[li][idx]){levelObjs[li][idx]=true;renderPanel();renderBar();}}
+function completeObj(li,idx){
+  li=Number(li);idx=Number(idx);
+  if(!Number.isInteger(li)||!Number.isInteger(idx)||li!==curLevel||li<0||li>=levelObjs.length||idx<0||idx>=3||!levelObjs[li]||levelObjs[li][idx])return false;
+  levelObjs[li][idx]=true;renderPanel();renderBar();return true;
+}
 function setInlineText(id,text){let el=document.getElementById(id);if(el)el.textContent=text}
 function dragGripperForce(el){
-  grab.gripper.force=+el.value;
+  if(curLevel!==4)return false;
+  const n=Number(el&&el.value);
+  if(!Number.isFinite(n))return false;
+  grab.gripper.force=Math.max(10,Math.min(100,n));
   setInlineText('gripForceVal',grab.gripper.force+'N');
-  draw();
+  draw();return true;
 }
 function dragGripperOpen(el){
-  grab.gripper.open=+el.value;
+  if(curLevel!==4)return false;
+  const n=Number(el&&el.value);
+  if(!Number.isFinite(n))return false;
+  grab.gripper.open=Math.max(0,Math.min(100,n));
   setInlineText('gripOpenVal',grab.gripper.open+'%');
-  draw();
+  draw();return true;
 }
 
 function stageNavHTML(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   for(let i=0;i<levelNames.length;i++){
     const unlocked=canGoLevel(i);
-    const cls=completedLevels.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    const cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    h+=unlocked&&i!==curLevel?`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${cls}"></div>`;
   }
-  h+=`</div><div class="sn-info">第 ${curLevel+1}/${levelNames.length} 关 | 已通关 ${completedLevels.size}/${levelNames.length}</div>`;
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/${levelNames.length} 关 | 已通关 ${quizPassed.size}/${levelNames.length}</div>`;
   h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
   return h;
 }
 
 function quizHTML(li){
-  const q=quizData[li],fb=quizFeedback[li];
+  const q=quizData[li],fb=quizFeedback[li],passed=quizPassed.has(li);
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
   h+=`<div class="quiz-q">${q.q}</div>`;
-  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;});
+  q.opts.forEach((opt,i)=>{
+    const mark=passed&&i===q.ans?' correct':fb&&i===q.ans?' correct':fb&&i===fb.choice&&!fb.ok?' wrong':'';
+    h+=`<button class="quiz-opt${mark}" onclick="answerQuiz(${li},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;
+  });
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  else if(passed)h+=`<div class="quiz-feedback ok">已通过小测。${q.why||q.ok}</div>`;
   h+='</div>';
   return h;
 }
 
 function answerQuiz(li,optIdx){
-  const q=quizData[li],ok=optIdx===q.ans;
-  quizFeedback[li]={ok:ok,text:ok?q.ok:q.bad};
+  li=Number(li);optIdx=Number(optIdx);
+  if(!Number.isInteger(li)||!Number.isInteger(optIdx))return false;
+  if(li!==curLevel||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(Boolean))return false;
+  const q=quizData[li];
+  if(!q||optIdx<0||optIdx>=q.opts.length)return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  const ok=optIdx===q.ans;
+  quizFeedback[li]={ok:ok,choice:optIdx,text:ok?`${q.ok} ${q.why||''}`:`${q.bad} ${q.why||''}`};
   if(ok){quizPassed.add(li);completedLevels.add(li);}
   renderPanel();renderBar();
+  return ok;
 }
 
 function summaryHTML(){
+  if(quizPassed.size<levelNames.length)return '';
   let h='<div class="summary-box"><div class="summary-title">🏆 机器人学探险通关</div>';
   h+='<div class="summary-sub">你已完成 7 个机器人学核心主题</div><div class="summary-stats">';
   h+=`<div class="summary-stat"><div class="num">${levelNames.length}</div><div class="label">关卡完成</div></div>`;
-  h+=`<div class="summary-stat"><div class="num">${completedLevels.size}</div><div class="label">测验通过</div></div>`;
+  h+=`<div class="summary-stat"><div class="num">${quizPassed.size}</div><div class="label">测验通过</div></div>`;
+  h+=`<div class="summary-stat"><div class="num">${quizPassed.size*3}/21</div><div class="label">目标达成</div></div>`;
   h+='<div class="summary-stat"><div class="num">100%</div><div class="label">知识闭环</div></div></div>';
   h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">📚 关键知识回顾</div>';
   levelNames.forEach(name=>{h+=`<div>✅ ${name}</div>`;});
@@ -464,10 +535,29 @@ function summaryHTML(){
 }
 
 // ========== LEVEL 0: KINEMATICS ==========
+function toggleArmAngles(){
+  if(curLevel!==0)return false;
+  arm.showFK=!arm.showFK;
+  renderPanel();
+  return true;
+}
 function switchArmMode(){
+  if(curLevel!==0)return false;
   if(arm.mode===2){arm.mode=3;arm.lengths=[100,80,60];arm.angles=[Math.PI/4,-Math.PI/4,Math.PI/6];arm.switched3=true;completeObj(0,2);}
   else{arm.mode=2;arm.lengths=[120,100];arm.angles=[Math.PI/4,-Math.PI/4];}
   renderPanel();
+  return true;
+}
+function moveArmToNextTarget(){
+  if(curLevel!==0)return false;
+  const target=arm.targets.find(t=>!t.hit);
+  if(!target)return false;
+  solveIK(target.x,target.y);
+  completeObj(0,1);
+  checkArmTargets();
+  renderPanel();
+  draw();
+  return true;
 }
 function getArmEndpoints(){
   let cx=PW+(CW-PW)/2,cy=CH/2-18,pts=[{x:cx,y:cy}];
@@ -503,38 +593,163 @@ function checkArmTargets(){
 }
 
 // ========== LEVEL 1: DOF ==========
-function setDofJoint(i,v){
-  if(dof.jointTypes[i]==='R')dof.angle6[i]=v*Math.PI/180;else dof.angle6[i]=+v;
-  checkDofObj();renderPanel();
+function toggleDofWorkspace(){
+  if(curLevel!==1)return false;
+  dof.showWorkspace=!dof.showWorkspace;
+  checkDofObj();
+  renderPanel();
+  return true;
+}
+function formatDofJoint(i){return dof.jointTypes[i]==='R'?(dof.angle6[i]*180/Math.PI).toFixed(0)+'°':dof.angle6[i].toFixed(0)+'mm'}
+function formatDofPoseValue(i,v,types){return types[i]==='R'?(v*180/Math.PI).toFixed(0)+'°':v.toFixed(0)+'mm'}
+function dofTypesAligned(tp){return tp.types.every((type,i)=>dof.jointTypes[i]===type)}
+function dofPoseError(tp){
+  let maxRatio=0;
+  for(let j=0;j<6;j++){
+    const diff=tp.types[j]==='R'?Math.abs((dof.angle6[j]-tp.angles[j])*180/Math.PI):Math.abs(dof.angle6[j]-tp.angles[j]);
+    const limit=tp.types[j]==='R'?8:5;
+    maxRatio=Math.max(maxRatio,diff/limit);
+  }
+  return {maxRatio};
+}
+function dofTargetHTML(){
+  const next=dof.targetPoses.find(tp=>!tp.hit);
+  let h=`<div class="concept-box">姿态靶标: <span class="sv" id="dofHitPose">${dof.hitPose}/3</span> 已命中`;
+  dof.targetPoses.forEach((tp,i)=>{
+    const values=tp.angles.map((v,j)=>formatDofPoseValue(j,v,tp.types)).join(' / ');
+    h+=`<br>P${i+1} ${tp.name}: ${tp.hit?'已命中':values}`;
+  });
+  if(next){
+    const err=dofPoseError(next);
+    h+=`<br>当前目标: <span id="dofTargetName">${next.name}</span>，最大误差 <span class="sv" id="dofTargetError">${(err.maxRatio*100).toFixed(0)}%</span>`;
+    h+=`<br><span id="dofTargetTypes">${dofTypesAligned(next)?'类型已匹配':'目标类型: '+next.types.join(' - ')}</span>`;
+  }
+  h+='</div>';
+  return h;
+}
+function updateDofTargetPanel(){
+  const next=dof.targetPoses.find(tp=>!tp.hit);
+  setInlineText('dofHitPose',`${dof.hitPose}/3`);
+  if(!next){
+    setInlineText('dofTargetName','全部姿态');
+    setInlineText('dofTargetError','0%');
+    setInlineText('dofTargetTypes','全部靶标已命中');
+    return;
+  }
+  const err=dofPoseError(next);
+  setInlineText('dofTargetName',next.name);
+  setInlineText('dofTargetError',`${(err.maxRatio*100).toFixed(0)}%`);
+  setInlineText('dofTargetTypes',dofTypesAligned(next)?'类型已匹配':'目标类型: '+next.types.join(' - '));
+}
+function getDofPoints(angles,types){
+  let cx=PW+(CW-PW)/2,cy=CH/2-18;
+  let pts=[{x:cx,y:cy+100}],a=-Math.PI/2,segLen=50;
+  for(let i=0;i<6;i++){
+    let prev=pts[pts.length-1];
+    if(types[i]==='R'){
+      a+=angles[i];
+      pts.push({x:prev.x+Math.cos(a)*segLen,y:prev.y+Math.sin(a)*segLen});
+    }else{
+      let ext=angles[i];
+      pts.push({x:prev.x+Math.cos(a)*(segLen+ext),y:prev.y+Math.sin(a)*(segLen+ext)});
+    }
+  }
+  return pts;
+}
+function setDofJoint(i,v,opts){
+  if(curLevel!==1)return false;
+  i=Number(i);v=Number(v);
+  if(!Number.isInteger(i)||i<0||i>=dof.jointTypes.length||!Number.isFinite(v))return false;
+  if(dof.jointTypes[i]==='R')dof.angle6[i]=v*Math.PI/180;else dof.angle6[i]=v;
+  const changed=checkDofObj();
+  if(!opts||opts.render!==false)renderPanel();
+  return changed;
+}
+function dragDofJoint(i,v){
+  i=Number(i);
+  if(curLevel!==1||!Number.isInteger(i)||i<0||i>=dof.jointTypes.length)return false;
+  const changed=setDofJoint(i,v,{render:false});
+  setInlineText('dofVal'+i,formatDofJoint(i));
+  if(changed)renderPanel();
+  else updateDofTargetPanel();
+  draw();return true;
 }
 function toggleJointType(i){
+  if(curLevel!==1)return false;
+  i=Number(i);
+  if(!Number.isInteger(i)||i<0||i>=dof.jointTypes.length)return false;
   dof.jointTypes[i]=dof.jointTypes[i]==='R'?'P':'R';
   if(dof.jointTypes[i]==='P')dof.angle6[i]=30;else dof.angle6[i]=0;
   completeObj(1,0);renderPanel();
+  return true;
 }
 function checkDofObj(){
-  if(dof.showWorkspace)completeObj(1,1);
-  // Check if close to any target pose
+  if(curLevel!==1)return false;
+  let changed=false;
+  if(dof.showWorkspace)changed=completeObj(1,1)||changed;
   dof.targetPoses.forEach((tp,i)=>{
     if(tp.hit)return;
-    let diff=0;for(let j=0;j<6;j++)diff+=Math.abs(dof.angle6[j]-tp.angles[j]);
-    if(diff<2){tp.hit=true;dof.hitPose++;}
+    if(dofTypesAligned(tp)&&dofPoseError(tp).maxRatio<=1){tp.hit=true;dof.hitPose++;changed=true;}
   });
-  if(dof.hitPose>=3)completeObj(1,2);
+  if(dof.hitPose>=3)changed=completeObj(1,2)||changed;
+  return changed;
 }
 
 // ========== LEVEL 2: PATH PLANNING ==========
-function startPathSearch(){
-  if(pathPlan.searching)return;
-  pathPlan.searching=true;pathPlan.found=false;pathPlan.searchStep=0;
-  if(pathPlan.algo==='astar')startAstar();else startRRT();
+function setPathAlgo(algo){
+  if(curLevel!==2||pathPlan.searching)return false;
+  if(algo!=='astar'&&algo!=='rrt')return false;
+  pathPlan.algo=algo;
+  renderPanel();
+  return true;
 }
-function startAstar(){
+function resetPathPlanning(){
+  if(curLevel!==2)return false;
+  initLevel(2);
+  renderPanel();
+  return true;
+}
+function carvePathPlanCorridor(){
+  const {grid,start,goal,rows,cols}=pathPlan;
+  if(!grid||!start||!goal||!rows||!cols)return false;
+  function clearCell(r,c){
+    for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){
+      const rr=r+dr,cc=c+dc;
+      if(rr>=0&&rr<rows&&cc>=0&&cc<cols)grid[rr][cc]=0;
+    }
+  }
+  let r=start.r,c=start.c;
+  clearCell(r,c);
+  while(c!==goal.c){c+=c<goal.c?1:-1;clearCell(r,c);}
+  while(r!==goal.r){r+=r<goal.r?1:-1;clearCell(r,c);}
+  pathPlan.obstacles=[];
+  for(let rr=0;rr<rows;rr++)for(let cc=0;cc<cols;cc++)if(grid[rr][cc]===1)pathPlan.obstacles.push({r:rr,c:cc});
+  return true;
+}
+function startPathSearch(){
+  if(curLevel!==2||pathPlan.searching)return false;
+  pathPlan.searching=true;pathPlan.found=false;pathPlan.searchStep=0;
+  pathPlan.lastFail='';
+  const runId=(pathPlan.runId||0)+1;
+  pathPlan.runId=runId;
+  const ok=pathPlan.algo==='astar'?startAstar(runId):startRRT(runId);
+  if(!ok)pathPlan.searching=false;
+  return ok;
+}
+function startAstar(runId){
+  if(curLevel!==2)return false;
+  runId=runId||pathPlan.runId||0;
   let{rows,cols,grid,start,goal}=pathPlan;
+  if(!grid||!start||!goal)return false;
   let open=[{r:start.r,c:start.c,g:0,h:0,f:0,parent:null}];
   let closed=new Set();pathPlan.openSet=[];pathPlan.closedSet=[];pathPlan.astarPath=[];
   function step(){
-    if(open.length===0||pathPlan.found){pathPlan.searching=false;if(!pathPlan.found)completeObj(2,0);return;}
+    if(curLevel!==2||runId!==pathPlan.runId){pathPlan.searching=false;return;}
+    if(open.length===0||pathPlan.found){
+      pathPlan.searching=false;
+      if(!pathPlan.found){pathPlan.lastFail='A* 未找到可行路径，请重置地图或尝试减少障碍。';renderPanel();}
+      return;
+    }
     open.sort((a,b)=>a.f-b.f);let cur=open.shift();
     let key=cur.r*1000+cur.c;if(closed.has(key)){step();return;}
     closed.add(key);pathPlan.closedSet.push({r:cur.r,c:cur.c});
@@ -557,13 +772,35 @@ function startAstar(){
     setTimeout(step,10);
   }
   step();
+  return true;
 }
-function startRRT(){
+function startRRT(runId){
+  if(curLevel!==2)return false;
+  runId=runId||pathPlan.runId||0;
   let{rows,cols,grid,start,goal,gs,ox,oy}=pathPlan;
-  pathPlan.rrtTree=[{x:start.c*gs+gs/2,y:start.r*gs+gs/2,parent:null}];pathPlan.rrtPath=[];
+  if(!grid||!start||!goal)return false;
+  pathPlan.rrtTree=[{x:start.c*gs+gs/2,y:start.r*gs+gs/2,parent:null}];pathPlan.rrtPath=[];pathPlan.rrtAttempts=0;
   let gx=goal.c*gs+gs/2,gy=goal.r*gs+gs/2;
+  function edgeFree(x1,y1,x2,y2){
+    const steps=Math.max(2,Math.ceil(Math.hypot(x2-x1,y2-y1)/(gs/3)));
+    let prevR=Math.floor(y1/gs),prevC=Math.floor(x1/gs);
+    for(let i=0;i<=steps;i++){
+      const x=x1+(x2-x1)*i/steps,y=y1+(y2-y1)*i/steps;
+      const c=Math.floor(x/gs),r=Math.floor(y/gs);
+      if(c<0||c>=cols||r<0||r>=rows||grid[r][c]===1)return false;
+      if(r!==prevR&&c!==prevC&&(grid[prevR]?.[c]===1||grid[r]?.[prevC]===1))return false;
+      prevR=r;prevC=c;
+    }
+    return true;
+  }
   function step(){
-    if(pathPlan.found||pathPlan.rrtTree.length>2000){pathPlan.searching=false;if(!pathPlan.found)completeObj(2,1);return;}
+    if(curLevel!==2||runId!==pathPlan.runId){pathPlan.searching=false;return;}
+    if(pathPlan.found||pathPlan.rrtTree.length>2000||pathPlan.rrtAttempts>5000){
+      pathPlan.searching=false;
+      if(!pathPlan.found){pathPlan.lastFail='RRT 采样上限内未连到目标，请重新搜索或重置地图。';renderPanel();}
+      return;
+    }
+    pathPlan.rrtAttempts++;
     let rx,ry;
     if(Math.random()<0.1){rx=gx;ry=gy;}else{rx=Math.random()*cols*gs;ry=Math.random()*rows*gs;}
     let nearest=null,minD=Infinity;
@@ -571,7 +808,7 @@ function startRRT(){
     let a=Math.atan2(ry-nearest.y,rx-nearest.x),stepLen=gs;
     let nx=nearest.x+Math.cos(a)*stepLen,ny=nearest.y+Math.sin(a)*stepLen;
     let gc=Math.floor(nx/gs),gr=Math.floor(ny/gs);
-    if(gc<0||gc>=cols||gr<0||gr>=rows||grid[gr][gc]===1){setTimeout(step,5);return;}
+    if(gc<0||gc>=cols||gr<0||gr>=rows||grid[gr][gc]===1||!edgeFree(nearest.x,nearest.y,nx,ny)){setTimeout(step,5);return;}
     let node={x:nx,y:ny,parent:nearest};pathPlan.rrtTree.push(node);
     if(Math.hypot(nx-gx,ny-gy)<gs){
       let p=node,path=[];while(p){path.unshift({x:p.x+ox,y:p.y+oy});p=p.parent;}
@@ -584,12 +821,19 @@ function startRRT(){
     setTimeout(step,5);
   }
   step();
+  return true;
 }
 
 // ========== LEVEL 3: SLAM ==========
 let keys={};
 document.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;});
 document.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+function toggleSlamSpeed(){
+  if(curLevel!==3)return false;
+  slam.speed=slam.speed===2?4:2;
+  renderPanel();
+  return true;
+}
 function updateSLAM(){
   if(curLevel!==3)return;
   let{robot,map,revealed,gw,cols,rows,ox,oy,speed}=slam;
@@ -599,9 +843,11 @@ function updateSLAM(){
   if(keys['a']||keys['arrowleft'])dx=-speed;
   if(keys['d']||keys['arrowright'])dx=speed;
   if(dx||dy)robot.angle=Math.atan2(dy,dx);
+  const beforeX=robot.x,beforeY=robot.y;
   let nx=robot.x+dx,ny=robot.y+dy;
   let gc=Math.floor((nx-ox)/gw),gr=Math.floor((ny-oy)/gw);
   if(gc>=0&&gc<cols&&gr>=0&&gr<rows&&map[gr][gc]!==1){robot.x=nx;robot.y=ny;}
+  if(dx||dy)slam.movedDistance+=Math.hypot(robot.x-beforeX,robot.y-beforeY);
   // Add noise to true position tracking
   slam.truePos.x=robot.x+(Math.random()-0.5)*2;slam.truePos.y=robot.y+(Math.random()-0.5)*2;
   slam.posError=Math.hypot(slam.truePos.x-robot.x,slam.truePos.y-robot.y);
@@ -623,23 +869,25 @@ function updateSLAM(){
   for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){total++;if(revealed[r][c])exp++;}
   slam.explored=exp/total*100;
   if(slam.explored>=50)completeObj(3,0);
-  if(slam.posError<5)completeObj(3,1);
+  if(slam.movedDistance>=80&&slam.posError<5)completeObj(3,1);
   if(slam.explored>=90){slam.mapComplete=true;completeObj(3,2);}
   if(dx||dy)renderPanel();
 }
 
 // ========== LEVEL 4: GRASPING ==========
 function tryGrab(){
+  if(curLevel!==4)return false;
   let g=grab.gripper;
   if(g.holding!==null){
     // Release
+    syncHeldObject();
     let obj=g.holding;
     let sz=grab.stackZone;
     if(obj.x>sz.x-sz.w/2&&obj.x<sz.x+sz.w/2&&obj.y>sz.y-sz.h/2&&obj.y<sz.y+sz.h/2){
       grab.stacked++;obj.x=sz.x;obj.y=sz.y-grab.stacked*25;
       if(grab.stacked>=3)completeObj(4,2);
     }
-    g.holding=null;renderPanel();return;
+    g.holding=null;renderPanel();return true;
   }
   // Try to grab
   for(let obj of grab.objects){
@@ -650,12 +898,27 @@ function tryGrab(){
       if(obj.type==='fragile'&&g.force<=40){grab.fragileOk=true;completeObj(4,0);}
       obj.grabbed=true;g.holding=obj;grab.grabbed++;
       if(grab.grabbed>=3)completeObj(4,1);
-      renderPanel();return;
+      renderPanel();return true;
     }
   }
+  return false;
+}
+
+function syncHeldObject(){
+  const obj=grab.gripper.holding;
+  if(!obj)return false;
+  obj.x=grab.gripper.x;
+  obj.y=grab.gripper.y+15;
+  return true;
 }
 
 // ========== LEVEL 5: SENSOR FUSION ==========
+function toggleKalman(){
+  if(curLevel!==5)return false;
+  sensor.kalman=!sensor.kalman;
+  renderPanel();
+  return true;
+}
 function updateSensor(){
   if(curLevel!==5)return;
   sensor.t+=0.02;let idx=Math.floor(sensor.t*5)%sensor.path.length;
@@ -689,18 +952,38 @@ function updateSensor(){
 }
 
 // ========== LEVEL 6: SWARM ==========
+function setSwarmFormation(formation){
+  if(curLevel!==6)return false;
+  if(!['line','triangle','circle'].includes(formation))return false;
+  if(swarm.carrying||swarm.taskDone)return false;
+  swarm.formation=formation;
+  swarm.formationOk=false;
+  renderPanel();
+  return true;
+}
 function startSwarmCarry(){
+  if(curLevel!==6)return false;
+  if(swarm.formation!=='triangle'||!swarm.formationOk)return false;
   swarm.carrying=true;swarm.cargo.carried=true;
+  renderPanel();
+  return true;
+}
+function confirmSwarmCarry(){
+  if(curLevel!==6||!swarm.taskDone||swarm.carryPlanConfirmed)return false;
+  swarm.carryPlanConfirmed=true;
   completeObj(6,1);
+  renderPanel();
+  return true;
 }
 function optimizeSwarmPath(){
+  if(curLevel!==6||!swarm.carrying)return false;
   // Simulate pheromone optimization
   swarm.pheromones=[];
   let cx=PW+(CW-PW)/2,cy=CH/2-18;
   for(let i=0;i<30;i++){
     swarm.pheromones.push({x:cx-100+Math.random()*300,y:cy-100+Math.random()*200,strength:Math.random()});
   }
-  swarm.pathOpt=true;completeObj(6,2);renderPanel();
+  swarm.pathOpt=true;completeObj(6,2);renderPanel();return true;
 }
 function updateSwarm(){
   if(curLevel!==6)return;
@@ -719,7 +1002,10 @@ function updateSwarm(){
     let avg={x:0,y:0};swarm.bots.forEach(b=>{avg.x+=b.x;avg.y+=b.y;});
     swarm.cargo.x=avg.x/3;swarm.cargo.y=avg.y/3;
     if(Math.hypot(swarm.cargo.x-swarm.cargoTarget.x,swarm.cargo.y-swarm.cargoTarget.y)<30){
-      swarm.taskDone=true;completeObj(6,1);
+      if(!swarm.taskDone){
+        swarm.taskDone=true;
+        renderPanel();
+      }
     }
   }
   // Check formation accuracy
@@ -734,7 +1020,7 @@ function updateSwarm(){
 }
 
 // ========== DRAWING ==========
-function drawStars(){ctx.fillStyle='#fff';stars.forEach(s=>{s.b+=0.02;ctx.globalAlpha=0.3+Math.sin(s.b)*0.3;ctx.fillRect(s.x,s.y,s.s,s.s);});ctx.globalAlpha=1;}
+function drawStars(){if(!t().showStars)return;ctx.fillStyle='#fff';stars.forEach(s=>{s.b+=0.02;ctx.globalAlpha=0.3+Math.sin(s.b)*0.3;ctx.fillRect(s.x,s.y,s.s,s.s);});ctx.globalAlpha=1;}
 
 function drawLevel0(){
   let cx=PW+(CW-PW)/2,cy=CH/2-18;
@@ -784,19 +1070,7 @@ function drawLevel0(){
 
 function drawLevel1(){
   let cx=PW+(CW-PW)/2,cy=CH/2-18;
-  let pts=[{x:cx,y:cy+100}];
-  let a=-Math.PI/2,segLen=50;
-  // Draw 6-DOF arm
-  for(let i=0;i<6;i++){
-    let prev=pts[pts.length-1];
-    if(dof.jointTypes[i]==='R'){
-      a+=dof.angle6[i];
-      pts.push({x:prev.x+Math.cos(a)*segLen,y:prev.y+Math.sin(a)*segLen});
-    }else{
-      let ext=dof.angle6[i];
-      pts.push({x:prev.x+Math.cos(a)*(segLen+ext),y:prev.y+Math.sin(a)*(segLen+ext)});
-    }
-  }
+  let pts=getDofPoints(dof.angle6,dof.jointTypes),segLen=50;
   // Workspace visualization
   if(dof.showWorkspace){
     ctx.globalAlpha=0.08;ctx.fillStyle='#0ea5e9';
@@ -829,7 +1103,7 @@ function drawLevel1(){
   ctx.fillStyle='#38bdf8';ctx.fill();
   // Target poses (small markers)
   dof.targetPoses.forEach((tp,i)=>{
-    let tx=cx+Math.cos(i*2.1)*150,ty=cy+Math.sin(i*2.1)*80;
+    let tpts=getDofPoints(tp.angles,tp.types),end=tpts[tpts.length-1],tx=end.x,ty=end.y;
     ctx.beginPath();ctx.arc(tx,ty,6,0,Math.PI*2);
     ctx.fillStyle=tp.hit?'#4ade80':'#eab308';ctx.fill();
     ctx.fillStyle=t().label;ctx.font='15px sans-serif';ctx.fillText(`P${i+1}`,tx,ty-10);
@@ -937,7 +1211,8 @@ function drawLevel4(){
   ctx.fillStyle=forceColor;ctx.globalAlpha=0.3;ctx.fillRect(-openW-8,0,openW*2+16,25);ctx.globalAlpha=1;
   // Held object
   if(g.holding){
-    let obj=g.holding;obj.x=g.x;obj.y=g.y+15;
+    syncHeldObject();
+    let obj=g.holding;
     ctx.fillStyle=obj.color;
     if(obj.shape==='circle'){ctx.beginPath();ctx.arc(0,15,obj.w/2,0,Math.PI*2);ctx.fill();}
     else if(obj.shape==='rect'){ctx.fillRect(-obj.w/2,15-obj.h/2,obj.w,obj.h);}
@@ -1048,16 +1323,17 @@ canvas.addEventListener('mousedown',e=>{
   }else if(curLevel===4){
     if(Math.hypot(e.clientX-grab.gripper.x,e.clientY-grab.gripper.y)<40)dragging='gripper';
   }else if(curLevel===6){
-    if(e.clientX>PW){swarm.target={x:e.clientX,y:e.clientY};if(swarm.carrying)swarm.cargoTarget={x:e.clientX,y:e.clientY};}
+    if(e.clientX>PW){
+      swarm.target={x:e.clientX,y:e.clientY};
+      if(swarm.carrying){
+        swarm.cargoTarget={x:e.clientX,y:e.clientY};
+        swarm.taskDone=false;swarm.carryPlanConfirmed=false;levelObjs[6][1]=false;
+        renderPanel();
+      }
+    }
   }else if(curLevel===1){
     // Check if clicking on a joint
-    let cx=PW+(CW-PW)/2,cy=CH/2-18;
-    let pts=[{x:cx,y:cy+100}];let a=-Math.PI/2,segLen=50;
-    for(let i=0;i<6;i++){
-      let prev=pts[pts.length-1];
-      if(dof.jointTypes[i]==='R'){a+=dof.angle6[i];pts.push({x:prev.x+Math.cos(a)*segLen,y:prev.y+Math.sin(a)*segLen});}
-      else{let ext=dof.angle6[i];pts.push({x:prev.x+Math.cos(a)*(segLen+ext),y:prev.y+Math.sin(a)*(segLen+ext)});}
-    }
+    let pts=getDofPoints(dof.angle6,dof.jointTypes);
     for(let i=0;i<6;i++){
       if(Math.hypot(e.clientX-pts[i].x,e.clientY-pts[i].y)<15){toggleJointType(i);break;}
     }
@@ -1072,6 +1348,7 @@ canvas.addEventListener('mousemove',e=>{
     if(arm.showFK)renderPanel();
   }else if(dragging==='gripper'){
     grab.gripper.x=e.clientX;grab.gripper.y=e.clientY;
+    syncHeldObject();
   }
 });
 canvas.addEventListener('mouseup',()=>{mouse.down=false;dragging=null;});

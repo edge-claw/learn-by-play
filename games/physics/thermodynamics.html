@@ -155,43 +155,43 @@ const quizData=[
   },
   {
     q:'傅里叶定律中的热流方向由什么决定？',
-    opts:['温度梯度，热量自发从高温流向低温','物体颜色，深色一定导热更快','棒子的长度，越长热流方向越容易反转'],
-    ans:0,
+    opts:['物体颜色，深色一定导热更快','温度梯度，热量自发从高温流向低温','棒子的长度，越长热流方向越容易反转'],
+    ans:1,
     ok:'正确。热流密度 q = -k dT/dx，负号表示热流沿温度降低方向。',
     bad:'重点看两端温度差和稳态线：热流方向由温度梯度决定。'
   },
   {
     q:'在固定温度的玻意耳实验中，压缩理想气体会怎样？',
-    opts:['体积减小，压强升高，PV 近似保持常数','体积减小，压强也必然减小','压强只取决于气体颜色'],
-    ans:0,
+    opts:['体积减小，压强也必然减小','压强只取决于气体颜色','体积减小，压强升高，PV 近似保持常数'],
+    ans:2,
     ok:'正确。固定 T 和 n 时，PV = nRT，因此 V 变小会让 P 变大。',
     bad:'回到玻意耳模式拖动体积滑块：固定温度时，P 与 V 成反比。'
   },
   {
     q:'热力学第一定律 ΔU = Q - W 中，W 表示什么？',
-    opts:['系统对外做的功','外界给系统的全部热量','系统的绝对温度'],
-    ans:0,
+    opts:['外界给系统的全部热量','系统对外做的功','系统的绝对温度'],
+    ans:1,
     ok:'正确。按这里的约定，气体对外做功越多，留在内能里的能量越少。',
     bad:'看能量条：吸热 Q 分成内能变化 ΔU 和对外做功 W 两部分。'
   },
   {
     q:'自由膨胀为什么体现第二定律？',
-    opts:['孤立系统可达微观状态数增加，熵增大','分子失去全部动能，所以自动停下','熵会周期性变成负数'],
-    ans:0,
+    opts:['分子失去全部动能，所以自动停下','熵会周期性变成负数','孤立系统可达微观状态数增加，熵增大'],
+    ans:2,
     ok:'正确。气体扩散到更大空间后，可达微观状态数增加，宏观上不可逆。',
     bad:'观察释放后的分布：系统从受限状态走向更可能、更无序的状态。'
   },
   {
     q:'卡诺效率 η = 1 - Tc/Th 说明了什么？',
-    opts:['冷热源温差越大，理想热机效率上限越高','只要加润滑油，效率就能超过 100%','冷源温度越高，效率一定越高'],
-    ans:0,
+    opts:['只要加润滑油，效率就能超过 100%','冷热源温差越大，理想热机效率上限越高','冷源温度越高，效率一定越高'],
+    ans:1,
     ok:'正确。Th 越高、Tc 越低，1 - Tc/Th 越大，但仍不可能达到 100%。',
     bad:'拖动冷热源温度看效率：温差越大，理论效率上限越高。'
   },
   {
     q:'相变平台期中，持续输入的热量主要用于什么？',
-    opts:['改变分子间作用力和物态，而不是继续升温','让温度瞬间跳到无限大','让所有分子停止运动'],
-    ans:0,
+    opts:['让温度瞬间跳到无限大','让所有分子停止运动','改变分子间作用力和物态，而不是继续升温'],
+    ans:2,
     ok:'正确。熔化和汽化时温度暂时不升高，热量主要转化为潜热。',
     bad:'看 0°C 和 100°C 平台：热量进入系统，但温度不马上上升。'
   }
@@ -222,6 +222,7 @@ function startGame(){
 
 // === 关卡初始化 ===
 function initLevel(idx){
+  if(idx<0||idx>=levels.length||!isUnlocked(idx))return;
   currentLevel=idx;particles=[];
   const cx=CW/2+160,cy=CH/2;
   if(idx===0){
@@ -275,6 +276,8 @@ function restoreCompletedLevelState(idx){
 function isUnlocked(idx){return idx===0||completedLevels.has(idx-1)}
 function completeLevel(idx){if(idx===currentLevel)renderPanel()}
 function canShowQuiz(){
+  if(currentLevel<0||currentLevel>=levels.length||!quizData[currentLevel])return false;
+  if(currentLevel>0&&!quizPassed.has(currentLevel-1))return false;
   return levelState.goalDone&&levelState.goalDone.every(g=>g)&&!quizPassed.has(currentLevel);
 }
 
@@ -282,8 +285,9 @@ function canShowQuiz(){
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   for(let i=0;i<levels.length;i++){
-    let cls='sn-d';if(completedLevels.has(i))cls+=' done';if(i===currentLevel)cls+=' cur';if(!isUnlocked(i))cls+=' locked';
-    h+=`<div class="${cls}" onclick="switchLevel(${i})"></div>`;
+    const unlocked=isUnlocked(i);
+    let cls='sn-d';if(completedLevels.has(i))cls+=' done';if(i===currentLevel)cls+=' cur';if(!unlocked)cls+=' locked';
+    h+=`<div class="${cls}" ${unlocked?`onclick="switchLevel(${i})"`:''}></div>`;
   }
   h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关：${levels[currentLevel].title}</div>`;
   h+=`<div class="sn-hint">${levels[currentLevel].sub}</div></div>`;
@@ -314,7 +318,7 @@ function renderPanel(){
   document.getElementById('bbRight').textContent=`${completedLevels.size}/${levels.length} 已完成`;
 }
 
-function switchLevel(i){if(isUnlocked(i))initLevel(i)}
+function switchLevel(i){if(i<0||i>=levels.length||!isUnlocked(i))return;initLevel(i)}
 
 function renderQuiz(){
   const qd=quizData[currentLevel];
@@ -329,7 +333,9 @@ function renderQuiz(){
 }
 
 function answerQuiz(choice){
+  if(!canShowQuiz())return;
   const qd=quizData[currentLevel];
+  if(choice<0||choice>=qd.opts.length)return;
   const ok=choice===qd.ans;
   quizFeedback[currentLevel]={ok,text:ok?qd.ok:qd.bad};
   if(ok){
@@ -340,6 +346,7 @@ function answerQuiz(choice){
 }
 
 function summaryHTML(){
+  if(!levels.every((_,i)=>quizPassed.has(i)))return '';
   let h='<div class="summary-box"><div class="summary-title">🎉 热力学探险完成！</div>';
   h+='<div class="summary-sub">你已掌握热力学的核心概念</div>';
   h+='<div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡通过</div></div>';
@@ -496,13 +503,13 @@ function updateLevel(idx,dt){
   } else if(idx===1){
     // 热传导扩散
     S.elapsed+=dt;
-    const alpha=0.4;
+    const relax=Math.min(1,dt*0.9);
     const newT=[...S.barTemps];
     newT[0]=S.tempLeft;newT[S.N-1]=S.tempRight;
-    for(let iter=0;iter<5;iter++){
-      for(let i=1;i<S.N-1;i++){
-        newT[i]+=(S.barTemps[i-1]-2*S.barTemps[i]+S.barTemps[i+1])*alpha;
-      }
+    for(let i=1;i<S.N-1;i++){
+      const steady=S.tempLeft+(S.tempRight-S.tempLeft)*i/(S.N-1);
+      const diffused=(S.barTemps[i-1]+S.barTemps[i]+S.barTemps[i+1])/3;
+      newT[i]=diffused*(1-relax)+steady*relax;
     }
     S.barTemps=newT;S.barTemps[0]=S.tempLeft;S.barTemps[S.N-1]=S.tempRight;
     // check steady

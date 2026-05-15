@@ -213,12 +213,12 @@ let CW,CH,time=0,gameState='start',currentLevel=0,levelState={},completedLevels=
 const ACCENT='#00ff88',GOLD='#ffd700',BLUE='#5a9aff',PURPLE='#b47aff',RED='#ff4444';
 const quizData=[
   {q:'凯撒密码的核心弱点是什么？',opts:['固定字母偏移容易被频率分析破解','必须使用椭圆曲线','不能处理大写字母'],ans:0,ok:'对。固定替换保留语言频率特征，所以容易被分析。',bad:'凯撒密码弱在替换规律固定，密文仍保留明文语言频率。'},
-  {q:'AES 属于哪一类加密算法？',opts:['对称加密','非对称加密','哈希函数'],ans:0,ok:'对。AES 加密和解密使用同一把密钥。',bad:'AES 是对称分组密码，不是公私钥体系。'},
-  {q:'RSA 的安全性主要依赖什么困难问题？',opts:['大整数分解困难','排序数组困难','压缩图片困难'],ans:0,ok:'对。知道 n 很容易，想从 n 分解出 p 和 q 很难。',bad:'RSA 的基础是大数分解难题，不是一般数据处理问题。'},
-  {q:'哈希函数的雪崩效应指什么？',opts:['输入微小变化会导致输出大幅变化','输出永远越来越短','密钥会自动公开'],ans:0,ok:'对。雪崩效应让篡改能被快速发现。',bad:'雪崩效应关注输入变化与哈希输出差异。'},
-  {q:'数字签名能同时帮助确认什么？',opts:['身份来源和内容完整性','文件一定没有被复制','网络带宽大小'],ans:0,ok:'对。私钥签名证明来源，哈希比对发现篡改。',bad:'数字签名不能阻止复制，核心是认证和完整性。'},
-  {q:'零知识证明的目标是什么？',opts:['证明知道秘密但不泄露秘密','把秘密广播给所有人','替代所有加密算法'],ans:0,ok:'对。验证者获得可信结论，但学不到秘密本身。',bad:'零知识证明强调证明能力和隐私同时成立。'},
-  {q:'同态加密最关键的能力是什么？',opts:['可以直接在密文上计算','让密文变成明文','删除所有密钥'],ans:0,ok:'对。同态加密让数据保持加密状态也能参与运算。',bad:'同态加密不是绕过密钥，而是在密文域保持可计算性。'}
+  {q:'AES 属于哪一类加密算法？',opts:['非对称加密','对称加密','哈希函数'],ans:1,ok:'对。AES 加密和解密使用同一把密钥。',bad:'AES 是对称分组密码，不是公私钥体系。'},
+  {q:'RSA 的安全性主要依赖什么困难问题？',opts:['排序数组困难','压缩图片困难','大整数分解困难'],ans:2,ok:'对。知道 n 很容易，想从 n 分解出 p 和 q 很难。',bad:'RSA 的基础是大数分解难题，不是一般数据处理问题。'},
+  {q:'哈希函数的雪崩效应指什么？',opts:['密钥会自动公开','输入微小变化会导致输出大幅变化','输出永远越来越短'],ans:1,ok:'对。雪崩效应让篡改能被快速发现。',bad:'雪崩效应关注输入变化与哈希输出差异。'},
+  {q:'数字签名能同时帮助确认什么？',opts:['文件一定没有被复制','网络带宽大小','身份来源和内容完整性'],ans:2,ok:'对。私钥签名证明来源，哈希比对发现篡改。',bad:'数字签名不能阻止复制，核心是认证和完整性。'},
+  {q:'零知识证明的目标是什么？',opts:['替代所有加密算法','证明知道秘密但不泄露秘密','把秘密广播给所有人'],ans:1,ok:'对。验证者获得可信结论，但学不到秘密本身。',bad:'零知识证明强调证明能力和隐私同时成立。'},
+  {q:'同态加密最关键的能力是什么？',opts:['删除所有密钥','让密文变成明文','可以直接在密文上计算'],ans:2,ok:'对。同态加密让数据保持加密状态也能参与运算。',bad:'同态加密不是绕过密钥，而是在密文域保持可计算性。'}
 ];
 const quizLearns=[
   '凯撒密码虽简单，但频率分析可轻松破解。现代加密需要更复杂的算法。',
@@ -348,7 +348,7 @@ h+='</div>';
 return h;
 }
 function answerQuiz(li,choice){
-if(li!==currentLevel||quizPassed.has(li))return;
+if(li!==currentLevel||quizPassed.has(li)||!levelReady.has(li))return;
 const q=quizData[li],ok=choice===q.ans;
 quizFeedback[li]={ok:ok,text:ok?q.ok:q.bad};
 if(ok){quizPassed.add(li);completedLevels.add(li);const L=levels[li];showResult('第 '+(li+1)+' 关通过！',L.title+' — 掌握完成',quizLearns[li]);}
@@ -365,6 +365,19 @@ if(el)el.textContent=text;
 }
 function updateNextText(el,text){
 if(el&&el.nextElementSibling)el.nextElementSibling.textContent=text;
+}
+function clampNumber(value,min,max,fallback){
+if(value===''||value==null)return fallback;
+const n=Number(value);
+if(!Number.isFinite(n))return fallback;
+return Math.min(max,Math.max(min,n));
+}
+function setHEInput(key,el){
+if(key!=='a'&&key!=='b')return;
+levelState[key]=clampNumber(el.value,1,100,levelState[key]);
+levelState.step=0;
+if(el)el.value=levelState[key];
+renderPanel();
 }
 function dragCaesarOffset(el){
 levelState.offset=+el.value;
@@ -572,7 +585,7 @@ function zkpNextRound(){levelState.proving=false;levelState.verifierAsk='';level
 // ===== 第7关：同态加密 =====
 function renderHEPanel(){
 const s=levelState;
-let h='<div class="act-section"><div class="as-label">输入两个数字</div><div class="input-row"><label>A =</label><input type="number" id="heA" value="'+s.a+'" min="1" max="100" onchange="levelState.a=+this.value;levelState.step=0;renderPanel()"><label>B =</label><input type="number" id="heB" value="'+s.b+'" min="1" max="100" onchange="levelState.b=+this.value;levelState.step=0;renderPanel()"></div></div>';
+let h='<div class="act-section"><div class="as-label">输入两个数字</div><div class="input-row"><label>A =</label><input type="number" id="heA" value="'+s.a+'" min="1" max="100" onchange="setHEInput(&quot;a&quot;,this)"><label>B =</label><input type="number" id="heB" value="'+s.b+'" min="1" max="100" onchange="setHEInput(&quot;b&quot;,this)"></div></div>';
 if(s.step===0&&(s.a>0||s.b>0)){h+='<div class="act-section"><button class="act-btn blue" onclick="heEncrypt()">🔒 加密 A 和 B</button></div>'}
 if(s.step>=1){
 h+='<div class="step-box"><div class="step-title">加密结果（密文）</div><div class="step-content">';

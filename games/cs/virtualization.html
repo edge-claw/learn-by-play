@@ -172,24 +172,24 @@ const objTexts=[
   ['调度 VM 到物理机','执行热迁移','编排 Kubernetes Pod']
 ];
 const quizData=[
-  {q:'虚拟化的核心目标是什么？',opts:['让电脑变快','在一台物理机上运行多个隔离环境','替代操作系统','加密数据'],ans:1},
-  {q:'Type 1 Hypervisor 的特点是？',opts:['运行在宿主 OS 之上','直接运行在硬件上，无需宿主 OS','只能运行 Linux','不支持多 VM'],ans:1},
-  {q:'VT-x 硬件辅助虚拟化的主要好处是？',opts:['增加内存容量','减少特权指令陷入的软件模拟开销','提高网络速度','简化磁盘管理'],ans:1},
-  {q:'EPT（扩展页表）解决了什么问题？',opts:['网络延迟','减少影子页表维护开销，硬件完成二级地址翻译','文件系统碎片','CPU 过热'],ans:1},
-  {q:'SR-IOV 的优势是什么？',opts:['完全软件模拟','VM 直接访问硬件 VF，接近原生性能','不需要网卡','只支持存储设备'],ans:1},
-  {q:'Docker 容器与虚拟机的关键区别是？',opts:['容器有独立内核','容器共享宿主内核，通过 namespace/cgroup 隔离','容器更安全','容器不能联网'],ans:1},
-  {q:'Kubernetes 中 Pod 的作用是？',opts:['物理服务器','最小调度单元，包含一组紧密关联的容器','数据库','网络交换机'],ans:1}
+  {q:'虚拟化的核心目标是什么？',opts:['在一台物理机上运行多个隔离环境','让电脑变快','替代操作系统','加密数据'],ans:0,why:'虚拟化把 CPU、内存、存储等硬件抽象成多个隔离环境，让不同系统或应用共享同一台物理机。'},
+  {q:'Type 1 Hypervisor 的特点是？',opts:['运行在宿主 OS 之上','直接运行在硬件上，无需宿主 OS','只能运行 Linux','不支持多 VM'],ans:1,why:'Type 1 直接管理硬件资源，少一层宿主操作系统路径，通常用于服务器虚拟化和云平台。'},
+  {q:'VT-x 硬件辅助虚拟化的主要好处是？',opts:['增加内存容量','提高网络速度','减少特权指令陷入的软件模拟开销','简化磁盘管理'],ans:2,why:'VT-x 让敏感指令由 CPU 的虚拟化模式处理，减少 VMM 纯软件捕获和模拟带来的开销。'},
+  {q:'EPT（扩展页表）解决了什么问题？',opts:['网络延迟','减少影子页表维护开销，硬件完成二级地址翻译','文件系统碎片','CPU 过热'],ans:1,why:'EPT/NPT 让硬件完成 Guest 物理地址到 Host 物理地址的二级翻译，避免频繁维护影子页表。'},
+  {q:'SR-IOV 的优势是什么？',opts:['完全软件模拟','不需要网卡','VM 直接访问硬件 VF，接近原生性能','只支持存储设备'],ans:2,why:'SR-IOV 把物理设备拆成多个虚拟功能 VF 分配给 VM，数据路径绕过大量软件模拟，延迟更低。'},
+  {q:'Docker 容器与虚拟机的关键区别是？',opts:['容器有独立内核','容器共享宿主内核，通过 namespace/cgroup 隔离','容器更安全','容器不能联网'],ans:1,why:'容器不启动完整 Guest OS，而是共享宿主内核，用 namespace 隔离视图、用 cgroup 限制资源。'},
+  {q:'Kubernetes 中 Pod 的作用是？',opts:['物理服务器','数据库','最小调度单元，包含一组紧密关联的容器','网络交换机'],ans:2,why:'Pod 是 Kubernetes 调度的最小单位，同一 Pod 内容器共享网络命名空间和生命周期，适合紧密协作组件。'}
 ];
 
-function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel()}}
-function startGame(){document.getElementById('startScreen').classList.add('hidden');panel.style.display='block';bar.style.display='flex';resize();goLevel(0);requestAnimationFrame(loop)}
-function isUnlocked(i){return i>=0&&i<TOTAL&&(i===0||quizPassed.has(i)||quizPassed.has(i-1))}
-function goLevel(i){if(i>=TOTAL){showResult();return}if(!isUnlocked(i))return;curLevel=i;barText.textContent=levelIcons[i]+' '+levelNames[i];initLevel(i);renderPanel()}
+function completeObj(li,oi){if(li!==curLevel||!levelObjs[li]||levelObjs[li][oi])return;levelObjs[li][oi]=true;renderPanel()}
+function startGame(){document.getElementById('startScreen').classList.add('hidden');panel.style.display='block';bar.style.display='flex';resetProgress();requestAnimationFrame(loop)}
+function isUnlocked(i){return i>=0&&i<TOTAL&&(i===0||quizPassed.has(i-1))}
+function goLevel(i){if(i<0||i>=TOTAL)return;if(!isUnlocked(i))return;curLevel=i;barText.textContent=levelIcons[i]+' '+levelNames[i];initLevel(i);renderPanel()}
 
 // === Stage Nav ===
 function stageNavHTML(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<TOTAL;i++){const c=quizPassed.has(i)?'done':i===curLevel?'cur':isUnlocked(i)?'':'locked';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`}
+  for(let i=0;i<TOTAL;i++){const unlocked=isUnlocked(i);const c=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';h+=`<div class="sn-d ${c}" ${unlocked&&i!==curLevel?`onclick="goLevel(${i})"`:''}></div>`}
   h+=`</div><div class="sn-info">第 ${curLevel+1}/${TOTAL} 关 · ${levelNames[curLevel]}</div></div>`;
   return h;
 }
@@ -202,19 +202,22 @@ function renderQuiz(li){
   const qd=quizData[li];if(!qd)return '';
   let h='<div class="quiz-box"><div class="quiz-q">📝 '+qd.q+'</div>';
   qd.opts.forEach((o,i)=>{const c=quizPassed.has(li)?(i===qd.ans?'correct':''):'';h+=`<div class="quiz-opt ${c}" onclick="ansQuiz(${li},${i})">${o}</div>`});
-  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过</div>';
+  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 小测要点：'+(qd.why||'已掌握本关核心概念')+'</div>';
   h+='</div>';return h;
 }
 function ansQuiz(li,oi){
-  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  li=Number(li);oi=Number(oi);
+  if(!Number.isInteger(li)||!Number.isInteger(oi)||li!==curLevel||quizLocked||quizPassed.has(li)||!isLevelDone(li))return false;quizLocked=true;
   const qd=quizData[li];const opts=panel.querySelectorAll('.quiz-opt');
+  if(!qd||oi<0||oi>=qd.opts.length||!opts[oi]||!opts[qd.ans]){quizLocked=false;return false}
   opts.forEach((el,i)=>el.classList.add(i===qd.ans?'correct':'wrong'));
-  if(oi===qd.ans){quizPassed.add(li);levelScores[li]+=10;totalScore+=10;setTimeout(()=>{quizLocked=false;goLevel(curLevel+1)},800)}
-  else{setTimeout(()=>{quizLocked=false;renderPanel()},1000)}
+  if(oi===qd.ans){quizPassed.add(li);levelScores[li]+=10;totalScore+=10;setTimeout(()=>{quizLocked=false;if(li<TOTAL-1)goLevel(li+1);else renderPanel()},800);return true}
+  else{setTimeout(()=>{quizLocked=false;renderPanel()},1000);return false}
 }
 
 // === Result ===
 function showResult(){
+  if(quizPassed.size<TOTAL)return;
   panel.style.display='none';bar.style.display='none';
   const ov=document.getElementById('startScreen');ov.classList.remove('hidden');
   let h='<div class="start-box"><h1>🎉 恭喜通关！</h1><p class="subtitle">你已掌握虚拟化技术的核心概念</p>';
@@ -222,8 +225,19 @@ function showResult(){
   h+='<div class="summary-stats"><div class="summary-stat"><div class="num">'+totalScore+'</div><div class="label">总分</div></div>';
   h+='<div class="summary-stat"><div class="num">'+quizPassed.size+'/'+TOTAL+'</div><div class="label">通过</div></div></div>';
   h+='<div class="summary-keys"><div>🖥️ 虚拟化 = 一台物理机运行多个隔离环境</div><div>⚙️ Hypervisor 是虚拟化的核心管理层</div><div>📦 容器共享内核，比 VM 更轻量</div><div>☁️ Kubernetes 实现大规模容器编排</div></div></div>';
-  h+='<button class="start-btn" onclick="location.reload()" style="margin-top:20px">再玩一次</button></div>';
+  h+='<button class="start-btn" onclick="restartFromSummary()" style="margin-top:20px">再玩一次</button></div>';
   ov.innerHTML=h;
+}
+function resetProgress(){
+  for(const objs of levelObjs)objs.fill(false);
+  quizPassed.clear();quizLocked=false;totalScore=0;levelScores.fill(0);
+  resize();goLevel(0);
+}
+function restartFromSummary(){
+  document.getElementById('startScreen').classList.add('hidden');
+  panel.style.display='block';bar.style.display='flex';
+  resetProgress();
+  return true;
 }
 
 // === Level State ===
@@ -336,7 +350,8 @@ function execNextInstr(){
   const privileged=['HLT','IN','OUT','CLI','STI','LGDT'];
   if(privileged.includes(instr)){
     LS.trapped=true;LS.trapCount++;
-    if(!LS.vtxEnabled){completeObj(2,0);LS.overhead=100}
+    completeObj(2,0);
+    if(!LS.vtxEnabled)LS.overhead=100;
     setTimeout(()=>{LS.trapped=false;LS.curInstr++;LS.processing=false;renderPanel()},LS.vtxEnabled?300:1000);
   } else {LS.curInstr++;LS.processing=false}
   renderPanel();
@@ -695,6 +710,7 @@ function renderPanel(){
   if(isLevelDone(curLevel)){
     h+=renderQuiz(curLevel);
     if(quizPassed.has(curLevel)&&curLevel<TOTAL-1){h+='<button class="act-btn" onclick="goLevel('+(curLevel+1)+')">下一关 →</button>'}
+    if(quizPassed.has(curLevel)&&curLevel===TOTAL-1){h+='<button class="act-btn" onclick="showResult()">查看总结 →</button>'}
   }
   // Show learn boxes if all done
   panel.innerHTML=h;

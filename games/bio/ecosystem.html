@@ -234,8 +234,8 @@ function renderPanel(){
   if(li===4){
     h+=`<h3>操作</h3>`;
     h+=`<button class="act-btn" onclick="runLV()">⏩ 运行10步 (步数:${L.gen})</button>`;
-    h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-sub)">猎物增长率r: <span>${L.r.toFixed(2)}</span></label><br><input type="range" min="1" max="30" value="${Math.round(L.r*100)}" style="width:100%" oninput="L.r=+this.value/100;L.paramChanged=true;this.parentElement.querySelector('span').textContent=L.r.toFixed(2)" onchange="this.blur();renderPanel()"></div>`;
-    h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-sub)">捕食者死亡率m: <span>${L.m.toFixed(2)}</span></label><br><input type="range" min="1" max="30" value="${Math.round(L.m*100)}" style="width:100%" oninput="L.m=+this.value/100;L.paramChanged=true;this.parentElement.querySelector('span').textContent=L.m.toFixed(2)" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-sub)">猎物增长率r: <span>${L.r.toFixed(2)}</span></label><br><input type="range" min="1" max="30" value="${Math.round(L.r*100)}" style="width:100%" oninput="setLVParam('r',this)" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-sub)">捕食者死亡率m: <span>${L.m.toFixed(2)}</span></label><br><input type="range" min="1" max="30" value="${Math.round(L.m*100)}" style="width:100%" oninput="setLVParam('m',this)" onchange="this.blur();renderPanel()"></div>`;
     h+=`<p style="color:var(--text-sub);font-size:12px">猎物: ${Math.round(L.prey)} | 捕食者: ${Math.round(L.pred)}</p>`;
   }
   if(li===5){
@@ -268,6 +268,16 @@ function answerQuiz(li,choice){
   if(correct)renderBar();
 }
 // Actions
+function setLVParam(key,input){
+  if(curLevel!==4||!['r','m'].includes(key)||!input)return false;
+  const n=Number(input.value);
+  if(!Number.isFinite(n))return false;
+  L[key]=Math.max(0.01,Math.min(0.3,n/100));
+  L.paramChanged=true;
+  const span=input.parentElement&&input.parentElement.querySelector?input.parentElement.querySelector('span'):null;
+  if(span)span.textContent=L[key].toFixed(2);
+  return true;
+}
 window.addToChain=function(i){if(!L.chain.includes(i)){L.chain.push(i);if(L.chain.length>=3)completeObj(0);}renderPanel();};
 window.showEnergy=function(){L.energyShown=true;completeObj(1);L.ruleShown=true;completeObj(2);renderPanel();};
 window.toggleWebSpecies=function(name){

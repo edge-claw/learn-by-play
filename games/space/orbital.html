@@ -150,13 +150,13 @@ function t(){return isDark?TH.dark:TH.light}
 function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';panelDirty=true;renderPanel();}
 
 // === Audio ===
-const Audio2=(()=>{let c=null;function ctx(){if(!c)c=new(window.AudioContext||window.webkitAudioContext)();return c;}
-function play(tp){try{const c2=ctx(),o=c2.createOscillator(),g=c2.createGain();o.connect(g);g.connect(c2.destination);const n=c2.currentTime;
+const Audio2=(()=>{let c=null;function ctx(){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;try{if(!c)c=new A();return c}catch(e){return null}}
+function play(tp){try{const c2=ctx();if(!c2)return false;const o=c2.createOscillator(),g=c2.createGain();o.connect(g);g.connect(c2.destination);const n=c2.currentTime;
 if(tp==='click'){o.frequency.value=800;o.type='sine';g.gain.setValueAtTime(0.15,n);g.gain.exponentialRampToValueAtTime(0.001,n+0.1);o.start(n);o.stop(n+0.1);}
 else if(tp==='success'){o.frequency.value=523;o.type='sine';g.gain.setValueAtTime(0.2,n);g.gain.exponentialRampToValueAtTime(0.001,n+0.5);o.start(n);o.stop(n+0.5);
 const o2=c2.createOscillator(),g2=c2.createGain();o2.connect(g2);g2.connect(c2.destination);o2.frequency.value=659;o2.type='sine';g2.gain.setValueAtTime(0.2,n+0.15);g2.gain.exponentialRampToValueAtTime(0.001,n+0.6);o2.start(n+0.15);o2.stop(n+0.6);}
 else if(tp==='fail'){o.frequency.value=300;o.type='sawtooth';g.gain.setValueAtTime(0.15,n);g.gain.exponentialRampToValueAtTime(0.001,n+0.4);o.start(n);o.stop(n+0.4);}
-}catch(e){}}return{play};})();
+return true;}catch(e){return false}}return{play};})();
 
 // === Core ===
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
@@ -165,18 +165,19 @@ let gameState='start',currentLevel=0;
 let levelState={},bgStars=[],particles=[];
 const completedLevels=new Set();
 const readyForQuiz=new Set();
+const quizPassed=new Set();
 const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
 const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
 let panelDirty=true,levelTransition=0;
 
 const quizData=[
-  {q:'开普勒第二定律说的是什么？',opts:['A. 轨道是椭圆','B. 面积速度恒定','C. 周期平方正比于半长轴立方'],ans:1},
-  {q:'偏心率 e=0 的轨道是什么形状？',opts:['A. 椭圆','B. 圆形','C. 抛物线'],ans:1},
-  {q:'霍曼转移轨道的特点是？',opts:['A. 最快到达','B. 最省燃料','C. 最短距离'],ans:1},
-  {q:'引力弹弓效应中飞船获得的额外速度来自？',opts:['A. 自身燃料','B. 行星的轨道动能','C. 太阳辐射'],ans:1},
-  {q:'JWST 位于哪个拉格朗日点？',opts:['A. L1','B. L2','C. L4'],ans:1},
-  {q:'气动减速利用的是什么？',opts:['A. 反向推力','B. 大气摩擦','C. 引力制动'],ans:1},
-  {q:'太阳帆的推进力来自？',opts:['A. 太阳风粒子','B. 光子辐射压','C. 磁场'],ans:1}
+  {q:'开普勒第二定律说的是什么？',opts:['A. 轨道是椭圆','B. 面积速度恒定','C. 周期平方正比于半长轴立方'],ans:1,why:'行星和恒星连线在相等时间内扫过相等面积，所以近日点速度快、远日点速度慢。'},
+  {q:'偏心率 e=0 的轨道是什么形状？',opts:['A. 圆形','B. 椭圆','C. 抛物线'],ans:0,why:'偏心率描述轨道扁平程度，e=0 时两个焦点重合，轨道就是圆。'},
+  {q:'霍曼转移轨道的特点是？',opts:['A. 最快到达','B. 最短距离','C. 最省燃料'],ans:2,why:'霍曼转移用两次切向变轨连接两个圆轨道，通常总 Δv 最小，但飞行时间不是最短。'},
+  {q:'引力弹弓效应中飞船获得的额外速度来自？',opts:['A. 自身燃料','B. 行星的轨道动能','C. 太阳辐射'],ans:1,why:'飞船在行星引力场中改变速度方向，相对于太阳可从行星轨道运动中获得少量能量。'},
+  {q:'JWST 位于哪个拉格朗日点？',opts:['A. L2','B. L1','C. L4'],ans:0,why:'JWST 位于日地 L2 附近，便于同时遮挡太阳、地球和月球并保持低温观测环境。'},
+  {q:'气动减速利用的是什么？',opts:['A. 反向推力','B. 引力制动','C. 大气摩擦'],ans:2,why:'气动减速通过穿越大气把轨道能量转化为热和阻力，需要严格控制进入角度。'},
+  {q:'太阳帆的推进力来自？',opts:['A. 太阳风粒子','B. 光子辐射压','C. 磁场'],ans:1,why:'光子虽然没有静质量，但有动量；反射大量光子会给太阳帆持续施加微小推力。'}
 ];
 let quizState={active:false,answered:false,correct:false,selected:-1};
 
@@ -201,10 +202,12 @@ function resize(){canvas.width=CW=innerWidth;canvas.height=CH=innerHeight;bgStar
 window.addEventListener('resize',resize);resize();
 
 function startGame(){document.getElementById('startScreen').classList.add('hidden');gameState='play';currentLevel=0;panelEl.style.display='block';bbEl.style.display='flex';initLevel(0);panelDirty=true;renderPanel();loop();Audio2.play('click');}
-function canGoLevel(n){return n>=0&&n<levels.length&&(n===0||completedLevels.has(n)||completedLevels.has(n-1));}
-function goLevel(n){if(canGoLevel(n)){initLevel(n);panelDirty=true;renderPanel();}}
+function canGoLevel(n){n=Number(n);return Number.isInteger(n)&&n>=0&&n<levels.length&&(n===0||quizPassed.has(n-1));}
+function goLevel(n){n=Number(n);if(!Number.isInteger(n))return;if(canGoLevel(n)){initLevel(n);panelDirty=true;renderPanel();}}
 
 function initLevel(n){
+  n=Number(n);
+  if(!canGoLevel(n))return;
   currentLevel=n;particles=[];
   const g=levels[n].goals;
   levelState={goals:g.map(()=>false)};
@@ -215,10 +218,11 @@ function initLevel(n){
   Audio2.play('click');
 }
 function markGoal(i){if(!levelState.goals[i]){levelState.goals[i]=true;panelDirty=true;Audio2.play('success');checkComplete();}}
-function checkComplete(){if(levelState.goals.every(g=>g)&&!readyForQuiz.has(currentLevel)&&!completedLevels.has(currentLevel)){readyForQuiz.add(currentLevel);panelDirty=true;celebP((CW+320)/2,CH/2);setTimeout(()=>showResult(),600);}}
+function checkComplete(){if(levelState.goals.every(g=>g)&&!readyForQuiz.has(currentLevel)&&!quizPassed.has(currentLevel)){readyForQuiz.add(currentLevel);panelDirty=true;celebP((CW+320)/2,CH/2);setTimeout(()=>showResult(),600);}}
 function celebP(cx,cy){for(let i=0;i<40;i++){const a=Math.random()*Math.PI*2,sp=Math.random()*5+2;particles.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1.5,color:`hsl(${200+Math.random()*60},90%,60%)`,r:2+Math.random()*2});}}
 
 function showResult(){
+  if(!readyForQuiz.has(currentLevel)||quizPassed.has(currentLevel))return;
   const lv=levels[currentLevel],isLast=currentLevel===levels.length-1;
   const rb=document.getElementById('resultBox');
   quizState={active:true,answered:false,correct:false,selected:-1};
@@ -234,13 +238,14 @@ function showResult(){
   h+=`</div>`;rb.innerHTML=h;document.getElementById('resultModal').classList.remove('hidden');
 }
 function answerQuiz(idx){
-  if(quizState.answered)return;const qd=quizData[currentLevel];quizState.selected=idx;
-  if(idx===qd.ans){quizState.answered=true;quizState.correct=true;completedLevels.add(currentLevel);readyForQuiz.delete(currentLevel);panelDirty=true;renderPanel();document.getElementById('qopt'+idx).classList.add('correct');document.getElementById('quizResult').className='quiz-result pass';document.getElementById('quizResult').textContent='✅ 回答正确！';document.getElementById('quizBtns').style.display='block';Audio2.play('success');}
+  idx=Number(idx);
+  if(!Number.isInteger(idx)||!readyForQuiz.has(currentLevel)||quizPassed.has(currentLevel)||!quizState.active||quizState.answered)return;const qd=quizData[currentLevel];if(!qd||idx<0||idx>=qd.opts.length)return;if(currentLevel>0&&!quizPassed.has(currentLevel-1))return;quizState.selected=idx;
+  if(idx===qd.ans){quizState.answered=true;quizState.correct=true;quizPassed.add(currentLevel);completedLevels.add(currentLevel);readyForQuiz.delete(currentLevel);panelDirty=true;renderPanel();document.getElementById('qopt'+idx).classList.add('correct');document.getElementById('quizResult').className='quiz-result pass';document.getElementById('quizResult').textContent='✅ 回答正确！'+(qd.why?' '+qd.why:'');document.getElementById('quizBtns').style.display='block';Audio2.play('success');}
   else{document.getElementById('qopt'+idx).classList.add('wrong');document.getElementById('quizResult').className='quiz-result fail';document.getElementById('quizResult').textContent='❌ 再想想...';Audio2.play('fail');setTimeout(()=>{document.getElementById('qopt'+idx).classList.remove('wrong');document.getElementById('quizResult').textContent='';},1000);}
 }
-function nextLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel+1);}
+function nextLevel(){if(!quizPassed.has(currentLevel)||!canGoLevel(currentLevel+1))return;document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel+1);}
 function retryLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel);}
-function restartAll(){document.getElementById('resultModal').classList.add('hidden');completedLevels.clear();readyForQuiz.clear();initLevel(0);}
+function restartAll(){document.getElementById('resultModal').classList.add('hidden');completedLevels.clear();readyForQuiz.clear();quizPassed.clear();initLevel(0);}
 
 function _patchPanel(el,html){var ae=document.activeElement;if(!ae||ae.type!=='range'||!el.contains(ae)){el.innerHTML=html;return;}var tmp=document.createElement('div');tmp.innerHTML=html;_diffN(el,tmp);}
 function _diffN(o,n){var oc=Array.from(o.childNodes),nc=Array.from(n.childNodes);var i=0;while(i<oc.length&&i<nc.length){var a=oc[i],b=nc[i];if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName){o.replaceChild(b.cloneNode(true),a);i++;continue;}if(a.nodeType===3){if(a.textContent!==b.textContent)a.textContent=b.textContent;i++;continue;}if(a.nodeType===1){if(a.tagName==='INPUT'&&a.type==='range'&&a===document.activeElement){i++;continue;}for(var j=0;j<b.attributes.length;j++){var at=b.attributes[j];if(a.getAttribute(at.name)!==at.value)a.setAttribute(at.name,at.value);}_diffN(a,b);}i++;}while(oc.length>nc.length)o.removeChild(o.lastChild);for(;i<nc.length;i++)o.appendChild(nc[i].cloneNode(true));}
@@ -250,7 +255,7 @@ function stageNav(){
   for(let i=0;i<levels.length;i++){
     const unlocked=canGoLevel(i);
     const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    h+=`<div class="sn-d ${cls}" ${unlocked&&i!==currentLevel?`onclick="goLevel(${i})"`:''}></div>`;
   }
   h+=`</div><div class="sn-info">📍 第${currentLevel+1}/${levels.length}关 | 进度 ${Math.round(completedLevels.size/levels.length*100)}%</div></div>`;return h;
 }
@@ -259,6 +264,11 @@ function l0Metrics(){
   const b=l0.semiA*Math.sqrt(1-l0.ecc*l0.ecc);
   const T=Math.pow(l0.semiA/100,1.5);
   return {b,T};
+}
+function clampNumber(v,min,max){
+  const n=Number(v);
+  if(!Number.isFinite(n))return null;
+  return Math.min(max,Math.max(min,n));
 }
 function updateL0Metrics(){
   const m=l0Metrics();
@@ -272,9 +282,14 @@ function updateL0Metrics(){
   if(status){const ready=levelState.goals[0]||l0.ecc>0.1;status.style.color=ready?'#4ade80':'var(--concept-text)';status.textContent=ready?'✅ 椭圆轨道已形成！':'⬜ 将偏心率调到 0.10 以上，观察圆轨道变成椭圆';}
 }
 function setL0Orbit(key,el){
-  l0[key]=+el.value;l0.trail=[];
+  const ranges={ecc:[0,0.95],semiA:[80,250]};
+  if(!ranges[key]||!el)return false;
+  const value=clampNumber(el.value,ranges[key][0],ranges[key][1]);
+  if(value===null)return false;
+  l0[key]=value;el.value=value;l0.trail=[];
   if(key==='ecc'&&!levelState.goals[0]&&l0.ecc>0.1)markGoal(0);
   updateL0Metrics();
+  return true;
 }
 
 function updateL1Metrics(){
@@ -286,11 +301,16 @@ function updateL1Metrics(){
   if(incl)incl.textContent=l1.incl.toFixed(0)+'°';
 }
 function setL1Element(key,el){
+  const ranges={semiA:[60,250],ecc:[0,0.95],incl:[0,90]};
   const flags={semiA:'aChanged',ecc:'eChanged',incl:'iChanged'};
   const goals={semiA:0,ecc:1,incl:2};
-  l1[key]=+el.value;
+  if(!ranges[key]||!flags[key]||!el)return false;
+  const value=clampNumber(el.value,ranges[key][0],ranges[key][1]);
+  if(value===null)return false;
+  l1[key]=value;el.value=value;
   if(!l1[flags[key]]){l1[flags[key]]=true;markGoal(goals[key]);}
   updateL1Metrics();
+  return true;
 }
 
 function l2Metrics(){
@@ -307,7 +327,15 @@ function updateL2Metrics(){
   if(r2)r2.textContent=l2.r2+' px';
   if(dv)dv.innerHTML=`Δv₁: <span class="sv">${(m.dv1*100).toFixed(1)} m/s</span> | Δv₂: <span class="sv">${(m.dv2*100).toFixed(1)} m/s</span>`;
 }
-function setL2Radius(key,el){l2[key]=+el.value;updateL2Metrics();}
+function setL2Radius(key,el){
+  const ranges={r1:[60,120],r2:[140,250]};
+  if(!ranges[key]||!el||l2.burn1)return false;
+  const value=clampNumber(el.value,ranges[key][0],ranges[key][1]);
+  if(value===null)return false;
+  l2[key]=value;el.value=value;
+  updateL2Metrics();
+  return true;
+}
 
 function renderPanel(){
   if(!panelDirty)return;panelDirty=false;
@@ -350,8 +378,8 @@ function drawShip(x,y,angle,size){
 }
 
 // ===== L0: 开普勒定律 =====
-let l0={ecc:0.5,semiA:150,angle:0,trail:[],areaShown:false,periodVerified:false,sweepT:0,sweepPts:[]};
-function initL0(){l0={ecc:0.5,semiA:150,angle:0,trail:[],areaShown:false,periodVerified:false,sweepT:0,sweepPts:[]};}
+let l0={ecc:0,semiA:150,angle:0,trail:[],areaShown:false,periodVerified:false,sweepT:0,sweepPts:[]};
+function initL0(){l0={ecc:0,semiA:150,angle:0,trail:[],areaShown:false,periodVerified:false,sweepT:0,sweepPts:[]};}
 function panelL0(){
   const m=l0Metrics();
   let h=`<div style="font-size:13px;color:var(--concept-text);margin:6px 0;line-height:1.6">画布上是一颗行星绕<span style="color:#ffdd44">恒星</span>运行的<span style="color:#60a5fa">椭圆轨道</span>。调节偏心率观察轨道形状变化。</div>`;

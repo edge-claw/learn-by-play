@@ -112,6 +112,8 @@ canvas{flex:1;display:block;background:var(--bg)}
 .quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
 .quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);color:var(--quiz-correct-text);border-color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text);border-color:var(--quiz-wrong-text)}
 .quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
 .quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
 .quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
@@ -169,14 +171,17 @@ const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.ge
 let W,H,curLevel=0,animId,time=0,particles=[],packets=[];
 let levelObjs=Array.from({length:7},()=>[false,false,false]);
 let levelState={};
+let stateToken=0;
+function setLevelState(next){levelState=next||{};levelState._token=++stateToken;return levelState._token}
+function isActiveState(token,phase){return levelState&&levelState._token===token&&(!phase||levelState.phase===phase)}
 const quizData=[
-  {q:'数据封装时，数据通常按什么方向经过协议栈？',opts:['从应用层向下到物理层逐层加头部','从物理层向上直接生成网页','只在 DNS 层处理'],ans:0,ok:'对。发送端从上到下逐层封装，接收端再从下到上解封装。',bad:'封装发生在发送端协议栈向下传递时，每层添加自己的控制信息。'},
-  {q:'以太网帧中的 MAC 地址主要用于什么范围的寻址？',opts:['同一局域网链路内','跨互联网端到端进程','浏览器缓存'],ans:0,ok:'对。MAC 地址服务于局域网内的二层转发。',bad:'跨网络转发主要依赖 IP，MAC 地址负责链路内下一跳。'},
-  {q:'路由器转发 IP 包时主要查什么？',opts:['路由表中的最长前缀匹配','HTTP 状态码','TLS 证书主题'],ans:0,ok:'对。最长前缀匹配决定下一跳和出口接口。',bad:'IP 转发核心是目的地址与路由表前缀匹配。'},
-  {q:'TCP 三次握手的目的是什么？',opts:['建立可靠连接并同步序列号','解析域名','过滤防火墙规则'],ans:0,ok:'对。SYN、SYN+ACK、ACK 建立双方连接状态。',bad:'三次握手属于传输层连接建立，不是 DNS 或安全过滤。'},
-  {q:'递归 DNS 查询中，本地 DNS 通常承担什么角色？',opts:['代客户端逐级查询并返回最终结果','只显示网页 HTML','只加密 TCP 数据'],ans:0,ok:'对。递归解析器替客户端向上游查询，直到拿到答案。',bad:'递归查询的特点是本地 DNS 代办完整解析流程。'},
-  {q:'HTTP 状态码 4xx 通常表示什么？',opts:['客户端请求错误','服务器主动成功返回','TCP 拥塞窗口大小'],ans:0,ok:'对。4xx 表示请求、权限或资源路径等客户端侧问题。',bad:'2xx 是成功，5xx 是服务器错误，4xx 主要指客户端错误。'},
-  {q:'防火墙规则通常根据哪些信息过滤流量？',opts:['IP、端口和协议等包头信息','网页字体颜色','CPU 温度'],ans:0,ok:'对。包过滤和状态检测都依赖网络包元数据和连接状态。',bad:'防火墙关注网络流量特征，而不是页面样式或硬件温度。'}
+  {q:'数据封装时，数据通常按什么方向经过协议栈？',opts:['从应用层向下到物理层逐层加头部','从物理层向上直接生成网页','只在 DNS 层处理'],ans:0,ok:'对。发送端从上到下逐层封装，接收端再从下到上解封装。',bad:'封装发生在发送端协议栈向下传递时，每层添加自己的控制信息。',why:'应用数据在传输层加端口信息，在网络层加 IP 信息，在链路层加 MAC 和校验信息，最后变成可传输的比特。'},
+  {q:'以太网帧中的 MAC 地址主要用于什么范围的寻址？',opts:['跨互联网端到端进程','同一局域网链路内','浏览器缓存'],ans:1,ok:'对。MAC 地址服务于局域网内的二层转发。',bad:'跨网络转发主要依赖 IP，MAC 地址负责链路内下一跳。',why:'每经过一个链路，帧头里的源/目的 MAC 都可能变化；IP 地址则描述端到端的逻辑目的地。'},
+  {q:'路由器转发 IP 包时主要查什么？',opts:['HTTP 状态码','TLS 证书主题','路由表中的最长前缀匹配'],ans:2,ok:'对。最长前缀匹配决定下一跳和出口接口。',bad:'IP 转发核心是目的地址与路由表前缀匹配。',why:'路由器不会解析应用层内容来决定路径，而是用目的 IP 和最具体的路由前缀选择下一跳。'},
+  {q:'TCP 三次握手的目的是什么？',opts:['过滤防火墙规则','建立可靠连接并同步序列号','解析域名'],ans:1,ok:'对。SYN、SYN+ACK、ACK 建立双方连接状态。',bad:'三次握手属于传输层连接建立，不是 DNS 或安全过滤。',why:'双方需要确认收发能力并交换初始序列号，后续可靠传输和 ACK 才有共同基准。'},
+  {q:'递归 DNS 查询中，本地 DNS 通常承担什么角色？',opts:['只显示网页 HTML','只加密 TCP 数据','代客户端逐级查询并返回最终结果'],ans:2,ok:'对。递归解析器替客户端向上游查询，直到拿到答案。',bad:'递归查询的特点是本地 DNS 代办完整解析流程。',why:'客户端只问递归解析器一次；解析器再查询根、顶级域、权威 DNS，并把最终记录缓存后返回。'},
+  {q:'HTTP 状态码 4xx 通常表示什么？',opts:['TCP 拥塞窗口大小','客户端请求错误','服务器主动成功返回'],ans:1,ok:'对。4xx 表示请求、权限或资源路径等客户端侧问题。',bad:'2xx 是成功，5xx 是服务器错误，4xx 主要指客户端错误。',why:'例如 404 代表资源不存在，403 代表权限不足，问题通常在请求目标、权限或参数上。'},
+  {q:'防火墙规则通常根据哪些信息过滤流量？',opts:['CPU 温度','网页字体颜色','IP、端口和协议等包头信息'],ans:2,ok:'对。包过滤和状态检测都依赖网络包元数据和连接状态。',bad:'防火墙关注网络流量特征，而不是页面样式或硬件温度。',why:'规则通常匹配源/目的 IP、端口、协议和连接状态，再决定允许、拒绝或转发。'}
 ];
 let quizPassed=new Set(),quizFeedback={};
 
@@ -735,20 +740,28 @@ function learnHTML(li){
 }
 function isUnlocked(li){return li===0||quizPassed.has(li-1)}
 function quizHTML(li){
-  const q=quizData[li],fb=quizFeedback[li];
+  const q=quizData[li],fb=quizFeedback[li],passed=quizPassed.has(li);
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
   h+=`<div class="quiz-q">${q.q}</div>`;
-  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`});
+  q.opts.forEach((opt,i)=>{
+    const cls=passed&&i===q.ans?' correct':fb?(i===q.ans?' correct':i===fb.choice&&!fb.ok?' wrong':''):'';
+    h+=`<button class="quiz-opt${cls}" onclick="answerQuiz(${li},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;
+  });
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
   h+='</div>';
   return h;
 }
 function answerQuiz(li,choice){
-  if(li!==curLevel||quizPassed.has(li))return;
-  const q=quizData[li],ok=choice===q.ans;
-  quizFeedback[li]={ok:ok,text:ok?q.ok:q.bad};
+  li=Number(li);choice=Number(choice);
+  if(!Number.isInteger(li)||!Number.isInteger(choice)||li!==curLevel||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(v=>v))return false;
+  const q=quizData[li];
+  if(!q||choice<0||choice>=q.opts.length)return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  const ok=choice===q.ans;
+  quizFeedback[li]={ok:ok,choice:choice,text:(ok?q.ok:q.bad)+(q.why?' '+q.why:'')};
   if(ok)quizPassed.add(li);
   renderPanel();
+  return ok;
 }
 window.answerQuiz=answerQuiz;
 
@@ -759,9 +772,9 @@ function renderPanel(){
   // Action buttons per level
   h+=levelActions(li);
   h+=learnHTML(li);
-  if(levelObjs[li].every(v=>v)&&!quizPassed.has(li)) h+=quizHTML(li);
+  if(levelObjs[li].every(v=>v)||quizPassed.has(li)) h+=quizHTML(li);
   if(levelObjs[li].every(v=>v)&&quizPassed.has(li)&&li<6) h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-  if(levelObjs[li].every(v=>v)&&quizPassed.has(li)&&li===6) h+=`${_summaryHTML()}`;
+  if(levelObjs[li].every(v=>v)&&quizPassed.has(li)&&li===6&&quizPassed.size===LEVELS.length) h+=window._summaryHTML?window._summaryHTML():'';
   panel.innerHTML=h;
 }
 
@@ -802,37 +815,39 @@ function levelActions(li){
 }
 // --- Level action handlers ---
 function doL0(act){
-  if(act==='view'){levelState={};levelObjs[0][0]=true;}
-  else if(act==='encap'){levelState={encap:true,animProg:0};runAnim(0,1,2000,()=>{levelObjs[0][1]=true;levelState.encap=false;renderPanel();});}
-  else if(act==='decap'){levelState={decap:true,animProg:0};runAnim(0,1,2000,()=>{levelObjs[0][2]=true;levelState.decap=false;renderPanel();});}
+  if(act==='view'){setLevelState({});levelObjs[0][0]=true;}
+  else if(act==='encap'){let token=setLevelState({encap:true,animProg:0});runAnim(0,1,2000,()=>{if(!isActiveState(token))return;levelObjs[0][1]=true;levelState.encap=false;renderPanel();},token);}
+  else if(act==='decap'){let token=setLevelState({decap:true,animProg:0});runAnim(0,1,2000,()=>{if(!isActiveState(token))return;levelObjs[0][2]=true;levelState.decap=false;renderPanel();},token);}
   renderPanel();
 }
 function doL1(act){
-  if(act==='signal'){levelState={};levelObjs[1][0]=true;}
-  else if(act==='frame'){levelState={};levelObjs[1][1]=true;}
-  else if(act==='mac'){levelState.showMac=true;levelState.macAnim=true;levelObjs[1][2]=true;setTimeout(()=>{levelState.macAnim=false;},3000);}
+  if(act==='signal'){setLevelState({});levelObjs[1][0]=true;}
+  else if(act==='frame'){setLevelState({});levelObjs[1][1]=true;}
+  else if(act==='mac'){let token=setLevelState({showMac:true,macAnim:true});levelObjs[1][2]=true;setTimeout(()=>{if(isActiveState(token))levelState.macAnim=false;},3000);}
   renderPanel();
 }
 function doL2(act){
-  if(act==='ip'){levelState={};levelObjs[2][0]=true;}
+  if(act==='ip'){setLevelState({});levelObjs[2][0]=true;}
   else if(act==='route'){levelState.showRoute=true;levelState.routeAnim=true;levelObjs[2][1]=true;}
   else if(act==='subnet'){levelState.showSubnet=true;levelObjs[2][2]=true;}
   renderPanel();
 }
 function doL3(act){
   if(act==='handshake'){
-    levelState={phase:'handshake',hsStep:0,hsAnim:true};
+    let token=setLevelState({phase:'handshake',hsStep:0,hsAnim:true});
     let iv=setInterval(()=>{
+      if(!isActiveState(token,'handshake')){clearInterval(iv);return;}
       levelState.hsStep=(levelState.hsStep||0)+1;
       if(levelState.hsStep>=3){clearInterval(iv);levelState.phase='done_hs';levelState.hsAnim=false;levelObjs[3][0]=true;renderPanel();}
     },1200);
   }else if(act==='window'){
-    levelState={phase:'window',winPos:0};levelObjs[3][1]=true;
+    setLevelState({phase:'window',winPos:0});levelObjs[3][1]=true;
   }else if(act==='winSlide'){
     if(levelState.winPos<6) levelState.winPos++;
   }else if(act==='close'){
-    levelState={phase:'close',clStep:0,clAnim:true};
+    let token=setLevelState({phase:'close',clStep:0,clAnim:true});
     let iv=setInterval(()=>{
+      if(!isActiveState(token,'close')){clearInterval(iv);return;}
       levelState.clStep=(levelState.clStep||0)+1;
       if(levelState.clStep>=4){clearInterval(iv);levelState.phase='done_close';levelState.clAnim=false;levelObjs[3][2]=true;renderPanel();}
     },1200);
@@ -840,54 +855,56 @@ function doL3(act){
   renderPanel();
 }
 function doL4(act){
-  if(act==='tree'){levelState={phase:'tree'};levelObjs[4][0]=true;}
+  if(act==='tree'){setLevelState({phase:'tree'});levelObjs[4][0]=true;}
   else if(act==='recursive'){
-    levelState={phase:'recursive',dnsStep:0,dnsAnim:true};
-    let iv=setInterval(()=>{levelState.dnsStep++;if(levelState.dnsStep>=8){clearInterval(iv);levelState.dnsAnim=false;levelObjs[4][1]=true;renderPanel();}},1000);
+    let token=setLevelState({phase:'recursive',dnsStep:0,dnsAnim:true});
+    let iv=setInterval(()=>{if(!isActiveState(token,'recursive')){clearInterval(iv);return;}levelState.dnsStep++;if(levelState.dnsStep>=8){clearInterval(iv);levelState.dnsAnim=false;levelObjs[4][1]=true;renderPanel();}},1000);
   }else if(act==='iterative'){
-    levelState={phase:'iterative',dnsStep:0,dnsAnim:true};
-    let iv=setInterval(()=>{levelState.dnsStep++;if(levelState.dnsStep>=6){clearInterval(iv);levelState.dnsAnim=false;levelObjs[4][2]=true;renderPanel();}},1000);
+    let token=setLevelState({phase:'iterative',dnsStep:0,dnsAnim:true});
+    let iv=setInterval(()=>{if(!isActiveState(token,'iterative')){clearInterval(iv);return;}levelState.dnsStep++;if(levelState.dnsStep>=6){clearInterval(iv);levelState.dnsAnim=false;levelObjs[4][2]=true;renderPanel();}},1000);
   }
   renderPanel();
 }
 function doL5(act){
   if(act==='http'){
-    levelState={phase:'http',httpStep:0};
-    setTimeout(()=>{levelState.httpStep=1;renderPanel();},500);
-    setTimeout(()=>{levelState.httpStep=2;levelObjs[5][0]=true;renderPanel();},1500);
+    let token=setLevelState({phase:'http',httpStep:0});
+    setTimeout(()=>{if(!isActiveState(token,'http'))return;levelState.httpStep=1;renderPanel();},500);
+    setTimeout(()=>{if(!isActiveState(token,'http'))return;levelState.httpStep=2;levelObjs[5][0]=true;renderPanel();},1500);
   }else if(act==='codes'){
-    levelState={phase:'codes'};levelObjs[5][1]=true;
+    setLevelState({phase:'codes'});levelObjs[5][1]=true;
   }else if(act==='tls'){
-    levelState={phase:'tls',tlsStep:0};
-    let iv=setInterval(()=>{levelState.tlsStep=(levelState.tlsStep||0)+1;if(levelState.tlsStep>=5){clearInterval(iv);levelObjs[5][2]=true;renderPanel();}},1200);
+    let token=setLevelState({phase:'tls',tlsStep:0});
+    let iv=setInterval(()=>{if(!isActiveState(token,'tls')){clearInterval(iv);return;}levelState.tlsStep=(levelState.tlsStep||0)+1;if(levelState.tlsStep>=5){clearInterval(iv);levelObjs[5][2]=true;renderPanel();}},1200);
   }
   renderPanel();
 }
 function doL6(act){
   if(act==='firewall'){
-    levelState={phase:'firewall',fwTest:true,fwPkts:[
+    let token=setLevelState({phase:'firewall',fwTest:true,fwPkts:[
       {port:'80',allowed:true,idx:0,t:0},{port:'443',allowed:true,idx:1,t:0},
       {port:'22',allowed:false,idx:2,t:0},{port:'ICMP',allowed:false,idx:3,t:0}
-    ]};
+    ]});
     let iv=setInterval(()=>{
+      if(!isActiveState(token,'firewall')||!Array.isArray(levelState.fwPkts)){clearInterval(iv);return;}
       let done=true;
       for(let p of levelState.fwPkts){if(p.t<1){p.t+=0.02;done=false;}}
       if(done){clearInterval(iv);levelObjs[6][0]=true;renderPanel();}
     },30);
   }else if(act==='arp'){
-    levelState={phase:'arp',arpStep:0};
-    let iv=setInterval(()=>{levelState.arpStep++;if(levelState.arpStep>=3){clearInterval(iv);levelObjs[6][1]=true;renderPanel();}},1500);
+    let token=setLevelState({phase:'arp',arpStep:0});
+    let iv=setInterval(()=>{if(!isActiveState(token,'arp')){clearInterval(iv);return;}levelState.arpStep++;if(levelState.arpStep>=3){clearInterval(iv);levelObjs[6][1]=true;renderPanel();}},1500);
   }else if(act==='ddos'){
-    levelState={phase:'ddos',ddosAnim:true,ddosStep:0};
-    setTimeout(()=>{levelState.ddosStep=1;},1500);
-    setTimeout(()=>{levelState.ddosStep=2;levelState.ddosAnim=false;levelObjs[6][2]=true;renderPanel();},3500);
+    let token=setLevelState({phase:'ddos',ddosAnim:true,ddosStep:0});
+    setTimeout(()=>{if(isActiveState(token,'ddos'))levelState.ddosStep=1;},1500);
+    setTimeout(()=>{if(!isActiveState(token,'ddos'))return;levelState.ddosStep=2;levelState.ddosAnim=false;levelObjs[6][2]=true;renderPanel();},3500);
   }
   renderPanel();
 }
 
-function runAnim(from,to,dur,cb){
+function runAnim(from,to,dur,cb,token){
   let start=performance.now();
   function tick(now){
+    if(token&&!isActiveState(token))return;
     let t=Math.min(1,(now-start)/dur);
     levelState.animProg=lerp(from,to,t);
     if(t<1) requestAnimationFrame(tick); else if(cb) cb();
@@ -900,7 +917,7 @@ function renderBar(){
   bar.innerHTML='<span style="color:var(--text-muted)">🌐 '+LEVELS[curLevel].name+'</span>';
 }
 
-function goLevel(n){if(n<0||n>=LEVELS.length||!isUnlocked(n))return;curLevel=n;levelState={};renderPanel();renderBar();}
+function goLevel(n){if(n<0||n>=LEVELS.length||!isUnlocked(n))return;curLevel=n;setLevelState({});renderPanel();renderBar();}
 
 function startGame(){
   overlay.style.display='none';
@@ -957,8 +974,8 @@ function startGame(){
     for(var i=0;i<total;i++){
       var unlocked=typeof isUnlocked==='function'?isUnlocked(i):true;
       var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
-      var click=unlocked?"typeof goLevel==='function'&&goLevel("+i+")":'';
-      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
+      var click=unlocked?' onclick="goLevel('+i+')"':'';
+      h+='<div class="sn-d '+cls+'"'+click+'></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
@@ -971,6 +988,7 @@ function startGame(){
   // 3. 通关总结
   window._summaryHTML=function(){
     var names=_getNames(),total=names.length;
+    if(typeof quizPassed!=='undefined'&&quizPassed.size<total)return '';
     var s=_countDone();
     var pct=s.total>0?Math.round(s.done/s.total*100):100;
     var h='<div class="summary-box">';

@@ -70,6 +70,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:6px;background:var(--accent);color:#0a0a1a;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
 .act-btn:hover{background:#fbbf24;transform:translateY(-1px)}
 .act-btn.secondary{background:var(--btn-bg);color:var(--btn-text);border:1px solid var(--btn-border)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin-top:8px;font-size:12px;line-height:1.6;color:var(--hint-text)}
 .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;line-height:1.8}
 .learn-box b{color:var(--accent)}
 canvas{flex:1;display:block;background:var(--bg)}
@@ -155,10 +156,10 @@ const TH={
   light:{bg:'#f0f2f5',grid:'rgba(245,158,11,0.03)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',plasma:'#ea580c',plasmaGlow:'rgba(234,88,12,0.3)',coil:'#2563eb',coilGlow:'rgba(37,99,235,0.2)',neutron:'#16a34a',tritium:'#0891b2',wall:'#94a3b8',showStars:false}
 };
 function t(){return isDark?TH.dark:TH.light}
-function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{renderPanel()}catch(e){}}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{renderPanel();draw()}catch(e){}}
 
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay');
-let W,H,curLevel=0,animId,time=0;
+let W,H,curLevel=0,animId,time=0,animating=false;
 let levelObjs=Array.from({length:7},()=>[false,false,false]);
 let quizPassed=Array.from({length:7},()=>false);
 let quizFeedback={};
@@ -170,31 +171,31 @@ window.addEventListener('resize',()=>{resize();draw()});
 const LEVELS=[
 {name:'核聚变基础',desc:'<div class="concept-box"><b>关键词：</b>D-T反应、质能方程 E=mc²、劳森判据</div>画布上显示氘(D)和氚(T)两个原子核。拖动滑块增加温度和密度，当条件满足时它们会融合产生氦核和中子，释放巨大能量。',
  objs:['观察D-T反应过程','用E=mc²计算能量释放','满足劳森判据点火条件'],
- quiz:{q:'D-T聚变反应的产物是什么？',opts:['氢+中子','氦-4+中子','碳+光子','氧+电子'],ans:1},
+ quiz:{q:'D-T聚变反应的产物是什么？',opts:['氢+中子','氦-4+中子','碳+光子','氧+电子'],ans:1,why:'氘核和氚核融合后形成一个氦-4 原子核，同时释放一个高能中子，总能量约 17.6MeV。'},
  learn:'<b>D-T反应</b>：²H + ³H → ⁴He(3.5MeV) + n(14.1MeV)，总释放17.6MeV。<br><b>E=mc²</b>：质量亏损转化为能量，1g燃料≈释放约90太焦耳。<br><b>劳森判据</b>：nTτ > 5×10²¹ m⁻³·keV·s，温度、密度、约束时间三者乘积需超过阈值。'},
 {name:'等离子体物理',desc:'<div class="concept-box"><b>关键词：</b>1亿度高温、磁约束、等离子体不稳定性</div>画布中央有一团等离子体（带电粒子云）。调节温度和磁场强度，观察粒子的运动轨迹——温度太高粒子逃逸，磁场太弱无法约束。',
  objs:['将等离子体加热到1亿度','用磁场约束等离子体','观察并抑制不稳定性'],
- quiz:{q:'为什么聚变需要1亿度的高温？',opts:['熔化燃料','克服库仑斥力','产生中子','激发光子'],ans:1},
+ quiz:{q:'为什么聚变需要1亿度的高温？',opts:['克服库仑斥力','熔化燃料','产生中子','激发光子'],ans:0,why:'两个带正电的原子核会相互排斥，极高温度提供足够动能，让原子核有机会接近到强相互作用起效的距离。'},
  learn:'<b>等离子体</b>：物质第四态，原子核与电子完全分离的高温气体。<br><b>磁约束</b>：带电粒子在磁场中做螺旋运动（拉莫尔回旋），被约束在磁力线上。<br><b>不稳定性</b>：扭曲模、撕裂模等，会导致等离子体触壁冷却，是聚变最大挑战。'},
 {name:'托卡马克装置',desc:'<div class="concept-box"><b>关键词：</b>环形磁场、等离子体电流、偏滤器</div>画布上显示托卡马克的截面图：环形真空室、环向磁场线圈和极向磁场。调节线圈电流，观察磁力线如何形成螺旋形约束等离子体。',
  objs:['调节环向磁场线圈','建立等离子体电流','启动偏滤器排灰'],
- quiz:{q:'托卡马克的磁场是什么形状？',opts:['纯环形','纯极向','螺旋形（环向+极向叠加）','直线形'],ans:2},
+ quiz:{q:'托卡马克的磁场是什么形状？',opts:['纯环形','纯极向','螺旋形（环向+极向叠加）','直线形'],ans:2,why:'外部线圈给出环向磁场，等离子体电流产生极向磁场，两者叠加后形成螺旋磁力线来约束带电粒子。'},
  learn:'<b>托卡马克</b>：环形磁约束装置，俄语"环形磁线圈室"。<br><b>环向磁场</b>：由外部线圈产生，约束粒子不向外漂移。<br><b>极向磁场</b>：由等离子体电流自身产生，与环向叠加形成螺旋磁力线。<br><b>偏滤器</b>：底部排出杂质和氦灰，保持等离子体纯净。'},
 {name:'惯性约束聚变',desc:'<div class="concept-box"><b>关键词：</b>激光驱动、内爆压缩、NIF装置</div>画布上有一个微型燃料靶丸，周围是激光束。调节激光能量和对称性，观察靶丸被压缩到极高密度后发生聚变点火的过程。',
  objs:['调节激光能量到点火阈值','优化激光对称性','观察内爆压缩过程'],
- quiz:{q:'NIF装置用多少束激光？',opts:['12束','48束','192束','1024束'],ans:2},
+ quiz:{q:'NIF装置用多少束激光？',opts:['12束','192束','48束','1024束'],ans:1,why:'NIF 使用 192 束激光从多方向压缩燃料靶丸，关键难点是让能量足够高且照射尽量对称。'},
  learn:'<b>惯性约束</b>：用强激光/粒子束从四面八方压缩燃料靶丸，在惯性约束时间内完成聚变。<br><b>NIF</b>：美国国家点火装置，192束激光，总能量1.8MJ，2022年首次实现点火增益>1。<br><b>内爆</b>：靶丸外壳向外喷射→反作用力向内压缩→中心密度达铅的1000倍。'},
 {name:'超导磁体',desc:'<div class="concept-box"><b>关键词：</b>ITER超导线圈、临界温度、磁场强度</div>画布上显示超导线圈的截面。调节冷却温度，当温度降到临界值以下时，电阻突然消失，线圈产生强大磁场。观察磁场强度随温度的变化。',
  objs:['将线圈冷却到临界温度以下','产生>12T的强磁场','观察超导转变过程'],
- quiz:{q:'ITER使用的超导材料Nb₃Sn的临界温度约为？',opts:['4K','18K','77K','300K'],ans:1},
+ quiz:{q:'ITER使用的超导材料Nb₃Sn的临界温度约为？',opts:['18K','4K','77K','300K'],ans:0,why:'Nb3Sn 的临界温度约 18K，但大型强场磁体通常还要冷却到更低温度，以留出强磁场和工程裕量。'},
  learn:'<b>超导</b>：温度低于临界温度时电阻为零，可通过巨大电流产生强磁场。<br><b>Nb₃Sn</b>：铌三锡，临界温度~18K，但在强磁场下需冷却到4.2K（液氦温度）。<br><b>ITER磁体</b>：18个环向场线圈，每个重310吨，产生11.8T磁场，总储能41GJ。'},
 {name:'氚增殖与材料',desc:'<div class="concept-box"><b>关键词：</b>锂包层、中子辐照、第一壁材料</div>画布上显示反应堆壁的截面结构。聚变中子撞击锂包层产生氚（燃料自给）。调节包层厚度和材料，观察氚增殖比和材料损伤。',
  objs:['设计锂包层使氚增殖比>1','选择耐辐照的第一壁材料','控制中子辐照损伤'],
- quiz:{q:'为什么聚变堆需要氚增殖？',opts:['氚是催化剂','自然界氚极少需自产','氚可以卖钱','增加反应温度'],ans:1},
+ quiz:{q:'为什么聚变堆需要氚增殖？',opts:['氚是催化剂','氚可以卖钱','自然界氚极少需自产','增加反应温度'],ans:2,why:'D-T 聚变持续消耗氚，而自然界氚储量极少，电站必须用中子轰击锂包层自产氚，TBR 需要大于 1。'},
  learn:'<b>氚增殖</b>：⁶Li + n → ⁴He + T + 4.8MeV。中子打锂产生氚，实现燃料自给。<br><b>增殖比TBR</b>：必须>1（产氚>耗氚），ITER设计目标TBR≈1.1。<br><b>第一壁</b>：直面等离子体，承受高热流+中子辐照。候选材料：钨（耐高温）、RAFM钢（低活化）。'},
 {name:'商用聚变路线图',desc:'<div class="concept-box"><b>关键词：</b>ITER→DEMO→商用电站、Q值、经济性</div>画布上显示从ITER到商用电站的时间线路线图。点击各里程碑了解详情，调节参数探索聚变发电的经济性。',
  objs:['了解ITER→DEMO→商用三步走','使Q值达到商用标准(>30)','评估聚变发电经济性'],
- quiz:{q:'ITER的设计Q值目标是多少？',opts:['Q=1','Q=5','Q=10','Q=50'],ans:2},
+ quiz:{q:'ITER的设计Q值目标是多少？',opts:['Q=1','Q=10','Q=5','Q=50'],ans:1,why:'ITER 的目标是 Q=10，即输出聚变功率约为外部加热输入功率的 10 倍；商用电站还需要更高 Q 值和更低度电成本。'},
  learn:'<b>Q值</b>：聚变功率/输入功率。Q=1为盈亏平衡，Q=10为ITER目标，商用需Q>30。<br><b>ITER</b>：2025年首次等离子体（延期中），目标Q=10，500MW聚变功率。<br><b>DEMO</b>：示范电站，~2040s，首次并网发电。<br><b>商用电站</b>：~2050s+，1GW级，度电成本需与风光竞争。'}
 ];
 
@@ -205,16 +206,19 @@ function drawText(txt,x,y,size,color,align){ctx.fillStyle=color||t().text;ctx.fo
 
 // === Level init ===
 function initLevel(idx){
+  idx=Number(idx);
+  if(!Number.isInteger(idx)||idx<0||idx>=LEVELS.length)return;
+  if(!quizPassed[idx])delete quizFeedback[idx];
   S={phase:0,t:0};
-  if(idx===0){S.temp=1000;S.density=1e18;S.reacting=false;S.energy=0;S.lawsonMet=false;S.particles=[];
+  if(idx===0){S.temp=1000;S.density=1e18;S.reacting=false;S.energy=0;S.energyCalculated=false;S.lawsonMet=false;S.reactionSeen=false;S.particles=[];
     for(let i=0;i<30;i++)S.particles.push({x:W/2+(Math.random()-0.5)*100,y:H/2+(Math.random()-0.5)*100,vx:(Math.random()-0.5)*2,vy:(Math.random()-0.5)*2,type:i<15?'D':'T',r:6})}
-  if(idx===1){S.plasmaTemp=1e6;S.magField=0.5;S.plasmaParticles=[];S.unstable=false;S.confined=false;
+  if(idx===1){S.plasmaTemp=1e6;S.magField=0.5;S.plasmaParticles=[];S.unstable=false;S.confined=false;S.instabilitySeen=false;
     for(let i=0;i<50;i++)S.plasmaParticles.push({x:W/2+(Math.random()-0.5)*80,y:H/2+(Math.random()-0.5)*80,vx:(Math.random()-0.5)*3,vy:(Math.random()-0.5)*3,angle:Math.random()*Math.PI*2})}
   if(idx===2){S.toroidalI=0;S.poloidalI=0;S.divertorOn=false;S.helicalAngle=0}
   if(idx===3){S.laserEnergy=0;S.symmetry=50;S.imploding=false;S.ignited=false;S.compressionR=60;S.laserBeams=12}
-  if(idx===4){S.coolTemp=300;S.critTemp=18;S.magStrength=0;S.superconducting=false;S.resistance=1}
-  if(idx===5){S.blanketThick=20;S.material='steel';S.tbr=0.8;S.dpa=0;S.neutronFlux=0.5}
-  if(idx===6){S.qValue=1;S.milestone=0;S.costPerKwh=50;S.plantPower=500;S.timeline=[
+  if(idx===4){S.coolTemp=300;S.critTemp=18;S.magStrength=0;S.superconducting=false;S.resistance=1;S.transitionObserved=false;S.transitionConfirmed=false}
+  if(idx===5){S.blanketThick=20;S.material='steel';S.materialChosen=false;S.tbr=0.8;S.dpa=0;S.neutronFlux=0.5;S.damageControlConfirmed=false}
+  if(idx===6){S.qValue=1;S.milestone=0;S.milestoneSeen=[false,false,false];S.costPerKwh=50;S.plantPower=500;S.economicsReviewed=false;S.economicsFeedback='';S.timeline=[
     {name:'ITER',year:2025,q:10,desc:'首次等离子体，验证Q=10'},
     {name:'DEMO',year:2040,q:25,desc:'示范电站，首次并网发电'},
     {name:'商用电站',year:2055,q:50,desc:'1GW级商用聚变电站'}]}
@@ -262,7 +266,7 @@ function drawFusionBasics(th){
   let ratio=Math.min(1,tempLog/maxLog);
   let grad=ctx.createLinearGradient(barX,0,barX+barW,0);grad.addColorStop(0,'#3b82f6');grad.addColorStop(0.5,'#f59e0b');grad.addColorStop(1,'#ef4444');
   ctx.fillStyle=grad;ctx.fillRect(barX,barY,barW*ratio,barH);
-  drawText(`温度: ${S.temp>=1e8?(S.temp/1e8).toFixed(1)+'亿°C':S.temp>=1e6?(S.temp/1e6).toFixed(0)+'万°C':S.temp.toFixed(0)+'°C'}`,cx,barY+barH+18,14,th.text);
+  drawText(`温度: ${formatFusionTemp(S.temp)}`,cx,barY+barH+18,14,th.text);
 }
 
 function drawPlasma(th){
@@ -419,12 +423,12 @@ function drawRoadmap(th){
   // milestones
   let milestones=[{name:'ITER',year:2025,x:W*0.25,color:'#3b82f6',q:10},{name:'DEMO',year:2040,x:W*0.5,color:'#f59e0b',q:25},{name:'商用电站',year:2055,x:W*0.75,color:'#22c55e',q:50}];
   for(let i=0;i<milestones.length;i++){
-    let m=milestones[i];let active=i<=S.milestone;
-    ctx.fillStyle=active?m.color:'rgba(100,100,100,0.3)';ctx.beginPath();ctx.arc(m.x,tlY,18,0,Math.PI*2);ctx.fill();
-    if(active){ctx.strokeStyle=m.color;ctx.lineWidth=2;ctx.beginPath();ctx.arc(m.x,tlY,22,0,Math.PI*2);ctx.stroke()}
-    drawText(m.name,m.x,tlY-35,14,active?m.color:th.textSec);
+    let m=milestones[i],seen=S.milestoneSeen&&S.milestoneSeen[i],active=i===S.milestone;
+    ctx.fillStyle=seen?m.color:'rgba(100,100,100,0.3)';ctx.beginPath();ctx.arc(m.x,tlY,18,0,Math.PI*2);ctx.fill();
+    if(active||seen){ctx.strokeStyle=m.color;ctx.lineWidth=active?3:1.5;ctx.beginPath();ctx.arc(m.x,tlY,active?24:22,0,Math.PI*2);ctx.stroke()}
+    drawText(m.name,m.x,tlY-35,14,seen?m.color:th.textSec);
     drawText(`${m.year}`,m.x,tlY+40,12,th.textSec);
-    drawText(`Q=${m.q}`,m.x,tlY+55,11,active?m.color:th.textSec);
+    drawText(`Q=${m.q}`,m.x,tlY+55,11,seen?m.color:th.textSec);
   }
   // Q value gauge
   let gaugeX=W*0.15,gaugeY=H*0.65,gaugeW=W*0.7,gaugeH=30;
@@ -446,18 +450,26 @@ function updateLevel(idx,dt){
   S.t+=dt;
   if(idx===0){
     let lawson=S.density*S.temp*0.001;
-    if(S.temp>=1e8&&S.density>=1e20&&lawson>5e21){S.reacting=true;S.energy=17.6;if(!levelObjs[0][2]){S.lawsonMet=true;completeObj(2)}}
+    let changed=false;
+    if(S.temp>=1e8&&S.density>=1e20&&lawson>5e21){
+      S.reacting=true;S.energy=17.6;S.reactionSeen=true;
+      if(!levelObjs[0][0])changed=completeObj(0,true)||changed;
+    }
     else S.reacting=false;
+    if(changed)renderPanel();
   }
   if(idx===1){
+    let changed=false;
     S.unstable=S.plasmaTemp>8e7&&S.magField<2;
-    if(S.plasmaTemp>=1e8&&!levelObjs[1][0])completeObj(0);
-    if(S.confined&&!levelObjs[1][1])completeObj(1);
-    if(S.plasmaTemp>8e7&&S.magField>=2&&!levelObjs[1][2])completeObj(2);
+    if(S.unstable)S.instabilitySeen=true;
+    if(S.plasmaTemp>=1e8&&!levelObjs[1][0])changed=completeObj(0,true)||changed;
+    if(S.confined&&!levelObjs[1][1])changed=completeObj(1,true)||changed;
+    if(S.instabilitySeen&&S.plasmaTemp>8e7&&S.magField>=2&&!levelObjs[1][2])changed=completeObj(2,true)||changed;
+    if(changed)renderPanel();
   }
   if(idx===3&&S.imploding&&!S.ignited){
     S.compressionR=Math.max(5,S.compressionR-0.5);
-    if(S.compressionR<=8&&S.laserEnergy>=80&&S.symmetry>=85){S.ignited=true;completeObj(2)}
+    if(S.compressionR<=8&&S.laserEnergy>=80&&S.symmetry>=85){S.ignited=true;if(completeObj(2,true))renderPanel()}
   }
 }
 
@@ -466,31 +478,90 @@ function handleClick(x,y){
   if(curLevel===6){
     let milestones=[{x:W*0.25},{x:W*0.5},{x:W*0.75}];
     for(let i=0;i<milestones.length;i++){
-      if(Math.abs(x-milestones[i].x)<25&&Math.abs(y-H*0.4)<25){S.milestone=Math.max(S.milestone,i);
-        if(i===0&&!levelObjs[6][0])completeObj(0);break}}
+      if(Math.abs(x-milestones[i].x)<25&&Math.abs(y-H*0.4)<25){selectL6Milestone(i);break}}
   }
 }
 
 // === Objectives ===
-function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel()}}
-function isLevelDone(idx){return levelObjs[idx].every(Boolean)}
-function isUnlocked(idx){return idx===0||quizPassed[idx-1]}
+function resetProgress(){curLevel=0;levelObjs=Array.from({length:7},()=>[false,false,false]);quizPassed=Array.from({length:7},()=>false);quizFeedback={};initLevel(0)}
+function completeObj(i,silent=false){i=Number(i);if(!Number.isInteger(i)||i<0||i>=3||!levelObjs[curLevel]||levelObjs[curLevel][i])return false;levelObjs[curLevel][i]=true;if(!silent)renderPanel();return true}
+function isLevelDone(idx){idx=Number(idx);return Number.isInteger(idx)&&idx>=0&&idx<LEVELS.length&&levelObjs[idx].every(Boolean)}
+function isUnlocked(idx){idx=Number(idx);return Number.isInteger(idx)&&idx>=0&&idx<LEVELS.length&&(idx===0||quizPassed[idx-1])}
+function allQuizPassed(){return quizPassed.every(Boolean)}
+function levelStatusText(){
+  const levelPassed=quizPassed[curLevel];
+  const done=levelPassed?3:(levelObjs[curLevel]||[]).filter(Boolean).length;
+  const status=levelPassed?'已通关':done===3?'待测验':'进行中';
+  return `目标 ${done}/3 · ${status} · 通关 ${quizPassed.filter(Boolean).length}/7`;
+}
+function renderBar(){
+  bar.innerHTML=`<div class="bar-left"><span class="bar-btn active">核聚变工程探险</span><span class="bar-btn">${LEVELS[curLevel].name}</span></div><div class="bar-right">${levelStatusText()}</div>`;
+}
 
 function formatFusionTemp(v){
   if(v>=1e8)return (v/1e8).toFixed(1)+'亿°C';
   if(v>=1e6)return (v/1e6).toFixed(0)+'百万°C';
   return v.toFixed(0)+'°C';
 }
+function fusionLawsonValue(){
+  return S.density*S.temp*0.001;
+}
+function fusionLawsonText(){
+  const value=fusionLawsonValue();
+  const met=S.temp>=1e8&&S.density>=1e20&&value>5e21;
+  return `劳森判据: ${value.toExponential(2)} / 5.0e21 ${met?'✅ 已达点火窗口':'继续提高温度或密度'}`;
+}
+function clampNumber(value,fallback,min,max){
+  const n=Number(value);
+  return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback;
+}
 function updateL0Metrics(){
   const temp=document.getElementById('l0TempVal');
   const density=document.getElementById('l0DensityVal');
+  const lawson=document.getElementById('l0LawsonVal');
   if(temp)temp.textContent=formatFusionTemp(S.temp);
   if(density)density.textContent=S.density.toExponential(1)+' m⁻³';
+  if(lawson){
+    const met=S.temp>=1e8&&S.density>=1e20&&fusionLawsonValue()>5e21;
+    lawson.textContent=fusionLawsonText();
+    lawson.style.color=met?'#22c55e':'#f59e0b';
+  }
 }
 function setL0Condition(key,el){
-  S[key]=Math.pow(10,+el.value/1000*(key==='temp'?8.3:22));
-  if(key==='temp'&&S.temp>1e6&&!levelObjs[0][0])completeObj(0);
+  if(curLevel!==0||(key!=='temp'&&key!=='density')||!Number.isFinite(S[key]))return false;
+  const scale=key==='temp'?8.3:22;
+  const fallback=Math.log10(Math.max(1,S[key]))/scale*1000;
+  const raw=clampNumber(el&&el.value,fallback,0,1000);
+  S[key]=Math.pow(10,raw/1000*scale);
+  if(el)el.value=raw;
   updateL0Metrics();
+  return true;
+}
+function setDTIgnitionWindow(){
+  if(curLevel!==0)return false;
+  S.temp=1.2e8;
+  S.density=5e20;
+  S.reacting=true;
+  S.energy=17.6;
+  S.reactionSeen=true;
+  completeObj(0,true);
+  updateL0Metrics();
+  renderPanel();draw();
+  return true;
+}
+function calculateFusionEnergy(){
+  if(curLevel!==0||!S.reacting)return false;
+  S.energyCalculated=true;
+  completeObj(1,true);
+  renderPanel();
+  return true;
+}
+function confirmLawsonCriterion(){
+  if(curLevel!==0||!S.reacting||!S.energyCalculated||fusionLawsonValue()<=5e21)return false;
+  S.lawsonMet=true;
+  completeObj(2,true);
+  renderPanel();
+  return true;
 }
 function updateL1Metrics(){
   S.unstable=S.plasmaTemp>8e7&&S.magField<2;
@@ -508,9 +579,21 @@ function updateL1Metrics(){
   }
 }
 function setL1Plasma(key,el){
-  if(key==='plasmaTemp')S.plasmaTemp=+el.value*1e6;
-  else S.magField=+el.value/10;
+  if(curLevel!==1||(key!=='plasmaTemp'&&key!=='magField')||!Number.isFinite(S[key]))return false;
+  const raw=key==='plasmaTemp'
+    ?clampNumber(el&&el.value,S.plasmaTemp/1e6,1,200)
+    :clampNumber(el&&el.value,S.magField*10,1,50);
+  if(key==='plasmaTemp')S.plasmaTemp=raw*1e6;
+  else S.magField=raw/10;
+  if(el)el.value=raw;
   updateL1Metrics();
+  let changed=false;
+  if(S.plasmaTemp>=1e8&&!levelObjs[1][0])changed=completeObj(0,true)||changed;
+  if(S.confined&&!levelObjs[1][1])changed=completeObj(1,true)||changed;
+  if(S.unstable)S.instabilitySeen=true;
+  if(S.instabilitySeen&&S.plasmaTemp>8e7&&S.magField>=2&&!levelObjs[1][2])changed=completeObj(2,true)||changed;
+  if(changed)renderPanel();
+  return true;
 }
 function updateL2Metrics(){
   const toroidal=document.getElementById('l2ToroidalVal');
@@ -519,10 +602,30 @@ function updateL2Metrics(){
   if(poloidal)poloidal.textContent=S.poloidalI.toFixed(0)+'kA';
 }
 function setL2Current(key,el){
-  S[key]=+el.value;
-  if(S.toroidalI>50&&!levelObjs[2][0])completeObj(0);
-  if(S.poloidalI>30&&S.toroidalI>30&&!levelObjs[2][1])completeObj(1);
+  if(curLevel!==2||(key!=='toroidalI'&&key!=='poloidalI')||!Number.isFinite(S[key]))return false;
+  S[key]=clampNumber(el&&el.value,S[key],0,100);
+  if(el)el.value=S[key];
+  let changed=false;
+  if(S.toroidalI>50&&!levelObjs[2][0])changed=completeObj(0,true)||changed;
+  if(S.poloidalI>30&&S.toroidalI>30&&!levelObjs[2][1])changed=completeObj(1,true)||changed;
   updateL2Metrics();
+  if(changed)renderPanel();
+  return true;
+}
+function canRunDivertor(){
+  return curLevel===2&&S.toroidalI>50&&S.poloidalI>30;
+}
+function startDivertor(){
+  if(!canRunDivertor())return false;
+  S.divertorOn=true;
+  completeObj(2,true);
+  renderPanel();
+  return true;
+}
+function divertorHintHTML(){
+  if(S.divertorOn)return '偏滤器已接入：边缘磁力线把氦灰、杂质和热流导向底部靶板，核心等离子体才更稳定。';
+  if(!canRunDivertor())return '先把环向场和极向电流都建立起来，形成螺旋磁力线后，偏滤器才有可排灰的边缘通道。';
+  return '磁约束已经形成，可以启动偏滤器，把反应产物和杂质从主等离子体边缘排出。';
 }
 function updateL3Metrics(){
   const energy=document.getElementById('l3EnergyVal');
@@ -531,10 +634,24 @@ function updateL3Metrics(){
   if(symmetry)symmetry.textContent=S.symmetry+'%';
 }
 function setL3Laser(key,el){
-  S[key]=+el.value;
-  if(S.laserEnergy>=80&&!levelObjs[3][0])completeObj(0);
-  if(S.symmetry>=85&&!levelObjs[3][1])completeObj(1);
+  const range={laserEnergy:[0,100],symmetry:[10,100]}[key];
+  if(curLevel!==3||!range||!Number.isFinite(S[key]))return false;
+  S[key]=clampNumber(el&&el.value,S[key],range[0],range[1]);
+  if(el)el.value=S[key];
+  let changed=false;
+  if(S.laserEnergy>=80&&!levelObjs[3][0])changed=completeObj(0,true)||changed;
+  if(S.symmetry>=85&&!levelObjs[3][1])changed=completeObj(1,true)||changed;
   updateL3Metrics();
+  if(changed)renderPanel();
+  return true;
+}
+function canStartICFImplosion(){
+  return curLevel===3&&S.laserEnergy>=80&&S.symmetry>=85;
+}
+function startICFImplosion(){
+  if(!canStartICFImplosion()||S.ignited)return false;
+  S.imploding=true;S.compressionR=60;renderPanel();
+  return true;
 }
 function updateL4State(){
   S.resistance=S.coolTemp>S.critTemp?(S.coolTemp-S.critTemp)/300:0;
@@ -551,12 +668,25 @@ function updateL4Metrics(){
   if(state)state.innerHTML=S.superconducting?'<span style="color:#22c55e">超导态</span>':'<span style="color:#ef4444">正常态</span>';
 }
 function setL4Cooling(el){
-  S.coolTemp=+el.value;
+  if(curLevel!==4||!Number.isFinite(S.coolTemp))return false;
+  const wasNormal=S.coolTemp>S.critTemp;
+  S.coolTemp=clampNumber(el&&el.value,S.coolTemp,1,300);
+  if(el)el.value=S.coolTemp;
   updateL4State();
-  if(S.superconducting&&!levelObjs[4][0])completeObj(0);
-  if(S.magStrength>12&&!levelObjs[4][1])completeObj(1);
-  if(S.superconducting&&S.coolTemp<S.critTemp*0.5&&!levelObjs[4][2])completeObj(2);
+  let changed=false;
+  if(S.superconducting&&!levelObjs[4][0])changed=completeObj(0,true)||changed;
+  if(S.magStrength>12&&!levelObjs[4][1])changed=completeObj(1,true)||changed;
+  if(wasNormal&&S.superconducting)S.transitionObserved=true;
   updateL4Metrics();
+  if(changed)renderPanel();
+  return true;
+}
+function confirmL4Transition(){
+  if(curLevel!==4||!S.transitionObserved||!S.superconducting)return false;
+  S.transitionConfirmed=true;
+  completeObj(2,true);
+  renderPanel();
+  return true;
 }
 function updateL5State(){
   S.tbr=0.6+S.blanketThick/100*0.8+(S.material==='rafm'?0.05:0);
@@ -567,67 +697,192 @@ function updateL5Metrics(){
   const thick=document.getElementById('l5BlanketVal');
   const tbr=document.getElementById('l5TbrVal');
   const dpa=document.getElementById('l5DpaVal');
+  const hint=document.getElementById('l5BreedingHint');
   if(thick)thick.textContent=S.blanketThick+'cm';
   if(tbr){
     tbr.style.color=S.tbr>1?'#22c55e':'#f59e0b';
     tbr.textContent=`TBR: ${S.tbr.toFixed(2)} ${S.tbr>1?'✅ 燃料自给':'❌ 不足'}`;
   }
   if(dpa)dpa.textContent=`辐照损伤: ${S.dpa.toFixed(1)} dpa/年`;
+  if(hint)hint.innerHTML=breedingHintHTML();
+}
+function canConfirmL5DamageControl(){
+  updateL5State();
+  return curLevel===5&&S.materialChosen&&S.tbr>1&&S.dpa<5;
+}
+function syncL5DamageObjective(){
+  if(!quizPassed[5]&&levelObjs[5][2]&&!S.damageControlConfirmed&&!canConfirmL5DamageControl()){
+    S.damageControlConfirmed=false;
+    levelObjs[5][2]=false;
+    return true;
+  }
+  return false;
+}
+function breedingHintHTML(){
+  updateL5State();
+  const fuel=S.tbr>1
+    ? `TBR ${S.tbr.toFixed(2)} 已超过 1，理论上产氚量大于消耗量。`
+    : `TBR ${S.tbr.toFixed(2)} 还低于 1，包层太薄会让燃料无法自给。`;
+  let material='普通钢损伤较高，只适合做对比基线。';
+  if(S.material==='tungsten')material='钨耐高热流，但仍要关注中子辐照后的脆化。';
+  if(S.material==='rafm')material='RAFM 钢低活化、损伤较低，更适合长期维护窗口。';
+  const damage=S.dpa<5?'辐照损伤处于较低区间。':'辐照损伤偏高，需要换材料或降低中子通量。';
+  return `${fuel}<br>${material}<br>${damage}`;
 }
 function setL5Blanket(el){
-  S.blanketThick=+el.value;
+  if(curLevel!==5||!Number.isFinite(S.blanketThick))return false;
+  S.blanketThick=clampNumber(el&&el.value,S.blanketThick,5,100);
+  if(el)el.value=S.blanketThick;
   updateL5State();
-  if(S.tbr>1&&!levelObjs[5][0])completeObj(0);
-  if(S.dpa<5&&S.tbr>1&&!levelObjs[5][2])completeObj(2);
+  let changed=false;
+  if(S.tbr>1&&!levelObjs[5][0])changed=completeObj(0,true)||changed;
+  changed=syncL5DamageObjective()||changed;
   updateL5Metrics();
+  if(changed)renderPanel();
+  return true;
+}
+function setL5Material(material){
+  if(curLevel!==5||!['steel','tungsten','rafm'].includes(material))return false;
+  S.material=material;
+  S.materialChosen=material!=='steel';
+  updateL5State();
+  let changed=false;
+  if(S.materialChosen)changed=completeObj(1,true)||changed;
+  changed=syncL5DamageObjective()||changed;
+  renderPanel();
+  return true;
+}
+function confirmL5DamageControl(){
+  if(!canConfirmL5DamageControl())return false;
+  S.damageControlConfirmed=true;
+  completeObj(2,true);
+  renderPanel();
+  return true;
 }
 function updateL6State(){
   S.costPerKwh=S.qValue>1?200/S.qValue+5000/S.plantPower:999;
+}
+function isL6RoadmapComplete(){
+  return Array.isArray(S.milestoneSeen)&&S.milestoneSeen.every(Boolean);
+}
+function l6MilestoneText(){
+  const m=S.timeline&&S.timeline[S.milestone];
+  if(!m)return '点击时间线上的 ITER、DEMO 和商用电站，比较每一步的工程目标。';
+  return `${m.name} (${m.year})：${m.desc}，阶段目标 Q≈${m.q}。`;
+}
+function selectL6Milestone(i){
+  i=Number(i);
+  if(curLevel!==6||!Number.isInteger(i)||i<0||i>=3)return false;
+  S.milestone=i;
+  S.milestoneSeen[i]=true;
+  let changed=false;
+  if(S.milestoneSeen.every(Boolean)&&!levelObjs[6][0])changed=completeObj(0,true)||changed;
+  changed=checkL6Goals()||changed;
+  renderPanel();
+  return changed;
+}
+function l6EconomicsText(){
+  const missing=[];
+  if(!isL6RoadmapComplete())missing.push(`路线图 ${S.milestoneSeen.filter(Boolean).length}/3`);
+  if(S.qValue<30)missing.push(`Q 值还差 ${(30-S.qValue).toFixed(1)}`);
+  if(S.costPerKwh>=10)missing.push(`成本还需下降 ${(S.costPerKwh-10).toFixed(1)}分/kWh`);
+  const formula='成本估算 = 200/Q + 5000/电站功率，提升 Q 值和单机功率都会摊薄发电成本。';
+  if(S.economicsFeedback)return `${S.economicsFeedback}<br><span style="color:var(--stage-hint)">${formula}</span>`;
+  if(missing.length)return `商用判据未满足：${missing.join('；')}<br><span style="color:var(--stage-hint)">${formula}</span>`;
+  return `<span style="color:#22c55e">✅ 参数已进入商用演示窗口，请点击评估按钮确认经济性判据。</span><br><span style="color:var(--stage-hint)">${formula}</span>`;
 }
 function updateL6Metrics(){
   updateL6State();
   const q=document.getElementById('l6QVal');
   const power=document.getElementById('l6PowerVal');
   const cost=document.getElementById('l6CostVal');
+  const readiness=document.getElementById('l6ReadinessVal');
   if(q)q.textContent=S.qValue.toFixed(1);
   if(power)power.textContent=S.plantPower+'MW';
   if(cost){
     cost.style.color=S.costPerKwh<10?'#22c55e':'#f59e0b';
     cost.textContent=`度电成本: ${S.costPerKwh.toFixed(1)}分/kWh`;
   }
+  if(readiness)readiness.innerHTML=l6EconomicsText();
+}
+function checkL6Goals(){
+  let changed=false;
+  if(S.qValue>=30&&!levelObjs[6][1])changed=completeObj(1,true)||changed;
+  if(S.economicsReviewed&&isL6RoadmapComplete()&&S.qValue>=30&&S.costPerKwh<10&&!levelObjs[6][2])changed=completeObj(2,true)||changed;
+  return changed;
 }
 function setL6Economics(key,el){
-  S[key]=key==='qValue'?+el.value/10:+el.value;
+  if(curLevel!==6||(key!=='qValue'&&key!=='plantPower')||!Number.isFinite(S[key]))return false;
+  const raw=key==='qValue'
+    ?clampNumber(el&&el.value,S.qValue*10,1,600)
+    :clampNumber(el&&el.value,S.plantPower,100,2000);
+  S[key]=key==='qValue'?raw/10:raw;
+  if(el)el.value=raw;
   updateL6State();
-  if(S.qValue>=30&&!levelObjs[6][1])completeObj(1);
-  if(S.costPerKwh<10&&!levelObjs[6][2])completeObj(2);
+  let changed=checkL6Goals();
   updateL6Metrics();
+  if(changed)renderPanel();
+  return true;
+}
+function applyL6CommercialParams(){
+  if(curLevel!==6||!isL6RoadmapComplete()||levelObjs[6][2])return false;
+  S.qValue=35;
+  S.plantPower=1500;
+  S.economicsReviewed=false;
+  S.economicsFeedback='';
+  updateL6State();
+  checkL6Goals();
+  renderPanel();
+  return true;
+}
+function canEvaluateL6Economics(){
+  updateL6State();
+  return curLevel===6&&isL6RoadmapComplete()&&S.qValue>=30&&S.costPerKwh<10;
+}
+function evaluateL6Economics(){
+  if(curLevel!==6)return false;
+  updateL6State();
+  if(!canEvaluateL6Economics()){
+    S.economicsFeedback='<span style="color:#f59e0b">⚠️ 还不能评估通过：需要先看完整路线图，并让 Q≥30、成本&lt;10分/kWh。</span>';
+    updateL6Metrics();renderPanel();return false;
+  }
+  S.economicsReviewed=true;
+  S.economicsFeedback='<span style="color:#22c55e">✅ 经济性评估通过：高 Q 值降低外部加热占比，大功率电站摊薄固定成本。</span>';
+  checkL6Goals();
+  renderPanel();
+  return true;
 }
 
 // === Panel ===
 function renderPanel(){
   let L=LEVELS[curLevel],objs=levelObjs[curLevel];
+  let levelPassed=quizPassed[curLevel],goalsDone=levelPassed||isLevelDone(curLevel);
   let h='';
   h+=`<div class="stage-nav"><div class="sn-bar">`;
-  for(let i=0;i<7;i++){let unlocked=isUnlocked(i);h+=`<div class="sn-d ${quizPassed[i]?'done':i===curLevel?'cur':unlocked?'':'locked'}" onclick="${unlocked?`goLevel(${i})`:''}"></div>`}
+  for(let i=0;i<7;i++){let unlocked=isUnlocked(i);h+=`<div class="sn-d ${quizPassed[i]?'done':i===curLevel?'cur':unlocked?'':'locked'}" ${unlocked&&i!==curLevel?`onclick="goLevel(${i})"`:''}></div>`}
   let passed=quizPassed.filter(Boolean).length;
   h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关 | 进度 ${Math.round(passed/7*100)}%</div><div class="sn-hint">${passed}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;
   h+=`<h2>${L.name}</h2>`;
   h+=`<p style="font-size:13px;line-height:1.6;color:var(--concept-text);margin-bottom:10px">${L.desc}</p>`;
   h+=`<h3>目标</h3>`;
-  for(let i=0;i<3;i++)h+=`<div class="obj-item"><div class="obj-dot ${objs[i]?'done':''}">${objs[i]?'✓':i+1}</div><span style="color:${objs[i]?'var(--goal-done)':'var(--goal-text)'}">${L.objs[i]}</span></div>`;
+  for(let i=0;i<3;i++){let done=levelPassed||objs[i];h+=`<div class="obj-item"><div class="obj-dot ${done?'done':''}">${done?'✓':i+1}</div><span style="color:${done?'var(--goal-done)':'var(--goal-text)'}">${L.objs[i]}</span></div>`}
   h+=renderLevelPanel(curLevel);
-  if(isLevelDone(curLevel)&&L.quiz&&!quizPassed[curLevel]){
-    let fb=quizFeedback[curLevel];
+  if(goalsDone&&L.quiz){
+    let fb=quizFeedback[curLevel],passedQuiz=quizPassed[curLevel];
     h+=`<div class="quiz-box"><div class="quiz-title">通关小测验</div><div class="quiz-q">🧠 ${L.quiz.q}</div>`;
-    L.quiz.opts.forEach((o,i)=>{h+=`<button class="quiz-opt" onclick="checkQuiz(${curLevel},${i})">${o}</button>`});
+    L.quiz.opts.forEach((o,i)=>{
+      const cls=passedQuiz&&i===L.quiz.ans?' correct':fb?(i===L.quiz.ans?' correct':i===fb.choice?' wrong':''):'';
+      h+=`<button class="quiz-opt${cls}" onclick="answerQuiz(${curLevel},${i})">${'ABCD'[i]}. ${o}</button>`;
+    });
     if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+    else if(passedQuiz)h+=`<div class="quiz-feedback ok">已通过小测。${L.quiz.why}</div>`;
     h+=`</div>`}
   if(quizPassed[curLevel]){
     h+=`<div class="learn-box">${L.learn}</div>`;
     h+=curLevel<6?`<button class="act-btn" onclick="goLevel(${curLevel+1})">下一关 →</button>`:`<button class="act-btn" onclick="showResult()">查看总总结 🎉</button>`;
   }
   panel.innerHTML=h;
+  renderBar();
 }
 
 function renderLevelPanel(idx){
@@ -636,9 +891,13 @@ function renderLevelPanel(idx){
     h+=`<h3>反应条件</h3>`;
     h+=`<div class="slider-row"><label>温度: <span id="l0TempVal">${formatFusionTemp(S.temp)}</span></label><input type="range" min="0" max="1000" value="${Math.log10(Math.max(1,S.temp))/8.3*1000}" oninput="setL0Condition('temp',this)" onchange="this.blur();renderPanel()"></div>`;
     h+=`<div class="slider-row"><label>密度: <span id="l0DensityVal">${S.density.toExponential(1)} m⁻³</span></label><input type="range" min="0" max="1000" value="${Math.log10(S.density)/22*1000}" oninput="setL0Condition('density',this)" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<p id="l0LawsonVal" style="color:${S.temp>=1e8&&S.density>=1e20&&fusionLawsonValue()>5e21?'#22c55e':'#f59e0b'}">${fusionLawsonText()}</p>`;
+    if(!S.reacting)h+=`<button class="act-btn" onclick="setDTIgnitionWindow()">设置 D-T 点火条件</button>`;
     if(S.reacting)h+=`<p style="color:#22c55e">✅ D-T反应进行中！释放能量: ${S.energy}MeV</p>`;
-    if(!levelObjs[0][0]&&S.temp>1e6){completeObj(0)}
-    if(!levelObjs[0][1]&&S.reacting){h+=`<p style="color:var(--sv)">E = Δm × c² = 17.6 MeV</p>`;completeObj(1)}
+    if(S.reacting&&!S.energyCalculated)h+=`<button class="act-btn secondary" onclick="calculateFusionEnergy()">用 E=mc² 计算能量释放</button>`;
+    if(S.energyCalculated)h+=`<p style="color:var(--sv)">E = Δm × c² = 17.6 MeV</p>`;
+    if(S.reacting&&S.energyCalculated&&!S.lawsonMet)h+=`<button class="act-btn secondary" onclick="confirmLawsonCriterion()">确认：劳森判据达到点火窗口</button>`;
+    if(S.lawsonMet)h+=`<div class="hint-box">✅ 已确认劳森判据：足够高的温度、密度和约束时间同时满足，D-T 等离子体才可能持续点火。</div>`;
   }
   if(idx===1){
     h+=`<h3>等离子体参数</h3>`;
@@ -653,78 +912,104 @@ function renderLevelPanel(idx){
     h+=`<h3>线圈电流</h3>`;
     h+=`<div class="slider-row"><label>环向场电流: <span id="l2ToroidalVal">${S.toroidalI.toFixed(0)}kA</span></label><input type="range" min="0" max="100" value="${S.toroidalI}" oninput="setL2Current('toroidalI',this)" onchange="this.blur();renderPanel()"></div>`;
     h+=`<div class="slider-row"><label>极向场电流: <span id="l2PoloidalVal">${S.poloidalI.toFixed(0)}kA</span></label><input type="range" min="0" max="100" value="${S.poloidalI}" oninput="setL2Current('poloidalI',this)" onchange="this.blur();renderPanel()"></div>`;
-    if(S.toroidalI>50&&!levelObjs[2][0])completeObj(0);
-    if(S.poloidalI>30&&S.toroidalI>30&&!levelObjs[2][1])completeObj(1);
-    h+=`<button class="act-btn ${S.divertorOn?'secondary':''}" onclick="S.divertorOn=true;completeObj(2);renderPanel()">${S.divertorOn?'✅ 偏滤器运行中':'启动偏滤器'}</button>`;
+    h+=`<button class="act-btn ${S.divertorOn?'secondary':''}" onclick="startDivertor()" ${!S.divertorOn&&!canRunDivertor()?'disabled':''}>${S.divertorOn?'✅ 偏滤器运行中':'启动偏滤器'}</button>`;
+    h+=`<div class="hint-box">${divertorHintHTML()}</div>`;
   }
   if(idx===3){
     h+=`<h3>激光参数</h3>`;
     h+=`<div class="slider-row"><label>激光能量: <span id="l3EnergyVal">${S.laserEnergy.toFixed(0)}MJ</span></label><input type="range" min="0" max="100" value="${S.laserEnergy}" oninput="setL3Laser('laserEnergy',this)" onchange="this.blur();renderPanel()"></div>`;
     h+=`<div class="slider-row"><label>对称性: <span id="l3SymmetryVal">${S.symmetry}%</span></label><input type="range" min="10" max="100" value="${S.symmetry}" oninput="setL3Laser('symmetry',this)" onchange="this.blur();renderPanel()"></div>`;
-    if(S.laserEnergy>=80&&!levelObjs[3][0])completeObj(0);
-    if(S.symmetry>=85&&!levelObjs[3][1])completeObj(1);
-    h+=`<button class="act-btn" onclick="S.imploding=true;S.compressionR=60;renderPanel()" ${S.ignited?'disabled':''}>${S.ignited?'✅ 已点火':'开始内爆压缩'}</button>`;
+    h+=`<div class="hint-box">画布为避免拥挤只示意 ${S.laserBeams} 条激光路径；NIF 实际使用 192 束激光，关键是让能量高且压缩尽量对称。</div>`;
+    if(!canStartICFImplosion())h+=`<p style="font-size:12px;color:var(--stage-hint)">先把激光能量调到 ≥80MJ，且对称性调到 ≥85%，再启动内爆。</p>`;
+    h+=`<button class="act-btn" onclick="startICFImplosion()" ${S.ignited||!canStartICFImplosion()?'disabled':''}>${S.ignited?'✅ 已点火':'开始内爆压缩'}</button>`;
   }
   if(idx===4){
     updateL4State();
     h+=`<h3>冷却系统</h3>`;
     h+=`<div class="slider-row"><label>冷却温度: <span id="l4CoolTempVal">${S.coolTemp.toFixed(0)}K</span></label><input type="range" min="1" max="300" value="${S.coolTemp}" oninput="setL4Cooling(this)" onchange="this.blur();renderPanel()"></div>`;
     h+=`<p>电阻: <span id="l4ResistanceVal">${S.resistance.toFixed(3)}Ω</span> | 状态: <span id="l4StateVal">${S.superconducting?'<span style="color:#22c55e">超导态</span>':'<span style="color:#ef4444">正常态</span>'}</span></p>`;
-    if(S.superconducting&&!levelObjs[4][0])completeObj(0);
-    if(S.magStrength>12&&!levelObjs[4][1])completeObj(1);
-    if(S.superconducting&&S.coolTemp<S.critTemp*0.5&&!levelObjs[4][2])completeObj(2);
+    if(!S.transitionObserved)h+=`<div class="hint-box">把温度从室温逐步降到 ${S.critTemp}K 以下，观察电阻曲线在临界温度附近突然归零。</div>`;
+    else if(!S.transitionConfirmed)h+=`<button class="act-btn secondary" onclick="confirmL4Transition()">确认：电阻在临界温度以下突降为零</button>`;
+    else h+=`<div class="hint-box">✅ 已确认超导转变：低于临界温度后电阻消失，强电流才能长期维持磁场。</div>`;
   }
   if(idx===5){
     updateL5State();
     h+=`<h3>包层设计</h3>`;
     h+=`<div class="slider-row"><label>锂包层厚度: <span id="l5BlanketVal">${S.blanketThick}cm</span></label><input type="range" min="5" max="100" value="${S.blanketThick}" oninput="setL5Blanket(this)" onchange="this.blur();renderPanel()"></div>`;
     h+=`<h3>第一壁材料</h3>`;
-    h+=`<button class="act-btn ${S.material==='steel'?'':'secondary'}" onclick="S.material='steel';renderPanel()">普通钢</button>`;
-    h+=`<button class="act-btn ${S.material==='tungsten'?'':'secondary'}" onclick="S.material='tungsten';renderPanel()" style="margin-top:4px">钨 (耐高温)</button>`;
-    h+=`<button class="act-btn ${S.material==='rafm'?'':'secondary'}" onclick="S.material='rafm';renderPanel()" style="margin-top:4px">RAFM钢 (低活化)</button>`;
+    h+=`<button class="act-btn ${S.material==='steel'?'':'secondary'}" onclick="setL5Material('steel')">普通钢</button>`;
+    h+=`<button class="act-btn ${S.material==='tungsten'?'':'secondary'}" onclick="setL5Material('tungsten')" style="margin-top:4px">钨 (耐高温)</button>`;
+    h+=`<button class="act-btn ${S.material==='rafm'?'':'secondary'}" onclick="setL5Material('rafm')" style="margin-top:4px">RAFM钢 (低活化)</button>`;
     h+=`<p id="l5TbrVal" style="color:${S.tbr>1?'#22c55e':'#f59e0b'}">TBR: ${S.tbr.toFixed(2)} ${S.tbr>1?'✅ 燃料自给':'❌ 不足'}</p>`;
     h+=`<p id="l5DpaVal">辐照损伤: ${S.dpa.toFixed(1)} dpa/年</p>`;
-    if(S.tbr>1&&!levelObjs[5][0])completeObj(0);
-    if(S.material!=='steel'&&!levelObjs[5][1])completeObj(1);
-    if(S.dpa<5&&S.tbr>1&&!levelObjs[5][2])completeObj(2);
+    h+=`<div id="l5BreedingHint" class="hint-box">${breedingHintHTML()}</div>`;
+    if(canConfirmL5DamageControl()&&!levelObjs[5][2])h+=`<button class="act-btn secondary" onclick="confirmL5DamageControl()">确认：TBR>1 且第一壁损伤受控</button>`;
+    else if(S.damageControlConfirmed)h+=`<div class="hint-box">✅ 已验证：锂包层可维持 TBR>1，第一壁材料损伤处于受控区间。</div>`;
+    else if(!levelObjs[5][2])h+=`<p style="font-size:12px;color:var(--stage-hint)">先让 TBR 超过 1，并选择低损伤第一壁材料，再确认中子辐照控制方案。</p>`;
   }
   if(idx===6){
     updateL6State();
     h+=`<h3>聚变参数</h3>`;
+    h+=`<h3>路线图里程碑</h3>`;
+    ['ITER','DEMO','商用电站'].forEach((name,i)=>{
+      h+=`<button class="act-btn ${S.milestone===i?'':'secondary'}" onclick="selectL6Milestone(${i})">${S.milestoneSeen[i]?'✓ ':''}${name}</button>`;
+    });
     h+=`<div class="slider-row"><label>Q值: <span id="l6QVal">${S.qValue.toFixed(1)}</span></label><input type="range" min="1" max="600" value="${S.qValue*10}" oninput="setL6Economics('qValue',this)" onchange="this.blur();renderPanel()"></div>`;
     h+=`<div class="slider-row"><label>电站功率: <span id="l6PowerVal">${S.plantPower}MW</span></label><input type="range" min="100" max="2000" value="${S.plantPower}" oninput="setL6Economics('plantPower',this)" onchange="this.blur();renderPanel()"></div>`;
     h+=`<p id="l6CostVal" style="color:${S.costPerKwh<10?'#22c55e':'#f59e0b'}">度电成本: ${S.costPerKwh.toFixed(1)}分/kWh</p>`;
-    h+=`<p style="font-size:12px;color:var(--stage-hint)">点击时间线上的里程碑了解详情</p>`;
-    if(S.qValue>=30&&!levelObjs[6][1])completeObj(1);
-    if(S.costPerKwh<10&&!levelObjs[6][2])completeObj(2);
+    h+=`<p id="l6ReadinessVal" style="font-size:12px;color:var(--concept-text);line-height:1.6">${l6EconomicsText()}</p>`;
+    h+=`<p id="l6MilestoneInfo" style="font-size:12px;color:var(--sv);line-height:1.6">${l6MilestoneText()}</p>`;
+    h+=`<p style="font-size:12px;color:var(--stage-hint)">先点击时间线或里程碑按钮，再评估商用参数：${S.milestoneSeen.filter(Boolean).length}/3</p>`;
+    if(isL6RoadmapComplete()&&!canEvaluateL6Economics()&&!levelObjs[6][2])h+=`<button class="act-btn secondary" onclick="applyL6CommercialParams()">套用商用演示参数</button>`;
+    h+=`<button class="act-btn ${S.economicsReviewed?'secondary':''}" onclick="evaluateL6Economics()" ${S.economicsReviewed||!canEvaluateL6Economics()?'disabled':''}>${S.economicsReviewed?'✅ 已完成经济性评估':'评估商用经济性'}</button>`;
   }
   return h;
 }
 
 // === Helpers ===
-function checkQuiz(levelIdx,picked){
-  if(levelIdx!==curLevel||quizPassed[levelIdx])return;
-  let q=LEVELS[levelIdx].quiz,ok=picked===q.ans;
-  quizFeedback[levelIdx]={ok,text:ok?'答对了。先看本关工程总结，再进入下一关。':'还不对。回到现象和公式，再判断核心物理机制。'};
+function answerQuiz(levelIdx,picked){
+  levelIdx=Number(levelIdx);picked=Number(picked);
+  if(!Number.isInteger(levelIdx)||!Number.isInteger(picked))return false;
+  if(levelIdx<0||levelIdx>=LEVELS.length)return false;
+  if(levelIdx!==curLevel||quizPassed[levelIdx]||!isLevelDone(levelIdx))return false;
+  if(levelIdx>0&&!quizPassed[levelIdx-1])return false;
+  let q=LEVELS[levelIdx].quiz;
+  if(!q||!Number.isInteger(picked)||picked<0||picked>=q.opts.length)return false;
+  let ok=picked===q.ans;
+  quizFeedback[levelIdx]={ok,choice:picked,text:(ok?'答对了。':'还不对。')+(q.why||'回到现象和公式，再判断核心物理机制。')};
   if(ok)quizPassed[levelIdx]=true;
   renderPanel();
+  return ok;
 }
-function goLevel(i){if(!isUnlocked(i))return;curLevel=i;initLevel(i);renderPanel()}
+function goLevel(i){
+  i=Number(i);
+  if(!Number.isInteger(i))return;
+  if(i<0||i>=LEVELS.length)return;
+  if(!isUnlocked(i))return;
+  curLevel=i;initLevel(i);renderPanel();
+}
 
 function showResult(){
-  let done=levelObjs.flat().filter(Boolean).length;
+  if(!allQuizPassed())return;
+  let done=quizPassed.filter(Boolean).length*3;
   panel.innerHTML=`<div class="summary-box"><div class="summary-title">🎉 探险完成！</div><div class="summary-sub">你已掌握核聚变工程全链路技术</div>
-    <div class="summary-stats"><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标完成</div></div><div class="summary-stat"><div class="num">7/7</div><div class="label">关卡通过</div></div></div>
+    <div class="summary-stats"><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标达成</div></div><div class="summary-stat"><div class="num">7/7</div><div class="label">关卡通关</div></div></div>
     <div class="summary-keys"><div>⚛️ D-T反应释放17.6MeV能量</div><div>🔥 1亿度等离子体需磁约束</div><div>🔄 托卡马克用螺旋磁场约束</div><div>💥 NIF 192束激光实现点火</div><div>🧲 超导磁体产生>12T强磁场</div><div>🛡️ 锂包层实现氚燃料自给</div><div>🏭 ITER→DEMO→商用三步走</div></div>
-    <button class="act-btn" onclick="curLevel=0;levelObjs=Array.from({length:7},()=>[false,false,false]);quizPassed=Array.from({length:7},()=>false);quizFeedback={};initLevel(0);renderPanel()" style="margin-top:12px">重新探索</button></div>`;
+    <button class="act-btn" onclick="restartFromSummary()" style="margin-top:12px">重新探索</button></div>`;
+}
+function restartFromSummary(){
+  resetProgress();
+  renderPanel();
+  draw();
+  return true;
 }
 
 // === Main loop ===
-function startGame(){overlay.style.display='none';panel.style.display='block';bar.style.display='flex';resize();initLevel(0);renderPanel();loop()}
+function startGame(){overlay.style.display='none';panel.style.display='block';bar.style.display='flex';resize();resetProgress();renderPanel();if(!animating){animating=true;loop()}}
 function draw(){ctx.clearRect(0,0,W,H);drawGrid();drawStars();drawLevel(curLevel)}
 function loop(){time++;updateLevel(curLevel,1);draw();animId=requestAnimationFrame(loop)}
 cv.addEventListener('click',e=>{let r=cv.getBoundingClientRect();handleClick(e.clientX-r.left,e.clientY-r.top)});
-bar.innerHTML='<div class="bar-left"><span class="bar-btn active">核聚变工程探险</span></div><div class="bar-right">边玩边学</div>';
+renderBar();
 resize();
 </script>
 </body>

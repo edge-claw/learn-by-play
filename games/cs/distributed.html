@@ -154,13 +154,18 @@ window.addEventListener('resize',()=>{resize();draw()});
 
 // === Audio ===
 let audioCtx;
-function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function initAudio(){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;try{if(!audioCtx)audioCtx=new A();return audioCtx}catch(e){return null}}
 function playSound(type){
-  initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-  o.connect(g);g.connect(audioCtx.destination);
-  if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}
-  else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}
-  else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}
+  const ac=initAudio();if(!ac)return false;
+  try{
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    const now=ac.currentTime;
+    if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start(now);g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.stop(now+0.1)}
+    else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(659,now+0.1);o.frequency.setValueAtTime(784,now+0.2);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);o.stop(now+0.4)}
+    else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(200,now+0.15);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);o.stop(now+0.3)}
+    return true;
+  }catch(e){return false}
 }
 function spawnP(x,y,color,n){for(let i=0;i<(n||10);i++){const a=Math.random()*Math.PI*2,sp=1+Math.random()*3;particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:0.6+Math.random()*0.4,color,r:2+Math.random()*3})}}
 function updateP(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life-=dt;if(p.life<=0){particles.splice(i,1);continue}ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
@@ -176,13 +181,13 @@ const LEVELS=[
 {name:'分布式事务',desc:'2PC、Saga 模式、补偿机制',objs:['执行两阶段提交','观察 Saga 编排流程','触发补偿回滚机制']}
 ];
 const quizData=[
-{q:'CAP 定理中，网络分区发生时系统最多同时满足？',opts:['一致性和可用性（二选一）','一致性、可用性和分区容错','只能满足分区容错'],ans:0},
-{q:'最终一致性意味着什么？',opts:['所有节点始终返回相同值','停止写入后，所有副本最终收敛到相同值','数据永远不会一致'],ans:1},
-{q:'Raft 算法中，候选者需要获得多少票才能成为领导者？',opts:['全部节点的票','超过半数节点的票','任意一票即可'],ans:1},
-{q:'一致性哈希中添加虚拟节点的主要目的是？',opts:['提高查询速度','使数据分布更均匀','减少内存占用'],ans:1},
-{q:'MapReduce 中 Shuffle 阶段的作用是？',opts:['对数据排序','将相同 key 的数据发送到同一个 Reducer','压缩数据'],ans:1},
-{q:'熔断器打开状态下，请求会怎样？',opts:['正常转发到服务','直接返回降级响应','无限重试'],ans:1},
-{q:'Saga 模式中，某步骤失败后如何处理？',opts:['整个事务立即回滚','执行已完成步骤的补偿操作','忽略错误继续执行'],ans:1}
+{q:'CAP 定理中，网络分区发生时系统最多同时满足？',opts:['一致性和可用性（二选一）','一致性、可用性和分区容错','只能满足分区容错'],ans:0,why:'网络分区发生时 P 已经成为现实，系统通常只能在保持强一致但拒绝部分请求，或保持可用但允许短暂不一致之间取舍。'},
+{q:'最终一致性意味着什么？',opts:['所有节点始终返回相同值','数据永远不会一致','停止写入后，所有副本最终收敛到相同值'],ans:2,why:'最终一致性允许传播延迟，只要后续没有新写入，副本会通过同步或修复机制逐步收敛到同一结果。'},
+{q:'Raft 算法中，候选者需要获得多少票才能成为领导者？',opts:['超过半数节点的票','全部节点的票','任意一票即可'],ans:0,why:'多数派投票能保证同一任期最多只有一个领导者，因为任意两个多数派集合必然至少有一个节点重叠。'},
+{q:'一致性哈希中添加虚拟节点的主要目的是？',opts:['提高查询速度','使数据分布更均匀','减少内存占用'],ans:1,why:'虚拟节点把一个物理节点映射到环上多个位置，可以平滑负载分布，减少节点增删时的数据倾斜。'},
+{q:'MapReduce 中 Shuffle 阶段的作用是？',opts:['将相同 key 的数据发送到同一个 Reducer','对数据排序','压缩数据'],ans:0,why:'Shuffle 按 key 重新分组和路由数据，确保同一个 key 的中间结果被同一个 Reduce 任务聚合。'},
+{q:'熔断器打开状态下，请求会怎样？',opts:['正常转发到服务','直接返回降级响应','无限重试'],ans:1,why:'熔断器打开后会快速失败或返回降级结果，避免继续把流量打到已异常的服务实例上造成级联故障。'},
+{q:'Saga 模式中，某步骤失败后如何处理？',opts:['整个事务立即回滚','忽略错误继续执行','执行已完成步骤的补偿操作'],ans:2,why:'Saga 没有全局长事务锁，失败时通过按相反顺序执行补偿动作，撤销已经成功的本地事务影响。'}
 ];
 let quizPassed=new Set(),quizLocked=false,totalScore=0;
 const levelScores=new Array(7).fill(0);
@@ -220,7 +225,7 @@ function drawServer(x,y,w,h,color,label){
 }
 function lerp(a,b,t){return a+(b-a)*t}
 
-function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;playSound('success');totalScore+=10;levelScores[li]+=10;spawnP(W/2,H/2,'#4ade80');renderPanel()}}
+function completeObj(li,oi){if(li!==curLevel||!levelObjs[li]||levelObjs[li][oi])return;levelObjs[li][oi]=true;playSound('success');totalScore+=10;levelScores[li]+=10;spawnP(W/2,H/2,'#4ade80');renderPanel()}
 function isLevelDone(li){return levelObjs[li].every(Boolean)}
 
 // === Level init ===
@@ -575,7 +580,9 @@ function sendRequest(){
   setTimeout(()=>{inst.load=Math.max(0,inst.load-20);renderPanel()},1000)
 }
 function failInstance(){
-  const svc=ls.services[Math.floor(Math.random()*3)];const healthy=svc.instances.filter(i=>i.healthy);
+  const candidates=ls.services.filter(s=>s.instances.some(i=>i.healthy));
+  if(candidates.length===0){renderPanel();return}
+  const svc=candidates[Math.floor(Math.random()*candidates.length)];const healthy=svc.instances.filter(i=>i.healthy);
   if(healthy.length>0){healthy[0].healthy=false;ls.breaker.failures++;
     if(ls.breaker.failures>=ls.breaker.threshold&&ls.breaker.state==='closed'){ls.breaker.state='open';completeObj(5,2)}
   }
@@ -621,21 +628,25 @@ function renderQuiz(li){
   const qd=quizData[li];if(!qd)return '';
   let h='<div class="quiz-box"><div class="quiz-q">&#128221; 通关测验：'+qd.q+'</div>';
   qd.opts.forEach((opt,i)=>{const cls=quizPassed.has(li)?(i===qd.ans?'correct':''):'';h+='<div class="quiz-opt '+cls+'" onclick="answerQuiz('+li+','+i+')">'+opt+'</div>'});
-  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">&#9989; 已通过</div>';
+  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">&#9989; 小测要点：'+(qd.why||'已掌握本关核心概念')+'</div>';
   h+='</div>';return h
 }
 function answerQuiz(li,oi){
-  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  li=Number(li);oi=Number(oi);
+  if(!Number.isInteger(li)||!Number.isInteger(oi))return;
+  if(li<0||li>=LEVELS.length||oi<0||!quizData[li]||oi>=quizData[li].opts.length)return;
+  if(li>0&&!quizPassed.has(li-1))return;
+  if(li!==curLevel||quizLocked||quizPassed.has(li)||!isLevelDone(li))return;quizLocked=true;
   const qd=quizData[li],opts=panel.querySelectorAll('.quiz-opt');
   opts.forEach((el,i)=>{el.classList.add(i===qd.ans?'correct':'wrong')});
-  if(oi===qd.ans){quizPassed.add(li);playSound('success');totalScore+=10;levelScores[li]+=10;setTimeout(()=>{quizLocked=false;goLevel(curLevel+1)},800)}
+  if(oi===qd.ans){quizPassed.add(li);playSound('success');totalScore+=10;levelScores[li]+=10;setTimeout(()=>{quizLocked=false;if(li<LEVELS.length-1)goLevel(li+1);else renderPanel()},800)}
   else{playSound('fail');setTimeout(()=>{quizLocked=false;renderPanel()},1000)}
 }
 
 // === Stage nav ===
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  LEVELS.forEach((_,i)=>{h+='<div class="sn-d'+(quizPassed.has(i)?' done':i===curLevel?' cur':isUnlocked(i)?'':' locked')+'" onclick="switchLevel('+i+')"></div>'});
+  LEVELS.forEach((_,i)=>{const unlocked=isUnlocked(i);h+='<div class="sn-d'+(quizPassed.has(i)?' done':i===curLevel?' cur':unlocked?'':' locked')+'"'+(unlocked?' onclick="switchLevel('+i+')"':'')+'></div>'});
   h+='</div><div class="sn-info">第 '+(curLevel+1)+'/'+LEVELS.length+' 关 — '+LEVELS[curLevel].name+'</div></div>';
   return h
 }
@@ -648,6 +659,7 @@ function renderPanel(){
   if(isLevelDone(curLevel)){
     h+=renderQuiz(curLevel);
     if(quizPassed.has(curLevel)&&curLevel<LEVELS.length-1){h+='<button class="act-btn green" onclick="switchLevel('+(curLevel+1)+')">下一关 &#8594;</button>'}
+    if(quizPassed.has(curLevel)&&curLevel===LEVELS.length-1){h+='<button class="act-btn green" onclick="showResult()">查看总结 &#8594;</button>'}
   }
   h+='<div style="margin-top:12px;padding:8px;background:var(--concept-bg);border-radius:8px;font-size:12px;color:var(--stage-hint)">总分: <span style="color:var(--sv);font-weight:bold">'+totalScore+'</span> | 已通过: <span style="color:var(--sv);font-weight:bold">'+quizPassed.size+'/'+LEVELS.length+'</span></div>';
   panel.innerHTML=h
@@ -655,6 +667,7 @@ function renderPanel(){
 
 // === Result ===
 function showResult(){
+  if(quizPassed.size<LEVELS.length)return;
   overlay.style.display='flex';
   let h='<div style="text-align:center;max-width:420px;background:var(--result-bg);border:1px solid var(--result-border);border-radius:16px;padding:28px 36px">';
   h+='<div class="summary-title">&#127942; 探险完成！</div>';
@@ -667,8 +680,8 @@ function showResult(){
 }
 
 // === Main loop ===
-function isUnlocked(idx){return idx>=0&&idx<LEVELS.length&&(idx===0||quizPassed.has(idx)||quizPassed.has(idx-1))}
-function goLevel(idx){if(idx>=LEVELS.length){showResult();return}if(!isUnlocked(idx))return;curLevel=idx;initLevel(idx);renderPanel()}
+function isUnlocked(idx){return idx>=0&&idx<LEVELS.length&&(idx===0||quizPassed.has(idx-1))}
+function goLevel(idx){if(idx<0||idx>=LEVELS.length)return;if(!isUnlocked(idx))return;curLevel=idx;initLevel(idx);renderPanel()}
 function switchLevel(idx){if(!isUnlocked(idx))return;playSound('click');goLevel(idx)}
 function startGame(){overlay.style.display='none';document.getElementById('wrap').style.display='flex';bar.style.display='flex';panel.style.display='block';resize();initLevel(0);renderPanel();loop()}
 function draw(){

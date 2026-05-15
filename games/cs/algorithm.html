@@ -114,6 +114,8 @@ canvas{display:block}
 .quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
 .quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{border-color:#22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-opt.wrong{border-color:#ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
 .quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
 .quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
@@ -183,19 +185,19 @@ const levels=[
   {name:'堆与优先队列',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>数据结构：</b>最小堆 — 上浮 / 下沉 / 堆排序</div>理解堆的性质与堆排序过程',objs:['构建一个最小堆','执行堆排序','观察上浮下沉动画']}
 ];
 const quizData=[
-  {q:'数组和链表最核心的取舍是什么？',opts:['数组随机访问快，链表插入删除更灵活','两者内存布局完全一样','链表一定能 O(1) 随机访问'],ans:0,ok:'对。数组连续存储支持快速下标访问，链表靠指针链接更适合局部插删。',bad:'关键区别在内存布局：数组连续，链表分散并靠指针连接。'},
-  {q:'栈和队列分别遵循什么访问规则？',opts:['栈 LIFO，队列 FIFO','栈 FIFO，队列 LIFO','两者都随机访问'],ans:0,ok:'对。栈后进先出，队列先进先出。',bad:'括号匹配常用栈，BFS 常用队列，规则不同。'},
-  {q:'快速排序平均时间复杂度通常是多少？',opts:['O(n log n)','O(1)','O(n³)'],ans:0,ok:'对。快速排序平均 O(n log n)，但最坏可退化。',bad:'排序需要比较和划分，通常不可能对任意输入 O(1)。'},
-  {q:'二叉搜索树的中序遍历会得到什么结果？',opts:['有序序列','层序随机序列','只输出根节点'],ans:0,ok:'对。BST 左 < 根 < 右，所以中序遍历有序。',bad:'中序遍历是左、根、右，正好对应 BST 的有序关系。'},
-  {q:'AVL 树旋转的目的是什么？',opts:['保持树高平衡，避免退化','让所有节点值变大','删除所有叶子节点'],ans:0,ok:'对。旋转能恢复平衡，让查找保持 O(log n)。',bad:'旋转改变局部结构，不改变中序有序性。'},
-  {q:'哈希表冲突指什么？',opts:['不同 key 映射到同一个槽位','数组越界必然发生','key 不能计算哈希值'],ans:0,ok:'对。链地址法或开放寻址法都在处理这种槽位冲突。',bad:'冲突是多个 key 命中同一个 bucket，不是哈希表不能工作。'},
-  {q:'最小堆的性质是什么？',opts:['父节点不大于子节点','根节点一定最大','所有叶子必须相等'],ans:0,ok:'对。最小堆根节点是全局最小值。',bad:'最小堆要求父节点 <= 子节点，不要求左右子树完全有序。'}
+  {q:'数组和链表最核心的取舍是什么？',opts:['数组随机访问快，链表插入删除更灵活','两者内存布局完全一样','链表一定能 O(1) 随机访问'],ans:0,ok:'对。数组连续存储支持快速下标访问，链表靠指针链接更适合局部插删。',bad:'关键区别在内存布局：数组连续，链表分散并靠指针连接。',why:'数组把元素放在连续地址，能用下标直接定位；链表节点分散存储，插删只改指针但访问要从头遍历。'},
+  {q:'栈和队列分别遵循什么访问规则？',opts:['栈 FIFO，队列 LIFO','栈 LIFO，队列 FIFO','两者都随机访问'],ans:1,ok:'对。栈后进先出，队列先进先出。',bad:'括号匹配常用栈，BFS 常用队列，规则不同。',why:'栈只操作顶部，适合回退和嵌套结构；队列从尾部入、头部出，适合按到达顺序处理任务。'},
+  {q:'快速排序平均时间复杂度通常是多少？',opts:['O(1)','O(n³)','O(n log n)'],ans:2,ok:'对。快速排序平均 O(n log n)，但最坏可退化。',bad:'排序需要比较和划分，通常不可能对任意输入 O(1)。',why:'快速排序每轮用枢轴把问题拆成子数组，平均递归深度约为 log n，每层处理约 n 个元素。'},
+  {q:'二叉搜索树的中序遍历会得到什么结果？',opts:['只输出根节点','有序序列','层序随机序列'],ans:1,ok:'对。BST 左 < 根 < 右，所以中序遍历有序。',bad:'中序遍历是左、根、右，正好对应 BST 的有序关系。',why:'中序遍历先访问所有更小的左子树，再访问根，再访问更大的右子树，因此输出按大小排列。'},
+  {q:'AVL 树旋转的目的是什么？',opts:['让所有节点值变大','删除所有叶子节点','保持树高平衡，避免退化'],ans:2,ok:'对。旋转能恢复平衡，让查找保持 O(log n)。',bad:'旋转改变局部结构，不改变中序有序性。',why:'AVL 旋转只调整局部父子关系，保持 BST 有序性，同时把树高差拉回可控范围。'},
+  {q:'哈希表冲突指什么？',opts:['key 不能计算哈希值','不同 key 映射到同一个槽位','数组越界必然发生'],ans:1,ok:'对。链地址法或开放寻址法都在处理这种槽位冲突。',bad:'冲突是多个 key 命中同一个 bucket，不是哈希表不能工作。',why:'哈希函数把巨大键空间压到有限槽位，冲突不可避免；好策略能让查找仍接近 O(1)。'},
+  {q:'最小堆的性质是什么？',opts:['所有叶子必须相等','根节点一定最大','父节点不大于子节点'],ans:2,ok:'对。最小堆根节点是全局最小值。',bad:'最小堆要求父节点 <= 子节点，不要求左右子树完全有序。',why:'堆只保证父子局部顺序，不要求整棵树完全排序；这个弱约束换来高效的插入和取最小值。'}
 ];
 let quizPassed=new Set(),quizFeedback={};
 
 // ===== 关卡状态 =====
 let arrData=[],llData=[],arrOps=0,llOps=0,arrDel=false,llDel=false;
-let stackData=[],queueData=[],stackOps=0,bracketDone=false,bfsDone=false;
+let stackData=[],queueData=[],stackPushCount=0,stackPopCount=0,bracketDone=false,bfsDone=false;
 let sortArr=[],sortAlgo='bubble',sortSteps=[],sortStep=0,sortRunning=false,sortDone={bubble:false,quick:false,merge:false};
 let treeNodes=[],treeTraversal=[],treeHighlight=-1,treeBuildDone=false,treePreDone=false,treeInDone=false;
 let bstRoot=null,bstNodes=[],bstInserted=0,bstSearchDone=false,avlRotated=false;
@@ -327,27 +329,35 @@ function renderPanel(){
   // 知识点
   if(levelObjs[li].every(v=>v)){
     h+=`<div class="learn-box"><h4>📚 知识点</h4><p>${getLearnText(li)}</p></div>`;
-    if(!quizPassed.has(li))h+=quizHTML(li);
+    h+=quizHTML(li);
     if(quizPassed.has(li)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-    if(quizPassed.has(li)&&li===6&&window._summaryHTML)h+=`${window._summaryHTML()}`;
+    if(quizPassed.has(li)&&li===6&&quizPassed.size===levels.length&&window._summaryHTML)h+=`${window._summaryHTML()}`;
   }
   panel.innerHTML=h;
 }
 function quizHTML(li){
-  const q=quizData[li],fb=quizFeedback[li];
+  const q=quizData[li],fb=quizFeedback[li],passed=quizPassed.has(li);
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
   h+=`<div class="quiz-q">${q.q}</div>`;
-  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`;});
+  q.opts.forEach((opt,i)=>{
+    const cls=passed&&i===q.ans?' correct':fb?(i===q.ans?' correct':i===fb.choice&&!fb.ok?' wrong':''):'';
+    h+=`<button class="quiz-opt${cls}" onclick="answerQuiz(${li},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;
+  });
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
   h+='</div>';
   return h;
 }
 function answerQuiz(li,choice){
-  if(li!==curLevel||quizPassed.has(li))return;
+  li=Number(li);choice=Number(choice);
+  if(!Number.isInteger(li)||!Number.isInteger(choice))return false;
+  if(li<0||li>=levels.length||choice<0||!quizData[li]||choice>=quizData[li].opts.length)return false;
+  if(li!==curLevel||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(v=>v))return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
   const q=quizData[li],ok=choice===q.ans;
-  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  quizFeedback[li]={ok,choice,text:(ok?q.ok:q.bad)+(q.why?' '+q.why:'')};
   if(ok)quizPassed.add(li);
   renderPanel();
+  return ok;
 }
 window.answerQuiz=answerQuiz;
 function getLearnText(li){
@@ -365,7 +375,7 @@ function getLearnText(li){
 function renderBar(){
   bar.innerHTML='<span style="color:var(--text-muted)">🧮 '+levels[curLevel].name+'</span>';
 }
-function checkObj(li,idx){if(!levelObjs[li][idx]){levelObjs[li][idx]=true;renderPanel();renderBar()}}
+function checkObj(li,idx){if(li!==curLevel||!levelObjs[li]||levelObjs[li][idx])return;levelObjs[li][idx]=true;renderPanel();renderBar()}
 
 // ===== 绘制分发 =====
 function drawLevel(){
@@ -450,21 +460,21 @@ function drawArrayLinkedList(){
 let bracketStr='',bracketSteps=[],bracketStep=0,bracketRunning=false;
 let bfsGraph={},bfsQueue=[],bfsVisited=[],bfsSteps=[],bfsStep=0,bfsRunning=false;
 function initStackQueue(){
-  stackData=[];queueData=[];stackOps=0;bracketDone=false;bfsDone=false;
+  stackData=[];queueData=[];stackPushCount=0;stackPopCount=0;bracketDone=false;bfsDone=false;
   bracketStr='';bracketSteps=[];bracketStep=0;bracketRunning=false;
   bfsGraph={};bfsQueue=[];bfsVisited=[];bfsSteps=[];bfsStep=0;bfsRunning=false;anims=[];
 }
 function stackPush(){
   if(stackData.length>=8)return;
-  stackData.push(randInt(1,99));stackOps++;
+  stackData.push(randInt(1,99));stackPushCount++;
   addAnim({type:'stack-push',dur:0.4});
-  if(stackOps>=3&&stackData.length<stackOps)checkObj(1,0);renderPanel();
+  if(stackPushCount>=3&&stackPopCount>=3)checkObj(1,0);renderPanel();
 }
 function stackPop(){
   if(stackData.length===0)return;
-  stackData.pop();stackOps++;
+  stackData.pop();stackPopCount++;
   addAnim({type:'stack-pop',dur:0.3});
-  if(stackOps>=6)checkObj(1,0);renderPanel();
+  if(stackPushCount>=3&&stackPopCount>=3)checkObj(1,0);renderPanel();
 }
 function runBracketMatch(){
   if(bracketRunning)return;
@@ -1003,8 +1013,8 @@ function drawHeapVis(){
     for(var i=0;i<total;i++){
       var unlocked=typeof isUnlocked==='function'?isUnlocked(i):true;
       var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
-      var click=unlocked?"typeof goLevel==='function'&&goLevel("+i+")":'';
-      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
+      var click=unlocked?' onclick="goLevel('+i+')"':'';
+      h+='<div class="sn-d '+cls+'"'+click+'></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
@@ -1016,6 +1026,7 @@ function drawHeapVis(){
   // 3. 通关总结
   window._summaryHTML=function(){
     var names=_getNames(),total=names.length;
+    if(typeof quizPassed!=='undefined'&&quizPassed.size<total)return '';
     var s=_countDone();
     var pct=s.total>0?Math.round(s.done/s.total*100):100;
     var h='<div class="summary-box">';

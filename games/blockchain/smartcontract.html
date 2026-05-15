@@ -190,14 +190,17 @@ function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':
 
 // === 音效 ===
 const AudioCtx=window.AudioContext||window.webkitAudioContext;let audioCtx;
-function initAudio(){if(!audioCtx)audioCtx=new AudioCtx()}
+function initAudio(){if(!AudioCtx)return null;try{if(!audioCtx)audioCtx=new AudioCtx();return audioCtx}catch(e){return null}}
 function playSound(type){
-  try{initAudio()}catch(e){return}
-  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-  o.connect(g);g.connect(audioCtx.destination);const now=audioCtx.currentTime;
-  if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start(now);g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.stop(now+0.1)}
-  else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(659,now+0.1);o.frequency.setValueAtTime(784,now+0.2);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);o.stop(now+0.4)}
-  else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(200,now+0.15);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);o.stop(now+0.3)}
+  const ac=initAudio();if(!ac)return false;
+  try{
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);const now=ac.currentTime;
+    if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start(now);g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.stop(now+0.1)}
+    else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(659,now+0.1);o.frequency.setValueAtTime(784,now+0.2);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);o.stop(now+0.4)}
+    else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(200,now+0.15);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);o.stop(now+0.3)}
+    return true;
+  }catch(e){return false}
 }
 
 // === 粒子 ===
@@ -232,10 +235,10 @@ const LEVELS=[
 const QUIZZES=[
   {q:'EVM 执行智能合约时，Gas 的作用是什么？',opts:['A. 给矿工发工资','B. 防止无限循环，衡量计算资源消耗','C. 加密交易数据'],ans:1},
   {q:'Solidity 中 storage 和 memory 的区别是？',opts:['A. storage 永久存储在链上，memory 只在函数执行期间存在','B. 没有区别','C. memory 更贵'],ans:0},
-  {q:'重入攻击的根本原因是什么？',opts:['A. 合约代码太长','B. 在更新状态前调用了外部合约','C. Gas 不够'],ans:1},
+  {q:'重入攻击的根本原因是什么？',opts:['A. 在更新状态前调用了外部合约','B. 合约代码太长','C. Gas 不够'],ans:0},
   {q:'SafeMath 库解决了什么问题？',opts:['A. 让数学计算更快','B. 防止整数溢出/下溢','C. 减少 Gas 消耗'],ans:1},
-  {q:'多签钱包的安全优势是什么？',opts:['A. 交易更快','B. 需要多个私钥签名才能执行操作','C. Gas 更便宜'],ans:1},
-  {q:'代理合约升级模式中最大的风险是？',opts:['A. Gas 消耗增加','B. 存储布局冲突导致数据损坏','C. 代码变长'],ans:1},
+  {q:'多签钱包的安全优势是什么？',opts:['A. 交易更快','B. Gas 更便宜','C. 需要多个私钥签名才能执行操作'],ans:2},
+  {q:'代理合约升级模式中最大的风险是？',opts:['A. 存储布局冲突导致数据损坏','B. Gas 消耗增加','C. 代码变长'],ans:0},
   {q:'模糊测试 (Fuzzing) 的原理是什么？',opts:['A. 手动检查每行代码','B. 用随机输入大量测试寻找异常行为','C. 只测试正常情况'],ans:1}
 ];
 const LEARNS=[
@@ -269,7 +272,13 @@ function initLevel(idx){
   if(idx===6){l6_vulnsFound.clear();l6_fuzzRuns=0;l6_formalVerified=false;l6_bugBounty=false}
 }
 
-function completeObj(idx,g){if(!goals[curLevel][g]){goals[curLevel][g]=true;playSound('success');spawnParticles(160,200+g*60,20);renderPanel()}}
+function completeObj(idx,g){if(idx!==curLevel||!goals[idx]||g<0||g>=goals[idx].length||goals[idx][g])return;goals[idx][g]=true;playSound('success');spawnParticles(160,200+g*60,20);renderPanel()}
+function clampNumber(value,fallback,min,max){const n=Number(value);return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback}
+function setRangeValue(el,value){
+  el.value=value;
+  const label=el.previousElementSibling&&el.previousElementSibling.querySelector('.sv');
+  if(label)label.textContent=value;
+}
 
 function startGame(){
   document.getElementById('startScreen').classList.add('hidden');
@@ -293,7 +302,7 @@ function renderPanel(){
   for(let i=0;i<TOTAL;i++){
     const unlocked=isUnlocked(i);
     const cls=quizPassedSet.has(i)?'done':(i===curLevel?'cur':(unlocked?'':'locked'));
-    h+=`<div class="stage-dot ${cls}" onclick="goLevel(${i})" title="${unlocked?LEVELS[i].title:'答对上一关测验后解锁'}">${i+1}</div>`;
+    h+=`<div class="stage-dot ${cls}" ${unlocked?`onclick="goLevel(${i})"`:''} title="${unlocked?LEVELS[i].title:'答对上一关测验后解锁'}">${i+1}</div>`;
   }
   h+=`<div class="stage-hint">${completedLevels.size}/${TOTAL} 已通关，完成目标后答对测验才解锁下一关</div>`;
   h+='</div>';
@@ -307,7 +316,7 @@ function renderPanel(){
   if(goals[curLevel][0]&&goals[curLevel][1]&&goals[curLevel][2]&&!quizPassedSet.has(curLevel)){
     const quiz=QUIZZES[curLevel];
     h+=`<div class="quiz-box" id="quiz-${curLevel}"><div class="quiz-title">通关小测验</div><div class="quiz-q">🧠 ${quiz.q}</div>`;
-    quiz.opts.forEach((o,i)=>h+=`<div class="quiz-opt" onclick="checkQuiz(${curLevel},${i})">${o}</div>`);
+    quiz.opts.forEach((o,i)=>h+=`<div class="quiz-opt" onclick="answerQuiz(${curLevel},${i})">${o}</div>`);
     h+='</div>';
   }
   if(quizPassedSet.has(curLevel)){
@@ -390,7 +399,7 @@ function renderLevelPanel(idx){
     h+=`<div class="code-block"><span class="kw">uint8</span> counter = <span class="num">${l3_uint8}</span>;
 counter += <span class="num">1</span>; <span class="cmt">// = ?</span></div>`;
     h+=`<div class="slider-row"><label>当前值: <span class="sv">${l3_uint8}</span></label>
-      <input type="range" min="0" max="255" value="${l3_uint8}" oninput="l3_uint8=+this.value;this.previousElementSibling.querySelector('.sv').textContent=this.value" onchange="this.blur();renderPanel()"></div>`;
+      <input type="range" min="0" max="255" value="${l3_uint8}" oninput="l3_uint8=clampNumber(this.value,l3_uint8,0,255);setRangeValue(this,l3_uint8)" onchange="this.blur();renderPanel()"></div>`;
     h+=`<div class="act-section"><button class="act-btn red" onclick="triggerOverflow()">➕ 加 1</button></div>`;
     if(l3_overflowed){
       h+=`<div class="act-section"><button class="act-btn" onclick="txOriginAttack()">🎣 模拟 tx.origin 钓鱼</button></div>`;
@@ -445,7 +454,10 @@ counter += <span class="num">1</span>; <span class="cmt">// = ?</span></div>`;
     h+=`<div class="act-section">
       <button class="act-btn red" onclick="runFuzz()">🎲 模糊测试 (${l6_fuzzRuns}/100)</button>
       <button class="act-btn blue" onclick="formalVerify()" ${l6_fuzzRuns<50?'disabled':''}>📐 形式化验证</button>
-      <button class="act-btn green" onclick="submitBounty()" ${!l6_formalVerified?'disabled':''}>🏆 提交 Bug Bounty</button></div>`;
+      <button class="act-btn green" onclick="submitBounty()" ${!l6_formalVerified||l6_vulnsFound.size<3?'disabled':''}>🏆 提交 Bug Bounty</button></div>`;
+    if(l6_formalVerified&&l6_vulnsFound.size<3){
+      h+=`<div class="hint-b">💡 Bug Bounty 需要可复现证据。继续运行模糊测试，至少收集 3 个漏洞后再提交报告。</div>`;
+    }
     if(l6_vulnsFound.size>0){
       h+=`<div class="mission"><div class="m-concept"><b>发现的漏洞:</b><br>`;
       for(const v of l6_vulnsFound) h+=`🐛 ${v}<br>`;
@@ -528,26 +540,36 @@ function runFuzz(){
   playSound('click');renderPanel();
 }
 function formalVerify(){l6_formalVerified=true;completeObj(6,1);playSound('success');renderPanel()}
-function submitBounty(){l6_bugBounty=true;completeObj(6,2);playSound('success');renderPanel()}
+function submitBounty(){
+  if(!l6_formalVerified||l6_vulnsFound.size<3)return false;
+  l6_bugBounty=true;completeObj(6,2);playSound('success');renderPanel();
+  return true;
+}
 
 // === Quiz ===
-function checkQuiz(levelIdx,chosen){
-  if(quizCooldown)return;
+function answerQuiz(levelIdx,chosen){
+  if(quizCooldown)return false;
+  if(!Number.isInteger(levelIdx)||!Number.isInteger(chosen))return false;
+  if(levelIdx!==curLevel||quizPassedSet.has(levelIdx))return false;
+  if(!goals[levelIdx]||!goals[levelIdx].every(Boolean))return false;
   const quiz=QUIZZES[levelIdx];
   const opts=document.querySelectorAll(`#quiz-${levelIdx} .quiz-opt`);
-  if(!opts[chosen]||!opts[quiz.ans])return;
+  if(!quiz||chosen<0||chosen>=quiz.opts.length||!opts[chosen]||!opts[quiz.ans])return false;
   if(chosen===quiz.ans){
     opts[chosen].classList.add('correct');quizPassedSet.add(levelIdx);completedLevels.add(levelIdx);
     playSound('success');spawnParticles(160,300,30);
     setTimeout(()=>renderPanel(),800);
+    return true;
   }else{
     opts[chosen].classList.add('wrong');opts[quiz.ans].classList.add('correct');
     playSound('fail');quizCooldown=true;
     setTimeout(()=>{quizCooldown=false;renderPanel()},1500);
+    return false;
   }
 }
 
 function renderSummary(){
+  if(quizPassedSet.size<TOTAL)return '';
   return `<div class="summary-box">
     <div class="summary-title">🎉 智能合约安全探险完成！</div>
     <div class="summary-sub">你已掌握智能合约安全的核心知识</div>

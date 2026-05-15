@@ -215,18 +215,31 @@ let screenShake = {x:0,y:0,intensity:0};
 
 // === Audio System ===
 const AudioCtx=window.AudioContext||window.webkitAudioContext;let audioCtx;
-function initAudio(){if(!audioCtx)audioCtx=new AudioCtx()}
-function playSound(type){initAudio();const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}else if(type==='boom'){const buf=audioCtx.createBuffer(1,audioCtx.sampleRate*0.3,audioCtx.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/d.length*5);const s=audioCtx.createBufferSource();s.buffer=buf;const g2=audioCtx.createGain();g2.gain.value=0.2;s.connect(g2);g2.connect(audioCtx.destination);s.start()}else if(type==='alert'){o.frequency.value=600;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(800,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(600,audioCtx.currentTime+0.2);o.frequency.setValueAtTime(800,audioCtx.currentTime+0.3);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}}
+function initAudio(){if(!AudioCtx)return null;try{if(!audioCtx)audioCtx=new AudioCtx();return audioCtx}catch(e){return null}}
+function playSound(type){
+  const ac=initAudio();if(!ac)return false;
+  try{
+    const o=ac.createOscillator();const g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    const now=ac.currentTime;
+    if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start(now);g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.stop(now+0.1)}
+    else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(659,now+0.1);o.frequency.setValueAtTime(784,now+0.2);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);o.stop(now+0.4)}
+    else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(200,now+0.15);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);o.stop(now+0.3)}
+    else if(type==='boom'){const buf=ac.createBuffer(1,ac.sampleRate*0.3,ac.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/d.length*5);const s=ac.createBufferSource();s.buffer=buf;const g2=ac.createGain();g2.gain.value=0.2;s.connect(g2);g2.connect(ac.destination);s.start()}
+    else if(type==='alert'){o.frequency.value=600;g.gain.value=0.12;o.start(now);o.frequency.setValueAtTime(800,now+0.1);o.frequency.setValueAtTime(600,now+0.2);o.frequency.setValueAtTime(800,now+0.3);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);o.stop(now+0.4)}
+    return true;
+  }catch(e){return false}
+}
 
 // === Quiz System ===
 const quizData = [
   {q:'铀-235有多少个质子？',opts:['A. 143','B. 92','C. 235'],ans:1},
   {q:'核裂变释放的能量约是化学反应的多少倍？',opts:['A. 10倍','B. 1000倍','C. 数百万倍'],ans:2},
-  {q:'链式反应中，每次裂变释放几个中子？',opts:['A. 1个','B. 2-3个','C. 10个'],ans:1},
+  {q:'链式反应中，每次裂变释放几个中子？',opts:['A. 2-3个','B. 1个','C. 10个'],ans:0},
   {q:'铀-235的临界质量约为？',opts:['A. 1公斤','B. 52公斤','C. 1000公斤'],ans:1},
   {q:'核聚变需要多高的温度？',opts:['A. 1000度','B. 100万度','C. 1亿度以上'],ans:2},
   {q:'核电站和核弹的本质区别是？',opts:['A. 使用不同燃料','B. 反应速率是否受控','C. 大小不同'],ans:1},
-  {q:'方舟反应堆最接近哪种现实技术？',opts:['A. 核裂变堆','B. 托卡马克聚变堆','C. 太阳能电池'],ans:1}
+  {q:'方舟反应堆最接近哪种现实技术？',opts:['A. 托卡马克聚变堆','B. 核裂变堆','C. 太阳能电池'],ans:0}
 ];
 let quizLocked = false;
 function renderQuiz(levelIdx){
@@ -240,9 +253,11 @@ function renderQuiz(levelIdx){
 }
 function answerQuiz(levelIdx,chosen){
   if(quizLocked||levelIdx!==currentLevel||quizPassed.has(levelIdx))return;
+  if(levelIdx>0&&!quizPassed.has(levelIdx-1))return;
   const ready=(levelState.goalDone&&levelState.goalDone.every(Boolean))||readyForQuiz.has(levelIdx);
   if(!ready)return;
   const qd=quizData[levelIdx];
+  if(!qd||chosen<0||chosen>=qd.opts.length)return;
   const el=document.getElementById('qopt-'+levelIdx+'-'+chosen);
   if(chosen===qd.ans){
     el.classList.add('correct');
@@ -300,6 +315,7 @@ function startGame(){
 }
 
 function initLevel(idx){
+  if(!canGoLevel(idx))return;
   currentLevel=idx;particles=[];celebrationParticles=[];
   levelFadeAlpha=0; // 淡入效果
   const L=levels[idx];
@@ -316,7 +332,7 @@ function initLevel(idx){
   } else if(idx===4){
     levelState={temp:1000,deuterium:null,tritium:null,fusing:false,fusionCount:0,helium:null,flashAlpha:0,goalDone:[false,false,false],triedLow:false};
   } else if(idx===5){
-    levelState={rodDepth:80,power:50,temp:300,neutronFlux:50,stable:false,stableTime:0,meltdown:false,shutdown:false,elapsed:0,neutrons:[],goalDone:[false,false,true],reactorDone:false,
+    levelState={rodDepth:80,power:50,temp:300,neutronFlux:50,stable:false,stableTime:0,meltdown:false,shutdown:false,elapsed:0,neutrons:[],goalDone:[false,false,false],reactorDone:false,
       event:null,eventTimer:0,eventCountdown:0,eventFailed:false,nextEventTime:8+Math.random()*5};
   } else if(idx===6){
     levelState={magField:0,plasmaTemp:0,plasma:[],energy:0,outputPower:0,confined:true,ignited:false,suitPowered:false,elapsed:0,arcDone:false,goalDone:[false,false,false],ringParticles:[]};
@@ -358,7 +374,7 @@ function renderPanel(){
   document.getElementById('bbRight').textContent=`${completedLevels.size}/${levels.length} 已完成`;
 }
 
-function canGoLevel(i){return i>=0&&i<levels.length&&(i===0||completedLevels.has(i)||completedLevels.has(i-1))}
+function canGoLevel(i){return i>=0&&i<levels.length&&(i===0||quizPassed.has(i-1))}
 function switchLevel(i){if(!canGoLevel(i))return;playSound('click');initLevel(i);renderPanel()}
 
 function renderLevelActions(){
@@ -421,6 +437,9 @@ function renderLevelActions(){
     if(S.eventFailed){
       h+=`<div style="background:var(--concept-bg);border:1px solid #ef4444;border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:#dc2626">⚠️ 未能及时处理事件，温度急升200°C！注意控制！</div>`;
     }
+    const safeText=S.goalDone[2]?'已完成30秒安全运行':S.meltdown?'熔毁警报已触发':S.shutdown?'反应堆已停堆':'保持温度低于1500°C并完成稳定运行';
+    const safeColor=S.goalDone[2]?'#4ade80':(S.meltdown||S.shutdown)?'#f87171':'var(--text-muted)';
+    h+=`<div style="font-size:12px;color:${safeColor};margin:4px 0">安全运行: <span class="sv">${safeText}</span></div>`;
     if(S.meltdown)h+=`<div style="font-size:14px;color:#dc2626;font-weight:700;margin:8px 0">⚠️ 熔毁！反应堆失控！</div><button class="act-btn" onclick="doAction('resetReactor')">重置反应堆</button>`;
     if(S.shutdown)h+=`<div style="font-size:12px;color:var(--text-muted);margin:4px 0">反应堆已停堆</div><button class="act-btn" onclick="doAction('resetReactor')">重置反应堆</button>`;
   } else if(currentLevel===6){
@@ -740,18 +759,18 @@ function updateReactor(dt){
   if(S.power>=400&&S.power<=650){
     if(!S.stable){S.stable=true;S.stableTime=0;S.goalDone[0]=true}
     S.stableTime+=dt;
-    if(S.stableTime>=30){S.goalDone[1]=true;S.reactorDone=true;completeLevel(5);renderPanel()}
+    if(S.stableTime>=30){S.goalDone[1]=true;S.goalDone[2]=true;S.reactorDone=true;completeLevel(5);renderPanel()}
   } else {S.stable=false;S.stableTime=0}
   // meltdown（提高阈值到1500°C）
   if(S.temp>1500){S.meltdown=true;S.goalDone[2]=false;playSound('fail');
     screenShake.intensity=20;
     for(let i=0;i<50;i++){const a=Math.random()*Math.PI*2,sp=Math.random()*200+50;addP(cx,cy,Math.cos(a)*sp,Math.sin(a)*sp,'#f87171',2,4)}
   }
-  if(S.power<5&&S.elapsed>5)S.shutdown=true;
+  if(S.power<5&&S.elapsed>5){S.shutdown=true;S.goalDone[2]=false;}
   if(S.elapsed%0.3<dt)renderPanel();
 }
 
-function completeLevel(idx){if(!readyForQuiz.has(idx)&&!completedLevels.has(idx)){readyForQuiz.add(idx);playSound('success')}renderPanel()}
+function completeLevel(idx){if(idx!==currentLevel||!levelState.goalDone||!levelState.goalDone.every(Boolean))return;if(!readyForQuiz.has(idx)&&!quizPassed.has(idx)){readyForQuiz.add(idx);playSound('success')}renderPanel()}
 
 // Level 6: Arc Reactor
 function updateArc(dt){
@@ -1405,12 +1424,14 @@ function goLevel(i){switchLevel(i);}
   function _isDone(i){
     var o=_getObjs();
     if(o&&o[i])return o[i].every(function(v){return v;});
+    if(typeof quizPassed!=='undefined')return quizPassed.has(i);
     if(typeof completedLevels!=='undefined')return completedLevels.has(i);
     return false;
   }
   function _canGo(i){
     if(typeof canGoLevel==='function')return canGoLevel(i);
-    return i===0||_isDone(i)||_isDone(i-1);
+    if(typeof quizPassed!=='undefined')return i===0||quizPassed.has(i-1);
+    return i===0||_isDone(i-1);
   }
   function _countDone(){
     var o=_getObjs(),d=0,t=0;
@@ -1428,8 +1449,9 @@ function goLevel(i){switchLevel(i);}
     var pct=s.total>0?Math.round(s.done/s.total*100):0;
     var h='<div class="stage-nav"><div class="sn-bar">';
     for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':_canGo(i)?'':'locked';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+      var unlocked=_canGo(i);
+      var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
+      h+='<div class="sn-d '+cls+'"'+(unlocked?' onclick="typeof goLevel===\'function\'&&goLevel('+i+')"':'')+'></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
@@ -1441,6 +1463,7 @@ function goLevel(i){switchLevel(i);}
   // 3. 通关总结
   window._summaryHTML=function(){
     var names=_getNames(),total=names.length;
+    if(typeof quizPassed!=='undefined'&&quizPassed.size<total)return '';
     var s=_countDone();
     var pct=s.total>0?Math.round(s.done/s.total*100):100;
     var h='<div class="summary-box">';

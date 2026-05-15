@@ -214,43 +214,43 @@ const quizData=[
   },
   {
     q:'Mandelbrot 集中黑色区域通常表示什么？',
-    opts:['迭代 z→z²+c 后没有在限定次数内发散的点','所有发散最快的点','随机涂黑的背景区域'],
-    ans:0,
+    opts:['所有发散最快的点','迭代 z→z²+c 后没有在限定次数内发散的点','随机涂黑的背景区域'],
+    ans:1,
     ok:'正确。黑色区域对应被认为留在集合内或发散很慢的点。',
     bad:'边界附近需要很多次迭代判断，内部点不会快速逃逸。'
   },
   {
     q:'Julia 集与 Mandelbrot 集的关系是什么？',
-    opts:['Mandelbrot 集中的参数 c 通常对应连通 Julia 集','Julia 集完全不依赖参数 c','Mandelbrot 集只是 Julia 集的颜色表'],
-    ans:0,
+    opts:['Julia 集完全不依赖参数 c','Mandelbrot 集只是 Julia 集的颜色表','Mandelbrot 集中的参数 c 通常对应连通 Julia 集'],
+    ans:2,
     ok:'正确。参数 c 的位置决定 Julia 集是否连通。',
     bad:'拖动参数点：c 的变化会直接改变 Julia 集形态。'
   },
   {
     q:'分形树能模拟自然树形的原因是什么？',
-    opts:['简单分支规则递归重复，形成多层级结构','每根枝条必须完全随机','树枝不能再分支'],
-    ans:0,
+    opts:['每根枝条必须完全随机','简单分支规则递归重复，形成多层级结构','树枝不能再分支'],
+    ans:1,
     ok:'正确。递归分支可以生成类似树木、血管、河网的结构。',
     bad:'看递归深度和分支角：相同规则重复产生复杂形态。'
   },
   {
     q:'蝴蝶效应强调混沌系统的什么性质？',
-    opts:['对初始条件极端敏感','完全没有规律也没有方程','任何小误差都会立刻消失'],
-    ans:0,
+    opts:['完全没有规律也没有方程','任何小误差都会立刻消失','对初始条件极端敏感'],
+    ans:2,
     ok:'正确。微小初始差异会被系统动力学逐步放大。',
     bad:'红蓝轨迹初始只差 0.001，但之后距离会迅速变大。'
   },
   {
     q:'Logistic 映射进入混沌前常见路径是什么？',
-    opts:['固定点 → 周期倍增 → 混沌','混沌 → 固定点 → 没有分岔','永远只保持一个固定值'],
-    ans:0,
+    opts:['混沌 → 固定点 → 没有分岔','固定点 → 周期倍增 → 混沌','永远只保持一个固定值'],
+    ans:1,
     ok:'正确。周期倍增是通向混沌的经典路线。',
     bad:'观察分岔图：r 增大后先出现周期 2、4、8，再进入混沌。'
   },
   {
     q:'奇异吸引子说明混沌系统并非完全随机，因为它们会怎样？',
-    opts:['轨迹会被限制在特定几何结构附近','轨迹永远是一条直线','所有点最终停在原点'],
-    ans:0,
+    opts:['轨迹永远是一条直线','所有点最终停在原点','轨迹会被限制在特定几何结构附近'],
+    ans:2,
     ok:'正确。奇异吸引子体现了“不可预测但有结构”的混沌。',
     bad:'看 Lorenz、Rössler、Hénon：轨迹复杂，但会围绕特定形状运动。'
   }
@@ -259,19 +259,27 @@ const quizData=[
 function resize(){W=window.innerWidth-320;H=window.innerHeight-36;cv.width=W;cv.height=H;cv.style.position='fixed';cv.style.left='320px';cv.style.top='0';cv.style.width=W+'px';cv.style.height=H+'px';if(gameStarted)drawLevel();}
 window.addEventListener('resize',resize);
 function startGame(){document.getElementById('startOverlay').style.display='none';panel.style.display='block';bar.style.display='flex';gameStarted=true;resize();goLevel(0);}
-function isUnlocked(n){return n===0||completedLevels.has(n-1);}
-function goLevel(n){if(!isUnlocked(n))return;curLevel=n;if(animId){cancelAnimationFrame(animId);animId=null;}cv.onmousedown=null;cv.onmousemove=null;cv.onmouseup=null;cv.onwheel=null;levelState={};if(quizPassed.has(n))levelObjs[n]=[true,true,true];initLevel(n);renderPanel();renderBar();drawLevel();}
-function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel();renderBar();}}
+function isUnlocked(n){return n>=0&&n<LN.length&&(n===0||quizPassed.has(n-1));}
+function goLevel(n){n=Number(n);if(!Number.isInteger(n)||!isUnlocked(n))return;curLevel=n;if(animId){cancelAnimationFrame(animId);animId=null;}cv.onmousedown=null;cv.onmousemove=null;cv.onmouseup=null;cv.onwheel=null;levelState={};if(quizPassed.has(n))levelObjs[n]=[true,true,true];initLevel(n);renderPanel();renderBar();drawLevel();}
+function completeObj(i){i=Number(i);if(!Number.isInteger(i)||i<0||i>=3||!levelObjs[curLevel]||levelObjs[curLevel][i])return;levelObjs[curLevel][i]=true;renderPanel();renderBar();}
 function renderPanel(){let li=curLevel,h='';h+=renderStageNav();h+=`<span class="level-tag">关卡 ${li+1}/7</span>`;h+=`<h2>${LN[li]}</h2>`;h+=`<p class="desc-text">${LD[li]}</p>`;h+=`<ul class="obj-list">`;for(let i=0;i<3;i++)h+=`<li class="${levelObjs[li][i]?'done':''}">${LOT[li][i]}</li>`;h+=`</ul>`;h+=getPanelCtrl();if(levelObjs[li].every(v=>v)&&!quizPassed.has(li))h+=renderQuiz();else if(quizPassed.has(li)){h+=`<div class="learn-box">${LT[li]}</div>`;if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;if(li===6)h+=summaryHTML();}panel.innerHTML=h;}
 function renderBar(){bar.innerHTML='<span style="color:var(--text-muted)">🌀 '+LN[curLevel]+'</span>';}
+function clampNumber(value,fallback,min,max){
+  const n=Number(value),fb=Number(fallback);
+  const base=Number.isFinite(n)?n:(Number.isFinite(fb)?fb:min);
+  return Math.min(max,Math.max(min,base));
+}
+function setInputValue(input,value){
+  if(input&&input.value!==undefined)input.value=String(value);
+}
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   for(let i=0;i<LN.length;i++){
     let cls='sn-d';
-    if(completedLevels.has(i))cls+=' done';
+    if(quizPassed.has(i))cls+=' done';
     if(i===curLevel)cls+=' cur';
     if(!isUnlocked(i))cls+=' locked';
-    h+=`<div class="${cls}" onclick="goLevel(${i})"></div>`;
+    h+=`<div class="${cls}" ${isUnlocked(i)&&i!==curLevel?`onclick="goLevel(${i})"`:''}></div>`;
   }
   h+=`</div><div class="sn-info">第 ${curLevel+1}/${LN.length} 关：${LN[curLevel]}</div>`;
   h+=`<div class="sn-hint">完成三项目标后回答小测验，答对才解锁下一关</div></div>`;
@@ -287,12 +295,17 @@ function renderQuiz(){
   return h;
 }
 function answerQuiz(choice){
-  const qd=quizData[curLevel],ok=choice===qd.ans;
+  choice=Number(choice);
+  if(!Number.isInteger(choice)||!levelObjs[curLevel].every(Boolean)||quizPassed.has(curLevel))return;
+  const qd=quizData[curLevel];
+  if(!qd||choice<0||choice>=qd.opts.length)return;
+  const ok=choice===qd.ans;
   quizFeedback[curLevel]={ok,text:ok?qd.ok:qd.bad};
   if(ok){quizPassed.add(curLevel);completedLevels.add(curLevel);}
   renderPanel();renderBar();
 }
 function summaryHTML(){
+  if(quizPassed.size<LN.length)return '';
   let h='<div class="summary-box"><div class="summary-title">🎉 分形与混沌探险完成！</div>';
   h+='<div class="summary-sub">你已完成 7 个主题，并通过每关小测验</div>';
   h+=`<div class="summary-stats"><div class="summary-stat"><div class="num">${completedLevels.size}/${LN.length}</div><div class="label">测验通过</div></div><div class="summary-stat"><div class="num">${completedLevels.size*3}</div><div class="label">目标完成</div></div></div>`;
@@ -304,9 +317,14 @@ function summaryHTML(){
 function initL0(){levelState.iter=1;}
 function ctrlL0(){
   let s=levelState;
-  let h=`<div class="slider-row"><span>迭代次数</span><input type="range" min="0" max="7" value="${s.iter}" oninput="levelState.iter=+this.value;drawLevel();if(+this.value>=3)completeObj(0);if(+this.value>=5)completeObj(1);if(+this.value>=7)completeObj(2)"><span class="val">${s.iter}</span></div>`;
+  let h=`<div class="slider-row"><span>迭代次数</span><input type="range" min="0" max="7" value="${s.iter}" oninput="setKochIterInput(this)"><span class="val">${s.iter}</span></div>`;
   h+=`<p class="hint">拖动滑块增加迭代次数，观察雪花的变化</p>`;
   return h;
+}
+function setKochIterInput(input){
+  const v=clampNumber(input&&input.value!==undefined?input.value:input,levelState.iter,0,7);
+  setInputValue(input,v);levelState.iter=v;drawLevel();
+  if(v>=3)completeObj(0);if(v>=5)completeObj(1);if(v>=7)completeObj(2);
 }
 function kochPoints(x1,y1,x2,y2,depth){
   // Iterative Koch: start with line segments, subdivide each one
@@ -452,11 +470,25 @@ function drawL2(){
 function initL3(){levelState.angle=30;levelState.ratio=0.7;levelState.depth=6;}
 function ctrlL3(){
   let s=levelState;
-  let h=`<div class="slider-row"><span>分支角度</span><input type="range" min="5" max="85" value="${s.angle}" oninput="levelState.angle=+this.value;drawLevel();completeObj(0);if(+this.value>=25&&+this.value<=35)completeObj(1)"><span class="val">${s.angle}°</span></div>`;
-  h+=`<div class="slider-row"><span>长度比例</span><input type="range" min="40" max="85" value="${Math.round(s.ratio*100)}" oninput="levelState.ratio=+this.value/100;drawLevel()"><span class="val">${Math.round(s.ratio*100)}%</span></div>`;
-  h+=`<div class="slider-row"><span>递归深度</span><input type="range" min="2" max="14" value="${s.depth}" oninput="levelState.depth=+this.value;drawLevel();if(+this.value>=10)completeObj(2)"><span class="val">${s.depth}</span></div>`;
+  let h=`<div class="slider-row"><span>分支角度</span><input type="range" min="5" max="85" value="${s.angle}" oninput="setTreeAngleInput(this)"><span class="val">${s.angle}°</span></div>`;
+  h+=`<div class="slider-row"><span>长度比例</span><input type="range" min="40" max="85" value="${Math.round(s.ratio*100)}" oninput="setTreeRatioInput(this)"><span class="val">${Math.round(s.ratio*100)}%</span></div>`;
+  h+=`<div class="slider-row"><span>递归深度</span><input type="range" min="2" max="14" value="${s.depth}" oninput="setTreeDepthInput(this)"><span class="val">${s.depth}</span></div>`;
   h+=`<p class="hint">调整参数观察分形树的形态变化</p>`;
   return h;
+}
+function setTreeAngleInput(input){
+  const v=clampNumber(input&&input.value!==undefined?input.value:input,levelState.angle,5,85);
+  setInputValue(input,v);levelState.angle=v;drawLevel();completeObj(0);
+  if(v>=25&&v<=35)completeObj(1);
+}
+function setTreeRatioInput(input){
+  const v=clampNumber(input&&input.value!==undefined?input.value:input,Math.round(levelState.ratio*100),40,85);
+  setInputValue(input,v);levelState.ratio=v/100;drawLevel();
+}
+function setTreeDepthInput(input){
+  const v=clampNumber(input&&input.value!==undefined?input.value:input,levelState.depth,2,14);
+  setInputValue(input,v);levelState.depth=v;drawLevel();
+  if(v>=10)completeObj(2);
 }
 function drawBranch(x,y,len,ang,dep,maxD){
   if(dep>maxD||len<1)return;
@@ -535,11 +567,17 @@ function drawL4(){
 function initL5(){levelState.r=2.5;}
 function ctrlL5(){
   let s=levelState;
-  let h=`<div class="slider-row"><span>参数 r</span><input type="range" min="100" max="400" value="${Math.round(s.r*100)}" oninput="levelState.r=+this.value/100;drawLevel();completeObj(0);if(levelState.r>=2.9&&levelState.r<=3.1)completeObj(1);if(levelState.r>3.57)completeObj(2)"><span class="val">${s.r.toFixed(2)}</span></div>`;
+  let h=`<div class="slider-row"><span>参数 r</span><input type="range" min="100" max="400" value="${Math.round(s.r*100)}" oninput="setLogisticInput(this)"><span class="val">${s.r.toFixed(2)}</span></div>`;
   let regime=s.r<3?'固定点':s.r<3.449?'周期2':s.r<3.544?'周期4':s.r<3.57?'周期8':'混沌';
   h+=`<p style="font-size:12px;color:#f472b6;margin-top:4px">当前状态: ${regime}</p>`;
   h+=`<p class="hint">拖动滑块改变 r 值，观察分岔图上红线的位置</p>`;
   return h;
+}
+function setLogisticInput(input){
+  const v=clampNumber(input&&input.value!==undefined?input.value:input,Math.round(levelState.r*100),100,400);
+  setInputValue(input,v);levelState.r=v/100;drawLevel();completeObj(0);
+  if(levelState.r>=2.9&&levelState.r<=3.1)completeObj(1);
+  if(levelState.r>3.57)completeObj(2);
 }
 function drawL5(){
   ctx.clearRect(0,0,W,H);let m=50,gw=W-m*2,gh=H-m*2,rMin=1,rMax=4;

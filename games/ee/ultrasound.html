@@ -221,12 +221,12 @@ const levels=[
 
 const quizData=[
   {q:'超声成像中声阻抗 Z 的定义是什么？',opts:['介质密度 ρ 与声速 c 的乘积','探头电压除以频率','图像亮度的平均值'],ans:0,ok:'对。界面两侧声阻抗差决定反射强弱。',bad:'声阻抗来自介质性质，Z=ρ×c。'},
-  {q:'压电探头发射超声依赖哪种效应？',opts:['逆压电效应：电信号变机械振动','热胀冷缩','光电效应'],ans:0,ok:'对。接收回波则依赖正压电效应。',bad:'发射是电到机械，接收是机械到电。'},
-  {q:'相控阵探头的关键能力是什么？',opts:['通过相位延迟电子偏转声束','只能产生固定直线声束','不需要换能器阵元'],ans:0,ok:'对。相控阵可用电子方式快速扫查。',bad:'相控阵的核心是阵元相位控制。'},
-  {q:'TGC 补偿主要解决什么问题？',opts:['深层回波因衰减变弱','探头外壳颜色不一致','患者姓名显示错误'],ans:0,ok:'对。深层回波需要更高增益补偿组织衰减。',bad:'TGC 是按深度调整增益的时间增益补偿。'},
-  {q:'B 模式图像的亮度通常表示什么？',opts:['回波幅度大小','探头温度','屏幕刷新率'],ans:0,ok:'对。多条 A 扫描线的回波幅度映射成二维灰度图。',bad:'B 模式的 B 是 brightness，亮度来自回波强弱。'},
-  {q:'多普勒测速为什么要关注角度 θ？',opts:['频移与 cosθ 有关，角度过大会放大误差','角度只影响画面颜色','角度越大一定越准确'],ans:0,ok:'对。临床上通常希望 θ 小于 60°。',bad:'多普勒公式里有 cosθ，角度校正很关键。'},
-  {q:'弹性成像主要帮助观察什么？',opts:['组织硬度差异','声速单位换算','探头按钮布局'],ans:0,ok:'对。硬度异常可辅助肿瘤等病灶判断。',bad:'弹性成像把组织形变/硬度转成诊断信息。'}
+  {q:'压电探头发射超声依赖哪种效应？',opts:['热胀冷缩','逆压电效应：电信号变机械振动','光电效应'],ans:1,ok:'对。接收回波则依赖正压电效应。',bad:'发射是电到机械，接收是机械到电。'},
+  {q:'相控阵探头的关键能力是什么？',opts:['只能产生固定直线声束','不需要换能器阵元','通过相位延迟电子偏转声束'],ans:2,ok:'对。相控阵可用电子方式快速扫查。',bad:'相控阵的核心是阵元相位控制。'},
+  {q:'TGC 补偿主要解决什么问题？',opts:['探头外壳颜色不一致','深层回波因衰减变弱','患者姓名显示错误'],ans:1,ok:'对。深层回波需要更高增益补偿组织衰减。',bad:'TGC 是按深度调整增益的时间增益补偿。'},
+  {q:'B 模式图像的亮度通常表示什么？',opts:['探头温度','屏幕刷新率','回波幅度大小'],ans:2,ok:'对。多条 A 扫描线的回波幅度映射成二维灰度图。',bad:'B 模式的 B 是 brightness，亮度来自回波强弱。'},
+  {q:'多普勒测速为什么要关注角度 θ？',opts:['角度只影响画面颜色','频移与 cosθ 有关，角度过大会放大误差','角度越大一定越准确'],ans:1,ok:'对。临床上通常希望 θ 小于 60°。',bad:'多普勒公式里有 cosθ，角度校正很关键。'},
+  {q:'弹性成像主要帮助观察什么？',opts:['声速单位换算','探头按钮布局','组织硬度差异'],ans:2,ok:'对。硬度异常可辅助肿瘤等病灶判断。',bad:'弹性成像把组织形变/硬度转成诊断信息。'}
 ];
 
 // === MEDIA DATA ===
@@ -261,7 +261,7 @@ function stageNavHTML(){
   levels.forEach((_,i)=>{
     const unlocked=isUnlocked(i);
     const cls=levelComplete[i]?'done':i===curLevel?'cur':unlocked?'':'locked';
-    html+=`<div class="sn-d ${cls}" onclick="${unlocked?`goLevel(${i})`:''}"></div>`;
+    html+=unlocked&&i!==curLevel?`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${cls}"></div>`;
   });
   html+=`</div><div class="sn-info">📍 第 ${curLevel+1}/${levels.length} 关 | 进度 ${Math.round(passed/levels.length*100)}%</div>`;
   html+=`<div class="sn-hint">${passed}/${levels.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
@@ -279,14 +279,16 @@ function quizHTML(li){
 }
 
 window.answerQuiz=function(li,choice){
-  if(li!==curLevel||levelComplete[li])return;
+  if(!Number.isInteger(li)||!Number.isInteger(choice))return false;
   const q=quizData[li],ok=choice===q.ans;
+  if(li!==curLevel||!q||choice<0||choice>=q.opts.length||levelComplete[li]||!isUnlocked(li)||!levelObjs[li]||!levelObjs[li].every(v=>v))return false;
   quizFeedback[li]={ok,text:ok?q.ok:q.bad};
   if(ok){
     levelComplete[li]=true;
     showComplete(li);
   }
   updatePanel();
+  return ok;
 };
 
 function showComplete(li){
@@ -1332,6 +1334,7 @@ function animate(){
 
 // === NAVIGATION ===
 function goLevel(n){
+  if(!Number.isInteger(n))return;
   if(n===levels.length){showSummary();return;}
   if(n<0||n>=levels.length||!isUnlocked(n))return;
   curLevel=n;

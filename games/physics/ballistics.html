@@ -221,10 +221,10 @@ const quizFeedback = {};
 
 const quizData = [
   {q:'没有空气阻力时，为什么 45° 发射角射程最大？', opts:['水平速度和滞空时间取得最佳平衡','物体在 45° 时不受重力','45° 会让空气阻力消失'], ans:0, ok:'对。45° 同时保留了足够水平速度和足够滞空时间。', bad:'回看射程公式 R = v²sin(2θ)/g，sin(2θ) 在 θ=45° 时最大。'},
-  {q:'空气阻力随速度增大通常如何变化？', opts:['近似与速度平方成正比','与速度完全无关','速度越大阻力越小'], ans:0, ok:'对。高速物体会受到显著更大的阻力，轨迹因此被压低。', bad:'本关核心公式是 F = 1/2 ρCdAv²。'},
-  {q:'牛顿摆能一侧弹出相同数量的球，主要体现什么？', opts:['动量和能量在碰撞中传递并守恒','球会自动记住被拉起的数量','中间球完全不受力'], ans:0, ok:'对。弹性碰撞让动量和能量几乎一分不差地传到另一侧。', bad:'牛顿摆不是魔法，关键词是动量守恒和能量守恒。'},
-  {q:'北半球远程弹道为什么要考虑科里奥利效应？', opts:['地球自转会让运动物体相对地面发生偏转','重力会突然变成水平方向','空气阻力只在北半球出现'], ans:0, ok:'对。旋转参考系中运动物体会出现表观偏转，远距离时不能忽略。', bad:'科里奥利效应来自地球自转，不是空气阻力造成的。'},
-  {q:'终端速度出现的条件是什么？', opts:['空气阻力与重力平衡，物体不再继续加速','物体质量变成零','重力完全消失'], ans:0, ok:'对。当阻力等于重力时，合力为零，速度趋于稳定。', bad:'终端速度不是停止下落，而是不再继续加速。'},
+  {q:'空气阻力随速度增大通常如何变化？', opts:['与速度完全无关','近似与速度平方成正比','速度越大阻力越小'], ans:1, ok:'对。高速物体会受到显著更大的阻力，轨迹因此被压低。', bad:'本关核心公式是 F = 1/2 ρCdAv²。'},
+  {q:'牛顿摆能一侧弹出相同数量的球，主要体现什么？', opts:['球会自动记住被拉起的数量','中间球完全不受力','动量和能量在碰撞中传递并守恒'], ans:2, ok:'对。弹性碰撞让动量和能量几乎一分不差地传到另一侧。', bad:'牛顿摆不是魔法，关键词是动量守恒和能量守恒。'},
+  {q:'北半球远程弹道为什么要考虑科里奥利效应？', opts:['重力会突然变成水平方向','地球自转会让运动物体相对地面发生偏转','空气阻力只在北半球出现'], ans:1, ok:'对。旋转参考系中运动物体会出现表观偏转，远距离时不能忽略。', bad:'科里奥利效应来自地球自转，不是空气阻力造成的。'},
+  {q:'终端速度出现的条件是什么？', opts:['物体质量变成零','重力完全消失','空气阻力与重力平衡，物体不再继续加速'], ans:2, ok:'对。当阻力等于重力时，合力为零，速度趋于稳定。', bad:'终端速度不是停止下落，而是不再继续加速。'},
   {q:'三体问题为什么体现混沌？', opts:['初始条件的微小差异会被放大成完全不同轨迹','三体系统没有任何力作用','只要计算足够久就有简单通用公式'], ans:0, ok:'对。三体引力耦合会放大微小差异，所以长期预测极其困难。', bad:'本关重点是无通解和对初始条件极敏感。'}
 ];
 
@@ -270,18 +270,33 @@ function markGoal(idx){
   if(!levelDone[currentLevel].includes(idx)){ levelDone[currentLevel].push(idx); renderPanel(); }
 }
 
-function canGoLevel(i){
-  return i>=0 && i<levels.length && (i===0 || completedLevels.has(i) || completedLevels.has(i-1));
+function clampNumber(v,min,max){
+  const n=Number(v);
+  if(!Number.isFinite(n))return null;
+  return Math.min(max,Math.max(min,n));
 }
 
-function switchLevel(i){ if(canGoLevel(i)){ currentLevel=i; initLevel(); renderPanel(); } }
+function canGoLevel(i){
+  i=Number(i);
+  return Number.isInteger(i) && i>=0 && i<levels.length && (i===0 || quizPassed.has(i-1));
+}
+
+function setLevel(i){
+  i=Number(i);
+  if(!Number.isInteger(i))return false;
+  if(!canGoLevel(i))return false;
+  currentLevel=i; initLevel(); renderPanel();
+  return true;
+}
+
+function switchLevel(i){ return setLevel(i); }
 
 function stageNavHTML(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   levels.forEach((_,i)=>{
     const unlocked=canGoLevel(i);
     const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'switchLevel('+i+')':''}"></div>`;
+    h+=`<div class="sn-d ${cls}" ${unlocked?`onclick="switchLevel(${i})"`:''}></div>`;
   });
   h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${completedLevels.size}/${levels.length}</div>`;
   h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
@@ -299,14 +314,21 @@ function quizHTML(i){
 }
 
 function answerQuiz(i,optIdx){
-  if(i!==currentLevel||quizPassed.has(i)||levelDone[i].length<levels[i].goals.length)return;
-  const q=quizData[i], ok=optIdx===q.ans;
+  i=Number(i);optIdx=Number(optIdx);
+  if(!Number.isInteger(i)||!Number.isInteger(optIdx)||i<0||i>=levels.length)return false;
+  const q=quizData[i];
+  if(!q||optIdx<0||optIdx>=q.opts.length)return false;
+  if(i!==currentLevel||quizPassed.has(i)||levelDone[i].length<levels[i].goals.length)return false;
+  if(i>0&&!quizPassed.has(i-1))return false;
+  const ok=optIdx===q.ans;
   quizFeedback[i]={ok,text:ok?q.ok:q.bad};
   if(ok){ quizPassed.add(i); completedLevels.add(i); }
   renderPanel();
+  return ok;
 }
 
 function summaryHTML(){
+  if(!levels.every((_,i)=>quizPassed.has(i)))return '';
   let h='<div class="summary-box"><div class="summary-title">🏆 弹道物理探险通关</div>';
   h+='<div class="summary-sub">你已完成 6 个经典力学与弹道主题</div><div class="summary-stats">';
   h+=`<div class="summary-stat"><div class="num">${levels.length}</div><div class="label">关卡完成</div></div>`;
@@ -387,8 +409,23 @@ function initLevel0(){
   levelState = { angle:45, speed:30, trails:[], ball:null, ox, groundY, targetX, targetR:25, fireCount:0 };
 }
 function updateSliderLabel(input,text){const sv=input&&input.previousElementSibling&&input.previousElementSibling.querySelector('.sv');if(sv)sv.textContent=text}
-function setAngle(v,input){ levelState.angle=+v; updateSliderLabel(input,`${levelState.angle}°`); }
-function setSpeed(v,input){ levelState.speed=+v; updateSliderLabel(input,`${levelState.speed} m/s`); }
+function setAngle(v,input){
+  const min=currentLevel===1?10:5,max=currentLevel===1?80:85;
+  const angle=clampNumber(v,min,max);
+  if(angle===null)return false;
+  levelState.angle=angle;
+  if(input)input.value=angle;
+  updateSliderLabel(input,`${levelState.angle}°`);
+  return true;
+}
+function setSpeed(v,input){
+  const speed=clampNumber(v,10,50);
+  if(speed===null)return false;
+  levelState.speed=speed;
+  if(input)input.value=speed;
+  updateSliderLabel(input,`${levelState.speed} m/s`);
+  return true;
+}
 function clearTrails(){ levelState.trails=[]; if(levelState.trailsV) levelState.trailsV=[]; if(levelState.trailsA) levelState.trailsA=[]; }
 
 function doFire0(){
@@ -568,7 +605,14 @@ function initLevel2(){
   }
   levelState = { cx, cy, ropeLen, ballR, gap, balls, pullCount:1, phase:'idle', t:0, damping:0.999 };
 }
-function setPullCount(v,input){ levelState.pullCount=+v; updateSliderLabel(input,levelState.pullCount); }
+function setPullCount(v,input){
+  const count=clampNumber(v,1,3);
+  if(count===null)return false;
+  levelState.pullCount=Math.round(count);
+  if(input)input.value=levelState.pullCount;
+  updateSliderLabel(input,levelState.pullCount);
+  return true;
+}
 
 function doRelease(){
   const s=levelState;
@@ -656,7 +700,14 @@ function initLevel3(){
     targetAngle: Math.PI*0.08, // 目标在北方偏东一点
   };
 }
-function setOffset(v,input){ levelState.offset=+v; updateSliderLabel(input,`${levelState.offset.toFixed(1)}°`); }
+function setOffset(v,input){
+  const offset=clampNumber(v,-10,10);
+  if(offset===null)return false;
+  levelState.offset=offset;
+  if(input)input.value=offset;
+  updateSliderLabel(input,`${levelState.offset.toFixed(1)}°`);
+  return true;
+}
 
 function doFireCoriolis(){
   const s=levelState;
@@ -756,7 +807,12 @@ function initLevel4(){
     skydiverY:0, skydiverV:0, speedHistory:[],
     startY:80, groundY:CH-100, featherWobble:0 };
 }
-function setSubMode(v){ levelState.subMode=+v; levelState.falling=false; levelState.parachute=false; levelState.t=0; levelState.speedHistory=[]; renderPanel(); }
+function setSubMode(v){
+  const mode=clampNumber(v,0,2);
+  if(mode===null)return false;
+  levelState.subMode=Math.round(mode); levelState.falling=false; levelState.parachute=false; levelState.t=0; levelState.speedHistory=[]; renderPanel();
+  return true;
+}
 
 function doDrop(){
   const s=levelState;

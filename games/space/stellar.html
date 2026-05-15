@@ -162,13 +162,13 @@ function t(){return isDark?TH.dark:TH.light}
 function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';panelDirty=true;renderPanel();}
 
 // === Audio ===
-const Audio2=(()=>{let c=null;function ctx(){if(!c)c=new(window.AudioContext||window.webkitAudioContext)();return c;}
-function play(tp){try{const c2=ctx(),o=c2.createOscillator(),g=c2.createGain();o.connect(g);g.connect(c2.destination);const n=c2.currentTime;
+const Audio2=(()=>{let c=null;function ctx(){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;try{if(!c)c=new A();return c}catch(e){return null}}
+function play(tp){try{const c2=ctx();if(!c2)return false;const o=c2.createOscillator(),g=c2.createGain();o.connect(g);g.connect(c2.destination);const n=c2.currentTime;
 if(tp==='click'){o.frequency.value=800;o.type='sine';g.gain.setValueAtTime(0.15,n);g.gain.exponentialRampToValueAtTime(0.001,n+0.1);o.start(n);o.stop(n+0.1);}
 else if(tp==='success'){o.frequency.value=523;o.type='sine';g.gain.setValueAtTime(0.2,n);g.gain.exponentialRampToValueAtTime(0.001,n+0.5);o.start(n);o.stop(n+0.5);
 const o2=c2.createOscillator(),g2=c2.createGain();o2.connect(g2);g2.connect(c2.destination);o2.frequency.value=659;o2.type='sine';g2.gain.setValueAtTime(0.2,n+0.15);g2.gain.exponentialRampToValueAtTime(0.001,n+0.6);o2.start(n+0.15);o2.stop(n+0.6);}
 else if(tp==='fail'){o.frequency.value=300;o.type='sawtooth';g.gain.setValueAtTime(0.15,n);g.gain.exponentialRampToValueAtTime(0.001,n+0.4);o.start(n);o.stop(n+0.4);}
-}catch(e){}}return{play};})();
+return true;}catch(e){return false}}return{play};})();
 
 // === Core ===
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
@@ -177,18 +177,19 @@ let gameState='start',currentLevel=0;
 let levelState={},bgStars=[],particles=[];
 const completedLevels=new Set();
 const readyForQuiz=new Set();
+const quizPassed=new Set();
 const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
 const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
 let panelDirty=true,levelTransition=0;
 
 const quizData=[
-  {q:'金斯质量与什么成正比？',opts:['A. 温度的3/2次方','B. 密度的平方','C. 压力的1/2次方'],ans:0},
-  {q:'太阳在赫罗图上属于哪类恒星？',opts:['A. 红巨星','B. 主序星','C. 白矮星'],ans:1},
-  {q:'氦闪发生在哪个阶段？',opts:['A. 主序星','B. 红巨星','C. 白矮星'],ans:1},
-  {q:'钱德拉塞卡极限约为多少太阳质量？',opts:['A. 0.5','B. 1.4','C. 3.0'],ans:1},
-  {q:'超新星爆发后核心质量>3M☉会形成？',opts:['A. 白矮星','B. 中子星','C. 黑洞'],ans:2},
-  {q:'史瓦西半径公式 Rs = ?',opts:['A. GM/c²','B. 2GM/c²','C. 4GM/c²'],ans:1},
-  {q:'比铁重的元素主要通过什么过程产生？',opts:['A. 恒星核心聚变','B. r-过程和s-过程','C. 宇宙大爆炸'],ans:1}
+  {q:'金斯质量与什么成正比？',opts:['A. 温度的3/2次方','B. 密度的平方','C. 压力的1/2次方'],ans:0,why:'金斯质量 Mj 与 T^(3/2) 成正比，温度越高，热压力越强，越不容易坍缩。'},
+  {q:'太阳在赫罗图上属于哪类恒星？',opts:['A. 红巨星','B. 主序星','C. 白矮星'],ans:1,why:'太阳正在核心氢聚变阶段，位于赫罗图主序带上，是典型 G 型主序星。'},
+  {q:'氦闪发生在哪个阶段？',opts:['A. 主序星','B. 红巨星','C. 白矮星'],ans:1,why:'低质量恒星进入红巨星阶段后，简并氦核心会突然点燃氦聚变，产生氦闪。'},
+  {q:'钱德拉塞卡极限约为多少太阳质量？',opts:['A. 0.5','B. 3.0','C. 1.4'],ans:2,why:'白矮星由电子简并压支撑，质量上限约为 1.4 个太阳质量。'},
+  {q:'超新星爆发后核心质量>3M☉会形成？',opts:['A. 白矮星','B. 中子星','C. 黑洞'],ans:2,why:'若坍缩核心超过约 3 个太阳质量，中子简并压也无法支撑，最终会形成黑洞。'},
+  {q:'史瓦西半径公式 Rs = ?',opts:['A. 2GM/c²','B. GM/c²','C. 4GM/c²'],ans:0,why:'史瓦西半径来自逃逸速度等于光速的边界，公式为 Rs=2GM/c²。'},
+  {q:'比铁重的元素主要通过什么过程产生？',opts:['A. 恒星核心聚变','B. 宇宙大爆炸','C. r-过程和s-过程'],ans:2,why:'铁之后的聚变通常吸收能量，更重元素主要靠中子俘获的 r 过程和 s 过程形成。'}
 ];
 let quizState={active:false,answered:false,correct:false,selected:-1};
 
@@ -213,10 +214,12 @@ function resize(){canvas.width=CW=innerWidth;canvas.height=CH=innerHeight;bgStar
 window.addEventListener('resize',resize);resize();
 
 function startGame(){document.getElementById('startScreen').classList.add('hidden');gameState='play';currentLevel=0;panelEl.style.display='block';bbEl.style.display='flex';initLevel(0);panelDirty=true;renderPanel();loop();Audio2.play('click');}
-function canGoLevel(n){return n>=0&&n<levels.length&&(n===0||completedLevels.has(n)||completedLevels.has(n-1));}
-function goLevel(n){if(canGoLevel(n)){initLevel(n);panelDirty=true;renderPanel();}}
+function canGoLevel(n){n=Number(n);return Number.isInteger(n)&&n>=0&&n<levels.length&&(n===0||quizPassed.has(n-1));}
+function goLevel(n){n=Number(n);if(!Number.isInteger(n))return;if(canGoLevel(n)){initLevel(n);panelDirty=true;renderPanel();}}
 
 function initLevel(n){
+  n=Number(n);
+  if(!canGoLevel(n))return;
   currentLevel=n;particles=[];
   const g=levels[n].goals;
   levelState={goals:g.map(()=>false)};
@@ -227,14 +230,16 @@ function initLevel(n){
   Audio2.play('click');
 }
 function markGoal(i){if(!levelState.goals[i]){levelState.goals[i]=true;panelDirty=true;Audio2.play('success');checkComplete();}}
-function checkComplete(){if(levelState.goals.every(g=>g)&&!readyForQuiz.has(currentLevel)&&!completedLevels.has(currentLevel)){readyForQuiz.add(currentLevel);panelDirty=true;celebP((CW+320)/2,CH/2);setTimeout(()=>showResult(),600);}}
+function checkComplete(){if(levelState.goals.every(g=>g)&&!readyForQuiz.has(currentLevel)&&!quizPassed.has(currentLevel)){readyForQuiz.add(currentLevel);panelDirty=true;celebP((CW+320)/2,CH/2);setTimeout(()=>showResult(),600);}}
 function celebP(cx,cy){for(let i=0;i<40;i++){const a=Math.random()*Math.PI*2,sp=Math.random()*5+2;particles.push({x:cx,y:cy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1.5,color:`hsl(${40+Math.random()*20},90%,60%)`,r:2+Math.random()*2});}}
 
 function showResult(){
+  if(!readyForQuiz.has(currentLevel)||quizPassed.has(currentLevel))return;
   const lv=levels[currentLevel],isLast=currentLevel===levels.length-1;
   const rb=document.getElementById('resultBox');
   quizState={active:true,answered:false,correct:false,selected:-1};
   const qd=quizData[currentLevel];
+  if(!qd)return;
   let h=`<div class="rb-icon">${lv.icon}</div><div class="rb-title">${lv.name} 完成！</div>`;
   h+=`<div class="rb-learn">${lv.learn}</div>`;
   h+=`<div class="quiz-box"><div class="quiz-title">📝 通关测验</div><div style="font-size:12px;color:var(--quiz-opt-text);margin-bottom:8px">${qd.q}</div>`;
@@ -246,13 +251,18 @@ function showResult(){
   h+=`</div>`;rb.innerHTML=h;document.getElementById('resultModal').classList.remove('hidden');
 }
 function answerQuiz(idx){
-  if(quizState.answered)return;const qd=quizData[currentLevel];quizState.selected=idx;
-  if(idx===qd.ans){quizState.answered=true;quizState.correct=true;completedLevels.add(currentLevel);readyForQuiz.delete(currentLevel);panelDirty=true;renderPanel();document.getElementById('qopt'+idx).classList.add('correct');document.getElementById('quizResult').className='quiz-result pass';document.getElementById('quizResult').textContent='✅ 回答正确！';document.getElementById('quizBtns').style.display='block';Audio2.play('success');}
+  idx=Number(idx);
+  if(!Number.isInteger(idx))return;
+  if(!readyForQuiz.has(currentLevel)||quizPassed.has(currentLevel)||!quizState.active||quizState.answered)return;const qd=quizData[currentLevel];
+  if(!qd||idx<0||idx>=qd.opts.length)return;
+  if(currentLevel>0&&!quizPassed.has(currentLevel-1))return;
+  quizState.selected=idx;
+  if(idx===qd.ans){quizState.answered=true;quizState.correct=true;quizPassed.add(currentLevel);completedLevels.add(currentLevel);readyForQuiz.delete(currentLevel);panelDirty=true;renderPanel();document.getElementById('qopt'+idx).classList.add('correct');document.getElementById('quizResult').className='quiz-result pass';document.getElementById('quizResult').textContent='✅ 回答正确！'+(qd.why?' '+qd.why:'');document.getElementById('quizBtns').style.display='block';Audio2.play('success');}
   else{document.getElementById('qopt'+idx).classList.add('wrong');document.getElementById('quizResult').className='quiz-result fail';document.getElementById('quizResult').textContent='❌ 再想想...';Audio2.play('fail');setTimeout(()=>{document.getElementById('qopt'+idx).classList.remove('wrong');document.getElementById('quizResult').textContent='';},1000);}
 }
-function nextLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel+1);}
+function nextLevel(){if(!quizPassed.has(currentLevel)||!canGoLevel(currentLevel+1))return;document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel+1);}
 function retryLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel);}
-function restartAll(){document.getElementById('resultModal').classList.add('hidden');completedLevels.clear();readyForQuiz.clear();initLevel(0);}
+function restartAll(){document.getElementById('resultModal').classList.add('hidden');completedLevels.clear();readyForQuiz.clear();quizPassed.clear();initLevel(0);}
 
 function _patchPanel(el,html){var ae=document.activeElement;if(!ae||ae.type!=='range'||!el.contains(ae)){el.innerHTML=html;return;}var tmp=document.createElement('div');tmp.innerHTML=html;_diffN(el,tmp);}
 function _diffN(o,n){var oc=Array.from(o.childNodes),nc=Array.from(n.childNodes);var i=0;while(i<oc.length&&i<nc.length){var a=oc[i],b=nc[i];if(a.nodeType!==b.nodeType||a.nodeName!==b.nodeName){o.replaceChild(b.cloneNode(true),a);i++;continue;}if(a.nodeType===3){if(a.textContent!==b.textContent)a.textContent=b.textContent;i++;continue;}if(a.nodeType===1){if(a.tagName==='INPUT'&&a.type==='range'&&a===document.activeElement){i++;continue;}for(var j=0;j<b.attributes.length;j++){var at=b.attributes[j];if(a.getAttribute(at.name)!==at.value)a.setAttribute(at.name,at.value);}_diffN(a,b);}i++;}while(oc.length>nc.length)o.removeChild(o.lastChild);for(;i<nc.length;i++)o.appendChild(nc[i].cloneNode(true));}
@@ -261,16 +271,21 @@ function stageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   for(let i=0;i<levels.length;i++){
     const unlocked=canGoLevel(i);
-    const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    const cls=quizPassed.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
+    h+=unlocked&&i!==currentLevel?`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${cls}"></div>`;
   }
-  h+=`</div><div class="sn-info">📍 第${currentLevel+1}/${levels.length}关 | 进度 ${Math.round(completedLevels.size/levels.length*100)}%</div></div>`;return h;
+  h+=`</div><div class="sn-info">📍 第${currentLevel+1}/${levels.length}关 | 进度 ${Math.round(quizPassed.size/levels.length*100)}%</div></div>`;return h;
 }
 
 function l0Metrics(){
   const jeansMass=(l0.temp/10)*Math.sqrt(l0.temp/10)/(Math.sqrt(l0.density)*0.5);
   const cloudMass=l0.density*50;
   return {jeansMass,cloudMass,canCollapse:cloudMass>jeansMass};
+}
+function clampNumber(v,min,max){
+  const n=Number(v);
+  if(!Number.isFinite(n))return null;
+  return Math.min(max,Math.max(min,n));
 }
 function updateL0Metrics(){
   const m=l0Metrics();
@@ -283,7 +298,15 @@ function updateL0Metrics(){
   if(mass)mass.innerHTML=`云团质量: <span class="sv">${m.cloudMass.toFixed(1)} M☉</span> | 金斯质量: <span class="sv">${m.jeansMass.toFixed(1)} M☉</span>`;
   if(status){status.style.color=m.canCollapse?'#4ade80':'#f87171';status.textContent=m.canCollapse?'✅ 云团质量 > 金斯质量，可以坍缩！':'❌ 云团质量 < 金斯质量，无法坍缩';}
 }
-function setL0Cloud(key,el){l0[key]=+el.value;updateL0Metrics();}
+function setL0Cloud(key,el){
+  const ranges={density:[0.5,20],temp:[5,300]};
+  if(!ranges[key]||!el)return false;
+  const value=clampNumber(el.value,ranges[key][0],ranges[key][1]);
+  if(value===null)return false;
+  l0[key]=value;el.value=value;
+  updateL0Metrics();
+  return true;
+}
 
 function updateL1Metrics(){
   const lum=Math.pow(l1.mass,3.5),temp=5778*Math.pow(l1.mass,0.5),life=10/Math.pow(l1.mass,2.5);
@@ -294,14 +317,25 @@ function updateL1Metrics(){
   if(metrics)metrics.innerHTML=`光度: <span class="sv">${lum.toFixed(2)} L☉</span> | 表面温度: <span class="sv">${temp.toFixed(0)} K</span>`;
   if(lifeText)lifeText.innerHTML=`主序寿命: <span class="sv">${life.toFixed(2)} 亿年</span> | 光谱型: <span class="sv">${getSpectral(temp)}</span>`;
 }
-function setL1Mass(el){l1.mass=+el.value;updateL1Metrics();}
+function setL1Mass(el){
+  if(!el)return false;
+  const value=clampNumber(el.value,0.1,50);
+  if(value===null)return false;
+  l1.mass=value;el.value=value;
+  updateL1Metrics();
+  return true;
+}
 
 function setL3Mass(el){
-  l3.mass=+el.value;
+  if(!el)return false;
+  const value=clampNumber(el.value,0.2,2);
+  if(value===null)return false;
+  l3.mass=value;el.value=value;
   const mass=document.getElementById('l3MassVal');
   const status=document.getElementById('l3ChandraText');
   if(mass)mass.textContent=l3.mass.toFixed(2)+' M☉';
   if(status){status.style.color=l3.mass>1.4?'#f87171':'#4ade80';status.textContent=l3.mass>1.4?'⚠️ 超过钱德拉塞卡极限！白矮星不稳定！':'✅ 在钱德拉塞卡极限以下，白矮星稳定';}
+  return true;
 }
 
 function updateL5Mass(){
@@ -313,7 +347,14 @@ function updateL5Mass(){
   if(rsText)rsText.innerHTML=`史瓦西半径: <span class="sv">${rs.toFixed(2)} km</span>`;
   if(status){status.style.color=l5.mass>3?'#4ade80':'#f87171';status.textContent=l5.mass>3?'✅ 超过奥本海默极限，可以形成黑洞':'❌ 未超过3M☉，无法形成黑洞';}
 }
-function setL5Mass(el){l5.mass=+el.value;updateL5Mass();}
+function setL5Mass(el){
+  if(!el)return false;
+  const value=clampNumber(el.value,1,30);
+  if(value===null)return false;
+  l5.mass=value;el.value=value;
+  updateL5Mass();
+  return true;
+}
 
 function renderPanel(){
   if(!panelDirty)return;panelDirty=false;
@@ -325,10 +366,10 @@ function renderPanel(){
   h+='</div>';
   if(currentLevel===0)h+=panelL0();else if(currentLevel===1)h+=panelL1();else if(currentLevel===2)h+=panelL2();
   else if(currentLevel===3)h+=panelL3();else if(currentLevel===4)h+=panelL4();else if(currentLevel===5)h+=panelL5();else if(currentLevel===6)h+=panelL6();
-  if(readyForQuiz.has(currentLevel)&&!completedLevels.has(currentLevel))h+='<div class="hint-box">目标已完成。请答对弹窗中的通关测验，解锁下一关。</div>';
+  if(readyForQuiz.has(currentLevel)&&!quizPassed.has(currentLevel))h+='<div class="hint-box">目标已完成。请答对弹窗中的通关测验，解锁下一关。</div>';
   h+=`<div class="learn-box">💡 ${lv.learn}</div>`;
   _patchPanel(panelEl,h);
-  bbLeft.textContent=`关卡 ${currentLevel+1}: ${lv.name}`;bbRight.textContent=`已完成 ${completedLevels.size}/${levels.length}`;
+  bbLeft.textContent=`关卡 ${currentLevel+1}: ${lv.name}`;bbRight.textContent=`已完成 ${quizPassed.size}/${levels.length}`;
 }
 
 // === Drawing helpers ===

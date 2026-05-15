@@ -66,7 +66,7 @@
 
 
 body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
-canvas{display:block;position:absolute;top:0;left:320px}
+canvas{display:block;position:absolute;top:0;left:320px;touch-action:none}
 .panel{position:absolute;top:0;left:0;width:320px;height:100%;background:var(--panel-bg);border-right:1px solid var(--panel-border);overflow-y:auto;z-index:10;padding:12px;box-sizing:border-box;padding-bottom:24px}
 .level-btn{display:none!important}
 .level-btn.active{display:none!important}
@@ -94,6 +94,7 @@ canvas{display:block;position:absolute;top:0;left:320px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px;font-variant-numeric:tabular-nums}
 .sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
@@ -153,8 +154,11 @@ const TH={
   light:{bg1:'#e8edf5',bg2:'#f0f2f5',bg3:'#e0e7f0',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',label:'#334155',electron:'#334155',electronGlow:'rgba(51,65,85,0.3)',shell:'rgba(100,100,200,0.15)',barBg:'#c7d2fe',showStars:false}
 };
 function t(){return isDark?TH.dark:TH.light}
-function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
-function startGame(){document.getElementById('ov').style.display='none';}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{panelDirty=true;if(typeof renderPanel==='function')renderPanel()}catch(e){}}
+function startGame(){
+ resetProgress();
+ document.getElementById('ov').style.display='none';
+}
 
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 const panel=document.getElementById('panel'),infoBar=document.getElementById('infoBar');
@@ -162,7 +166,7 @@ let W,H,curLevel=0,animId;
 const completedLevels=new Set();
 const levels=[
 {name:'硅晶体生长 — 从沙子到硅棒',concept:'切克劳斯基法（CZ法）：将多晶硅在坩埚中熔化，用籽晶接触熔融硅表面缓慢提拉，原子按晶格排列生长为单晶硅棒。',
- objs:['拉出硅棒','获得完美单晶','达到目标长度(≥80cm)'],
+ objs:['拉出硅棒','获得完美单晶','稳定单晶达到目标长度(≥80cm)'],
  learn:'半导体级硅纯度达99.999999999%（11个9），全球由日本信越化学和SUMCO主导供应。一根300mm硅棒价值数千美元。'},
 {name:'光刻 — 把图案印到硅片上',concept:'光刻是芯片制造最关键的步骤：将掩模版上的电路图案通过紫外光投影到涂有光刻胶的硅片上，再通过显影去除曝光区域。',
  objs:['在掩模版上设计图案','完成曝光','显影获得清晰图案'],
@@ -180,59 +184,137 @@ const levels=[
  objs:['产生EUV光','调整反射镜聚焦','获得<10nm分辨率'],
  learn:'EUV光刻机由10万个零件组成，重180吨，需要40个集装箱运输。全球仅ASML一家能制造。'},
 {name:'良率优化 — 从实验室到量产',concept:'芯片制造的终极挑战：在300mm晶圆上制造数百颗芯片，每颗都必须完美。良率=合格芯片数/总芯片数，直接决定利润。',
- objs:['完成一次生产','良率提升到80%','良率达到90%'],
+ objs:['完成一次生产','良率提升到80%','确认连续良率≥90%的稳定窗口'],
  learn:'台积电3nm工艺良率约70-80%。一座先进晶圆厂投资超过200亿美元，良率每提升1%都意味着数亿美元的利润。'}
 ];
 const quizData=[
-{q:'CZ法拉制单晶硅时，为什么提拉速度不能太快？',opts:['太快会破坏晶格有序生长，容易形成多晶或缺陷','速度越快原子越容易排成完美晶格','提拉速度只影响颜色，不影响质量'],ans:0,why:'单晶生长需要原子按籽晶晶格逐步排列，过快会让界面失稳并引入缺陷。'},
+{q:'CZ法拉制单晶硅时，为什么提拉速度不能太快？',opts:['速度越快原子越容易排成完美晶格','提拉速度只影响颜色，不影响质量','太快会破坏晶格有序生长，容易形成多晶或缺陷'],ans:2,why:'单晶生长需要原子按籽晶晶格逐步排列，过快会让界面失稳并引入缺陷。'},
 {q:'光刻把电路图案转移到硅片上的核心顺序是什么？',opts:['涂胶/掩模图案 → 曝光 → 显影','先显影，再随便画图案','只要提高温度就会出现图案'],ans:0,why:'光刻胶被光改变溶解性，显影步骤再把曝光差异转化成可见图形。'},
-{q:'湿法刻蚀和干法刻蚀的关键差异是什么？',opts:['湿法各向同性易底切，干法各向异性可形成垂直侧壁','湿法一定更适合所有纳米结构','干法不会移除任何材料'],ans:0,why:'先进制程常依赖等离子体干法刻蚀控制深宽比和侧壁形貌。'},
-{q:'为什么需要分别形成N型和P型区域后再构成PN结？',opts:['N型多电子、P型多空穴，交界处形成耗尽区和单向导电特性','两种掺杂只是为了改变硅片颜色','PN结只需要一种掺杂就能形成'],ans:0,why:'PN结的电场来自电子和空穴在界面附近复合后留下的固定离子区。'},
-{q:'ALD相比CVD/PVD最突出的工艺优势是什么？',opts:['按原子层自限制生长，厚度和覆盖性控制更精确','沉积速度永远最快','只能沉积很厚的金属块'],ans:0,why:'ALD每个反应循环趋于自限制，适合几纳米甚至原子级薄膜控制。'},
-{q:'EUV光刻为什么使用反射镜而不是普通透镜？',opts:['13.5nm极紫外光会被大多数材料强吸收，只能靠多层反射镜传输','反射镜只是为了装饰光路','EUV波长太长，无法聚焦'],ans:0,why:'EUV系统需要真空环境和Mo/Si多层反射镜，反射率本身也是系统工程难点。'},
+{q:'湿法刻蚀和干法刻蚀的关键差异是什么？',opts:['湿法一定更适合所有纳米结构','干法不会移除任何材料','湿法各向同性易底切，干法各向异性可形成垂直侧壁'],ans:2,why:'先进制程常依赖等离子体干法刻蚀控制深宽比和侧壁形貌。'},
+{q:'为什么需要分别形成N型和P型区域后再构成PN结？',opts:['两种掺杂只是为了改变硅片颜色','N型多电子、P型多空穴，交界处形成耗尽区和单向导电特性','PN结只需要一种掺杂就能形成'],ans:1,why:'PN结的电场来自电子和空穴在界面附近复合后留下的固定离子区。'},
+{q:'ALD相比CVD/PVD最突出的工艺优势是什么？',opts:['沉积速度永远最快','只能沉积很厚的金属块','按原子层自限制生长，厚度和覆盖性控制更精确'],ans:2,why:'ALD每个反应循环趋于自限制，适合几纳米甚至原子级薄膜控制。'},
+{q:'EUV光刻为什么使用反射镜而不是普通透镜？',opts:['反射镜只是为了装饰光路','13.5nm极紫外光会被大多数材料强吸收，只能靠多层反射镜传输','EUV波长太长，无法聚焦'],ans:1,why:'EUV系统需要真空环境和Mo/Si多层反射镜，反射率本身也是系统工程难点。'},
 {q:'良率优化中，哪一项说法最准确？',opts:['光刻、刻蚀、沉积、洁净度都会影响合格芯片比例','只要晶圆足够大，良率一定是100%','良率与利润没有关系'],ans:0,why:'良率是制程窗口、缺陷密度和工艺稳定性的综合结果，直接决定可销售芯片数量。'}
 ];
 let quizFeedback=null;
 let lState={},panelDirty=true;
 
 const rangeDefs={
- pullSpeed:{label:v=>`${v}`},
- rotSpeed:{label:v=>`${v}`},
- etchTime:{label:v=>`${v}%`},
- energy:{label:v=>`${v}keV`},
- dose:{label:v=>`${v}%`},
- mirrorAngle:{label:v=>`${v.toFixed(1)}°`},
- lithoAlign:{label:v=>`${v}%`},
- etchUniform:{label:v=>`${v}%`},
- depoThick:{label:v=>`${v}%`},
- cleanLevel:{label:v=>`${v}%`}
+ pullSpeed:{min:1,max:100,label:v=>`${v}`},
+ rotSpeed:{min:1,max:100,label:v=>`${v}`},
+ etchTime:{min:10,max:100,label:v=>`${v}%`},
+ energy:{min:10,max:100,label:v=>`${v}keV`},
+ dose:{min:10,max:100,label:v=>`${v}%`},
+ mirrorAngle:{min:30,max:60,label:v=>`${v.toFixed(1)}°`},
+ lithoAlign:{min:0,max:100,label:v=>`${v}%`},
+ etchUniform:{min:0,max:100,label:v=>`${v}%`},
+ depoThick:{min:0,max:100,label:v=>`${v}%`},
+ cleanLevel:{min:0,max:100,label:v=>`${v}%`}
 };
-function rangeHTML(key,label,min,max,step){
+function rangeHTML(key,label,min,max,step,disabled=false){
  const stepAttr=step?` step="${step}"`:'';
- return `<div class="slider-wrap"><label>${label}：<span class="sv">${formatRange(key,lState[key])}</span></label><input type="range" min="${min}" max="${max}" value="${lState[key]}"${stepAttr} oninput="updateRange(this,'${key}')" onchange="this.blur();panelDirty=true"></div>`;
+ const disabledAttr=disabled?' disabled':'';
+ return `<div class="slider-wrap"><label>${label}：<span class="sv">${formatRange(key,lState[key])}</span></label><input type="range" min="${min}" max="${max}" value="${lState[key]}"${stepAttr}${disabledAttr} oninput="updateRange(this,'${key}')" onchange="this.blur();panelDirty=true"></div>`;
 }
 function formatRange(key,value){
  const def=rangeDefs[key];
  return def&&def.label?def.label(value):String(value);
 }
+function clampNumber(v,min,max){
+ const n=String(v).trim()===''?NaN:Number(v);
+ if(!Number.isFinite(n))return null;
+ return Math.min(max,Math.max(min,n));
+}
+function setText(id,text){
+ const el=document.getElementById(id);
+ if(el)el.textContent=text;
+}
+function updateCrystalReadout(){
+ if(curLevel!==0)return;
+ setText('crystalQualityVal',`${lState.crystalQuality.toFixed(0)}%`);
+ setText('crystalDiameterVal',`${lState.diameter.toFixed(1)}mm`);
+ setText('crystalLengthVal',`${lState.rodLen.toFixed(1)}cm`);
+ setText('stableCrystalVal',`${lState.stableCrystalLen.toFixed(1)}cm / 80cm`);
+ setText('growthRateVal',`${(crystalGrowthRate(lState.pullSpeed)/0.15).toFixed(1)}x`);
+}
+function processKnobs(){
+ return [
+  ['光刻对准精度',lState.lithoAlign],
+  ['刻蚀均匀性',lState.etchUniform],
+  ['沉积厚度控制',lState.depoThick],
+  ['洁净室等级',lState.cleanLevel]
+ ];
+}
+function yieldPreview(){
+ const knobs=processKnobs();
+ const avg=knobs.reduce((sum,kv)=>sum+kv[1],0)/knobs.length;
+ const weakestPair=knobs.reduce((a,b)=>b[1]<a[1]?b:a);
+ return {
+  estimate:Math.max(0,Math.min(100,avg*0.88+weakestPair[1]*0.12)),
+  weakestName:weakestPair[0],
+  weakestValue:weakestPair[1]
+ };
+}
+function yieldPreviewAdvice(preview){
+ if(preview.estimate>=90)return '预测已进入高良率窗口；至少连续生产两轮达标，才算工艺稳定。';
+ if(preview.estimate>=80)return '预测已到量产门槛，但还没进入高良率窗口；优先补齐短板。';
+ return '预测仍偏低；先把最弱工艺项拉到 80% 以上，再追求整体均衡。';
+}
+function updateYieldPreview(){
+ if(curLevel!==6)return;
+ const preview=yieldPreview();
+ setText('yieldPreviewVal',`${preview.estimate.toFixed(1)}%`);
+ setText('yieldWeakestVal',`${preview.weakestName} ${preview.weakestValue}%`);
+ setText('yieldPreviewAdvice',yieldPreviewAdvice(preview));
+}
 function updateRange(input,key){
- lState[key]=+input.value;
+ const def=rangeDefs[key];
+ if(!def||!input)return false;
+ let value=clampNumber(input.value,def.min,def.max);
+ if(value===null){
+  value=clampNumber(lState[key],def.min,def.max);
+  if(value===null)value=def.min;
+ }
+ lState[key]=value;
+ input.value=String(value);
  const out=input.parentElement.querySelector('.sv');
  if(out)out.textContent=formatRange(key,lState[key]);
+ if(key==='pullSpeed'||key==='rotSpeed')updateCrystalReadout();
+ if(key==='mirrorAngle'){
+  const diff=Math.abs(lState.mirrorAngle-45);
+  const diffOut=document.getElementById('mirrorDiffVal');
+  if(diffOut)diffOut.textContent=`${diff.toFixed(1)}°`;
+ if(lState.focusFeedback){lState.focusFeedback='';panelDirty=true;}
+ }
+ if(key==='etchTime')setText('etchWindowVal',etchTimeHintText());
+ if((key==='energy'||key==='dose')&&lState.implantFeedback){lState.implantFeedback='';panelDirty=true;}
+ if(['lithoAlign','etchUniform','depoThick','cleanLevel'].includes(key)){
+  if(curLevel===6&&(lState.stableHighYieldRuns||lState.objDone&&lState.objDone[2])){
+   lState.stableHighYieldRuns=0;
+   if(lState.objDone)lState.objDone[2]=false;
+   panelDirty=true;
+  }
+  updateYieldPreview();
+ }
+ return true;
 }
 function quizHTML(li){
  const q=quizData[li];
+ const passed=completedLevels.has(li);
  let h=`<div class="quiz-box"><div class="quiz-q">📝 通关小测验：${q.q}</div>`;
  q.opts.forEach((opt,i)=>{
   let cls='';
-  if(quizFeedback&&quizFeedback.level===li){
+  if(passed&&i===q.ans)cls='correct';
+  else if(quizFeedback&&quizFeedback.level===li){
    if(i===q.ans)cls='correct';
    else if(i===quizFeedback.chosen)cls='wrong';
   }
-  h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${opt}</div>`;
+  h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${'ABC'[i]}. ${opt}</div>`;
  });
  if(quizFeedback&&quizFeedback.level===li){
-  h+=`<div class="quiz-feedback">${quizFeedback.correct?'回答正确。':'再想想。'}${q.why}</div>`;
+  h+=`<div class="quiz-feedback">${quizFeedback.correct?'回答正确。关键结论：':'再想想，绿色选项才是关键结论：'}${q.why}</div>`;
+ }else if(passed){
+  h+=`<div class="quiz-feedback">已通过小测。关键结论：${q.why}</div>`;
  }else{
   h+='<div class="quiz-feedback">完成三个目标后，答对这个问题才会计入通关。</div>';
  }
@@ -240,42 +322,108 @@ function quizHTML(li){
  return h;
 }
 function answerQuiz(li,choice){
- if(li!==curLevel||completedLevels.has(li))return;
- const q=quizData[li],correct=choice===q.ans;
+ li=Number(li);choice=Number(choice);
+ const goalsDone=lState.objDone&&lState.objDone.every(Boolean);
+ if(!Number.isInteger(li)||li!==curLevel||completedLevels.has(li)||!goalsDone)return false;
+ const q=quizData[li];
+ if(!q||!Number.isInteger(choice)||choice<0||choice>=q.opts.length)return false;
+ if(li>0&&!completedLevels.has(li-1))return false;
+ const correct=choice===q.ans;
  quizFeedback={level:li,chosen:choice,correct};
  if(correct)completedLevels.add(li);
  panelDirty=true;
  renderPanel();
+ return correct;
 }
 function resetLevelState(){
+ if(quizFeedback&&quizFeedback.level===curLevel)quizFeedback=null;
  switch(curLevel){
-  case 0:lState={pullSpeed:70,rotSpeed:50,pulling:false,rodLen:0,rodMaxLen:100,crystalQuality:0,
+  case 0:lState={pullSpeed:70,rotSpeed:50,pulling:false,rodLen:0,rodMaxLen:100,crystalQuality:0,stableCrystalLen:0,
    diameter:0,growPhase:0,objDone:[false,false,false],particles:[]};break;
   case 1:lState={maskPattern:[],exposing:false,exposed:false,developed:false,exposureAnim:0,
-   resolution:45,drawing:false,objDone:[false,false,false],waferPattern:[]};break;
+   resolution:45,drawing:false,maskFeedback:'',objDone:[false,false,false],waferPattern:[]};break;
   case 2:lState={method:'wet',etchTime:50,etching:false,etchProgress:0,etchDone:false,
    objDone:[false,false,false],wetDone:false,dryDone:false};break;
-  case 3:lState={dopant:'P',energy:50,dose:50,implanting:false,implantDone:false,annealed:false,
-   nDoped:false,pDoped:false,pnFormed:false,implantedDopant:null,ions:[],profile:[],objDone:[false,false,false]};break;
+  case 3:lState={dopant:'P',energy:30,dose:35,implanting:false,implantDone:false,annealed:false,
+   nDoped:false,pDoped:false,nDepth:0,pDepth:0,pnFormed:false,implantedDopant:null,implantedEnergy:null,implantedDose:null,implantFeedback:'',ions:[],profile:[],objDone:[false,false,false]};break;
   case 4:lState={method:'CVD',depositing:false,depositProgress:0,thickness:0,uniformity:0,
-   cvdDone:false,pvdDone:false,aldDone:false,atoms:[],objDone:[false,false,false]};break;
+   cvdDone:false,pvdDone:false,aldDone:false,depositFeedback:'',atoms:[],objDone:[false,false,false]};break;
   case 5:lState={laserFired:false,euvGenerated:false,mirrorAngle:52,focused:false,
-   power:0,resolution:20,throughput:0,photons:[],objDone:[false,false,false]};break;
+   power:0,resolution:20,throughput:0,photons:[],focusFeedback:'',objDone:[false,false,false]};break;
   case 6:lState={lithoAlign:50,etchUniform:50,depoThick:50,cleanLevel:50,
-   produced:false,chips:[],yield:0,profit:0,bestYield:0,objDone:[false,false,false]};break;
+   produced:false,productionRuns:0,stableHighYieldRuns:0,chips:[],yield:0,profit:0,bestYield:0,yieldBottleneck:'',objDone:[false,false,false]};break;
  }
 }
-function switchLevel(n){curLevel=n;resetLevelState();panelDirty=true;}
+function canGoLevel(n){
+ n=Number(n);
+ return Number.isInteger(n)&&n>=0&&n<levels.length&&(n===0||completedLevels.has(n-1));
+}
+function switchLevel(n){
+ n=Number(n);
+ if(!canGoLevel(n))return;
+ if(n===curLevel){panelDirty=true;return;}
+ curLevel=n;resetLevelState();panelDirty=true;
+}
+function resetProgress(){
+ completedLevels.clear();
+ quizFeedback=null;
+ curLevel=0;
+ resetLevelState();
+ panelDirty=true;
+}
+function stageNavHTML(){
+ const pct=Math.round(completedLevels.size/levels.length*100);
+ let h='<div class="stage-nav"><div class="sn-bar">';
+ for(let i=0;i<levels.length;i++){
+  const unlocked=canGoLevel(i);
+  const cls=completedLevels.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+  h+=unlocked&&i!==curLevel?`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${cls}"></div>`;
+ }
+ h+=`</div><div class="sn-info">📍 第${curLevel+1}/${levels.length}关 | 进度 ${pct}%</div>`;
+ h+='<div class="sn-hint">完成本关三个目标并答对测验后，解锁下一道制造工序。</div></div>';
+ return h;
+}
+function summaryHTML(){
+ const total=levels.length,done=completedLevels.size*3,pct=Math.round(completedLevels.size/total*100);
+ let h='<div class="summary-box">';
+ h+='<div class="summary-title">🏆 恭喜通关！</div>';
+ h+=`<div class="summary-sub">你已完成全部 ${total} 个半导体制造关卡</div>`;
+ h+='<div class="summary-stats">';
+ h+=`<div class="summary-stat"><div class="num">${completedLevels.size}/${total}</div><div class="label">测验通过</div></div>`;
+ h+=`<div class="summary-stat"><div class="num">${done}/${total*3}</div><div class="label">目标达成</div></div>`;
+ h+=`<div class="summary-stat"><div class="num">${pct}%</div><div class="label">学习进度</div></div>`;
+ h+='</div><div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">📚 关键知识回顾</div>';
+ for(const level of levels)h+=`<div>✅ ${level.name}</div>`;
+ h+='</div>';
+ h+='<button class="act-btn green" style="margin-top:12px" onclick="restartFromSummary()">重新开始整条产线</button>';
+ h+='</div>';
+ return h;
+}
+function restartFromSummary(){
+ resetProgress();
+ document.getElementById('ov').style.display='none';
+ renderPanel();
+ return true;
+}
+function crystalGrowthRate(speed){
+ return 0.06+Number(speed)/100*0.18;
+}
+function crystalRecipeHintHTML(){
+ const speed=Number(lState.pullSpeed)||0;
+ const quality=Math.max(0,100-Math.abs(speed-50)*2.5);
+ if(lState.rodLen>=lState.rodMaxLen&&!lState.objDone[1])return '<div class="hint-box">⚠️ 这根硅棒已经长完，但稳定单晶段不足。重新生长时把提拉速度调到 45-55，尤其接近 50 时晶格最稳定。</div>';
+ if(speed<45)return `<div class="hint-box">🔎 当前提拉偏慢，生长效率低。建议调到 45-55 的稳定单晶窗口；接近 50 时预计晶体质量约 ${quality.toFixed(0)}%。</div>`;
+ if(speed>55)return `<div class="hint-box">🔎 当前提拉偏快，晶格容易失稳形成缺陷。建议调到 45-55 的稳定单晶窗口；接近 50 时才能连续积累稳定单晶段。</div>`;
+ if(lState.pulling&&lState.stableCrystalLen<25)return '<div class="hint-box">✅ 速度已在稳定窗口。保持提拉，连续稳定生长 25cm 后才算获得完美单晶；随后继续拉到 80cm 才算可用硅棒。</div>';
+ if(lState.objDone[1]&&lState.stableCrystalLen<80)return '<div class="hint-box">✅ 已获得稳定单晶段。继续保持窗口提拉，稳定单晶段达到 80cm 才会计入合格硅棒目标。</div>';
+ return '<div class="hint-box">💡 当前速度处于单晶生长窗口。真实 CZ 法需要在质量、长度和产能之间取平衡，过快会破坏晶格有序生长。</div>';
+}
 function resize(){W=innerWidth-320;H=innerHeight;cv.width=W;cv.height=H;panelDirty=true;}
 window.onresize=resize;resize();resetLevelState();
-// PLACEHOLDER_PANEL
+// === 控制面板渲染 ===
 function renderPanel(){
- let h='<h3 style="margin-bottom:8px">🔬 半导体制造</h3><div style="margin-bottom:8px">';
- levels.forEach((l,i)=>{
-  let cls='level-btn';if(i===curLevel)cls+=' active';if(completedLevels.has(i))cls+=' done';
-  h+=`<span class="${cls}" onclick="switchLevel(${i})">${i+1}</span>`;
- });
- h+='</div>';
+ let h=stageNavHTML();
+ h+='<h3 style="margin-bottom:8px">🔬 半导体制造</h3>';
  const L=levels[curLevel];
  const _kw=['CZ法（切克劳斯基法）：籽晶提拉 → 单晶硅棒','光刻三步：涂胶 → 曝光 → 显影','湿法刻蚀（各向同性） vs 干法刻蚀（各向异性）','离子注入：磷→N型（多电子），硼→P型（多空穴）','CVD / PVD / ALD 三种薄膜沉积技术','EUV 13.5nm 极紫外光 + 反射式掩模','良率 = 合格芯片数 / 总芯片数'][curLevel];
  h+=`<h3>第${curLevel+1}关：${L.name}</h3>`;
@@ -284,72 +432,136 @@ function renderPanel(){
  const controlsHTML=renderLevelControls();
  h+='<h4>目标</h4>';
  const od=lState.objDone||[];
+ const levelPassed=completedLevels.has(curLevel);
  L.objs.forEach((o,i)=>{
-  const done=completedLevels.has(curLevel)||od[i];
+  const done=levelPassed||od[i];
   h+=`<div class="obj-item${done?' done':''}">${done?'✅':'⬜'} ${o}</div>`;
  });
  h+=controlsHTML;
- const goalsDone=od.every(v=>v);
- if(goalsDone&&!completedLevels.has(curLevel)){
+ const goalsDone=levelPassed||od.every(v=>v);
+ if(goalsDone){
   h+=quizHTML(curLevel);
  }
- if(completedLevels.has(curLevel)){
+ if(levelPassed){
   h+=`<div class="learn-box">💡 ${L.learn}</div>`;
   if(curLevel<levels.length-1){
    h+=`<button class="act-btn green" onclick="switchLevel(${curLevel+1})">进入第${curLevel+2}关 →</button>`;
   }else{
-   h+=''+_summaryHTML()+'';
+   h+=summaryHTML();
   }
  }
  panel.innerHTML=h;
 }
-// PLACEHOLDER_CONTROLS
+function yieldHintHTML(){
+ const knobs=processKnobs();
+ const weakest=knobs.reduce((a,b)=>b[1]<a[1]?b:a);
+ const bottleneck=lState.yieldBottleneck||weakest[0];
+ if(!lState.produced)return '<div class="hint-box">💡 先运行一次生产，再根据最弱工艺项调参；量产良率由平均水平和最短板共同决定。</div>';
+ if(lState.stableHighYieldRuns>=2&&!lState.objDone[2])return `<div class="hint-box">✅ 已连续两轮达到 90% 良率。请确认当前最弱项是 ${bottleneck}，并把它理解为可重复的稳定制程窗口，而不是单次峰值。</div>`;
+ if(lState.objDone[2])return '<div class="hint-box">✅ 已确认高良率稳定窗口。稳定重复生产比单次峰值更接近真实晶圆厂调参。</div>';
+ if(lState.stableHighYieldRuns===1)return '<div class="hint-box">✅ 本轮已达到 90% 良率，请保持参数不掉线，再运行一轮验证稳定性。</div>';
+ if(lState.yield<80)return `<div class="hint-box">🔎 本轮瓶颈：${bottleneck} ${weakest[1]}%。先把最弱项提升到 80% 以上，再追求整体均衡。</div>`;
+ if(lState.yield<90)return `<div class="hint-box">📈 已进入可量产区间，本轮短板是 ${bottleneck}。把四项都推到 90% 左右可冲击高良率。</div>`;
+ return '<div class="hint-box">✅ 当前良率已达 90% 以上；稳定重复生产比单次峰值更接近真实晶圆厂调参。</div>';
+}
+function yieldPreviewHTML(){
+ const preview=yieldPreview();
+ return `<div class="concept-box">预测良率：<span class="sv" id="yieldPreviewVal">${preview.estimate.toFixed(1)}%</span><br>当前短板：<span class="sv" id="yieldWeakestVal">${preview.weakestName} ${preview.weakestValue}%</span><br><span id="yieldPreviewAdvice">${yieldPreviewAdvice(preview)}</span></div>`;
+}
+function depositionStatusHTML(){
+ const items=[['CVD',lState.cvdDone],['PVD',lState.pvdDone],['ALD',lState.aldDone]];
+ const next=items.find(([,done])=>!done);
+ const advice=next?`下一步建议切换到 ${next[0]}，比较它与已完成方法的覆盖性和厚度控制。`:'三种沉积方法都已验证：CVD适合绝缘膜，PVD适合金属膜，ALD适合原子级超薄膜。';
+ return `<div class="hint-box">验证进度：${items.map(([name,done])=>`${done?'✅':'⬜'} ${name}`).join('　')}<br>${lState.depositFeedback||advice}</div>`;
+}
+function etchTimeHintText(){
+ const v=Number(lState.etchTime)||0;
+ if(v<40)return `当前 ${v}% 偏浅，只能看到表层刻痕；把时间调到 40%-70% 才能达成目标深度。`;
+ if(v>70)return `当前 ${v}% 偏深，容易过刻；收回到 40%-70% 更接近真实制程窗口。`;
+ return `当前 ${v}% 位于目标窗口，完成刻蚀后可达成“精确控制刻蚀深度”。`;
+}
+function etchHintHTML(){
+ const method=lState.method==='wet'?'湿法会横向底切，适合观察各向同性刻蚀。':'干法侧壁更垂直，适合高深宽比结构。';
+ const status=[['湿法',lState.objDone[0]],['干法',lState.objDone[1]],['深度窗口',lState.objDone[2]]]
+  .map(([name,done])=>`${done?'✅':'⬜'} ${name}`).join('　');
+ return `<div class="hint-box">${method}<br>验证进度：${status}<br><span id="etchWindowVal">${etchTimeHintText()}</span></div>`;
+}
+function implantHintHTML(){
+ const status=[['N型',lState.nDoped],['P型',lState.pDoped],['PN结',lState.pnFormed]]
+  .map(([name,done])=>`${done?'✅':'⬜'} ${name}`).join('　');
+ const recipeOk=implantRecipeReady();
+ const recipe=`配方窗口：${recipeOk?'✅':'⬜'} 能量 40-75keV，剂量 45-80%`;
+ let hint='先把能量和剂量调入工艺窗口，再选择磷或硼执行离子注入；离子落入晶格后必须退火，掺杂才会被激活。';
+ if(lState.implanting)hint='离子束正在进入硅片。能量主要决定注入深度，剂量主要决定局部载流子浓度。';
+ else if(lState.implantDone&&!lState.annealed){
+  const pending=lState.implantedDopant==='P'?'磷（N型）':'硼（P型）';
+  hint=`${pending}离子已进入晶格。先退火修复损伤并激活杂质；退火前锁定掺杂选择，避免把“已注入”和“下一次选择”混在一起。`;
+ }
+ else if(lState.nDoped&&lState.pDoped&&!lState.pnFormed)hint='N型和P型区域都已激活，现在可以形成PN结，观察耗尽区和内建电场。';
+ else if(lState.nDoped&&!lState.pDoped)hint='N型区域已完成。切换到硼（P型）再注入并退火，才能建立PN结的另一侧。';
+ else if(lState.pDoped&&!lState.nDoped)hint='P型区域已完成。切换到磷（N型）再注入并退火，才能建立PN结的另一侧。';
+ else if(lState.pnFormed)hint='PN结已形成：界面附近电子和空穴复合，留下耗尽区，这是二极管单向导电的核心。';
+ if(lState.implantFeedback)hint=lState.implantFeedback;
+ return `<div class="hint-box">验证进度：${status}<br>${recipe}<br>${hint}</div>`;
+}
+// === 关卡控制区 ===
 function renderLevelControls(){
  let h='';
  switch(curLevel){
  case 0:
   h+=rangeHTML('pullSpeed','提拉速度',1,100);
   h+=rangeHTML('rotSpeed','旋转速度',1,100);
-  h+=`<div class="concept-box">晶体质量：<span class="sv">${lState.crystalQuality.toFixed(0)}%</span><br>直径：<span class="sv">${lState.diameter.toFixed(1)}mm</span> | 长度：<span class="sv">${lState.rodLen.toFixed(1)}cm</span></div>`;
-  if(!lState.pulling)h+=`<button class="act-btn" onclick="startPull()">开始提拉</button>`;
-  else h+=`<button class="act-btn" onclick="lState.pulling=false;panelDirty=true" style="border-color:#ef4444;color:#f87171">停止提拉</button>`;
-  h+='<div class="hint-box">💡 提拉速度适中(40-60)可获得完美单晶，太快会产生多晶缺陷</div>';
+  h+=`<div class="concept-box">晶体质量：<span class="sv" id="crystalQualityVal">${lState.crystalQuality.toFixed(0)}%</span><br>直径：<span class="sv" id="crystalDiameterVal">${lState.diameter.toFixed(1)}mm</span> | 长度：<span class="sv" id="crystalLengthVal">${lState.rodLen.toFixed(1)}cm</span><br>稳定单晶段：<span class="sv" id="stableCrystalVal">${lState.stableCrystalLen.toFixed(1)}cm / 80cm</span><br>相对生长速率：<span class="sv" id="growthRateVal">${(crystalGrowthRate(lState.pullSpeed)/0.15).toFixed(1)}x</span></div>`;
+  const crystalFinished=lState.rodLen>=lState.rodMaxLen;
+  if(!lState.pulling&&!crystalFinished)h+=`<button class="act-btn" onclick="startPull()">开始提拉</button>`;
+  else if(lState.pulling)h+=`<button class="act-btn" onclick="stopPull()" style="border-color:#ef4444;color:#f87171">停止提拉</button>`;
+  if(!lState.pulling&&!lState.objDone[1])h+=`<button class="act-btn" onclick="applyStableCrystalRecipe()">套用稳定单晶配方</button>`;
+  if(!lState.pulling&&lState.rodLen>0&&!completedLevels.has(0))h+=`<button class="act-btn" onclick="resetCrystalRun()">重新生长本根硅棒</button>`;
+  h+=crystalRecipeHintHTML();
   break;
  case 1:
   h+=`<div class="concept-box">分辨率：<span class="sv">${lState.resolution}nm</span></div>`;
   if(!lState.exposed&&!lState.developed){
-   h+='<div class="hint-box">🖱️ 在掩模版区域用鼠标绘制电路图案</div>';
-   if(lState.maskPattern.length>0)h+=`<button class="act-btn" onclick="startExposure()">曝光</button>`;
+   h+='<div class="hint-box">🖱️ 在掩模版区域拖出至少一段有跨度的电路线，或先生成参考图案再观察曝光转移。</div>';
+   h+=`<button class="act-btn" onclick="createReferenceMask()">生成参考电路图案</button>`;
+   if(lState.maskPattern.length>0)h+=`<button class="act-btn" onclick="clearMaskPattern()">清空重画</button>`;
+   if(maskPatternReady()&&!lState.objDone[0])h+=`<button class="act-btn green" onclick="confirmMaskDesign()">确认掩模图案</button>`;
+   if(lState.maskFeedback)h+=`<div class="concept-box">${lState.maskFeedback}</div>`;
+   if(lState.objDone[0])h+=`<button class="act-btn" onclick="startExposure()">曝光</button>`;
   }
   if(lState.exposed&&!lState.developed)h+=`<button class="act-btn" onclick="developWafer()">显影</button>`;
-  if(lState.developed)h+=`<button class="act-btn" onclick="resetLevelState();panelDirty=true">重新设计</button>`;
+  if(lState.developed)h+=`<button class="act-btn" onclick="resetLithographyDesign()">重新设计</button>`;
   break;
  case 2:
   h+=`<div class="concept-box">方法：<span class="sv">${lState.method==='wet'?'湿法刻蚀':'干法刻蚀'}</span><br>刻蚀进度：<span class="sv">${(lState.etchProgress*100).toFixed(0)}%</span></div>`;
+  h+=etchHintHTML();
   if(!lState.etching&&!lState.etchDone){
-   h+=`<button class="act-btn" onclick="lState.method='wet';panelDirty=true" ${lState.method==='wet'?'style="background:#2a2a6a"':''}>湿法刻蚀（化学溶液）</button>`;
-   h+=`<button class="act-btn" onclick="lState.method='dry';panelDirty=true" ${lState.method==='dry'?'style="background:#2a2a6a"':''}>干法刻蚀（等离子体）</button>`;
+   h+=`<button class="act-btn" onclick="setEtchMethod('wet')" ${lState.method==='wet'?'style="background:#2a2a6a"':''}>湿法刻蚀（化学溶液）</button>`;
+   h+=`<button class="act-btn" onclick="setEtchMethod('dry')" ${lState.method==='dry'?'style="background:#2a2a6a"':''}>干法刻蚀（等离子体）</button>`;
    h+=rangeHTML('etchTime','刻蚀时间',10,100);
    h+=`<button class="act-btn" onclick="startEtch()">开始刻蚀</button>`;
   }
-  if(lState.etchDone)h+=`<button class="act-btn" onclick="lState.etchDone=false;lState.etchProgress=0;panelDirty=true">重新刻蚀</button>`;
+  if(lState.etchDone)h+=`<button class="act-btn" onclick="resetEtchRun()">重新刻蚀</button>`;
   break;
  case 3:
-  h+=`<div class="concept-box">掺杂类型：<span class="sv">${lState.dopant==='P'?'磷（N型）':'硼（P型）'}</span></div>`;
-  h+=`<button class="act-btn" onclick="lState.dopant='P';panelDirty=true" ${lState.dopant==='P'?'style="background:#2a2a6a"':''}>磷（N型 - 蓝色）</button>`;
-  h+=`<button class="act-btn" onclick="lState.dopant='B';panelDirty=true" ${lState.dopant==='B'?'style="background:#2a2a6a"':''}>硼（P型 - 红色）</button>`;
-  h+=rangeHTML('energy','注入能量（深度）',10,100);
-  h+=rangeHTML('dose','注入剂量（浓度）',10,100);
-  if(!lState.implanting)h+=`<button class="act-btn" onclick="startImplant()">离子注入</button>`;
+ h+=`<div class="concept-box">掺杂类型：<span class="sv">${lState.dopant==='P'?'磷（N型）':'硼（P型）'}</span></div>`;
+  h+=`<button class="act-btn" onclick="setDopant('P')" ${!canChangeDopant()?'disabled':''} ${lState.dopant==='P'?'style="background:#2a2a6a"':''}>磷（N型 - 蓝色）</button>`;
+  h+=`<button class="act-btn" onclick="setDopant('B')" ${!canChangeDopant()?'disabled':''} ${lState.dopant==='B'?'style="background:#2a2a6a"':''}>硼（P型 - 红色）</button>`;
+  const implantLocked=lState.implanting||lState.implantDone&&!lState.annealed;
+  h+=rangeHTML('energy','注入能量（深度）',10,100,null,implantLocked);
+  h+=rangeHTML('dose','注入剂量（浓度）',10,100,null,implantLocked);
+  h+=implantHintHTML();
+  if(!lState.implanting&&!lState.implantDone)h+=`<button class="act-btn" onclick="startImplant()">离子注入</button>`;
   if(lState.implantDone&&!lState.annealed)h+=`<button class="act-btn green" onclick="doAnneal()">退火修复晶格</button>`;
   if(lState.nDoped&&lState.pDoped&&!lState.pnFormed)h+=`<button class="act-btn green" onclick="formPN()">形成PN结</button>`;
   break;
  case 4:
   h+=`<div class="concept-box">方法：<span class="sv">${lState.method}</span> | 厚度：<span class="sv">${lState.thickness.toFixed(1)}nm</span> | 均匀性：<span class="sv">${lState.uniformity.toFixed(0)}%</span></div>`;
+  h+=depositionStatusHTML();
   if(!lState.depositing){
-   h+=`<button class="act-btn" onclick="lState.method='CVD';panelDirty=true" ${lState.method==='CVD'?'style="background:#2a2a6a"':''}>CVD 化学气相沉积</button>`;
-   h+=`<button class="act-btn" onclick="lState.method='PVD';panelDirty=true" ${lState.method==='PVD'?'style="background:#2a2a6a"':''}>PVD 溅射沉积</button>`;
-   h+=`<button class="act-btn" onclick="lState.method='ALD';panelDirty=true" ${lState.method==='ALD'?'style="background:#2a2a6a"':''}>ALD 原子层沉积</button>`;
+   h+=`<button class="act-btn" onclick="setDepositMethod('CVD')" ${lState.method==='CVD'?'style="background:#2a2a6a"':''}>${lState.cvdDone?'✓ ':''}CVD 化学气相沉积</button>`;
+   h+=`<button class="act-btn" onclick="setDepositMethod('PVD')" ${lState.method==='PVD'?'style="background:#2a2a6a"':''}>${lState.pvdDone?'✓ ':''}PVD 溅射沉积</button>`;
+   h+=`<button class="act-btn" onclick="setDepositMethod('ALD')" ${lState.method==='ALD'?'style="background:#2a2a6a"':''}>${lState.aldDone?'✓ ':''}ALD 原子层沉积</button>`;
    h+=`<button class="act-btn" onclick="startDeposit()">开始沉积</button>`;
   }
   break;
@@ -358,92 +570,255 @@ function renderLevelControls(){
   if(!lState.laserFired)h+=`<button class="act-btn" onclick="fireLaser()">发射激光轰击锡滴</button>`;
   if(lState.euvGenerated&&!lState.focused){
    h+=rangeHTML('mirrorAngle','反射镜角度',30,60,'0.5');
-   h+='<div class="hint-box">💡 多层反射镜必须接近45°，EUV光才能有效聚焦到掩模和硅片。</div>';
+   const diff=Math.abs(lState.mirrorAngle-45);
+   h+=`<div class="hint-box">💡 多层反射镜必须接近45°。当前偏差 <b id="mirrorDiffVal">${diff.toFixed(1)}°</b>，偏差小于3°即可聚焦。</div>`;
+   if(lState.focusFeedback)h+=`<div class="concept-box">${lState.focusFeedback}</div>`;
    h+=`<button class="act-btn" onclick="focusMirror()">调整聚焦</button>`;
   }
   if(lState.focused)h+=`<button class="act-btn green" onclick="exposeEUV()">EUV曝光</button>`;
   break;
  case 6:
-  h+=`<div class="concept-box">良率：<span class="sv">${lState.yield.toFixed(1)}%</span> | 最佳：<span class="sv">${lState.bestYield.toFixed(1)}%</span><br>利润：<span class="sv">$${(lState.profit/1e6).toFixed(1)}M</span></div>`;
+  h+=`<div class="concept-box">良率：<span class="sv">${lState.yield.toFixed(1)}%</span> | 最佳：<span class="sv">${lState.bestYield.toFixed(1)}%</span><br>生产轮次：<span class="sv">${lState.productionRuns||0}</span> | 高良率连跑：<span class="sv">${lState.stableHighYieldRuns||0}/2</span><br>利润：<span class="sv">$${(lState.profit/1e6).toFixed(1)}M</span></div>`;
   h+=rangeHTML('lithoAlign','光刻对准精度',0,100);
   h+=rangeHTML('etchUniform','刻蚀均匀性',0,100);
   h+=rangeHTML('depoThick','沉积厚度控制',0,100);
   h+=rangeHTML('cleanLevel','洁净室等级',0,100);
+  h+=yieldPreviewHTML();
   h+=`<button class="act-btn" onclick="runProduction()">开始生产</button>`;
+  if(lState.stableHighYieldRuns>=2&&!lState.objDone[2])h+=`<button class="act-btn green" onclick="confirmYieldStability()">确认稳定窗口</button>`;
+  h+=yieldHintHTML();
   break;
  }
  return h;
 }
-// PLACEHOLDER_ACTIONS
+function levelStatusText(){
+ const levelPassed=completedLevels.has(curLevel);
+ const done=levelPassed?3:(lState.objDone||[]).filter(Boolean).length;
+ const status=levelPassed?'已通关':done===3?'待测验':'进行中';
+ return `目标 ${done}/3 | ${status}`;
+}
+// === 关卡交互动作 ===
 // === Level 0: Crystal Growth ===
-function startPull(){lState.pulling=true;lState.growPhase=0;panelDirty=true;}
+function startPull(){
+ if(curLevel!==0||lState.pulling||lState.rodLen>=lState.rodMaxLen)return false;
+ lState.pulling=true;lState.growPhase=0;panelDirty=true;
+ return true;
+}
+function stopPull(){
+ if(curLevel!==0||!lState.pulling)return false;
+ lState.pulling=false;panelDirty=true;
+ return true;
+}
+function resetCrystalRun(){
+ if(curLevel!==0)return false;
+ resetLevelState();panelDirty=true;
+ return true;
+}
+function applyStableCrystalRecipe(){
+ if(curLevel!==0||lState.pulling)return false;
+ lState.pullSpeed=50;
+ lState.rotSpeed=50;
+ panelDirty=true;
+ renderPanel();
+ return true;
+}
 // === Level 1: Lithography ===
+function maskBounds(){
+ const cx=W/2,baseY=60,layerH=H/4-30,layerW=W*0.6,lx=cx-layerW/2;
+ return{x:lx,y:baseY,w:layerW,h:layerH};
+}
+function inMaskArea(p){
+ const b=maskBounds();
+ return p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h;
+}
+function maskPatternReady(){
+ const pts=(lState.maskPattern||[]).filter(inMaskArea);
+ if(pts.length<8)return false;
+ let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+ for(const p of pts){minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
+ return maxX-minX>=40||maxY-minY>=25;
+}
+function createReferenceMask(){
+ if(curLevel!==1||lState.exposed||lState.developed)return false;
+ const b=maskBounds();
+ const y1=b.y+b.h*0.32,y2=b.y+b.h*0.58,y3=b.y+b.h*0.76;
+ const x1=b.x+b.w*0.12,x2=b.x+b.w*0.34,x3=b.x+b.w*0.52,x4=b.x+b.w*0.74,x5=b.x+b.w*0.88;
+ lState.maskPattern=[
+  {x:x1,y:y1,nx:true},{x:x2,y:y1,nx:false},{x:x2,y:y2,nx:false},{x:x3,y:y2,nx:false},
+  {x:x3,y:y1,nx:true},{x:x4,y:y1,nx:false},{x:x4,y:y3,nx:false},{x:x5,y:y3,nx:false},
+  {x:x1,y:y3,nx:true},{x:x2,y:y3,nx:false},{x:x2,y:y2,nx:false},{x:x5,y:y2,nx:false}
+ ];
+ lState.objDone[0]=false;
+ lState.maskFeedback='参考图案已生成。请先确认它覆盖了足够跨度，理解掩模版会决定晶圆上的曝光图案。';
+ panelDirty=true;
+ return true;
+}
+function clearMaskPattern(){
+ if(curLevel!==1||lState.exposed||lState.developed)return false;
+ lState.maskPattern=[];
+ lState.objDone[0]=false;
+ lState.maskFeedback='';
+ panelDirty=true;
+ return true;
+}
+function confirmMaskDesign(){
+ if(curLevel!==1||lState.exposed||lState.developed)return false;
+ if(!maskPatternReady()){
+  lState.maskFeedback='⚠️ 图案跨度太小。至少画出一段横向或纵向明显延展的线路，才能作为可曝光掩模。';
+  panelDirty=true;
+  return false;
+ }
+ lState.objDone[0]=true;
+ lState.maskFeedback='✅ 掩模图案已确认：有足够跨度和连通线段，可进入曝光步骤。';
+ panelDirty=true;
+ return true;
+}
 function startExposure(){
- if(lState.maskPattern.length===0)return;
+ if(curLevel!==1||lState.exposing||lState.exposed||lState.developed)return false;
+ if(!lState.objDone[0]){
+  lState.maskFeedback='⚠️ 先确认掩模图案，再进行曝光；真实光刻不会拿未经检查的掩模上机。';
+  panelDirty=true;
+  return false;
+ }
  lState.exposing=true;lState.exposureAnim=0;
- lState.objDone[0]=true;panelDirty=true;
+ panelDirty=true;
+ return true;
 }
 function developWafer(){
+ if(curLevel!==1||!lState.exposed||lState.developed)return false;
  lState.developed=true;lState.objDone[2]=true;panelDirty=true;
+ return true;
+}
+function resetLithographyDesign(){
+ if(curLevel!==1||!lState.developed)return false;
+ resetLevelState();panelDirty=true;
+ return true;
 }
 // === Level 2: Etching ===
-function startEtch(){lState.etching=true;lState.etchProgress=0;panelDirty=true;}
+function setEtchMethod(method){
+ if(curLevel!==2||lState.etching||lState.etchDone)return false;
+ if(method!=='wet'&&method!=='dry')return false;
+ lState.method=method;panelDirty=true;
+ return true;
+}
+function startEtch(){
+ if(curLevel!==2||lState.etching||lState.etchDone)return false;
+ lState.etching=true;lState.etchProgress=0;panelDirty=true;
+ return true;
+}
+function resetEtchRun(){
+ if(curLevel!==2||!lState.etchDone)return false;
+ lState.etchDone=false;lState.etchProgress=0;panelDirty=true;
+ return true;
+}
 // === Level 3: Ion Implantation ===
+function canChangeDopant(){
+ return curLevel===3&&!lState.implanting&&!(lState.implantDone&&!lState.annealed);
+}
+function implantRecipeReady(){
+ return curLevel===3&&lState.energy>=40&&lState.energy<=75&&lState.dose>=45&&lState.dose<=80;
+}
+function setDopant(dopant){
+ if(dopant!=='P'&&dopant!=='B')return false;
+ if(!canChangeDopant())return false;
+ lState.dopant=dopant;panelDirty=true;
+ return true;
+}
 function startImplant(){
- lState.implanting=true;lState.implantedDopant=lState.dopant;lState.ions=[];lState.profile=[];
+ if(curLevel!==3||lState.implanting||lState.implantDone&&!lState.annealed)return false;
+ if(!implantRecipeReady()){
+  lState.implantFeedback='⚠️ 当前能量或剂量不在可激活窗口内。先调到能量 40-75keV、剂量 45-80%，再执行离子注入。';
+  panelDirty=true;
+  return false;
+ }
+ lState.implanting=true;lState.implantDone=false;lState.annealed=false;
+ lState.implantedDopant=lState.dopant;lState.implantedEnergy=lState.energy;lState.implantedDose=lState.dose;
+ lState.ions=[];lState.profile=[];
+ lState.implantFeedback='';
  for(let i=0;i<30;i++){
-  const depth=lState.energy/100;
+  const depth=lState.implantedEnergy/100;
   lState.ions.push({x:Math.random(),y:-Math.random()*0.3,vy:0.02+Math.random()*0.01,
    targetY:depth*0.3+Math.random()*0.15,active:true,color:lState.dopant==='P'?'#60a5fa':'#f87171'});
  }
  panelDirty=true;
+ return true;
 }
 function doAnneal(){
+ if(curLevel!==3||!lState.implantDone||lState.annealed)return false;
  lState.annealed=true;
  const dopant=lState.implantedDopant||lState.dopant;
- if(dopant==='P')lState.nDoped=true;
- if(dopant==='B')lState.pDoped=true;
+ const depth=(lState.implantedEnergy||lState.energy)/100;
+ if(dopant==='P'){lState.nDoped=true;lState.nDepth=depth;lState.objDone[0]=true;}
+ if(dopant==='B'){lState.pDoped=true;lState.pDepth=depth;lState.objDone[1]=true;}
  lState.implantDone=false;
  panelDirty=true;
+ return true;
 }
 function formPN(){
+ if(curLevel!==3||!lState.nDoped||!lState.pDoped||lState.pnFormed)return false;
  lState.pnFormed=true;lState.objDone[2]=true;panelDirty=true;
+ return true;
 }
 // === Level 4: Thin Film Deposition ===
+function setDepositMethod(method){
+ if(curLevel!==4||lState.depositing)return false;
+ if(!['CVD','PVD','ALD'].includes(method))return false;
+ lState.method=method;lState.depositFeedback='';panelDirty=true;
+ return true;
+}
 function startDeposit(){
+ if(curLevel!==4||lState.depositing)return false;
+ if(lState.method==='CVD'&&lState.cvdDone||lState.method==='PVD'&&lState.pvdDone||lState.method==='ALD'&&lState.aldDone){
+  lState.depositFeedback=`${lState.method} 已完成验证。请选择一种还未完成的方法，才能看到不同沉积机制。`;
+  panelDirty=true;
+  return false;
+ }
  lState.depositing=true;lState.depositProgress=0;lState.thickness=0;lState.atoms=[];
+ lState.depositFeedback='';
  if(lState.method==='CVD'){lState.uniformity=85+Math.random()*10;}
  else if(lState.method==='PVD'){lState.uniformity=70+Math.random()*15;}
  else{lState.uniformity=95+Math.random()*5;}
  panelDirty=true;
+ return true;
 }
 // === Level 5: EUV ===
 function fireLaser(){
- lState.laserFired=true;lState.photons=[];
+ if(curLevel!==5||lState.laserFired)return false;
+ lState.laserFired=true;lState.euvGenerated=true;lState.power=120;lState.objDone[0]=true;lState.photons=[];
  for(let i=0;i<20;i++)lState.photons.push({x:0.1,y:0.35+Math.random()*0.1,vx:0.03+Math.random()*0.01,vy:(Math.random()-0.5)*0.005,life:1});
  panelDirty=true;
+ return true;
 }
 function focusMirror(){
+ if(curLevel!==5||!lState.euvGenerated||lState.focused)return false;
  const diff=Math.abs(lState.mirrorAngle-45);
  if(diff<3){
   lState.focused=true;lState.resolution=7+diff;lState.power=250-diff*20;
-  lState.objDone[0]=true;lState.objDone[1]=true;
-  if(lState.resolution<10)lState.objDone[2]=true;
-  panelDirty=true;
+  lState.objDone[1]=true;
+  lState.focusFeedback='✅ EUV光路已聚焦，反射式掩模图案可以投影到硅片。';
+ }else{
+  lState.focusFeedback=`⚠️ 角度还差 ${diff.toFixed(1)}°，请把反射镜调到45°附近后再聚焦。`;
  }
+ panelDirty=true;
+ return lState.focused;
 }
 function exposeEUV(){
+ if(curLevel!==5||!lState.focused)return false;
  lState.objDone[0]=true;lState.objDone[1]=true;
  if(lState.resolution<10)lState.objDone[2]=true;
  panelDirty=true;
+ return true;
 }
 // === Level 6: Yield ===
 function runProduction(){
- const avg=(lState.lithoAlign+lState.etchUniform+lState.depoThick+lState.cleanLevel)/4;
- const weakest=Math.min(lState.lithoAlign,lState.etchUniform,lState.depoThick,lState.cleanLevel);
- lState.yield=Math.max(0,Math.min(100,avg*0.88+weakest*0.12));
+ if(curLevel!==6)return false;
+ const preview=yieldPreview();
+ lState.yieldBottleneck=preview.weakestName;
+ lState.yield=preview.estimate;
  lState.profit=lState.yield/100*500*2e6-5e8;
+ lState.productionRuns=(lState.productionRuns||0)+1;
  if(lState.yield>lState.bestYield)lState.bestYield=lState.yield;
+ lState.stableHighYieldRuns=lState.yield>=90?(lState.stableHighYieldRuns||0)+1:0;
  lState.chips=[];
  const rows=12,cols=12;
  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
@@ -453,28 +828,62 @@ function runProduction(){
  }
  lState.produced=true;lState.objDone[0]=true;
  if(lState.bestYield>=80)lState.objDone[1]=true;
- if(lState.bestYield>=90)lState.objDone[2]=true;
+ if(lState.stableHighYieldRuns<2)lState.objDone[2]=false;
  panelDirty=true;
+ return true;
 }
-// PLACEHOLDER_MOUSE
-// === Mouse Events ===
+function confirmYieldStability(){
+ if(curLevel!==6||lState.stableHighYieldRuns<2||lState.yield<90)return false;
+ lState.objDone[2]=true;
+ panelDirty=true;
+ return true;
+}
+// === 画布绘制输入 ===
 let mouseDown=false,mouseX=0,mouseY=0;
-cv.addEventListener('mousedown',e=>{
- mouseDown=true;mouseX=e.offsetX;mouseY=e.offsetY;
+function canvasPoint(e){
+ const r=cv.getBoundingClientRect();
+ return {
+  x:(e.clientX-r.left)*(cv.width/r.width),
+  y:(e.clientY-r.top)*(cv.height/r.height)
+ };
+}
+function startPointer(e){
+ const p=canvasPoint(e);
+ mouseDown=true;mouseX=p.x;mouseY=p.y;
  if(curLevel===1&&!lState.exposed&&!lState.developed){
-  lState.drawing=true;
-  lState.maskPattern.push({x:mouseX,y:mouseY,nx:true});
-  lState.objDone[0]=true;panelDirty=true;
+  const p={x:mouseX,y:mouseY,nx:true};
+  if(inMaskArea(p)){
+   lState.drawing=true;
+   lState.maskPattern.push(p);
+   panelDirty=true;
+  }
  }
-});
-cv.addEventListener('mousemove',e=>{
- mouseX=e.offsetX;mouseY=e.offsetY;
+ if(e.preventDefault)e.preventDefault();
+ if(cv.setPointerCapture&&e.pointerId!==undefined)cv.setPointerCapture(e.pointerId);
+}
+function movePointer(e){
+ const p=canvasPoint(e);
+ mouseX=p.x;mouseY=p.y;
  if(curLevel===1&&lState.drawing&&mouseDown){
-  lState.maskPattern.push({x:mouseX,y:mouseY,nx:false});
+  const p={x:mouseX,y:mouseY,nx:false};
+  if(!inMaskArea(p))return;
+  lState.maskPattern.push(p);
+  if(maskPatternReady()&&!lState.objDone[0]){
+   lState.maskFeedback='图案跨度已足够。请点击“确认掩模图案”，再进入曝光。';
+   panelDirty=true;
+  }
  }
-});
-cv.addEventListener('mouseup',()=>{mouseDown=false;lState.drawing=false;});
-// PLACEHOLDER_DRAW
+ if(mouseDown&&e.preventDefault)e.preventDefault();
+}
+function endPointer(e){
+ mouseDown=false;lState.drawing=false;
+ if(e&&cv.releasePointerCapture&&e.pointerId!==undefined)cv.releasePointerCapture(e.pointerId);
+}
+cv.addEventListener('pointerdown',startPointer);
+cv.addEventListener('pointermove',movePointer);
+cv.addEventListener('pointerup',endPointer);
+cv.addEventListener('pointercancel',endPointer);
+// === 画布绘制工具 ===
 // === Drawing Helpers ===
 function drawSiliconTexture(x,y,w,h,color='#b0b8c8'){
  ctx.fillStyle=color;ctx.fillRect(x,y,w,h);
@@ -542,15 +951,19 @@ function drawLevel0(t){
  // Update pulling
  if(lState.pulling){
   const speed=lState.pullSpeed;
-  lState.rodLen+=0.15;
+  const growth=crystalGrowthRate(speed);
+  lState.rodLen+=growth;
   lState.diameter=280+lState.rotSpeed*0.2;
-  // Quality depends on pull speed: 40-60 is optimal
+  // Quality depends on pull speed: 45-55 is the stable single-crystal window.
   const optDist=Math.abs(speed-50);
   lState.crystalQuality=Math.max(0,100-optDist*2.5);
+  if(lState.crystalQuality>85)lState.stableCrystalLen+=growth;
+  else lState.stableCrystalLen=0;
   if(!lState.objDone[0]&&lState.rodLen>10){lState.objDone[0]=true;panelDirty=true;}
-  if(!lState.objDone[1]&&lState.crystalQuality>85){lState.objDone[1]=true;panelDirty=true;}
-  if(!lState.objDone[2]&&lState.rodLen>=80){lState.objDone[2]=true;panelDirty=true;}
+  if(!lState.objDone[1]&&lState.stableCrystalLen>=25){lState.objDone[1]=true;panelDirty=true;}
+  if(!lState.objDone[2]&&lState.stableCrystalLen>=80){lState.objDone[2]=true;panelDirty=true;}
   if(lState.rodLen>=100){lState.pulling=false;panelDirty=true;}
+  updateCrystalReadout();
  }
  // Labels
  ctx.fillStyle='#444';ctx.font='17px sans-serif';ctx.textAlign='center';
@@ -564,11 +977,11 @@ function drawLevel0(t){
   ctx.fillText(`长度: ${lState.rodLen.toFixed(1)}cm`,30,70);
  }
 }
-// PLACEHOLDER_DRAW1
+// === 关卡 1：光刻绘制 ===
 // === Level 1: Lithography ===
 function drawLevel1(t){
- const cx=W/2,baseY=60;
- const layerH=H/4-30,layerW=W*0.6,lx=cx-layerW/2;
+ const cx=W/2,b=maskBounds(),baseY=b.y;
+ const layerH=b.h,layerW=b.w,lx=b.x;
  // Mask layer
  ctx.fillStyle='#1a1a2a';ctx.fillRect(lx,baseY,layerW,layerH);
  ctx.strokeStyle='#444';ctx.lineWidth=2;ctx.strokeRect(lx,baseY,layerW,layerH);
@@ -627,9 +1040,9 @@ function drawLevel1(t){
   ctx.stroke();
  }
 }
-// PLACEHOLDER_DRAW2
+// === 关卡 2：刻蚀绘制 ===
 // === Level 2: Etching ===
-function drawLevel2(t){
+function drawLevel2(time){
  const cx=W/2,cy=H/2;
  const wW=W*0.6,wH=200,wx=cx-wW/2,wy=cy-wH/2;
  // Cross-section label
@@ -696,7 +1109,7 @@ function drawLevel2(t){
  ctx.textAlign='center';
  ctx.fillText(lState.method==='wet'?'湿法刻蚀 — 各向同性（有底切）':'干法刻蚀 — 各向异性（垂直侧壁）',cx,wy+wH+40);
 }
-// PLACEHOLDER_DRAW3
+// === 关卡 3：离子注入绘制 ===
 // === Level 3: Ion Implantation ===
 function drawLevel3(t){
  const cx=W/2,cy=H/2;
@@ -711,7 +1124,7 @@ function drawLevel3(t){
  // N-type doped region (left half, blue)
  if(lState.nDoped){
   ctx.fillStyle='rgba(96,165,250,0.25)';
-  const depth=lState.energy/100*wH*0.6;
+  const depth=(lState.nDepth||lState.energy/100)*wH*0.6;
   ctx.fillRect(wx,wy,wW/2,depth);
   ctx.fillStyle='#60a5fa';ctx.font='17px sans-serif';ctx.textAlign='center';
   ctx.fillText('N型（磷）',wx+wW/4,wy+depth+15);
@@ -719,7 +1132,7 @@ function drawLevel3(t){
  // P-type doped region (right half, red)
  if(lState.pDoped){
   ctx.fillStyle='rgba(248,113,113,0.25)';
-  const depth=lState.energy/100*wH*0.6;
+  const depth=(lState.pDepth||lState.energy/100)*wH*0.6;
   ctx.fillRect(wx+wW/2,wy,wW/2,depth);
   ctx.fillStyle='#f87171';ctx.font='17px sans-serif';ctx.textAlign='center';
   ctx.fillText('P型（硼）',wx+wW*3/4,wy+depth+15);
@@ -746,8 +1159,6 @@ function drawLevel3(t){
  }
  if(lState.implanting&&allLanded&&lState.ions.length>0){
   lState.implanting=false;lState.implantDone=true;
-  if(lState.dopant==='P'){lState.objDone[0]=true;}
-  else{lState.objDone[1]=true;}
   panelDirty=true;
  }
  // Concentration profile (right side)
@@ -758,12 +1169,15 @@ function drawLevel3(t){
   ctx.fillStyle='#444';ctx.font='16px sans-serif';ctx.textAlign='center';
   ctx.fillText('浓度分布',px+pw/2,py-5);
   // Gaussian profile
-  const peakDepth=lState.energy/100*0.6;
-  ctx.strokeStyle=lState.dopant==='P'?'#60a5fa':'#f87171';ctx.lineWidth=2;
+  const profileEnergy=lState.implantedEnergy||lState.energy;
+  const profileDose=lState.implantedDose||lState.dose;
+  const peakDepth=profileEnergy/100*0.6;
+  const dopant=lState.implantedDopant||lState.dopant;
+  ctx.strokeStyle=dopant==='P'?'#60a5fa':'#f87171';ctx.lineWidth=2;
   ctx.beginPath();
   for(let i=0;i<=ph;i++){
    const d=i/ph;
-   const conc=Math.exp(-((d-peakDepth)**2)/(0.02*lState.dose/50));
+   const conc=Math.exp(-((d-peakDepth)**2)/(0.02*profileDose/50));
    const x=px+conc*pw*0.8;
    if(i===0)ctx.moveTo(x,py+i);else ctx.lineTo(x,py+i);
   }
@@ -776,9 +1190,9 @@ function drawLevel3(t){
   ctx.fillText('✓ 退火完成 — 晶格修复',wx+wW-5,wy+wH-5);
  }
 }
-// PLACEHOLDER_DRAW4
+// === 关卡 4：薄膜沉积绘制 ===
 // === Level 4: Thin Film Deposition ===
-function drawLevel4(t){
+function drawLevel4(time){
  const cx=W/2,cy=H/2;
  const wW=W*0.5,wH=200,wx=cx-wW/2,wy=cy-20;
  // Silicon substrate with trenches
@@ -839,8 +1253,11 @@ function drawLevel4(t){
  if(lState.depositing){
   const speed=lState.method==='ALD'?0.003:0.008;
   lState.depositProgress+=speed;
-  lState.thickness=lState.depositProgress*(lState.method==='ALD'?5:50);
+  const maxThickness=lState.method==='ALD'?4.8:50;
+  lState.thickness=Math.min(lState.depositProgress,1)*maxThickness;
   if(lState.depositProgress>=1){
+   lState.depositProgress=1;
+   lState.thickness=maxThickness;
    lState.depositing=false;
    if(lState.method==='CVD'){lState.cvdDone=true;lState.objDone[0]=true;}
    if(lState.method==='PVD'){lState.pvdDone=true;lState.objDone[1]=true;}
@@ -858,7 +1275,7 @@ function drawLevel4(t){
   ctx.fillText(`厚度: ${lState.thickness.toFixed(1)}nm  均匀性: ${lState.uniformity.toFixed(0)}%`,cx,wy-50);
  }
 }
-// PLACEHOLDER_DRAW5
+// === 关卡 5：EUV 光刻绘制 ===
 // === Level 5: EUV Lithography ===
 function drawLevel5(t){
  const cx=W/2,cy=H/2;
@@ -872,10 +1289,6 @@ function drawLevel5(t){
   ctx.strokeStyle='#ff4444';ctx.lineWidth=3;
   ctx.beginPath();ctx.moveTo(tinX-80,tinY-40);ctx.lineTo(tinX,tinY);ctx.stroke();
   drawGlow(tinX,tinY,25,'rgba(255,100,0,0.5)');
-  // EUV light generation
-  if(!lState.euvGenerated){
-   lState.euvGenerated=true;lState.objDone[0]=true;panelDirty=true;
-  }
  }
  // EUV photons
  if(lState.euvGenerated){
@@ -939,9 +1352,9 @@ function drawLevel5(t){
  ctx.fillStyle='#60a5fa';ctx.font='19px sans-serif';ctx.textAlign='center';
  ctx.fillText(`EUV波长: 13.5nm | 功率: ${lState.power.toFixed(0)}W | 分辨率: ${lState.resolution.toFixed(1)}nm`,cx,H-50);
 }
-// PLACEHOLDER_DRAW6
+// === 关卡 6：良率优化绘制 ===
 // === Level 6: Yield Optimization ===
-function drawLevel6(t){
+function drawLevel6(time){
  const cx=W/2,cy=H/2;
  const waferR=Math.min(W,H)*0.38;
  // Wafer circle
@@ -997,12 +1410,14 @@ function drawLevel6(t){
   ctx.fillText(`利润: $${(lState.profit/1e6).toFixed(1)}M`,cx,cy-waferR-10);
  }
 }
-// PLACEHOLDER_MAINLOOP
+// === 动画主循环 ===
 // === Main Loop ===
 function mainLoop(t){
  ctx.clearRect(0,0,W,H);
+ const th=isDark?TH.dark:TH.light;
+ ctx.fillStyle=th.bg3||th.bg2;ctx.fillRect(0,0,W,H);
  // Background grid
- ctx.strokeStyle='rgba(30,30,60,0.3)';ctx.lineWidth=0.5;
+ ctx.strokeStyle=th.grid;ctx.lineWidth=0.5;
  for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
  for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
  switch(curLevel){
@@ -1015,126 +1430,13 @@ function mainLoop(t){
   case 6:drawLevel6(t);break;
  }
  if(panelDirty){renderPanel();panelDirty=false;}
- infoBar.textContent=`半导体制造 | 第${curLevel+1}关：${levels[curLevel].name} | 已通关：${completedLevels.size}/${levels.length}`;
+ infoBar.textContent=`半导体制造 | 第${curLevel+1}关：${levels[curLevel].name} | ${levelStatusText()} | 已通关：${completedLevels.size}/${levels.length}`;
  animId=requestAnimationFrame(mainLoop);
 }
 renderPanel();
 animId=requestAnimationFrame(mainLoop);
 
 function goLevel(i){switchLevel(i);}
-// === 总分总认知结构增强 ===
-// 延迟重新渲染确保增强生效
-(function(){
-  // 自动检测关卡名称
-  function _getNames(){
-    if(typeof levelNames!=='undefined')return levelNames.slice();
-    if(typeof LN!=='undefined')return LN.slice();
-    if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    if(typeof LEVELS!=='undefined'&&Array.isArray(LEVELS))return LEVELS.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
-    return [];
-  }
-  function _getTotal(){return _getNames().length||7;}
-  function _getCur(){
-    if(typeof currentLevel!=='undefined')return currentLevel;
-    if(typeof curLevel!=='undefined')return curLevel;
-    if(typeof curLv!=='undefined')return curLv;
-    return 0;
-  }
-  function _getObjs(){
-    if(typeof levelObjs!=='undefined')return levelObjs;
-    return null;
-  }
-  function _isDone(i){
-    var o=_getObjs();
-    if(o&&o[i])return o[i].every(function(v){return v;});
-    if(typeof completedLevels!=='undefined')return completedLevels.has(i);
-    return false;
-  }
-  function _countDone(){
-    var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
-    else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
-    return{done:d,total:t};
-  }
-
-  // 1. 开头路线图
-  window._buildRoadmap=function(){
-    var c=document.getElementById('roadmap-container');
-    if(!c)return;
-    var names=_getNames();
-    if(!names.length)return;
-    var h='<div class="roadmap"><div class="roadmap-title">\u{1F4CD} \u5B66\u4E60\u8DEF\u7EBF\u56FE</div>';
-    for(var i=0;i<names.length;i++){
-      h+='<div class="roadmap-item"><div class="roadmap-num">'+(i+1)+'</div><span>'+names[i]+'</span></div>';
-    }
-    h+='</div>';
-    c.innerHTML=h;
-  };
-  try{window._buildRoadmap();}catch(e){}
-
-  // 2. 阶段导航
-  window._stageNavHTML=function(){
-    var names=_getNames(),total=names.length;
-    if(!total)return '';
-    var cur=_getCur(),s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):0;
-    var h='<div class="stage-nav"><div class="sn-bar">';
-    for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
-    }
-    h+='</div>';
-    h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
-
-    h+='</div>';
-    return h;
-  };
-
-  // 3. 通关总结
-  window._summaryHTML=function(){
-    var names=_getNames(),total=names.length;
-    var s=_countDone();
-    var pct=s.total>0?Math.round(s.done/s.total*100):100;
-    var h='<div class="summary-box">';
-    h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
-    h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
-    h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
-    h+='</div>';
-    h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
-    for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
-    return h;
-  };
-
-  // 4. 增强 renderPanel - monkey-patch
-  if(typeof window.renderPanel==='function'){
-    var _origRP=window.renderPanel;
-    window.renderPanel=function(){
-      _origRP.apply(this,arguments);
-      // 在 panel 顶部插入阶段导航
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-  // 也处理全局 renderPanel
-  if(typeof renderPanel==='function'&&!window._rpPatched){
-    window._rpPatched=true;
-    var _origRP2=renderPanel;
-    renderPanel=function(){
-      _origRP2.apply(this,arguments);
-      var p=document.getElementById('panel')||document.querySelector('.panel');
-      if(p&&p.innerHTML&&!p.innerHTML.includes('stage-nav')){
-        p.innerHTML=window._stageNavHTML()+p.innerHTML;
-      }
-    };
-  }
-})();
-try{renderPanel();}catch(e){}
 
 </script>
 </body>

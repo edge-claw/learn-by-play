@@ -186,6 +186,19 @@ function completeObj(li,oi){
   levelObjs[li][oi]=true;
   updatePanel();
 }
+function clampNumber(v,min,max){
+  const n=Number(v);
+  if(!Number.isFinite(n))return null;
+  return Math.min(max,Math.max(min,n));
+}
+function setSliderState(st,key,el,min,max,scale=1){
+  if(!st||!key||!el)return false;
+  const value=clampNumber(el.value,min,max);
+  if(value===null)return false;
+  el.value=value;
+  st[key]=value*scale;
+  return true;
+}
 
 // ===== Resize =====
 function resize(){
@@ -211,7 +224,7 @@ const levels=[
  afterPanel(){
    const sl=document.getElementById('distSlider'),vl=document.getElementById('distVal');
    const fb=document.getElementById('fireBtn'),cb=document.getElementById('calcBtn');
-   if(sl)sl.oninput=()=>{this.st.dist=+sl.value;vl.textContent=sl.value+' km';};
+   if(sl)sl.oninput=()=>{if(!setSliderState(this.st,'dist',sl,50,300))return;vl.textContent=this.st.dist+' km';};
    if(fb)fb.onclick=()=>{
      this.st.pulse={x:0,t:0,speed:400,returning:false};
      this.st.echo=null;this.st.fired=true;this.st.received=false;
@@ -292,8 +305,8 @@ const levels=[
    <p class="desc">占空比: <b style="color:#4ade80">${duty}%</b></p>`;},
  afterPanel(){
    const pws=document.getElementById('pwSlider'),prfs=document.getElementById('prfSlider');
-   if(pws)pws.oninput=()=>{this.st.pw=+pws.value;completeObj(1,1);updatePanel();};
-   if(prfs)prfs.oninput=()=>{this.st.prf=+prfs.value;completeObj(1,0);updatePanel();};
+   if(pws)pws.oninput=()=>{if(!setSliderState(this.st,'pw',pws,1,100))return;completeObj(1,1);updatePanel();};
+   if(prfs)prfs.oninput=()=>{if(!setSliderState(this.st,'prf',prfs,100,10000))return;completeObj(1,0);updatePanel();};
    const rmax=C/(2*this.st.prf)/1000;
    const dR=C*this.st.pw*1e-6/2;
    if(rmax>100&&rmax<200&&dR<500)completeObj(1,2);
@@ -367,7 +380,7 @@ const levels=[
  afterPanel(){
    const vs=document.getElementById('velSlider'),mb=document.getElementById('mtiBtn');
    if(vs)vs.oninput=()=>{
-     this.st.vel=+vs.value;
+     if(!setSliderState(this.st,'vel',vs,-500,500))return;
      if(this.st.vel<0)completeObj(2,0);
      if(this.st.vel>0)completeObj(2,1);
      updatePanel();
@@ -456,7 +469,8 @@ const levels=[
    ['pt','gain','rcs','smin'].forEach(k=>{
      const el=document.getElementById(k+'Slider');
      if(el)el.oninput=()=>{
-       this.st[k]=+el.value;
+       const ranges={pt:[1,1000],gain:[10,50],rcs:[0.01,100],smin:[-120,-60]};
+       if(!ranges[k]||!setSliderState(this.st,k,el,ranges[k][0],ranges[k][1]))return;
        if(k==='pt'||k==='gain')completeObj(3,0);
        if(k==='rcs')completeObj(3,2);
        updatePanel();
@@ -533,8 +547,8 @@ const levels=[
  afterPanel(){
    const cb=document.getElementById('chirpBtn'),fb=document.getElementById('filterBtn');
    const bws=document.getElementById('bwSlider'),pws=document.getElementById('pw5Slider');
-   if(bws)bws.oninput=()=>{this.st.bw=+bws.value;this.st.compressed=false;this.st.filtering=false;updatePanel();};
-   if(pws)pws.oninput=()=>{this.st.pw=+pws.value;this.st.compressed=false;this.st.filtering=false;updatePanel();};
+   if(bws)bws.oninput=()=>{if(!setSliderState(this.st,'bw',bws,1,50))return;this.st.compressed=false;this.st.filtering=false;updatePanel();};
+   if(pws)pws.oninput=()=>{if(!setSliderState(this.st,'pw',pws,10,200))return;this.st.compressed=false;this.st.filtering=false;updatePanel();};
    if(cb)cb.onclick=()=>{this.st.notice='';completeObj(4,0);this.st.compressed=false;this.st.filtering=false;};
    if(fb)fb.onclick=()=>{
      if(!levelObjs[4][0]){
@@ -633,12 +647,12 @@ const levels=[
  afterPanel(){
    const as=document.getElementById('angSlider'),ns=document.getElementById('neSlider'),mb=document.getElementById('mbBtn');
    if(as)as.oninput=()=>{
-     this.st.angle=+as.value;
+     if(!setSliderState(this.st,'angle',as,-60,60))return;
      if(Math.abs(this.st.angle)<3)completeObj(5,0);
      if(Math.abs(this.st.angle-30)<3||Math.abs(this.st.angle+30)<3)completeObj(5,1);
      updatePanel();
    };
-   if(ns)ns.oninput=()=>{this.st.nElem=+ns.value;updatePanel();};
+   if(ns)ns.oninput=()=>{if(!setSliderState(this.st,'nElem',ns,4,32))return;updatePanel();};
    if(mb)mb.onclick=()=>{
      this.st.multiBeam=!this.st.multiBeam;
      if(this.st.multiBeam)completeObj(5,2);
@@ -718,7 +732,7 @@ const levels=[
  afterPanel(){
    const ss=document.getElementById('scanSlider');
    const db=document.getElementById('detectBtn'),tb=document.getElementById('trackBtn'),pb=document.getElementById('predictBtn');
-   if(ss)ss.oninput=()=>{this.st.scanSpeed=+ss.value;updatePanel();};
+   if(ss)ss.oninput=()=>{if(!setSliderState(this.st,'scanSpeed',ss,0.5,3))return;updatePanel();};
    if(db)db.onclick=()=>{this.st.notice='';this.st.detected=true;completeObj(6,0);updatePanel();};
    if(tb)tb.onclick=()=>{
      if(!this.st.detected){
@@ -834,14 +848,15 @@ const levels=[
 ];
 const quizData=[
   {q:'脉冲雷达测距为什么公式里要除以 2？',opts:['电磁波走的是往返距离','光速需要折半','目标只反射一半能量'],ans:0,ok:'对。测到的是发射到回波的往返时间，所以距离 R=cΔt/2。',bad:'回波时间包含去程和回程。'},
-  {q:'脉冲宽度 τ 主要影响什么？',opts:['距离分辨率 ΔR=cτ/2','目标颜色','天线机械转速'],ans:0,ok:'对。脉冲越窄，距离分辨率越好。',bad:'本关面板里的 ΔR 就由 τ 决定。'},
-  {q:'多普勒频移主要用来估计目标的什么？',opts:['径向速度','目标材质颜色','发射机温度'],ans:0,ok:'对。fd=2v/λ，频移直接对应径向速度。',bad:'多普勒章节关注运动目标的速度信息。'},
-  {q:'雷达方程中的探测距离与发射功率近似是什么关系？',opts:['距离与功率的四次方根成正比','距离与功率完全线性成正比','距离与功率无关'],ans:0,ok:'对。要让距离翻倍，功率大约要增加 16 倍。',bad:'雷达回波经历 R⁴ 衰减。'},
-  {q:'脉冲压缩的核心收益是什么？',opts:['兼顾长脉冲能量和窄脉冲距离分辨率','让雷达不再需要接收机','把目标速度变成 0'],ans:0,ok:'对。Chirp 加匹配滤波可以压缩脉冲，提高距离分辨率。',bad:'看压缩前后分辨率对比条。'},
-  {q:'相控阵雷达如何快速改变波束方向？',opts:['调节阵元相位差进行电子扫描','整体机械旋转每个阵元','只调大噪声门限'],ans:0,ok:'对。相位控制让主瓣方向移动，无需机械转动。',bad:'相控阵的关键是阵元间相位差。'},
-  {q:'目标追踪中卡尔曼滤波主要做什么？',opts:['融合测量和预测，平滑并外推航迹','随机丢弃所有目标','只显示原始噪声点'],ans:0,ok:'对。卡尔曼滤波把测量和运动模型结合，用于预测未来位置。',bad:'本关的“预测位置”就是航迹滤波后的外推。'}
+  {q:'脉冲宽度 τ 主要影响什么？',opts:['目标颜色','距离分辨率 ΔR=cτ/2','天线机械转速'],ans:1,ok:'对。脉冲越窄，距离分辨率越好。',bad:'本关面板里的 ΔR 就由 τ 决定。'},
+  {q:'多普勒频移主要用来估计目标的什么？',opts:['目标材质颜色','发射机温度','径向速度'],ans:2,ok:'对。fd=2v/λ，频移直接对应径向速度。',bad:'多普勒章节关注运动目标的速度信息。'},
+  {q:'雷达方程中的探测距离与发射功率近似是什么关系？',opts:['距离与功率完全线性成正比','距离与功率的四次方根成正比','距离与功率无关'],ans:1,ok:'对。要让距离翻倍，功率大约要增加 16 倍。',bad:'雷达回波经历 R⁴ 衰减。'},
+  {q:'脉冲压缩的核心收益是什么？',opts:['让雷达不再需要接收机','把目标速度变成 0','兼顾长脉冲能量和窄脉冲距离分辨率'],ans:2,ok:'对。Chirp 加匹配滤波可以压缩脉冲，提高距离分辨率。',bad:'看压缩前后分辨率对比条。'},
+  {q:'相控阵雷达如何快速改变波束方向？',opts:['整体机械旋转每个阵元','调节阵元相位差进行电子扫描','只调大噪声门限'],ans:1,ok:'对。相位控制让主瓣方向移动，无需机械转动。',bad:'相控阵的关键是阵元间相位差。'},
+  {q:'目标追踪中卡尔曼滤波主要做什么？',opts:['随机丢弃所有目标','只显示原始噪声点','融合测量和预测，平滑并外推航迹'],ans:2,ok:'对。卡尔曼滤波把测量和运动模型结合，用于预测未来位置。',bad:'本关的“预测位置”就是航迹滤波后的外推。'}
 ];
 function goLevel(i){
+  i=Number(i);
   if(!canGoLevel(i))return;
   curLevel=i;time=0;
   if(levels[i].init)levels[i].init();
@@ -852,7 +867,8 @@ function updateBar(){
   let h='';
   for(let i=0;i<levels.length;i++){
     const unlocked=canGoLevel(i);
-    h+=`<button class="${i===curLevel?'cur ':''}${levelCompleted[i]?'completed ':''}" ${unlocked?'':'disabled'} onclick="${unlocked?'goLevel('+i+')':''}">${i+1}</button>`;
+    const action=unlocked?`onclick="goLevel(${i})"`:'disabled';
+    h+=`<button class="${i===curLevel?'cur ':''}${levelCompleted[i]?'completed ':''}" ${action}>${i+1}</button>`;
   }
   levelNav.innerHTML=h;
 }
@@ -878,14 +894,16 @@ function updatePanel(){
 }
 
 function canGoLevel(i){
-  return i>=0&&i<levels.length&&(i===0||levelCompleted[i]||levelCompleted[i-1]);
+  i=Number(i);
+  return Number.isInteger(i)&&i>=0&&i<levels.length&&(i===0||levelCompleted[i]||levelCompleted[i-1]);
 }
 function stageNavHTML(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   for(let i=0;i<levels.length;i++){
     const unlocked=canGoLevel(i);
     const cls=levelCompleted[i]?'done':i===curLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    const action=unlocked?` onclick="goLevel(${i})"`:'';
+    h+=`<div class="sn-d ${cls}"${action}></div>`;
   }
   h+=`</div><div class="sn-info">第 ${curLevel+1}/${levels.length} 关 | 已通关 ${levelCompleted.filter(Boolean).length}/${levels.length}</div>`;
   h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
@@ -901,10 +919,16 @@ function quizHTML(i){
   return h;
 }
 function answerQuiz(i,choice){
-  const q=quizData[i],ok=choice===q.ans;
+  i=Number(i);choice=Number(choice);
+  if(!Number.isInteger(i)||!Number.isInteger(choice)||i!==curLevel||quizPassed[i]||levelCompleted[i]||!levelObjs[i]||!levelObjs[i].every(v=>v))return false;
+  const q=quizData[i];
+  if(!q||choice<0||choice>=q.opts.length)return false;
+  if(i>0&&!levelCompleted[i-1])return false;
+  const ok=choice===q.ans;
   quizFeedback[i]={ok,text:ok?q.ok:q.bad};
   if(ok){quizPassed[i]=true;levelCompleted[i]=true;}
   updatePanel();updateBar();
+  return ok;
 }
 function summaryHTML(){
   let h='<div class="summary-box"><div class="summary-title">🏆 雷达原理探险通关</div>';

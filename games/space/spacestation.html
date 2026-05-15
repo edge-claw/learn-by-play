@@ -197,11 +197,11 @@ const levels=[
 
 const quizData=[
 {q:'空间站模块交会对接前，最关键的条件是什么？',opts:['匹配轨道、速度和相对位置','只要靠近就能自动吸附','先把所有模块一次性发射到同一点'],ans:0,ok:'对。交会对接的核心是相对运动控制，位置和速度都要精确匹配。',bad:'本关重点是轨道、速度和相对位置的匹配，不是简单靠近。'},
-{q:'ECLSS 生命支持系统主要维持哪些闭环？',opts:['供氧、去除二氧化碳和水回收','只负责给舱内加热','只负责控制舱外太阳翼'],ans:0,ok:'对。生命支持要同时管理氧气、二氧化碳、水和环境安全。',bad:'ECLSS 是环境控制与生命支持系统，不只是温控或供电。'},
-{q:'空间站使用 CMG 调整姿态时，依赖的物理基础是什么？',opts:['角动量守恒产生控制力矩','消耗大量燃料直接推开空间站','改变太阳光照颜色'],ans:0,ok:'对。控制力矩陀螺通过角动量交换调整姿态，能减少推进剂消耗。',bad:'CMG 的关键不是燃料喷射，而是角动量交换。'},
+{q:'ECLSS 生命支持系统主要维持哪些闭环？',opts:['只负责给舱内加热','供氧、去除二氧化碳和水回收','只负责控制舱外太阳翼'],ans:1,ok:'对。生命支持要同时管理氧气、二氧化碳、水和环境安全。',bad:'ECLSS 是环境控制与生命支持系统，不只是温控或供电。'},
+{q:'空间站使用 CMG 调整姿态时，依赖的物理基础是什么？',opts:['消耗大量燃料直接推开空间站','改变太阳光照颜色','角动量守恒产生控制力矩'],ans:2,ok:'对。控制力矩陀螺通过角动量交换调整姿态，能减少推进剂消耗。',bad:'CMG 的关键不是燃料喷射，而是角动量交换。'},
 {q:'微重力环境让哪些现象更明显？',opts:['无明显浮力对流和沉降，表面张力效应突出','所有物体质量变为零','化学反应完全停止'],ans:0,ok:'对。微重力削弱对流和沉降，让流体、火焰、晶体生长呈现不同形态。',bad:'微重力不是没有质量，而是重力相关效应被大幅削弱。'},
-{q:'为什么聚乙烯或水常用于高能粒子辐射防护？',opts:['富含氢，对高能带电粒子屏蔽更有效','密度无限大，可以挡住一切辐射','能把太阳粒子转化成电能'],ans:0,ok:'对。富氢材料对太阳高能质子等粒子有较好的屏蔽效果。',bad:'防护重点是材料成分和粒子相互作用，富氢材料通常优于单纯加厚铝。'},
-{q:'EVA 舱外活动中必须重点管理什么？',opts:['系绳、氧气、推进剂和返回路径','只要修好设备即可不返回','航天服可以无限供应资源'],ans:0,ok:'对。EVA 是资源受限任务，安全返回和生命保障同样重要。',bad:'舱外活动不能只看维修进度，还要管理生命支持和返回气闸。'},
+{q:'为什么聚乙烯或水常用于高能粒子辐射防护？',opts:['密度无限大，可以挡住一切辐射','富含氢，对高能带电粒子屏蔽更有效','能把太阳粒子转化成电能'],ans:1,ok:'对。富氢材料对太阳高能质子等粒子有较好的屏蔽效果。',bad:'防护重点是材料成分和粒子相互作用，富氢材料通常优于单纯加厚铝。'},
+{q:'EVA 舱外活动中必须重点管理什么？',opts:['只要修好设备即可不返回','航天服可以无限供应资源','系绳、氧气、推进剂和返回路径'],ans:2,ok:'对。EVA 是资源受限任务，安全返回和生命保障同样重要。',bad:'舱外活动不能只看维修进度，还要管理生命支持和返回气闸。'},
 {q:'霍曼转移轨道的主要优势是什么？',opts:['在两个圆轨道之间以较低燃料代价转移','让飞船瞬间到达目标轨道','不需要等待任何相位关系'],ans:0,ok:'对。霍曼转移利用半个椭圆轨道完成省燃料的轨道转移。',bad:'霍曼转移省燃料，但仍需要合适发射窗口和飞行时间。'}
 ];
 
@@ -829,30 +829,38 @@ goalReady.add(n);
 renderPanel();
 }
 
+function clampNumber(value,fallback,min,max){
+const n=Number(value);
+return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback;
+}
+
 function setLifeSupport(key,el){
-levelState[key]=+el.value;
+levelState[key]=clampNumber(el.value,levelState[key],0,100);
+el.value=levelState[key];
 const out=document.getElementById(key+'Val');
 if(out)out.textContent=levelState[key]+'%';
 }
 
 function setShieldThickness(el){
-levelState.thickness=+el.value;
+levelState.thickness=clampNumber(el.value,levelState.thickness,1,30);
+el.value=levelState.thickness;
 const out=document.getElementById('thicknessVal');
 if(out)out.textContent=levelState.thickness+' cm';
 }
 
 function canGoLevel(n){
-return n>=0&&n<levels.length&&(n===0||completedLevels.has(n)||completedLevels.has(n-1));
+n=Number(n);
+return Number.isInteger(n)&&n>=0&&n<levels.length&&(n===0||quizPassed.has(n-1));
 }
 
 function stageNavHTML(){
 let h='<div class="stage-nav"><div class="sn-bar">';
 levels.forEach((l,i)=>{
 const unlocked=canGoLevel(i);
-const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
-h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+const cls=quizPassed.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
+h+=unlocked&&i!==currentLevel?`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${cls}"></div>`;
 });
-h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${completedLevels.size}/${levels.length}</div>`;
+h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${quizPassed.size}/${levels.length}</div>`;
 h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
 return h;
 }
@@ -868,17 +876,25 @@ return h;
 }
 
 function answerQuiz(n,optIdx){
-const q=quizData[n],ok=optIdx===q.ans;
+n=Number(n);optIdx=Number(optIdx);
+if(!Number.isInteger(n)||!Number.isInteger(optIdx))return false;
+if(n!==currentLevel||quizPassed.has(n)||!goalReady.has(n)||!levelState.goals||!levelState.goals.every(Boolean))return false;
+const q=quizData[n];
+if(!q||optIdx<0||optIdx>=q.opts.length)return false;
+if(n>0&&!quizPassed.has(n-1))return false;
+const ok=optIdx===q.ans;
 quizFeedback[n]={ok:ok,text:ok?q.ok:q.bad};
 if(ok){quizPassed.add(n);completedLevels.add(n);}
 renderPanel();
+return ok;
 }
 
 function summaryHTML(){
+if(quizPassed.size<levels.length)return '';
 let h='<div class="summary-box"><div class="summary-title">🏆 空间站生存工程通关</div>';
 h+='<div class="summary-sub">你已完成 7 个空间站工程主题</div><div class="summary-stats">';
 h+=`<div class="summary-stat"><div class="num">${levels.length}</div><div class="label">关卡完成</div></div>`;
-h+=`<div class="summary-stat"><div class="num">${completedLevels.size}</div><div class="label">测验通过</div></div>`;
+h+=`<div class="summary-stat"><div class="num">${quizPassed.size}</div><div class="label">测验通过</div></div>`;
 h+='<div class="summary-stat"><div class="num">100%</div><div class="label">知识闭环</div></div></div>';
 h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">📚 关键知识回顾</div>';
 levels.forEach(l=>{h+=`<div>✅ ${l.name}</div>`;});
@@ -970,7 +986,7 @@ if(s.goals&&s.goals.every(Boolean)){
 }
 _patchPanel(panelEl,h);
 bbLeft.textContent=`关卡 ${currentLevel+1}/7: ${L.name}`;
-bbRight.textContent=`已完成: ${completedLevels.size}/7`;
+bbRight.textContent=`已完成: ${quizPassed.size}/7`;
 }
 
 /* ========== RESULT ========== */
@@ -985,7 +1001,7 @@ const learnTexts=[
 ];
 
 function closeResult(){document.getElementById('resultModal').classList.add('hidden');}
-function nextLevel(){closeResult();initLevel(currentLevel+1);renderPanel();}
+function nextLevel(){if(!quizPassed.has(currentLevel)||!canGoLevel(currentLevel+1))return;closeResult();initLevel(currentLevel+1);renderPanel();}
 function retryLevel(){closeResult();initLevel(currentLevel);renderPanel();}
 
 /* ========== MOUSE / TOUCH ========== */
@@ -1032,7 +1048,7 @@ else if(currentLevel===6)updateLevel6();
 }
 }
 
-function goLevel(i){initLevel(i);}
+function goLevel(i){i=Number(i);if(!Number.isInteger(i)||!canGoLevel(i))return;initLevel(i);}
 
 
 </script>

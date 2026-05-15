@@ -123,6 +123,8 @@ select,.num-input{background:var(--concept-bg);border:1px solid #2a2a5a;color:#c
 .quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
 .quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);color:var(--quiz-correct-text);border-color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text);border-color:var(--quiz-wrong-text)}
 .quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
 .quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
 .quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
@@ -182,40 +184,63 @@ const levelObjs=Array.from({length:7},()=>[false,false,false]);
 const levelNames=['进程管理','CPU 调度','内存管理','页面置换','同步与死锁','文件系统','磁盘调度'];
 const levelIcons=['🔄','📊','🧠','📄','🔒','📁','💿'];
 const quizData=[
-  {q:'进程上下文切换时，操作系统主要保存和恢复什么？',opts:['寄存器、程序计数器等运行现场','显示器亮度','文件扩展名'],ans:0,ok:'对。上下文切换保存 PCB 中的运行现场，让进程稍后继续执行。',bad:'上下文切换发生在 CPU 执行权切换时，核心是保存和恢复运行现场。'},
-  {q:'Round Robin 调度相比 FCFS 更强调什么？',opts:['按时间片公平轮转','永远运行最短作业','只运行第一个进程'],ans:0,ok:'对。RR 通过时间片轮转改善交互式任务的响应性。',bad:'RR 的关键不是到达顺序，而是时间片轮转。'},
-  {q:'TLB 在分页内存管理中的作用是什么？',opts:['缓存页表项以加速地址转换','永久保存所有文件','替代 CPU 调度器'],ans:0,ok:'对。TLB 命中能减少页表访问开销。',bad:'TLB 是地址转换缓存，不是磁盘或调度结构。'},
-  {q:'LRU 页面置换会优先淘汰哪一页？',opts:['最久没有被访问的页','刚刚访问过的页','页号最大的页'],ans:0,ok:'对。LRU 用最近使用历史近似预测未来访问。',bad:'LRU 关注访问时间，不关注页号大小。'},
-  {q:'死锁四条件中，有序资源分配主要打破哪一个？',opts:['循环等待','互斥','进程创建'],ans:0,ok:'对。统一拿资源顺序可以避免形成等待环。',bad:'有序分配的目标是破坏循环等待条件。'},
-  {q:'inode 通常保存什么信息？',opts:['文件元数据和数据块指针','用户看到的文件名字符串本身','CPU 时间片长度'],ans:0,ok:'对。目录负责文件名到 inode 的映射，inode 负责元数据与块指针。',bad:'文件名通常在目录项中，inode 主要保存元数据和块映射。'},
-  {q:'SCAN 磁盘调度为什么也叫电梯算法？',opts:['磁头像电梯一样沿一个方向服务请求再折返','随机选择请求','只服务最远的请求'],ans:0,ok:'对。SCAN 通过单向扫描减少来回摆动和饥饿。',bad:'SCAN 的特征是方向性扫描，而不是随机或只选最远。'}
+  {q:'进程上下文切换时，操作系统主要保存和恢复什么？',opts:['寄存器、程序计数器等运行现场','显示器亮度','文件扩展名'],ans:0,ok:'对。上下文切换保存 PCB 中的运行现场，让进程稍后继续执行。',bad:'上下文切换发生在 CPU 执行权切换时，核心是保存和恢复运行现场。',why:'PCB 会记录寄存器、程序计数器、栈指针等状态，调度器依靠这些状态让进程从暂停处继续运行。'},
+  {q:'Round Robin 调度相比 FCFS 更强调什么？',opts:['永远运行最短作业','按时间片公平轮转','只运行第一个进程'],ans:1,ok:'对。RR 通过时间片轮转改善交互式任务的响应性。',bad:'RR 的关键不是到达顺序，而是时间片轮转。',why:'时间片让长任务不能长期占用 CPU，短交互任务也能周期性获得响应。'},
+  {q:'TLB 在分页内存管理中的作用是什么？',opts:['永久保存所有文件','替代 CPU 调度器','缓存页表项以加速地址转换'],ans:2,ok:'对。TLB 命中能减少页表访问开销。',bad:'TLB 是地址转换缓存，不是磁盘或调度结构。',why:'虚拟地址转换常要查页表，TLB 缓存近期页号到物理帧的映射，命中时可少一次内存访问。'},
+  {q:'LRU 页面置换会优先淘汰哪一页？',opts:['页号最大的页','最久没有被访问的页','刚刚访问过的页'],ans:1,ok:'对。LRU 用最近使用历史近似预测未来访问。',bad:'LRU 关注访问时间，不关注页号大小。',why:'LRU 假设最近常用的页面短期内还会再用，因此牺牲最长时间未访问的页面。'},
+  {q:'死锁四条件中，有序资源分配主要打破哪一个？',opts:['互斥','进程创建','循环等待'],ans:2,ok:'对。统一拿资源顺序可以避免形成等待环。',bad:'有序分配的目标是破坏循环等待条件。',why:'所有线程按同一资源顺序申请锁，就不会出现 A 等 B、B 又等 A 的环形等待。'},
+  {q:'inode 通常保存什么信息？',opts:['用户看到的文件名字符串本身','文件元数据和数据块指针','CPU 时间片长度'],ans:1,ok:'对。目录负责文件名到 inode 的映射，inode 负责元数据与块指针。',bad:'文件名通常在目录项中，inode 主要保存元数据和块映射。',why:'目录项把名称映射到 inode 编号；inode 再描述权限、大小、时间戳和数据块位置。'},
+  {q:'SCAN 磁盘调度为什么也叫电梯算法？',opts:['随机选择请求','只服务最远的请求','磁头像电梯一样沿一个方向服务请求再折返'],ans:2,ok:'对。SCAN 通过单向扫描减少来回摆动和饥饿。',bad:'SCAN 的特征是方向性扫描，而不是随机或只选最远。',why:'磁头像电梯沿一个方向服务沿途请求，到边界后再反向，能减少频繁折返造成的寻道开销。'}
 ];
 let quizPassed=new Set(),quizFeedback={};
-function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel()}}
+function completeObj(li,oi){if(li!==curLevel||!levelObjs[li]||levelObjs[li][oi])return;levelObjs[li][oi]=true;renderPanel()}
 function checkAllDone(li){return levelObjs[li].every(v=>v)}
 function showLearnBoxIfPassed(li){if(levelObjs[li]&&levelObjs[li].every(v=>v)&&quizPassed.has(li))document.querySelectorAll('.learn-box').forEach(e=>e.style.display='block')}
 function startGame(){document.getElementById('startScreen').classList.add('hidden');panel.style.display='block';bar.style.display='flex';buildLevelBtns();goLevel(0)}
-function buildLevelBtns(){levelBtns.innerHTML='';for(let i=0;i<7;i++){const b=document.createElement('button');b.className='level-btn';b.textContent=(i+1);b.onclick=()=>goLevel(i);levelBtns.appendChild(b)}}
+function buildLevelBtns(){levelBtns.innerHTML='';for(let i=0;i<7;i++){const b=document.createElement('button');b.className='level-btn';b.textContent=(i+1);if(!isUnlocked(i))b.disabled=true;b.onclick=()=>goLevel(i);levelBtns.appendChild(b)}}
 function isUnlocked(i){return i===0||quizPassed.has(i-1)}
 function goLevel(i){if(i<0||i>=7||!isUnlocked(i))return;curLevel=i;document.querySelectorAll('.level-btn').forEach((b,j)=>b.classList.toggle('active',j===i));barText.textContent=levelIcons[i]+' '+levelNames[i];initLevel(i);renderPanel()}
 function objHTML(li){return levelObjs[li].map((v,i)=>`<div class="obj-row"><div class="dot${v?' done':''}"></div><span>${objTexts[li][i]}</span></div>`).join('')}
 function quizHTML(li){
-  const q=quizData[li],fb=quizFeedback[li];
+  const q=quizData[li],fb=quizFeedback[li],passed=quizPassed.has(li);
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
   h+=`<div class="quiz-q">${q.q}</div>`;
-  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`});
+  q.opts.forEach((opt,i)=>{
+    const cls=passed&&i===q.ans?' correct':fb?(i===q.ans?' correct':i===fb.choice&&!fb.ok?' wrong':''):'';
+    h+=`<button class="quiz-opt${cls}" onclick="answerQuiz(${li},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;
+  });
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
   h+='</div>';
   return h;
 }
 function answerQuiz(li,choice){
-  if(li!==curLevel||quizPassed.has(li))return;
-  const q=quizData[li],ok=choice===q.ans;
-  quizFeedback[li]={ok:ok,text:ok?q.ok:q.bad};
+  li=Number(li);choice=Number(choice);
+  if(!Number.isInteger(li)||!Number.isInteger(choice)||li!==curLevel||quizPassed.has(li)||!levelObjs[li]||!checkAllDone(li))return false;
+  const q=quizData[li];
+  if(!q||choice<0||choice>=q.opts.length)return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  const ok=choice===q.ans;
+  quizFeedback[li]={ok:ok,choice:choice,text:(ok?q.ok:q.bad)+(q.why?' '+q.why:'')};
   if(ok)quizPassed.add(li);
+  buildLevelBtns();
   renderPanel();
+  return ok;
 }
 window.answerQuiz=answerQuiz;
+function clampNumber(value,min,max,fallback){
+  if(value===''||value==null)return fallback;
+  const n=Number(value);
+  if(!Number.isFinite(n))return fallback;
+  return Math.min(max,Math.max(min,n));
+}
+function setVirtualAddressInput(el){
+  vaddrInput=clampNumber(el.value,0,65535,vaddrInput);
+  if(el)el.value=vaddrInput;
+}
+function setPageFrameCountInput(el){
+  prFrameCount=clampNumber(el.value,2,5,prFrameCount);
+  if(el)el.value=prFrameCount;
+}
 const objTexts=[
 ['创建一个进程','触发状态转换到等待','观察上下文切换'],
 ['运行 FCFS 调度','运行 Round Robin','比较平均等待时间'],
@@ -234,6 +259,7 @@ function createProc(){const p={id:++procIdCnt,state:0,x:0,y:0,tx:0,ty:0,age:0,bu
 function runProc(){const r=procs.find(p=>p.state===2);if(r){r.state=1;ctxSwitchCount++;completeObj(0,2)}const p=procs.find(p=>p.state===1);if(p){p.state=2;renderPanel()}}
 function blockProc(){const p=procs.find(p=>p.state===2);if(p){p.state=3;completeObj(0,1);setTimeout(()=>{p.state=1;renderPanel()},2000);renderPanel()}}
 function termProc(){const p=procs.find(p=>p.state===2);if(p){p.state=4;renderPanel()}}
+function demoContextSwitch(){while(procs.filter(p=>p.state===1||p.state===2).length<2){procs.push({id:++procIdCnt,state:1,x:0,y:0,tx:0,ty:0,age:0,burst:Math.floor(Math.random()*5)+3})}const running=procs.find(p=>p.state===2);if(!running)procs.find(p=>p.state===1).state=2;runProc();completeObj(0,0);completeObj(0,2);renderPanel()}
 function drawL1(){ctx.clearRect(0,0,W,H);const stateX=[W*0.1,W*0.35,W*0.6,W*0.6,W*0.85];const stateY=[H*0.15,H*0.15,H*0.15,H*0.55,H*0.55];
 // Draw state boxes
 for(let i=0;i<5;i++){ctx.strokeStyle=PCOLORS[i];ctx.lineWidth=2;ctx.strokeRect(stateX[i]-50,stateY[i]-20,100,40);ctx.fillStyle=PCOLORS[i];ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(PSTATES[i],stateX[i],stateY[i]+5)}
@@ -246,14 +272,17 @@ ctx.fillStyle=PCOLORS[si]+'80';ctx.fillRect(p.x,p.y,30,24);ctx.fillStyle=t().lab
 // Info
 ctx.fillStyle='#444';ctx.font='18px sans-serif';ctx.textAlign='left';ctx.fillText(`进程数: ${procs.length}  上下文切换: ${ctxSwitchCount}`,10,H-20)}
 // ===== LEVEL 2: CPU Scheduling =====
-let schedAlgo='FCFS',schedProcs=[],schedResult=[],schedRunning=false,schedTime=0,schedCompared=false;
-function initL2(){schedProcs=[{name:'P1',arrive:0,burst:6},{name:'P2',arrive:1,burst:4},{name:'P3',arrive:2,burst:2},{name:'P4',arrive:3,burst:3}];schedResult=[];schedRunning=false;schedTime=0;schedCompared=false}
+let schedAlgo='FCFS',schedProcs=[],schedResult=[],schedRunning=false,schedTime=0,schedCompared=false,schedHistory={};
+function initL2(){schedProcs=[{name:'P1',arrive:0,burst:6},{name:'P2',arrive:1,burst:4},{name:'P3',arrive:2,burst:2},{name:'P4',arrive:3,burst:3}];schedResult=[];schedRunning=false;schedTime=0;schedCompared=false;schedHistory={}}
 function addSchedProc(){const n=schedProcs.length+1;schedProcs.push({name:'P'+n,arrive:Math.floor(Math.random()*4),burst:Math.floor(Math.random()*6)+1});renderPanel()}
 function runSchedule(){const ps=schedProcs.map(p=>({...p,remain:p.burst,start:-1,end:-1,wait:0}));schedResult=[];let t=0,q=[],done=[];
 if(schedAlgo==='FCFS'){ps.sort((a,b)=>a.arrive-b.arrive);ps.forEach(p=>{if(t<p.arrive)t=p.arrive;p.start=t;p.end=t+p.burst;for(let i=0;i<p.burst;i++)schedResult.push({t:t+i,proc:p.name});t=p.end;p.wait=p.start-p.arrive});completeObj(1,0)}
 else if(schedAlgo==='SJF'){let rem=[...ps];t=0;while(rem.length){let avail=rem.filter(p=>p.arrive<=t);if(!avail.length){t++;schedResult.push({t:t-1,proc:'idle'});continue}avail.sort((a,b)=>a.burst-b.burst);let p=avail[0];p.start=t;p.end=t+p.burst;p.wait=p.start-p.arrive;for(let i=0;i<p.burst;i++)schedResult.push({t:t+i,proc:p.name});t=p.end;rem=rem.filter(q=>q!==p)}}
 else if(schedAlgo==='RR'){let rem=ps.filter(()=>true),tq=2;t=0;let rq=[];while(rem.length||rq.length){let newArr=rem.filter(p=>p.arrive<=t);newArr.sort((a,b)=>a.arrive-b.arrive);rq.push(...newArr);rem=rem.filter(p=>p.arrive>t);if(!rq.length){t++;schedResult.push({t:t-1,proc:'idle'});continue}let p=rq.shift();if(p.start<0)p.start=t;let run=Math.min(tq,p.remain);for(let i=0;i<run;i++)schedResult.push({t:t+i,proc:p.name});t+=run;p.remain-=run;let newArr2=rem.filter(p=>p.arrive<=t);newArr2.sort((a,b)=>a.arrive-b.arrive);rq.push(...newArr2);rem=rem.filter(p=>p.arrive>t);if(p.remain>0)rq.push(p);else{p.end=t;p.wait=p.end-p.arrive-p.burst}}completeObj(1,1)}
+schedHistory[schedAlgo]=avgWait(ps);
+if(schedHistory.FCFS!==undefined&&schedHistory.RR!==undefined){schedCompared=true;completeObj(1,2)}
 schedRunning=true;schedTime=0;renderPanel()}
+function avgWait(procs){if(!procs.length)return 0;return procs.reduce((sum,p)=>sum+Math.max(0,p.wait||0),0)/procs.length}
 function drawL2(){ctx.clearRect(0,0,W,H);if(!schedResult.length){ctx.fillStyle='#444';ctx.font='22px sans-serif';ctx.textAlign='center';ctx.fillText('选择调度算法并点击"运行调度"',W/2,H/2);return}
 const bw=Math.min(40,W/(schedResult.length+2)),bh=30,ox=40,oy=60;
 const colors={'P1':'#4d96ff','P2':'#f0c060','P3':'#2aaa5a','P4':'#ff6666','P5':'#a78bfa','P6':'#ff8844','idle':'#333'};
@@ -325,7 +354,9 @@ if(prStep<prResult.length)prStep++}
 // ===== LEVEL 5: Dining Philosophers =====
 let phils=[],forks=[],philStrategy='none',deadlocked=false,philRunning=false,deadlockTriggered=false,deadlockAvoided=false;
 function initL5(){phils=Array.from({length:5},(_,i)=>({id:i,state:'thinking',leftFork:false,rightFork:false,timer:Math.random()*100}));forks=Array.from({length:5},()=>({taken:false,by:-1}));deadlocked=false;philRunning=true;deadlockTriggered=false;deadlockAvoided=false;philStrategy='none'}
-function setPhilStrategy(s){philStrategy=s;phils.forEach(p=>{p.state='thinking';p.leftFork=false;p.rightFork=false;p.timer=Math.random()*100});forks.forEach(f=>{f.taken=false;f.by=-1});deadlocked=false;renderPanel()}
+function setPhilStrategy(s){philStrategy=s;phils.forEach(p=>{p.state='thinking';p.leftFork=false;p.rightFork=false;p.timer=Math.random()*100});forks.forEach(f=>{f.taken=false;f.by=-1});deadlocked=false;if(s==='none')forceDeadlockDemo();else if(s==='ordered')forceAvoidDeadlockDemo();renderPanel()}
+function forceDeadlockDemo(){phils.forEach((p,i)=>{p.state='hasLeft';p.leftFork=true;p.rightFork=false;p.timer=999;forks[i].taken=true;forks[i].by=i});deadlocked=true;if(!deadlockTriggered){deadlockTriggered=true;completeObj(4,0);completeObj(4,1)}}
+function forceAvoidDeadlockDemo(){phils[0].state='eating';phils[0].leftFork=true;phils[0].rightFork=true;phils[0].timer=80;forks[0].taken=true;forks[0].by=0;forks[1].taken=true;forks[1].by=0;deadlockAvoided=true;completeObj(4,2)}
 function stepPhils(){if(deadlocked)return;
 phils.forEach((p,i)=>{p.timer--;if(p.timer>0)return;const left=i,right=(i+1)%5;
 if(p.state==='thinking'){if(philStrategy==='ordered'&&i===4){if(!forks[right].taken){forks[right].taken=true;forks[right].by=i;p.rightFork=true;p.state='hasRight'}
@@ -403,24 +434,25 @@ if(li===0){h+=`<h3>🔄 关卡1: 进程管理</h3>
 <div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>进程、PCB、状态转换、上下文切换</div>
 <div class="concept-box"><b>进程</b>是程序的执行实例，拥有独立的 PCB（进程控制块）。<br>进程状态: <b>新建→就绪→运行→等待→终止</b><br><b>上下文切换</b>: CPU 从一个进程切换到另一个进程时保存/恢复寄存器状态。</div>
 <div class="ctrl-row"><button class="act-btn" onclick="createProc()">创建进程</button><button class="act-btn outline" onclick="runProc()">调度运行</button></div>
-<div class="ctrl-row"><button class="act-btn sm outline" onclick="blockProc()">I/O阻塞</button><button class="act-btn sm outline" onclick="termProc()">终止进程</button></div>
+<div class="ctrl-row"><button class="act-btn sm outline" onclick="blockProc()">I/O阻塞</button><button class="act-btn sm outline" onclick="demoContextSwitch()">上下文切换演示</button><button class="act-btn sm outline" onclick="termProc()">终止进程</button></div>
 <div class="hint-box">💡 创建进程后，点"调度运行"让就绪进程获得CPU。点"I/O阻塞"模拟进程等待I/O。</div>
 <h3>目标</h3>${objHTML(0)}
 <div class="learn-box">✅ 进程是OS资源分配的基本单位。状态转换由<span class="sv">调度器</span>和<span class="sv">中断</span>驱动。上下文切换有开销，频繁切换会降低性能。</div>`}
 else if(li===1){h+=`<h3>📊 关卡2: CPU 调度</h3>
 <div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>FCFS、SJF、Round Robin、甘特图</div>
 <div class="concept-box"><b>CPU调度</b>决定哪个就绪进程获得CPU。<br>• <b>FCFS</b>: 先来先服务<br>• <b>SJF</b>: 最短作业优先<br>• <b>RR</b>: 时间片轮转(量子=2)</div>
-<div class="ctrl-row"><select onchange="schedAlgo=this.value"><option value="FCFS">FCFS</option><option value="SJF">SJF</option><option value="RR">Round Robin</option></select>
+<div class="ctrl-row"><select onchange="schedAlgo=this.value"><option value="FCFS"${schedAlgo==='FCFS'?' selected':''}>FCFS</option><option value="SJF"${schedAlgo==='SJF'?' selected':''}>SJF</option><option value="RR"${schedAlgo==='RR'?' selected':''}>Round Robin</option></select>
 <button class="act-btn" onclick="runSchedule()">运行调度</button><button class="act-btn sm outline" onclick="addSchedProc()">+进程</button></div>
 <div style="font-size:11px;color:var(--text-muted);margin:4px 0">进程队列:</div>`;
 schedProcs.forEach(p=>{h+=`<div style="font-size:11px;color:#aaa">  ${p.name}: 到达=${p.arrive} 执行=${p.burst}</div>`});
+if(Object.keys(schedHistory).length>0){h+=`<div style="font-size:11px;color:#aaa;margin:4px 0">`;Object.entries(schedHistory).forEach(([k,v])=>{h+=`<span class="tag p">${k}: 平均等待 ${v.toFixed(1)}</span> `});h+=`</div>`}
 h+=`<div class="hint-box">💡 尝试不同算法观察甘特图变化。RR 用时间片=2 轮转执行。</div>
 <h3>目标</h3>${objHTML(1)}
 <div class="learn-box">✅ <span class="sv">FCFS</span>简单但可能导致护航效应。<span class="sv">SJF</span>平均等待最优但需预知执行时间。<span class="sv">RR</span>公平但时间片选择影响性能。</div>`}
 else if(li===2){h+=`<h3>🧠 关卡3: 内存管理</h3>
 <div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>分页、页表、TLB、虚拟地址转换</div>
 <div class="concept-box"><b>分页</b>将虚拟地址空间分成固定大小的页(4KB)。<br><b>页表</b>记录虚拟页→物理帧的映射。<br><b>TLB</b>是页表的高速缓存，加速地址转换。</div>
-<div class="ctrl-row">虚拟地址: <input class="num-input" type="number" value="0" min="0" max="65535" onchange="vaddrInput=+this.value">
+<div class="ctrl-row">虚拟地址: <input class="num-input" type="number" value="0" min="0" max="65535" onchange="setVirtualAddressInput(this)">
 <button class="act-btn" onclick="translateAddr()">转换</button></div>
 <div class="ctrl-row"><button class="act-btn sm outline" onclick="vaddrInput=5*4096+100;document.querySelector('.num-input').value=vaddrInput;translateAddr()">访问无效页</button></div>
 <div class="hint-box">💡 输入虚拟地址(0-65535)，观察页表查找过程。页5/11/14初始无效，访问会触发缺页中断。</div>
@@ -429,8 +461,8 @@ else if(li===2){h+=`<h3>🧠 关卡3: 内存管理</h3>
 else if(li===3){h+=`<h3>📄 关卡4: 页面置换</h3>
 <div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>FIFO、LRU、OPT、缺页率、Belady 异常</div>
 <div class="concept-box">物理内存有限时，需要<b>页面置换</b>算法决定淘汰哪一页。<br>• <b>FIFO</b>: 淘汰最早进入的页<br>• <b>LRU</b>: 淘汰最久未使用的页<br>• <b>OPT</b>: 淘汰最远将来才用的页(理论最优)</div>
-<div class="ctrl-row"><select onchange="prAlgo=this.value"><option value="FIFO">FIFO</option><option value="LRU">LRU</option><option value="OPT">OPT(最优)</option></select>
-帧数: <input class="num-input" type="number" value="3" min="2" max="5" onchange="prFrameCount=+this.value">
+<div class="ctrl-row"><select onchange="prAlgo=this.value"><option value="FIFO"${prAlgo==='FIFO'?' selected':''}>FIFO</option><option value="LRU"${prAlgo==='LRU'?' selected':''}>LRU</option><option value="OPT"${prAlgo==='OPT'?' selected':''}>OPT(最优)</option></select>
+帧数: <input class="num-input" type="number" value="3" min="2" max="5" onchange="setPageFrameCountInput(this)">
 <button class="act-btn" onclick="runPageReplace()">运行</button></div>
 <div style="font-size:11px;color:var(--text-muted);margin:4px 0">访问序列: ${prSeq.join(', ')}</div>
 <div class="hint-box">💡 分别运行 FIFO 和 LRU，比较缺页率。OPT 是理论下界。</div>
@@ -457,16 +489,16 @@ else if(li===5){h+=`<h3>📁 关卡6: 文件系统</h3>
 else if(li===6){h+=`<h3>💿 关卡7: 磁盘调度</h3>
 <div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>FCFS、SSTF、SCAN（电梯算法）、寻道距离</div>
 <div class="concept-box"><b>磁盘调度</b>优化磁头移动顺序，减少寻道时间。<br>• <b>FCFS</b>: 按请求顺序服务<br>• <b>SSTF</b>: 最短寻道时间优先<br>• <b>SCAN</b>: 电梯算法，单向扫描</div>
-<div class="ctrl-row"><select onchange="diskAlgo=this.value"><option value="FCFS">FCFS</option><option value="SSTF">SSTF</option><option value="SCAN">SCAN</option></select>
+<div class="ctrl-row"><select onchange="diskAlgo=this.value"><option value="FCFS"${diskAlgo==='FCFS'?' selected':''}>FCFS</option><option value="SSTF"${diskAlgo==='SSTF'?' selected':''}>SSTF</option><option value="SCAN"${diskAlgo==='SCAN'?' selected':''}>SCAN</option></select>
 <button class="act-btn" onclick="runDiskSched()">运行</button><button class="act-btn sm outline" onclick="addDiskReq()">+请求</button></div>
 <div style="font-size:11px;color:var(--text-muted);margin:4px 0">磁头位置: ${diskHead} | 请求队列: ${diskReqs.join(', ')}</div>
 <div class="hint-box">💡 分别运行 FCFS 和 SCAN，比较总寻道距离。SCAN 像电梯一样单向移动。</div>
 <h3>目标</h3>${objHTML(6)}`;
 if(Object.keys(diskHistory).length>0){h+=`<div style="font-size:11px;color:#aaa;margin:4px 0">`;Object.entries(diskHistory).forEach(([k,v])=>{h+=`<span class="tag p">${k}: ${v}</span> `});h+=`</div>`}
 h+=`<div class="learn-box">✅ <span class="sv">SCAN</span>避免了SSTF的饥饿问题。现代SSD无机械寻道，调度算法影响小。HDD仍需优化，<span class="sv">NCQ</span>在硬件层做调度。</div>`}
-if(levelObjs[li].every(v=>v)&&!quizPassed.has(li))h+=quizHTML(li);
+if(levelObjs[li].every(v=>v)||quizPassed.has(li))h+=quizHTML(li);
 if(levelObjs[li].every(v=>v)&&quizPassed.has(li)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-if(levelObjs[li].every(v=>v)&&quizPassed.has(li)&&li===6)h+=`${_summaryHTML()}`;
+if(levelObjs[li].every(v=>v)&&quizPassed.has(li)&&li===6&&quizPassed.size===7)h+=window._summaryHTML?window._summaryHTML():'';
 panel.innerHTML=h;
 showLearnBoxIfPassed(li)}
 function initLevel(i){if(animId)cancelAnimationFrame(animId);resize();
@@ -530,8 +562,8 @@ resize();
     for(var i=0;i<total;i++){
       var unlocked=typeof isUnlocked==='function'?isUnlocked(i):true;
       var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
-      var click=unlocked?"typeof goLevel==='function'&&goLevel("+i+")":'';
-      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
+      var click=unlocked?' onclick="goLevel('+i+')"':'';
+      h+='<div class="sn-d '+cls+'"'+click+'></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
@@ -544,6 +576,7 @@ resize();
   // 3. 通关总结
   window._summaryHTML=function(){
     var names=_getNames(),total=names.length;
+    if(typeof quizPassed!=='undefined'&&quizPassed.size<total)return '';
     var s=_countDone();
     var pct=s.total>0?Math.round(s.done/s.total*100):100;
     var h='<div class="summary-box">';

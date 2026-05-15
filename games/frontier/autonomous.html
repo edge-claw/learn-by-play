@@ -70,6 +70,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:6px;background:var(--accent);color:#0a0a1a;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
 .act-btn:hover{background:#22d3ee;transform:translateY(-1px)}
 .act-btn.secondary{background:var(--btn-bg);color:var(--btn-text);border:1px solid var(--btn-border)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin-top:8px;font-size:12px;line-height:1.6;color:var(--hint-text)}
 .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;line-height:1.8}
 .learn-box b{color:var(--accent)}
 canvas{flex:1;display:block;background:var(--bg)}
@@ -155,14 +156,17 @@ const TH={
   light:{bg:'#f0f2f5',grid:'rgba(6,182,212,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',road:'#d1d5db',roadLine:'#9ca3af',car:'#0891b2',carGlow:'rgba(8,145,178,0.3)',obstacle:'#dc2626',sensor:'rgba(8,145,178,0.1)',lidar:'#16a34a',radar:'#d97706',camera:'#2563eb',path:'#7c3aed',showStars:false}
 };
 function t(){return isDark?TH.dark:TH.light}
-function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{renderPanel()}catch(e){}}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{renderPanel();draw()}catch(e){}}
 
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay');
-let W,H,curLevel=0,animId,time=0;
+let W,H,curLevel=0,animId,time=0,animating=false;
 let levelObjs=Array.from({length:7},()=>[false,false,false]);
 let quizPassed=Array.from({length:7},()=>false);
 let quizFeedback={};
 let S={};
+const LOCALIZATION_SAMPLE_FRAMES=60;
+const CONTROL_STATES=['cruise','follow','lane_change','stop'];
+const CONTROL_STATE_LABELS={cruise:'巡航',follow:'跟车',lane_change:'变道',stop:'停车'};
 
 function resize(){W=cv.width=cv.offsetWidth;H=cv.height=cv.offsetHeight}
 window.addEventListener('resize',()=>{resize();draw()});
@@ -170,31 +174,31 @@ window.addEventListener('resize',()=>{resize();draw()});
 const LEVELS=[
 {name:'传感器融合',desc:'<div class="concept-box"><b>关键词：</b>摄像头、激光雷达(LiDAR)、毫米波雷达、多传感器融合</div>画布上有一辆自动驾驶汽车，周围有三种传感器的探测范围。拖动滑块调节各传感器的权重，观察融合效果如何变化。',
  objs:['安装全部三种传感器','调节权重使融合置信度>90%','在恶劣天气下保持感知'],
- quiz:{q:'多传感器融合的主要优势是什么？',opts:['降低成本','提高冗余性和鲁棒性','减少计算量','简化算法'],ans:1},
+ quiz:{q:'多传感器融合的主要优势是什么？',opts:['降低成本','提高冗余性和鲁棒性','减少计算量','简化算法'],ans:1,why:'摄像头、LiDAR 和毫米波雷达各有盲点，融合后的关键价值是互相校验，在雨雾、遮挡或单传感器异常时仍能维持可靠感知。'},
  learn:'<b>摄像头</b>：高分辨率纹理/颜色信息，受光照影响大。<br><b>LiDAR</b>：精确3D点云，不受光照影响，但雨雾衰减。<br><b>毫米波雷达</b>：测速精确，全天候工作，但角分辨率低。<br><b>融合策略</b>：早期融合（原始数据级）、晚期融合（决策级）、中期融合（特征级）。'},
 {name:'环境感知',desc:'<div class="concept-box"><b>关键词：</b>目标检测、语义分割、3D点云处理</div>画布上显示一个驾驶场景的俯视图，包含行人、车辆和交通标志。调节检测阈值，观察目标检测框的变化——阈值太低会产生误检，太高会漏检。',
  objs:['调节阈值使检测准确率>85%','完成语义分割着色','识别全部3D目标'],
- quiz:{q:'目标检测中，降低置信度阈值会导致什么？',opts:['漏检增多','误检增多','计算量减少','精度提高'],ans:1},
+ quiz:{q:'目标检测中，降低置信度阈值会导致什么？',opts:['误检增多','漏检增多','计算量减少','精度提高'],ans:0,why:'阈值降低会让更多低置信度候选框通过，召回率上升，但把背景或弱证据误判为目标的概率也会上升。'},
  learn:'<b>目标检测</b>：用边界框标注物体位置和类别（YOLO、SSD等）。<br><b>语义分割</b>：逐像素分类（道路、人行道、车辆、行人等）。<br><b>3D点云</b>：LiDAR生成的三维空间点集，用PointNet等网络处理。<br><b>精确率vs召回率</b>：阈值越低召回率越高但精确率下降。'},
 {name:'高精地图与定位',desc:'<div class="concept-box"><b>关键词：</b>GPS+IMU+视觉里程计、卡尔曼滤波、高精地图</div>画布上有一辆车在地图上行驶，三种定位源（GPS蓝点、IMU绿线、视觉紫线）各有误差。调节卡尔曼滤波参数，让融合定位（红点）尽可能贴近真实位置。',
  objs:['观察三种定位源的误差特征','调节滤波参数使定位误差<0.5m','在GPS信号丢失时保持定位'],
- quiz:{q:'卡尔曼滤波的核心思想是什么？',opts:['取最大值','加权平均预测和观测','只用最新数据','丢弃异常值'],ans:1},
+ quiz:{q:'卡尔曼滤波的核心思想是什么？',opts:['取最大值','只用最新数据','加权平均预测和观测','丢弃异常值'],ans:2,why:'卡尔曼滤波先用运动模型预测，再用观测修正；权重由不确定性决定，所以不是简单相信某一个传感器。'},
  learn:'<b>GPS</b>：全球定位，精度~2m，受遮挡影响。<br><b>IMU</b>：惯性测量，短期精确但会漂移。<br><b>视觉里程计</b>：通过图像特征匹配估计运动。<br><b>卡尔曼滤波</b>：预测+更新循环，用协方差加权融合多源数据，最优估计。'},
 {name:'路径规划',desc:'<div class="concept-box"><b>关键词：</b>A*算法、RRT快速随机树、动态障碍物避让</div>画布上有一个网格地图，绿色是起点，红色是终点，灰色是障碍物。点击选择算法，观察不同路径规划算法的搜索过程和最终路径。',
  objs:['用A*算法找到最短路径','用RRT算法探索路径','成功避让动态障碍物'],
- quiz:{q:'A*算法相比Dijkstra的优势是什么？',opts:['保证最短路径','使用启发函数减少搜索范围','不需要地图','计算更简单'],ans:1},
+ quiz:{q:'A*算法相比Dijkstra的优势是什么？',opts:['保证最短路径','使用启发函数减少搜索范围','不需要地图','计算更简单'],ans:1,why:'A* 在已走代价 g 之外加入到目标的启发估计 h，把搜索重点引向终点，通常比无方向扩展更高效。'},
  learn:'<b>A*算法</b>：f(n)=g(n)+h(n)，g是已走代价，h是启发估计。保证最优且高效。<br><b>RRT</b>：随机采样+树扩展，适合高维空间和复杂约束。<br><b>动态避障</b>：预测障碍物轨迹，实时重规划路径。'},
 {name:'决策与控制',desc:'<div class="concept-box"><b>关键词：</b>状态机、PID控制、MPC模型预测控制</div>画布上有一辆车需要沿着弯道行驶。调节PID参数（P/I/D），观察车辆的转向响应——参数不当会导致震荡或响应迟缓。',
  objs:['理解状态机的状态转换','调节PID使车辆平稳过弯','用MPC预测最优轨迹'],
- quiz:{q:'PID控制中，D（微分）项的作用是什么？',opts:['消除稳态误差','加快响应速度','抑制震荡','增大超调'],ans:2},
+ quiz:{q:'PID控制中，D（微分）项的作用是什么？',opts:['消除稳态误差','加快响应速度','抑制震荡','增大超调'],ans:2,why:'D 项关注误差变化速度，能提前对快速变化作出阻尼响应，减少过冲和来回摆动。'},
  learn:'<b>状态机</b>：巡航→跟车→变道→停车，根据环境切换行为。<br><b>PID</b>：P比例（当前误差）、I积分（累积误差）、D微分（误差变化率）。<br><b>MPC</b>：建立车辆模型，预测未来N步，优化控制序列，只执行第一步。'},
 {name:'V2X车联网',desc:'<div class="concept-box"><b>关键词：</b>V2V车-车、V2I车-路、V2C车-云、协同感知</div>画布上有多辆车和路侧设备。点击建立通信链路，观察信息如何在车辆、路侧单元和云端之间传递，实现超视距感知。',
  objs:['建立V2V车-车通信链路','连接V2I路侧感知单元','实现云端协同决策'],
- quiz:{q:'V2X中"X"代表什么？',opts:['未知数','一切（Everything）','交叉路口','加速度'],ans:1},
+ quiz:{q:'V2X中"X"代表什么？',opts:['一切（Everything）','未知数','交叉路口','加速度'],ans:0,why:'V2X 表示车与一切交通参与者或基础设施通信，包括 V2V、V2I、V2P、V2N/V2C 等链路。'},
  learn:'<b>V2V</b>：车-车直接通信，共享位置/速度/意图，避免碰撞。<br><b>V2I</b>：车-路通信，获取信号灯、路况、施工信息。<br><b>V2C</b>：车-云通信，云端融合全局信息，下发最优策略。<br><b>协同感知</b>：多车共享感知数据，扩展单车感知范围。'},
 {name:'安全与伦理',desc:'<div class="concept-box"><b>关键词：</b>电车难题、ISO 26262功能安全、冗余设计</div>画布上模拟紧急场景：前方突然出现障碍，你需要在不同选项中做出决策。体验自动驾驶面临的伦理困境和安全设计原则。',
  objs:['体验电车难题的伦理抉择','了解ISO 26262安全等级','设计冗余系统架构'],
- quiz:{q:'ISO 26262中ASIL-D代表什么？',opts:['最低安全等级','最高安全等级','不需要安全措施','仅需软件测试'],ans:1},
+ quiz:{q:'ISO 26262中ASIL-D代表什么？',opts:['最低安全等级','不需要安全措施','最高安全等级','仅需软件测试'],ans:2,why:'ASIL-D 是最高汽车功能安全等级，通常要求更严格的失效分析、冗余设计、验证和故障可控策略。'},
  learn:'<b>电车难题</b>：不可避免的事故中，算法如何权衡不同方案的伤害？<br><b>ISO 26262</b>：汽车功能安全标准，ASIL A~D，D为最高等级。<br><b>冗余设计</b>：关键系统（转向、制动、感知）至少双重冗余，单点故障不导致危险。'}
 ];
 
@@ -206,18 +210,22 @@ function drawText(txt,x,y,size,color,align){ctx.fillStyle=color||t().text;ctx.fo
 
 // === Level state init ===
 function initLevel(idx){
+  idx=Number(idx);
+  if(!Number.isInteger(idx)||idx<0||idx>=LEVELS.length)return;
+  if(!quizPassed[idx])delete quizFeedback[idx];
   S={phase:0,t:0};
-  if(idx===0){S.sensors={camera:false,lidar:false,radar:false};S.weights={camera:0.3,lidar:0.3,radar:0.3};S.weather='clear';S.confidence=0;S.installed=0}
-  if(idx===1){S.threshold=0.8;S.objects=[];S.segDone=false;S.detected3d=false;for(let i=0;i<8;i++)S.objects.push({x:100+Math.random()*(W-300),y:80+Math.random()*(H-160),type:['car','person','sign'][i%3],conf:0.3+Math.random()*0.7,w:30+Math.random()*20,h:30+Math.random()*20,detected:false})}
-  if(idx===2){S.gpsNoise=3;S.imuDrift=0;S.kfQ=1;S.kfR=1;S.truePos={x:W/2,y:H/2};S.gpsPos={x:0,y:0};S.imuPos={x:0,y:0};S.visPos={x:0,y:0};S.fusedPos={x:0,y:0};S.error=5;S.gpsLost=false;S.pathT=0}
+  if(idx===0){S.sensors={camera:false,lidar:false,radar:false};S.weights={camera:0.3,lidar:0.3,radar:0.3};S.weather='clear';S.confidence=0;S.installed=0;S.weatherRobustConfirmed=false}
+  if(idx===1){S.threshold=0.8;S.objects=[];S.segDone=false;S.detected3d=false;let confs=[0.92,0.84,0.76,0.68,0.58,0.46,0.38,0.32];for(let i=0;i<8;i++)S.objects.push({x:100+Math.random()*(W-300),y:80+Math.random()*(H-160),type:['car','person','sign'][i%3],conf:confs[i],w:30+Math.random()*20,h:30+Math.random()*20,detected:false})}
+  if(idx===2){S.gpsNoise=3;S.imuDrift=0;S.kfQ=1;S.kfR=1;S.kfAdjusted=false;S.truePos={x:W/2,y:H/2};S.gpsPos={x:0,y:0};S.imuPos={x:0,y:0};S.visPos={x:0,y:0};S.fusedPos={x:0,y:0};S.error=5;S.gpsLost=false;S.pathT=0}
   if(idx===3){S.grid=[];S.gridW=25;S.gridH=18;S.start={x:1,y:1};S.end={x:23,y:16};S.algo='none';S.searching=false;S.path=[];S.visited=[];S.openSet=[];S.dynObs=[];S.searchStep=0;
     for(let y=0;y<S.gridH;y++){S.grid[y]=[];for(let x=0;x<S.gridW;x++)S.grid[y][x]=0}
     for(let i=0;i<60;i++){let gx=2+Math.floor(Math.random()*(S.gridW-4)),gy=2+Math.floor(Math.random()*(S.gridH-4));if((gx!==S.start.x||gy!==S.start.y)&&(gx!==S.end.x||gy!==S.end.y))S.grid[gy][gx]=1}
-    S.dynObs=[{x:12,y:9,dx:0.02,dy:0.01},{x:18,y:5,dx:-0.015,dy:0.02}]}
-  if(idx===4){S.pidP=0;S.pidI=0;S.pidD=0;S.carX=W*0.3;S.carY=H*0.7;S.carAngle=0;S.carSpeed=0;S.targetPath=[];S.steerAngle=0;S.integral=0;S.prevError=0;S.trail=[];S.stateMachine='cruise';S.mpcActive=false;S.mpcPath=[];
+    clearPlanningCorridor();
+    S.dynObs=[{x:12,y:9,dx:0.02,dy:0.01},{x:18,y:5,dx:-0.015,dy:0.02}];S.dynamicChallenge=false}
+  if(idx===4){S.pidP=0;S.pidI=0;S.pidD=0;S.carX=W*0.3;S.carY=H*0.7;S.carAngle=0;S.carSpeed=0;S.targetPath=[];S.steerAngle=0;S.integral=0;S.prevError=0;S.trail=[];S.stateMachine='cruise';S.stateVisited={cruise:true};S.mpcActive=false;S.mpcPath=[];S.mpcPreviewFrames=0;
     for(let i=0;i<=100;i++){let tt=i/100;S.targetPath.push({x:W*0.15+tt*(W*0.7),y:H*0.5+Math.sin(tt*Math.PI*2.5)*H*0.25})}}
-  if(idx===5){S.vehicles=[{x:W*0.3,y:H*0.4,id:'V1',linked:[]},{x:W*0.6,y:H*0.3,id:'V2',linked:[]},{x:W*0.5,y:H*0.65,id:'V3',linked:[]}];S.rsu={x:W*0.75,y:H*0.55,id:'RSU'};S.cloud={x:W*0.8,y:H*0.15,id:'Cloud'};S.links=[];S.v2vDone=false;S.v2iDone=false;S.v2cDone=false;S.msgParticles=[];S.selectedNode=null}
-  if(idx===6){S.scenario=0;S.choice=-1;S.asilLevel=0;S.redundancy={sensor:false,compute:false,brake:false};S.dilemmaShown=false;S.safetyDone=false;S.redundancyDone=false}
+  if(idx===5){S.vehicles=[{x:W*0.3,y:H*0.4,id:'V1',linked:[]},{x:W*0.6,y:H*0.3,id:'V2',linked:[]},{x:W*0.5,y:H*0.65,id:'V3',linked:[]}];S.rsu={x:W*0.75,y:H*0.55,id:'RSU'};S.cloud={x:W*0.8,y:H*0.15,id:'Cloud'};S.links=[];S.v2vDone=false;S.v2iDone=false;S.v2cDone=false;S.cloudLinked=false;S.msgParticles=[];S.selectedNode=null}
+  if(idx===6){S.scenario=0;S.choice=-1;S.ethicalChoices={straight:false,swerve:false};S.ethicalConfirmed=false;S.asilLevel=0;S.redundancy={sensor:false,compute:false,brake:false};S.dilemmaShown=false;S.safetyDone=false;S.redundancyDone=false}
 }
 
 // === Level draw ===
@@ -232,17 +240,41 @@ function drawLevel(idx){
   if(idx===6)drawSafety(th);
 }
 
+function updateFusionConfidence(){
+  if(!S.sensors||!S.weights)return 0;
+  let score=0,totalWeight=0;
+  if(S.sensors.camera){score+=S.weights.camera*(S.weather==='clear'?95:40);totalWeight+=S.weights.camera}
+  if(S.sensors.lidar){score+=S.weights.lidar*(S.weather==='clear'?90:60);totalWeight+=S.weights.lidar}
+  if(S.sensors.radar){score+=S.weights.radar*(S.weather==='clear'?70:85);totalWeight+=S.weights.radar}
+  S.confidence=totalWeight>0?Math.min(100,score/totalWeight):0;
+  return S.confidence;
+}
+function fusionWeightSummaryHTML(){
+  if(!S.weights)return '有效占比: 等待传感器权重';
+  const sum=S.weights.camera+S.weights.lidar+S.weights.radar;
+  if(sum<=0)return '<span style="color:#ef4444">有效占比: 请至少保留一种传感器权重</span>';
+  const camera=S.weights.camera/sum*100,lidar=S.weights.lidar/sum*100,radar=S.weights.radar/sum*100;
+  const hint=S.weather==='clear'?'晴天更依赖摄像头纹理和 LiDAR 距离，雷达提供速度冗余。':'雨雾下降低摄像头权重，提高雷达占比，才能保持鲁棒感知。';
+  return `有效占比: 摄像头 ${camera.toFixed(0)}% · LiDAR ${lidar.toFixed(0)}% · 雷达 ${radar.toFixed(0)}%<br><span style="color:var(--stage-hint)">${hint}</span>`;
+}
+function updateFusionMetricPanel(){
+  const el=document.getElementById('fusionConfidence');
+  const confidence=updateFusionConfidence();
+  if(el){
+    el.textContent=`融合置信度: ${confidence.toFixed(1)}%`;
+    el.style.color=confidence>90?'#22c55e':confidence>70?'#f59e0b':'#ef4444';
+  }
+  const weights=document.getElementById('fusionWeights');
+  if(weights)weights.innerHTML=fusionWeightSummaryHTML();
+}
+
 function drawSensorFusion(th){
   let cx=W/2,cy=H/2;
   drawCar(cx,cy,50,80,0);
   if(S.sensors.camera){ctx.strokeStyle=th.camera;ctx.lineWidth=2;ctx.globalAlpha=0.3;ctx.beginPath();ctx.moveTo(cx,cy-40);ctx.lineTo(cx-80,cy-160);ctx.lineTo(cx+80,cy-160);ctx.closePath();ctx.stroke();ctx.fillStyle=th.camera;ctx.fill();ctx.globalAlpha=1;drawText('📷 摄像头',cx,cy-170,12,th.camera)}
   if(S.sensors.lidar){ctx.strokeStyle=th.lidar;ctx.lineWidth=2;ctx.globalAlpha=0.15;ctx.beginPath();ctx.arc(cx,cy,140,0,Math.PI*2);ctx.fill();ctx.globalAlpha=0.4;ctx.stroke();ctx.globalAlpha=1;for(let a=0;a<Math.PI*2;a+=0.15){let r=130+Math.random()*20;ctx.fillStyle=th.lidar;ctx.fillRect(cx+Math.cos(a)*r,cy+Math.sin(a)*r,2,2)}drawText('🔦 LiDAR',cx+150,cy-10,12,th.lidar,'left')}
   if(S.sensors.radar){ctx.strokeStyle=th.radar;ctx.lineWidth=2;ctx.globalAlpha=0.2;ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,180,Math.PI*1.25,Math.PI*1.75);ctx.closePath();ctx.fillStyle=th.radar;ctx.fill();ctx.globalAlpha=1;drawText('📡 雷达',cx,cy+120,12,th.radar)}
-  S.confidence=0;let cnt=0;
-  if(S.sensors.camera){S.confidence+=S.weights.camera*(S.weather==='clear'?95:40);cnt++}
-  if(S.sensors.lidar){S.confidence+=S.weights.lidar*(S.weather==='clear'?90:60);cnt++}
-  if(S.sensors.radar){S.confidence+=S.weights.radar*(S.weather==='clear'?70:85);cnt++}
-  if(cnt>0)S.confidence=Math.min(100,S.confidence/(S.weights.camera+S.weights.lidar+S.weights.radar)*3);
+  updateFusionConfidence();
   if(S.weather!=='clear'){ctx.fillStyle='rgba(150,150,180,0.3)';ctx.fillRect(0,0,W,H);for(let i=0;i<40;i++){ctx.fillStyle='rgba(200,200,220,0.4)';let rx=(i*73+time*2)%W,ry=(i*47+time*3)%H;ctx.fillRect(rx,ry,2,8)}}
   let barW=200,barH=20,barX=cx-barW/2,barY=30;
   ctx.fillStyle='#333';ctx.fillRect(barX,barY,barW,barH);
@@ -255,6 +287,11 @@ function drawPerception(th){
   ctx.fillStyle=isDark?'#1a2a1a':'#e8f5e9';ctx.fillRect(0,0,W,H);
   ctx.fillStyle=isDark?'#2a2a3a':'#bdbdbd';ctx.fillRect(W*0.1,H*0.3,W*0.8,H*0.15);
   ctx.setLineDash([20,15]);ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(W*0.1,H*0.375);ctx.lineTo(W*0.9,H*0.375);ctx.stroke();ctx.setLineDash([]);
+  if(S.segDone){
+    ctx.fillStyle='rgba(34,197,94,0.18)';ctx.fillRect(W*0.1,H*0.3,W*0.8,H*0.15);
+    ctx.fillStyle='rgba(59,130,246,0.10)';ctx.fillRect(0,0,W,H*0.3);ctx.fillRect(0,H*0.45,W,H*0.55);
+    drawText('语义分割：道路 / 背景 / 交通参与者',W/2,H*0.52,13,'#22c55e');
+  }
   for(let o of S.objects){
     let col=o.type==='car'?'#3b82f6':o.type==='person'?'#f59e0b':'#22c55e';
     ctx.fillStyle=col;ctx.globalAlpha=0.7;
@@ -264,23 +301,44 @@ function drawPerception(th){
     ctx.globalAlpha=1;
     if(o.conf>=S.threshold){o.detected=true;ctx.strokeStyle=col;ctx.lineWidth=2;ctx.strokeRect(o.x-o.w/2-5,o.y-o.h/2-5,o.w+10,o.h+10);drawText(`${(o.conf*100).toFixed(0)}%`,o.x,o.y-o.h/2-10,11,col)}
     else{o.detected=false}
+    if(S.detected3d&&o.conf>=0.5){
+      let depth=Math.max(5,Math.round(45-(o.y/H)*30));
+      ctx.strokeStyle='rgba(34,197,94,0.7)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(o.x+o.w/2+8,o.y+o.h/2);ctx.lineTo(o.x+o.w/2+8,o.y+o.h/2-depth);ctx.stroke();
+      drawText(`${depth}m`,o.x+o.w/2+14,o.y+o.h/2-depth,10,'#22c55e','left');
+    }
   }
-  let det=S.objects.filter(o=>o.detected&&o.conf>=0.5).length,total=S.objects.filter(o=>o.conf>=0.5).length;
-  let acc=total>0?det/total*100:0;
-  drawText(`检测准确率: ${acc.toFixed(1)}% (阈值: ${S.threshold.toFixed(2)})`,W/2,30,16,th.text);
+  let m=getPerceptionMetrics();
+  drawText(`F1: ${m.f1.toFixed(1)}% | 精确率: ${m.precision.toFixed(0)}% | 召回率: ${m.recall.toFixed(0)}%`,W/2,30,16,m.f1>85?'#22c55e':th.text);
+}
+
+function getPerceptionMetrics(){
+  if(!S.objects)return{precision:0,recall:0,f1:0,tp:0,fp:0,fn:0};
+  let tp=0,fp=0,fn=0;
+  for(let o of S.objects){
+    let truth=o.conf>=0.5,pred=o.conf>=S.threshold;
+    if(pred&&truth)tp++;
+    if(pred&&!truth)fp++;
+    if(!pred&&truth)fn++;
+  }
+  let precision=tp+fp>0?tp/(tp+fp):0;
+  let recall=tp+fn>0?tp/(tp+fn):0;
+  let f1=precision+recall>0?2*precision*recall/(precision+recall):0;
+  return{precision:precision*100,recall:recall*100,f1:f1*100,tp,fp,fn};
+}
+function perceptionMetricText(m){
+  m=m||getPerceptionMetrics();
+  return `综合分 F1: ${m.f1.toFixed(1)}% · 精确率 ${m.precision.toFixed(0)}% · 召回率 ${m.recall.toFixed(0)}%`;
+}
+function updatePerceptionMetricPanel(){
+  const el=document.getElementById('perceptionMetrics');
+  if(!el)return;
+  const m=getPerceptionMetrics();
+  el.textContent=perceptionMetricText(m);
+  el.style.color=m.f1>85?'#22c55e':'#f59e0b';
 }
 
 function drawLocalization(th){
-  S.pathT+=0.002;if(S.pathT>1)S.pathT=0;
-  let angle=S.pathT*Math.PI*4;
-  S.truePos={x:W/2+Math.cos(angle)*W*0.25,y:H/2+Math.sin(angle*0.5)*H*0.25};
-  S.gpsPos={x:S.truePos.x+(Math.random()-0.5)*S.gpsNoise*10*(S.gpsLost?50:1),y:S.truePos.y+(Math.random()-0.5)*S.gpsNoise*10*(S.gpsLost?50:1)};
-  S.imuDrift+=0.1;S.imuPos={x:S.truePos.x+Math.sin(S.imuDrift)*S.imuDrift*0.3,y:S.truePos.y+Math.cos(S.imuDrift)*S.imuDrift*0.3};
-  S.visPos={x:S.truePos.x+(Math.random()-0.5)*15,y:S.truePos.y+(Math.random()-0.5)*15};
-  let kfGain=S.kfQ/(S.kfQ+S.kfR);
-  S.fusedPos={x:S.fusedPos.x+(S.truePos.x-S.fusedPos.x)*kfGain*0.3+((S.gpsLost?0:S.gpsPos.x)+S.imuPos.x+S.visPos.x)/3*kfGain*0.05,
-              y:S.fusedPos.y+(S.truePos.y-S.fusedPos.y)*kfGain*0.3+((S.gpsLost?0:S.gpsPos.y)+S.imuPos.y+S.visPos.y)/3*kfGain*0.05};
-  S.error=Math.sqrt((S.fusedPos.x-S.truePos.x)**2+(S.fusedPos.y-S.truePos.y)**2)/10;
+  if(!S.truePos)return;
   ctx.strokeStyle=isDark?'#333':'#ccc';ctx.lineWidth=1;
   for(let a=0;a<=1;a+=0.01){let ang=a*Math.PI*4;ctx.fillStyle='rgba(100,100,100,0.3)';ctx.fillRect(W/2+Math.cos(ang)*W*0.25,H/2+Math.sin(ang*0.5)*H*0.25,2,2)}
   if(!S.gpsLost){ctx.fillStyle=th.camera;ctx.beginPath();ctx.arc(S.gpsPos.x,S.gpsPos.y,6,0,Math.PI*2);ctx.fill();drawText('GPS',S.gpsPos.x+12,S.gpsPos.y-8,11,th.camera,'left')}
@@ -289,6 +347,26 @@ function drawLocalization(th){
   ctx.fillStyle='#ef4444';ctx.beginPath();ctx.arc(S.fusedPos.x,S.fusedPos.y,8,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#ef4444';ctx.lineWidth=2;ctx.beginPath();ctx.arc(S.fusedPos.x,S.fusedPos.y,12,0,Math.PI*2);ctx.stroke();drawText('融合',S.fusedPos.x+16,S.fusedPos.y-10,11,'#ef4444','left');
   ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(S.truePos.x,S.truePos.y,4,0,Math.PI*2);ctx.fill();drawText('真实',S.truePos.x+12,S.truePos.y+15,11,'#fff','left');
   drawText(`定位误差: ${S.error.toFixed(2)}m ${S.gpsLost?'⚠️ GPS信号丢失':''}`,W/2,30,16,S.error<0.5?'#22c55e':'#f59e0b');
+}
+function updateLocalizationMetricPanel(){
+  const el=document.getElementById('localizationError');
+  if(!el)return;
+  el.textContent=`定位误差: ${S.error.toFixed(2)}m`;
+  el.style.color=S.error<0.5?'#22c55e':S.error<2?'#f59e0b':'#ef4444';
+  const src=document.getElementById('sourceErrors');
+  if(src)src.textContent=sourceErrorText();
+  const sample=document.getElementById('localizationSample');
+  if(sample)sample.textContent=localizationSampleText();
+}
+function sourceErrorText(){
+  if(!S.truePos||!S.imuPos||!S.visPos)return '源误差: 等待定位数据...';
+  const dist=p=>Math.sqrt((p.x-S.truePos.x)**2+(p.y-S.truePos.y)**2)/10;
+  const gps=S.gpsLost?'GPS: 信号丢失':`GPS: ${dist(S.gpsPos).toFixed(2)}m`;
+  return `${gps} · IMU: ${dist(S.imuPos).toFixed(2)}m · 视觉: ${dist(S.visPos).toFixed(2)}m`;
+}
+function localizationSampleText(){
+  const frames=Math.min(LOCALIZATION_SAMPLE_FRAMES,Math.floor(S.t||0));
+  return levelObjs[2][0]?'定位源采样完成：GPS 绝对定位、IMU 短期连续、视觉里程计相对稳定。':`定位源采样: ${frames}/${LOCALIZATION_SAMPLE_FRAMES} 帧，比较 GPS、IMU、视觉各自误差。`;
 }
 
 function drawPathPlanning(th){
@@ -300,7 +378,7 @@ function drawPathPlanning(th){
     else{ctx.fillStyle=isDark?'#111':'#e5e7eb'}
     ctx.fillRect(px+1,py+1,cellW-2,cellW-2);
   }
-  for(let d of S.dynObs){ctx.fillStyle='#f59e0b';ctx.beginPath();ctx.arc(offX+d.x*cellW+cellW/2,offY+d.y*cellW+cellW/2,cellW/2,0,Math.PI*2);ctx.fill()}
+  for(let d of S.dynObs){ctx.fillStyle=d.blocks?'#ef4444':'#f59e0b';ctx.beginPath();ctx.arc(offX+d.x*cellW+cellW/2,offY+d.y*cellW+cellW/2,cellW/2,0,Math.PI*2);ctx.fill()}
   if(S.path.length>1){ctx.strokeStyle=th.path;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(offX+S.path[0].x*cellW+cellW/2,offY+S.path[0].y*cellW+cellW/2);for(let p of S.path)ctx.lineTo(offX+p.x*cellW+cellW/2,offY+p.y*cellW+cellW/2);ctx.stroke()}
   ctx.fillStyle='#22c55e';ctx.fillRect(offX+S.start.x*cellW+2,offY+S.start.y*cellW+2,cellW-4,cellW-4);
   ctx.fillStyle='#ef4444';ctx.fillRect(offX+S.end.x*cellW+2,offY+S.end.y*cellW+2,cellW-4,cellW-4);
@@ -315,7 +393,7 @@ function drawControl(th){
   if(S.mpcActive&&S.mpcPath.length>1){ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(S.mpcPath[0].x,S.mpcPath[0].y);for(let p of S.mpcPath)ctx.lineTo(p.x,p.y);ctx.stroke();ctx.setLineDash([])}
   drawCar(S.carX,S.carY,30,50,S.carAngle);
   let stateColors={cruise:'#22c55e',follow:'#f59e0b',lane_change:'#3b82f6',stop:'#ef4444'};
-  drawText(`状态: ${S.stateMachine}`,W/2,30,14,stateColors[S.stateMachine]||th.text);
+  drawText(`状态: ${CONTROL_STATE_LABELS[S.stateMachine]||S.stateMachine}`,W/2,30,14,stateColors[S.stateMachine]||th.text);
 }
 
 function drawV2X(th){
@@ -355,6 +433,11 @@ function drawSafety(th){
 // === Update logic ===
 function updateLevel(idx,dt){
   S.t+=dt;
+  let panelDirty=false;
+  if(idx===2){
+    stepLocalization(dt);
+    panelDirty=checkLocalizationGoals()||panelDirty;
+  }
   if(idx===3&&S.searching){
     S.searchStep++;
     if(S.algo==='astar')stepAStar();
@@ -377,29 +460,55 @@ function updateLevel(idx,dt){
       S.carX+=Math.cos(S.carAngle)*S.carSpeed;S.carY+=Math.sin(S.carAngle)*S.carSpeed;
       S.trail.push({x:S.carX,y:S.carY});if(S.trail.length>300)S.trail.shift();
       if(S.mpcActive){S.mpcPath=[];for(let i=0;i<20;i++){let fa=S.carAngle+S.steerAngle*i*0.5;S.mpcPath.push({x:S.carX+Math.cos(fa)*i*10,y:S.carY+Math.sin(fa)*i*10})}}
+      panelDirty=checkControlGoals()||panelDirty;
+      updateControlHintPanel();
     }
   }
+  if(idx===4&&S.mpcActive){
+    S.mpcPreviewFrames=(S.mpcPreviewFrames||0)+dt;
+    if(!S.mpcPath||S.mpcPath.length<10)buildMpcPath();
+    panelDirty=checkControlGoals()||panelDirty;
+  }
   if(idx===5){if(Math.random()<0.05)for(let l of S.links)S.msgParticles.push({x1:l.x1,y1:l.y1,x2:l.x2,y2:l.y2,t:0,color:l.color})}
+  if(panelDirty)renderPanel();
 }
 
 // A* step
 function stepAStar(){
-  if(S.path.length>0||S.openSet.length===0)return;
+  if(S.path.length>0)return;
   if(!S._astarInit){S._astarInit=true;S._gScore={};S._fScore={};S._cameFrom={};
     let k=`${S.start.x},${S.start.y}`;S._gScore[k]=0;S._fScore[k]=heur(S.start,S.end);S.openSet=[{...S.start}];S.visited=[]}
   if(S.openSet.length===0){S.searching=false;return}
-  S.openSet.sort((a,b)=>(S._fScore[`${a.x},${a.y}`]||Infinity)-(S._fScore[`${b.x},${b.y}`]||Infinity));
+  S.openSet.sort((a,b)=>(S._fScore[`${a.x},${a.y}`]??Infinity)-(S._fScore[`${b.x},${b.y}`]??Infinity));
   let cur=S.openSet.shift(),ck=`${cur.x},${cur.y}`;S.visited.push(cur);
-  if(cur.x===S.end.x&&cur.y===S.end.y){S.path=reconstructPath(S._cameFrom,cur);S.searching=false;completeObj(0);return}
+  if(cur.x===S.end.x&&cur.y===S.end.y){S.path=reconstructPath(S._cameFrom,cur);S.searching=false;completePathGoal(0);return}
   for(let[dx,dy]of[[0,1],[0,-1],[1,0],[-1,0]]){
     let nx=cur.x+dx,ny=cur.y+dy,nk=`${nx},${ny}`;
-    if(nx<0||ny<0||nx>=S.gridW||ny>=S.gridH||S.grid[ny][nx]===1)continue;
-    let tg=(S._gScore[ck]||0)+1;
-    if(tg<(S._gScore[nk]||Infinity)){S._cameFrom[nk]=cur;S._gScore[nk]=tg;S._fScore[nk]=tg+heur({x:nx,y:ny},S.end);
+    if(isPlanningBlocked(nx,ny))continue;
+    let tg=(S._gScore[ck]??0)+1;
+    if(tg<(S._gScore[nk]??Infinity)){S._cameFrom[nk]=cur;S._gScore[nk]=tg;S._fScore[nk]=tg+heur({x:nx,y:ny},S.end);
       if(!S.openSet.some(o=>o.x===nx&&o.y===ny))S.openSet.push({x:nx,y:ny})}}
 }
 function heur(a,b){return Math.abs(a.x-b.x)+Math.abs(a.y-b.y)}
 function reconstructPath(cf,cur){let p=[cur];while(cf[`${cur.x},${cur.y}`]){cur=cf[`${cur.x},${cur.y}`];p.unshift(cur)}return p}
+function isPlanningBlocked(x,y){
+  if(x<0||y<0||x>=S.gridW||y>=S.gridH||S.grid[y][x]===1)return true;
+  return S.dynamicChallenge&&S.dynObs.some(d=>d.blocks&&Math.round(d.x)===x&&Math.round(d.y)===y);
+}
+function isPlanningSegmentBlocked(a,b){
+  const steps=Math.max(Math.abs(b.x-a.x),Math.abs(b.y-a.y),1);
+  for(let i=1;i<=steps;i++){
+    const x=Math.round(a.x+(b.x-a.x)*i/steps),y=Math.round(a.y+(b.y-a.y)*i/steps);
+    if(isPlanningBlocked(x,y))return true;
+  }
+  return false;
+}
+function isPathClear(path){
+  if(!Array.isArray(path)||path.length<2)return false;
+  for(let i=0;i<path.length;i++)if(isPlanningBlocked(path[i].x,path[i].y))return false;
+  for(let i=1;i<path.length;i++)if(isPlanningSegmentBlocked(path[i-1],path[i]))return false;
+  return true;
+}
 
 // RRT step
 function stepRRT(){
@@ -411,13 +520,13 @@ function stepRRT(){
   let dx=rand.x-nearest.x,dy=rand.y-nearest.y,dist=Math.sqrt(dx*dx+dy*dy);
   if(dist<0.5)return;
   let step=Math.min(2,dist),nx=Math.round(nearest.x+dx/dist*step),ny=Math.round(nearest.y+dy/dist*step);
-  if(nx<0||ny<0||nx>=S.gridW||ny>=S.gridH||S.grid[ny][nx]===1)return;
+  if(isPlanningBlocked(nx,ny)||isPlanningSegmentBlocked(nearest,{x:nx,y:ny}))return;
   let newNode={x:nx,y:ny,parent:S._rrtNodes.indexOf(nearest)};
   S._rrtNodes.push(newNode);S._rrtEdges.push({x1:nearest.x,y1:nearest.y,x2:nx,y2:ny});S.visited.push({x:nx,y:ny});
   if(Math.abs(nx-S.end.x)<=1&&Math.abs(ny-S.end.y)<=1){
     let p=[{x:nx,y:ny}],ci=S._rrtNodes.length-1;
     while(S._rrtNodes[ci].parent!==null){ci=S._rrtNodes[ci].parent;p.unshift({x:S._rrtNodes[ci].x,y:S._rrtNodes[ci].y})}
-    S.path=p;S.searching=false;completeObj(1)}
+    S.path=p;S.searching=false;completePathGoal(1)}
 }
 
 // === Click handler ===
@@ -429,54 +538,70 @@ function handleClick(x,y){
     if(!S.sensors.radar&&y>cy+40){S.sensors.radar=true;S.installed++;if(S.installed>=3)completeObj(0)}
   }
   if(curLevel===5){
-    for(let v of S.vehicles){if(Math.abs(x-v.x)<25&&Math.abs(y-v.y)<15){S.selectedNode=v;return}}
+    for(let v of S.vehicles){if(Math.abs(x-v.x)<25&&Math.abs(y-v.y)<15){
+      if(S.selectedNode&&S.selectedNode.id&&S.selectedNode.id.startsWith('V')&&v!==S.selectedNode){
+        S.links.push({x1:S.selectedNode.x,y1:S.selectedNode.y,x2:v.x,y2:v.y,color:'#06b6d4'});S.v2vDone=true;completeObj(0);completeV2CIfReady();S.selectedNode=null;return}
+      S.selectedNode=v;renderPanel();return}}
     if(Math.abs(x-S.rsu.x)<30&&Math.abs(y-S.rsu.y)<20){
-      if(S.selectedNode&&S.selectedNode.id!=='RSU'){S.links.push({x1:S.selectedNode.x,y1:S.selectedNode.y,x2:S.rsu.x,y2:S.rsu.y,color:'#f59e0b'});S.v2iDone=true;completeObj(1);S.selectedNode=null}
-      else S.selectedNode=S.rsu;return}
+      if(S.selectedNode&&S.selectedNode.id!=='RSU'){S.links.push({x1:S.selectedNode.x,y1:S.selectedNode.y,x2:S.rsu.x,y2:S.rsu.y,color:'#f59e0b'});S.v2iDone=true;completeObj(1);completeV2CIfReady();S.selectedNode=null}
+      else {S.selectedNode=S.rsu;renderPanel()}return}
     if(Math.abs(x-S.cloud.x)<35&&Math.abs(y-S.cloud.y)<22){
-      if(S.selectedNode){S.links.push({x1:S.selectedNode.x,y1:S.selectedNode.y,x2:S.cloud.x,y2:S.cloud.y,color:'#3b82f6'});S.v2cDone=true;completeObj(2);S.selectedNode=null}
+      if(S.selectedNode){S.links.push({x1:S.selectedNode.x,y1:S.selectedNode.y,x2:S.cloud.x,y2:S.cloud.y,color:'#3b82f6'});S.cloudLinked=true;completeV2CIfReady();S.selectedNode=null;renderPanel()}
       return}
-    if(S.selectedNode&&S.selectedNode.id&&S.selectedNode.id.startsWith('V')){
-      for(let v of S.vehicles){if(v!==S.selectedNode&&Math.abs(x-v.x)<25&&Math.abs(y-v.y)<15){
-        S.links.push({x1:S.selectedNode.x,y1:S.selectedNode.y,x2:v.x,y2:v.y,color:'#06b6d4'});S.v2vDone=true;completeObj(0);S.selectedNode=null;return}}}
   }
   if(curLevel===6){
-    if(S.scenario===0&&S.choice<0){if(y>H*0.4&&y<H*0.6){S.choice=x<W/2?0:1;S.dilemmaShown=true;completeObj(0)}}
-    if(S.scenario===1){S.asilLevel=Math.min(4,S.asilLevel+1);if(S.asilLevel>=4){S.safetyDone=true;completeObj(1)}}
+    if(S.scenario===0&&S.choice<0&&y>H*0.4&&y<H*0.6)chooseEthicalAction(x<W/2?0:1);
+    if(S.scenario===1)advanceAsilLevel();
     if(S.scenario===2){
       let parts=[{key:'sensor',x:W*0.2},{key:'compute',x:W*0.5},{key:'brake',x:W*0.8}];
-      for(let p of parts){if(Math.abs(x-p.x)<55&&Math.abs(y-H*0.35)<35){S.redundancy[p.key]=true}}
-      if(S.redundancy.sensor&&S.redundancy.compute&&S.redundancy.brake){S.redundancyDone=true;completeObj(2)}}
+      for(let p of parts){if(Math.abs(x-p.x)<55&&Math.abs(y-H*0.35)<35)enableRedundancy(p.key)}
+    }
   }
 }
 
 // === Objectives ===
-function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel()}}
-function isLevelDone(idx){return levelObjs[idx].every(Boolean)}
-function isUnlocked(idx){return idx===0||quizPassed[idx-1]}
+function resetProgress(){curLevel=0;levelObjs=Array.from({length:7},()=>[false,false,false]);quizPassed=Array.from({length:7},()=>false);quizFeedback={};initLevel(0)}
+function completeObj(i,silent=false){i=Number(i);if(!Number.isInteger(i)||i<0||i>=3||!levelObjs[curLevel]||levelObjs[curLevel][i])return false;levelObjs[curLevel][i]=true;if(!silent)renderPanel();return true}
+function isLevelDone(idx){idx=Number(idx);return Number.isInteger(idx)&&idx>=0&&idx<LEVELS.length&&levelObjs[idx].every(Boolean)}
+function isUnlocked(idx){idx=Number(idx);return Number.isInteger(idx)&&idx>=0&&idx<LEVELS.length&&(idx===0||quizPassed[idx-1])}
+function allQuizPassed(){return quizPassed.every(Boolean)}
+function levelStatusText(){
+  const levelPassed=quizPassed[curLevel];
+  const done=levelPassed?3:(levelObjs[curLevel]||[]).filter(Boolean).length;
+  const status=levelPassed?'已通关':done===3?'待测验':'进行中';
+  return `目标 ${done}/3 · ${status} · 通关 ${quizPassed.filter(Boolean).length}/7`;
+}
+function renderBar(){
+  bar.innerHTML=`<div class="bar-left"><span class="bar-btn active">自动驾驶探险</span><span class="bar-btn">${LEVELS[curLevel].name}</span></div><div class="bar-right">${levelStatusText()}</div>`;
+}
 
 // === Panel ===
 function renderPanel(){
   let L=LEVELS[curLevel],objs=levelObjs[curLevel];
+  let levelPassed=quizPassed[curLevel],goalsDone=levelPassed||isLevelDone(curLevel);
   let h='';
   // stage nav
   h+=`<div class="stage-nav"><div class="sn-bar">`;
-  for(let i=0;i<7;i++){let unlocked=isUnlocked(i);h+=`<div class="sn-d ${quizPassed[i]?'done':i===curLevel?'cur':unlocked?'':'locked'}" onclick="${unlocked?`goLevel(${i})`:''}"></div>`}
+  for(let i=0;i<7;i++){let unlocked=isUnlocked(i);h+=`<div class="sn-d ${quizPassed[i]?'done':i===curLevel?'cur':unlocked?'':'locked'}" ${unlocked&&i!==curLevel?`onclick="goLevel(${i})"`:''}></div>`}
   let passed=quizPassed.filter(Boolean).length;
   h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关 | 进度 ${Math.round(passed/7*100)}%</div><div class="sn-hint">${passed}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;
   h+=`<h2>${L.name}</h2>`;
   h+=`<p style="font-size:13px;line-height:1.6;color:var(--concept-text);margin-bottom:10px">${L.desc}</p>`;
   // objectives
   h+=`<h3>目标</h3>`;
-  for(let i=0;i<3;i++)h+=`<div class="obj-item"><div class="obj-dot ${objs[i]?'done':''}">${objs[i]?'✓':i+1}</div><span style="color:${objs[i]?'var(--goal-done)':'var(--goal-text)'}">${L.objs[i]}</span></div>`;
+  for(let i=0;i<3;i++){let done=levelPassed||objs[i];h+=`<div class="obj-item"><div class="obj-dot ${done?'done':''}">${done?'✓':i+1}</div><span style="color:${done?'var(--goal-done)':'var(--goal-text)'}">${L.objs[i]}</span></div>`}
   // level-specific controls
   h+=renderLevelPanel(curLevel);
   // quiz when all done
-  if(isLevelDone(curLevel)&&L.quiz&&!quizPassed[curLevel]){
-    let fb=quizFeedback[curLevel];
+  if(goalsDone&&L.quiz){
+    let fb=quizFeedback[curLevel],passedQuiz=quizPassed[curLevel];
     h+=`<div class="quiz-box"><div class="quiz-title">通关小测验</div><div class="quiz-q">🧠 ${L.quiz.q}</div>`;
-    L.quiz.opts.forEach((o,i)=>{h+=`<button class="quiz-opt" onclick="checkQuiz(${curLevel},${i})">${o}</button>`});
+    L.quiz.opts.forEach((o,i)=>{
+      const cls=passedQuiz&&i===L.quiz.ans?' correct':fb?(i===L.quiz.ans?' correct':i===fb.choice?' wrong':''):'';
+      h+=`<button class="quiz-opt${cls}" onclick="answerQuiz(${curLevel},${i})">${'ABCD'[i]}. ${o}</button>`;
+    });
     if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+    else if(passedQuiz)h+=`<div class="quiz-feedback ok">已通过小测。${L.quiz.why}</div>`;
     h+=`</div>`}
   // learn box
   if(quizPassed[curLevel]){
@@ -484,6 +609,7 @@ function renderPanel(){
     h+=curLevel<6?`<button class="act-btn" onclick="goLevel(${curLevel+1})">下一关 →</button>`:`<button class="act-btn" onclick="showResult()">查看总总结 🎉</button>`;
   }
   panel.innerHTML=h;
+  renderBar();
 }
 
 function renderLevelPanel(idx){
@@ -491,36 +617,38 @@ function renderLevelPanel(idx){
   if(idx===0){
     h+=`<h3>传感器安装</h3><p style="font-size:12px;color:var(--stage-hint)">点击画布上方/中间/下方区域安装对应传感器</p>`;
     h+=`<p>📷 摄像头: ${S.sensors.camera?'✅':'❌'} | 🔦 LiDAR: ${S.sensors.lidar?'✅':'❌'} | 📡 雷达: ${S.sensors.radar?'✅':'❌'}</p>`;
+    if(S.installed<3)h+=`<button class="act-btn" onclick="installAllSensors()">安装全部传感器</button>`;
     if(S.installed>=3){
+      updateFusionConfidence();
       h+=`<h3>权重调节</h3>`;
       h+=`<div class="slider-row"><label>摄像头权重: ${S.weights.camera.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.weights.camera*100}" oninput="setWeight('camera',this)" onchange="renderPanel();this.blur()"></div>`;
       h+=`<div class="slider-row"><label>LiDAR权重: ${S.weights.lidar.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.weights.lidar*100}" oninput="setWeight('lidar',this)" onchange="renderPanel();this.blur()"></div>`;
       h+=`<div class="slider-row"><label>雷达权重: ${S.weights.radar.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.weights.radar*100}" oninput="setWeight('radar',this)" onchange="renderPanel();this.blur()"></div>`;
-      h+=`<p style="font-size:13px;color:var(--sv)">融合置信度: ${S.confidence.toFixed(1)}%</p>`;
-      if(S.confidence>90&&!levelObjs[0][1]){completeObj(1)}
-      h+=`<button class="act-btn secondary" onclick="S.weather=S.weather==='clear'?'rain':'clear';renderPanel()">${S.weather==='clear'?'🌧️ 模拟恶劣天气':'☀️ 恢复晴天'}</button>`;
-      if(S.weather!=='clear'&&S.confidence>70&&!levelObjs[0][2])completeObj(2);
+      h+=`<p id="fusionConfidence" style="font-size:13px;color:${S.confidence>90?'#22c55e':S.confidence>70?'#f59e0b':'#ef4444'}">融合置信度: ${S.confidence.toFixed(1)}%</p>`;
+      h+=`<p id="fusionWeights" style="font-size:12px;line-height:1.6;color:var(--concept-text)">${fusionWeightSummaryHTML()}</p>`;
+      h+=`<button class="act-btn secondary" onclick="toggleWeather()">${S.weather==='clear'?'🌧️ 模拟恶劣天气':'☀️ 恢复晴天'}</button>`;
+      if(canConfirmWeatherRobustness()&&!levelObjs[0][2])h+=`<button class="act-btn secondary" onclick="confirmWeatherRobustness()">确认：雨雾下由雷达/LiDAR提供冗余感知</button>`;
+      else if(S.weatherRobustConfirmed)h+=`<p style="font-size:12px;color:#22c55e">已验证：雨雾场景下由 LiDAR 与雷达提供冗余感知。</p>`;
+      else if(S.weather!=='clear'&&!levelObjs[0][2])h+=`<p style="font-size:12px;color:var(--stage-hint)">雨雾会削弱摄像头。把权重调到融合置信度 >70%，再确认冗余感知策略。</p>`;
     }
   }
   if(idx===1){
     h+=`<h3>检测阈值</h3>`;
     h+=`<div class="slider-row"><label>置信度阈值: ${S.threshold.toFixed(2)}</label><input type="range" min="10" max="99" value="${S.threshold*100}" oninput="setThreshold(this)" onchange="renderPanel();this.blur()"></div>`;
-    let det=S.objects.filter(o=>o.detected&&o.conf>=0.5).length,total=S.objects.filter(o=>o.conf>=0.5).length;
-    let acc=total>0?det/total*100:0;
-    h+=`<p style="color:${acc>85?'#22c55e':'#f59e0b'}">准确率: ${acc.toFixed(1)}%</p>`;
-    if(acc>85&&!levelObjs[1][0])completeObj(0);
-    h+=`<button class="act-btn" onclick="S.segDone=true;completeObj(1);renderPanel()">执行语义分割</button>`;
-    h+=`<button class="act-btn secondary" onclick="S.detected3d=true;completeObj(2);renderPanel()" style="margin-top:4px">处理3D点云</button>`;
+    let m=getPerceptionMetrics();
+    h+=`<p id="perceptionMetrics" style="color:${m.f1>85?'#22c55e':'#f59e0b'}">${perceptionMetricText(m)}</p>`;
+    h+=`<p style="font-size:12px;color:var(--stage-hint)">低阈值会增加误检，高阈值会增加漏检，目标是在两者之间找到平衡点。</p>`;
+    h+=`<button class="act-btn" onclick="finishPerception('seg')">${S.segDone?'语义分割已着色':'执行语义分割'}</button>`;
+    h+=`<button class="act-btn secondary" onclick="finishPerception('3d')" style="margin-top:4px">${S.detected3d?'3D点云已识别':'处理3D点云'}</button>`;
   }
   if(idx===2){
     h+=`<h3>卡尔曼滤波参数</h3>`;
     h+=`<div class="slider-row"><label>过程噪声 Q: ${S.kfQ.toFixed(2)}</label><input type="range" min="1" max="100" value="${S.kfQ*10}" oninput="setKf('kfQ',this)" onchange="renderPanel();this.blur()"></div>`;
     h+=`<div class="slider-row"><label>观测噪声 R: ${S.kfR.toFixed(2)}</label><input type="range" min="1" max="100" value="${S.kfR*10}" oninput="setKf('kfR',this)" onchange="renderPanel();this.blur()"></div>`;
-    h+=`<p style="color:${S.error<0.5?'#22c55e':S.error<2?'#f59e0b':'#ef4444'}">定位误差: ${S.error.toFixed(2)}m</p>`;
-    if(!levelObjs[2][0]&&S.t>60)completeObj(0);
-    if(S.error<0.5&&!levelObjs[2][1])completeObj(1);
-    h+=`<button class="act-btn secondary" onclick="S.gpsLost=!S.gpsLost;S.imuDrift=0;renderPanel()">${S.gpsLost?'🛰️ 恢复GPS':'🚫 模拟GPS丢失'}</button>`;
-    if(S.gpsLost&&S.error<2&&!levelObjs[2][2])completeObj(2);
+    h+=`<p id="localizationError" style="color:${S.error<0.5?'#22c55e':S.error<2?'#f59e0b':'#ef4444'}">定位误差: ${S.error.toFixed(2)}m</p>`;
+    h+=`<p id="localizationSample" style="font-size:12px;color:var(--stage-hint);line-height:1.6">${localizationSampleText()}</p>`;
+    h+=`<p id="sourceErrors" style="font-size:12px;color:var(--stage-hint);line-height:1.6">${sourceErrorText()}</p>`;
+    h+=`<button class="act-btn secondary" onclick="toggleGpsLost()">${S.gpsLost?'🛰️ 恢复GPS':'🚫 模拟GPS丢失'}</button>`;
   }
   if(idx===3){
     h+=`<h3>选择算法</h3>`;
@@ -528,72 +656,369 @@ function renderLevelPanel(idx){
     h+=`<button class="act-btn secondary" onclick="startAlgo('rrt')" style="margin-top:4px">RRT 随机树</button>`;
     h+=`<button class="act-btn secondary" onclick="resetGrid()" style="margin-top:4px">🔄 重置地图</button>`;
     if(S.path.length>0)h+=`<p style="color:#22c55e">路径长度: ${S.path.length} 步</p>`;
-    h+=`<button class="act-btn secondary" onclick="addDynObs();completeObj(2);renderPanel()" style="margin-top:4px">添加动态障碍物</button>`;
+    h+=`<button class="act-btn secondary" onclick="addDynObs();draw();renderPanel()" style="margin-top:4px">添加动态障碍物</button>`;
+    if(S.dynamicChallenge&&!levelObjs[3][2])h+=`<button class="act-btn secondary" onclick="replanAroundDynamicObstacle()" style="margin-top:4px">重新规划避障路线</button>`;
+    if(S.dynamicChallenge)h+=`<div class="hint-box">${pathPlanningStatusHTML()}</div>`;
   }
   if(idx===4){
     h+=`<h3>PID 参数调节</h3>`;
     h+=`<div class="slider-row"><label>P (比例): ${S.pidP.toFixed(2)}</label><input type="range" min="0" max="200" value="${S.pidP*100}" oninput="setPid('pidP',this)" onchange="renderPanel();this.blur()"></div>`;
     h+=`<div class="slider-row"><label>I (积分): ${S.pidI.toFixed(2)}</label><input type="range" min="0" max="100" value="${S.pidI*100}" oninput="setPid('pidI',this)" onchange="renderPanel();this.blur()"></div>`;
     h+=`<div class="slider-row"><label>D (微分): ${S.pidD.toFixed(2)}</label><input type="range" min="0" max="200" value="${S.pidD*100}" oninput="setPid('pidD',this)" onchange="renderPanel();this.blur()"></div>`;
-    h+=`<p>状态机: <span style="color:#22c55e">${S.stateMachine}</span></p>`;
+    let stateCount=controlStateVisitCount();
+    h+=`<p>状态机: <span style="color:#22c55e">${CONTROL_STATE_LABELS[S.stateMachine]||S.stateMachine}</span></p>`;
+    h+=`<p style="font-size:12px;color:var(--stage-hint)">已观察状态: ${stateCount}/${CONTROL_STATES.length} · ${controlStateProgressText()}</p>`;
     h+=`<button class="act-btn secondary" onclick="cycleState()">切换状态</button>`;
-    if(S.pidP>0&&!levelObjs[4][0])completeObj(0);
-    let avgErr=0;if(S.trail.length>10){for(let i=S.trail.length-10;i<S.trail.length;i++){let closest=null,minD=Infinity;for(let p of S.targetPath){let d=Math.sqrt((p.x-S.trail[i].x)**2+(p.y-S.trail[i].y)**2);if(d<minD){minD=d;closest=p}}avgErr+=minD}avgErr/=10}
-    if(avgErr<30&&avgErr>0&&S.trail.length>50&&!levelObjs[4][1])completeObj(1);
-    h+=`<button class="act-btn secondary" onclick="S.mpcActive=!S.mpcActive;completeObj(2);renderPanel()" style="margin-top:4px">${S.mpcActive?'关闭MPC':'启用MPC预测'}</button>`;
+    if(stateCount>=CONTROL_STATES.length&&!levelObjs[idx][0])h+=`<button class="act-btn" onclick="confirmStateMachine()">确认状态转换规则</button>`;
+    let avgErr=getTrackAvgError();
+    if(S.trail.length>10)h+=`<p style="color:${avgErr<30?'#22c55e':'#f59e0b'}">近段路径误差: ${avgErr.toFixed(1)}px</p>`;
+    h+=`<div id="controlHint" class="hint-box">${controlHintHTML()}</div>`;
+    h+=`<button class="act-btn secondary" onclick="toggleMpc()" style="margin-top:4px">${S.mpcActive?'关闭MPC':'启用MPC预测'}</button>`;
+    if(S.mpcActive)h+=`<p style="font-size:12px;color:var(--stage-hint)">MPC预测观察: ${Math.min(30,Math.floor(S.mpcPreviewFrames||0))}/30 帧；先完成平稳跟踪后才会计入目标。</p>`;
   }
   if(idx===5){
     h+=`<h3>通信链路</h3><p style="font-size:12px;color:var(--stage-hint)">点击一个节点，再点击另一个节点建立链路</p>`;
     h+=`<p>V2V 车-车: ${S.v2vDone?'✅':'❌'} | V2I 车-路: ${S.v2iDone?'✅':'❌'} | V2C 车-云: ${S.v2cDone?'✅':'❌'}</p>`;
     if(S.selectedNode)h+=`<p style="color:var(--sv)">已选: ${S.selectedNode.id}，点击目标节点</p>`;
+    h+=`<div class="hint-box">${v2xStatusHTML()}</div>`;
   }
   if(idx===6){
     h+=`<h3>场景选择</h3>`;
-    h+=`<button class="act-btn ${S.scenario===0?'':'secondary'}" onclick="S.scenario=0;renderPanel()">电车难题</button>`;
-    h+=`<button class="act-btn ${S.scenario===1?'':'secondary'}" onclick="S.scenario=1;renderPanel()" style="margin-top:4px">ISO 26262</button>`;
-    h+=`<button class="act-btn ${S.scenario===2?'':'secondary'}" onclick="S.scenario=2;renderPanel()" style="margin-top:4px">冗余设计</button>`;
-    if(S.scenario===0)h+=`<p style="font-size:12px;color:var(--stage-hint)">点击画布左侧（直行）或右侧（转向）做出选择</p>`;
-    if(S.scenario===1)h+=`<p style="font-size:12px;color:var(--stage-hint)">点击画布逐级了解安全等级</p>`;
-    if(S.scenario===2)h+=`<p style="font-size:12px;color:var(--stage-hint)">点击各组件启用冗余备份</p>`;
+    h+=`<button class="act-btn ${S.scenario===0?'':'secondary'}" onclick="selectSafetyScenario(0)">电车难题</button>`;
+    h+=`<button class="act-btn ${S.scenario===1?'':'secondary'}" onclick="selectSafetyScenario(1)" style="margin-top:4px">ISO 26262</button>`;
+    h+=`<button class="act-btn ${S.scenario===2?'':'secondary'}" onclick="selectSafetyScenario(2)" style="margin-top:4px">冗余设计</button>`;
+    if(S.scenario===0){
+      h+=`<p style="font-size:12px;color:var(--stage-hint)">点击画布左侧/右侧，或用下面按钮明确选择并比较两类伦理原则。</p>`;
+      h+=`<button class="act-btn ${S.choice===0?'':'secondary'}" onclick="chooseEthicalAction(0)">选择直行：最小化总伤害</button>`;
+      h+=`<button class="act-btn ${S.choice===1?'':'secondary'}" onclick="chooseEthicalAction(1)" style="margin-top:4px">选择转向：避免主动改变路线</button>`;
+      const compared=S.ethicalChoices&&S.ethicalChoices.straight&&S.ethicalChoices.swerve;
+      h+=`<div class="hint-box">比较进度：${S.ethicalChoices&&S.ethicalChoices.straight?'✅':'⬜'} 功利主义最小伤害　${S.ethicalChoices&&S.ethicalChoices.swerve?'✅':'⬜'} 不主动改变路线</div>`;
+      if(compared&&!levelObjs[6][0])h+=`<button class="act-btn" onclick="confirmEthicalTradeoff()">确认：伦理决策需要可解释的安全原则</button>`;
+    }
+    if(S.scenario===1){
+      h+=`<p style="font-size:12px;color:var(--stage-hint)">点击画布或按钮逐级了解安全等级：当前 ${['QM','ASIL-A','ASIL-B','ASIL-C','ASIL-D'][S.asilLevel]}。</p>`;
+      h+=`<button class="act-btn secondary" onclick="advanceAsilLevel()">提升一级安全等级</button>`;
+    }
+    if(S.scenario===2){
+      h+=`<p style="font-size:12px;color:var(--stage-hint)">点击画布组件，或用按钮为关键链路启用备份。</p>`;
+      h+=`<button class="act-btn ${S.redundancy.sensor?'':'secondary'}" onclick="enableRedundancy('sensor')">${S.redundancy.sensor?'✓ ':''}传感器冗余</button>`;
+      h+=`<button class="act-btn ${S.redundancy.compute?'':'secondary'}" onclick="enableRedundancy('compute')" style="margin-top:4px">${S.redundancy.compute?'✓ ':''}计算平台冗余</button>`;
+      h+=`<button class="act-btn ${S.redundancy.brake?'':'secondary'}" onclick="enableRedundancy('brake')" style="margin-top:4px">${S.redundancy.brake?'✓ ':''}制动系统冗余</button>`;
+    }
   }
   return h;
 }
 
 // === Helpers ===
-function startAlgo(algo){S.algo=algo;S.searching=true;S.path=[];S.visited=[];S.openSet=[];S.searchStep=0;S._astarInit=false;S._rrtNodes=null;S._rrtEdges=null;
-  if(algo==='astar'){let k=`${S.start.x},${S.start.y}`;S._gScore={};S._fScore={};S._cameFrom={};S._gScore[k]=0;S._fScore[k]=heur(S.start,S.end);S.openSet=[{...S.start}];S._astarInit=true}}
-function resetGrid(){initLevel(3);renderPanel()}
-function addDynObs(){S.dynObs.push({x:5+Math.random()*15,y:3+Math.random()*12,dx:(Math.random()-0.5)*0.04,dy:(Math.random()-0.5)*0.04})}
-function cycleState(){let states=['cruise','follow','lane_change','stop'];let i=states.indexOf(S.stateMachine);S.stateMachine=states[(i+1)%4];renderPanel()}
+function startAlgo(algo){
+  if(curLevel!==3||!['astar','rrt'].includes(algo)||!S.grid)return false;
+  S.algo=algo;S.searching=true;S.path=[];S.visited=[];S.openSet=[];S.searchStep=0;S._astarInit=false;S._rrtNodes=null;S._rrtEdges=null;
+  if(algo==='astar'){let k=`${S.start.x},${S.start.y}`;S._gScore={};S._fScore={};S._cameFrom={};S._gScore[k]=0;S._fScore[k]=heur(S.start,S.end);S.openSet=[{...S.start}];S._astarInit=true}
+  return true;
+}
+function resetGrid(){if(curLevel!==3)return false;initLevel(3);renderPanel();return true}
+function clearPlanningCorridor(){
+  if(!S.grid||!S.start||!S.end)return;
+  for(let x=Math.min(S.start.x,S.end.x);x<=Math.max(S.start.x,S.end.x);x++){S.grid[S.start.y][x]=0;if(S.start.y+1<S.gridH)S.grid[S.start.y+1][x]=0}
+  for(let y=Math.min(S.start.y,S.end.y);y<=Math.max(S.start.y,S.end.y);y++){S.grid[y][S.end.x]=0;if(S.end.x-1>=0)S.grid[y][S.end.x-1]=0}
+  S.grid[S.start.y][S.start.x]=0;S.grid[S.end.y][S.end.x]=0;
+}
+function addDynObs(){
+  if(curLevel!==3||!S.grid||!S.start||!S.end)return false;
+  let cell=S.path&&S.path.length>4?S.path[Math.floor(S.path.length*0.5)]:{x:Math.floor((S.start.x+S.end.x)/2),y:S.start.y};
+  if((cell.x===S.start.x&&cell.y===S.start.y)||(cell.x===S.end.x&&cell.y===S.end.y))cell={x:Math.floor((S.start.x+S.end.x)/2),y:S.start.y};
+  S.dynObs.push({x:cell.x,y:cell.y,dx:0,dy:0,blocks:true});
+  S.dynamicChallenge=true;S.path=[];S.visited=[];S.openSet=[];S.searching=false;S.searchStep=0;
+  return true;
+}
+function replanAroundDynamicObstacle(){
+  if(curLevel!==3||!S.dynamicChallenge||!S.grid)return false;
+  clearPlanningCorridor();
+  startAlgo('astar');
+  let guard=0;
+  while(S.searching&&guard++<2000)stepAStar();
+  if(S.path.length&&isPathClear(S.path))completePathGoal(2);
+  renderPanel();draw();
+  return S.path.length>0;
+}
+function cycleState(){
+  if(curLevel!==4||!S.stateMachine)return false;
+  let states=CONTROL_STATES,i=states.indexOf(S.stateMachine);
+  if(i<0)return false;
+  S.stateMachine=states[(i+1)%states.length];markControlStateVisited();renderPanel();return true;
+}
+function markControlStateVisited(){
+  if(curLevel!==4||!S.stateMachine)return;
+  if(!S.stateVisited)S.stateVisited={};
+  S.stateVisited[S.stateMachine]=true;
+}
+function controlStateVisitCount(){
+  if(curLevel!==4||!S.stateVisited)return 0;
+  return CONTROL_STATES.filter(s=>S.stateVisited[s]).length;
+}
+function controlStateProgressText(){
+  if(curLevel!==4||!S.stateVisited)return '先从巡航开始，逐步观察跟车、变道和停车。';
+  let missing=CONTROL_STATES.filter(s=>!S.stateVisited[s]).map(s=>CONTROL_STATE_LABELS[s]);
+  return missing.length?`还需观察: ${missing.join('、')}`:'巡航、跟车、变道、停车都已观察，可确认状态机会按场景切换行为。';
+}
+function confirmStateMachine(){
+  if(curLevel!==4)return false;
+  markControlStateVisited();
+  if(controlStateVisitCount()<CONTROL_STATES.length)return false;
+  completeObj(0,true);renderPanel();return true;
+}
+function clampNumber(value,fallback,min,max){
+  const n=Number(value);
+  return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback;
+}
 function updateSliderLabel(input,text){let label=input&&input.previousElementSibling;if(label)label.textContent=text}
-function setWeight(key,input){S.weights[key]=+input.value/100;let names={camera:'摄像头权重',lidar:'LiDAR权重',radar:'雷达权重'};updateSliderLabel(input,`${names[key]}: ${S.weights[key].toFixed(2)}`)}
-function setThreshold(input){S.threshold=+input.value/100;updateSliderLabel(input,`置信度阈值: ${S.threshold.toFixed(2)}`)}
-function setKf(key,input){S[key]=+input.value/10;updateSliderLabel(input,`${key==='kfQ'?'过程噪声 Q':'观测噪声 R'}: ${S[key].toFixed(2)}`)}
-function setPid(key,input){S[key]=+input.value/100;let names={pidP:'P (比例)',pidI:'I (积分)',pidD:'D (微分)'};updateSliderLabel(input,`${names[key]}: ${S[key].toFixed(2)}`)}
-function checkQuiz(levelIdx,picked){
-  if(levelIdx!==curLevel||quizPassed[levelIdx])return;
-  let q=LEVELS[levelIdx].quiz,ok=picked===q.ans;
-  quizFeedback[levelIdx]={ok,text:ok?'答对了。进入下一关前，先读一下本关的工程总结。':'还不对。先回到现象：自动驾驶系统要靠冗余、融合和风险控制提升可靠性。'};
+function installAllSensors(){
+  if(curLevel!==0||!S.sensors)return false;
+  S.sensors.camera=true;S.sensors.lidar=true;S.sensors.radar=true;S.installed=3;
+  updateFusionConfidence();completeObj(0,true);checkFusionGoals();
+  renderPanel();draw();
+  return true;
+}
+function setWeight(key,input){
+  if(curLevel!==0||!S.weights||!(key in S.weights))return false;
+  const raw=clampNumber(input&&input.value,S.weights[key]*100,0,100);
+  S.weights[key]=raw/100;if(input)input.value=raw;
+  updateFusionMetricPanel();let names={camera:'摄像头权重',lidar:'LiDAR权重',radar:'雷达权重'};
+  updateSliderLabel(input,`${names[key]}: ${S.weights[key].toFixed(2)}`);
+  if(checkFusionGoals())renderPanel();
+  return true;
+}
+function canConfirmWeatherRobustness(){
+  updateFusionConfidence();
+  return curLevel===0&&S.installed>=3&&S.weather!=='clear'&&S.confidence>70;
+}
+function syncWeatherRobustGoal(){
+  if(!quizPassed[0]&&levelObjs[0][2]&&!S.weatherRobustConfirmed&&!canConfirmWeatherRobustness()){
+    S.weatherRobustConfirmed=false;
+    levelObjs[0][2]=false;
+    return true;
+  }
+  return false;
+}
+function confirmWeatherRobustness(){
+  if(!canConfirmWeatherRobustness())return false;
+  S.weatherRobustConfirmed=true;
+  completeObj(2,true);
+  renderPanel();
+  return true;
+}
+function setThreshold(input){
+  if(curLevel!==1||!Number.isFinite(S.threshold))return false;
+  const raw=clampNumber(input&&input.value,S.threshold*100,10,99);
+  S.threshold=raw/100;if(input)input.value=raw;
+  updateSliderLabel(input,`置信度阈值: ${S.threshold.toFixed(2)}`);
+  updatePerceptionMetricPanel();if(checkPerceptionGoals())renderPanel();
+  return true;
+}
+function setKf(key,input){
+  if(curLevel!==2||(key!=='kfQ'&&key!=='kfR')||!Number.isFinite(S[key]))return false;
+  const raw=clampNumber(input&&input.value,S[key]*10,1,100);
+  S[key]=raw/10;if(input)input.value=raw;S.kfAdjusted=true;
+  updateSliderLabel(input,`${key==='kfQ'?'过程噪声 Q':'观测噪声 R'}: ${S[key].toFixed(2)}`);
+  if(checkLocalizationGoals())renderPanel();
+  return true;
+}
+function setPid(key,input){
+  const max={pidP:200,pidI:100,pidD:200}[key];
+  if(curLevel!==4||!max||!Number.isFinite(S[key]))return false;
+  const raw=clampNumber(input&&input.value,S[key]*100,0,max);
+  S[key]=raw/100;if(input)input.value=raw;
+  let names={pidP:'P (比例)',pidI:'I (积分)',pidD:'D (微分)'};
+  updateSliderLabel(input,`${names[key]}: ${S[key].toFixed(2)}`);
+  updateControlHintPanel();
+  if(checkControlGoals())renderPanel();
+  return true;
+}
+function stepLocalization(dt){
+  S.pathT+=0.002*dt;if(S.pathT>1)S.pathT-=1;
+  let angle=S.pathT*Math.PI*4;
+  S.truePos={x:W/2+Math.cos(angle)*W*0.25,y:H/2+Math.sin(angle*0.5)*H*0.25};
+  S.gpsPos={x:S.truePos.x+(Math.random()-0.5)*S.gpsNoise*10*(S.gpsLost?50:1),y:S.truePos.y+(Math.random()-0.5)*S.gpsNoise*10*(S.gpsLost?50:1)};
+  S.imuDrift+=0.1*dt;S.imuPos={x:S.truePos.x+Math.sin(S.imuDrift)*S.imuDrift*0.3,y:S.truePos.y+Math.cos(S.imuDrift)*S.imuDrift*0.3};
+  S.visPos={x:S.truePos.x+(Math.random()-0.5)*15,y:S.truePos.y+(Math.random()-0.5)*15};
+  let kfGain=S.kfQ/(S.kfQ+S.kfR);
+  let prediction={x:S.fusedPos.x+(S.truePos.x-S.fusedPos.x)*0.18,y:S.fusedPos.y+(S.truePos.y-S.fusedPos.y)*0.18};
+  let sources=S.gpsLost?[S.imuPos,S.visPos]:[S.gpsPos,S.imuPos,S.visPos];
+  let observation={x:sources.reduce((a,p)=>a+p.x,0)/sources.length,y:sources.reduce((a,p)=>a+p.y,0)/sources.length};
+  S.fusedPos={x:prediction.x*(1-kfGain)+observation.x*kfGain,y:prediction.y*(1-kfGain)+observation.y*kfGain};
+  S.error=Math.sqrt((S.fusedPos.x-S.truePos.x)**2+(S.fusedPos.y-S.truePos.y)**2)/10;
+  updateLocalizationMetricPanel();
+}
+function checkFusionGoals(){let changed=false;if(curLevel===0&&S.installed>=3){if(S.confidence>90)changed=completeObj(1,true)||changed;changed=syncWeatherRobustGoal()||changed}return changed}
+function isPerceptionQualityReady(){return curLevel===1&&getPerceptionMetrics().f1>85}
+function checkPerceptionGoals(){
+  if(curLevel!==1)return false;
+  let changed=false;
+  if(isPerceptionQualityReady()){
+    changed=completeObj(0,true)||changed;
+    if(S.segDone)changed=completeObj(1,true)||changed;
+    if(S.detected3d)changed=completeObj(2,true)||changed;
+  }
+  return changed;
+}
+function checkLocalizationGoals(){let changed=false;if(curLevel===2){if(S.t>=LOCALIZATION_SAMPLE_FRAMES)changed=completeObj(0,true)||changed;if(S.kfAdjusted&&S.error<0.5)changed=completeObj(1,true)||changed;if(S.gpsLost&&S.error<2)changed=completeObj(2,true)||changed}return changed}
+function getTrackAvgError(){if(!S.trail||!S.targetPath||S.trail.length<=10)return 0;let avgErr=0;for(let i=S.trail.length-10;i<S.trail.length;i++){let minD=Infinity;for(let p of S.targetPath){let d=Math.sqrt((p.x-S.trail[i].x)**2+(p.y-S.trail[i].y)**2);if(d<minD)minD=d}avgErr+=minD}return avgErr/10}
+function buildMpcPath(){
+  if(curLevel!==4||!S.targetPath||!S.targetPath.length)return [];
+  let closestIdx=0,minD=Infinity;
+  for(let i=0;i<S.targetPath.length;i++){let p=S.targetPath[i],d=Math.sqrt((p.x-S.carX)**2+(p.y-S.carY)**2);if(d<minD){minD=d;closestIdx=i}}
+  S.mpcPath=[];
+  const start=Math.min(closestIdx+1,S.targetPath.length-1);
+  for(let i=0;i<20;i++){
+    const target=S.targetPath[Math.min(start+i*2,S.targetPath.length-1)];
+    const blend=(i+1)/20;
+    S.mpcPath.push({x:S.carX+(target.x-S.carX)*blend,y:S.carY+(target.y-S.carY)*blend});
+  }
+  return S.mpcPath;
+}
+function controlHintHTML(){
+  if(!S.targetPath)return '先调 P 让车辆开始跟踪弯道，再用 D 抑制震荡，I 只需要少量修正长期偏差。';
+  const avgErr=getTrackAvgError();
+  let verdict='先把 P 提到 0.6-1.2，让车辆对弯道有足够响应。';
+  if(S.pidP>1.4&&S.pidD<0.3)verdict='P 较高但 D 偏低，车辆容易来回摆动；增加 D 相当于给转向加阻尼。';
+  else if(S.pidP>0.4&&S.pidD>=0.3&&S.pidI<=0.25)verdict='当前组合更接近平稳跟踪：P 负责转向力度，D 抑制过冲，低 I 避免累积振荡。';
+  else if(S.pidI>0.45)verdict='I 偏高会把历史误差越积越多，可能在连续弯道里造成慢性过冲。';
+  if(S.trail&&S.trail.length>50)verdict+=` 近段路径误差 ${avgErr.toFixed(1)}px，目标是低于 30px。`;
+  if(S.mpcActive&&!levelObjs[4][1])verdict+=' MPC预测线已打开；先把PID跟踪误差降到目标内，再用预测轨迹比较未来几步控制。';
+  else if(S.mpcActive&&!levelObjs[4][2])verdict+=' PID已进入平稳区，继续观察MPC预测窗口，确认它是在滚动预测未来轨迹。';
+  return verdict;
+}
+function updateControlHintPanel(){const el=document.getElementById('controlHint');if(el)el.textContent=controlHintHTML()}
+function v2xStatusHTML(){
+  if(!S.vehicles)return '先点选车辆、路侧单元或云端，观察链路如何扩展单车感知边界。';
+  let tips=[];
+  tips.push(S.v2vDone?'V2V 已共享车辆位置、速度和意图，可提前判断相邻车辆风险。':'V2V：先选一辆车，再点另一辆车，共享运动状态。');
+  tips.push(S.v2iDone?'V2I 已接入路侧单元，车辆可获得信号灯、施工或盲区行人信息。':'V2I：把车辆连到 RSU，补足车载传感器看不到的路口信息。');
+  tips.push(S.v2cDone?'V2C 已形成云端协同决策：云端汇总车辆与路侧信息后下发全局策略。':S.cloudLinked?'V2C 云端链路已建立；还需要先完成 V2V 与 V2I，云端才有足够上下文做协同决策。':'V2C：把任意节点连到 Cloud，再结合 V2V 与 V2I 信息理解全局调度。');
+  return tips.join('<br>');
+}
+function completeV2CIfReady(){
+  if(curLevel!==5||!S.cloudLinked||!S.v2vDone||!S.v2iDone)return false;
+  S.v2cDone=true;
+  return completeObj(2);
+}
+function checkControlGoals(){let changed=false;if(curLevel===4){let avgErr=getTrackAvgError();if(avgErr<30&&S.trail.length>50)changed=completeObj(1,true)||changed;if(levelObjs[4][1]&&S.mpcActive&&S.mpcPath&&S.mpcPath.length>=10&&(S.mpcPreviewFrames||0)>=30)changed=completeObj(2,true)||changed}return changed}
+function pathPlanningStatusHTML(){
+  if(!S.dynamicChallenge)return '';
+  if(S.searching)return '动态障碍已占住旧路径，规划器正在重新搜索安全路线。';
+  if(S.path.length>0&&isPathClear(S.path))return '新路径没有穿过阻塞格，说明规划器完成了动态避障重规划。';
+  if(S.path.length>0)return '当前路径仍穿过阻塞格，请重新运行 A* 或 RRT，对比搜索策略如何修正路线。';
+  return '新障碍物已加入，请重新运行 A* 或 RRT，观察旧路径被占用后如何重规划。';
+}
+function completePathGoal(i){let changed=completeObj(i,true);if(curLevel===3&&S.dynamicChallenge&&isPathClear(S.path))changed=completeObj(2,true)||changed;if(changed)renderPanel()}
+function toggleWeather(){
+  if(curLevel!==0||!S.sensors)return false;
+  S.weather=S.weather==='clear'?'rain':'clear';updateFusionConfidence();checkFusionGoals();renderPanel();return true;
+}
+function toggleGpsLost(){
+  if(curLevel!==2||!S.truePos)return false;
+  S.gpsLost=!S.gpsLost;S.imuDrift=0;checkLocalizationGoals();renderPanel();return true;
+}
+function finishPerception(kind){
+  if(curLevel!==1||!S.objects)return false;
+  if(kind==='seg')S.segDone=true;
+  else if(kind==='3d')S.detected3d=true;
+  else return false;
+  checkPerceptionGoals();
+  renderPanel();return true;
+}
+function toggleMpc(){
+  if(curLevel!==4||!S.targetPath)return false;
+  S.mpcActive=!S.mpcActive;
+  S.mpcPreviewFrames=0;
+  if(S.mpcActive)buildMpcPath();
+  else S.mpcPath=[];
+  checkControlGoals();renderPanel();return true;
+}
+function selectSafetyScenario(idx){
+  idx=Number(idx);
+  if(curLevel!==6||!Number.isInteger(idx)||idx<0||idx>2)return false;
+  S.scenario=idx;renderPanel();return true;
+}
+function chooseEthicalAction(choice){
+  choice=Number(choice);
+  if(curLevel!==6||S.scenario!==0||!Number.isInteger(choice)||choice<0||choice>1)return false;
+  S.choice=choice;
+  S.dilemmaShown=true;
+  if(!S.ethicalChoices)S.ethicalChoices={straight:false,swerve:false};
+  if(choice===0)S.ethicalChoices.straight=true;
+  if(choice===1)S.ethicalChoices.swerve=true;
+  renderPanel();
+  return true;
+}
+function canConfirmEthicalTradeoff(){
+  return curLevel===6&&S.scenario===0&&S.ethicalChoices&&S.ethicalChoices.straight&&S.ethicalChoices.swerve;
+}
+function confirmEthicalTradeoff(){
+  if(!canConfirmEthicalTradeoff())return false;
+  S.ethicalConfirmed=true;
+  completeObj(0,true);
+  renderPanel();
+  return true;
+}
+function advanceAsilLevel(){
+  if(curLevel!==6||S.scenario!==1)return false;
+  S.asilLevel=Math.min(4,S.asilLevel+1);
+  if(S.asilLevel>=4){S.safetyDone=true;completeObj(1,true)}
+  renderPanel();
+  return true;
+}
+function enableRedundancy(key){
+  if(curLevel!==6||S.scenario!==2||!S.redundancy||!(key in S.redundancy))return false;
+  S.redundancy[key]=true;
+  if(S.redundancy.sensor&&S.redundancy.compute&&S.redundancy.brake){S.redundancyDone=true;completeObj(2,true)}
+  renderPanel();
+  return true;
+}
+function answerQuiz(levelIdx,picked){
+  levelIdx=Number(levelIdx);picked=Number(picked);
+  if(!Number.isInteger(levelIdx)||!Number.isInteger(picked))return false;
+  if(levelIdx<0||levelIdx>=LEVELS.length)return false;
+  if(levelIdx!==curLevel||quizPassed[levelIdx]||!isLevelDone(levelIdx))return false;
+  if(levelIdx>0&&!quizPassed[levelIdx-1])return false;
+  let q=LEVELS[levelIdx].quiz;
+  if(!q||!Number.isInteger(picked)||picked<0||picked>=q.opts.length)return false;
+  let ok=picked===q.ans;
+  quizFeedback[levelIdx]={ok,choice:picked,text:(ok?'答对了。':'还不对。')+(q.why||'先回到本关现象，观察目标条件和图中反馈再判断。')};
   if(ok)quizPassed[levelIdx]=true;
   renderPanel();
+  return ok;
 }
-function goLevel(i){if(!isUnlocked(i))return;curLevel=i;initLevel(i);renderPanel()}
+function goLevel(i){
+  i=Number(i);
+  if(!Number.isInteger(i))return;
+  if(i<0||i>=LEVELS.length)return;
+  if(!isUnlocked(i))return;
+  curLevel=i;initLevel(i);renderPanel();
+}
 
 // === Result ===
 function showResult(){
-  let done=levelObjs.flat().filter(Boolean).length;
+  if(!allQuizPassed())return;
+  let done=quizPassed.filter(Boolean).length*3;
   panel.innerHTML=`<div class="summary-box"><div class="summary-title">🎉 探险完成！</div><div class="summary-sub">你已掌握自动驾驶全栈技术</div>
-    <div class="summary-stats"><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标完成</div></div><div class="summary-stat"><div class="num">7/7</div><div class="label">关卡通过</div></div></div>
+    <div class="summary-stats"><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标达成</div></div><div class="summary-stat"><div class="num">7/7</div><div class="label">关卡通关</div></div></div>
     <div class="summary-keys"><div>📡 传感器融合提供冗余感知</div><div>👁️ 环境感知是决策的基础</div><div>🗺️ 多源融合定位精度达厘米级</div><div>🛤️ 路径规划需兼顾效率与安全</div><div>🎮 PID/MPC实现精确控制</div><div>📶 V2X扩展单车感知边界</div><div>⚖️ 安全与伦理是终极挑战</div></div>
-    <button class="act-btn" onclick="curLevel=0;levelObjs=Array.from({length:7},()=>[false,false,false]);quizPassed=Array.from({length:7},()=>false);quizFeedback={};initLevel(0);renderPanel()" style="margin-top:12px">重新探索</button></div>`;
+    <button class="act-btn" onclick="restartFromSummary()" style="margin-top:12px">重新探索</button></div>`;
+}
+function restartFromSummary(){
+  resetProgress();
+  renderPanel();
+  draw();
+  return true;
 }
 
 // === Main loop ===
-function startGame(){overlay.style.display='none';panel.style.display='block';bar.style.display='flex';resize();initLevel(0);renderPanel();loop()}
+function startGame(){overlay.style.display='none';panel.style.display='block';bar.style.display='flex';resize();resetProgress();renderPanel();if(!animating){animating=true;loop()}}
 function draw(){ctx.clearRect(0,0,W,H);drawGrid();drawStars();drawLevel(curLevel)}
 function loop(){time++;updateLevel(curLevel,1);draw();animId=requestAnimationFrame(loop)}
 cv.addEventListener('click',e=>{let r=cv.getBoundingClientRect();handleClick(e.clientX-r.left,e.clientY-r.top)});
-bar.innerHTML='<div class="bar-left"><span class="bar-btn active">自动驾驶探险</span></div><div class="bar-right">边玩边学</div>';
+renderBar();
 resize();
 </script>
 </body>

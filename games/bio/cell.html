@@ -206,7 +206,7 @@ function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;
 function renderBar(){bar.innerHTML='<span style="color:var(--text-muted)">🧬 '+levelNames[curLevel]+'</span>';}
 function _stageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<7;i++){let unlocked=i===0||quizPassed.has(i-1);let cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;}
+  for(let i=0;i<7;i++){let unlocked=i===0||quizPassed.has(i-1);let cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';h+=`<div class="sn-d ${cls}" ${unlocked?`onclick="goLevel(${i})"`:''}></div>`;}
   h+=`</div><div class="sn-info">第${curLevel+1}/7关 · ${levelNames[curLevel]}</div><div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;return h;
 }
 function _summaryHTML(){
@@ -227,6 +227,7 @@ function quizHTML(li){
 }
 function answerQuiz(li,oi){
   if(li!==curLevel||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(v=>v))return;
+  if(li>0&&!quizPassed.has(li-1))return;
   const q=quizData[li],ok=oi===q.ans;
   quizFeedback[li]={ok,text:ok?q.ok:q.bad};
   if(ok)quizPassed.add(li);
@@ -283,8 +284,8 @@ function renderPanel(){
   if(li===6){
     h+=`<h3>操作</h3>`;
     h+=`<p style="color:var(--text-sub);font-size:13px">调节CDK和Cyclin水平让细胞通过检查点</p>`;
-    h+=`<div style="margin:8px 0"><label style="font-size:13px;color:var(--text-sub)">CDK: <span id="cdkVal">${L.cdkLevel}</span>%</label><br><input type="range" min="0" max="100" value="${L.cdkLevel}" style="width:100%" oninput="L.cdkLevel=+this.value;document.getElementById('cdkVal').textContent=this.value;checkCheckpoints();drawLevel6()" onchange="this.blur();renderPanel()"></div>`;
-    h+=`<div style="margin:8px 0"><label style="font-size:13px;color:var(--text-sub)">Cyclin: <span id="cycVal">${L.cyclinLevel}</span>%</label><br><input type="range" min="0" max="100" value="${L.cyclinLevel}" style="width:100%" oninput="L.cyclinLevel=+this.value;document.getElementById('cycVal').textContent=this.value;checkCheckpoints();drawLevel6()" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div style="margin:8px 0"><label style="font-size:13px;color:var(--text-sub)">CDK: <span id="cdkVal">${L.cdkLevel}</span>%</label><br><input type="range" min="0" max="100" value="${L.cdkLevel}" style="width:100%" oninput="setCDKLevel(this)" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div style="margin:8px 0"><label style="font-size:13px;color:var(--text-sub)">Cyclin: <span id="cycVal">${L.cyclinLevel}</span>%</label><br><input type="range" min="0" max="100" value="${L.cyclinLevel}" style="width:100%" oninput="setCyclinLevel(this)" onchange="this.blur();renderPanel()"></div>`;
     h+=`<p style="color:var(--text-sub);font-size:12px">阶段: <span style="color:#22c55e;font-weight:bold">${L.phase}</span></p>`;
   }
   if(levelComplete||levelObjs[li].every(v=>v)){
@@ -292,7 +293,7 @@ function renderPanel(){
     if(quizPassed.has(li)){
       h+=`<div class="learn-box">${learnTexts[li]}</div>`;
       if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-      if(li===6)h+=_summaryHTML();
+      if(li===6&&quizPassed.size===7)h+=_summaryHTML();
     }
   }
   panel.innerHTML=h;
@@ -356,11 +357,21 @@ window.formFourCells=function(){L.fourCells=true;L.animT=60;completeObj(2);rende
 window.quizCompare=function(){L.quizAttempted=true;renderPanel();};
 window.answerCompare=function(ans){L.quizAttempted=true;L.compareAnswer=ans;if(ans==='meiosis'){L.quizDone=true;completeObj(2)}else renderPanel();};
 // Level 6 actions
+function setCycleRegulator(key,value,labelId){
+  const n=Math.max(0,Math.min(100,Number(value)));
+  if(!Number.isFinite(n))return;
+  L[key]=n;
+  const out=document.getElementById(labelId);
+  if(out)out.textContent=n;
+  checkCheckpoints();
+}
+window.setCDKLevel=function(el){setCycleRegulator('cdkLevel',el.value,'cdkVal');};
+window.setCyclinLevel=function(el){setCycleRegulator('cyclinLevel',el.value,'cycVal');};
 window.checkCheckpoints=function(){
   let cdk=L.cdkLevel,cyc=L.cyclinLevel;
   if(cdk>40&&cyc>30&&!L.g1Pass){L.g1Pass=true;L.phase='S';completeObj(0);}
   if(L.g1Pass&&cdk>60&&cyc>50&&!L.sPass){L.sPass=true;L.phase='G2';completeObj(1);}
-  if(L.sPass&&cdk>80&&cyc>70&&!L.g2Pass){L.g2Pass=true;L.phase='M';completeObj(2);}
+  if(L.sPass&&cdk>80&&cyc>70&&!L.g2Pass){L.g2Pass=true;L.mPass=true;L.phase='M';completeObj(2);}
 };
 // Drawing
 function drawBg(){

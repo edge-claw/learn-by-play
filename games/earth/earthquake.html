@@ -135,8 +135,19 @@ let CW,CH;
 function resize(){const r=cv.getBoundingClientRect();CW=cv.width=r.width;CH=cv.height=r.height}
 resize();window.addEventListener('resize',()=>{resize();draw()});
 let audioCtx;
-function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
-function playSound(type){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='ok'){o.frequency.value=523;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else if(type==='no'){o.frequency.value=300;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}else{o.frequency.value=800;g.gain.value=0.08;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}}
+function initAudio(){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;try{if(!audioCtx)audioCtx=new A();return audioCtx}catch(e){return null}}
+function playSound(type){
+  const ac=initAudio();if(!ac)return false;
+  try{
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    const now=ac.currentTime;
+    if(type==='ok'){o.frequency.value=523;g.gain.value=0.12;o.start(now);o.frequency.setValueAtTime(659,now+0.1);o.frequency.setValueAtTime(784,now+0.2);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);o.stop(now+0.4)}
+    else if(type==='no'){o.frequency.value=300;g.gain.value=0.12;o.start(now);o.frequency.setValueAtTime(200,now+0.15);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);o.stop(now+0.3)}
+    else{o.frequency.value=800;g.gain.value=0.08;o.start(now);g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.stop(now+0.1)}
+    return true;
+  }catch(e){return false}
+}
 
 const LEVELS=[
   {name:'弹性回跳',icon:'💥'},{name:'P波与S波',icon:'〰️'},{name:'地震仪',icon:'📊'},
@@ -144,12 +155,12 @@ const LEVELS=[
 ];
 const quizData=[
   {q:'弹性回跳理论解释的是哪一件事？',opts:['断层长期积累应变，突然滑动释放能量','地下空洞塌陷产生所有地震','地震只由天气变化触发'],ans:0,ok:'对。岩石像弹簧一样积累弹性能，超过强度后突然回跳并释放地震波。',bad:'回到断层受力过程：关键是应变积累和突然滑动。'},
-  {q:'为什么 P 波通常比 S 波先到达地震台站？',opts:['P 波传播速度更快','S 波能在空气中无限加速','P 波只在地表传播所以路程更短'],ans:0,ok:'对。P 波速度快，且可穿过固体和液体；S 波较慢且不能穿过液体。',bad:'比较两类体波时，先看传播速度。'},
-  {q:'地震仪记录地面振动主要利用了什么原理？',opts:['惯性：重锤相对保持静止，框架随地面运动','磁铁会自动预测震中','纸带只会记录强震不记录弱震'],ans:0,ok:'对。重锤和框架的相对位移形成地震图。',bad:'地震仪的核心是相对运动，而不是预测。'},
-  {q:'震级和烈度的区别是什么？',opts:['震级描述总能量，烈度描述某地破坏程度','震级只对建筑有效，烈度只对海啸有效','两者完全等价'],ans:0,ok:'对。同一次地震只有一个能量级别，但不同地点烈度不同。',bad:'看“全球统一的能量”和“当地影响”的差别。'},
-  {q:'P 波影区为什么能说明地球外核是液态？',opts:['波在液态外核处强烈折射，S 波不能穿过液体','影区是云层挡住了地震波','P 波影区说明地球内部没有分层'],ans:0,ok:'对。体波传播异常提供了地球内部圈层和外核状态的证据。',bad:'影区来自地震波穿过不同介质时的传播变化。'},
-  {q:'海啸从深海进入浅海时通常会发生什么？',opts:['波速降低、波高增大','波速和波高都立刻归零','只改变颜色，不改变能量分布'],ans:0,ok:'对。水深变浅使波速下降，能量堆积成更高的近岸浪。',bad:'关注水深变化如何影响波速和波高。'},
-  {q:'基础隔震和阻尼器的共同目标是什么？',opts:['减少建筑吸收的地震能量和振动响应','让建筑变得更重以压住地面','把地震完全消除'],ans:0,ok:'对。抗震设计不是消灭地震，而是降低结构响应并避免倒塌。',bad:'抗震措施处理的是建筑响应，不是让地震不存在。'}
+  {q:'为什么 P 波通常比 S 波先到达地震台站？',opts:['P 波只在地表传播所以路程更短','P 波传播速度更快','S 波能在空气中无限加速'],ans:1,ok:'对。P 波速度快，且可穿过固体和液体；S 波较慢且不能穿过液体。',bad:'比较两类体波时，先看传播速度。'},
+  {q:'地震仪记录地面振动主要利用了什么原理？',opts:['磁铁会自动预测震中','纸带只会记录强震不记录弱震','惯性：重锤相对保持静止，框架随地面运动'],ans:2,ok:'对。重锤和框架的相对位移形成地震图。',bad:'地震仪的核心是相对运动，而不是预测。'},
+  {q:'震级和烈度的区别是什么？',opts:['两者完全等价','震级描述总能量，烈度描述某地破坏程度','震级只对建筑有效，烈度只对海啸有效'],ans:1,ok:'对。同一次地震只有一个能量级别，但不同地点烈度不同。',bad:'看“全球统一的能量”和“当地影响”的差别。'},
+  {q:'P 波影区为什么能说明地球外核是液态？',opts:['影区是云层挡住了地震波','P 波影区说明地球内部没有分层','波在液态外核处强烈折射，S 波不能穿过液体'],ans:2,ok:'对。体波传播异常提供了地球内部圈层和外核状态的证据。',bad:'影区来自地震波穿过不同介质时的传播变化。'},
+  {q:'海啸从深海进入浅海时通常会发生什么？',opts:['只改变颜色，不改变能量分布','波速降低、波高增大','波速和波高都立刻归零'],ans:1,ok:'对。水深变浅使波速下降，能量堆积成更高的近岸浪。',bad:'关注水深变化如何影响波速和波高。'},
+  {q:'基础隔震和阻尼器的共同目标是什么？',opts:['把地震完全消除','让建筑变得更重以压住地面','减少建筑吸收的地震能量和振动响应'],ans:2,ok:'对。抗震设计不是消灭地震，而是降低结构响应并避免倒塌。',bad:'抗震措施处理的是建筑响应，不是让地震不存在。'}
 ];
 let cur=0,gameState='title',S={},done=new Array(7).fill(false),quizPassed=new Set(),quizFeedback={},th=t();
 
@@ -173,7 +184,7 @@ function renderStageNav(){
   LEVELS.forEach((_,i)=>{
     const unlocked=i===0||quizPassed.has(i-1);
     const c=quizPassed.has(i)?'done':i===cur?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${c}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    h+=unlocked&&i!==cur?`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${c}"></div>`;
   });
   h+=`</div><div class="sn-info">第 ${cur+1}/7 关 — ${LEVELS[cur].name}</div>`;
   h+=`<div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;return h;
@@ -187,6 +198,7 @@ function quizHTML(i){
   h+='</div>';return h;
 }
 function answerQuiz(i,choice){
+  if(i!==cur||quizPassed.has(i)||!done[i])return;
   const q=quizData[i],ok=choice===q.ans;
   quizFeedback[i]={ok,text:ok?q.ok:q.bad};
   if(ok){quizPassed.add(i);playSound('ok')}else{playSound('no')}
@@ -202,13 +214,30 @@ function renderPanel(){
   if(quizPassed.size===7)h+=renderSummary();
   p.innerHTML=h;
 }
+function clampNumber(value,min,max,fallback){
+  const n=String(value).trim()===''?NaN:Number(value);
+  const base=Number.isFinite(Number(fallback))?Number(fallback):min;
+  return Math.max(min,Math.min(max,Number.isFinite(n)?n:base));
+}
+function setSliderText(input,text){
+  const label=input&&input.previousElementSibling&&input.previousElementSibling.querySelector('.slider-val');
+  if(label)label.textContent=text;
+}
+function setSliderValue(input,key,min,max,formatter,onChange){
+  const value=clampNumber(input&&input.value,min,max,S[key]);
+  S[key]=value;
+  if(input)input.value=String(value);
+  setSliderText(input,formatter?formatter(value):String(value));
+  if(onChange)onChange(value);
+  draw();
+}
 function renderLevelPanel(i){
   let h='';
   switch(i){
     case 0:
       h+=`<div class="concept-box"><b>弹性回跳理论</b>：断层两侧岩石受力缓慢变形积累弹性应变能，当应力超过岩石强度时断层突然滑动释放能量，产生地震。就像弯曲的树枝突然折断。</div>`;
       h+=`<div class="desc">拖动滑块增加应力，观察岩石变形。当应力足够大时，断层会突然断裂释放能量。</div>`;
-      h+=`<div class="slider-wrap"><label>施加应力: <span class="slider-val">${S.strain.toFixed(0)}%</span></label><input type="range" min="0" max="100" step="1" value="${S.strain}" oninput="S.strain=+this.value;S.stress=S.strain/100;if(S.strain>=85&&!S.snapped){S.snapped=true;S.offset=20;done[0]=true;playSound('ok')};draw();this.previousElementSibling.querySelector('.slider-val').textContent=S.strain.toFixed(0)+'%'" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>施加应力: <span class="slider-val">${S.strain.toFixed(0)}%</span></label><input type="range" min="0" max="100" step="1" value="${S.strain}" oninput="setSliderValue(this,'strain',0,100,v=>v.toFixed(0)+'%',v=>{S.stress=v/100;if(v>=85&&!S.snapped){S.snapped=true;S.offset=20;done[0]=true;playSound('ok')}})" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div style="font-size:12px;color:var(--text-muted)">状态: <span class="sv">${S.snapped?'💥 断裂释放！':'积累应变中...'}</span></div>`;
       if(S.snapped)h+=`<div class="learn-box">断层突然滑动，积累的弹性应变能以<b>地震波</b>的形式向四周传播。这就是地震的本质——弹性回跳。</div>`;
       break;
@@ -222,8 +251,8 @@ function renderLevelPanel(i){
     case 2:
       h+=`<div class="concept-box"><b>地震仪</b>利用惯性原理记录地面振动。重锤因惯性保持静止，而与地面相连的框架随地震波运动，两者的相对位移被记录为地震图。</div>`;
       h+=`<div class="desc">调整振幅和频率，观察地震仪如何记录不同强度的地震波形。</div>`;
-      h+=`<div class="slider-wrap"><label>振幅: <span class="slider-val">${S.amplitude.toFixed(1)}</span></label><input type="range" min="0" max="10" step="0.5" value="${S.amplitude}" oninput="S.amplitude=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.amplitude.toFixed(1);draw()" onchange="this.blur();renderPanel()"></div>`;
-      h+=`<div class="slider-wrap"><label>频率: <span class="slider-val">${S.frequency.toFixed(1)} Hz</span></label><input type="range" min="0.5" max="5" step="0.5" value="${S.frequency}" oninput="S.frequency=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.frequency.toFixed(1)+' Hz';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>振幅: <span class="slider-val">${S.amplitude.toFixed(1)}</span></label><input type="range" min="0" max="10" step="0.5" value="${S.amplitude}" oninput="setSliderValue(this,'amplitude',0,10,v=>v.toFixed(1))" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>频率: <span class="slider-val">${S.frequency.toFixed(1)} Hz</span></label><input type="range" min="0.5" max="5" step="0.5" value="${S.frequency}" oninput="setSliderValue(this,'frequency',0.5,5,v=>v.toFixed(1)+' Hz')" onchange="this.blur();renderPanel()"></div>`;
       h+=`<button class="act-btn" onclick="toggleRecord()">${S.recording?'⏹ 停止记录':'⏺ 开始记录'}</button>`;
       if(S.trace.length>50&&S.amplitude>=3&&!done[2]){done[2]=true;playSound('ok')}
       if(S.trace.length>50&&S.amplitude<3)h+=`<div class="hint-box">振幅太小，试着把振幅调到 3 以上再记录一段清晰波形。</div>`;
@@ -231,8 +260,8 @@ function renderLevelPanel(i){
     case 3:
       h+=`<div class="concept-box"><b>震级</b>（里氏）衡量地震释放的总能量，全球统一。<b>烈度</b>衡量某地的破坏程度，同一地震不同地点烈度不同——离震中越远烈度越低。</div>`;
       h+=`<div class="desc">调整震级和距离，观察烈度如何变化。</div>`;
-      h+=`<div class="slider-wrap"><label>震级 (M): <span class="slider-val">${S.magnitude.toFixed(1)}</span></label><input type="range" min="1" max="9" step="0.1" value="${S.magnitude}" oninput="S.magnitude=+this.value;calcIntensity();this.previousElementSibling.querySelector('.slider-val').textContent=S.magnitude.toFixed(1);draw()" onchange="this.blur();renderPanel()"></div>`;
-      h+=`<div class="slider-wrap"><label>距震中距离: <span class="slider-val">${S.distance} km</span></label><input type="range" min="1" max="500" step="1" value="${S.distance}" oninput="S.distance=+this.value;calcIntensity();this.previousElementSibling.querySelector('.slider-val').textContent=S.distance+' km';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>震级 (M): <span class="slider-val">${S.magnitude.toFixed(1)}</span></label><input type="range" min="1" max="9" step="0.1" value="${S.magnitude}" oninput="setSliderValue(this,'magnitude',1,9,v=>v.toFixed(1),calcIntensity)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>距震中距离: <span class="slider-val">${S.distance} km</span></label><input type="range" min="1" max="500" step="1" value="${S.distance}" oninput="setSliderValue(this,'distance',1,500,v=>v+' km',calcIntensity)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div style="font-size:13px;margin:8px 0">烈度: <span class="sv">${toRoman(S.intensity)}</span> (${getIntensityDesc(S.intensity)})</div>`;
       if(S.magnitude>=7&&S.distance<=20&&!done[3]){done[3]=true;playSound('ok')}
       break;
@@ -246,7 +275,7 @@ function renderLevelPanel(i){
     case 5:
       h+=`<div class="concept-box"><b>海啸</b>由海底地震、火山或滑坡引起。深海中波速极快（~700 km/h）但波高很低；接近海岸时水深变浅，波速降低但波高急剧增大，形成破坏性巨浪。</div>`;
       h+=`<div class="desc">调整海底深度，观察海啸波速和波高的变化。点击"触发海啸"开始模拟。</div>`;
-      h+=`<div class="slider-wrap"><label>海底深度: <span class="slider-val">${S.depth} m</span></label><input type="range" min="100" max="6000" step="100" value="${S.depth}" oninput="S.depth=+this.value;S.speed=Math.sqrt(9.8*S.depth)*3.6;this.previousElementSibling.querySelector('.slider-val').textContent=S.depth+' m';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>海底深度: <span class="slider-val">${S.depth} m</span></label><input type="range" min="100" max="6000" step="100" value="${S.depth}" oninput="setSliderValue(this,'depth',100,6000,v=>v+' m',v=>{S.speed=Math.sqrt(9.8*v)*3.6})" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div style="font-size:12px;color:var(--text-muted)">波速: <span class="sv">${S.speed.toFixed(0)} km/h</span></div>`;
       h+=`<button class="act-btn" onclick="triggerTsunami()">${S.running?'⏹ 重置':'🌊 触发海啸'}</button>`;
       if(done[5])h+=`<div class="hint-box">海啸已接近浅海，注意波速和波高的交换关系。</div>`;
@@ -256,7 +285,7 @@ function renderLevelPanel(i){
       h+=`<div class="desc">为建筑添加抗震措施，然后触发地震测试效果。</div>`;
       h+=`<div style="margin:8px 0"><label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px"><input type="checkbox" ${S.baseIso?'checked':''} onchange="S.baseIso=this.checked;draw()"> 基础隔震</label></div>`;
       h+=`<div style="margin:8px 0"><label style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px"><input type="checkbox" ${S.damper?'checked':''} onchange="S.damper=this.checked;draw()"> 阻尼器</label></div>`;
-      h+=`<div class="slider-wrap"><label>楼层数: <span class="slider-val">${S.floors}</span></label><input type="range" min="3" max="20" step="1" value="${S.floors}" oninput="S.floors=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.floors;draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>楼层数: <span class="slider-val">${S.floors}</span></label><input type="range" min="3" max="20" step="1" value="${S.floors}" oninput="setSliderValue(this,'floors',3,20,v=>String(v))" onchange="this.blur();renderPanel()"></div>`;
       h+=`<button class="act-btn" onclick="triggerQuake()">💥 触发地震</button>`;
       if(S.running)h+=`<div style="font-size:12px;margin:6px 0">损伤: <span class="sv" style="color:${S.damage<30?'#4ade80':S.damage<60?'#f59e0b':'#ef4444'}">${S.damage.toFixed(0)}%</span></div>`;
       if(S.running&&S.damage<30&&!done[6]){done[6]=true;playSound('ok')}
@@ -464,7 +493,7 @@ function drawBuilding(){
 }
 
 /* === 交互 === */
-function goLevel(i){if(i<0||i>=7)return;if(i>0&&!quizPassed.has(i-1))return;cur=i;initLevel(i);renderPanel();draw();updateInfobar();playSound('click')}
+function goLevel(i){if(!Number.isInteger(i)||i<0||i>=7)return;if(i>0&&!quizPassed.has(i-1))return;cur=i;initLevel(i);renderPanel();draw();updateInfobar();playSound('click')}
 function startGame(){playSound('click');document.getElementById('startScreen').classList.add('hidden');document.getElementById('panel').style.display='block';gameState='play';goLevel(0);anim()}
 function updateInfobar(){document.getElementById('ib-level').textContent=`关卡 ${cur+1}/7`;document.getElementById('ib-title').textContent=LEVELS[cur].name;document.getElementById('ib-status').textContent=quizPassed.has(cur)?'✅ 已通关':done[cur]?'待测验':'进行中'}
 

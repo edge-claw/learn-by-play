@@ -198,33 +198,47 @@ let quizFeedback = {};
 
 const quizData = [
   {q:'为什么正弦波在信号分析中最基础？',opts:['许多周期信号可分解为正弦波叠加','正弦波不能被测量','正弦波没有频率'],ans:0,ok:'对。傅里叶思想就是用正弦/余弦基函数表示复杂信号。',bad:'正弦波的核心价值在于频率明确，并能作为分解基。'},
-  {q:'信号乘法在通信里常对应什么操作？',opts:['调制，把频谱搬移到载波附近','永久删除信号','只改变画布颜色'],ans:0,ok:'对。乘以载波会让基带频谱搬移，是调制的核心。',bad:'乘法不是简单混合音量，它会改变频域位置。'},
-  {q:'卷积描述 LTI 系统时，h(t) 通常代表什么？',opts:['系统的冲激响应','输入信号的文件名','随机噪声颜色'],ans:0,ok:'对。输入与冲激响应卷积得到系统输出。',bad:'卷积的系统含义来自冲激响应 h(t)。'},
-  {q:'方波傅里叶级数的典型特征是什么？',opts:['主要由奇次谐波叠加逼近','只含直流分量','不能用正弦波表示'],ans:0,ok:'对。理想方波由奇次谐波按幅度递减叠加。',bad:'方波可以用正弦波逼近，关键是奇次谐波。'},
-  {q:'采样定理要求采样频率至少满足什么？',opts:['大于信号最高频率的 2 倍','小于最高频率一半','等于 0'],ans:0,ok:'对。低于奈奎斯特频率会产生混叠。',bad:'采样不足会把高频伪装成低频，也就是混叠。'},
-  {q:'低通滤波器主要保留什么？',opts:['低频分量','所有高频噪声','只保留负频率'],ans:0,ok:'对。低通保留低频、抑制高频。',bad:'高通和低通的区别就在保留频段。'},
-  {q:'AM 调制中调制深度 m<1 时常用什么方式解调？',opts:['包络检波','把时间倒放','删除载波频率'],ans:0,ok:'对。欠调制 AM 的包络仍能跟随基带信号。',bad:'AM 的可视化重点是包络，m<1 时包络检波有效。'}
+  {q:'信号乘法在通信里常对应什么操作？',opts:['永久删除信号','调制，把频谱搬移到载波附近','只改变画布颜色'],ans:1,ok:'对。乘以载波会让基带频谱搬移，是调制的核心。',bad:'乘法不是简单混合音量，它会改变频域位置。'},
+  {q:'卷积描述 LTI 系统时，h(t) 通常代表什么？',opts:['输入信号的文件名','随机噪声颜色','系统的冲激响应'],ans:2,ok:'对。输入与冲激响应卷积得到系统输出。',bad:'卷积的系统含义来自冲激响应 h(t)。'},
+  {q:'方波傅里叶级数的典型特征是什么？',opts:['只含直流分量','主要由奇次谐波叠加逼近','不能用正弦波表示'],ans:1,ok:'对。理想方波由奇次谐波按幅度递减叠加。',bad:'方波可以用正弦波逼近，关键是奇次谐波。'},
+  {q:'采样定理要求采样频率至少满足什么？',opts:['小于最高频率一半','等于 0','大于信号最高频率的 2 倍'],ans:2,ok:'对。低于奈奎斯特频率会产生混叠。',bad:'采样不足会把高频伪装成低频，也就是混叠。'},
+  {q:'低通滤波器主要保留什么？',opts:['所有高频噪声','低频分量','只保留负频率'],ans:1,ok:'对。低通保留低频、抑制高频。',bad:'高通和低通的区别就在保留频段。'},
+  {q:'AM 调制中调制深度 m<1 时常用什么方式解调？',opts:['把时间倒放','删除载波频率','包络检波'],ans:2,ok:'对。欠调制 AM 的包络仍能跟随基带信号。',bad:'AM 的可视化重点是包络，m<1 时包络检波有效。'}
 ];
 
 // 每关的控件状态
 const S = {
   // L1
-  sigType: 'sine', freq: 2, amp: 1, phase: 0,
+  sigType: 'triangle', freq: 2, amp: 1, phase: 0,
   // L2
-  sig1: 'sine', sig2: 'square', op: 'add', timeShift: 0, scaleK: 1,
+  sig1: 'sine', sig2: 'square', op: 'scale', timeShift: 0, scaleK: 1,
   // L3
   convSig1: 'rect', convSig2: 'rect', convT: -3, convPlaying: false, convSpeed: 0.02,
   // L4
-  harmonics: 1,
+  harmonics: 0,
   // L5
-  fftSig: 'sine', sampleRate: 64, fftFreq: 5,
+  fftSig: 'triangle', sampleRate: 64, fftFreq: 5,
   // L6
-  filterType: 'lowpass', cutoff: 5, bandwidth: 4,
+  filterType: 'lowpass', cutoff: 12, bandwidth: 4,
   // L7
-  carrierFreq: 20, modDepth: 0.5, modType: 'am', baseFreq: 2
+  carrierFreq: 20, modDepth: 0.5, modType: 'fm', baseFreq: 2
+};
+
+const numericRanges = {
+  freq: [0.5, 10], amp: [0.1, 2], phase: [0, 6.28],
+  timeShift: [-2, 2], scaleK: [0.2, 3], convT: [-3, 3],
+  harmonics: [0, 20], sampleRate: [8, 128], fftFreq: [1, 25],
+  cutoff: [1, 25], bandwidth: [1, 15],
+  carrierFreq: [10, 40], modDepth: [0.1, 1.5], baseFreq: [1, 5]
 };
 
 // ========== 工具函数 ==========
+function clampNumber(value, fallback, min, max) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
 function resize() {
   const wrap = document.getElementById('canvasWrap');
   W = cv.width = wrap.clientWidth * devicePixelRatio;
@@ -315,7 +329,7 @@ function stageNavHTML() {
   levels.forEach((_, i) => {
     const unlocked = isUnlocked(i);
     const cls = levelCompleted[i] ? 'done' : i === curLevel ? 'cur' : unlocked ? '' : 'locked';
-    html += `<div class="sn-d ${cls}" onclick="${unlocked ? `goLevel(${i})` : ''}"></div>`;
+    html += unlocked && i !== curLevel ? `<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>` : `<div class="sn-d ${cls}"></div>`;
   });
   html += `</div><div class="sn-info">📍 第 ${curLevel + 1}/${levels.length} 关 | 进度 ${Math.round(passed / levels.length * 100)}%</div>`;
   html += `<div class="sn-hint">${passed}/${levels.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
@@ -333,12 +347,16 @@ function quizHTML(li) {
 }
 
 window.answerQuiz = function(li, choice) {
-  if (li !== curLevel || levelCompleted[li]) return;
-  const q = quizData[li], ok = choice === q.ans;
+  if (!Number.isInteger(li) || !Number.isInteger(choice)) return false;
+  const q = quizData[li], objs = levelObjs[li];
+  if (li !== curLevel || !q || !objs || !objs.every(Boolean) || levelCompleted[li] || !isUnlocked(li)) return false;
+  if (choice < 0 || choice >= q.opts.length) return false;
+  const ok = choice === q.ans;
   quizFeedback[li] = {ok, text: ok ? q.ok : q.bad};
   if (ok) levelCompleted[li] = true;
   updateBar();
   updatePanel();
+  return ok;
 };
 
 // ========== 关卡渲染 ==========
@@ -462,8 +480,8 @@ function renderLevel3() {
   const colors = [PINK, CYAN, YELLOW, GREEN, ORANGE, PURPLE, '#ef4444', '#14b8a6'];
   // 各谐波分量（小图）
   const maxH = Math.min(S.harmonics, 8);
-  const compW = (W - pad*2) / Math.min(maxH, 4);
-  const compH = hTop / Math.ceil(maxH / 4);
+  const compW = (W - pad*2) / Math.max(1, Math.min(maxH, 4));
+  const compH = hTop / Math.max(1, Math.ceil(maxH / 4));
   for (let k = 0; k < maxH; k++) {
     const n = 2*k + 1; // 奇次谐波
     const pts = [];
@@ -719,7 +737,7 @@ function getPanelControls(li) {
       <div class="ctrl-group"><label>自动播放</label>
         <button id="c-convPlay" style="padding:6px;background:var(--stage-bar);color:#e0e0e0;border:1px solid #2a2a4a;border-radius:6px;cursor:pointer">${S.convPlaying?'⏸ 暂停':'▶ 播放'}</button></div>`;
     case 3: return `
-      <div class="ctrl-group"><label>谐波数量</label><input type="range" id="c-harmonics" min="1" max="20" step="1" value="${S.harmonics}"><div class="val">${S.harmonics} 个谐波</div></div>
+      <div class="ctrl-group"><label>谐波数量</label><input type="range" id="c-harmonics" min="0" max="20" step="1" value="${S.harmonics}"><div class="val">${S.harmonics} 个谐波</div></div>
       <p style="font-size:0.82em;color:var(--text-muted);margin-top:8px">方波 = (4/π) Σ sin(nωt)/n<br>n = 1, 3, 5, 7, ...</p>`;
     case 4: return `
       <div class="ctrl-group"><label>信号类型</label>
@@ -752,7 +770,13 @@ function bindControls(li) {
       el.onchange = () => { S[key] = el.value; if(cb)cb(); updatePanel(); };
     } else {
       el.oninput = () => {
-        S[key] = isNum ? parseFloat(el.value) : el.value;
+        if (isNum) {
+          const range = numericRanges[key];
+          S[key] = range ? clampNumber(el.value, S[key], range[0], range[1]) : clampNumber(el.value, S[key], -Infinity, Infinity);
+          el.value = S[key];
+        } else {
+          S[key] = el.value;
+        }
         const valEl = el.parentElement.querySelector('.val');
         if (valEl) {
           if (key==='freq') valEl.textContent = S[key]+' Hz';
@@ -806,11 +830,14 @@ function updatePanel() { buildPanel(); }
 function updateBar() {
   const bar = document.getElementById('bar');
   bar.innerHTML = '<span style="color:var(--text-muted)">📶 ' + levels[curLevel].title + '</span><div class="level-dots">' +
-    levels.map((_, i) => `<span class="${i===curLevel?'active ':''}${levelCompleted[i]?'completed ':''}" onclick="${isUnlocked(i)?`goLevel(${i})`:''}"></span>`).join('') + '</div>';
+    levels.map((_, i) => {
+      const click = isUnlocked(i) && i !== curLevel ? ` onclick="goLevel(${i})"` : '';
+      return `<span class="${i===curLevel?'active ':''}${levelCompleted[i]?'completed ':''}"${click}></span>`;
+    }).join('') + '</div>';
 }
 
 function goLevel(n) {
-  if (n < 0 || n >= levels.length || !isUnlocked(n)) return;
+  if (!Number.isInteger(n) || n < 0 || n >= levels.length || !isUnlocked(n)) return;
   curLevel = n;
   buildPanel();
   updateBar();

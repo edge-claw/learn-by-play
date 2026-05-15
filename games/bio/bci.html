@@ -235,10 +235,27 @@ cv.onmousedown=e=>{
 };
 cv.onmouseup=()=>{mouse.down=false;};
 function startGame(){ov.style.display='none';panel.style.display='block';bar.style.display='flex';resetLevel(0);renderPanel();renderBar();}
-function isUnlocked(li){return li===0||quizPassed.has(li-1);}
-function goLevel(li){if(li<0||li>6||!isUnlocked(li))return;curLevel=li;resetLevel(li);renderPanel();renderBar();}
+function isUnlocked(li){
+  li=Number(li);
+  return Number.isInteger(li)&&li>=0&&li<levelNames.length&&(li===0||quizPassed.has(li-1));
+}
+function goLevel(li){
+  li=Number(li);
+  if(!isUnlocked(li))return false;
+  curLevel=li;resetLevel(li);renderPanel();renderBar();
+  return true;
+}
 window.goLevel=goLevel;
-function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel();renderBar();}}
+function completeObj(i){
+  i=Number(i);
+  if(!Number.isInteger(i)||i<0||i>=levelObjs[curLevel].length||levelObjs[curLevel][i])return false;
+  levelObjs[curLevel][i]=true;renderPanel();renderBar();
+  return true;
+}
+function allDone(li){
+  li=Number(li);
+  return Number.isInteger(li)&&li>=0&&li<levelObjs.length&&levelObjs[li].every(Boolean);
+}
 function renderBar(){
   const done=levelObjs[curLevel].filter(Boolean).length;
   const status=quizPassed.has(curLevel)?'已通关':levelObjs[curLevel].every(Boolean)?'待测验':'进行中';
@@ -254,12 +271,16 @@ function quizHTML(li){
   return h;
 }
 function answerQuiz(li,choice){
-  if(li!==curLevel||quizPassed.has(li))return;
-  const q=quizData[li],ok=choice===q.ans;
+  li=Number(li);choice=Number(choice);
+  if(!Number.isInteger(li)||li!==curLevel||!isUnlocked(li)||quizPassed.has(li)||!allDone(li))return false;
+  const q=quizData[li];
+  if(!q||!Number.isInteger(choice)||choice<0||choice>=q.opts.length)return false;
+  const ok=choice===q.ans;
   quizFeedback[li]={ok,text:ok?q.ok:q.bad};
   if(ok)quizPassed.add(li);
   renderPanel();
   renderBar();
+  return ok;
 }
 window.answerQuiz=answerQuiz;
 function renderPanel(){
@@ -318,7 +339,7 @@ function renderPanel(){
     h+=`<button class="act-btn" onclick="startBBI()">🔗 脑脑接口传输</button>`;
     h+=`<button class="act-btn" onclick="answerEthics()">💬 伦理讨论</button>`;
   }
-  if(levelObjs[li].every(v=>v)){
+  if(allDone(li)){
     if(!quizPassed.has(li))h+=quizHTML(li);
     if(quizPassed.has(li)){
       h+=`<div class="learn-box">${learnTexts[li]}</div>`;

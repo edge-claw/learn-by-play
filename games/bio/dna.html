@@ -71,6 +71,7 @@ canvas{display:block}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}
 .sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -175,13 +176,26 @@ cv.onmouseup=()=>{mouse.down=false;};
 function cx(r){return PL+(W-PL)*r;}
 function cy(r){return H*r;}
 function startGame(){ov.style.display='none';panel.style.display='block';bar.style.display='flex';resetLevel(0);renderPanel();renderBar();}
-function goLevel(li){if(li<0||li>6)return;curLevel=li;resetLevel(li);renderPanel();renderBar();}
+function isUnlocked(li){
+  li=Number(li);
+  return Number.isInteger(li)&&li>=0&&li<levelNames.length&&(li===0||quizPassed.has(li-1));
+}
+function goLevel(li){
+  li=Number(li);
+  if(!isUnlocked(li))return false;
+  curLevel=li;resetLevel(li);renderPanel();renderBar();
+  return true;
+}
 window.goLevel=goLevel;
 function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;renderPanel();renderBar();}}
 function renderBar(){bar.innerHTML='<span style="color:var(--text-muted)">🧬 '+levelNames[curLevel]+'</span>';}
 function _stageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<7;i++){let cls=quizPassed.has(i)?'done':i===curLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;}
+  for(let i=0;i<7;i++){
+    const unlocked=isUnlocked(i);
+    let cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    h+=unlocked?`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${cls}"></div>`;
+  }
   h+=`</div><div class="sn-info">第${curLevel+1}/7关 · ${levelNames[curLevel]}</div></div>`;return h;
 }
 function _summaryHTML(){
@@ -294,7 +308,16 @@ function renderPanel(){
   panel.innerHTML=h;
 }
 // Action handlers
-window.answerQuiz=function(li,choice){if(li!==curLevel||quizPassed.has(li))return;let q=quizData[li],correct=choice===q.ans;quizFeedback={level:li,chosen:choice,correct};if(correct)quizPassed.add(li);renderPanel();renderBar();};
+window.answerQuiz=function(li,choice){
+  li=Number(li);choice=Number(choice);
+  if(li!==curLevel||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(v=>v))return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  let q=quizData[li],correct=choice===q.ans;
+  quizFeedback={level:li,chosen:choice,correct};
+  if(correct)quizPassed.add(li);
+  renderPanel();renderBar();
+  return correct;
+};
 window.startTranscription=function(){L.started=true;completeObj(0);renderPanel();};
 window.advanceTranscription=function(){
   if(L.polyPos<L.template.length){

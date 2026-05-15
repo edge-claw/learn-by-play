@@ -66,7 +66,7 @@
 
 
 body{background:var(--bg);color:var(--text);font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
-canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none}
 .overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
 .overlay.hidden{display:none}
 .start-box{text-align:center;max-width:560px}
@@ -97,7 +97,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .slider-wrap label{font-size:11px;color:#888}
 .slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}
 .sv{color:var(--sv);font-weight:bold}
-.m-title{font-size:17px;font-weight:700;margin:8px 0 4px;color:#1e293b}
+.m-title{font-size:17px;font-weight:700;margin:8px 0 4px;color:var(--title-color)}
 .m-sub{font-size:12px;color:#888;margin-bottom:8px}
 #bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:var(--bar-bg);border-top:1px solid var(--bar-border);z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
 #bottom-bar .bb-left{flex:1}
@@ -127,6 +127,8 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
 .quiz-opt{display:block;width:100%;padding:9px 10px;margin:6px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{border-color:#22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-opt.wrong{border-color:#ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .quiz-feedback{border-radius:8px;padding:8px;margin-top:8px;font-size:12px;line-height:1.6}
 .quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
 .quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
@@ -175,7 +177,7 @@ const TH={
   light:{bg1:'#e8edf5',bg2:'#f0f2f5',bg3:'#e0e7f0',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',label:'#334155',electron:'#334155',electronGlow:'rgba(51,65,85,0.3)',shell:'rgba(100,100,200,0.15)',barBg:'#c7d2fe',showStars:false}
 };
 function t(){return isDark?TH.dark:TH.light}
-function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')renderPanel();drawFrame(false)}catch(e){}}
 
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 let CW,CH,time=0,animId;
@@ -196,13 +198,13 @@ const levels=[
 ];
 
 const quizData=[
-{q:'锌铜原电池中，电子主要从哪里流向哪里？',opts:['从锌电极流向铜电极','从铜电极流向锌电极','在溶液里随机消失'],ans:0,ok:'对。锌更活泼，失去电子被氧化，电子经外电路流向铜。',bad:'锌是还原剂，失电子；铜离子得电子沉积为铜。'},
-{q:'锂离子电池反复充放电依赖的核心机制是什么？',opts:['锂离子在正负极间可逆嵌入和脱嵌','电极材料每次完全燃烧','隔膜主动产生锂离子'],ans:0,ok:'对。锂离子像摇椅一样在两极间往返，是可充电的基础。',bad:'本关重点是可逆的嵌入脱嵌，不是材料燃烧。'},
-{q:'为什么大倍率放电时可用容量通常会下降？',opts:['内阻压降增大且离子扩散来不及','电池容量单位 C 会自动变小','电压平台一定升高'],ans:0,ok:'对。大电流带来更强极化和扩散限制，电压更低、容量更少。',bad:'倍率越大通常越吃力，容量和平台电压往往下降。'},
-{q:'热失控链式反应的危险之处是什么？',opts:['内部放热会自我加速，温度快速飙升','只会让电池轻微降温','只影响电量显示'],ans:0,ok:'对。SEI 分解、正极释氧和电解液燃烧会相互推动。',bad:'热失控是安全事故核心，不是普通温升。'},
-{q:'固态电解质相比液态电解质的关键优势之一是什么？',opts:['可阻挡枝晶并降低易燃液体风险','必须让枝晶更快穿透隔膜','完全不需要电极'],ans:0,ok:'对。固态电解质兼顾安全性和锂金属负极潜力。',bad:'固态电池仍需要正负极，优势在电解质和界面安全。'},
-{q:'BMS 对串联电池做均衡的目的是什么？',opts:['减少单体电压/SOC 偏差，避免弱单体拖累电池包','让所有电池随机充放电','只改变仪表盘颜色'],ans:0,ok:'对。均衡能减小差异，提升安全性、寿命和可用容量。',bad:'BMS 是电池包大脑，重点是监测、保护和均衡。'},
-{q:'储能电站“调峰填谷”的含义是什么？',opts:['发电富余时充电，用电高峰时放电','全天只充电不放电','只在电网低谷时增加负荷'],ans:0,ok:'对。储能把时间上不匹配的发电和用电重新对齐。',bad:'调峰填谷强调能量跨时间搬运，而不是单向充电。'}
+{q:'锌铜原电池中，电子主要从哪里流向哪里？',opts:['从锌电极流向铜电极','从铜电极流向锌电极','在溶液里随机消失'],ans:0,ok:'对。锌更活泼，失去电子被氧化，电子经外电路流向铜。',bad:'锌是还原剂，失电子；铜离子得电子沉积为铜。',why:'活泼金属锌更容易发生氧化反应，释放出的电子不能穿过溶液随机消失，而是经外电路到达铜电极。'},
+{q:'锂离子电池反复充放电依赖的核心机制是什么？',opts:['电极材料每次完全燃烧','锂离子在正负极间可逆嵌入和脱嵌','隔膜主动产生锂离子'],ans:1,ok:'对。锂离子像摇椅一样在两极间往返，是可充电的基础。',bad:'本关重点是可逆的嵌入脱嵌，不是材料燃烧。',why:'可充电的关键是锂离子能在层状正极和石墨负极中反复嵌入/脱出，电极主体不应在循环中被消耗掉。'},
+{q:'为什么大倍率放电时可用容量通常会下降？',opts:['电池容量单位 C 会自动变小','电压平台一定升高','内阻压降增大且离子扩散来不及'],ans:2,ok:'对。大电流带来更强极化和扩散限制，电压更低、容量更少。',bad:'倍率越大通常越吃力，容量和平台电压往往下降。',why:'倍率越高，欧姆压降和浓差极化越明显，锂离子来不及深入电极颗粒，截止电压更早到达。'},
+{q:'热失控链式反应的危险之处是什么？',opts:['只会让电池轻微降温','内部放热会自我加速，温度快速飙升','只影响电量显示'],ans:1,ok:'对。SEI 分解、正极释氧和电解液燃烧会相互推动。',bad:'热失控是安全事故核心，不是普通温升。',why:'热失控不是单一温升，而是多个放热反应互相加速；温度越高，副反应越快，形成正反馈。'},
+{q:'固态电解质相比液态电解质的关键优势之一是什么？',opts:['必须让枝晶更快穿透隔膜','完全不需要电极','可阻挡枝晶并降低易燃液体风险'],ans:2,ok:'对。固态电解质兼顾安全性和锂金属负极潜力。',bad:'固态电池仍需要正负极，优势在电解质和界面安全。',why:'固态电解质通常更不易燃，并能用机械强度抑制枝晶贯穿，为锂金属负极提供更安全的工作条件。'},
+{q:'BMS 对串联电池做均衡的目的是什么？',opts:['让所有电池随机充放电','减少单体电压/SOC 偏差，避免弱单体拖累电池包','只改变仪表盘颜色'],ans:1,ok:'对。均衡能减小差异，提升安全性、寿命和可用容量。',bad:'BMS 是电池包大脑，重点是监测、保护和均衡。',why:'串联电池包的可用容量常被最弱单体限制，均衡能降低单体差异，减少过充、过放和提前衰减。'},
+{q:'储能电站“调峰填谷”的含义是什么？',opts:['全天只充电不放电','只在电网低谷时增加负荷','发电富余时充电，用电高峰时放电'],ans:2,ok:'对。储能把时间上不匹配的发电和用电重新对齐。',bad:'调峰填谷强调能量跨时间搬运，而不是单向充电。',why:'储能电站的价值在于跨时间搬运电能：低负荷或新能源富余时充电，高负荷或发电不足时放电支撑电网。'}
 ];
 
 function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
@@ -218,33 +220,46 @@ function startGame(){
   document.getElementById('startScreen').classList.add('hidden');
   document.getElementById('panel').style.display='block';
   document.getElementById('bottom-bar').style.display='flex';
-  gameState='play';currentLevel=0;initLevel(0);renderPanel();
+  gameState='play';resetProgress();
+}
+
+function resetProgress(){
+  currentLevel=0;
+  levelState={};
+  completedLevels.clear();
+  quizPassed.clear();
+  Object.keys(quizFeedback).forEach(k=>delete quizFeedback[k]);
+  particles=[];
+  initLevel(0);
 }
 
 function initLevel(idx){
-  if(!canGoLevel(idx))return;
+  idx=Number(idx);
+  if(!Number.isInteger(idx)||!canGoLevel(idx))return false;
+  if(!quizPassed.has(idx))delete quizFeedback[idx];
   currentLevel=idx;particles=[];
   const cx=CW/2+160,cy=CH/2;
   if(idx===0){
-    levelState={phase:'ready',zincPlate:{x:cx-120,y:cy-40,w:30,h:100,dissolved:0},solution:{x:cx-80,y:cy-60,w:200,h:160},copperDeposit:[],electrons:[],ions:[],goalDone:[false,false,false],started:false,elapsed:0};
+    levelState={phase:'ready',zincPlate:{x:cx-120,y:cy-40,w:30,h:100,dissolved:0},solution:{x:cx-80,y:cy-60,w:200,h:160},copperDeposit:[],electrons:[],ions:[],goalDone:[false,false,false],started:false,elapsed:0,dissolved:0};
   }else if(idx===1){
-    levelState={mode:'idle',lithiumIons:[],chargeProgress:0,dischargeProgress:0,charged:false,discharged:false,goalDone:[false,false,false],elapsed:0};
+    levelState={mode:'idle',lithiumIons:[],chargeProgress:0,dischargeProgress:0,charged:false,discharged:false,mechanismReviewed:false,goalDone:[false,false,false],elapsed:0};
   }else if(idx===2){
     levelState={cRate:0.5,curves:[],currentCurve:null,drawing:false,drawnRates:new Set(),goalDone:[false,false,false],elapsed:0};
   }else if(idx===3){
-    levelState={voltage:3.7,mode:'normal',temp:25,seiDecomp:false,cathodeOxygen:false,electrolyteIgnite:false,runaway:false,elapsed:0,tempHistory:[],goalDone:[false,false,false],triggered:false};
+    levelState={voltage:3.7,mode:'normal',temp:25,seiDecomp:false,cathodeOxygen:false,electrolyteIgnite:false,runaway:false,elapsed:0,tempHistory:[],goalDone:[false,false,false],triggered:false,analyzedRunaway:false};
   }else if(idx===4){
-    levelState={viewMode:'liquid',liquidDendrite:0,solidIonPos:[],elapsed:0,goalDone:[false,false,false],seenLiquid:false,seenSolid:false};
+    levelState={viewMode:'intro',liquidDendrite:0,solidIonPos:[],solidObserve:0,elapsed:0,goalDone:[false,false,false],seenLiquid:false,seenSolid:false,comparisonReviewed:false};
   }else if(idx===5){
-    levelState={cells:[{v:3.92,soc:78},{v:3.65,soc:52},{v:4.05,soc:88},{v:3.78,soc:65}],balancing:false,balanceElapsed:0,socSlider:70,socCalibrated:false,goalDone:[false,false,false],elapsed:0};
+    levelState={cells:[{v:3.92,soc:78},{v:3.65,soc:52},{v:4.05,soc:88},{v:3.78,soc:65}],balancing:false,balanceElapsed:0,lastPanelRefresh:0,socSlider:70,socAdjusted:false,socCalibrated:false,goalDone:[false,false,false],elapsed:0};
   }else if(idx===6){
     levelState={rack:[[null,null,null],[null,null,null]],modules:[ {id:0,x:cx-200,y:cy+140},{id:1,x:cx-120,y:cy+140},{id:2,x:cx-40,y:cy+140},{id:3,x:cx+40,y:cy+140},{id:4,x:cx+120,y:cy+140},{id:5,x:cx+200,y:cy+140}],dragging:null,dragOff:{x:0,y:0},timeOfDay:6,simRunning:false,gridPower:0,solarWind:0,batteryCharge:50,chargedDay:false,dischargedNight:false,goalDone:[false,false,false],elapsed:0,assembled:false,powerHistory:[]};
   }
-  renderPanel();
+  renderPanel();return true;
 }
 
 function renderPanel(){
   const L=levels[currentLevel],S=levelState,p=document.getElementById('panel');
+  const levelPassed=quizPassed.has(currentLevel);
   let h=stageNavHTML();
   h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
   const _kw=['氧化还原：锌失电子（氧化）→ 铜得电子（还原）','锂离子嵌入脱嵌：充电正极→负极，放电反向','倍率 C = 1小时放完的电流，大C容量↓电压↓','热失控链式反应：SEI分解→正极释氧→电解液燃烧','固态电解质：阻挡锂枝晶 + 兼容锂金属负极','BMS均衡：高压放电、低压充电，保持一致性','储能调峰填谷：白天充电存储，夜间放电补充'][currentLevel];
@@ -252,14 +267,14 @@ function renderPanel(){
   h+=`<div class="concept-box">${L.concept}</div>`;
   h+='<div style="margin:8px 0;font-size:12px;color:var(--text-muted);font-weight:600">目标清单</div>';
   for(let i=0;i<L.goals.length;i++){
-    const done=S.goalDone&&S.goalDone[i];
+    const done=levelPassed||(S.goalDone&&S.goalDone[i]);
     h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`;
   }
   h+=renderLevelActions();
-  if(S.goalDone&&S.goalDone.every(g=>g)){
-    if(!quizPassed.has(currentLevel)){
-      h+=quizHTML(currentLevel);
-    }else{
+  const goalsDone=levelPassed||(S.goalDone&&S.goalDone.every(g=>g));
+  if(goalsDone){
+    h+=quizHTML(currentLevel);
+    if(levelPassed){
       h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
       if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
       else h+=summaryHTML();
@@ -267,47 +282,74 @@ function renderPanel(){
   }
   p.innerHTML=h;
   document.getElementById('bbLeft').textContent=`第 ${currentLevel+1} 关：${L.title}`;
-  document.getElementById('bbRight').textContent=`已通关 ${completedLevels.size}/${levels.length}`;
+  document.getElementById('bbRight').textContent=`已通关 ${quizPassed.size}/${levels.length}`;
 }
 
-function canGoLevel(i){return i>=0&&i<levels.length&&(i===0||completedLevels.has(i)||completedLevels.has(i-1));}
+function setText(id,text){const el=document.getElementById(id);if(el)el.textContent=text;}
+function clampNumber(v,min,max){
+  const n=Number(v);
+  if(!Number.isFinite(n))return null;
+  return Math.min(max,Math.max(min,n));
+}
+function canGoLevel(i){
+  i=Number(i);
+  return Number.isInteger(i)&&i>=0&&i<levels.length&&(i===0||quizPassed.has(i-1));
+}
 
-function switchLevel(i){if(canGoLevel(i)){initLevel(i);renderPanel()}}
+function switchLevel(i){
+  i=Number(i);
+  if(!canGoLevel(i))return false;
+  return initLevel(i);
+}
 
 function stageNavHTML(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   for(let i=0;i<levels.length;i++){
     const unlocked=canGoLevel(i);
-    const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    const cls=quizPassed.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
+    h+=unlocked&&i!==currentLevel?`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${cls}"></div>`;
   }
-  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${completedLevels.size}/${levels.length}</div>`;
+  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${quizPassed.size}/${levels.length}</div>`;
   h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
   return h;
 }
 
 function quizHTML(i){
   const q=quizData[i],fb=quizFeedback[i];
+  const passed=quizPassed.has(i);
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
   h+=`<div class="quiz-q">${q.q}</div>`;
-  q.opts.forEach((opt,idx)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${i},${idx})">${String.fromCharCode(65+idx)}. ${opt}</button>`;});
+  q.opts.forEach((opt,idx)=>{
+    const mark=passed&&idx===q.ans?' correct':fb&&idx===q.ans?' correct':fb&&idx===fb.choice&&!fb.ok?' wrong':'';
+    h+=`<button class="quiz-opt${mark}" onclick="answerQuiz(${i},${idx})">${String.fromCharCode(65+idx)}. ${opt}</button>`;
+  });
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  else if(passed)h+=`<div class="quiz-feedback ok">已通过小测。${q.why||q.ok}</div>`;
   h+='</div>';
   return h;
 }
 
 function answerQuiz(i,optIdx){
-  const q=quizData[i],ok=optIdx===q.ans;
-  quizFeedback[i]={ok:ok,text:ok?q.ok:q.bad};
+  i=Number(i);optIdx=Number(optIdx);
+  if(!Number.isInteger(i)||!Number.isInteger(optIdx))return false;
+  const q=quizData[i];
+  if(!q||optIdx<0||optIdx>=q.opts.length)return false;
+  if(i!==currentLevel||quizPassed.has(i)||!levelState.goalDone||!levelState.goalDone.every(Boolean))return false;
+  if(i>0&&!quizPassed.has(i-1))return false;
+  const ok=optIdx===q.ans;
+  quizFeedback[i]={ok:ok,choice:optIdx,text:ok?`${q.ok} ${q.why||''}`:`${q.bad} ${q.why||''}`};
   if(ok){quizPassed.add(i);completedLevels.add(i);}
   renderPanel();
+  return ok;
 }
 
 function summaryHTML(){
+  if(quizPassed.size<levels.length)return '';
   let h='<div class="summary-box"><div class="summary-title">🏆 电池与储能技术通关</div>';
   h+='<div class="summary-sub">你已完成 7 个电池工程主题</div><div class="summary-stats">';
   h+=`<div class="summary-stat"><div class="num">${levels.length}</div><div class="label">关卡完成</div></div>`;
-  h+=`<div class="summary-stat"><div class="num">${completedLevels.size}</div><div class="label">测验通过</div></div>`;
+  h+=`<div class="summary-stat"><div class="num">${quizPassed.size}</div><div class="label">测验通过</div></div>`;
+  h+=`<div class="summary-stat"><div class="num">${quizPassed.size*3}/21</div><div class="label">目标达成</div></div>`;
   h+='<div class="summary-stat"><div class="num">100%</div><div class="label">知识闭环</div></div></div>';
   h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">📚 关键知识回顾</div>';
   levels.forEach(l=>{h+=`<div>✅ ${l.title}</div>`;});
@@ -324,39 +366,57 @@ function renderLevelActions(){
   }else if(currentLevel===1){
     h+=`<button class="act-btn" onclick="startCharge()" ${S.mode==='charging'?'disabled':''}>充电 ⚡→</button>`;
     h+=`<button class="act-btn" onclick="startDischarge()" ${S.mode==='discharging'?'disabled':''}>放电 ←⚡</button>`;
-    if(S.mode==='charging')h+=`<div class="hint-box">充电中...锂离子从正极→负极 (${(S.chargeProgress*100).toFixed(0)}%)</div>`;
-    if(S.mode==='discharging')h+=`<div class="hint-box">放电中...锂离子从负极→正极 (${(S.dischargeProgress*100).toFixed(0)}%)</div>`;
+    if(S.mode==='charging')h+=`<div class="hint-box">充电中...锂离子从正极→负极 (<span id="liChargeVal">${(S.chargeProgress*100).toFixed(0)}%</span>)</div>`;
+    if(S.mode==='discharging')h+=`<div class="hint-box">放电中...锂离子从负极→正极 (<span id="liDischargeVal">${(S.dischargeProgress*100).toFixed(0)}%</span>)</div>`;
+    if(S.charged&&S.discharged&&!S.goalDone[2])h+=`<button class="act-btn green" onclick="confirmLithiumMechanism()">确认：锂离子可逆嵌入/脱嵌</button>`;
+    else if(S.goalDone[2])h+=`<div class="hint-box">✅ 已确认：充电和放电方向相反，但都依赖锂离子的可逆嵌入/脱嵌。</div>`;
   }else if(currentLevel===2){
-    h+=`<div class="slider-wrap"><label>放电倍率: <span class="sv">${S.cRate.toFixed(1)}C</span></label><input type="range" min="1" max="30" value="${S.cRate*10}" oninput="setCRate(this.value)"></div>`;
+    const m=cRateMetrics(S.cRate);
+    h+=`<div class="slider-wrap"><label>放电倍率: <span class="sv" id="cRateVal">${S.cRate.toFixed(1)}C</span></label><input type="range" min="1" max="30" value="${S.cRate*10}" oninput="setCRate(this.value)"></div>`;
+    h+=`<div class="hint-box">预测可用容量: <span class="sv" id="rateCapVal">${m.capacityPct}%</span><br>平台电压: <span class="sv" id="rateVoltVal">${m.vPlat.toFixed(2)}V</span><br>极化状态: <span class="sv" id="rateStressVal">${m.stress}</span></div>`;
     h+=`<button class="act-btn" onclick="startDraw()" ${S.drawing?'disabled':''}>开始放电测试</button>`;
+    h+=`<div style="font-size:11px;color:var(--text-muted);margin-top:4px">先测试接近 0.5C 的低倍率曲线，再测试 2C 以上高倍率曲线。</div>`;
     if(S.drawnRates.size>0)h+=`<div style="font-size:11px;color:var(--text-muted);margin-top:4px">已测试: ${[...S.drawnRates].map(r=>r+'C').join(', ')}</div>`;
   }else if(currentLevel===3){
-    h+=`<div class="slider-wrap"><label>电池电压: <span class="sv">${S.voltage.toFixed(1)}V</span></label><input type="range" min="30" max="50" value="${S.voltage*10}" oninput="setVoltage(this.value)" ${S.runaway?'disabled':''}></div>`;
+    h+=`<div class="slider-wrap"><label>电池电压: <span class="sv" id="voltageVal">${S.voltage.toFixed(1)}V</span></label><input type="range" min="30" max="50" value="${S.voltage*10}" oninput="setVoltage(this.value)" ${S.runaway?'disabled':''}></div>`;
     h+=`<button class="act-btn" onclick="triggerShortCircuit()" ${S.runaway||S.triggered?'disabled':''}>模拟短路</button>`;
-    h+=`<div style="font-size:11px;color:var(--text-muted);margin-top:4px">温度: <span style="color:${S.temp>150?'#f87171':S.temp>80?'#fbbf24':'#4ade80'}">${S.temp.toFixed(0)}°C</span></div>`;
+    h+=`<div style="font-size:11px;color:var(--text-muted);margin-top:4px">温度: <span id="tempVal" style="color:${S.temp>150?'#f87171':S.temp>80?'#fbbf24':'#4ade80'}">${S.temp.toFixed(0)}°C</span></div>`;
+    h+=`<div style="font-size:11px;color:var(--text-muted);margin-top:4px">风险阶段: <span class="sv">${thermalStageText(S)}</span></div>`;
     if(S.seiDecomp)h+=`<div style="font-size:11px;color:#f87171">⚠ SEI膜分解 (130°C)</div>`;
     if(S.cathodeOxygen)h+=`<div style="font-size:11px;color:#f87171">⚠ 正极释氧 (200°C)</div>`;
     if(S.electrolyteIgnite)h+=`<div style="font-size:11px;color:#f87171">🔥 电解液燃烧 (250°C)</div>`;
-    if(S.runaway)h+=`<div style="font-size:11px;color:#ef4444;font-weight:bold">🚨 热失控！温度失控上升！</div>`;
+    if(S.runaway){
+      h+=`<div style="font-size:11px;color:#ef4444;font-weight:bold">🚨 热失控！温度失控上升！</div>`;
+      h+=`<button class="act-btn" onclick="analyzeRunawayChain()">${S.analyzedRunaway?'✅ 已分析链式反应':'分析热失控链式反应'}</button>`;
+      if(!S.analyzedRunaway)h+=`<div class="hint-box">热失控不是单点故障：SEI 分解放热会继续升温，正极释氧和电解液燃烧再把反应推向自加速。</div>`;
+    }
   }else if(currentLevel===4){
     h+=`<button class="act-btn" onclick="setView('liquid')" ${S.viewMode==='liquid'?'disabled':''}>查看液态电池</button>`;
     h+=`<button class="act-btn" onclick="setView('solid')" ${S.viewMode==='solid'?'disabled':''}>查看固态电池</button>`;
     if(S.viewMode==='liquid')h+=`<div class="hint-box">⚠ 液态电解质中锂枝晶正在生长...可能穿透隔膜！</div>`;
-    else h+=`<div class="hint-box">✅ 固态电解质有效阻挡枝晶，锂离子沿晶界安全传导</div>`;
+    else if(S.viewMode==='solid')h+=`<div class="hint-box">✅ 固态电解质有效阻挡枝晶，锂离子沿晶界安全传导</div>`;
+    else h+=`<div class="hint-box">先分别查看液态电池和固态电池，再对比枝晶风险与安全性。</div>`;
+    if(S.goalDone[0]&&S.goalDone[1]&&!S.goalDone[2])h+=`<button class="act-btn green" onclick="compareSolidState()">对比两种技术差异</button>`;
+    if(S.goalDone[2])h+=`<div class="hint-box">✅ 已对比：液态电解质易燃且可能被枝晶穿透，固态电解质能提高安全性并支持锂金属负极。</div>`;
   }else if(currentLevel===5){
     h+=`<div style="font-size:11px;color:var(--text-muted);margin:4px 0">电池组电压:</div>`;
     for(let i=0;i<4;i++)h+=`<div style="font-size:11px;color:${Math.abs(S.cells[i].v-S.cells[0].v)>0.2?'#fbbf24':'#4ade80'}">Cell ${i+1}: ${S.cells[i].v.toFixed(3)}V (SOC ${S.cells[i].soc.toFixed(0)}%)</div>`;
     h+=`<button class="act-btn" onclick="startBalance()" ${S.balancing?'disabled':''}>执行均衡</button>`;
-    const maxV=Math.max(...S.cells.map(c=>c.v)),minV=Math.min(...S.cells.map(c=>c.v));
-    h+=`<div style="font-size:11px;color:var(--text-muted);margin-top:4px">电压差: ${((maxV-minV)*1000).toFixed(0)}mV</div>`;
-    h+=`<div class="slider-wrap"><label>SOC估算: <span class="sv">${S.socSlider}%</span></label><input type="range" min="0" max="100" value="${S.socSlider}" oninput="setSoc(this.value)"></div>`;
-    const avgSoc=S.cells.reduce((a,c)=>a+c.soc,0)/4;
-    h+=`<button class="act-btn" onclick="calibrateSoc()">校准SOC</button>`;
+    const diff=bmsVoltageDiff(S);
+    h+=`<div style="font-size:11px;color:var(--text-muted);margin-top:4px">电压差: ${Math.round(diff*1000)}mV</div>`;
+    h+=`<div class="slider-wrap"><label>SOC估算: <span class="sv" id="socVal">${S.socSlider}%</span></label><input type="range" min="0" max="100" value="${S.socSlider}" oninput="setSoc(this.value)"></div>`;
+    const avgSoc=socTarget(S);
+    h+=`<button class="act-btn" onclick="calibrateSoc()" ${S.goalDone[1]?'':'disabled'}>校准SOC</button>`;
     if(S.socCalibrated)h+=`<div style="font-size:11px;color:#4ade80">✅ SOC校准完成</div>`;
+    else if(!S.goalDone[1])h+=`<div class="hint-box">先执行均衡，把单体电压差降到 50mV 以下；否则 SOC 估算会被弱单体拖偏。</div>`;
+    else if(!S.socAdjusted)h+=`<div class="hint-box">电压已均衡。把 SOC 估算调到平均值附近（约 ${avgSoc.toFixed(0)}%），再执行校准。</div>`;
   }else if(currentLevel===6){
     const filled=S.rack.flat().filter(x=>x!==null).length;
     h+=`<div style="font-size:11px;color:var(--text-muted);margin:4px 0">机架: ${filled}/6 模组已安装</div>`;
-    if(!S.assembled)h+=`<div class="hint-box">拖拽下方电池模组到机架槽位中</div>`;
+    if(!S.assembled){
+      h+=`<button class="act-btn" onclick="installNextModule()">安装下一个电池模组</button>`;
+      h+=`<div class="hint-box">可以拖拽下方电池模组到机架槽位，也可以逐个安装来完成阵列装配。</div>`;
+    }
     else if(!S.simRunning)h+=`<button class="act-btn" onclick="startGridSim()">启动储能模拟</button>`;
     else{
       h+=`<div style="font-size:11px;color:var(--text-muted);margin:4px 0">时间: ${S.timeOfDay.toFixed(1)}h | 电量: ${S.batteryCharge.toFixed(0)}%</div>`;
@@ -372,60 +432,190 @@ function startRedox(){levelState.started=true;levelState.goalDone[0]=true;render
 // Level 1: Li-ion
 function startCharge(){const S=levelState;if(S.mode==='charging')return;S.mode='charging';S.chargeProgress=0;S.lithiumIons=[];renderPanel()}
 function startDischarge(){const S=levelState;if(S.mode==='discharging')return;S.mode='discharging';S.dischargeProgress=0;S.lithiumIons=[];renderPanel()}
+function confirmLithiumMechanism(){
+  const S=levelState;
+  if(currentLevel!==1||!S.charged||!S.discharged)return false;
+  S.mechanismReviewed=true;
+  if(!S.goalDone[2])S.goalDone[2]=true;
+  renderPanel();
+  return true;
+}
+function updateLithiumReadout(){
+  const S=levelState;
+  setText('liChargeVal',`${(S.chargeProgress*100).toFixed(0)}%`);
+  setText('liDischargeVal',`${(S.dischargeProgress*100).toFixed(0)}%`);
+}
 
 // Level 2: Curves
-function setCRate(v){levelState.cRate=v/10;renderPanel()}
+function cRateMetrics(rate){
+  const cap=1-rate*0.15,vPlat=3.7-rate*0.15;
+  return {
+    cap,
+    vPlat,
+    capacityPct:Math.round(cap*100),
+    stress:rate<1?'温和，容量保持较好':rate<2?'中等极化，容量开始下降':'高倍率极化，容量明显下降'
+  };
+}
+function setCRate(v){
+  const raw=clampNumber(v,1,30);
+  if(raw===null)return false;
+  levelState.cRate=raw/10;
+  const m=cRateMetrics(levelState.cRate);
+  setText('cRateVal',`${levelState.cRate.toFixed(1)}C`);
+  setText('rateCapVal',`${m.capacityPct}%`);
+  setText('rateVoltVal',`${m.vPlat.toFixed(2)}V`);
+  setText('rateStressVal',m.stress);
+  return true;
+}
 function startDraw(){const S=levelState;if(S.drawing)return;S.drawing=true;S.currentCurve={rate:S.cRate,points:[],progress:0};renderPanel()}
 
 // Level 3: Thermal runaway
-function setVoltage(v){const S=levelState;S.voltage=v/10;if(S.voltage>4.2&&!S.triggered){S.triggered=true;S.goalDone[0]=true;renderPanel()}renderPanel()}
-function triggerShortCircuit(){const S=levelState;S.triggered=true;S.voltage=4.5;S.goalDone[0]=true;renderPanel()}
+function thermalStageText(S){
+  if(!S.triggered)return '正常监测';
+  if(S.runaway)return '热失控：放热自加速';
+  if(S.cathodeOxygen)return '正极释氧，氧气推动燃烧';
+  if(S.seiDecomp)return 'SEI膜分解，副反应放热';
+  return S.mode==='short'?'短路大电流发热':'过充升温';
+}
+function setVoltage(v){
+  const raw=clampNumber(v,30,50);
+  if(raw===null)return false;
+  const S=levelState;S.voltage=raw/10;setText('voltageVal',`${S.voltage.toFixed(1)}V`);
+  if(S.voltage>4.2&&!S.triggered){S.triggered=true;S.mode='overcharge';S.goalDone[0]=true;renderPanel();}
+  return true;
+}
+function triggerShortCircuit(){const S=levelState;S.triggered=true;S.mode='short';S.voltage=4.5;S.goalDone[0]=true;renderPanel()}
+function analyzeRunawayChain(){
+  const S=levelState;
+  if(currentLevel!==3||!S.runaway)return false;
+  S.analyzedRunaway=true;
+  if(!S.goalDone[2])S.goalDone[2]=true;
+  renderPanel();
+  return true;
+}
 
 // Level 4: Solid state
-function setView(m){const S=levelState;S.viewMode=m;if(m==='liquid'){S.seenLiquid=true;S.liquidDendrite=0}else{S.seenSolid=true;S.solidIonPos=[]}
-if(S.seenLiquid&&!S.goalDone[0]){S.goalDone[0]=true;renderPanel()}
-if(S.seenSolid&&!S.goalDone[1]){S.goalDone[1]=true;renderPanel()}
-if(S.seenLiquid&&S.seenSolid&&!S.goalDone[2]){S.goalDone[2]=true;renderPanel()}
-renderPanel()}
+function setView(m){
+  if(m!=='liquid'&&m!=='solid')return false;
+  const S=levelState;S.viewMode=m;
+  if(m==='liquid'){S.seenLiquid=true;S.liquidDendrite=0}
+  else{S.seenSolid=true;S.solidIonPos=[];S.solidObserve=0}
+  renderPanel();
+  return true;
+}
+function compareSolidState(){
+  const S=levelState;
+  if(currentLevel!==4||!S.goalDone[0]||!S.goalDone[1])return false;
+  S.comparisonReviewed=true;
+  if(!S.goalDone[2])S.goalDone[2]=true;
+  renderPanel();
+  return true;
+}
 
 // Level 5: BMS
-function startBalance(){levelState.balancing=true;levelState.balanceElapsed=0;renderPanel()}
-function setSoc(v){levelState.socSlider=parseInt(v);renderPanel()}
-function calibrateSoc(){const S=levelState;const avgSoc=S.cells.reduce((a,c)=>a+c.soc,0)/4;if(Math.abs(S.socSlider-avgSoc)<10){S.socCalibrated=true;if(!S.goalDone[2]){S.goalDone[2]=true;renderPanel()}}renderPanel()}
+function startBalance(){levelState.balancing=true;levelState.balanceElapsed=0;levelState.lastPanelRefresh=0;renderPanel()}
+function bmsVoltageDiff(S=levelState){
+  if(!S.cells||!S.cells.length)return 0;
+  return Math.max(...S.cells.map(c=>c.v))-Math.min(...S.cells.map(c=>c.v));
+}
+function socTarget(S=levelState){
+  if(!S.cells||!S.cells.length)return 0;
+  return S.cells.reduce((a,c)=>a+c.soc,0)/S.cells.length;
+}
+function setSoc(v){
+  const soc=clampNumber(v,0,100);
+  if(soc===null)return false;
+  levelState.socSlider=Math.round(soc);levelState.socAdjusted=true;setText('socVal',`${levelState.socSlider}%`);
+  return true;
+}
+function calibrateSoc(){
+  const S=levelState;
+  if(currentLevel!==5||!S.goalDone[1]){renderPanel();return false;}
+  const avgSoc=socTarget(S);
+  if(S.socAdjusted&&Math.abs(S.socSlider-avgSoc)<=5){S.socCalibrated=true;if(!S.goalDone[2]){S.goalDone[2]=true;renderPanel()}return true}
+  renderPanel();
+  return false;
+}
 
 // Level 6: Grid storage
 function startGridSim(){levelState.simRunning=true;levelState.timeOfDay=6;renderPanel()}
 
-// Mouse for Level 6 drag
-canvas.addEventListener('mousedown',e=>{
+function placeModuleInRack(moduleId,row,col){
+  const S=levelState;
+  const mid=Number(moduleId),r=Number(row),c=Number(col);
+  if(currentLevel!==6||S.assembled||!Number.isInteger(mid)||!Number.isInteger(r)||!Number.isInteger(c)||r<0||r>=2||c<0||c>=3)return false;
+  if(S.rack.flat().includes(mid)||S.rack[r][c]!==null)return false;
+  const module=S.modules.find(m=>m.id===mid);
+  if(!module)return false;
+  const cx=CW/2+160,cy=CH/2,rackX=cx-120,rackY=cy-80;
+  S.rack[r][c]=mid;
+  module.x=rackX+c*80;
+  module.y=rackY+r*60;
+  const filled=S.rack.flat().filter(x=>x!==null).length;
+  if(filled===6&&!S.assembled){S.assembled=true;S.goalDone[0]=true;}
+  renderPanel();
+  return true;
+}
+function installNextModule(){
+  const S=levelState;
+  if(currentLevel!==6||S.assembled)return false;
+  const module=S.modules.find(m=>!S.rack.flat().includes(m.id));
+  if(!module)return false;
+  for(let r=0;r<2;r++)for(let c=0;c<3;c++){
+    if(S.rack[r][c]===null)return placeModuleInRack(module.id,r,c);
+  }
+  return false;
+}
+
+// Pointer drag for Level 6 rack assembly
+function pointerPos(e){
+  const rect=canvas.getBoundingClientRect();
+  return {
+    x:(e.clientX-rect.left)*(canvas.width/rect.width),
+    y:(e.clientY-rect.top)*(canvas.height/rect.height)
+  };
+}
+function startPointer(e){
   if(currentLevel!==6||levelState.assembled)return;
-  const S=levelState,mx=e.clientX,my=e.clientY;
+  const p=pointerPos(e),S=levelState,mx=p.x,my=p.y;
   for(let m of S.modules){
     if(mx>m.x-25&&mx<m.x+25&&my>m.y-20&&my<m.y+20){
-      S.dragging=m;S.dragOff={x:mx-m.x,y:my-m.y};break;
+      S.dragging=m;S.dragOff={x:mx-m.x,y:my-m.y};
+      if(e.preventDefault)e.preventDefault();
+      if(canvas.setPointerCapture&&e.pointerId!==undefined)canvas.setPointerCapture(e.pointerId);
+      break;
     }
   }
-});
-canvas.addEventListener('mousemove',e=>{
+}
+function movePointer(e){
   if(currentLevel!==6||!levelState.dragging)return;
-  levelState.dragging.x=e.clientX-levelState.dragOff.x;
-  levelState.dragging.y=e.clientY-levelState.dragOff.y;
-});
-canvas.addEventListener('mouseup',e=>{
-  if(currentLevel!==6||!levelState.dragging)return;
+  const p=pointerPos(e);
+  levelState.dragging.x=p.x-levelState.dragOff.x;
+  levelState.dragging.y=p.y-levelState.dragOff.y;
+  if(e.preventDefault)e.preventDefault();
+}
+function endPointer(e){
+  if(currentLevel!==6||!levelState.dragging){
+    if(e&&canvas.releasePointerCapture&&e.pointerId!==undefined)canvas.releasePointerCapture(e.pointerId);
+    return;
+  }
   const S=levelState,m=S.dragging;S.dragging=null;
   const cx=CW/2+160,cy=CH/2;
   const rackX=cx-120,rackY=cy-80;
   for(let r=0;r<2;r++)for(let c=0;c<3;c++){
     const sx=rackX+c*80,sy=rackY+r*60;
     if(S.rack[r][c]===null&&Math.abs(m.x-sx)<40&&Math.abs(m.y-sy)<30){
-      S.rack[r][c]=m.id;m.x=sx;m.y=sy;
-      const filled=S.rack.flat().filter(x=>x!==null).length;
-      if(filled===6&&!S.assembled){S.assembled=true;S.goalDone[0]=true;renderPanel()}
+      placeModuleInRack(m.id,r,c);
+      if(e&&canvas.releasePointerCapture&&e.pointerId!==undefined)canvas.releasePointerCapture(e.pointerId);
       return;
     }
   }
-});
+  if(e&&canvas.releasePointerCapture&&e.pointerId!==undefined)canvas.releasePointerCapture(e.pointerId);
+}
+canvas.addEventListener('pointerdown',startPointer);
+canvas.addEventListener('pointermove',movePointer);
+canvas.addEventListener('pointerup',endPointer);
+canvas.addEventListener('pointercancel',endPointer);
 
 function update(dt){
   const S=levelState;
@@ -441,7 +631,7 @@ function update(dt){
     for(let e of S.electrons)e.progress+=dt*0.5;
     S.electrons=S.electrons.filter(e=>e.progress<1);
     if(S.dissolved>30&&!S.goalDone[1]){S.goalDone[1]=true;renderPanel()}
-    if(S.electrons.length>0&&S.dissolved>50&&!S.goalDone[2]){S.goalDone[2]=true;renderPanel()}
+    if(S.elapsed>1.5&&S.dissolved>50&&!S.goalDone[2]){S.goalDone[2]=true;renderPanel()}
   }
   else if(currentLevel===1){
     const cx=CW/2+160,cy=CH/2;
@@ -451,19 +641,19 @@ function update(dt){
       for(let ion of S.lithiumIons)ion.progress+=dt*0.4;
       S.lithiumIons=S.lithiumIons.filter(i=>i.progress<1);
       if(S.chargeProgress>=1){S.mode='idle';S.charged=true;S.chargeProgress=1;S.lithiumIons=[];if(!S.goalDone[0]){S.goalDone[0]=true;renderPanel()}}
-      else if(Math.floor(S.chargeProgress*10)%3===0)renderPanel();
+      else updateLithiumReadout();
     }else if(S.mode==='discharging'){
       S.dischargeProgress+=dt*0.25;
       if(Math.random()<0.3){S.lithiumIons.push({x:cx-80,y:cy-30+Math.random()*60,progress:0})}
       for(let ion of S.lithiumIons)ion.progress+=dt*0.4;
       S.lithiumIons=S.lithiumIons.filter(i=>i.progress<1);
       if(S.dischargeProgress>=1){S.mode='idle';S.discharged=true;S.dischargeProgress=1;S.lithiumIons=[];if(!S.goalDone[1]){S.goalDone[1]=true;renderPanel()}}
+      else updateLithiumReadout();
     }
-    if(S.charged&&S.discharged&&!S.goalDone[2]){S.goalDone[2]=true;renderPanel()}
   }
   else if(currentLevel===2&&S.drawing){
     const c=S.currentCurve;c.progress+=dt*0.3*(0.5+c.rate);
-    const cap=1-c.rate*0.15;const vPlat=3.7-c.rate*0.15;
+    const m=cRateMetrics(c.rate),cap=m.cap,vPlat=m.vPlat;
     const x=c.progress;let v;
     if(x<0.05)v=4.2-(4.2-vPlat)*(x/0.05);
     else if(x<cap*0.85)v=vPlat;
@@ -472,7 +662,7 @@ function update(dt){
     c.points.push({x:Math.min(x,cap),v:Math.max(v,2.8)});
     if(c.progress>=cap+0.05){
       S.drawing=false;S.curves.push({rate:c.rate,points:c.points});S.drawnRates.add(c.rate);S.currentCurve=null;
-      if(c.rate<=0.5&&!S.goalDone[0]){S.goalDone[0]=true;renderPanel()}
+      if(Math.abs(c.rate-0.5)<=0.05&&!S.goalDone[0]){S.goalDone[0]=true;renderPanel()}
       if(c.rate>=2&&!S.goalDone[1]){S.goalDone[1]=true;renderPanel()}
       if(S.drawnRates.size>=2&&S.goalDone[0]&&S.goalDone[1]&&!S.goalDone[2]){S.goalDone[2]=true;renderPanel()}
       renderPanel();
@@ -481,14 +671,15 @@ function update(dt){
   else if(currentLevel===3&&S.triggered){
     S.elapsed+=dt;
     if(S.voltage>4.2||S.triggered){
-      const heatRate=S.runaway?80:S.temp>200?40:S.temp>130?15:5;
+      const baseHeat=S.mode==='short'?22:5;
+      const heatRate=S.runaway?80:S.temp>200?40:S.temp>130?18:baseHeat;
       S.temp+=heatRate*dt;
       S.tempHistory.push({t:S.elapsed,temp:S.temp});
       if(S.temp>130&&!S.seiDecomp){S.seiDecomp=true;renderPanel()}
       if(S.temp>200&&!S.cathodeOxygen){S.cathodeOxygen=true;renderPanel()}
       if(S.temp>250&&!S.electrolyteIgnite){S.electrolyteIgnite=true;S.runaway=true;renderPanel()}
       if(S.temp>130&&!S.goalDone[1]){S.goalDone[1]=true;renderPanel()}
-      if(S.runaway&&!S.goalDone[2]){S.goalDone[2]=true;renderPanel()}
+      if(S.runaway&&S.analyzedRunaway&&!S.goalDone[2]){S.goalDone[2]=true;renderPanel()}
       if(S.temp>300){
         if(Math.random()<0.5){const cx=CW/2+160,cy=CH/2;addP(cx+Math.random()*100-50,cy+Math.random()*60-30,(Math.random()-0.5)*80,(Math.random()-0.5)*80,'#ff4444',0.8,4)}
       }
@@ -496,9 +687,14 @@ function update(dt){
   }
   else if(currentLevel===4){
     S.elapsed+=dt;
-    if(S.viewMode==='liquid'){S.liquidDendrite=Math.min(1,S.liquidDendrite+dt*0.12)}
-    else{
-      if(S.solidIonPos.length<20&&Math.random()<0.2){const cx=CW/2+160,cy=CH/2;S.solidIonPos.push({x:cx-60+Math.random()*120,y:cy-40+Math.random()*80,phase:Math.random()*Math.PI*2})}
+    if(S.viewMode==='liquid'){
+      S.liquidDendrite=Math.min(1,S.liquidDendrite+dt*0.12);
+      if(S.liquidDendrite>=0.8&&!S.goalDone[0]){S.goalDone[0]=true;renderPanel()}
+    }
+    else if(S.viewMode==='solid'){
+      S.solidObserve+=dt;
+      if(S.solidIonPos.length<20&&(S.solidIonPos.length===0||Math.random()<0.2)){const cx=CW/2+160,cy=CH/2;S.solidIonPos.push({x:cx-60+Math.random()*120,y:cy-40+Math.random()*80,phase:Math.random()*Math.PI*2})}
+      if(S.solidObserve>=1.2&&!S.goalDone[1]){S.goalDone[1]=true;renderPanel()}
     }
   }
   else if(currentLevel===5&&S.balancing){
@@ -512,7 +708,7 @@ function update(dt){
     const newMax=Math.max(...S.cells.map(c=>c.v)),newMin=Math.min(...S.cells.map(c=>c.v));
     if(!S.goalDone[0]){S.goalDone[0]=true;renderPanel()}
     if(newMax-newMin<0.05){S.balancing=false;if(!S.goalDone[1]){S.goalDone[1]=true;renderPanel()}}
-    if(S.balanceElapsed>0.5)renderPanel();
+    if(S.balancing&&S.balanceElapsed-S.lastPanelRefresh>=0.35){S.lastPanelRefresh=S.balanceElapsed;renderPanel()}
   }
   else if(currentLevel===6&&S.simRunning){
     S.elapsed+=dt;S.timeOfDay+=dt*2;if(S.timeOfDay>=24)S.timeOfDay-=24;
@@ -681,7 +877,13 @@ function drawThermal(S,cx,cy){
 }
 
 function drawSolid(S,cx,cy){
-  if(S.viewMode==='liquid'){
+  if(S.viewMode==='intro'){
+    ctx.font='20px sans-serif';ctx.fillStyle=t().label;ctx.textAlign='center';
+    ctx.fillText('固态电池对比实验',cx,cy-40);
+    ctx.font='16px sans-serif';ctx.fillStyle=t().textSec;
+    ctx.fillText('请选择液态电池或固态电池，观察枝晶风险与安全差异',cx,cy);
+    ctx.textAlign='left';
+  }else if(S.viewMode==='liquid'){
     // Liquid electrolyte battery
     ctx.font='20px sans-serif';ctx.fillStyle='#60a5fa';ctx.fillText('液态电解质电池',cx-50,cy-130);
     const bx=cx-120,by=cy-100,bw=240,bh=200;
@@ -836,10 +1038,14 @@ function drawGrid(S,cx,cy){
 
 // Main loop
 let lastTime=0;
-function gameLoop(ts){
-  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;time+=dt;
+function drawFrame(doUpdate=true){
   ctx.clearRect(0,0,CW,CH);drawStars();
-  if(gameState==='play'){update(dt);drawLevel();drawParticles()}
+  if(gameState==='play'){if(doUpdate)update(dt);drawLevel();drawParticles()}
+}
+let dt=0;
+function gameLoop(ts){
+  dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;time+=dt;
+  drawFrame(true);
   animId=requestAnimationFrame(gameLoop);
 }
 animId=requestAnimationFrame(gameLoop);

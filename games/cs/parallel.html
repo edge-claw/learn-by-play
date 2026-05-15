@@ -164,25 +164,25 @@ window.onresize=resize;
 // === Levels ===
 const levels=[
 {name:'串行 vs 并行',icon:'🔄',desc:'画布上有 8 个任务方块和多个处理核心。<br>拖动滑块增加核心数，观察任务如何分配到不同核心并行执行。',objs:['观察串行执行','启用 2 核并行','达到 4 核加速'],
- quiz:{q:'4 个独立任务用 4 核并行，理论加速比是？',opts:['2x','4x','8x','16x'],ans:1},
+ quiz:{q:'4 个独立任务用 4 核并行，理论加速比是？',opts:['4x','2x','8x','16x'],ans:0,why:'任务完全独立且无调度开销时，4 个核心可以同时处理 4 个任务，理论上是 4 倍。'},
  learn:'<span class="sv">并行计算</span>将任务分配到多个核心同时执行。<span class="sv">加速比</span> = 串行时间 / 并行时间。理想情况下 N 核可获得 N 倍加速，但实际受通信开销和负载均衡影响。'},
 {name:'线程与进程',icon:'🧵',desc:'画布展示进程和线程的内存模型。<br>创建线程观察共享内存，触发竞态条件理解数据竞争。',objs:['创建子线程','观察共享内存','触发竞态条件'],
- quiz:{q:'线程与进程的关键区别是？',opts:['线程不能并行','线程共享进程的内存空间','线程比进程慢','线程不需要 CPU'],ans:1},
+ quiz:{q:'线程与进程的关键区别是？',opts:['线程不能并行','线程共享进程的内存空间','线程比进程慢','线程不需要 CPU'],ans:1,why:'同一进程内的线程共享地址空间，因此通信快，但共享变量也可能带来竞态条件。'},
  learn:'<span class="sv">进程</span>拥有独立的内存空间，<span class="sv">线程</span>共享所属进程的内存。共享内存带来高效通信，但也引入<span class="sv">竞态条件</span>——多线程同时读写同一变量导致结果不确定。'},
 {name:'同步原语',icon:'🔒',desc:'两个线程同时操作共享计数器，结果混乱。<br>选择合适的同步原语（互斥锁/信号量/自旋锁）保护临界区。',objs:['用互斥锁保护','用信号量限流','比较自旋锁开销'],
- quiz:{q:'互斥锁和自旋锁的主要区别是？',opts:['互斥锁更快','自旋锁等待时不让出 CPU','它们完全相同','自旋锁不能保护临界区'],ans:1},
+ quiz:{q:'互斥锁和自旋锁的主要区别是？',opts:['互斥锁更快','它们完全相同','自旋锁等待时不让出 CPU','自旋锁不能保护临界区'],ans:2,why:'自旋锁在等待时持续占用 CPU 轮询锁状态，适合极短临界区；互斥锁通常会让等待线程休眠。'},
  learn:'<span class="sv">互斥锁</span>(Mutex)让等待线程休眠，适合长临界区。<span class="sv">自旋锁</span>让线程忙等，适合极短临界区。<span class="sv">信号量</span>允许 N 个线程同时进入，是互斥锁的泛化。'},
 {name:'并行模式',icon:'🔀',desc:'画布展示 4 种经典并行模式的数据流。<br>为不同任务选择最佳并行模式，观察执行效率差异。',objs:['体验流水线模式','执行 MapReduce','运行生产者-消费者'],
- quiz:{q:'MapReduce 的核心思想是？',opts:['所有数据串行处理','先分散计算再汇总结果','只用一个线程','数据不需要分割'],ans:1},
+ quiz:{q:'MapReduce 的核心思想是？',opts:['所有数据串行处理','只用一个线程','数据不需要分割','先分散计算再汇总结果'],ans:3,why:'Map 阶段把数据分片并行处理，Reduce 阶段再把中间结果聚合起来。'},
  learn:'<span class="sv">流水线</span>将任务分阶段，每阶段并行处理不同数据。<span class="sv">MapReduce</span> 先将数据分片并行处理(Map)，再汇总结果(Reduce)。<span class="sv">生产者-消费者</span>通过缓冲队列解耦生产和消费速率。'},
 {name:'GPU 并行',icon:'🎮',desc:'画布对比 CPU（少量强核心）和 GPU（大量弱核心）的架构。<br>调节线程束大小，观察 SIMT 执行模型和共享内存层次。',objs:['理解 SIMT 模型','观察 Warp 执行','利用共享内存'],
- quiz:{q:'GPU 的 Warp（线程束）通常包含多少线程？',opts:['8','16','32','64'],ans:2},
+ quiz:{q:'GPU 的 Warp（线程束）通常包含多少线程？',opts:['8','16','32','64'],ans:2,why:'NVIDIA GPU 中一个 Warp 通常是 32 个线程，它们按 SIMT 模型一起发射指令。'},
  learn:'GPU 采用 <span class="sv">SIMT</span>（单指令多线程）模型，一个 <span class="sv">Warp</span>（32 线程）执行相同指令。GPU 内存层次：寄存器 → <span class="sv">共享内存</span>（同 Block 线程共享）→ 全局内存。分支发散会导致 Warp 内线程串行化。'},
 {name:'Amdahl 定律',icon:'📊',desc:'画布显示 Amdahl 定律的加速比曲线。<br>调节串行比例和核心数，观察加速比上限如何被串行部分锁死。',objs:['观察串行瓶颈','找到加速比上限','验证 Gustafson 定律'],
- quiz:{q:'程序有 25% 必须串行，无限核心的理论加速比上限是？',opts:['2x','4x','8x','无穷大'],ans:1},
+ quiz:{q:'程序有 25% 必须串行，无限核心的理论加速比上限是？',opts:['4x','2x','8x','无穷大'],ans:0,why:'Amdahl 上限是 1/S。串行比例 S=25% 时，最多只能加速到 1/0.25 = 4x。'},
  learn:'<span class="sv">Amdahl 定律</span>：加速比 = 1/(S + (1-S)/N)，S 为串行比例，N 为核心数。即使 N→∞，加速比上限为 1/S。<span class="sv">Gustafson 定律</span>换个角度：增加核心时可以处理更大的问题，加速比 = N - S×(N-1)。'},
 {name:'异构计算',icon:'🤖',desc:'画布上有 CPU、GPU、NPU 三种处理器。<br>将不同类型的任务拖到最合适的处理器，优化整体吞吐量。',objs:['分配控制任务到 CPU','分配矩阵任务到 GPU','分配推理任务到 NPU'],
- quiz:{q:'异构计算的核心优势是？',opts:['只用 GPU 就够了','不同处理器擅长不同任务类型','减少处理器数量','不需要任务调度'],ans:1},
+ quiz:{q:'异构计算的核心优势是？',opts:['只用 GPU 就够了','减少处理器数量','不需要任务调度','不同处理器擅长不同任务类型'],ans:3,why:'CPU、GPU、NPU 的强项不同，异构计算通过把任务放到合适硬件上提升吞吐量和能效。'},
  learn:'<span class="sv">异构计算</span>让不同处理器各司其职：<span class="sv">CPU</span> 擅长复杂控制流和串行逻辑，<span class="sv">GPU</span> 擅长大规模数据并行（矩阵运算），<span class="sv">NPU</span> 专为神经网络推理优化。任务调度和负载均衡是异构系统的关键挑战。'}
 ];
 
@@ -212,13 +212,17 @@ function startGame(){
 }
 
 function goLevel(i){
-  if(i<0||i>=TOTAL||!isUnlocked(i))return;
+  i=Number(i);
+  if(!Number.isInteger(i)||!isUnlocked(i))return;
   curLevel=i;
   initLevel(i);
   renderPanel();
 }
 
-function isUnlocked(i){return i===0||levelDone[i-1]}
+function isUnlocked(i){
+  i=Number(i);
+  return Number.isInteger(i)&&i>=0&&i<TOTAL&&(i===0||levelDone[i-1]);
+}
 
 // === initLevel ===
 function initLevel(idx){
@@ -511,7 +515,8 @@ function renderPanel(){
   for(let i=0;i<TOTAL;i++){
     let unlocked=isUnlocked(i);
     let cls=`${levelDone[i]?' done':''}${i===idx?' cur':''}${unlocked?'':' locked'}`;
-    h+=`<div class="sn-d${cls}" onclick="${unlocked?`goLevel(${i})`:''}"></div>`;
+    const action=unlocked&&i!==idx?` onclick="goLevel(${i})"`:'';
+    h+=`<div class="sn-d${cls}"${action}></div>`;
   }
   h+=`</div><div class="sn-info">${lv.icon} ${idx+1}/${TOTAL} ${lv.name}</div>`;
   h+=`<div class="sn-hint">${levelDone.filter(Boolean).length}/${TOTAL} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
@@ -681,6 +686,7 @@ function renderLevelPanel(idx){
 }
 
 function answerQuiz(i){
+  if(!allObjsDone()||quizAnswered[curLevel]||levelDone[curLevel])return;
   let q=levels[curLevel].quiz;
   let opts=document.querySelectorAll('.quiz-opt');
   opts.forEach((el,j)=>{
@@ -689,7 +695,7 @@ function answerQuiz(i){
     el.style.pointerEvents='none';
   });
   let ok=i===q.ans;
-  quizFeedback[curLevel]={ok,text:ok?'答对了。继续查看知识点并进入下一关。':'再想想：先完成目标，再确认这个并行概念的关键取舍。'};
+  quizFeedback[curLevel]={ok,text:ok?`答对了。${q.why||'继续查看知识点并进入下一关。'}`:`再想想：${q.why||'先完成目标，再确认这个并行概念的关键取舍。'}`};
   if(ok){quizAnswered[curLevel]=true;levelDone[curLevel]=true;showLearn[curLevel]=true;setTimeout(()=>renderPanel(),600)}
   else setTimeout(()=>renderPanel(),600);
 }

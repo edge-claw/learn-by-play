@@ -139,13 +139,18 @@ resize();window.addEventListener('resize',resize);
 
 // === 音效 ===
 let audioCtx;
-function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function initAudio(){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;try{if(!audioCtx)audioCtx=new A();return audioCtx}catch(e){return null}}
 function playSound(type){
-  initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-  o.connect(g);g.connect(audioCtx.destination);
-  if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}
-  else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}
-  else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}
+  const ac=initAudio();if(!ac)return false;
+  try{
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    const now=ac.currentTime;
+    if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start(now);g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.stop(now+0.1)}
+    else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(659,now+0.1);o.frequency.setValueAtTime(784,now+0.2);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);o.stop(now+0.4)}
+    else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(200,now+0.15);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);o.stop(now+0.3)}
+    return true;
+  }catch(e){return false}
 }
 
 // === 粒子 ===
@@ -165,16 +170,17 @@ const quizPassed=new Set();
 const C=3e8; // 光速
 
 function gamma(v){const b=v/C;return 1/Math.sqrt(1-b*b)}
+function isUnlocked(idx){idx=Number(idx);return Number.isInteger(idx)&&(idx===0||quizPassed.has(idx-1))}
 
 // === Quiz ===
 const quizData=[
   {q:'光速在所有惯性参考系中的值是？',opts:['取决于光源速度','取决于观察者速度','恒为 c ≈ 3×10⁸ m/s','取决于介质'],ans:2},
-  {q:'以 0.8c 运动的飞船上，时间流逝速度相比地面？',opts:['更快','一样','更慢（γ≈1.67）','完全停止'],ans:2},
-  {q:'高速运动的物体在运动方向上会？',opts:['变长','不变','变短','变宽'],ans:2},
-  {q:'当物体速度趋近光速时，其相对论质量？',opts:['趋近于零','保持不变','趋近于无穷大','变为负数'],ans:2},
-  {q:'双生子佯谬中，旅行的双胞胎回来后？',opts:['比留守者老','和留守者一样大','比留守者年轻','无法确定'],ans:2},
-  {q:'等效原理说的是什么等效？',opts:['质量和能量','时间和空间','引力和加速度','光和声音'],ans:2},
-  {q:'大质量天体附近的光线会？',opts:['加速','减速','弯曲','消失'],ans:2}
+  {q:'以 0.8c 运动的飞船上，时间流逝速度相比地面？',opts:['更快','更慢（γ≈1.67）','一样','完全停止'],ans:1},
+  {q:'高速运动的物体在运动方向上会？',opts:['变长','不变','变宽','变短'],ans:3},
+  {q:'当物体速度趋近光速时，其相对论质量？',opts:['趋近于零','趋近于无穷大','保持不变','变为负数'],ans:1},
+  {q:'双生子佯谬中，旅行的双胞胎回来后？',opts:['比留守者老','和留守者一样大','无法确定','比留守者年轻'],ans:3},
+  {q:'等效原理说的是什么等效？',opts:['质量和能量','引力和加速度','时间和空间','光和声音'],ans:1},
+  {q:'大质量天体附近的光线会？',opts:['加速','减速','消失','弯曲'],ans:3}
 ];
 let quizLocked=false;
 function renderQuiz(li){
@@ -185,8 +191,12 @@ function renderQuiz(li){
   h+='</div>';return h;
 }
 function answerQuiz(li,oi){
-  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
-  const qd=quizData[li];const opts=panel.querySelectorAll('.quiz-opt');
+  li=Number(li);oi=Number(oi);
+  if(quizLocked||li!==currentLevel||quizPassed.has(li)||!isLevelDone(li))return;
+  if(li>0&&!quizPassed.has(li-1))return;
+  const qd=quizData[li];if(!qd||!Number.isInteger(oi)||oi<0||oi>=qd.opts.length)return;
+  quizLocked=true;
+  const opts=panel.querySelectorAll('.quiz-opt');
   opts.forEach((el,i)=>{el.classList.add(i===qd.ans?'correct':'wrong')});
   if(oi===qd.ans){quizPassed.add(li);playSound('success');levelScores[li]+=10;totalScore+=10;setTimeout(()=>{quizLocked=false;goLevel(currentLevel+1)},800)}
   else{playSound('fail');setTimeout(()=>{quizLocked=false;renderPanel()},1000)}
@@ -195,15 +205,15 @@ function answerQuiz(li,oi){
 // === stage-nav ===
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  levelNames.forEach((_,i)=>{const cls=i<currentLevel?'done':i===currentLevel?'cur':'';h+=`<div class="sn-d ${cls}" onclick="switchLevel(${i})"></div>`});
+  levelNames.forEach((_,i)=>{const unlocked=isUnlocked(i);const cls=quizPassed.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';h+=`<div class="sn-d ${cls}" style="opacity:${unlocked?1:.35};cursor:${unlocked?'pointer':'not-allowed'}" ${unlocked?`onclick="switchLevel(${i})"`:''}></div>`});
   h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levelNames.length} 关</div>`;
   h+=`<div class="sn-hint">${levelNames[currentLevel]}</div></div>`;return h;
 }
 
 // === 关卡切换 ===
 let levelFadeAlpha=1;
-function goLevel(idx){if(idx<0||idx>=levelNames.length){showResult();return}currentLevel=idx;initLevel(idx);levelFadeAlpha=0;renderPanel()}
-function switchLevel(idx){playSound('click');goLevel(idx)}
+function goLevel(idx){idx=Number(idx);if(!Number.isInteger(idx))return;if(idx<0||idx>=levelNames.length){if(quizPassed.size===levelNames.length)showResult();return}if(!isUnlocked(idx))return;currentLevel=idx;initLevel(idx);levelFadeAlpha=0;renderPanel()}
+function switchLevel(idx){idx=Number(idx);if(!Number.isInteger(idx))return;playSound('click');goLevel(idx)}
 
 // === 面板 ===
 let _panelBusy=false;
@@ -219,6 +229,7 @@ function renderPanel(){
 
 // === 结果页 ===
 function showResult(){
+  if(!levelNames.every((_,i)=>quizPassed.has(i)))return;
   gameState='result';panel.style.display='none';document.getElementById('bottom-bar').style.display='none';
   let h=`<div style="font-size:48px;margin-bottom:10px">🎉</div>`;
   h+=`<h2 style="color:var(--sv);margin-bottom:8px">恭喜通关！</h2>`;
@@ -245,6 +256,8 @@ function startGame(){
 // ========== 关卡状态 ==========
 
 function initLevel(idx){
+  idx=Number(idx);
+  if(!Number.isInteger(idx)||idx<0||idx>=levelNames.length)return;
   levelState={time:0,done:false};
   switch(idx){
     case 0: // 光速不变

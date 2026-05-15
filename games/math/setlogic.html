@@ -132,9 +132,10 @@ let levelObjs=Array.from({length:7},()=>[false,false,false]);
 function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';draw()}
 window.addEventListener('resize',resize);
 function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
-function isUnlocked(n){return n>=0&&n<LI.length&&(n===0||quizPassed.has(n)||quizPassed.has(n-1))}
-function goLevel(n){if(!isUnlocked(n))return;curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
-function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
+function isUnlocked(n){return n>=0&&n<LI.length&&(n===0||quizPassed.has(n-1))}
+function goLevel(n){if(n<0||n>=LI.length)return;if(!isUnlocked(n))return;curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
+function completeObj(li,oi){if(li!==curLevel||!levelObjs[li]||levelObjs[li][oi])return;levelObjs[li][oi]=true;renderPanel();renderBar()}
+function finishRangeEdit(el){if(el)el.blur();renderPanel()}
 
 const LI=[
   {title:'集合运算',sub:'韦恩图',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>运算：</b>A∩B（交集）/ A∪B（并集）/ A\'（补集）</div>画布上有两个集合的韦恩图。选择不同的运算，观察高亮区域的变化。',objs:['观察交集 A∩B','观察并集 A∪B','观察补集 A\''],learn:'<b>集合运算</b>：交集 A∩B 包含同时属于A和B的元素；并集 A∪B 包含属于A或B的元素；补集 A\' 包含不属于A的元素。韦恩图是可视化集合关系的经典工具。'},
@@ -147,15 +148,15 @@ const LI=[
 ];
 
 const quizData=[
-  {q:'A={1,2,3}, B={2,3,4}, A∩B=?',opts:['{1,2,3,4}','{2,3}','{1,4}','{2}'],ans:1},
-  {q:'P为假,Q为真,则P∧Q=?',opts:['真','假','不确定','无意义'],ans:1},
-  {q:'P→Q 等价于？',opts:['P∧Q','¬P∨Q','P∨Q','¬P∧Q'],ans:1},
-  {q:'NAND门被称为"万能门"因为？',opts:['速度最快','可实现任何逻辑函数','最便宜','最简单'],ans:1},
-  {q:'¬(A∨B) 等于？',opts:['¬A∨¬B','¬A∧¬B','A∧B','A∨B'],ans:1},
-  {q:'数学归纳法的归纳步是？',opts:['证n=1','证n=k','假设n=k证n=k+1','证所有n'],ans:2},
-  {q:'罗素悖论导致了什么？',opts:['微积分发展','公理化集合论','概率论','拓扑学'],ans:1}
+  {q:'A={1,2,3}, B={2,3,4}, A∩B=?',opts:['{2,3}','{1,2,3,4}','{1,4}','{2}'],ans:0,why:'交集只保留同时属于 A 和 B 的元素，所以结果是 {2,3}。'},
+  {q:'P为假,Q为真,则P∧Q=?',opts:['真','假','不确定','无意义'],ans:1,why:'“与”运算要求两个命题都为真；只要有一个为假，P∧Q 就是假。'},
+  {q:'P→Q 等价于？',opts:['P∧Q','P∨Q','¬P∨Q','¬P∧Q'],ans:2,why:'蕴含 P→Q 只有在 P 真且 Q 假时为假，等价写法是 ¬P∨Q。'},
+  {q:'NAND门被称为"万能门"因为？',opts:['速度最快','最便宜','最简单','可实现任何逻辑函数'],ans:3,why:'NAND 可以组合出 NOT、AND、OR 等门，因此任意布尔逻辑都能只用 NAND 实现。'},
+  {q:'¬(A∨B) 等于？',opts:['¬A∨¬B','A∧B','¬A∧¬B','A∨B'],ans:2,why:'德摩根定律说明“非或”等于“且非”：¬(A∨B)=¬A∧¬B。'},
+  {q:'数学归纳法的归纳步是？',opts:['证n=1','假设n=k证n=k+1','证n=k','证所有n'],ans:1,why:'归纳步不是直接证明所有 n，而是在假设 n=k 成立的基础上推出 n=k+1。'},
+  {q:'罗素悖论导致了什么？',opts:['公理化集合论','微积分发展','概率论','拓扑学'],ans:0,why:'罗素悖论暴露了朴素集合论的自指问题，推动了 ZF/ZFC 等公理化集合论。'}
 ];
-let quizPassed=new Set(),quizLocked=false;
+let quizPassed=new Set(),quizLocked=false,quizFeedback={};
 
 // ===== Level states =====
 let L1={op:'intersection',setA:new Set([1,2,3,5,7]),setB:new Set([2,3,4,6,8])};
@@ -234,7 +235,7 @@ function verifyBase(){
   renderPanel();draw();
 }
 function setInductionN(el){
-  L6.n=+el.value;
+  L6.n=clampNumber(el.value,1,20,L6.n);
   let sum=L6.n*(L6.n+1)/2;
   let val=document.getElementById('l6NVal');
   let sumText=document.getElementById('l6SumText');
@@ -243,6 +244,11 @@ function setInductionN(el){
   if(sumText)sumText.textContent=`1+2+...+${L6.n} = ${sum}`;
   if(formulaText)formulaText.textContent=`n(n+1)/2 = ${L6.n}×${L6.n+1}/2 = ${sum}`;
   draw();
+}
+function clampNumber(value,min,max,fallback){
+  let n=Number(value);
+  if(!Number.isFinite(n))return fallback;
+  return Math.min(max,Math.max(min,n));
 }
 function showHypothesis(){L6.verified[1]=true;completeObj(5,1);renderPanel();draw()}
 function verifyStep(){L6.verified[2]=true;completeObj(5,2);renderPanel();draw()}
@@ -260,22 +266,26 @@ function exploreParadox(p){
 function renderBar(){barInner.innerHTML='<span style="color:var(--text-muted)">🔗 '+LI[curLevel].title+'</span><span class="progress">'+levelObjs.flat().filter(Boolean).length+'/'+levelObjs.flat().length+'</span>'}
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<7;i++){let cls=quizPassed.has(i)?'done':i===curLevel?'cur':isUnlocked(i)?'':'locked';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`}
+  for(let i=0;i<7;i++){let unlocked=isUnlocked(i);let cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';h+=`<div class="sn-d ${cls}" ${unlocked&&i!==curLevel?`onclick="goLevel(${i})"`:''}></div>`}
   h+='</div><div class="sn-info">第 '+(curLevel+1)+'/7 关 — '+LI[curLevel].title+'</div><div class="sn-hint">'+LI[curLevel].sub+' · '+quizPassed.size+'/7 已通关，答对测验才解锁下一关</div></div>';return h;
 }
 function renderQuiz(li){
   let qd=quizData[li];if(!qd)return '';
   let h='<div class="quiz-box"><div class="quiz-q">📝 '+qd.q+'</div>';
   qd.opts.forEach((o,i)=>{let cls=quizPassed.has(li)?(i===qd.ans?'correct':''):'';h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${o}</div>`});
+  if(quizFeedback[li])h+=`<div style="color:${quizFeedback[li].ok?'var(--quiz-correct-text)':'var(--quiz-wrong-text)'};font-size:12px;line-height:1.6;margin-top:6px">${quizFeedback[li].text}</div>`;
   if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过</div>';
   h+='</div>';return h;
 }
 function answerQuiz(li,oi){
-  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  li=Number(li);oi=Number(oi);
+  if(!Number.isInteger(li)||!Number.isInteger(oi)||li<0||li>=LI.length)return;
+  if(li!==curLevel||quizLocked||quizPassed.has(li)||!levelObjs[li].every(Boolean))return;quizLocked=true;
   let qd=quizData[li],opts=panel.querySelectorAll('.quiz-opt');
+  if(!qd||oi<0||oi>=qd.opts.length){quizLocked=false;return}
   opts.forEach((el,i)=>el.classList.add(i===qd.ans?'correct':'wrong'));
-  if(oi===qd.ans){quizPassed.add(li);setTimeout(()=>{quizLocked=false;if(curLevel<6)goLevel(curLevel+1);else showResult()},800)}
-  else setTimeout(()=>{quizLocked=false;renderPanel()},1000);
+  if(oi===qd.ans){quizFeedback[li]={ok:true,text:'答对了。'+qd.why};quizPassed.add(li);setTimeout(()=>{quizLocked=false;if(li<6)goLevel(li+1);else showResult()},800)}
+  else{quizFeedback[li]={ok:false,text:'再想想：'+qd.why};setTimeout(()=>{quizLocked=false;renderPanel()},1000)}
 }
 
 function renderPanel(){
@@ -311,7 +321,7 @@ function renderPanel(){
     case 4:h+=`<button class="act-btn green" onclick="verifyDM(1)">验证 ¬(A∧B) = ¬A∨¬B</button><button class="act-btn green" onclick="verifyDM(2)">验证 ¬(A∨B) = ¬A∧¬B</button><button class="act-btn" onclick="verifyDMTruth()">用真值表确认</button>`;
       if(L5.verified[0])h+=`<div style="color:var(--quiz-correct-text);font-size:12px">✅ 第一定律已验证</div>`;
       if(L5.verified[1])h+=`<div style="color:var(--quiz-correct-text);font-size:12px">✅ 第二定律已验证</div>`;break;
-    case 5:h+=`<div class="slider-row"><label>n 值</label><input type="range" min="1" max="20" value="${L6.n}" oninput="setInductionN(this)" onchange="this.blur();renderPanel()"><span class="val" id="l6NVal">${L6.n}</span></div>`;
+    case 5:h+=`<div class="slider-row"><label>n 值</label><input type="range" min="1" max="20" value="${L6.n}" oninput="setInductionN(this)" onchange="finishRangeEdit(this)"><span class="val" id="l6NVal">${L6.n}</span></div>`;
       h+=`<div id="l6SumText" style="font-size:12px;color:var(--text-muted);margin:4px 0">1+2+...+${L6.n} = ${L6.n*(L6.n+1)/2}</div>`;
       h+=`<div id="l6FormulaText" style="font-size:12px;color:var(--text-muted)">n(n+1)/2 = ${L6.n}×${L6.n+1}/2 = ${L6.n*(L6.n+1)/2}</div>`;
       h+=`<button class="act-btn green" onclick="verifyBase()">验证基础步 (n=1)</button>`;
@@ -327,6 +337,7 @@ function renderPanel(){
 }
 
 function showResult(){
+  if(quizPassed.size<LI.length)return;
   panel.style.display='none';bar.style.display='none';
   let ov=document.getElementById('overlay');
   ov.innerHTML='<div style="text-align:center"><div style="font-size:48px;margin-bottom:12px">🎉</div><h1 style="color:#14b8a6;font-size:28px;margin-bottom:8px">恭喜通关！</h1><div style="color:var(--text-muted);margin-bottom:16px">你已掌握集合与逻辑的核心概念</div><button class="start-btn" onclick="location.reload()">再玩一次</button></div>';

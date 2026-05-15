@@ -15,6 +15,9 @@
   --btn-bg:#1a1a4a;--btn-border:#3b82f6;--btn-text:#60a5fa;--btn-hover:#2a2a6a;
   --sv:#60a5fa;--title-color:#eee;--sub-color:#888;
   --learn-bg:#0a1a2a;--learn-border:#1e40af;--learn-text:#93c5fd;
+  --quiz-bg:#0d1a0d;--quiz-border:#22c55e;--quiz-q:#4ade80;
+  --quiz-opt-bg:#111;--quiz-opt-border:#1a3a1a;--quiz-opt-text:#a0c0a0;--quiz-opt-hover:#1a2a1a;
+  --quiz-correct-bg:#0a2a0a;--quiz-correct-text:#4ade80;--quiz-wrong-bg:#2a0a0a;--quiz-wrong-text:#f87171;
   --stage-bg:#0d0d24;--stage-border:#1a1a3a;--stage-info:#60a5fa;--stage-hint:#888;--stage-bar:#1a1a3a;
   --feat-bg:#1a1a3a;--feat-border:#2a2a5a;--feat-text:#a0a0c0;
   --summary-bg:linear-gradient(135deg,#0d0d24,#1a0a2a);--summary-border:#2a2a5a;
@@ -29,6 +32,9 @@
   --btn-bg:#eef2ff;--btn-border:#c7d2fe;--btn-text:#4338ca;--btn-hover:#e0e7ff;
   --sv:#4338ca;--title-color:#1e293b;--sub-color:var(--text-muted);
   --learn-bg:#f0f4ff;--learn-border:#93c5fd;--learn-text:#1e40af;
+  --quiz-bg:#f0fdf4;--quiz-border:#86efac;--quiz-q:#166534;
+  --quiz-opt-bg:#fff;--quiz-opt-border:#d1d5db;--quiz-opt-text:#334155;--quiz-opt-hover:#f0fdf4;
+  --quiz-correct-bg:#dcfce7;--quiz-correct-text:#166534;--quiz-wrong-bg:#fef2f2;--quiz-wrong-text:#991b1b;
   --stage-bg:#f0f4ff;--stage-border:#c7d2fe;--stage-info:#6366f1;--stage-hint:#64748b;--stage-bar:#e2e8f0;
   --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
   --summary-bg:linear-gradient(135deg,#f0f4ff,#faf5ff);--summary-border:#c7d2fe;
@@ -54,17 +60,20 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC'
 .act-btn:hover{background:rgba(139,92,246,0.3)}
 .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;line-height:1.8;color:var(--learn-text)}
 .learn-box b{color:#a78bfa}
+.hint-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-left:3px solid #8b5cf6;border-radius:8px;padding:9px 10px;margin:8px 0;font-size:13px;line-height:1.7;color:var(--concept-text)}
 .quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
 .quiz-title{font-weight:bold;color:var(--quiz-q);margin-bottom:6px}
 .quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
 .quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{border-color:#22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-opt.wrong{border-color:#ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
 .quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
 .quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 #bar{position:absolute;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:none;align-items:center;padding:0 12px;gap:8px;z-index:10}
 #bar .prog{margin-left:auto;font-size:12px;color:var(--text-muted)}
-canvas{position:absolute;left:320px;top:0;background:var(--bg)}
+canvas{position:absolute;left:320px;top:0;background:var(--bg);touch-action:none}
 .desc{font-size:12px;color:var(--text-muted);line-height:1.6;margin:8px 0}
 .sub{font-size:13px;color:var(--sub-color);margin:6px 0 4px;font-weight:600}
 input[type=range].ctl{width:100%;accent-color:#8b5cf6;margin:4px 0}
@@ -112,33 +121,33 @@ input[type=range].ctl{width:100%;accent-color:#8b5cf6;margin:4px 0}
 </div>
 <script>
 let isDark=true;
-function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel();}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel();draw();}
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay'),wrap=document.getElementById('wrap');
-let W,H,curLevel=0,time=0,unlocked=[true,false,false,false,false,false,false];
+let W,H,curLevel=0,time=0,animating=false,unlocked=[true,false,false,false,false,false,false];
 let levelObjs=[[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false]];
 let mouseX=0,mouseY=0,dragging=null;
 
 const LEVEL_NAMES=['离子键','共价键','金属键','VSEPR模型','极性与非极性','氢键与分子间力','晶体结构'];
 const LEVEL_ICONS=['⚡','🤝','🌊','📐','🧲','💧','💎'];
 const quizData=[
-  {q:'离子键形成的直接原因是什么？',opts:['电子转移形成正负离子后相互吸引','两个原子共享完全相同的电子云','所有电子都变成自由电子海'],ans:0,ok:'对。离子键的核心是电子转移和静电引力。',bad:'离子键不是共享电子，也不是电子海；重点是正负离子之间的库仑吸引。'},
-  {q:'H₂ 分子中的共价键本质是什么？',opts:['两个氢原子共用一对电子','氢原子各自失去一个电子','氢原子之间只有范德华力'],ans:0,ok:'对。共用电子对被两个原子核共同吸引。',bad:'共价键的关键词是“共享电子对”。'},
-  {q:'金属具有良好导电性的主要原因是什么？',opts:['自由电子可以在金属晶格中移动','金属原子完全不带电','金属键都有固定方向'],ans:0,ok:'对。电子海中的自由电子能传递电荷。',bad:'金属键通常无方向性，导电性来自自由电子。'},
-  {q:'VSEPR 理论预测分子形状时依据什么？',opts:['价层电子对尽量相互远离','原子质量越大越靠中心','分子颜色决定键角'],ans:0,ok:'对。电子对互斥会决定空间构型和键角。',bad:'VSEPR 关注价层电子对排斥，不看颜色或质量排序。'},
-  {q:'CO₂ 是非极性分子的主要原因是什么？',opts:['两个 C=O 键偶极矩方向相反并相互抵消','C=O 键完全没有极性','CO₂ 不含电子'],ans:0,ok:'对。CO₂ 的线性对称结构让键偶极矩抵消。',bad:'C=O 键本身有极性，但分子整体因对称而非极性。'},
-  {q:'氢键通常比范德华力怎样？',opts:['更强，且需要 H 与 F/O/N 等强电负性原子相关','更弱，只能存在于金属中','完全等同于共价键'],ans:0,ok:'对。氢键是较强的分子间作用力，但仍弱于典型共价键。',bad:'氢键不是金属键，也不是普通共价键；它是特殊分子间作用力。'},
-  {q:'晶体类型差异主要由什么决定？',opts:['微粒种类和微粒间作用力','样品外表颜色','是否能被肉眼看到'],ans:0,ok:'对。离子、原子、分子、金属晶体的微粒和作用力不同。',bad:'晶体性质来自微观结构和作用力，不是外观颜色。'}
+  {q:'离子键形成的直接原因是什么？',opts:['电子转移形成正负离子后相互吸引','两个原子共享完全相同的电子云','所有电子都变成自由电子海'],ans:0,ok:'对。离子键的核心是电子转移和静电引力。',bad:'离子键不是共享电子，也不是电子海；重点是正负离子之间的库仑吸引。',why:'金属原子失电子形成阳离子，非金属原子得电子形成阴离子，随后正负电荷之间的静电吸引把晶体结合起来。'},
+  {q:'H₂ 分子中的共价键本质是什么？',opts:['氢原子各自失去一个电子','两个氢原子共用一对电子','氢原子之间只有范德华力'],ans:1,ok:'对。共用电子对被两个原子核共同吸引。',bad:'共价键的关键词是“共享电子对”。',why:'两个氢原子各贡献一个电子，形成一对被两个原子核共同吸引的电子对，这比单纯分子间作用力强得多。'},
+  {q:'金属具有良好导电性的主要原因是什么？',opts:['金属原子完全不带电','金属键都有固定方向','自由电子可以在金属晶格中移动'],ans:2,ok:'对。电子海中的自由电子能传递电荷。',bad:'金属键通常无方向性，导电性来自自由电子。',why:'金属原子的价电子离域成电子海，外加电场下这些自由电子能定向移动，所以金属能导电。'},
+  {q:'VSEPR 理论预测分子形状时依据什么？',opts:['原子质量越大越靠中心','价层电子对尽量相互远离','分子颜色决定键角'],ans:1,ok:'对。电子对互斥会决定空间构型和键角。',bad:'VSEPR 关注价层电子对排斥，不看颜色或质量排序。',why:'中心原子周围的键合电子对和孤对电子都会相互排斥，它们会选择尽量远离的空间排布，从而决定分子形状。'},
+  {q:'CO₂ 是非极性分子的主要原因是什么？',opts:['C=O 键完全没有极性','CO₂ 不含电子','两个 C=O 键偶极矩方向相反并相互抵消'],ans:2,ok:'对。CO₂ 的线性对称结构让键偶极矩抵消。',bad:'C=O 键本身有极性，但分子整体因对称而非极性。',why:'分子极性不只看单个键，还要看几何结构；CO₂ 线性对称，两个相反方向的键偶极矩相加为零。'},
+  {q:'氢键通常比范德华力怎样？',opts:['更弱，只能存在于金属中','更强，且需要 H 与 F/O/N 等强电负性原子相关','完全等同于共价键'],ans:1,ok:'对。氢键是较强的分子间作用力，但仍弱于典型共价键。',bad:'氢键不是金属键，也不是普通共价键；它是特殊分子间作用力。',why:'当 H 与 F/O/N 等强电负性原子相连时，H 带较强部分正电荷，能与另一分子的孤对电子形成方向性较强的吸引。'},
+  {q:'晶体类型差异主要由什么决定？',opts:['样品外表颜色','是否能被肉眼看到','微粒种类和微粒间作用力'],ans:2,ok:'对。离子、原子、分子、金属晶体的微粒和作用力不同。',bad:'晶体性质来自微观结构和作用力，不是外观颜色。',why:'离子晶体、原子晶体、分子晶体和金属晶体的组成微粒不同，作用力也不同，所以熔点、硬度和导电性会明显不同。'}
 ];
 let quizPassed=new Set(),quizFeedback={};
 
 // === Level 0: Ionic bond - electron transfer ===
-let l0Na={x:0,y:0,electrons:[]},l0Cl={x:0,y:0,electrons:[]},l0transferred=0,l0dragE=null;
+let l0Na={x:0,y:0,electrons:[]},l0Cl={x:0,y:0,electrons:[]},l0transferred=0,l0dragE=null,l0bondExplained=false;
 
 // === Level 1: Covalent bond - electron sharing ===
 let l1atoms=[],l1shared=0,l1dragE=null;
 
 // === Level 2: Metallic bond - electron sea ===
-let l2freeE=[],l2metalAtoms=[],l2released=0;
+let l2freeE=[],l2metalAtoms=[],l2released=0,l2seaReviewed=false;
 
 // === Level 3: VSEPR - molecular shape ===
 let l3shape=0,l3angleAdj=109.5;
@@ -149,9 +158,26 @@ const VSEPR_SHAPES=[
   {name:'三角锥形',formula:'NH₃',pairs:4,angle:107,desc:'3个键合+1个孤对电子对'},
   {name:'V形(角形)',formula:'H₂O',pairs:4,angle:104.5,desc:'2个键合+2个孤对电子对'}
 ];
+function initialVseprAngle(i){
+  const s=VSEPR_SHAPES[i];
+  if(!s)return 109.5;
+  const offset=s.angle>170?-8:8;
+  return Math.max(90,Math.min(180,s.angle+offset));
+}
+function vseprAtomLabels(formula){
+  const labels={
+    'BeCl₂':['Be','Cl'],
+    'BF₃':['B','F'],
+    'CH₄':['C','H'],
+    'NH₃':['N','H'],
+    'H₂O':['O','H']
+  };
+  const pair=labels[formula]||['X','X'];
+  return {center:pair[0],outer:pair[1]};
+}
 
 // === Level 4: Polarity ===
-let l4mol=0;
+let l4mol=0,l4polarityConfirmed=false;
 const POLAR_MOLS=[
   {name:'HCl',polar:true,desc:'氯的电负性(3.16)远大于氢(2.20)，电子偏向氯',mu:'1.08 D',color:'#ef4444'},
   {name:'CO₂',polar:false,desc:'两个C=O极性键方向相反，偶极矩抵消',mu:'0 D',color:'#3b82f6'},
@@ -162,30 +188,68 @@ const POLAR_MOLS=[
 let l4viewed=new Set();
 
 // === Level 5: Hydrogen bonds ===
-let l5mode=0,l5waterMols=[];
+let l5mode=null,l5waterMols=[],l5viewed=new Set(),l5compareBlocked=false,l5comparisonConfirmed=false;
 
 // === Level 6: Crystal structures ===
-let l6type=0,l6rotX=0.3,l6rotY=0.5;
+let l6type=0,l6rotX=0.3,l6rotY=0.5,l6structureConfirmed=false;
 const CRYSTAL_TYPES=[
   {name:'离子晶体',example:'NaCl',desc:'正负离子交替排列，库仑力结合',mp:'高(801°C)',color1:'#ef4444',color2:'#3b82f6'},
   {name:'原子晶体',example:'金刚石',desc:'原子间共价键连接成网状，极其坚硬',mp:'极高(3550°C)',color1:'#888',color2:'#aaa'},
   {name:'分子晶体',example:'冰',desc:'分子间以分子间力结合，熔点低',mp:'低(0°C)',color1:'#60a5fa',color2:'#93c5fd'},
   {name:'金属晶体',example:'铜',desc:'金属阳离子+自由电子海，导电导热',mp:'中高(1085°C)',color1:'#f59e0b',color2:'#fbbf24'}
 ];
+const CRYSTAL_PROPERTIES=[
+  '性质线索：离子晶体熔点高、硬而脆，固态通常不导电，熔融或水溶后可导电。',
+  '性质线索：原子晶体靠共价网络支撑，硬度和熔点极高，通常不易溶解。',
+  '性质线索：分子晶体由分子间力维系，熔点低、质地较软，受氢键等弱相互作用影响明显。',
+  '性质线索：金属晶体有自由电子海，因此导电导热好，并具有延展性。'
+];
 
 function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';}
 window.addEventListener('resize',()=>{resize();draw();});
 
-function startGame(){overlay.style.display='none';wrap.style.display='block';panel.style.display='block';bar.style.display='flex';resize();goLevel(0);animate();}
-function goLevel(n){if(n<0||n>6||!isUnlocked(n))return;curLevel=n;unlocked[n]=true;dragging=null;l0dragE=null;l1dragE=null;initLevel(n);renderPanel();draw();}
-function checkObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();}}
-function isUnlocked(n){return n===0||quizPassed.has(n-1)}
+function resetProgress(){
+  curLevel=0;
+  unlocked=[true,false,false,false,false,false,false];
+  levelObjs=Array.from({length:LEVEL_NAMES.length},()=>[false,false,false]);
+  quizPassed.clear();quizFeedback={};
+  dragging=null;l0dragE=null;l1dragE=null;isDraggingCanvas=false;
+}
+
+function startGame(){
+  resetProgress();
+  overlay.style.display='none';wrap.style.display='block';panel.style.display='block';bar.style.display='flex';
+  resize();goLevel(0);
+  if(!animating){animating=true;animate();}
+}
+function restartFromSummary(){
+  resetProgress();
+  overlay.style.display='none';wrap.style.display='block';panel.style.display='block';bar.style.display='flex';
+  resize();goLevel(0);
+  return true;
+}
+function goLevel(n){
+  n=Number(n);
+  if(!Number.isInteger(n)||n<0||n>6||!isUnlocked(n))return;
+  curLevel=n;
+  if(!quizPassed.has(n))delete quizFeedback[n];
+  unlocked[n]=true;dragging=null;l0dragE=null;l1dragE=null;initLevel(n);renderPanel();draw();
+}
+function checkObj(li,oi,silent=false){
+  li=Number(li);oi=Number(oi);
+  if(!Number.isInteger(li)||!Number.isInteger(oi)||li!==curLevel||li<0||li>6||oi<0||oi>=3||!levelObjs[li]||levelObjs[li][oi])return false;
+  levelObjs[li][oi]=true;if(!silent)renderPanel();return true;
+}
+function isUnlocked(n){
+  n=Number(n);
+  return Number.isInteger(n)&&n>=0&&n<=6&&(n===0||quizPassed.has(n-1));
+}
 
 function initLevel(n){
   const cx=W/2,cy=H/2;
   switch(n){
     case 0:{
-      l0transferred=0;l0dragE=null;
+      l0transferred=0;l0dragE=null;l0bondExplained=false;
       l0Na={x:cx-120,y:cy,electrons:[]};l0Cl={x:cx+120,y:cy,electrons:[]};
       for(let i=0;i<1;i++){const a=Math.PI*2*i;l0Na.electrons.push({x:l0Na.x+50*Math.cos(a),y:l0Na.y+50*Math.sin(a),id:i,from:'Na'});}
       for(let i=0;i<7;i++){const a=Math.PI*2*i/7;l0Cl.electrons.push({x:l0Cl.x+50*Math.cos(a),y:l0Cl.y+50*Math.sin(a),id:i,from:'Cl'});}
@@ -193,25 +257,25 @@ function initLevel(n){
     }
     case 1:{
       l1shared=0;l1dragE=null;
-      l1atoms=[{x:cx-80,y:cy,el:'H',color:'#3b82f6',r:24,electrons:[{x:cx-80+40,y:cy,id:0}]},{x:cx+80,y:cy,el:'H',color:'#3b82f6',r:24,electrons:[{x:cx+80-40,y:cy,id:1}]}];
+      l1atoms=[{x:cx-80,y:cy,el:'H',color:'#3b82f6',r:24,electrons:[{x:cx-80+40,y:cy,id:0,shared:false}]},{x:cx+80,y:cy,el:'H',color:'#3b82f6',r:24,electrons:[{x:cx+80-40,y:cy,id:1,shared:false}]}];
       break;
     }
     case 2:{
-      l2released=0;l2freeE=[];l2metalAtoms=[];
+      l2released=0;l2freeE=[];l2metalAtoms=[];l2seaReviewed=false;
       for(let r=0;r<3;r++)for(let c=0;c<4;c++){
         const ax=cx-90+c*60,ay=cy-60+r*60;
         l2metalAtoms.push({x:ax,y:ay,electrons:[{x:ax+25,y:ay,released:false}]});
       }
       break;
     }
-    case 3:l3shape=0;l3angleAdj=VSEPR_SHAPES[0].angle;break;
-    case 4:l4mol=0;l4viewed.clear();break;
+    case 3:l3shape=0;l3angleAdj=initialVseprAngle(0);l3viewed.clear();l3manualAngleTried=false;break;
+    case 4:l4mol=0;l4viewed.clear();l4polarityConfirmed=false;break;
     case 5:{
-      l5mode=0;l5waterMols=[];
+      l5mode=null;l5waterMols=[];l5viewed.clear();l5compareBlocked=false;l5comparisonConfirmed=false;
       for(let i=0;i<6;i++){l5waterMols.push({x:cx-150+i%3*120+Math.random()*20,y:cy-80+(i<3?0:120)+Math.random()*20});}
       break;
     }
-    case 6:l6type=0;l6rotX=0.3;l6rotY=0.5;break;
+    case 6:l6type=0;l6rotX=0.3;l6rotY=0.5;l6structureConfirmed=false;l6viewed.clear();break;
   }
 }
 
@@ -219,46 +283,71 @@ function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   LEVEL_NAMES.forEach((_,i)=>{
     const unlocked=isUnlocked(i),cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
-    const click=unlocked?`goLevel(${i})`:'';
-    h+=`<div class="sn-d ${cls}" onclick="${click}" title="${unlocked?LEVEL_NAMES[i]:'答对上一关测验后解锁'}"></div>`;
+    const click=unlocked&&i!==curLevel?` onclick="goLevel(${i})"`:'';
+    h+=`<div class="sn-d ${cls}"${click} title="${unlocked?LEVEL_NAMES[i]:'答对上一关测验后解锁'}"></div>`;
   });
   h+=`</div><div class="sn-info">${LEVEL_ICONS[curLevel]} ${curLevel+1}/${LEVEL_NAMES.length} ${LEVEL_NAMES[curLevel]}</div><div class="sn-info">${quizPassed.size}/${LEVEL_NAMES.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
   return h;
 }
 function summaryHTML(){
-  const done=levelObjs.flat().filter(v=>v).length,total=levelObjs.flat().length;
-  return `<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握化学键与分子形状的核心知识</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}/${total}</div><div class="label">目标完成</div></div><div class="summary-stat"><div class="num">7</div><div class="label">关卡通关</div></div></div><div class="summary-keys"><div>⚡ 离子键：电子转移形成正负离子</div><div>🤝 共价键：电子共享形成分子</div><div>🌊 金属键：自由电子海模型</div><div>📐 VSEPR：电子对互斥决定分子形状</div><div>🧲 极性：电负性差异与分子对称性</div><div>💧 氢键：特殊的分子间作用力</div><div>💎 晶体：四种晶体类型与性质</div></div></div>`;
+  const done=quizPassed.size*3,total=levelObjs.flat().length;
+  return `<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握化学键与分子形状的核心知识</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}/${total}</div><div class="label">目标达成</div></div><div class="summary-stat"><div class="num">${LEVEL_NAMES.length}</div><div class="label">关卡通关</div></div></div><div class="summary-keys"><div>⚡ 离子键：电子转移形成正负离子</div><div>🤝 共价键：电子共享形成分子</div><div>🌊 金属键：自由电子海模型</div><div>📐 VSEPR：电子对互斥决定分子形状</div><div>🧲 极性：电负性差异与分子对称性</div><div>💧 氢键：特殊的分子间作用力</div><div>💎 晶体：四种晶体类型与性质</div></div><button class="act-btn" style="margin-top:12px" onclick="restartFromSummary()">重新探索化学键</button></div>`;
 }
 function quizHTML(li){
-  const q=quizData[li],fb=quizFeedback[li];
+  const q=quizData[li],fb=quizFeedback[li],passed=quizPassed.has(li);
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
   h+=`<div class="quiz-q">${q.q}</div>`;
-  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`;});
+  q.opts.forEach((opt,i)=>{
+    const mark=passed&&i===q.ans?' correct':fb&&i===q.ans?' correct':fb&&i===fb.choice&&!fb.ok?' wrong':'';
+    h+=`<button class="quiz-opt${mark}" onclick="answerQuiz(${li},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;
+  });
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  else if(passed)h+=`<div class="quiz-feedback ok">已通过小测。${q.why||q.ok}</div>`;
   h+='</div>';
   return h;
 }
+function setAngleFromInput(input){
+  if(curLevel!==3)return false;
+  const raw=input&&input.value!==undefined?input.value:input;
+  const n=Number(raw);
+  if(!Number.isFinite(n))return false;
+  l3manualAngleTried=true;
+  l3angleAdj=Math.min(180,Math.max(90,n));
+  if(input&&input.value!==undefined)input.value=String(l3angleAdj);
+  sliderDrag3();
+  return true;
+}
 function answerQuiz(li,choice){
-  if(li!==curLevel||quizPassed.has(li))return;
-  const q=quizData[li],ok=choice===q.ans;
-  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  li=Number(li);choice=Number(choice);
+  if(!Number.isInteger(li)||!Number.isInteger(choice))return false;
+  if(li<0||li>=LEVEL_NAMES.length)return false;
+  if(li!==curLevel||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(Boolean))return false;
+  const q=quizData[li];
+  if(!q||choice<0||choice>=q.opts.length)return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  const ok=choice===q.ans;
+  quizFeedback[li]={ok,choice,text:(ok?q.ok:q.bad)+(q.why?' '+q.why:'')};
   if(ok){
     quizPassed.add(li);
     if(li<6)unlocked[li+1]=true;
   }
   renderPanel();
+  return ok;
 }
 window.answerQuiz=answerQuiz;
 function renderPanel(){
   let h=renderStageNav();
   switch(curLevel){case 0:h+=renderP0();break;case 1:h+=renderP1();break;case 2:h+=renderP2();break;case 3:h+=renderP3();break;case 4:h+=renderP4();break;case 5:h+=renderP5();break;case 6:h+=renderP6();break;}
-  if(levelObjs[curLevel].every(v=>v)){
-    if(!quizPassed.has(curLevel))h+=quizHTML(curLevel);
-    if(quizPassed.has(curLevel)&&curLevel<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
-    if(quizPassed.has(curLevel)&&curLevel===6)h+=summaryHTML();
+  const levelPassed=quizPassed.has(curLevel);
+  const goalsDone=levelPassed||levelObjs[curLevel].every(v=>v);
+  if(levelPassed)h=h.replace(/class="obj(?! done)"/g,'class="obj done"');
+  if(goalsDone){
+    h+=quizHTML(curLevel);
+    if(levelPassed&&curLevel<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+    if(levelPassed&&curLevel===6)h+=summaryHTML();
   }
   panel.innerHTML=h;
-  const done=levelObjs[curLevel].filter(Boolean).length;
+  const done=levelPassed?3:levelObjs[curLevel].filter(Boolean).length;
   const status=quizPassed.has(curLevel)?'已通关':levelObjs[curLevel].every(Boolean)?'待测验':'进行中';
   bar.innerHTML=`<span style="color:var(--text-muted)">⚛️ ${LEVEL_NAMES[curLevel]}</span><span class="prog">目标 ${done}/3 · ${status} · 通关 ${quizPassed.size}/${LEVEL_NAMES.length}</span>`;
 }
@@ -271,8 +360,30 @@ function renderP0(){
   h+=`<div class="obj ${levelObjs[0][1]?'done':''}">观察离子形成过程</div>`;
   h+=`<div class="obj ${levelObjs[0][2]?'done':''}">理解离子键的本质</div>`;
   h+=`<p class="sub">已转移 ${l0transferred}/1 个电子</p>`;
-  if(l0transferred>=1)h+=`<div class="learn-box"><b>NaCl 氯化钠</b><br>Na失去1个电子→Na⁺（2,8电子构型）<br>Cl得到1个电子→Cl⁻（2,8,8电子构型）<br><br>离子键的强度取决于离子电荷和离子半径。电荷越大、半径越小，离子键越强。<br><br>典型离子化合物：NaCl、MgO、CaF₂</div>`;
+  if(l0transferred<1){
+    h+=`<button class="act-btn" onclick="demoIonicElectronTransfer()">预览电子转移位置</button>`;
+  }
+  if(l0transferred>=1){
+    h+=`<div class="learn-box"><b>NaCl 氯化钠</b><br>Na失去1个电子→Na⁺（2,8电子构型）<br>Cl得到1个电子→Cl⁻（2,8,8电子构型）<br><br>离子键不是“电子还在两原子之间共享”，而是正负离子之间的静电引力。</div>`;
+    h+=`<button class="act-btn" onclick="explainIonicBond()">${l0bondExplained?'已确认':'确认'}：离子键本质是静电引力</button>`;
+    if(l0bondExplained)h+=`<div class="learn-box"><b>影响强度的因素</b><br>离子电荷越大、离子半径越小，正负离子间吸引越强。典型离子化合物包括 NaCl、MgO、CaF₂。</div>`;
+  }
   return h;
+}
+function demoIonicElectronTransfer(){
+  if(curLevel!==0||l0transferred>=1||!l0Na.electrons.length)return false;
+  const electron=l0Na.electrons[0];
+  electron.x=l0Cl.x+50;
+  electron.y=l0Cl.y;
+  renderPanel();draw();
+  return true;
+}
+function explainIonicBond(){
+  if(curLevel!==0||l0transferred<1)return false;
+  l0bondExplained=true;
+  checkObj(0,2,true);
+  renderPanel();draw();
+  return true;
 }
 function renderP1(){
   let h=`<h3>共价键（电子共享）</h3>`;
@@ -291,10 +402,20 @@ function renderP2(){
   h+=`<p class="desc">画布上有一组<span style="color:#f59e0b">金属原子</span>，每个原子旁有一个电子。点击原子释放电子，观察自由电子海的形成。</p>`;
   h+=`<div class="obj ${levelObjs[2][0]?'done':''}">释放至少4个电子</div>`;
   h+=`<div class="obj ${levelObjs[2][1]?'done':''}">释放至少8个电子</div>`;
-  h+=`<div class="obj ${levelObjs[2][2]?'done':''}">观察电子海模型</div>`;
+  h+=`<div class="obj ${levelObjs[2][2]?'done':''}">确认电子海模型的含义</div>`;
   h+=`<p class="sub">已释放 ${l2released}/12 个电子</p>`;
-  if(l2released>=8)h+=`<div class="learn-box"><b>金属键特点</b><br>• 无方向性、无饱和性<br>• 自由电子可自由移动→导电性<br>• 电子海可传递振动→导热性<br>• 原子层可滑动而不断裂→延展性<br><br>金属键强度取决于：价电子数越多、原子半径越小，金属键越强。</div>`;
+  if(l2released>=8){
+    h+=`<div class="learn-box"><b>金属键特点</b><br>• 无方向性、无饱和性<br>• 自由电子可自由移动→导电性<br>• 电子海可传递振动→导热性<br>• 原子层可滑动而不断裂→延展性<br><br>金属键强度取决于：价电子数越多、原子半径越小，金属键越强。</div>`;
+    h+=`<button class="act-btn" onclick="confirmElectronSea()">${l2seaReviewed?'已确认':'确认'}：自由电子把金属阳离子连接成整体</button>`;
+  }
   return h;
+}
+function confirmElectronSea(){
+  if(curLevel!==2||l2released<8)return false;
+  l2seaReviewed=true;
+  checkObj(2,2,true);
+  renderPanel();draw();
+  return true;
 }
 function renderP3(){
   let h=`<h3>VSEPR模型（分子形状预测）</h3>`;
@@ -303,19 +424,58 @@ function renderP3(){
   h+=`<div class="obj ${levelObjs[3][0]?'done':''}">查看至少3种分子形状</div>`;
   h+=`<div class="obj ${levelObjs[3][1]?'done':''}">将键角调到正确值(±2°)</div>`;
   h+=`<div class="obj ${levelObjs[3][2]?'done':''}">查看全部5种形状</div>`;
+  h+=`<p class="sub">已记录 ${l3viewed.size}/${VSEPR_SHAPES.length} 种形状，点击下方按钮才会计入观察</p>`;
   for(let i=0;i<VSEPR_SHAPES.length;i++){
     const s=VSEPR_SHAPES[i],sel=i===l3shape?'background:rgba(139,92,246,0.3);':'';
     h+=`<button class="act-btn" style="${sel}" onclick="setShape(${i})">${s.formula} ${s.name}</button>`;
   }
   const s=VSEPR_SHAPES[l3shape];
-  h+=`<p class="sub">键角调节: <span style="color:var(--sv)">${l3angleAdj.toFixed(1)}°</span> (理论值: ${s.angle}°)</p>`;
-  h+=`<input type="range" class="ctl" min="90" max="180" step="0.5" value="${l3angleAdj}" oninput="l3angleAdj=+this.value;sliderDrag3()" onchange="this.blur();renderPanel()">`;
+  h+=`<p class="sub">键角调节: <span id="angleVal" style="color:var(--sv)">${l3angleAdj.toFixed(1)}°</span> (理论值: ${s.angle}°)</p>`;
+  h+=`<input type="range" class="ctl" min="90" max="180" step="0.5" value="${l3angleAdj}" oninput="setAngleFromInput(this)" onchange="this.blur();renderPanel()">`;
+  if(!levelObjs[3][1]&&!l3manualAngleTried)h+=`<div class="hint-box">先自己拖动键角滑块，观察角度偏大或偏小时电子对排斥如何改变，再用校准按钮对照理论值。</div>`;
+  if(Math.abs(l3angleAdj-s.angle)>2&&l3manualAngleTried)h+=`<button class="act-btn" onclick="setIdealVseprAngle()">校准到理论键角 ${s.angle}°</button>`;
   h+=`<div class="learn-box"><b>${s.name} — ${s.formula}</b><br>${s.desc}<br>理论键角: ${s.angle}°</div>`;
+  h+=`<p class="desc" id="angleFeedback">${vseprAngleFeedback()}</p>`;
   return h;
 }
-let l3viewed=new Set();
-function setShape(i){l3shape=i;l3angleAdj=VSEPR_SHAPES[i].angle;l3viewed.add(i);if(l3viewed.size>=3)checkObj(3,0);if(l3viewed.size>=5)checkObj(3,2);renderPanel();draw();}
-function sliderDrag3(){const s=VSEPR_SHAPES[l3shape];if(Math.abs(l3angleAdj-s.angle)<2)checkObj(3,1);draw();const el=panel.querySelector('.sub span');if(el)el.textContent=l3angleAdj.toFixed(1)+'°';}
+let l3viewed=new Set(),l3manualAngleTried=false;
+function vseprAngleFeedback(){
+  const s=VSEPR_SHAPES[l3shape],diff=l3angleAdj-s.angle,ad=Math.abs(diff);
+  if(ad<=2)return '已接近理论键角：电子对排斥达到较稳定的空间分布，可以完成这一目标。';
+  const direction=diff>0?'偏大':'偏小';
+  const clue=s.formula==='NH₃'||s.formula==='H₂O'?'孤对电子排斥更强，会把键合电子对压得更近，使键角小于正四面体。':'没有孤对电子时，键合电子对尽量均匀远离。';
+  return `当前键角${direction} ${ad.toFixed(1)}°。${clue}`;
+}
+function setShape(i){
+  i=Number(i);
+  if(curLevel!==3||!Number.isInteger(i)||i<0||i>=VSEPR_SHAPES.length)return false;
+  l3shape=i;l3angleAdj=initialVseprAngle(i);l3viewed.add(i);
+  if(!levelObjs[3][1])l3manualAngleTried=false;
+  if(l3viewed.size>=3)checkObj(3,0,true);
+  if(l3viewed.size>=5)checkObj(3,2,true);
+  renderPanel();draw();
+  return true;
+}
+function setIdealVseprAngle(){
+  if(curLevel!==3||!l3manualAngleTried)return false;
+  const s=VSEPR_SHAPES[l3shape];
+  if(!s)return false;
+  l3angleAdj=s.angle;
+  checkObj(3,1,true);
+  renderPanel();draw();
+  return true;
+}
+function sliderDrag3(){
+  const s=VSEPR_SHAPES[l3shape];
+  if(curLevel!==3||!s)return false;
+  const changed=l3manualAngleTried&&Math.abs(l3angleAdj-s.angle)<=2&&checkObj(3,1,true);
+  draw();
+  if(changed){renderPanel();return true;}
+  const el=document.getElementById('angleVal'),fb=document.getElementById('angleFeedback');
+  if(el)el.textContent=l3angleAdj.toFixed(1)+'°';
+  if(fb)fb.textContent=vseprAngleFeedback();
+  return false;
+}
 
 function renderP4(){
   let h=`<h3>极性与非极性</h3>`;
@@ -323,16 +483,45 @@ function renderP4(){
   h+=`<p class="desc">画布上展示不同分子的偶极矩方向。切换分子观察极性键和分子极性的关系。</p>`;
   h+=`<div class="obj ${levelObjs[4][0]?'done':''}">查看至少3种分子</div>`;
   h+=`<div class="obj ${levelObjs[4][1]?'done':''}">找到一个非极性分子</div>`;
-  h+=`<div class="obj ${levelObjs[4][2]?'done':''}">查看全部5种分子</div>`;
+  h+=`<div class="obj ${levelObjs[4][2]?'done':''}">确认键偶极与分子构型共同决定极性</div>`;
+  h+=`<p class="sub">已记录 ${l4viewed.size}/${POLAR_MOLS.length} 种分子，点击下方按钮后再比较构型和偶极矩</p>`;
   for(let i=0;i<POLAR_MOLS.length;i++){
     const m=POLAR_MOLS[i],sel=i===l4mol?'background:rgba(139,92,246,0.3);':'';
-    h+=`<button class="act-btn" style="${sel}" onclick="setMol(${i})">${m.name} ${m.polar?'(极性)':'(非极性)'}</button>`;
+    h+=`<button class="act-btn" style="${sel}" onclick="setMol(${i})">${m.name}</button>`;
   }
   const m=POLAR_MOLS[l4mol];
   h+=`<div class="learn-box"><b style="color:${m.color}">${m.name}</b> — ${m.polar?'极性分子':'非极性分子'}<br>偶极矩: ${m.mu}<br>${m.desc}</div>`;
+  if(l4PolarityReady()&&!levelObjs[4][2]){
+    h+=`<button class="act-btn" onclick="confirmPolarityRule()">确认：对称结构会抵消键偶极矩，非对称结构保留合偶极矩</button>`;
+  }else if(levelObjs[4][2]){
+    h+=`<div class="hint-box">已确认：判断分子极性要同时看键的电负性差异和分子几何。CO₂、CCl₄ 有极性键但整体对称，偶极矩抵消；H₂O、NH₃ 结构不对称，合偶极矩不为 0。</div>`;
+  }else{
+    h+=`<div class="hint-box">继续查看所有 5 种分子，特别比较 HCl/H₂O/NH₃ 与 CO₂/CCl₄，找出“有极性键但整体非极性”的原因。</div>`;
+  }
   return h;
 }
-function setMol(i){l4mol=i;l4viewed.add(i);if(l4viewed.size>=3)checkObj(4,0);if(!POLAR_MOLS[i].polar)checkObj(4,1);if(l4viewed.size>=5)checkObj(4,2);renderPanel();draw();}
+function setMol(i){
+  i=Number(i);
+  if(curLevel!==4||!Number.isInteger(i)||i<0||i>=POLAR_MOLS.length)return false;
+  l4mol=i;l4viewed.add(i);
+  if(l4viewed.size>=3)checkObj(4,0,true);
+  if(!POLAR_MOLS[i].polar)checkObj(4,1,true);
+  renderPanel();draw();
+  return true;
+}
+function l4PolarityReady(){
+  if(curLevel!==4||l4viewed.size<5)return false;
+  let hasPolar=false,hasNonpolar=false;
+  l4viewed.forEach(i=>{if(POLAR_MOLS[i]&&POLAR_MOLS[i].polar)hasPolar=true;else if(POLAR_MOLS[i])hasNonpolar=true;});
+  return hasPolar&&hasNonpolar&&levelObjs[4][0]&&levelObjs[4][1];
+}
+function confirmPolarityRule(){
+  if(!l4PolarityReady())return false;
+  l4polarityConfirmed=true;
+  checkObj(4,2,true);
+  renderPanel();draw();
+  return true;
+}
 
 function renderP5(){
   let h=`<h3>氢键与分子间力</h3>`;
@@ -343,15 +532,48 @@ function renderP5(){
   h+=`<div class="obj ${levelObjs[5][2]?'done':''}">比较两种作用力</div>`;
   const modes=['范德华力','氢键','对比模式'];
   for(let i=0;i<3;i++){
-    const sel=i===l5mode?'background:rgba(139,92,246,0.3);':'';
-    h+=`<button class="act-btn" style="${sel}" onclick="setHBond(${i})">${modes[i]}</button>`;
+    const locked=i===2&&!canCompareForces();
+    const sel=i===l5mode?'background:rgba(139,92,246,0.3);':locked?'opacity:.55;':'';
+    h+=`<button class="act-btn" style="${sel}" onclick="setHBond(${i})">${modes[i]}${locked?'（先看前两种）':''}</button>`;
   }
-  if(l5mode===0)h+=`<div class="learn-box"><b>范德华力</b><br>• 存在于所有分子之间<br>• 包括取向力、诱导力、色散力<br>• 强度: 0.5~5 kJ/mol<br>• 分子量越大，范德华力越强</div>`;
+  h+=`<div class="hint-box" id="forceHint">${forceHintText()}</div>`;
+  if(l5mode===null)h+=`<p class="desc">先选择一种作用力模式，再切换到另一种模式进行对比。</p>`;
+  else if(l5mode===0)h+=`<div class="learn-box"><b>范德华力</b><br>• 存在于所有分子之间<br>• 包括取向力、诱导力、色散力<br>• 强度: 0.5~5 kJ/mol<br>• 分子量越大，范德华力越强</div>`;
   else if(l5mode===1)h+=`<div class="learn-box"><b>氢键</b><br>• X-H···Y (X,Y = F,O,N)<br>• 强度: 10~40 kJ/mol<br>• 水的反常高沸点(100°C)就是氢键的功劳<br>• DNA双螺旋也靠氢键维持</div>`;
-  else h+=`<div class="learn-box"><b>作用力对比</b><br>化学键(共价键): 150~800 kJ/mol<br>氢键: 10~40 kJ/mol<br>范德华力: 0.5~5 kJ/mol<br><br>氢键虽比化学键弱，但比范德华力强5~10倍，对物质性质影响巨大。</div>`;
+  else if(levelObjs[5][0]&&levelObjs[5][1]){
+    h+=`<div class="learn-box"><b>作用力对比</b><br>化学键(共价键): 150~800 kJ/mol<br>氢键: 10~40 kJ/mol<br>范德华力: 0.5~5 kJ/mol<br><br>氢键虽比化学键弱，但比范德华力强5~10倍，对物质性质影响巨大。</div>`;
+    if(!levelObjs[5][2])h+=`<button class="act-btn" onclick="confirmForceComparison()">确认：氢键比范德华力更强且更有方向性</button>`;
+  }
+  else h+=`<p class="desc">对比需要先看过范德华力和氢键。</p>`;
   return h;
 }
-function setHBond(i){l5mode=i;if(i===0)checkObj(5,0);if(i===1)checkObj(5,1);if(i===2)checkObj(5,2);renderPanel();draw();}
+function forceHintText(){
+  if(l5compareBlocked)return '对比模式需要先分别看过范德华力和氢键：先建立“弱而普遍”和“更强且有方向性”的参照，再比较能量数量级。';
+  if(l5mode===null)return '先任选一种模式观察线条：橙色虚线表示普遍但较弱的范德华力，蓝色虚线表示条件更严格、方向性更强的氢键。';
+  if(l5mode===0)return '范德华力来自瞬时偶极和诱导偶极，所有分子之间都可能有；它通常较弱，所以容易被温度扰动打散。';
+  if(l5mode===1)return '氢键通常需要 H 与 F/O/N 等强电负性原子相连，并指向另一个带孤对电子的原子；方向性让它比普通范德华力强。';
+  if(canCompareForces())return '对比强度时抓住数量级：氢键约 10~40 kJ/mol，范德华力约 0.5~5 kJ/mol，所以水分子间作用显著影响沸点。';
+  return '对比模式需要先分别看过范德华力和氢键；先建立弱相互作用和强方向性相互作用的参照，再完成比较。';
+}
+function canCompareForces(){return l5viewed.has(0)&&l5viewed.has(1)}
+function setHBond(i){
+  i=Number(i);
+  if(curLevel!==5||!Number.isInteger(i)||i<0||i>2)return false;
+  if(i===2&&!canCompareForces()){l5compareBlocked=true;renderPanel();draw();return false}
+  l5compareBlocked=false;
+  l5mode=i;l5viewed.add(i);
+  if(i===0)checkObj(5,0,true);
+  if(i===1)checkObj(5,1,true);
+  renderPanel();draw();
+  return true;
+}
+function confirmForceComparison(){
+  if(curLevel!==5||l5mode!==2||!canCompareForces())return false;
+  l5comparisonConfirmed=true;
+  checkObj(5,2,true);
+  renderPanel();draw();
+  return true;
+}
 
 function renderP6(){
   let h=`<h3>晶体结构</h3>`;
@@ -359,17 +581,41 @@ function renderP6(){
   h+=`<p class="desc">画布上展示四种晶体的微观结构。切换类型观察不同晶体的排列方式，拖动画布旋转3D视角。</p>`;
   h+=`<div class="obj ${levelObjs[6][0]?'done':''}">查看至少2种晶体</div>`;
   h+=`<div class="obj ${levelObjs[6][1]?'done':''}">旋转观察3D结构</div>`;
-  h+=`<div class="obj ${levelObjs[6][2]?'done':''}">查看全部4种晶体</div>`;
+  h+=`<div class="obj ${levelObjs[6][2]?'done':''}">确认四类晶体的结构-性质关系</div>`;
+  h+=`<p class="sub">已记录 ${l6viewed.size}/${CRYSTAL_TYPES.length} 种晶体，点击按钮才会计入观察</p>`;
+  h+=`<div class="hint-box">${levelObjs[6][1]?'已旋转视角：注意同一种晶体在不同方向上仍保持规则重复排列。':'点完晶体类型后，还需要在画布上拖动一次来观察三维晶格的空间重复。'}</div>`;
   for(let i=0;i<CRYSTAL_TYPES.length;i++){
     const c=CRYSTAL_TYPES[i],sel=i===l6type?'background:rgba(139,92,246,0.3);':'';
     h+=`<button class="act-btn" style="${sel}" onclick="setCrystal(${i})">${c.name} (${c.example})</button>`;
   }
   const c=CRYSTAL_TYPES[l6type];
-  h+=`<div class="learn-box"><b>${c.name} — ${c.example}</b><br>${c.desc}<br>熔点: ${c.mp}</div>`;
+  h+=`<div class="learn-box"><b>${c.name} — ${c.example}</b><br>${c.desc}<br>熔点: ${c.mp}<br>${CRYSTAL_PROPERTIES[l6type]}</div>`;
+  if(l6viewed.size>=CRYSTAL_TYPES.length&&!levelObjs[6][1]){
+    h+=`<div class="hint-box">已经看完四类晶体。再拖动画布旋转一次，把微粒排列从平面按钮选择转成空间结构观察。</div>`;
+  }else if(l6viewed.size>=CRYSTAL_TYPES.length&&!levelObjs[6][2]){
+    h+=`<div class="learn-box"><b>结构到性质</b><br>离子晶体靠静电引力，原子晶体靠共价网络，分子晶体靠分子间力，金属晶体靠自由电子海。微粒种类和作用力越强，通常熔点、硬度和导电方式就越不同。</div>`;
+    h+=`<button class="act-btn" onclick="confirmCrystalStructure()">确认：微粒种类和作用力决定晶体性质</button>`;
+  }else if(l6structureConfirmed){
+    h+=`<div class="learn-box"><b>已确认</b><br>四类晶体的差异来自微粒种类与微粒间作用力，而不是外表颜色或晶体大小。</div>`;
+  }
   return h;
 }
 let l6viewed=new Set();
-function setCrystal(i){l6type=i;l6viewed.add(i);if(l6viewed.size>=2)checkObj(6,0);if(l6viewed.size>=4)checkObj(6,2);renderPanel();draw();}
+function setCrystal(i){
+  i=Number(i);
+  if(curLevel!==6||!Number.isInteger(i)||i<0||i>=CRYSTAL_TYPES.length)return false;
+  l6type=i;l6viewed.add(i);
+  if(l6viewed.size>=2)checkObj(6,0,true);
+  renderPanel();draw();
+  return true;
+}
+function confirmCrystalStructure(){
+  if(curLevel!==6||l6viewed.size<CRYSTAL_TYPES.length||!levelObjs[6][1])return false;
+  l6structureConfirmed=true;
+  checkObj(6,2,true);
+  renderPanel();draw();
+  return true;
+}
 
 // === DRAW FUNCTIONS ===
 function draw(){
@@ -466,27 +712,28 @@ function drawL2(){
 function drawL3(){
   const cx=W/2,cy=H/2,s=VSEPR_SHAPES[l3shape];
   const R=100,angleRad=l3angleAdj*Math.PI/180;
+  const labels=vseprAtomLabels(s.formula);
   ctx.fillStyle='#a78bfa';ctx.font='bold 18px sans-serif';ctx.textAlign='center';ctx.fillText(s.formula+' — '+s.name,cx,40);
   // Draw central atom
-  drawAtom(cx,cy,28,'#8b5cf6','C','');
+  drawAtom(cx,cy,28,'#8b5cf6',labels.center,'');
   // Draw bonds based on shape
   const positions=[];
   if(s.pairs===2){positions.push({a:0},{a:Math.PI});}
-  else if(s.pairs===3){for(let i=0;i<3;i++)positions.push({a:i*angleRad/180*Math.PI*3+Math.PI/2*3});}
+  else if(s.pairs===3){for(let i=0;i<3;i++)positions.push({a:i*angleRad+Math.PI/2*3});}
   else{
-    if(s.formula==='CH₄'){for(let i=0;i<4;i++)positions.push({a:-Math.PI/2+i*angleRad*Math.PI/180});}
-    else if(s.formula==='NH₃'){for(let i=0;i<3;i++)positions.push({a:-Math.PI/3+i*angleRad*Math.PI/180});positions.push({a:-Math.PI/2,lone:true});}
-    else{positions.push({a:-angleRad/2*Math.PI/180});positions.push({a:angleRad/2*Math.PI/180});positions.push({a:-Math.PI/2,lone:true});positions.push({a:Math.PI/2+0.3,lone:true});}
+    if(s.formula==='CH₄'){for(let i=0;i<4;i++)positions.push({a:-Math.PI/2+i*angleRad});}
+    else if(s.formula==='NH₃'){for(let i=0;i<3;i++)positions.push({a:-Math.PI/3+i*angleRad});positions.push({a:-Math.PI/2,lone:true});}
+    else{positions.push({a:-angleRad/2});positions.push({a:angleRad/2});positions.push({a:-Math.PI/2,lone:true});positions.push({a:Math.PI/2+0.3,lone:true});}
   }
   // Simplified: draw bonds evenly
   const bondCount=s.formula==='H₂O'?2:s.formula==='NH₃'?3:s.pairs;
   const loneCount=s.formula==='H₂O'?2:s.formula==='NH₃'?1:0;
   const startA=-Math.PI/2;
   for(let i=0;i<bondCount;i++){
-    const a=startA+i*(angleRad*Math.PI/180)/(bondCount>1?bondCount-1:1)-(bondCount>1?(angleRad*Math.PI/180)/2:0);
+    const a=startA+i*angleRad/(bondCount>1?bondCount-1:1)-(bondCount>1?angleRad/2:0);
     const ex=cx+R*Math.cos(a),ey=cy+R*Math.sin(a);
     ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(ex,ey);ctx.strokeStyle='#a78bfa';ctx.lineWidth=3;ctx.stroke();
-    drawAtom(ex,ey,18,'#3b82f6',s.formula==='BeCl₂'||s.formula==='BF₃'?'X':'H','');
+    drawAtom(ex,ey,18,'#3b82f6',labels.outer,'');
   }
   for(let i=0;i<loneCount;i++){
     const a=startA+Math.PI+i*0.6-loneCount*0.3+0.3;
@@ -497,7 +744,7 @@ function drawL3(){
   }
   // Angle arc
   if(bondCount>=2){
-    ctx.beginPath();ctx.arc(cx,cy,40,startA-(angleRad*Math.PI/180)/2,startA+(angleRad*Math.PI/180)/2);
+    ctx.beginPath();ctx.arc(cx,cy,40,startA-angleRad/2,startA+angleRad/2);
     ctx.strokeStyle='#f59e0b';ctx.lineWidth=2;ctx.stroke();
     ctx.fillStyle='#f59e0b';ctx.font='bold 14px sans-serif';ctx.fillText(l3angleAdj.toFixed(1)+'°',cx,cy-50);
   }
@@ -555,7 +802,7 @@ function drawArrow(x1,y1,x2,y2,color){
 function drawL5(){
   const cx=W/2,cy=H/2;
   ctx.fillStyle='#a78bfa';ctx.font='bold 18px sans-serif';ctx.textAlign='center';
-  ctx.fillText(l5mode===0?'范德华力':l5mode===1?'氢键':'作用力对比',cx,35);
+  ctx.fillText(l5mode===0?'范德华力':l5mode===1?'氢键':l5mode===2?'作用力对比':'选择作用力模式',cx,35);
   l5waterMols.forEach((m,i)=>{
     // Draw water molecule
     const ox=m.x,oy=m.y;
@@ -599,9 +846,11 @@ function drawL6(){
   if(l6type===0){// NaCl
     for(let i=0;i<3;i++)for(let j=0;j<3;j++)for(let k=0;k<3;k++){
       const x=(i-1)*S,y=(j-1)*S,z=(k-1)*S,isNa=(i+j+k)%2===0;
+      const idx=nodes.length;
       nodes.push({x,y,z,color:isNa?c.color1:c.color2,r:isNa?12:14,label:isNa?'Na⁺':'Cl⁻'});
-      if(i<2)edges.push([nodes.length-1,null,i+1,j,k]);
-      if(j<2)edges.push([nodes.length-1,null,i,j+1,k]);
+      if(i>0)edges.push([idx,idx-9]);
+      if(j>0)edges.push([idx,idx-3]);
+      if(k>0)edges.push([idx,idx-1]);
     }
   } else if(l6type===1){// Diamond
     const pts=[[0,0,0],[S,S,0],[S,0,S],[0,S,S],[S/2,S/2,S/2]];
@@ -639,13 +888,32 @@ function drawL6(){
 
 // === EVENT HANDLERS ===
 let isDraggingCanvas=false,lastMX=0,lastMY=0;
-cv.addEventListener('mousedown',e=>{
-  const rect=cv.getBoundingClientRect();mouseX=e.clientX-rect.left;mouseY=e.clientY-rect.top;
+function pointerPos(e){
+  const rect=cv.getBoundingClientRect();
+  return {x:e.clientX-rect.left,y:e.clientY-rect.top};
+}
+function startPointer(e){
+  const p=pointerPos(e);
+  mouseX=p.x;mouseY=p.y;
   if(curLevel===0){
     // Check if clicking on Na electron
-    for(const el of l0Na.electrons){if(Math.hypot(mouseX-el.x,mouseY-el.y)<15){l0dragE=el;return;}}
+    for(const el of l0Na.electrons){
+      if(Math.hypot(mouseX-el.x,mouseY-el.y)<15){
+        e.preventDefault();l0dragE=el;
+        if(cv.setPointerCapture&&e.pointerId!=null)cv.setPointerCapture(e.pointerId);
+        return;
+      }
+    }
   } else if(curLevel===1){
-    for(const a of l1atoms){for(const el of a.electrons){if(Math.hypot(mouseX-el.x,mouseY-el.y)<15){l1dragE=el;return;}}}
+    for(const a of l1atoms){
+      for(const el of a.electrons){
+        if(!el.shared&&Math.hypot(mouseX-el.x,mouseY-el.y)<15){
+          e.preventDefault();l1dragE=el;
+          if(cv.setPointerCapture&&e.pointerId!=null)cv.setPointerCapture(e.pointerId);
+          return;
+        }
+      }
+    }
   } else if(curLevel===2){
     // Click to release electron
     for(const a of l2metalAtoms){
@@ -653,27 +921,35 @@ cv.addEventListener('mousedown',e=>{
         const e=a.electrons.find(e=>!e.released);
         if(e){e.released=true;l2released++;
           l2freeE.push({x:e.x,y:e.y,vx:(Math.random()-0.5)*2,vy:(Math.random()-0.5)*2});
-          if(l2released>=4)checkObj(2,0);if(l2released>=8)checkObj(2,1);if(l2released>=12)checkObj(2,2);
+          if(l2released>=4)checkObj(2,0,true);if(l2released>=8)checkObj(2,1,true);
           renderPanel();draw();
         }
         return;
       }
     }
-  } else if(curLevel===6){isDraggingCanvas=true;lastMX=mouseX;lastMY=mouseY;}
-});
-cv.addEventListener('mousemove',e=>{
-  const rect=cv.getBoundingClientRect();mouseX=e.clientX-rect.left;mouseY=e.clientY-rect.top;
-  if(curLevel===0&&l0dragE){l0dragE.x=mouseX;l0dragE.y=mouseY;draw();}
-  else if(curLevel===1&&l1dragE){l1dragE.x=mouseX;l1dragE.y=mouseY;draw();}
-  else if(curLevel===6&&isDraggingCanvas){l6rotY+=(mouseX-lastMX)*0.01;l6rotX+=(mouseY-lastMY)*0.01;lastMX=mouseX;lastMY=mouseY;checkObj(6,1);draw();}
-});
-cv.addEventListener('mouseup',e=>{
+  } else if(curLevel===6){
+    e.preventDefault();isDraggingCanvas=true;lastMX=mouseX;lastMY=mouseY;
+    if(cv.setPointerCapture&&e.pointerId!=null)cv.setPointerCapture(e.pointerId);
+  }
+}
+function movePointer(e){
+  const p=pointerPos(e);
+  mouseX=p.x;mouseY=p.y;
+  if(curLevel===0&&l0dragE){e.preventDefault();l0dragE.x=mouseX;l0dragE.y=mouseY;draw();}
+  else if(curLevel===1&&l1dragE){e.preventDefault();l1dragE.x=mouseX;l1dragE.y=mouseY;draw();}
+  else if(curLevel===6&&isDraggingCanvas){
+    e.preventDefault();
+    l6rotY+=(mouseX-lastMX)*0.01;l6rotX+=(mouseY-lastMY)*0.01;lastMX=mouseX;lastMY=mouseY;
+    if(checkObj(6,1,true))renderPanel();draw();
+  }
+}
+function endPointer(e){
   if(curLevel===0&&l0dragE){
     // Check if dropped on Cl
     if(Math.hypot(l0dragE.x-l0Cl.x,l0dragE.y-l0Cl.y)<50){
       l0transferred=1;l0Na.electrons=[];
       l0Cl.electrons.push({x:l0Cl.x+50,y:l0Cl.y,id:99,from:'Na'});
-      checkObj(0,0);checkObj(0,1);checkObj(0,2);
+      checkObj(0,0,true);checkObj(0,1,true);
       renderPanel();
     } else {// Reset position
       const a=0;l0dragE.x=l0Na.x+50*Math.cos(a);l0dragE.y=l0Na.y+50*Math.sin(a);
@@ -682,8 +958,8 @@ cv.addEventListener('mouseup',e=>{
   } else if(curLevel===1&&l1dragE){
     const cx=W/2,cy=H/2;
     if(Math.hypot(l1dragE.x-cx,l1dragE.y-cy)<40){
-      l1shared++;l1dragE.x=cx+(l1shared===1?-10:10);l1dragE.y=cy;
-      if(l1shared>=1)checkObj(1,0);if(l1shared>=2){checkObj(1,1);checkObj(1,2);}
+      l1shared++;l1dragE.shared=true;l1dragE.x=cx+(l1shared===1?-10:10);l1dragE.y=cy;
+      if(l1shared>=1)checkObj(1,0,true);if(l1shared>=2){checkObj(1,1,true);checkObj(1,2,true);}
       renderPanel();
     } else {// Reset
       const atom=l1atoms.find(a=>a.electrons.includes(l1dragE));
@@ -691,12 +967,13 @@ cv.addEventListener('mouseup',e=>{
     }
     l1dragE=null;draw();
   }
+  if(cv.releasePointerCapture&&e&&e.pointerId!=null)try{cv.releasePointerCapture(e.pointerId)}catch(err){}
   isDraggingCanvas=false;
-});
-// Touch support
-cv.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];cv.dispatchEvent(new MouseEvent('mousedown',{clientX:t.clientX,clientY:t.clientY}));},{passive:false});
-cv.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];cv.dispatchEvent(new MouseEvent('mousemove',{clientX:t.clientX,clientY:t.clientY}));},{passive:false});
-cv.addEventListener('touchend',e=>{e.preventDefault();cv.dispatchEvent(new MouseEvent('mouseup',{}));},{passive:false});
+}
+cv.addEventListener('pointerdown',startPointer);
+cv.addEventListener('pointermove',movePointer);
+cv.addEventListener('pointerup',endPointer);
+cv.addEventListener('pointercancel',endPointer);
 
 function animate(){time+=0.016;if(curLevel===2&&l2freeE.length>0)draw();requestAnimationFrame(animate);}
 

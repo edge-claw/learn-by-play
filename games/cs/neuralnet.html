@@ -291,11 +291,11 @@ const levels=[
 {name:'激活函数 — 非线性变换',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>激活函数、Sigmoid、ReLU、Tanh、非线性</div>激活函数为神经网络引入非线性。没有它，多层网络等价于单层。常见的有Sigmoid、ReLU和Tanh。',
  objs:['观察Sigmoid函数曲线','观察ReLU函数曲线','观察Tanh函数曲线'],
  learn:'ReLU因计算简单、梯度不易消失，成为深度学习的默认激活函数。但它有"死亡ReLU"问题——负值区域梯度为零。',
- quiz:{q:'激活函数的作用是？',opts:['A. 加速计算','B. 引入非线性，让网络能学习复杂模式','C. 减少参数'],ans:1}},
+ quiz:{q:'激活函数的作用是？',opts:['A. 引入非线性，让网络能学习复杂模式','B. 加速计算','C. 减少参数'],ans:0}},
 {name:'反向传播 — 链式法则',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>反向传播、链式法则、梯度、损失函数</div>反向传播是训练神经网络的核心算法：前向计算输出，计算损失，然后从输出层逐层回传梯度更新权重。',
  objs:['完成前向传播','计算输出层梯度','完成反向传播到隐藏层'],
  learn:'反向传播本质是微积分的链式法则。1986年Hinton等人的论文让它广为人知，开启了神经网络的复兴。',
- quiz:{q:'反向传播的核心数学工具是？',opts:['A. 矩阵乘法','B. 链式法则（求导）','C. 傅里叶变换'],ans:1}},
+ quiz:{q:'反向传播的核心数学工具是？',opts:['A. 矩阵乘法','B. 傅里叶变换','C. 链式法则（求导）'],ans:2}},
 {name:'多层网络 — XOR问题',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>XOR 问题、隐藏层、多层感知器（MLP）</div>XOR问题：对角同色，相邻异色。单层感知器无法解决，因为XOR不是线性可分的。添加隐藏层才能解决。',
  objs:['尝试单层网络→必然失败','添加隐藏层神经元','成功分类XOR问题'],
  learn:'1969年Minsky证明感知器无法解决XOR，引发AI寒冬。多层网络（MLP）通过隐藏层组合非线性变换，可以逼近任意函数。',
@@ -303,7 +303,7 @@ const levels=[
 {name:'卷积 — 特征提取',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>卷积核、特征提取、边缘检测、CNN</div>卷积神经网络用小的卷积核在图像上滑动，提取局部特征。不同的核可以检测边缘、模糊或锐化图像。',
  objs:['使用边缘检测核','使用模糊核','使用锐化核'],
  learn:'CNN的灵感来自猫的视觉皮层实验。局部连接+权重共享大幅减少参数量，使深度学习在图像领域取得突破。',
- quiz:{q:'卷积神经网络的核心操作是？',opts:['A. 全连接','B. 卷积核在图像上滑动提取特征','C. 池化'],ans:1}},
+ quiz:{q:'卷积神经网络的核心操作是？',opts:['A. 卷积核在图像上滑动提取特征','B. 全连接','C. 池化'],ans:0}},
 {name:'过拟合 — 泛化能力',concept:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>过拟合、Dropout、正则化、泛化</div>训练损失持续下降但验证损失上升=过拟合。模型记住了训练数据的噪声，而非学到真正的规律。',
  objs:['观察过拟合现象','用Dropout缓解过拟合','通过测试集考试'],
  learn:'Dropout（随机丢弃神经元）相当于训练了指数级多个子网络的集成。L2正则化惩罚大权重，鼓励模型学习简单的模式。',
@@ -326,7 +326,7 @@ function resetLevelState(){
     pts.push({x,y,label});
    }
    lState={w1:0.5,w2:0.5,bias:0,points:pts,objDone:[false,false,false],accuracy:0,
-    challengeMode:false,challengePoints:null,challengeMisclass:0};
+    challengeMode:false,challengePoints:null,challengeMisclass:0,userAdjusted:false,challengeAdjusted:false};
   }break;
   case 1:{ // 激活函数
    lState={activeFunc:'sigmoid',inputVal:0,objDone:[false,false,false],seen:new Set()};
@@ -367,6 +367,8 @@ function resetLevelState(){
 // ===== 面板渲染 =====
 let panelDirty=true;
 function markPanelDirty(){panelDirty=true;}
+function clampNumber(value,fallback,min,max){const n=Number(value);return Number.isFinite(n)?Math.min(max,Math.max(min,n)):fallback;}
+function setRangeLabel(el,value,formatter){el.value=value;const label=el.parentElement&&el.parentElement.querySelector('.sv');if(label)label.textContent=formatter?formatter(value):value;}
 function renderPanel(){
  let h='<h3 style="margin-bottom:8px">🧠 神经网络从零构建</h3><div style="margin-bottom:8px">';
  levels.forEach((l,i)=>{
@@ -425,10 +427,12 @@ function renderQuiz(){
  return h;
 }
 function answerQuiz(i){
- if(quizState.answered)return;
+ if(!Number.isInteger(i))return false;
+ if(quizState.answered||!lState.objDone||!lState.objDone.every(Boolean)||completedLevels.has(curLevel))return false;
  playSound('click');
- quizState.answered=true;quizState.selected=i;
  const q=levels[curLevel].quiz;
+ if(!q||i<0||i>=q.opts.length)return false;
+ quizState.answered=true;quizState.selected=i;
  if(i===q.ans){
   quizState.correct=true;playSound('success');
   if(!completedLevels.has(curLevel)){
@@ -439,14 +443,15 @@ function answerQuiz(i){
  }
  else{playSound('fail');setTimeout(()=>{quizState={answered:false,selected:-1,correct:false};renderPanel();},1000);}
  renderPanel();
+ return quizState.correct;
 }
 function renderLevelControls(){
  let h='';
  switch(curLevel){
   case 0:{ // 感知器
-   h+=`<div class="slider-wrap"><label>w1: <span class="sv">${lState.w1.toFixed(2)}</span></label><input type="range" min="-2" max="2" step="0.05" value="${lState.w1}" oninput="lState.w1=+this.value;checkPerceptron();markPanelDirty()"></div>`;
-   h+=`<div class="slider-wrap"><label>w2: <span class="sv">${lState.w2.toFixed(2)}</span></label><input type="range" min="-2" max="2" step="0.05" value="${lState.w2}" oninput="lState.w2=+this.value;checkPerceptron();markPanelDirty()"></div>`;
-   h+=`<div class="slider-wrap"><label>bias: <span class="sv">${lState.bias.toFixed(2)}</span></label><input type="range" min="-2" max="2" step="0.05" value="${lState.bias}" oninput="lState.bias=+this.value;checkPerceptron();markPanelDirty()"></div>`;
+   h+=`<div class="slider-wrap"><label>w1: <span class="sv">${lState.w1.toFixed(2)}</span></label><input type="range" min="-2" max="2" step="0.05" value="${lState.w1}" oninput="lState.w1=clampNumber(this.value,lState.w1,-2,2);setRangeLabel(this,lState.w1,v=>v.toFixed(2));lState.userAdjusted=true;if(lState.challengeMode)lState.challengeAdjusted=true;checkPerceptron();markPanelDirty()"></div>`;
+   h+=`<div class="slider-wrap"><label>w2: <span class="sv">${lState.w2.toFixed(2)}</span></label><input type="range" min="-2" max="2" step="0.05" value="${lState.w2}" oninput="lState.w2=clampNumber(this.value,lState.w2,-2,2);setRangeLabel(this,lState.w2,v=>v.toFixed(2));lState.userAdjusted=true;if(lState.challengeMode)lState.challengeAdjusted=true;checkPerceptron();markPanelDirty()"></div>`;
+   h+=`<div class="slider-wrap"><label>bias: <span class="sv">${lState.bias.toFixed(2)}</span></label><input type="range" min="-2" max="2" step="0.05" value="${lState.bias}" oninput="lState.bias=clampNumber(this.value,lState.bias,-2,2);setRangeLabel(this,lState.bias,v=>v.toFixed(2));lState.userAdjusted=true;if(lState.challengeMode)lState.challengeAdjusted=true;checkPerceptron();markPanelDirty()"></div>`;
    h+=`<div class="concept-box" style="font-size:11px">决策边界：${lState.w1.toFixed(2)}·x + ${lState.w2.toFixed(2)}·y + ${lState.bias.toFixed(2)} = 0<br>准确率：<span style="color:${lState.accuracy>=90?'#4ade80':'#f59e0b'}">${lState.accuracy.toFixed(0)}%</span></div>`;
    if(!lState.challengeMode){
     h+=`<button class="act-btn" onclick="playSound('click');startChallenge()">🎯 挑战模式</button>`;
@@ -466,7 +471,7 @@ function renderLevelControls(){
     h+=`<span class="func-btn${lState.activeFunc===f?' active':''}" onclick="playSound('click');setActivation('${f}')">${f==='relu'?'ReLU':f==='sigmoid'?'Sigmoid':'Tanh'}</span>`;
    });
    h+='</div>';
-   h+=`<div class="slider-wrap"><label>输入值 x: <span class="sv">${lState.inputVal.toFixed(2)}</span></label><input type="range" min="-5" max="5" step="0.1" value="${lState.inputVal}" oninput="lState.inputVal=+this.value;markPanelDirty()"></div>`;
+   h+=`<div class="slider-wrap"><label>输入值 x: <span class="sv">${lState.inputVal.toFixed(2)}</span></label><input type="range" min="-5" max="5" step="0.1" value="${lState.inputVal}" oninput="lState.inputVal=clampNumber(this.value,lState.inputVal,-5,5);setRangeLabel(this,lState.inputVal,v=>v.toFixed(2));markPanelDirty()"></div>`;
    const out=activationFn(lState.activeFunc,lState.inputVal);
    h+=`<div class="concept-box" style="font-size:11px">${lState.activeFunc}(${lState.inputVal.toFixed(2)}) = <span class="sv">${out.toFixed(4)}</span></div>`;
   }break;
@@ -513,7 +518,7 @@ function renderLevelControls(){
    h+='</div>';
    h+='<div class="kern-grid">';
    for(let r=0;r<3;r++)for(let c=0;c<3;c++){
-    h+=`<input class="kern-cell" type="number" value="${lState.kernel[r][c]}" onchange="lState.kernel[${r}][${c}]=+this.value;lState.kernelType='custom'">`;
+    h+=`<input class="kern-cell" type="number" value="${lState.kernel[r][c]}" onchange="lState.kernel[${r}][${c}]=clampNumber(this.value,lState.kernel[${r}][${c}],-9,9);this.value=lState.kernel[${r}][${c}];lState.kernelType='custom'">`;
    }
    h+='</div>';
    if(!lState.convolving && !lState.output){
@@ -525,8 +530,8 @@ function renderLevelControls(){
    }
   }break;
   case 5:{ // 过拟合 + 考试
-   h+=`<div class="slider-wrap"><label>Dropout率: <span class="sv">${(lState.dropout*100).toFixed(0)}%</span></label><input type="range" min="0" max="0.8" step="0.05" value="${lState.dropout}" oninput="lState.dropout=+this.value;markPanelDirty()"></div>`;
-   h+=`<div class="slider-wrap"><label>L2正则化: <span class="sv">${lState.regularization.toFixed(3)}</span></label><input type="range" min="0" max="0.1" step="0.001" value="${lState.regularization}" oninput="lState.regularization=+this.value;markPanelDirty()"></div>`;
+   h+=`<div class="slider-wrap"><label>Dropout率: <span class="sv">${(lState.dropout*100).toFixed(0)}%</span></label><input type="range" min="0" max="0.8" step="0.05" value="${lState.dropout}" oninput="lState.dropout=clampNumber(this.value,lState.dropout,0,0.8);setRangeLabel(this,lState.dropout,v=>(v*100).toFixed(0)+'%');markPanelDirty()"></div>`;
+   h+=`<div class="slider-wrap"><label>L2正则化: <span class="sv">${lState.regularization.toFixed(3)}</span></label><input type="range" min="0" max="0.1" step="0.001" value="${lState.regularization}" oninput="lState.regularization=clampNumber(this.value,lState.regularization,0,0.1);setRangeLabel(this,lState.regularization,v=>v.toFixed(3));markPanelDirty()"></div>`;
    if(!lState.training && lState.epoch===0){
     h+=`<button class="act-btn" onclick="playSound('click');startOverfitTrain()">🚀 开始训练</button>`;
    }else if(lState.training){
@@ -590,15 +595,15 @@ function checkPerceptron(){
  });
  lState.accuracy=correct/pts.length*100;
  lState.challengeMisclass=misclass;
- if(Math.abs(w1)>0.01||Math.abs(w2)>0.01)lState.objDone[0]=true;
- if(lState.challengeMode&&lState.accuracy>=90){
+ if(lState.userAdjusted&&(Math.abs(w1)>0.01||Math.abs(w2)>0.01))lState.objDone[0]=true;
+ if(lState.challengeMode&&lState.challengeAdjusted&&lState.accuracy>=90){
   lState.objDone[1]=true;
-  if(lState.accuracy>=100)lState.objDone[2]=true;
+  lState.objDone[2]=true;
  }
- if(lState.accuracy>=100){lState.objDone[1]=true;lState.objDone[2]=true;}
 }
 function startChallenge(){
  lState.challengeMode=true;
+ lState.challengeAdjusted=false;
  // 生成更难的数据分布
  const pts=[];
  const angle=Math.random()*Math.PI;

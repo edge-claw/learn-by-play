@@ -198,12 +198,12 @@ const levels=[
 
 const quizData=[
 {q:'摩擦起电时，物体为什么会带电？',opts:['电子在不同材料之间转移','质子从原子核跑出','摩擦直接创造电荷'],ans:0,ok:'对。电荷守恒，带电来自电子重新分布。',bad:'本关重点是电子从束缚力弱的材料转移到束缚力强的材料。'},
-{q:'空气发生击穿放电的直接原因是什么？',opts:['电场足够强，空气分子被电离','温度低到空气冻结','两块电极完全接触'],ans:0,ok:'对。强电场把空气变成可导电的等离子体通道。',bad:'击穿阈值和电场强度有关，标准空气约 30kV/cm。'},
-{q:'阶梯先导在闪电形成中扮演什么角色？',opts:['从云底向地面逐步探路并形成分叉通道','从地面把云推开','只负责产生雷声'],ans:0,ok:'对。阶梯先导是下行的探路通道，常呈分叉形态。',bad:'先导不是最亮的回击，而是闪电连接前的探路阶段。'},
-{q:'闪电最亮的回击阶段通常从哪里向哪里传播？',opts:['从地面沿已连接通道向云端传播','从云顶横向绕地球传播','从太阳表面传到云层'],ans:0,ok:'对。上行流与先导连接后，回击沿通道向上传播并释放强光。',bad:'回击不是先导继续向下，而是连接后强电流沿通道回传。'},
-{q:'特斯拉线圈产生强电弧的关键是什么？',opts:['初级和次级线圈接近 LC 谐振','把线圈浸入水中','完全取消电容'],ans:0,ok:'对。频率匹配时能量传递效率最高，电弧最强。',bad:'本关核心公式是 f=1/(2π√LC)。'},
-{q:'等离子球里的光丝为什么会跟随手指？',opts:['手指改变局部电场分布，人体又能导电','手指把玻璃融化成通道','球内气体被手指吸走'],ans:0,ok:'对。触摸点改变电场，辉光放电路径集中到附近。',bad:'等离子球现象来自低压气体辉光放电和电场分布变化。'},
-{q:'球状闪电为什么仍被称为未解之谜？',opts:['观测稀少且理论尚不能完整解释其形成和稳定机制','它从未被任何人目击','它已经完全等同普通火花'],ans:0,ok:'对。球状闪电可持续数秒，但形成和维持机制仍有争议。',bad:'本关强调的是尚无广泛接受的完整解释。'}
+{q:'空气发生击穿放电的直接原因是什么？',opts:['温度低到空气冻结','电场足够强，空气分子被电离','两块电极完全接触'],ans:1,ok:'对。强电场把空气变成可导电的等离子体通道。',bad:'击穿阈值和电场强度有关，标准空气约 30kV/cm。'},
+{q:'阶梯先导在闪电形成中扮演什么角色？',opts:['从地面把云推开','只负责产生雷声','从云底向地面逐步探路并形成分叉通道'],ans:2,ok:'对。阶梯先导是下行的探路通道，常呈分叉形态。',bad:'先导不是最亮的回击，而是闪电连接前的探路阶段。'},
+{q:'闪电最亮的回击阶段通常从哪里向哪里传播？',opts:['从云顶横向绕地球传播','从地面沿已连接通道向云端传播','从太阳表面传到云层'],ans:1,ok:'对。上行流与先导连接后，回击沿通道向上传播并释放强光。',bad:'回击不是先导继续向下，而是连接后强电流沿通道回传。'},
+{q:'特斯拉线圈产生强电弧的关键是什么？',opts:['把线圈浸入水中','完全取消电容','初级和次级线圈接近 LC 谐振'],ans:2,ok:'对。频率匹配时能量传递效率最高，电弧最强。',bad:'本关核心公式是 f=1/(2π√LC)。'},
+{q:'等离子球里的光丝为什么会跟随手指？',opts:['手指把玻璃融化成通道','手指改变局部电场分布，人体又能导电','球内气体被手指吸走'],ans:1,ok:'对。触摸点改变电场，辉光放电路径集中到附近。',bad:'等离子球现象来自低压气体辉光放电和电场分布变化。'},
+{q:'球状闪电为什么仍被称为未解之谜？',opts:['它从未被任何人目击','它已经完全等同普通火花','观测稀少且理论尚不能完整解释其形成和稳定机制'],ans:2,ok:'对。球状闪电可持续数秒，但形成和维持机制仍有争议。',bad:'本关强调的是尚无广泛接受的完整解释。'}
 ];
 
 function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight}
@@ -228,6 +228,7 @@ initLevel(0);renderPanel();animate();
 }
 
 function initLevel(n){
+n=Number(n);
 if(!canGoLevel(n))return;
 currentLevel=n;particles=[];
 const L=levels[n];
@@ -242,6 +243,7 @@ renderPanel();
 }
 
 function completeLevel(n){
+n=Number(n);
 if(n===currentLevel&&levelState&&levelState.goals&&levelState.goals.every(Boolean)&&!goalReady.has(n)){
 goalReady.add(n);
 renderPanel();
@@ -398,7 +400,8 @@ bbRight.textContent=`已完成: ${completedLevels.size}/7`;
 }
 
 function canGoLevel(i){
-return i>=0&&i<levels.length&&(i===0||completedLevels.has(i)||completedLevels.has(i-1));
+i=Number(i);
+return Number.isInteger(i)&&i>=0&&i<levels.length&&(i===0||quizPassed.has(i-1));
 }
 
 function stageNavHTML(){
@@ -406,7 +409,7 @@ let h='<div class="stage-nav"><div class="sn-bar">';
 levels.forEach((l,i)=>{
 const unlocked=canGoLevel(i);
 const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
-h+=`<div class="sn-d ${cls}" onclick="${unlocked?'initLevel('+i+')':''}"></div>`;
+h+=`<div class="sn-d ${cls}" ${unlocked?`onclick="initLevel(${i})"`:''}></div>`;
 });
 h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${completedLevels.size}/${levels.length}</div>`;
 h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
@@ -424,14 +427,19 @@ return h;
 }
 
 function answerQuiz(i,optIdx){
+i=Number(i);optIdx=Number(optIdx);
 if(i!==currentLevel||quizPassed.has(i)||!goalReady.has(i))return;
-const q=quizData[i],ok=optIdx===q.ans;
+if(i>0&&!quizPassed.has(i-1))return;
+const q=quizData[i];
+if(!q||!Number.isInteger(optIdx)||optIdx<0||optIdx>=q.opts.length)return;
+const ok=optIdx===q.ans;
 quizFeedback[i]={ok,text:ok?q.ok:q.bad};
 if(ok){quizPassed.add(i);completedLevels.add(i);}
 renderPanel();
 }
 
 function summaryHTML(){
+if(!levels.every((_,i)=>quizPassed.has(i)))return '';
 let h='<div class="summary-box"><div class="summary-title">🏆 闪电与等离子体探险通关</div>';
 h+='<div class="summary-sub">你已完成 7 个电离、放电与等离子体主题</div><div class="summary-stats">';
 h+=`<div class="summary-stat"><div class="num">${levels.length}</div><div class="label">关卡完成</div></div>`;
@@ -473,6 +481,8 @@ const learnTexts=[
 ];
 
 function showResult(n){
+n=Number(n);
+if(n!==currentLevel||!quizPassed.has(n))return;
 const rb=document.getElementById('resultBox');
 let isLast=n===levels.length-1;
 rb.innerHTML=`<div class="rb-icon">${levels[n].icon}</div><div class="rb-title">${levels[n].name} — 通关！</div><div class="rb-learn">${learnTexts[n]}</div>`+
@@ -482,7 +492,7 @@ rb.innerHTML=`<div class="rb-icon">${levels[n].icon}</div><div class="rb-title">
 document.getElementById('resultModal').classList.remove('hidden');
 }
 function closeResult(){document.getElementById('resultModal').classList.add('hidden');}
-function nextLevel(){closeResult();initLevel(currentLevel+1);renderPanel();}
+function nextLevel(){if(!quizPassed.has(currentLevel)||currentLevel>=levels.length-1)return;closeResult();initLevel(currentLevel+1);renderPanel();}
 function retryLevel(){closeResult();initLevel(currentLevel);renderPanel();}
 
 /* ========== LEVEL 1: 击穿电压 ========== */
@@ -1048,7 +1058,7 @@ drawLightningBolt(mx,my,bx,by,displace/3,branchProb*0.5,width*0.6,color,glow);
 }
 
 
-function goLevel(i){initLevel(i);}
+function goLevel(i){i=Number(i);if(!canGoLevel(i))return;initLevel(i);}
 
 </script>
 </body>

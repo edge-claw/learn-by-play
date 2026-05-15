@@ -212,12 +212,12 @@ const levels = [
 
 const quizData = [
   {q:'为什么 BCD 常用于十进制显示？',opts:['每 4 位表示一位十进制数，便于直接驱动显示','它比二进制更节省所有位数','它只能表示奇数'],ans:0,ok:'对。BCD 牺牲一些编码效率，换来十进制显示和转换的便利。',bad:'BCD 的核心是“4 位对应 1 位十进制”，不是最省位数。'},
-  {q:'卡诺图化简的本质是什么？',opts:['合并相邻的 1 来消去变量','把所有 0 改成 1','随机删除输入变量'],ans:0,ok:'对。相邻格只差一个变量，合并后该变量被消去。',bad:'卡诺图不是改真值表，而是利用相邻项找最简表达式。'},
-  {q:'译码器的输入输出关系通常是？',opts:['n 位输入展开为 2^n 路输出','2^n 路输入压缩成 n 位输出','只把模拟信号放大'],ans:0,ok:'对。译码器把二进制编码展开成独热输出。',bad:'编码器是压缩，译码器是展开。'},
-  {q:'D 触发器在时钟上升沿会做什么？',opts:['把 D 输入采样到 Q 输出','把 Q 永远清零','忽略所有输入'],ans:0,ok:'对。D 触发器是最常用的边沿采样存储单元。',bad:'触发器的重点是边沿采样和状态保持。'},
-  {q:'同步计数器相比异步计数器的主要优势是什么？',opts:['所有触发器共用时钟，累积延迟更小','不需要触发器','只能计到 2'],ans:0,ok:'对。同步计数器速度更可控，适合高频数字系统。',bad:'异步计数器会逐级传播，延迟会累积。'},
-  {q:'LFSR 为什么能产生伪随机序列？',opts:['通过抽头异或反馈不断移位','因为每一位都由用户手动输入','因为它不需要时钟'],ans:0,ok:'对。抽头选择决定反馈多项式和序列周期。',bad:'LFSR 的关键是移位寄存器加线性反馈。'},
-  {q:'Moore 型状态机的输出取决于什么？',opts:['当前状态','只取决于下一次输入','只取决于时钟频率'],ans:0,ok:'对。Moore 机输出只由状态决定，Mealy 机输出还看输入。',bad:'Moore 与 Mealy 的区别就在输出是否直接依赖输入。'}
+  {q:'卡诺图化简的本质是什么？',opts:['把所有 0 改成 1','合并相邻的 1 来消去变量','随机删除输入变量'],ans:1,ok:'对。相邻格只差一个变量，合并后该变量被消去。',bad:'卡诺图不是改真值表，而是利用相邻项找最简表达式。'},
+  {q:'译码器的输入输出关系通常是？',opts:['2^n 路输入压缩成 n 位输出','只把模拟信号放大','n 位输入展开为 2^n 路输出'],ans:2,ok:'对。译码器把二进制编码展开成独热输出。',bad:'编码器是压缩，译码器是展开。'},
+  {q:'D 触发器在时钟上升沿会做什么？',opts:['把 Q 永远清零','把 D 输入采样到 Q 输出','忽略所有输入'],ans:1,ok:'对。D 触发器是最常用的边沿采样存储单元。',bad:'触发器的重点是边沿采样和状态保持。'},
+  {q:'同步计数器相比异步计数器的主要优势是什么？',opts:['不需要触发器','只能计到 2','所有触发器共用时钟，累积延迟更小'],ans:2,ok:'对。同步计数器速度更可控，适合高频数字系统。',bad:'异步计数器会逐级传播，延迟会累积。'},
+  {q:'LFSR 为什么能产生伪随机序列？',opts:['因为每一位都由用户手动输入','通过抽头异或反馈不断移位','因为它不需要时钟'],ans:1,ok:'对。抽头选择决定反馈多项式和序列周期。',bad:'LFSR 的关键是移位寄存器加线性反馈。'},
+  {q:'Moore 型状态机的输出取决于什么？',opts:['只取决于下一次输入','只取决于时钟频率','当前状态'],ans:2,ok:'对。Moore 机输出只由状态决定，Mealy 机输出还看输入。',bad:'Moore 与 Mealy 的区别就在输出是否直接依赖输入。'}
 ];
 
 function resize(){
@@ -247,7 +247,7 @@ function stageNavHTML(){
   levels.forEach((_, i) => {
     const unlocked = isUnlocked(i);
     const cls = levelCompleted[i] ? 'done' : i === curLevel ? 'cur' : unlocked ? '' : 'locked';
-    html += `<div class="sn-d ${cls}" onclick="${unlocked ? `goLevel(${i})` : ''}"></div>`;
+    html += unlocked && i !== curLevel ? `<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>` : `<div class="sn-d ${cls}"></div>`;
   });
   html += `</div><div class="sn-info">📍 第 ${curLevel + 1}/${levels.length} 关 | 进度 ${Math.round(passed / levels.length * 100)}%</div>`;
   html += `<div class="sn-hint">${passed}/${levels.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
@@ -265,7 +265,7 @@ function quizHTML(li){
 }
 
 window.answerQuiz = function(li, choice){
-  if(li !== curLevel || levelCompleted[li]) return;
+  if(li !== curLevel || levelCompleted[li] || !levelObjs[li] || !levelObjs[li].every(v=>v)) return;
   const q = quizData[li], ok = choice === q.ans;
   quizFeedback[li] = {ok, text: ok ? q.ok : q.bad};
   if(ok){
@@ -291,7 +291,7 @@ function updateNav(){
 }
 
 function switchLevel(i){
-  if(i < 0 || i >= levels.length || !isUnlocked(i)) return;
+  if(!Number.isInteger(i) || i < 0 || i >= levels.length || !isUnlocked(i)) return;
   curLevel = i;
   if(animId) cancelAnimationFrame(animId);
   time = 0;
@@ -578,21 +578,25 @@ function buildControls2(){
     </div>
     <div class="ctrl-group">
       ${s.mode==='encoder'?`<label>选择有效输入线 (0-7)</label>
-        <input type="range" id="encIn" min="0" max="7" value="${s.input}" oninput="setEncIn(this.value)">
-        <span style="color:#22d3ee">输入: D${s.input}</span>`:''}
+        <input type="range" id="encIn" min="0" max="7" value="${s.input}" oninput="setEncIn(this.value)" onchange="commitEncIn();this.blur()">
+        <span id="encInLabel" style="color:#22d3ee">输入: D${s.input}</span>`:''}
       ${s.mode==='decoder'?`<label>输入编码 (0-7)</label>
-        <input type="range" id="decIn" min="0" max="7" value="${s.input}" oninput="setDecIn(this.value)">
-        <span style="color:#22d3ee">编码: ${s.input.toString(2).padStart(3,'0')}</span>`:''}
+        <input type="range" id="decIn" min="0" max="7" value="${s.input}" oninput="setDecIn(this.value)" onchange="commitDecIn();this.blur()">
+        <span id="decInLabel" style="color:#22d3ee">编码: ${s.input.toString(2).padStart(3,'0')}</span>`:''}
       ${s.mode==='mux'?`<label>选择信号 S (0-3)</label>
-        <input type="range" id="muxSel" min="0" max="3" value="${s.muxSel}" oninput="setMuxSel(this.value)">
-        <span style="color:#22d3ee">S=${s.muxSel}, 输出=${s.muxInputs[s.muxSel]}</span>`:''}
+        <input type="range" id="muxSel" min="0" max="3" value="${s.muxSel}" oninput="setMuxSel(this.value)" onchange="commitMuxSel();this.blur()">
+        <span id="muxSelLabel" style="color:#22d3ee">S=${s.muxSel}, 输出=${s.muxInputs[s.muxSel]}</span>`:''}
     </div>
     <div class="desc"><p>${s.mode==='encoder'?'编码器: 将 2^n 个输入压缩为 n 位编码':s.mode==='decoder'?'译码器: 将 n 位编码展开为 2^n 个输出':'MUX: 根据选择信号选通一个输入到输出'}</p></div>`;
 }
 window.setMode2 = function(v){ lvlState.mode=v; buildControls2(); };
-window.setEncIn = function(v){ lvlState.input=parseInt(v); lvlState.animPulse=0; completeObj(2,0); buildControls2(); };
-window.setDecIn = function(v){ lvlState.input=parseInt(v); lvlState.animPulse=0; completeObj(2,1); buildControls2(); };
-window.setMuxSel = function(v){ lvlState.muxSel=parseInt(v); lvlState.animPulse=0; completeObj(2,2); buildControls2(); };
+function setText(id,text){ const el=document.getElementById(id); if(el) el.textContent=text; }
+window.setEncIn = function(v){ lvlState.input=parseInt(v); lvlState.animPulse=0; setText('encInLabel',`输入: D${lvlState.input}`); };
+window.setDecIn = function(v){ lvlState.input=parseInt(v); lvlState.animPulse=0; setText('decInLabel',`编码: ${lvlState.input.toString(2).padStart(3,'0')}`); };
+window.setMuxSel = function(v){ lvlState.muxSel=parseInt(v); lvlState.animPulse=0; setText('muxSelLabel',`S=${lvlState.muxSel}, 输出=${lvlState.muxInputs[lvlState.muxSel]}`); };
+window.commitEncIn = function(){ completeObj(2,0); };
+window.commitDecIn = function(){ completeObj(2,1); };
+window.commitMuxSel = function(){ completeObj(2,2); };
 
 function drawLevel2(){
   const s=lvlState, cx=W/2, cy=H/2;

@@ -41,7 +41,7 @@
   --feat-bg:#ede9fe;--feat-border:#c7d2fe;--feat-text:#5b21b6;
 }
 body{background:var(--bg);color:var(--text);font-family:"PingFang SC","Microsoft YaHei",sans-serif;overflow:hidden;height:100vh}
-canvas{display:block}
+canvas{display:block;touch-action:none}
 .overlay{position:fixed;inset:0;background:var(--overlay-bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;text-align:center}
 .overlay h1{font-size:42px;background:linear-gradient(135deg,#a855f7,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
 .overlay .sub{color:var(--text-sub);font-size:17px;margin-bottom:12px}
@@ -74,7 +74,7 @@ const TH={
   light:{bg1:'#f5f0ff',bg2:'#f0f0f5',bg3:'#e8e0f5',grid:'rgba(168,85,247,0.03)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)'}
 };
 function t(){return isDark?TH.dark:TH.light}
-function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';document.getElementById('themeToggle').style.background=isDark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.06)';document.getElementById('themeToggle').style.border=isDark?'1px solid rgba(255,255,255,0.2)':'1px solid rgba(0,0,0,0.12)';document.getElementById('themeToggle').style.color=isDark?'#aaa':'#666';try{renderPanel()}catch(e){}}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';document.getElementById('themeToggle').style.background=isDark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.06)';document.getElementById('themeToggle').style.border=isDark?'1px solid rgba(255,255,255,0.2)':'1px solid rgba(0,0,0,0.12)';document.getElementById('themeToggle').style.color=isDark?'#aaa':'#666';try{renderPanel();drawBg();const drawFns=[drawLevel0,drawLevel1,drawLevel2,drawLevel3,drawLevel4,drawLevel5,drawLevel6];if(drawFns[curLevel])drawFns[curLevel]()}catch(e){}}
 
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),ov=document.getElementById('ov');
 let W,H,curLevel=0,tick=0,mouse={x:0,y:0,down:false};
@@ -112,17 +112,27 @@ let L={};
 
 // ========== 音效 ==========
 let audioCtx;
-function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
-function playSound(type){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}}
+function initAudio(){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;try{if(!audioCtx)audioCtx=new A();return audioCtx}catch(e){return null}}
+function playSound(type){const ac=initAudio();if(!ac)return false;try{const o=ac.createOscillator(),g=ac.createGain(),now=ac.currentTime;o.connect(g);g.connect(ac.destination);if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.stop(now+0.1)}else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,now+0.1);o.frequency.setValueAtTime(784,now+0.2);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);o.stop(now+0.4)}else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,now+0.15);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);o.stop(now+0.3)}return true}catch(e){return false}}
 let particles=[];
 function spawnP(x,y,color,n=12){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,sp=1+Math.random()*3;particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:0.6+Math.random()*0.4,color,r:2+Math.random()*3})}}
 function drawParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx;p.y+=p.vy;p.life-=dt;if(p.life<=0){particles.splice(i,1);continue}ctx.globalAlpha=p.life;ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
 function resize(){W=cv.width=innerWidth;H=cv.height=innerHeight}
 resize();window.addEventListener('resize',resize);
-function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;playSound('success');renderPanel()}}
-function allObjDone(){return levelObjs[curLevel].every(v=>v)}
+function completeObj(i){
+  i=Number(i);
+  if(!Number.isInteger(i)||!levelObjs[curLevel]||i<0||i>=levelObjs[curLevel].length||levelObjs[curLevel][i])return false;
+  levelObjs[curLevel][i]=true;playSound('success');renderPanel();return true;
+}
+function allObjDone(){return !!levelObjs[curLevel]&&levelObjs[curLevel].every(v=>v)}
+function isUnlocked(idx){
+  idx=Number(idx);
+  return Number.isInteger(idx)&&idx>=0&&idx<LEVELS&&(idx===0||quizPassed.has(idx-1));
+}
 function resetLevel(li){
-  L={};levelObjs[li]=levelObjs[li].map(()=>false);
+  li=Number(li);
+  if(!Number.isInteger(li)||li<0||li>=LEVELS)return false;
+  L={};levelObjs[li]=levelObjTexts[li].map(()=>false);
   const cx=PL+(W-PL)/2,cy=H/2;
   if(li===0){
     // 神经元结构
@@ -137,7 +147,7 @@ function resetLevel(li){
   } else if(li===1){
     // 突触传递
     L.vesicles=[];L.ntConc=0.5;L.released=false;L.excitatory=true;
-    L.receptorsBound=0;L.inhibitoryDone=false;
+    L.receptorsBound=0;L.excitatoryDone=false;L.inhibitoryDone=false;
     for(let i=0;i<8;i++){
       L.vesicles.push({x:cx-80+Math.random()*30-15,y:cy-40+Math.random()*20-10,r:5,released:false,dx:0,dy:0});
     }
@@ -179,17 +189,18 @@ function resetLevel(li){
       {id:'pet',name:'PET',color:'#f59e0b',timeRes:'分钟级',spaceRes:'mm级',invasive:true,desc:'放射性示踪剂',active:false},
       {id:'opto',name:'光遗传学',color:'#a855f7',timeRes:'ms级',spaceRes:'细胞级',invasive:true,desc:'光控特定神经元',active:false}
     ];
-    L.eegDone=false;L.fmriDone=false;L.compared=false;
+    L.eegDone=false;L.fmriDone=false;L.compared=false;L.comparisonReady=false;
     L.brainWaves=[];L.fmriMap=[];
   } else if(li===6){
     // 意识与AI
-    L.gwtExplored=false;L.iitExplored=false;L.phiValue=0;L.aiThought=false;
+    L.gwtExplored=false;L.iitExplored=false;L.phiValue=0;L.phiConfirmed=false;L.aiThought=false;
     L.broadcastActive=false;L.broadcastProgress=0;
     L.networks=[
       {name:'前馈网络',phi:0.1,conscious:false,x:cx-100,y:cy+60},
       {name:'循环网络',phi:2.5,conscious:true,x:cx+100,y:cy+60}
     ];
   }
+  return true;
 }
 // ========== 绘制 ==========
 function drawBg(){const th=t();ctx.fillStyle=th.bg1;ctx.fillRect(0,0,W,H);ctx.strokeStyle=th.grid;ctx.lineWidth=1;for(let x=PL;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(PL,y);ctx.lineTo(W,y);ctx.stroke()}}
@@ -543,10 +554,34 @@ function drawLevel6(){
   });
 }
 // ========== 交互 ==========
-cv.addEventListener('mousedown',e=>{mouse.down=true;mouse.x=e.clientX;mouse.y=e.clientY});
-cv.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});
-cv.addEventListener('mouseup',e=>{mouse.down=false});
-cv.addEventListener('click',e=>{handleClick(e.clientX,e.clientY)});
+let pointerStart=null;
+function pointerPoint(e){return {x:e.clientX,y:e.clientY}}
+function startPointer(e){
+  const p=pointerPoint(e);
+  pointerStart=p;mouse.down=true;mouse.x=p.x;mouse.y=p.y;
+  if(e.preventDefault)e.preventDefault();
+  if(cv.setPointerCapture&&e.pointerId!==undefined)cv.setPointerCapture(e.pointerId);
+}
+function movePointer(e){
+  const p=pointerPoint(e);
+  mouse.x=p.x;mouse.y=p.y;
+  if(mouse.down&&e.preventDefault)e.preventDefault();
+}
+function endPointer(e){
+  const p=pointerPoint(e);
+  mouse.down=false;mouse.x=p.x;mouse.y=p.y;
+  if(e&&cv.releasePointerCapture&&e.pointerId!==undefined)cv.releasePointerCapture(e.pointerId);
+  if(pointerStart&&Math.hypot(p.x-pointerStart.x,p.y-pointerStart.y)<12)handleClick(p.x,p.y);
+  pointerStart=null;
+}
+function cancelPointer(e){
+  mouse.down=false;pointerStart=null;
+  if(e&&cv.releasePointerCapture&&e.pointerId!==undefined)cv.releasePointerCapture(e.pointerId);
+}
+cv.addEventListener('pointerdown',startPointer);
+cv.addEventListener('pointermove',movePointer);
+cv.addEventListener('pointerup',endPointer);
+cv.addEventListener('pointercancel',cancelPointer);
 
 function handleClick(x,y){
   if(x<PL)return;
@@ -555,14 +590,7 @@ function handleClick(x,y){
     // 点击神经元部分
     L.parts.forEach(p=>{
       if(Math.abs(x-p.x)<p.r+5&&Math.abs(y-p.y)<p.r+5){
-        if(!p.identified){p.identified=true;playSound('click');spawnP(p.x,p.y,p.color)}
-        if(p.id==='soma'&&!L.apActive){
-          L.apActive=true;L.apProgress=0;L.apFired=true;L.membrane=30;
-          completeObj(0);playSound('success');
-        }
-        const allId=L.parts.every(pp=>pp.identified);
-        if(allId&&!L.allIdentified){L.allIdentified=true;completeObj(2)}
-        renderPanel();
+        identifyNeuronPart(p.id);
       }
     });
   } else if(curLevel===2){
@@ -619,15 +647,20 @@ function handleClick(x,y){
 }
 
 // ========== 面板 ==========
-let _panelLock=false;
+let _panelLock=false,_panelPending=false;
 function renderPanel(){
-  if(_panelLock)return;_panelLock=true;setTimeout(()=>_panelLock=false,50);
+  if(_panelLock){_panelPending=true;return}
+  _panelLock=true;_panelPending=false;
+  setTimeout(()=>{_panelLock=false;if(_panelPending)renderPanel()},50);
   let h='';
+  const levelPassed=quizPassed.has(curLevel);
+  const goalsDone=levelPassed||allObjDone();
   // stage-nav
   h+='<div style="background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px">';
   h+='<div style="display:flex;gap:3px;margin-bottom:6px">';
   for(let i=0;i<LEVELS;i++){
-    h+=`<div style="flex:1;height:5px;border-radius:3px;background:${i<curLevel?'#22c55e':i===curLevel?'#a855f7':'var(--stage-bar)'};cursor:pointer" onclick="goLevel(${i})"></div>`;
+    const unlocked=isUnlocked(i);
+    h+=`<div style="flex:1;height:5px;border-radius:3px;background:${quizPassed.has(i)?'#22c55e':i===curLevel?'#a855f7':'var(--stage-bar)'};opacity:${unlocked?'1':'.35'};cursor:${unlocked?'pointer':'not-allowed'}" ${unlocked?`onclick="goLevel(${i})"`:''}></div>`;
   }
   h+='</div>';
   h+=`<div style="color:var(--stage-info);font-weight:600;font-size:13px">第 ${curLevel+1}/${LEVELS} 关</div>`;
@@ -636,13 +669,15 @@ function renderPanel(){
   h+=levelDescs[curLevel];
   h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">目标</h3>';
   levelObjTexts[curLevel].forEach((obj,i)=>{
-    const done=levelObjs[curLevel][i];
+    const done=levelPassed||levelObjs[curLevel][i];
     h+=`<div style="display:flex;align-items:center;gap:6px;margin:3px 0;font-size:14px"><div style="width:14px;height:14px;border-radius:50%;border:2px solid #22c55e;flex-shrink:0;${done?'background:#22c55e':''}"></div><span style="color:${done?'var(--goal-done)':'var(--goal-text)'}">${obj}</span></div>`;
   });
   h+=renderLevelControls();
-  if(allObjDone()){
+  if(goalsDone){
     h+=`<div style="background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:var(--learn-text);line-height:1.8">${learnTexts[curLevel]}</div>`;
     h+=renderQuiz();
+    if(levelPassed&&curLevel<LEVELS-1)h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-size:15px;cursor:pointer" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
+    if(levelPassed&&curLevel===LEVELS-1)h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-size:15px;cursor:pointer" onclick="showResult()">查看总总结 🎉</button>`;
   }
   panel.innerHTML=h;
 }
@@ -651,18 +686,27 @@ function renderLevelControls(){
   let h='';
   if(curLevel===0){
     h+='<div style="background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:6px;padding:8px;margin-top:8px;font-size:13px;color:var(--hint-text)">💡 点击画布上的神经元各部分来识别它们，点击<span style="color:#ec4899">胞体</span>触发动作电位</div>';
+    if(Array.isArray(L.parts)){
+      h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:8px">';
+      L.parts.forEach(p=>{
+        h+=`<button style="padding:8px;border:1px solid ${p.color};border-radius:6px;background:${p.identified?p.color+'33':'var(--btn-bg)'};color:${p.identified?p.color:'var(--btn-text)'};cursor:pointer;font-size:13px" onclick="identifyNeuronPart('${p.id}')">${p.identified?'✓ ':''}${p.name}</button>`;
+      });
+      h+='</div>';
+      h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#ec4899;color:#fff;font-size:15px;cursor:pointer" onclick="fireActionPotential()">触发动作电位</button>`;
+    }
     if(L.apFired){
       h+='<div style="font-size:13px;color:var(--sv);margin-top:6px">⚡ 动作电位已触发! 膜电位: '+L.membrane.toFixed(0)+' mV</div>';
     }
   } else if(curLevel===1){
     h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">神经递质浓度</h3>';
-    h+=`<input type="range" min="0" max="100" value="${L.ntConc*100}" style="width:100%" oninput="L.ntConc=this.value/100" onchange="this.blur();triggerRelease();renderPanel()">`;
-    h+=`<div style="font-size:13px;color:var(--sv)">浓度: ${(L.ntConc*100).toFixed(0)}%</div>`;
+    h+=`<input type="range" min="0" max="100" value="${Math.round(L.ntConc*100)}" style="width:100%" oninput="setNeurotransmitter(this.value/100)" onchange="this.blur();triggerRelease();renderPanel()">`;
+    h+=`<div style="font-size:13px;color:var(--sv)">浓度: <span id="ntConcVal">${(L.ntConc*100).toFixed(0)}%</span></div>`;
     if(!L.released){
       h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#a855f7;color:#fff;font-size:15px;cursor:pointer" onclick="triggerRelease()">释放囊泡</button>`;
     }
-    h+=`<div style="margin-top:8px"><label style="font-size:13px;cursor:pointer"><input type="radio" name="syntype" ${L.excitatory?'checked':''} onchange="L.excitatory=true;L.released=false;L.receptorsBound=0;L.postPotential=0;renderPanel()"> 兴奋性(谷氨酸)</label></div>`;
-    h+=`<div><label style="font-size:13px;cursor:pointer"><input type="radio" name="syntype" ${!L.excitatory?'checked':''} onchange="L.excitatory=false;L.released=false;L.receptorsBound=0;L.postPotential=0;if(!L.inhibitoryDone){L.inhibitoryDone=true;completeObj(2)};renderPanel()"> 抑制性(GABA)</label></div>`;
+    h+=`<div style="margin-top:8px"><label style="font-size:13px;cursor:pointer"><input type="radio" name="syntype" ${L.excitatory?'checked':''} onchange="setSynapseType(true)"> 兴奋性(谷氨酸)</label></div>`;
+    h+=`<div><label style="font-size:13px;cursor:pointer"><input type="radio" name="syntype" ${!L.excitatory?'checked':''} onchange="setSynapseType(false)"> 抑制性(GABA)</label></div>`;
+    if(!L.excitatory&&!L.inhibitoryDone)h+=`<div style="font-size:12px;color:var(--stage-hint);margin-top:4px">切换到抑制性后，再释放囊泡观察 IPSP 负向电位。</div>`;
   } else if(curLevel===2){
     h+='<div style="background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:6px;padding:8px;margin-top:8px;font-size:13px;color:var(--hint-text)">💡 反复点击神经元激活它们。同时活跃的神经元之间的连接会增强(Hebb规则)</div>';
     if(L.ltpDone&&!L.ltdDone){
@@ -692,21 +736,27 @@ function renderLevelControls(){
     L.techs.forEach((tech,i)=>{
       h+=`<button style="display:block;width:100%;padding:8px;margin:4px 0;border:2px solid ${tech.active?tech.color:'transparent'};border-radius:8px;background:${tech.active?tech.color+'22':'var(--btn-bg)'};color:${tech.active?tech.color:'var(--btn-text)'};font-size:13px;cursor:pointer;text-align:left" onclick="activateTech(${i})"><b>${tech.name}</b> — ${tech.desc}<br><span style="font-size:11px">时间:${tech.timeRes} 空间:${tech.spaceRes}</span></button>`;
     });
+    const activeCount=L.techs.filter(t2=>t2.active).length;
+    if(activeCount>=4&&!L.compared)h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#a855f7;color:#fff;font-size:15px;cursor:pointer" onclick="confirmImagingComparison()">确认：比较时间/空间分辨率和侵入性</button>`;
+    else if(!L.compared)h+=`<div style="font-size:12px;color:var(--stage-hint);margin-top:6px">先逐一查看 EEG、fMRI、PET 和光遗传学，再总结它们的时间分辨率、空间分辨率和侵入性差异。</div>`;
   } else if(curLevel===6){
     if(!L.gwtExplored){
       h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#a855f7;color:#fff;font-size:15px;cursor:pointer" onclick="exploreGWT()">探索全局工作空间理论</button>`;
     } else if(!L.broadcastActive){
-      h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#6366f1;color:#fff;font-size:15px;cursor:pointer" onclick="L.broadcastActive=true;L.broadcastProgress=0;completeObj(0);renderPanel()">触发信息广播</button>`;
+      h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#6366f1;color:#fff;font-size:15px;cursor:pointer" onclick="startBroadcast()">触发信息广播</button>`;
     }
     if(!L.iitExplored){
       h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#ec4899;color:#fff;font-size:15px;cursor:pointer" onclick="exploreIIT()">探索整合信息论</button>`;
     } else {
       h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">调节Φ值</h3>';
-      h+=`<input type="range" min="0" max="50" value="${L.phiValue*10}" style="width:100%" oninput="L.phiValue=this.value/10" onchange="this.blur();completeObj(1);renderPanel()">`;
-      h+=`<div style="font-size:13px;color:var(--sv)">Φ = ${L.phiValue.toFixed(1)} ${L.phiValue>2?'(高整合→可能有意识)':'(低整合→可能无意识)'}</div>`;
+      h+=`<input type="range" min="0" max="50" value="${L.phiValue*10}" style="width:100%" oninput="setPhiInput(this)" onchange="this.blur();renderPanel()">`;
+      h+=`<div style="font-size:13px;color:var(--sv)">Φ = <span id="phiVal">${L.phiValue.toFixed(1)}</span> <span id="phiHint">${phiHintText()}</span></div>`;
+      if(hasIntegratedPhi()&&!levelObjs[6][1]){
+        h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#ec4899;color:#fff;font-size:15px;cursor:pointer" onclick="confirmPhi()">确认整合信息足够高</button>`;
+      }
     }
     if(L.gwtExplored&&L.iitExplored&&!L.aiThought){
-      h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-size:15px;cursor:pointer" onclick="L.aiThought=true;completeObj(2);renderPanel()">思考: AI能有意识吗?</button>`;
+      h+=`<button style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-size:15px;cursor:pointer" onclick="reflectAIConsciousness()">思考: AI能有意识吗?</button>`;
     }
     if(L.aiThought){
       h+='<div style="background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:8px;font-size:13px;color:var(--learn-text);line-height:1.8">如果IIT正确，当前的前馈神经网络(包括大语言模型)的Φ≈0，即使通过图灵测试也不具有意识。但这仍是科学界最大的开放问题之一。</div>';
@@ -715,99 +765,211 @@ function renderLevelControls(){
   return h;
 }
 // ========== 辅助函数 ==========
-function triggerRelease(){
-  if(L.released)return;
-  L.released=true;
+function updateSynapseResponse(){
   L.receptorsBound=Math.round(L.ntConc*4);
   L.postPotential=L.excitatory?L.ntConc*15:-L.ntConc*10;
+}
+function checkSynapseObjectives(){
+  if(L.excitatory&&L.ntConc>0.5&&!L.excitatoryDone){L.excitatoryDone=true;completeObj(1)}
+  if(!L.excitatory&&L.postPotential<0&&!L.inhibitoryDone){L.inhibitoryDone=true;completeObj(2)}
+}
+function setNeurotransmitter(v){
+  if(curLevel!==1||!Number.isFinite(L.ntConc))return false;
+  const n=Number(v);
+  if(!Number.isFinite(n))return false;
+  L.ntConc=Math.max(0,Math.min(1,n));
+  if(L.released){updateSynapseResponse();checkSynapseObjectives()}
+  const val=document.getElementById('ntConcVal');
+  if(val)val.textContent=(L.ntConc*100).toFixed(0)+'%';
+  return true;
+}
+function setSynapseType(excitatory){
+  if(curLevel!==1||typeof excitatory!=='boolean')return false;
+  L.excitatory=excitatory;L.released=false;L.receptorsBound=0;L.postPotential=0;renderPanel();return true;
+}
+function fireActionPotential(){
+  if(curLevel!==0||!Array.isArray(L.parts)||L.apActive)return false;
+  L.apActive=true;L.apProgress=0;L.apFired=true;L.membrane=30;
+  return completeObj(0);
+}
+function identifyNeuronPart(id){
+  if(curLevel!==0||!Array.isArray(L.parts))return false;
+  const p=L.parts.find(part=>part.id===id);
+  if(!p)return false;
+  let changed=false;
+  if(!p.identified){p.identified=true;playSound('click');spawnP(p.x,p.y,p.color);changed=true}
+  if(p.id==='soma')changed=fireActionPotential()||changed;
+  if(L.parts.every(pp=>pp.identified)&&!L.allIdentified){L.allIdentified=true;changed=completeObj(2)||changed}
+  if(changed)renderPanel();
+  return changed;
+}
+function triggerRelease(){
+  if(curLevel!==1||L.released)return false;
+  if(!setNeurotransmitter(L.ntConc))return false;
+  L.released=true;
+  updateSynapseResponse();
   completeObj(0);
-  if(L.ntConc>0.5&&L.excitatory)completeObj(1);
-  playSound('success');renderPanel();
+  checkSynapseObjectives();
+  playSound('success');renderPanel();return true;
 }
 function triggerLTD(){
+  if(curLevel!==2||!Array.isArray(L.neurons)||!Array.isArray(L.connections)||!L.ltpDone)return false;
   L.neurons.forEach(n=>n.active=false);
   L.connections.forEach(c=>{c.weight=Math.max(0.1,c.weight-0.15);c.ltp=-1});
   L.ltdDone=true;L.noStimTime=tick;completeObj(2);
   playSound('success');renderPanel();
+  return true;
 }
-function startConsolidate(){L.phase='consolidate';L.hippocampusActive=true;L.showItems=false;renderPanel()}
+function startConsolidate(){
+  if(curLevel!==4||L.phase!=='encode'||!L.encoded||L.encoded.size<3)return false;
+  L.phase='consolidate';L.hippocampusActive=true;L.showItems=false;renderPanel();return true;
+}
 function doReplay(){
+  if(curLevel!==4||L.phase!=='consolidate')return false;
   L.replayCount++;playSound('click');
   if(L.replayCount>=3){
     L.items.forEach((_,i)=>L.consolidated.add(i));
     L.phase='retrieve';completeObj(1);
   }
   renderPanel();
+  return true;
 }
 function checkRetrieval(idx){
+  if(curLevel!==4||L.phase!=='retrieve')return false;
   if(idx===0){L.items.forEach((_,i)=>L.retrieved.add(i));completeObj(2);playSound('success')}
   else{playSound('fail')}
   renderPanel();
+  return idx===0;
 }
 function activateTech(idx){
+  idx=Number(idx);
+  if(curLevel!==5||!Number.isInteger(idx)||!L.techs||idx<0||idx>=L.techs.length)return false;
   L.techs[idx].active=true;playSound('click');
   if(idx===0){L.eegDone=true;completeObj(0)}
   if(idx===1){L.fmriDone=true;completeObj(1)}
   const activeCount=L.techs.filter(t2=>t2.active).length;
-  if(activeCount>=4&&!L.compared){L.compared=true;completeObj(2)}
-  renderPanel();
+  if(activeCount>=4)L.comparisonReady=true;
+  renderPanel();return true;
 }
-function exploreGWT(){L.gwtExplored=true;renderPanel()}
-function exploreIIT(){L.iitExplored=true;L.phiValue=0;renderPanel()}
+function confirmImagingComparison(){
+  if(curLevel!==5||!L.techs||L.techs.filter(t2=>t2.active).length<4)return false;
+  L.compared=true;
+  const changed=completeObj(2);
+  renderPanel();
+  return changed;
+}
+function exploreGWT(){if(curLevel!==6)return false;L.gwtExplored=true;renderPanel();return true}
+function exploreIIT(){if(curLevel!==6)return false;L.iitExplored=true;L.phiValue=0;renderPanel();return true}
+function startBroadcast(){
+  if(curLevel!==6||!L.gwtExplored)return false;
+  L.broadcastActive=true;L.broadcastProgress=0;completeObj(0);renderPanel();return true;
+}
+function hasIntegratedPhi(){return Number.isFinite(L.phiValue)&&L.phiValue>=2}
+function confirmPhi(){
+  if(curLevel!==6||!L.iitExplored||!hasIntegratedPhi())return false;
+  L.phiConfirmed=true;
+  const changed=completeObj(1);
+  renderPanel();
+  return changed;
+}
+function reflectAIConsciousness(){
+  if(curLevel!==6||!L.gwtExplored||!L.iitExplored)return false;
+  L.aiThought=true;completeObj(2);renderPanel();return true;
+}
+function phiHintText(){
+  return hasIntegratedPhi()?'(已接近循环网络→高整合)':'(先对照前馈/循环网络调到≥2.0)';
+}
+function setPhiInput(input){
+  if(curLevel!==6||!L.iitExplored)return false;
+  const n=Number(input&&input.value);
+  if(!Number.isFinite(n))return false;
+  L.phiValue=Math.max(0,Math.min(5,n/10));
+  const val=document.getElementById('phiVal'),hint=document.getElementById('phiHint');
+  if(val)val.textContent=L.phiValue.toFixed(1);
+  if(hint)hint.textContent=phiHintText();
+  drawBg();drawLevel6();
+  return true;
+}
 
 // ========== Quiz ==========
 const quizData=[
-  {q:'动作电位的"全或无"原则是指？',opts:['信号强度与刺激成正比','达到阈值就完全触发,否则不触发','只在轴突末端产生'],ans:1},
-  {q:'兴奋性突触后电位(EPSP)由什么引起？',opts:['GABA与受体结合','谷氨酸使后膜去极化','Ca²⁺从突触后膜流出'],ans:1},
-  {q:'Hebb规则的核心思想是？',opts:['用进废退','一起放电的神经元连在一起','突触只能增强不能减弱'],ans:1},
-  {q:'体感皮层的"小人图"中,哪个部位占面积最大？',opts:['躯干','腿部','手和嘴唇'],ans:2},
-  {q:'海马体在记忆中的主要作用是？',opts:['存储长期记忆','将短期记忆巩固为长期记忆','控制工作记忆容量'],ans:1},
-  {q:'哪种脑成像技术的时间分辨率最高？',opts:['fMRI','PET','EEG'],ans:2},
-  {q:'整合信息论(IIT)用什么衡量意识程度？',opts:['神经元数量','Φ(整合信息量)','脑电波频率'],ans:1}
+  {q:'动作电位的"全或无"原则是指？',opts:['达到阈值就完全触发,否则不触发','信号强度与刺激成正比','只在轴突末端产生'],ans:0,why:'膜电位只有跨过阈值才会启动完整动作电位，没到阈值则不会按比例产生半个动作电位。'},
+  {q:'兴奋性突触后电位(EPSP)由什么引起？',opts:['GABA与受体结合','谷氨酸使后膜去极化','Ca²⁺从突触后膜流出'],ans:1,why:'谷氨酸等兴奋性递质让突触后膜去极化，膜电位更接近触发动作电位的阈值。'},
+  {q:'Hebb规则的核心思想是？',opts:['用进废退','一起放电的神经元连在一起','突触只能增强不能减弱'],ans:1,why:'突触前后神经元同步活跃时连接会增强，这是LTP和许多学习模型的核心直觉。'},
+  {q:'体感皮层的"小人图"中,哪个部位占面积最大？',opts:['手和嘴唇','躯干','腿部'],ans:0,why:'手和嘴唇感觉精细、受体密度高，因此在体感皮层中占据不成比例的大面积。'},
+  {q:'海马体在记忆中的主要作用是？',opts:['存储长期记忆','将短期记忆巩固为长期记忆','控制工作记忆容量'],ans:1,why:'海马体帮助把近期经历重放并整合到新皮层网络中，是记忆巩固的关键枢纽。'},
+  {q:'哪种脑成像技术的时间分辨率最高？',opts:['fMRI','PET','EEG'],ans:2,why:'EEG直接记录头皮电活动，时间分辨率可达毫秒级；fMRI和PET更慢。'},
+  {q:'整合信息论(IIT)用什么衡量意识程度？',opts:['神经元数量','Φ(整合信息量)','脑电波频率'],ans:1,why:'IIT认为意识程度取决于系统整合信息的能力，Φ越高表示系统越不可分解、整合越强。'}
 ];
-let quizPassed=new Set(),quizLocked=false;
+let quizPassed=new Set(),quizLocked=false,quizFeedback=null;
 function renderQuiz(){
   const qd=quizData[curLevel];if(!qd)return '';
+  if(quizPassed.has(curLevel))return `<div style="background:#0a2a1a;border:1px solid #22c55e;border-radius:8px;padding:9px;margin:8px 0;color:#22c55e;font-size:13px">✅ 测验通过。关键结论：${qd.why}</div>`;
   let h='<div style="background:#1a0a2a;border:1px solid #a855f7;border-radius:8px;padding:10px;margin:8px 0"><div style="font-size:13px;color:#a855f7;margin-bottom:8px;font-weight:600">📝 '+qd.q+'</div>';
   qd.opts.forEach((opt,i)=>{
-    const cls=quizPassed.has(curLevel)?(i===qd.ans?'border-color:#22c55e;background:#22c55e22;color:#22c55e':''):'';
-    h+=`<div style="font-size:13px;padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--panel-border);background:var(--btn-bg);color:var(--btn-text);${cls}" onclick="answerQuiz(${curLevel},${i})">${opt}</div>`;
+    h+=`<div style="font-size:13px;padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--panel-border);background:var(--btn-bg);color:var(--btn-text)" onclick="answerQuiz(${curLevel},${i})">${opt}</div>`;
   });
-  if(quizPassed.has(curLevel))h+='<div style="color:#22c55e;font-size:12px;margin-top:6px">✅ 已通过</div>';
+  if(quizFeedback&&quizFeedback.level===curLevel)h+=`<div style="font-size:12px;line-height:1.6;margin-top:8px;color:${quizFeedback.correct?'#22c55e':'#f87171'}">${quizFeedback.correct?'答对了。':'还不对。'}关键结论：${qd.why}</div>`;
   h+='</div>';return h;
 }
 function answerQuiz(li,oi){
-  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
-  if(oi===quizData[li].ans){quizPassed.add(li);playSound('success');setTimeout(()=>{quizLocked=false;goLevel(curLevel+1)},800)}
+  li=Number(li);oi=Number(oi);
+  if(!Number.isInteger(li)||!Number.isInteger(oi))return;
+  if(li<0||li>=LEVELS||oi<0||oi>=quizData[li].opts.length)return;
+  if(quizLocked||li!==curLevel||quizPassed.has(li)||!allObjDone())return;quizLocked=true;
+  const correct=oi===quizData[li].ans;
+  quizFeedback={level:li,chosen:oi,correct};
+  if(correct){quizPassed.add(li);playSound('success');quizLocked=false;renderPanel()}
   else{playSound('fail');setTimeout(()=>{quizLocked=false;renderPanel()},800)}
 }
 
 // ========== 关卡切换 ==========
 function goLevel(idx){
-  if(idx>=LEVELS){showResult();return}
-  if(idx<0)idx=0;curLevel=idx;resetLevel(idx);renderPanel();
+  idx=Number(idx);
+  if(!Number.isInteger(idx)||idx<0||idx>=LEVELS)return false;
+  if(!isUnlocked(idx))return false;
+  curLevel=idx;resetLevel(idx);renderPanel();return true;
 }
-function startGame(){ov.style.display='none';panel.style.display='block';bar.style.display='flex';resetLevel(0);renderPanel()}
+function resetProgress(){
+  curLevel=0;
+  levelObjs=levelObjTexts.map(a=>a.map(()=>false));
+  quizPassed.clear();
+  quizFeedback=null;
+  quizLocked=false;
+  particles=[];
+  resetLevel(0);
+}
+function startGame(){ov.style.display='none';panel.style.display='block';bar.style.display='flex';resetProgress();renderPanel()}
 function showResult(){
+  if(quizPassed.size<LEVELS)return;
   panel.style.display='none';bar.style.display='none';
   const total=quizPassed.size;
-  let h='<div style="position:fixed;inset:0;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:100">';
+  let h='<div id="summaryOverlay" style="position:fixed;inset:0;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:100">';
   h+='<div style="background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:16px;padding:32px;text-align:center;max-width:420px">';
   h+='<div style="font-size:36px;margin-bottom:8px">🧠</div>';
   h+='<div style="font-size:22px;font-weight:bold;color:var(--summary-title);margin-bottom:8px">脑科学探险完成!</div>';
   h+=`<div style="color:var(--summary-sub);font-size:14px;margin-bottom:16px">通过 ${total}/${LEVELS} 关测验</div>`;
   h+='<div style="display:flex;justify-content:center;gap:20px;margin:16px 0">';
   h+='<div style="text-align:center"><div style="font-size:26px;font-weight:bold;color:#a855f7">7</div><div style="font-size:11px;color:var(--summary-sub)">关卡</div></div>';
-  h+=`<div style="text-align:center"><div style="font-size:26px;font-weight:bold;color:#a855f7">${total*3}</div><div style="font-size:11px;color:var(--summary-sub)">目标完成</div></div></div>`;
+  h+=`<div style="text-align:center"><div style="font-size:26px;font-weight:bold;color:#a855f7">${total*3}/${LEVELS*3}</div><div style="font-size:11px;color:var(--summary-sub)">目标达成</div></div></div>`;
   h+='<div style="text-align:left;margin-top:12px;padding:10px;background:var(--summary-keys-bg);border-radius:8px">';
   h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">⚡ 理解了神经元的结构和动作电位</div>';
   h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">🔗 掌握了突触传递的兴奋与抑制</div>';
   h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">🕸️ 体验了Hebb学习和突触可塑性</div>';
   h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">💾 了解了记忆编码和巩固的过程</div>';
   h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">🤖 思考了意识与人工智能的关系</div></div>';
-  h+=`<button style="margin-top:16px;padding:12px 36px;font-size:16px;background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;border:none;border-radius:10px;cursor:pointer" onclick="location.reload()">再来一次</button>`;
+  h+=`<button style="margin-top:16px;padding:12px 36px;font-size:16px;background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff;border:none;border-radius:10px;cursor:pointer" onclick="restartFromSummary()">再来一次</button>`;
   h+='</div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
+}
+function restartFromSummary(){
+  const summary=document.getElementById('summaryOverlay');
+  if(summary)summary.remove();
+  panel.style.display='block';
+  bar.style.display='flex';
+  resetProgress();
+  renderPanel();
+  return true;
 }
 
 // ========== 主循环 ==========
@@ -836,9 +998,10 @@ function gameLoop(ts){
   if(drawFns[curLevel])drawFns[curLevel]();
   drawParticles(dt);
   // 底部栏
-  bar.innerHTML=`<div style="display:flex;gap:4px;align-items:center">${Array.from({length:LEVELS},(_,i)=>`<button style="width:28px;height:24px;border:1px solid ${i===curLevel?'#a855f7':'#c7d2fe'};background:${i===curLevel?'#a855f7':i<curLevel?'var(--btn-bg)':'transparent'};color:${i===curLevel?'#fff':i<curLevel?'#a855f7':'var(--text-sub)'};border-radius:4px;cursor:pointer;font-size:13px" onclick="goLevel(${i})">${i+1}</button>`).join('')}</div><div style="color:var(--text-muted)">脑科学探险</div>`;
+  bar.innerHTML=`<div style="display:flex;gap:4px;align-items:center">${Array.from({length:LEVELS},(_,i)=>{const unlocked=isUnlocked(i);return `<button style="width:28px;height:24px;border:1px solid ${i===curLevel?'#a855f7':'#c7d2fe'};background:${i===curLevel?'#a855f7':quizPassed.has(i)?'var(--btn-bg)':'transparent'};color:${i===curLevel?'#fff':quizPassed.has(i)?'#a855f7':'var(--text-sub)'};opacity:${unlocked?'1':'.45'};border-radius:4px;cursor:${unlocked?'pointer':'not-allowed'};font-size:13px" ${unlocked?`onclick="goLevel(${i})"`:'disabled'}>${i+1}</button>`}).join('')}</div><div style="color:var(--text-muted)">脑科学探险</div>`;
   requestAnimationFrame(gameLoop);
 }
+resetLevel(0);
 requestAnimationFrame(gameLoop);
 </script>
 </body>

@@ -96,6 +96,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC'
 .quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
 .quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{border-color:#22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-opt.wrong{border-color:#ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
 .quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
 .quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
@@ -104,7 +106,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC'
 #bar .lv-btn:hover,#bar .lv-btn.active{background:rgba(20,184,166,0.3)}
 #bar .lv-btn.locked{opacity:0.4;cursor:not-allowed}
 #bar .prog{margin-left:auto;font-size:12px;color:var(--text-muted)}
-canvas{position:absolute;left:320px;top:0;background:var(--bg)}
+canvas{position:absolute;left:320px;top:0;background:var(--bg);touch-action:none}
 .desc{font-size:12px;color:var(--text-muted);line-height:1.6;margin:8px 0}
 .sub{font-size:13px;color:var(--sub-color);margin:6px 0 4px;font-weight:600}
 select.ctl{background:rgba(20,184,166,0.1);color:#5eead4;border:1px solid rgba(20,184,166,0.3);border-radius:4px;padding:4px 8px;font-size:12px;width:100%;margin:4px 0}
@@ -170,16 +172,16 @@ const TH={
   light:{bg1:'#e8edf5',bg2:'#f0f2f5',bg3:'#e0e7f0',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',label:'#334155',electron:'#334155',electronGlow:'rgba(51,65,85,0.3)',shell:'rgba(100,100,200,0.15)',barBg:'#c7d2fe',showStars:false}
 };
 function t(){return isDark?TH.dark:TH.light}
-function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}try{if(typeof draw==='function')draw()}catch(e){}}
 
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay'),wrap=document.getElementById('wrap');
-let W,H,curLevel=0,animId,time=0,unlocked=[true,false,false,false,false,false,false];
+let W,H,curLevel=0,animId,time=0,animating=false,unlocked=[true,false,false,false,false,false,false];
 let levelObjs=[[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false]];
 // Level states
-let l0model=0,l1n=1,l1l=0,l2element=1,l2filled=[],l3hover=-1,l3click=-1,l4prop=0,l5bondType=0,l6mol=0;
-let l0visited=[false,false,false,false,false],l1visited=[false,false,false,false],l2attempts=0;
-let l4explored=0,l5viewed=[false,false,false],l6built=[false,false,false];
-let electrons=[],dragIdx=-1,mouseX=0,mouseY=0;
+let l0model=0,l1n=1,l1l=0,l2element=1,l2filled=[],l3hover=-1,l3click=-1,l4prop=0,l5bondType=null,l6mol=0;
+let l0visited=[false,false,false,false,false],l0compared=false,l1visited=[false,false,false,false],l2attempts=0;
+let l4explored=0,l4trendConfirmed=false,l5viewed=[false,false,false],l5compared=false,l6built=[false,false,false],l6feedback='';
+let electrons=[],dragIdx=-1,l6dragStart=null,mouseX=0,mouseY=0;
 
 const COLORS={bg:'#0a0a1a',primary:'#14b8a6',primaryDark:'#0d9488',accent:'#5eead4',nucleus:'#f59e0b',nucleusDark:'#d97706',electron:'#14b8a6',proton:'#ef4444',neutron:'#6b7280',text:'#e0e0e0',dim:'#64748b',grid:'rgba(20,184,166,0.08)'};
 
@@ -212,6 +214,7 @@ null,
 const PT_POS={1:[0,0],2:[0,17],3:[1,0],4:[1,1],5:[1,12],6:[1,13],7:[1,14],8:[1,15],9:[1,16],10:[1,17],
 11:[2,0],12:[2,1],13:[2,12],14:[2,13],15:[2,14],16:[2,15],17:[2,16],18:[2,17],
 19:[3,0],20:[3,1]};
+const CAT_COLORS={'碱金属':'#ef4444','碱土金属':'#f59e0b','金属':'#a78bfa','类金属':'#8b5cf6','非金属':'#14b8a6','卤素':'#06b6d4','稀有气体':'#6366f1'};
 
 const MODEL_NAMES=['道尔顿模型','汤姆森模型','卢瑟福模型','玻尔模型','量子力学模型'];
 const MODEL_YEARS=[1803,1904,1911,1913,1926];
@@ -240,14 +243,16 @@ const BOND_DESC=[
 const MOL_NAMES=['H₂O (水)','CO₂ (二氧化碳)','NH₃ (氨)'];
 const MOL_SHAPES=['V形','直线形','三角锥形'];
 const MOL_ANGLES=['104.5°','180°','107°'];
+const MOL_TARGET_ANGLES=[104.5,180,107];
+const LEVEL_NAMES=["原子模型演化","电子轨道","电子排布","元素周期表","元素周期律","化学键","分子结构"];
 const quizData=[
-  {q:'现代量子力学模型如何描述电子位置？',opts:['用概率分布或电子云描述','电子像行星一样走固定圆轨道','电子嵌在均匀正电球中不运动'],ans:0,ok:'对。现代模型用概率密度描述电子出现的位置。',bad:'玻尔模型才强调固定能级轨道；现代模型强调电子云概率。'},
-  {q:'角量子数 l 主要决定轨道的什么性质？',opts:['轨道形状','原子核质量','元素周期数'],ans:0,ok:'对。l=0 是 s 轨道，l=1 是 p 轨道，l=2 是 d 轨道。',bad:'主量子数 n 影响大小和能级，l 主要影响轨道形状。'},
-  {q:'构造原理描述的是什么？',opts:['电子按能量从低到高填充轨道','元素按名称字母顺序排列','原子核先填充中子再填充质子'],ans:0,ok:'对。电子构型来自低能轨道优先填充。',bad:'看能级图中的 1s→2s→2p 顺序，这就是构造原理。'},
-  {q:'同族元素化学性质相似的主要原因是什么？',opts:['价电子构型相似','原子质量完全相同','原子半径完全相同'],ans:0,ok:'对。同族元素通常有相似的价电子数和价层结构。',bad:'周期表纵列相似性来自价电子，而不是质量或半径完全相同。'},
-  {q:'同一周期从左到右，原子半径通常怎样变化？',opts:['逐渐减小','逐渐增大','没有任何规律'],ans:0,ok:'对。有效核电荷增强，会把电子云拉得更紧。',bad:'同周期电子层数相同，核电荷增加通常让半径变小。'},
-  {q:'共价键的核心特征是什么？',opts:['原子间共用电子对','一个原子完全吞掉另一个原子核','所有价电子都自由流动成电子海'],ans:0,ok:'对。共价键依靠共用电子对稳定原子。',bad:'电子海对应金属键；电子转移和静电吸引更接近离子键。'},
-  {q:'VSEPR 理论用来预测什么？',opts:['分子的空间构型','元素的原子序数','中子的衰变速度'],ans:0,ok:'对。价层电子对互斥决定分子几何形状。',bad:'VSEPR 关注价层电子对排布，因此用于判断分子形状。'}
+  {q:'现代量子力学模型如何描述电子位置？',opts:['用概率分布或电子云描述','电子像行星一样走固定圆轨道','电子嵌在均匀正电球中不运动'],ans:0,ok:'对。现代模型用概率密度描述电子出现的位置。',bad:'玻尔模型才强调固定能级轨道；现代模型强调电子云概率。',why:'电子不再被看作沿固定圆轨道运行的小球，而是用波函数和概率密度描述其可能出现区域。'},
+  {q:'角量子数 l 主要决定轨道的什么性质？',opts:['原子核质量','轨道形状','元素周期数'],ans:1,ok:'对。l=0 是 s 轨道，l=1 是 p 轨道，l=2 是 d 轨道。',bad:'主量子数 n 影响大小和能级，l 主要影响轨道形状。',why:'同一主量子数下，不同 l 值对应不同亚层，轨道形状从球形 s 到哑铃形 p 再到更复杂的 d/f。'},
+  {q:'构造原理描述的是什么？',opts:['元素按名称字母顺序排列','原子核先填充中子再填充质子','电子按能量从低到高填充轨道'],ans:2,ok:'对。电子构型来自低能轨道优先填充。',bad:'看能级图中的 1s→2s→2p 顺序，这就是构造原理。',why:'基态原子会优先占据低能轨道，再逐步填入高能轨道，所以电子排布能解释周期表中的分区和递变。'},
+  {q:'同族元素化学性质相似的主要原因是什么？',opts:['原子质量完全相同','价电子构型相似','原子半径完全相同'],ans:1,ok:'对。同族元素通常有相似的价电子数和价层结构。',bad:'周期表纵列相似性来自价电子，而不是质量或半径完全相同。',why:'化学反应主要由最外层电子参与，同族元素价电子数和构型相近，因此常表现出相似反应倾向。'},
+  {q:'同一周期从左到右，原子半径通常怎样变化？',opts:['逐渐增大','没有任何规律','逐渐减小'],ans:2,ok:'对。有效核电荷增强，会把电子云拉得更紧。',bad:'同周期电子层数相同，核电荷增加通常让半径变小。',why:'同周期电子主要填入同一能层，质子数增加带来更强有效核电荷，使电子云被拉近原子核。'},
+  {q:'共价键的核心特征是什么？',opts:['一个原子完全吞掉另一个原子核','原子间共用电子对','所有价电子都自由流动成电子海'],ans:1,ok:'对。共价键依靠共用电子对稳定原子。',bad:'电子海对应金属键；电子转移和静电吸引更接近离子键。',why:'共价键通过共享电子对让参与原子获得更稳定的价层结构，区别于离子键的电子转移和金属键的电子海。'},
+  {q:'VSEPR 理论用来预测什么？',opts:['元素的原子序数','中子的衰变速度','分子的空间构型'],ans:2,ok:'对。价层电子对互斥决定分子几何形状。',bad:'VSEPR 关注价层电子对排布，因此用于判断分子形状。',why:'价层成键电子对和孤对电子会尽量远离以降低排斥，电子对排布决定了分子的几何构型和键角。'}
 ];
 let quizPassed=new Set(),quizFeedback={};
 
@@ -258,62 +263,110 @@ function resize(){
 }
 window.addEventListener('resize',()=>{resize();draw()});
 
+function resetProgress(){
+  curLevel=0;dragIdx=-1;l6dragStart=null;mouseX=0;mouseY=0;
+  unlocked=[true,false,false,false,false,false,false];
+  levelObjs=Array.from({length:LEVEL_NAMES.length},()=>[false,false,false]);
+  quizPassed.clear();quizFeedback={};
+  l0model=0;l0compared=false;l1n=1;l1l=0;l2element=1;l2filled=[];l3hover=-1;l3click=-1;l4prop=0;l5bondType=null;l6mol=0;
+  l0visited=[false,false,false,false,false];l1visited=[false,false,false,false];l2attempts=0;l4explored=0;l4trendConfirmed=false;
+  l5viewed=[false,false,false];l5compared=false;l6built=[false,false,false];l6feedback='';l2viewed.clear();l3clicked.clear();molAtoms=[];
+}
+
 function startGame(){
+  resetProgress();
   overlay.style.display='none';
   wrap.style.display='block';
   panel.style.display='block';
   bar.style.display='flex';
   resize();
   goLevel(0);
-  animate();
+  if(!animating){animating=true;animate();}
+}
+
+function restartFromSummary(){
+  resetProgress();
+  overlay.style.display='none';
+  wrap.style.display='block';
+  panel.style.display='block';
+  bar.style.display='flex';
+  resize();
+  goLevel(0);
+  return true;
 }
 
 function goLevel(n){
-  if(n<0||n>6||!isUnlocked(n))return;
-  curLevel=n;
-  unlocked[n]=true;
-  dragIdx=-1;
-  if(n===2)initLevel2();
-  if(n===5)l5bondType=0;
-  if(n===6){l6mol=0;initMolecule();}
+  const idx=toIndex(n,LEVEL_NAMES.length);
+  if(idx===null||!isUnlocked(idx))return;
+  curLevel=idx;
+  if(!quizPassed.has(idx))delete quizFeedback[idx];
+  unlocked[idx]=true;
+  dragIdx=-1;l6dragStart=null;
+  if(idx===0){l0model=0;l0visited=[true,false,false,false,false];l0compared=false;}
+  if(idx===1){l1n=1;l1l=0;l1visited=[false,false,false,false];}
+  if(idx===2)initLevel2();
+  if(idx===3){l3hover=-1;l3click=-1;l3clicked.clear();}
+  if(idx===4){l4prop=0;l4trendConfirmed=false;}
+  if(idx===5){l5bondType=null;l5viewed=[false,false,false];l5compared=false;}
+  if(idx===6){l6mol=0;l6built=[false,false,false];l6feedback='';initMolecule();}
   renderPanel();renderBar();draw();
 }
 
-function checkObj(li,oi){
-  if(!levelObjs[li][oi]){
-    levelObjs[li][oi]=true;
-    renderPanel();renderBar();
-  }
+function toInt(v,min,max){
+  const n=Number(v);
+  return Number.isInteger(n)&&n>=min&&n<=max?n:null;
 }
-function isUnlocked(n){return n===0||quizPassed.has(n-1)}
+function toIndex(v,max){return toInt(v,0,max-1);}
+
+function checkObj(li,oi,silent=false){
+  const level=toIndex(li,LEVEL_NAMES.length),obj=toIndex(oi,3);
+  if(level===null||obj===null||level!==curLevel||!levelObjs[level]||levelObjs[level][obj])return false;
+  levelObjs[level][obj]=true;
+  if(!silent){renderPanel();renderBar();}
+  return true;
+}
+function isUnlocked(n){
+  const idx=toIndex(n,LEVEL_NAMES.length);
+  return idx!==null&&(idx===0||quizPassed.has(idx-1));
+}
 
 function renderBar(){
-  const _ln=["原子模型演化","电子轨道","电子排布","元素周期表","元素周期律","化学键","分子结构"];
-  const done=levelObjs[curLevel].filter(Boolean).length;
+  const done=quizPassed.has(curLevel)?3:levelObjs[curLevel].filter(Boolean).length;
   const status=quizPassed.has(curLevel)?'已通关':levelObjs[curLevel].every(Boolean)?'待测验':'进行中';
-  bar.innerHTML='<span style="color:var(--text-muted)">⚛️ '+_ln[curLevel]+'</span><span class="prog">目标 '+done+'/3 · '+status+' · 通关 '+quizPassed.size+'/'+_ln.length+'</span>';
+  bar.innerHTML='<span style="color:var(--text-muted)">⚛️ '+LEVEL_NAMES[curLevel]+'</span><span class="prog">目标 '+done+'/3 · '+status+' · 通关 '+quizPassed.size+'/'+LEVEL_NAMES.length+'</span>';
 }
 
 function quizHTML(li){
-  const q=quizData[li],fb=quizFeedback[li];
+  const q=quizData[li],fb=quizFeedback[li],passedQuiz=quizPassed.has(li);
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
   h+=`<div class="quiz-q">${q.q}</div>`;
-  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`;});
+  q.opts.forEach((opt,i)=>{
+    const mark=passedQuiz&&i===q.ans?' correct':fb&&i===q.ans?' correct':fb&&i===fb.choice&&!fb.ok?' wrong':'';
+    h+=`<button class="quiz-opt${mark}" onclick="answerQuiz(${li},${i})">${'ABC'[i]}. ${opt}</button>`;
+  });
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  else if(passedQuiz)h+=`<div class="quiz-feedback ok">已通过小测。${q.why}</div>`;
   h+='</div>';
   return h;
 }
 
 function answerQuiz(li,choice){
-  if(li!==curLevel||quizPassed.has(li))return;
-  const q=quizData[li],ok=choice===q.ans;
-  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  li=Number(li);choice=Number(choice);
+  if(!Number.isInteger(li)||!Number.isInteger(choice))return false;
+  if(li<0||li>=LEVEL_NAMES.length)return false;
+  if(li!==curLevel||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(Boolean))return false;
+  const q=quizData[li];
+  if(!q||choice<0||choice>=q.opts.length)return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  const ok=choice===q.ans;
+  quizFeedback[li]={ok,choice,text:(ok?q.ok:q.bad)+(q.why?' '+q.why:'')};
   if(ok){
     quizPassed.add(li);
     if(li<6)unlocked[li+1]=true;
   }
   renderPanel();
   renderBar();
+  return ok;
 }
 window.answerQuiz=answerQuiz;
 
@@ -328,10 +381,13 @@ function renderPanel(){
     case 5: h=renderPanel5();break;
     case 6: h=renderPanel6();break;
   }
-  if(levelObjs[li].every(v=>v)){
-    if(!quizPassed.has(li))h+=quizHTML(li);
-    if(quizPassed.has(li)&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-    if(quizPassed.has(li)&&li===6)h+=`${window._summaryHTML?window._summaryHTML():''}`;
+  const levelPassed=quizPassed.has(li);
+  const goalsDone=levelPassed||levelObjs[li].every(v=>v);
+  if(levelPassed)h=h.replace(/class="obj(?! done)"/g,'class="obj done"');
+  if(goalsDone){
+    if(quizData[li])h+=quizHTML(li);
+    if(levelPassed&&li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
+    if(levelPassed&&li===6)h+=`${window._summaryHTML?window._summaryHTML():''}`;
   }
   panel.innerHTML=h;
 }
@@ -342,13 +398,21 @@ function renderPanel0(){
   h+=`<p class="desc">从道尔顿到量子力学，了解人类对原子认识的演变历程。点击下方按钮切换不同模型。</p>`;
   h+=`<div class="obj ${levelObjs[0][0]?'done':''}">浏览至少3种模型</div>`;
   h+=`<div class="obj ${levelObjs[0][1]?'done':''}">查看玻尔模型</div>`;
-  h+=`<div class="obj ${levelObjs[0][2]?'done':''}">查看量子力学模型</div>`;
+  h+=`<div class="obj ${levelObjs[0][2]?'done':''}">比较玻尔模型与量子模型</div>`;
   h+=`<p class="sub">选择模型</p>`;
   for(let i=0;i<5;i++){
     let sel=i===l0model?'background:rgba(20,184,166,0.3);':'';
     h+=`<button class="act-btn" style="${sel}" onclick="setModel(${i})">${MODEL_NAMES[i]} (${MODEL_YEARS[i]})</button>`;
   }
   h+=`<div class="learn-box"><b>${MODEL_NAMES[l0model]}</b><br>${MODEL_DESC[l0model]}</div>`;
+  if(l0visited[3]&&l0visited[4]){
+    h+=`<button class="act-btn" onclick="compareBohrQuantum()">${l0compared?'已比较':'比较'}：固定轨道 vs 概率电子云</button>`;
+    if(l0compared){
+      h+=`<div class="learn-box" style="margin-top:8px"><b>模型差异</b><br>玻尔模型强调电子只能处在特定能级轨道上，能解释原子光谱；量子力学模型进一步用电子云描述电子出现的概率，不再把电子看作沿固定圆轨道运动的小球。</div>`;
+    }
+  }else{
+    h+=`<div class="learn-box" style="margin-top:8px">先查看玻尔模型和量子力学模型，再比较“固定轨道”和“概率电子云”的区别。</div>`;
+  }
   if(levelObjs[0].every(v=>v)){
     h+=`<div class="learn-box" style="margin-top:8px"><b>知识总结</b><br>原子模型经历了从"实心球"到"电子云"的演变。现代量子力学模型用概率描述电子的位置分布，是目前最准确的原子模型。</div>`;
   }
@@ -356,12 +420,22 @@ function renderPanel0(){
 }
 
 function setModel(i){
-  l0model=i;l0visited[i]=true;
+  const idx=toIndex(i,MODEL_NAMES.length);
+  if(idx===null)return false;
+  l0model=idx;l0visited[idx]=true;
   let cnt=l0visited.filter(v=>v).length;
-  if(cnt>=3)checkObj(0,0);
-  if(i===3)checkObj(0,1);
-  if(i===4)checkObj(0,2);
+  let changed=false;
+  if(cnt>=3)changed=checkObj(0,0,true)||changed;
+  if(idx===3)changed=checkObj(0,1,true)||changed;
   renderPanel();draw();
+  return true;
+}
+function compareBohrQuantum(){
+  if(curLevel!==0||!l0visited[3]||!l0visited[4])return false;
+  l0compared=true;
+  checkObj(0,2,true);
+  renderPanel();draw();
+  return true;
 }
 
 function renderPanel1(){
@@ -371,28 +445,64 @@ function renderPanel1(){
   h+=`<div class="obj ${levelObjs[1][0]?'done':''}">查看 s 轨道</div>`;
   h+=`<div class="obj ${levelObjs[1][1]?'done':''}">查看 p 轨道</div>`;
   h+=`<div class="obj ${levelObjs[1][2]?'done':''}">查看 d 或 f 轨道</div>`;
-  h+=`<p class="sub">主量子数 n = ${l1n}</p>`;
-  h+=`<input type="range" class="ctl" min="1" max="4" value="${l1n}" oninput="setQN(+this.value,l1l)">`;
-  h+=`<p class="sub">角量子数 l = ${l1l} (${ORBITAL_NAMES[l1l]}轨道)</p>`;
-  h+=`<input type="range" class="ctl" min="0" max="${l1n-1}" value="${Math.min(l1l,l1n-1)}" oninput="setQL(+this.value)">`;
-  h+=`<div class="learn-box"><b>${l1n}${ORBITAL_NAMES[l1l]} 轨道</b><br>主量子数 n=${l1n}，角量子数 l=${l1l}<br>最多容纳 ${2*(2*l1l+1)} 个电子<br>磁量子数 m: ${-l1l} 到 ${l1l} (共${2*l1l+1}个取向)</div>`;
+  h+=`<p class="sub">主量子数 n = <span id="qnVal">${l1n}</span></p>`;
+  h+=`<input type="range" class="ctl" min="1" max="4" value="${l1n}" oninput="setQN(this.value,l1l)" onchange="this.blur();renderPanel()">`;
+  h+=`<p class="sub">角量子数 l = <span id="qlVal">${l1l}</span> (<span id="orbName">${ORBITAL_NAMES[l1l]}轨道</span>)</p>`;
+  h+=`<input id="qlRange" type="range" class="ctl" min="0" max="${l1n-1}" value="${Math.min(l1l,l1n-1)}" oninput="setQL(this.value)" onchange="this.blur();renderPanel()">`;
+  h+=`<div id="orbInfo" class="learn-box">${orbitalInfoHTML()}</div>`;
+  h+=`<button class="act-btn" onclick="observeOrbital()">记录观察：${ORBITAL_NAMES[l1l]}轨道</button>`;
   if(levelObjs[1].every(v=>v)){
     h+=`<div class="learn-box" style="margin-top:8px"><b>知识总结</b><br>量子数决定了电子轨道的形状和大小。n 越大轨道越远，l 决定形状（0=球形，1=哑铃形，2=花瓣形，3=复杂形状）。</div>`;
   }
   return h;
 }
 
-function setQN(n,l){l1n=n;l1l=Math.min(l,n-1);trackOrbital();renderPanel();draw();}
-function setQL(l){l1l=l;trackOrbital();renderPanel();draw();}
-function trackOrbital(){
-  if(l1l===0){l1visited[0]=true;checkObj(1,0);}
-  if(l1l===1){l1visited[1]=true;checkObj(1,1);}
-  if(l1l>=2){l1visited[l1l]=true;checkObj(1,2);}
+function orbitalInfoHTML(){
+  return `<b>${l1n}${ORBITAL_NAMES[l1l]} 轨道</b><br>主量子数 n=${l1n}，角量子数 l=${l1l}<br>最多容纳 ${2*(2*l1l+1)} 个电子<br>磁量子数 m: ${-l1l} 到 ${l1l} (共${2*l1l+1}个取向)`;
+}
+function updateOrbitalPanel(){
+  const qn=document.getElementById('qnVal'),ql=document.getElementById('qlVal'),orb=document.getElementById('orbName'),range=document.getElementById('qlRange'),info=document.getElementById('orbInfo');
+  if(qn)qn.textContent=l1n;
+  if(ql)ql.textContent=l1l;
+  if(orb)orb.textContent=ORBITAL_NAMES[l1l]+'轨道';
+  if(range){range.max=l1n-1;range.value=l1l;}
+  if(info)info.innerHTML=orbitalInfoHTML();
+  renderBar();
+}
+function observeOrbital(){
+  if(curLevel!==1)return false;
+  trackOrbital(true);
+  renderPanel();draw();
+  return true;
+}
+function setQN(n,l){
+  const nextN=toInt(n,1,4);
+  if(nextN===null)return false;
+  const nextL=toIndex(l,nextN);
+  l1n=nextN;l1l=nextL===null?Math.min(l1l,nextN-1):nextL;
+  updateOrbitalPanel();
+  draw();
+  return true;
+}
+function setQL(l){
+  const nextL=toIndex(l,l1n);
+  if(nextL===null)return false;
+  l1l=nextL;
+  updateOrbitalPanel();
+  draw();
+  return true;
+}
+function trackOrbital(silent=false){
+  let changed=false;
+  if(l1l===0){l1visited[0]=true;changed=checkObj(1,0,silent)||changed;}
+  if(l1l===1){l1visited[1]=true;changed=checkObj(1,1,silent)||changed;}
+  if(l1l>=2){l1visited[l1l]=true;changed=checkObj(1,2,silent)||changed;}
+  return changed;
 }
 
 // Level 2: Electron Configuration
 function initLevel2(){
-  l2element=1;l2filled=[];l2attempts=0;
+  l2element=1;l2filled=[];l2attempts=0;l2viewed.clear();
   buildAufbau(l2element);
 }
 function buildAufbau(z){
@@ -416,26 +526,36 @@ function renderPanel2(){
   h+=`<div class="obj ${levelObjs[2][1]?'done':''}">查看碳的电子排布</div>`;
   h+=`<div class="obj ${levelObjs[2][2]?'done':''}">查看至少5种元素</div>`;
   h+=`<p class="sub">选择元素 (Z=${l2element})</p>`;
-  h+=`<select class="ctl" onchange="setL2Element(+this.value)">`;
+  h+=`<select class="ctl" onchange="setL2Element(this.value)">`;
   for(let i=1;i<=20;i++){
     let sel=i===l2element?'selected':'';
     h+=`<option value="${i}" ${sel}>${i}. ${ELEMENTS[i].s} ${ELEMENTS[i].n}</option>`;
   }
   h+=`</select>`;
-  h+=`<div class="learn-box"><b>${ELEMENTS[l2element].s} (${ELEMENTS[l2element].n})</b> 的电子构型:<br><b>${ELEMENTS[l2element].c}</b><br>共 ${l2element} 个电子</div>`;
+  h+=`<div class="learn-box"><b>${ELEMENTS[l2element].s} (${ELEMENTS[l2element].n})</b> 的电子构型:<br><b>${ELEMENTS[l2element].c}</b><br>共 ${l2element} 个电子<br>已观察: ${l2viewed.size}/5 种元素</div>`;
+  h+=`<button class="act-btn" onclick="observeL2Element()">记录观察：${ELEMENTS[l2element].s}</button>`;
   if(levelObjs[2].every(v=>v)){
     h+=`<div class="learn-box" style="margin-top:8px"><b>知识总结</b><br>电子按能量从低到高填充轨道（构造原理）。填充顺序: 1s→2s→2p→3s→3p→4s→3d→4p。每个轨道最多容纳的电子数由角量子数决定。</div>`;
   }
   return h;
 }
 let l2viewed=new Set();
-function setL2Element(z){
-  l2element=z;buildAufbau(z);
-  l2viewed.add(z);
-  if(z===1)checkObj(2,0);
-  if(z===6)checkObj(2,1);
-  if(l2viewed.size>=5)checkObj(2,2);
+function observeL2Element(){
+  if(curLevel!==2||!ELEMENTS[l2element])return false;
+  let changed=false;
+  l2viewed.add(l2element);
+  if(l2element===1)changed=checkObj(2,0,true)||changed;
+  if(l2element===6)changed=checkObj(2,1,true)||changed;
+  if(l2viewed.size>=5)changed=checkObj(2,2,true)||changed;
   renderPanel();draw();
+  return true;
+}
+function setL2Element(z){
+  const idx=toInt(z,1,20);
+  if(idx===null)return false;
+  l2element=idx;buildAufbau(idx);
+  renderPanel();draw();
+  return true;
 }
 
 // Level 3: Periodic Table
@@ -446,6 +566,13 @@ function renderPanel3(){
   h+=`<div class="obj ${levelObjs[3][0]?'done':''}">点击查看5个元素</div>`;
   h+=`<div class="obj ${levelObjs[3][1]?'done':''}">查看一种稀有气体</div>`;
   h+=`<div class="obj ${levelObjs[3][2]?'done':''}">查看一种碱金属</div>`;
+  h+=`<div class="learn-box"><b>颜色图例</b><br>${Object.entries(CAT_COLORS).map(([cat,color])=>`<span class="tag" style="background:${color}33;color:${color}">${cat}</span>`).join(' ')}<br>先比较第1族和第18族：碱金属容易失去最外层电子，稀有气体外层已满更稳定。</div>`;
+  h+=`<p class="sub">推荐观察路径</p>`;
+  [[1,'H 氢'],[2,'He 氦'],[3,'Li 锂'],[6,'C 碳'],[10,'Ne 氖'],[11,'Na 钠']].forEach(([z,label])=>{
+    const sel=z===l3click?'background:rgba(20,184,166,0.3);':'';
+    const seen=l3clicked.has(z)?'✓ ':'';
+    h+=`<button class="act-btn" style="${sel}" onclick="clickElement(${z})">${seen}${label}</button>`;
+  });
   if(l3click>0){
     let e=ELEMENTS[l3click];
     h+=`<div class="learn-box"><b>${e.z}. ${e.s} ${e.n}</b><br>`;
@@ -454,6 +581,8 @@ function renderPanel3(){
     h+=`原子半径: ${e.r} pm<br>`;
     h+=`第一电离能: ${e.ie} eV<br>`;
     h+=`电负性: ${e.en||'—'}</div>`;
+  }else{
+    h+=`<div class="learn-box">点击周期表中的元素卡片，查看原子量、电子构型和元素分类。</div>`;
   }
   if(levelObjs[3].every(v=>v)){
     h+=`<div class="learn-box" style="margin-top:8px"><b>知识总结</b><br>元素周期表按原子序数排列，同族元素有相似的化学性质。周期表分为 s、p、d、f 四个区，对应不同的电子填充轨道。</div>`;
@@ -462,12 +591,15 @@ function renderPanel3(){
 }
 let l3clicked=new Set();
 function clickElement(z){
-  if(z<1||z>20)return;
-  l3click=z;l3clicked.add(z);
-  if(l3clicked.size>=5)checkObj(3,0);
-  if(ELEMENTS[z].cat==='稀有气体')checkObj(3,1);
-  if(ELEMENTS[z].cat==='碱金属')checkObj(3,2);
+  const idx=toInt(z,1,20);
+  if(curLevel!==3||idx===null||!ELEMENTS[idx])return false;
+  let changed=false;
+  l3click=idx;l3clicked.add(idx);
+  if(l3clicked.size>=5)changed=checkObj(3,0,true)||changed;
+  if(ELEMENTS[idx].cat==='稀有气体')changed=checkObj(3,1,true)||changed;
+  if(ELEMENTS[idx].cat==='碱金属')changed=checkObj(3,2,true)||changed;
   renderPanel();draw();
+  return true;
 }
 
 // Level 4: Periodic Trends
@@ -477,7 +609,7 @@ function renderPanel4(){
   h+=`<p class="desc">观察原子半径、电离能、电负性随原子序数的变化趋势。</p>`;
   h+=`<div class="obj ${levelObjs[4][0]?'done':''}">查看原子半径趋势</div>`;
   h+=`<div class="obj ${levelObjs[4][1]?'done':''}">查看电离能趋势</div>`;
-  h+=`<div class="obj ${levelObjs[4][2]?'done':''}">查看电负性趋势</div>`;
+  h+=`<div class="obj ${levelObjs[4][2]?'done':''}">归纳周期律背后的原因</div>`;
   let props=['原子半径 (pm)','第一电离能 (eV)','电负性'];
   for(let i=0;i<3;i++){
     let sel=i===l4prop?'background:rgba(20,184,166,0.3);':'';
@@ -487,17 +619,37 @@ function renderPanel4(){
     '同周期从左到右电离能总体增大（原子半径减小，电子更难移除）；稀有气体电离能最高。',
     '同周期从左到右电负性增大（原子吸引电子能力增强）；氟的电负性最大(4.0)。'];
   h+=`<div class="learn-box"><b>${props[l4prop]}</b><br>${trendDesc[l4prop]}</div>`;
+  if(l4TrendReady()&&!levelObjs[4][2]){
+    h+=`<button class="act-btn" onclick="confirmPeriodicTrend()">确认：有效核电荷与电子层数共同造成周期性趋势</button>`;
+  }else if(levelObjs[4][2]){
+    h+=`<div class="learn-box" style="margin-top:8px"><b>已归纳</b><br>同周期电子层数近似不变，核电荷增强让半径变小、电离能和电负性增大；同族向下电子层数增加，屏蔽增强，半径变大。</div>`;
+  }else{
+    h+=`<div class="learn-box" style="margin-top:8px">先依次查看半径、电离能和电负性三条曲线，再归纳它们共同来自核电荷、屏蔽效应和电子层数变化。</div>`;
+  }
   if(levelObjs[4].every(v=>v)){
     h+=`<div class="learn-box" style="margin-top:8px"><b>知识总结</b><br>元素性质呈周期性变化，这是元素周期律的核心。原子半径、电离能、电负性都有明确的周期性趋势，这些趋势源于电子结构的周期性变化。</div>`;
   }
   return h;
 }
-function setL4Prop(i){
-  l4prop=i;l5viewed[i]=true;
-  if(i===0)checkObj(4,0);
-  if(i===1)checkObj(4,1);
-  if(i===2)checkObj(4,2);
+function l4TrendReady(){
+  return curLevel===4&&(l4explored&7)===7&&levelObjs[4][0]&&levelObjs[4][1];
+}
+function confirmPeriodicTrend(){
+  if(!l4TrendReady())return false;
+  l4trendConfirmed=true;
+  checkObj(4,2,true);
   renderPanel();draw();
+  return true;
+}
+function setL4Prop(i){
+  const idx=toIndex(i,3);
+  if(curLevel!==4||idx===null)return false;
+  let changed=false;
+  l4prop=idx;l4explored|=(1<<idx);
+  if(idx===0)changed=checkObj(4,0,true)||changed;
+  if(idx===1)changed=checkObj(4,1,true)||changed;
+  renderPanel();draw();
+  return true;
 }
 
 // Level 5: Chemical Bonds
@@ -507,23 +659,43 @@ function renderPanel5(){
   h+=`<p class="desc">了解三种基本化学键的形成过程和特点。</p>`;
   h+=`<div class="obj ${levelObjs[5][0]?'done':''}">观察离子键形成</div>`;
   h+=`<div class="obj ${levelObjs[5][1]?'done':''}">观察共价键形成</div>`;
-  h+=`<div class="obj ${levelObjs[5][2]?'done':''}">观察金属键</div>`;
+  h+=`<div class="obj ${levelObjs[5][2]?'done':''}">对照三类电子行为</div>`;
   for(let i=0;i<3;i++){
     let sel=i===l5bondType?'background:rgba(20,184,166,0.3);':'';
     h+=`<button class="act-btn" style="${sel}" onclick="setBond(${i})">${BOND_NAMES[i]}</button>`;
   }
-  h+=`<div class="learn-box"><b>${BOND_NAMES[l5bondType]}</b><br>${BOND_DESC[l5bondType]}</div>`;
+  if(l5bondType===null)h+=`<div class="learn-box">先选择一种化学键，观察电子是转移、共享，还是形成电子海。</div>`;
+  else h+=`<div class="learn-box"><b>${BOND_NAMES[l5bondType]}</b><br>${BOND_DESC[l5bondType]}<br>已观察: ${l5viewed.filter(Boolean).length}/3 类化学键</div>`;
+  if(l5viewed.every(Boolean)){
+    h+=`<button class="act-btn" onclick="compareBondBehaviors()">${l5compared?'已完成对照':'确认对照'}：转移 / 共享 / 电子海</button>`;
+    if(l5compared){
+      h+=`<div class="learn-box" style="margin-top:8px"><b>三类化学键对照</b><br>离子键的关键是电子转移后产生静电吸引；共价键的关键是原子间共享电子对；金属键的关键是价电子离域成电子海。</div>`;
+    }
+  }else{
+    h+=`<div class="learn-box" style="margin-top:8px">看完离子键、共价键和金属键后，再归纳三者的电子行为差异。</div>`;
+  }
   if(levelObjs[5].every(v=>v)){
     h+=`<div class="learn-box" style="margin-top:8px"><b>知识总结</b><br>化学键是原子间的强相互作用力。离子键靠静电引力，共价键靠共用电子对，金属键靠自由电子与金属阳离子的作用。键的类型决定了物质的性质。</div>`;
   }
   return h;
 }
 function setBond(i){
-  l5bondType=i;
-  if(i===0)checkObj(5,0);
-  if(i===1)checkObj(5,1);
-  if(i===2)checkObj(5,2);
+  const idx=toIndex(i,3);
+  if(curLevel!==5||idx===null)return false;
+  let changed=false;
+  l5bondType=idx;
+  l5viewed[idx]=true;
+  if(idx===0)changed=checkObj(5,0,true)||changed;
+  if(idx===1)changed=checkObj(5,1,true)||changed;
   renderPanel();draw();
+  return true;
+}
+function compareBondBehaviors(){
+  if(curLevel!==5||!l5viewed.every(Boolean))return false;
+  l5compared=true;
+  checkObj(5,2,true);
+  renderPanel();draw();
+  return true;
 }
 
 // Level 6: Molecular Structure
@@ -533,11 +705,11 @@ function initMolecule(){
   if(l6mol===0){// H2O
     molAtoms=[{x:W/2,y:H/2,s:'O',r:24,c:'#ef4444',fixed:true},
       {x:W/2-80,y:H/2+60,s:'H',r:16,c:'#14b8a6',fixed:false},
-      {x:W/2+80,y:H/2+60,s:'H',r:16,c:'#14b8a6',fixed:false}];
+      {x:W/2+80,y:H/2+20,s:'H',r:16,c:'#14b8a6',fixed:false}];
   }else if(l6mol===1){// CO2
     molAtoms=[{x:W/2,y:H/2,s:'C',r:22,c:'#6b7280',fixed:true},
       {x:W/2-100,y:H/2,s:'O',r:24,c:'#ef4444',fixed:false},
-      {x:W/2+100,y:H/2,s:'O',r:24,c:'#ef4444',fixed:false}];
+      {x:W/2+90,y:H/2+42,s:'O',r:24,c:'#ef4444',fixed:false}];
   }else{// NH3
     molAtoms=[{x:W/2,y:H/2-20,s:'N',r:22,c:'#3b82f6',fixed:true},
       {x:W/2-70,y:H/2+60,s:'H',r:16,c:'#14b8a6',fixed:false},
@@ -545,10 +717,30 @@ function initMolecule(){
       {x:W/2,y:H/2+90,s:'H',r:16,c:'#14b8a6',fixed:false}];
   }
 }
+function moleculeAngle(){
+  if(!molAtoms.length||molAtoms.length<3)return null;
+  let a1=Math.atan2(molAtoms[1].y-molAtoms[0].y,molAtoms[1].x-molAtoms[0].x);
+  let a2=Math.atan2(molAtoms[2].y-molAtoms[0].y,molAtoms[2].x-molAtoms[0].x);
+  let angleDeg=Math.abs(a2-a1)*180/Math.PI;
+  return angleDeg>180?360-angleDeg:angleDeg;
+}
+function moleculeAngleTolerance(){
+  return l6mol===1?5:8;
+}
+function moleculeGeometryReady(){
+  const angle=moleculeAngle();
+  return angle!==null&&Math.abs(angle-MOL_TARGET_ANGLES[l6mol])<=moleculeAngleTolerance();
+}
+function moleculeAngleInfoHTML(){
+  const angle=moleculeAngle(),target=MOL_TARGET_ANGLES[l6mol],ready=moleculeGeometryReady();
+  const current=angle===null?'—':angle.toFixed(1)+'°';
+  const feedback=l6feedback?`<br>${l6feedback}`:'';
+  return `<div class="learn-box"><b>构型校准</b><br>当前键角: <b style="color:${ready?'#4ade80':'#fbbf24'}">${current}</b> / 目标约 ${target}°<br>${ready?'已进入目标范围。点击“检查当前构型”记录构建完成。':'拖动外侧原子，让键角接近目标范围后再检查。'}${feedback}</div>`;
+}
 function renderPanel6(){
   let h=`<h3>关卡7: 分子结构</h3>`;
   h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>关键词：</b>VSEPR理论：电子对互斥决定分子空间构型</div>`;
-  h+=`<p class="desc">根据 VSEPR 理论，拖动原子观察分子的空间构型。中心原子固定，拖动配位原子。</p>`;
+  h+=`<p class="desc">根据 VSEPR 理论，选择分子后拖动非中心原子观察键角变化。完成构建需要真的移动一次配位原子。</p>`;
   h+=`<div class="obj ${levelObjs[6][0]?'done':''}">构建 H₂O 分子</div>`;
   h+=`<div class="obj ${levelObjs[6][1]?'done':''}">构建 CO₂ 分子</div>`;
   h+=`<div class="obj ${levelObjs[6][2]?'done':''}">构建 NH₃ 分子</div>`;
@@ -557,38 +749,100 @@ function renderPanel6(){
     h+=`<button class="act-btn" style="${sel}" onclick="setMol(${i})">${MOL_NAMES[i]}</button>`;
   }
   h+=`<div class="learn-box"><b>${MOL_NAMES[l6mol]}</b><br>空间构型: ${MOL_SHAPES[l6mol]}<br>键角: ${MOL_ANGLES[l6mol]}<br><br>VSEPR理论: 价层电子对尽可能远离，使排斥力最小，从而决定分子的空间构型。</div>`;
+  h+=moleculeAngleInfoHTML();
+  if(!l6built[l6mol]){
+    h+=`<button class="act-btn" onclick="calibrateMoleculeGeometry()">预览目标键角</button>`;
+    h+=`<button class="act-btn" onclick="checkMoleculeGeometry()">检查当前构型</button>`;
+  }
   if(levelObjs[6].every(v=>v)){
     h+=`<div class="learn-box" style="margin-top:8px"><b>知识总结</b><br>VSEPR（价层电子对互斥）理论可以预测分子的空间构型。孤对电子也参与排斥，所以 H₂O 是V形而非直线形。分子的形状决定了它的极性和许多物理化学性质。</div>`;
   }
   return h;
 }
 function setMol(i){
-  l6mol=i;initMolecule();
-  checkObj(6,i);
+  const idx=toIndex(i,MOL_NAMES.length);
+  if(curLevel!==6||idx===null)return false;
+  l6mol=idx;l6feedback='';initMolecule();
   renderPanel();draw();
+  return true;
+}
+function markMolBuilt(silent=false){
+  if(curLevel!==6||!molAtoms.length)return false;
+  if(!moleculeGeometryReady())return false;
+  l6built[l6mol]=true;
+  return checkObj(6,l6mol,silent);
+}
+function calibrateMoleculeGeometry(){
+  if(curLevel!==6||!molAtoms.length||l6built[l6mol])return false;
+  const center=molAtoms[0],target=MOL_TARGET_ANGLES[l6mol]*Math.PI/180,r=95;
+  if(l6mol===1){
+    molAtoms[1].x=center.x-r;molAtoms[1].y=center.y;
+    molAtoms[2].x=center.x+r;molAtoms[2].y=center.y;
+  }else{
+    const base=Math.PI/2;
+    molAtoms[1].x=center.x+Math.cos(base-target/2)*r;
+    molAtoms[1].y=center.y+Math.sin(base-target/2)*r;
+    molAtoms[2].x=center.x+Math.cos(base+target/2)*r;
+    molAtoms[2].y=center.y+Math.sin(base+target/2)*r;
+    if(l6mol===2&&molAtoms[3]){
+      molAtoms[3].x=center.x;
+      molAtoms[3].y=center.y-r*0.75;
+    }
+  }
+  l6feedback='预览已把外侧原子放到目标键角附近。请观察当前角度，再点击“检查当前构型”。';
+  renderPanel();renderBar();draw();
+  return true;
+}
+function checkMoleculeGeometry(){
+  if(curLevel!==6||!molAtoms.length||l6built[l6mol])return false;
+  const ok=markMolBuilt(true);
+  l6feedback=ok?'✅ 构型检查通过：键角进入目标范围，已记录该分子。':'⚠️ 构型还不准确。继续拖动外侧原子，让当前键角靠近目标值。';
+  renderPanel();renderBar();draw();
+  return ok;
 }
 
-// Canvas mouse events
-cv.addEventListener('mousemove',e=>{
+// Canvas pointer events
+function pointerPos(e){
   let rect=cv.getBoundingClientRect();
-  mouseX=e.clientX-rect.left;mouseY=e.clientY-rect.top;
+  return {x:e.clientX-rect.left,y:e.clientY-rect.top};
+}
+function movePointer(e){
+  const p=pointerPos(e);
+  mouseX=p.x;mouseY=p.y;
   if(curLevel===3)handlePTHover();
   if(curLevel===6&&dragIdx>=0){
+    e.preventDefault();
     molAtoms[dragIdx].x=mouseX;molAtoms[dragIdx].y=mouseY;
+    if(l6feedback)l6feedback='';
   }
-});
-cv.addEventListener('mousedown',e=>{
-  let rect=cv.getBoundingClientRect();
-  let mx=e.clientX-rect.left,my=e.clientY-rect.top;
-  if(curLevel===3)handlePTClick(mx,my);
+}
+function startPointer(e){
+  const p=pointerPos(e);
+  if(curLevel===3)handlePTClick(p.x,p.y);
   if(curLevel===6){
     for(let i=molAtoms.length-1;i>=0;i--){
       let a=molAtoms[i];
-      if(!a.fixed&&Math.hypot(mx-a.x,my-a.y)<a.r+10){dragIdx=i;break;}
+      if(!a.fixed&&Math.hypot(p.x-a.x,p.y-a.y)<a.r+10){
+        e.preventDefault();
+        dragIdx=i;l6dragStart={x:p.x,y:p.y};
+        if(cv.setPointerCapture&&e.pointerId!=null)cv.setPointerCapture(e.pointerId);
+        break;
+      }
     }
   }
-});
-cv.addEventListener('mouseup',()=>{dragIdx=-1;});
+}
+function endPointer(e){
+  if(curLevel===6&&dragIdx>=0&&l6dragStart){
+    let a=molAtoms[dragIdx];
+    if(Math.hypot(a.x-l6dragStart.x,a.y-l6dragStart.y)>12){renderPanel();renderBar();}
+  }
+  if(cv.releasePointerCapture&&e&&e.pointerId!=null)try{cv.releasePointerCapture(e.pointerId)}catch(err){}
+  dragIdx=-1;l6dragStart=null;
+}
+cv.addEventListener('pointermove',movePointer);
+cv.addEventListener('pointerdown',startPointer);
+cv.addEventListener('pointerup',endPointer);
+cv.addEventListener('pointercancel',endPointer);
 
 function handlePTHover(){/* hover handled in draw */}
 function handlePTClick(mx,my){
@@ -901,9 +1155,6 @@ function drawLevel3(){
   ctx.fillStyle=COLORS.accent;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
   ctx.fillText('元素周期表（前20号元素）',W/2,30);
 
-  const catColors={'碱金属':'#ef4444','碱土金属':'#f59e0b','金属':'#a78bfa','类金属':'#8b5cf6',
-    '非金属':'#14b8a6','卤素':'#06b6d4','稀有气体':'#6366f1'};
-
   for(let z=1;z<=20;z++){
     let pos=PT_POS[z];if(!pos)continue;
     let e=ELEMENTS[z];
@@ -911,7 +1162,7 @@ function drawLevel3(){
     let hover=mouseX>=x&&mouseX<=x+cellW&&mouseY>=y&&mouseY<=y+cellH;
     let selected=z===l3click;
 
-    let bgColor=catColors[e.cat]||COLORS.primary;
+    let bgColor=CAT_COLORS[e.cat]||COLORS.primary;
     ctx.fillStyle=selected?bgColor:hover?`${bgColor}88`:`${bgColor}33`;
     ctx.fillRect(x+1,y+1,cellW-2,cellH-2);
     ctx.strokeStyle=selected?bgColor:hover?`${bgColor}88`:`${bgColor}44`;
@@ -930,8 +1181,8 @@ function drawLevel3(){
   let ly=oy+5*cellH+20;
   ctx.font='17px sans-serif';ctx.textAlign='left';
   let lx=ox;
-  for(let cat in catColors){
-    ctx.fillStyle=catColors[cat];
+  for(let cat in CAT_COLORS){
+    ctx.fillStyle=CAT_COLORS[cat];
     ctx.fillRect(lx,ly,10,10);
     ctx.fillStyle='#94a3b8';
     ctx.fillText(cat,lx+14,ly+9);
@@ -1031,7 +1282,12 @@ function drawLevel4(){
 function drawLevel5(){
   let cx=W/2,cy=H/2;
   ctx.fillStyle=COLORS.accent;ctx.font='bold 16px sans-serif';ctx.textAlign='center';
-  ctx.fillText(BOND_NAMES[l5bondType],cx,30);
+  ctx.fillText(l5bondType===null?'请选择一种化学键':BOND_NAMES[l5bondType],cx,30);
+  if(l5bondType===null){
+    ctx.fillStyle=COLORS.dim;ctx.font='18px sans-serif';
+    ctx.fillText('在左侧依次选择离子键、共价键、金属键，比较电子行为差异',cx,cy);
+    return;
+  }
 
   switch(l5bondType){
     case 0: drawIonicBond(cx,cy);break;
@@ -1205,11 +1461,12 @@ function drawLevel6(){
     let a2=Math.atan2(molAtoms[2].y-molAtoms[0].y,molAtoms[2].x-molAtoms[0].x);
     ctx.beginPath();ctx.arc(molAtoms[0].x,molAtoms[0].y,35,Math.min(a1,a2),Math.max(a1,a2));
     ctx.strokeStyle='rgba(250,204,21,0.5)';ctx.lineWidth=2;ctx.stroke();
-    let angleDeg=Math.abs(a2-a1)*180/Math.PI;
-    if(angleDeg>180)angleDeg=360-angleDeg;
+    let angleDeg=moleculeAngle();
     let midA=(a1+a2)/2;
     ctx.fillStyle='#fbbf24';ctx.font='18px sans-serif';
     ctx.fillText(angleDeg.toFixed(1)+'°',molAtoms[0].x+Math.cos(midA)*50,molAtoms[0].y+Math.sin(midA)*50);
+    ctx.fillStyle=moleculeGeometryReady()?'#4ade80':'#fbbf24';
+    ctx.fillText(`目标约 ${MOL_TARGET_ANGLES[l6mol]}°`,W/2,56);
   }
 
   // Drag hint
@@ -1226,6 +1483,7 @@ window.startGame=startGame;
 (function(){
   // 自动检测关卡名称
   function _getNames(){
+    if(typeof LEVEL_NAMES!=='undefined')return LEVEL_NAMES.slice();
     if(typeof levelNames!=='undefined')return levelNames.slice();
     if(typeof LN!=='undefined')return LN.slice();
     if(typeof levels!=='undefined'&&Array.isArray(levels))return levels.map(function(l,i){return l.name||l.title||('关卡'+(i+1));});
@@ -1252,7 +1510,7 @@ window.startGame=startGame;
   }
   function _countDone(){
     var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
+    if(o){for(var i=0;i<o.length;i++){for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}if(typeof quizPassed!=='undefined'&&quizPassed.has(i))d=Math.max(d,(i+1)*3);}}
     else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
     return{done:d,total:t};
   }
@@ -1269,8 +1527,8 @@ window.startGame=startGame;
     for(var i=0;i<total;i++){
       var unlocked=i===0||(typeof quizPassed!=='undefined'&&quizPassed.has(i-1));
       var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
-      var click=unlocked?'typeof goLevel===\'function\'&&goLevel('+i+')':'';
-      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
+      var click=unlocked&&i!==cur?' onclick="typeof goLevel===\'function\'&&goLevel('+i+')"':'';
+      h+='<div class="sn-d '+cls+'"'+click+'></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
@@ -1284,18 +1542,21 @@ window.startGame=startGame;
   window._summaryHTML=function(){
     var names=_getNames(),total=names.length;
     var s=_countDone();
+    if(typeof quizPassed!=='undefined')s.done=quizPassed.size*3;
     var pct=s.total>0?Math.round(s.done/s.total*100):100;
     var h='<div class="summary-box">';
     h+='<div class="summary-title">\u{1F3C6} \u606D\u559C\u901A\u5173\uFF01</div>';
     h+='<div class="summary-sub">\u4F60\u5DF2\u5B8C\u6210\u5168\u90E8 '+total+' \u4E2A\u5173\u5361\u7684\u5B66\u4E60</div>';
     h+='<div class="summary-stats">';
-    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u5B8C\u6210</div></div>';
-    h+='<div class="summary-stat"><div class="num">'+s.done+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
+    h+='<div class="summary-stat"><div class="num">'+total+'</div><div class="label">\u5173\u5361\u901A\u5173</div></div>';
+    h+='<div class="summary-stat"><div class="num">'+s.done+'/'+s.total+'</div><div class="label">\u76EE\u6807\u8FBE\u6210</div></div>';
     h+='<div class="summary-stat"><div class="num">'+pct+'%</div><div class="label">\u77E5\u8BC6\u638C\u63E1</div></div>';
     h+='</div>';
     h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">\u{1F4DA} \u5173\u952E\u77E5\u8BC6\u56DE\u987E</div>';
     for(var i=0;i<total;i++){h+='<div>\u2705 '+names[i]+'</div>';}
-    h+='</div></div>';
+    h+='</div>';
+    h+='<button class="act-btn" style="margin-top:12px" onclick="restartFromSummary()">重新探索原子世界</button>';
+    h+='</div>';
     return h;
   };
 

@@ -202,10 +202,10 @@ function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':
 // ===== AUDIO ENGINE =====
 const AudioEngine=(()=>{
   let actx=null;
-  function ctx(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();return actx;}
+  function ctx(){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;try{if(!actx)actx=new A();return actx}catch(e){return null}}
   function play(type){
     try{
-      const c=ctx();
+      const c=ctx();if(!c)return false;
       const o=c.createOscillator(),g=c.createGain();
       o.connect(g);g.connect(c.destination);
       const now=c.currentTime;
@@ -217,7 +217,8 @@ const AudioEngine=(()=>{
         const o2=c.createOscillator(),g2=c.createGain();o2.connect(g2);g2.connect(c.destination);o2.frequency.value=200;o2.type='sawtooth';g2.gain.setValueAtTime(0.15,now+0.15);g2.gain.exponentialRampToValueAtTime(0.001,now+0.5);o2.start(now+0.15);o2.stop(now+0.5);}
       else if(type==='boom'){const buf=c.createBuffer(1,c.sampleRate*0.5,c.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);
         const src=c.createBufferSource();src.buffer=buf;const gn=c.createGain();src.connect(gn);gn.connect(c.destination);gn.gain.setValueAtTime(0.3,now);gn.gain.exponentialRampToValueAtTime(0.001,now+0.5);src.start(now);}
-    }catch(e){}
+      return true;
+    }catch(e){return false}
   }
   return{play};
 })();
@@ -240,6 +241,7 @@ let gameState='start',currentLevel=0;
 let levelState={},bgStars=[],particles=[];
 const completedLevels=new Set();
 const readyForQuiz=new Set();
+const quizPassed=new Set();
 const panelEl=document.getElementById('panel'),bbEl=document.getElementById('bottom-bar');
 const bbLeft=document.getElementById('bbLeft'),bbRight=document.getElementById('bbRight');
 let panelDirty=true;
@@ -247,13 +249,13 @@ let levelTransition=0; // fade-in timer
 
 // ===== QUIZ DATA =====
 const quizData=[
-  {q:'多大质量的恒星核心会变成黑洞？',opts:['A. <1.4太阳质量','B. 1.4-3太阳质量','C. >3太阳质量'],ans:2},
-  {q:'事件视界是什么？',opts:['A. 黑洞的固体表面','B. 光无法逃逸的边界','C. 黑洞的中心'],ans:1},
-  {q:'广义相对论认为引力的本质是？',opts:['A. 两个物体间的吸引力','B. 时空弯曲','C. 磁场作用'],ans:1},
-  {q:'吸积盘为什么会发光？',opts:['A. 黑洞发光','B. 物质摩擦加热到数百万度','C. 反射星光'],ans:1},
-  {q:'为什么超大质量黑洞的视界处潮汐力反而小？',opts:['A. 引力弱','B. 视界半径大，引力梯度小','C. 有保护层'],ans:1},
-  {q:'霍金辐射的本质是？',opts:['A. 黑洞发射光子','B. 虚粒子对在视界边缘分离','C. 黑洞反射光'],ans:1},
-  {q:'保持虫洞开放需要什么？',opts:['A. 强引力','B. 负能量的奇异物质','C. 高速旋转'],ans:1}
+  {q:'多大质量的恒星核心会变成黑洞？',opts:['A. >3太阳质量','B. <1.4太阳质量','C. 1.4-3太阳质量'],ans:0,why:'超过约 3 个太阳质量的坍缩核心没有已知压力能阻止继续坍缩，可能形成黑洞。'},
+  {q:'事件视界是什么？',opts:['A. 黑洞的固体表面','B. 光无法逃逸的边界','C. 黑洞的中心'],ans:1,why:'事件视界不是实体表面，而是逃逸速度达到光速的边界，越过后光也无法返回。'},
+  {q:'广义相对论认为引力的本质是？',opts:['A. 两个物体间的吸引力','B. 磁场作用','C. 时空弯曲'],ans:2,why:'广义相对论把引力解释为质量和能量造成的时空弯曲，物体沿弯曲时空中的测地线运动。'},
+  {q:'吸积盘为什么会发光？',opts:['A. 反射星光','B. 黑洞发光','C. 物质摩擦加热到数百万度'],ans:2,why:'落向黑洞的物质在吸积盘中高速摩擦和压缩升温，因此会释放强烈辐射。'},
+  {q:'为什么超大质量黑洞的视界处潮汐力反而小？',opts:['A. 引力弱','B. 视界半径大，引力梯度小','C. 有保护层'],ans:1,why:'潮汐力取决于引力差异而不只是引力大小；超大质量黑洞视界半径很大，局部梯度较小。'},
+  {q:'霍金辐射的本质是？',opts:['A. 黑洞发射光子','B. 虚粒子对在视界边缘分离','C. 黑洞反射光'],ans:1,why:'量子涨落产生的虚粒子对在视界附近分离，一个逃逸、一个落入，使黑洞表现为缓慢辐射。'},
+  {q:'保持虫洞开放需要什么？',opts:['A. 强引力','B. 高速旋转','C. 负能量的奇异物质'],ans:2,why:'可通行虫洞需要抵抗坍缩，理论上通常需要具有负能量密度的奇异物质来支撑喉部。'}
 ];
 let quizState={active:false,answered:false,correct:false,selected:-1};
 
@@ -294,6 +296,7 @@ function startGame(){
 }
 
 function initLevel(n){
+  if(!canGoLevel(n))return;
   canvas.onclick=null;
   currentLevel=n;particles=[];
   const g=levels[n].goals;
@@ -315,19 +318,21 @@ function markGoal(i){
   if(!levelState.goals[i]){levelState.goals[i]=true;panelDirty=true;AudioEngine.play('success');checkComplete();}
 }
 function checkComplete(){
-  if(levelState.goals.every(g=>g)&&!readyForQuiz.has(currentLevel)&&!completedLevels.has(currentLevel)){
+  if(levelState.goals.every(g=>g)&&!readyForQuiz.has(currentLevel)&&!quizPassed.has(currentLevel)){
     readyForQuiz.add(currentLevel);panelDirty=true;
     celebrationParticles((CW+320)/2,CH/2);
     setTimeout(()=>showResult(),600);
   }
 }
 function showResult(){
+  if(!readyForQuiz.has(currentLevel)||quizPassed.has(currentLevel))return;
   const lv=levels[currentLevel];
   const isLast=currentLevel===levels.length-1;
   const rb=document.getElementById('resultBox');
   // Show quiz first, then allow next
   quizState={active:true,answered:false,correct:false,selected:-1};
   const qd=quizData[currentLevel];
+  if(!qd)return;
   let qhtml=`<div class="rb-icon">${lv.icon}</div><div class="rb-title">${lv.name} 完成！</div>`;
   qhtml+=`<div class="rb-learn">${lv.learn}</div>`;
   qhtml+=`<div class="quiz-box"><div class="quiz-title">📝 通关测验</div><div style="font-size:12px;color:#c0e0c0;margin-bottom:8px">${qd.q}</div>`;
@@ -346,21 +351,25 @@ function showResult(){
   document.getElementById('resultModal').classList.remove('hidden');
 }
 function answerQuiz(idx){
-  if(quizState.answered)return;
+  idx=Number(idx);
+  if(!Number.isInteger(idx))return;
+  if(!readyForQuiz.has(currentLevel)||quizPassed.has(currentLevel)||!quizState.active||quizState.answered)return;
   const qd=quizData[currentLevel];
+  if(!qd||idx<0||idx>=qd.opts.length)return;
+  if(currentLevel>0&&!quizPassed.has(currentLevel-1))return;
   quizState.selected=idx;
   if(idx===qd.ans){
     quizState.answered=true;quizState.correct=true;
-    completedLevels.add(currentLevel);readyForQuiz.delete(currentLevel);panelDirty=true;renderPanel();
+    quizPassed.add(currentLevel);completedLevels.add(currentLevel);readyForQuiz.delete(currentLevel);panelDirty=true;renderPanel();
     document.getElementById('qopt'+idx).classList.add('correct');
     document.getElementById('quizResult').className='quiz-result pass';
-    document.getElementById('quizResult').textContent='✅ 回答正确！';
+    document.getElementById('quizResult').textContent='✅ 回答正确！'+(qd.why?' '+qd.why:'');
     document.getElementById('quizBtns').style.display='block';
     AudioEngine.play('success');
   } else {
     document.getElementById('qopt'+idx).classList.add('wrong');
     document.getElementById('quizResult').className='quiz-result fail';
-    document.getElementById('quizResult').textContent='❌ 回答错误，再想想...';
+    document.getElementById('quizResult').textContent='❌ 再想想：'+(qd.why||'回顾本关知识点后再选择。');
     AudioEngine.play('fail');
     setTimeout(()=>{
       document.getElementById('qopt'+idx).classList.remove('wrong');
@@ -368,9 +377,9 @@ function answerQuiz(idx){
     },1000);
   }
 }
-function nextLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel+1);}
+function nextLevel(){if(!quizPassed.has(currentLevel)||!canGoLevel(currentLevel+1))return;document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel+1);}
 function retryLevel(){document.getElementById('resultModal').classList.add('hidden');initLevel(currentLevel);}
-function restartAll(){document.getElementById('resultModal').classList.add('hidden');completedLevels.clear();readyForQuiz.clear();initLevel(0);}
+function restartAll(){document.getElementById('resultModal').classList.add('hidden');completedLevels.clear();readyForQuiz.clear();quizPassed.clear();initLevel(0);}
 
 // Lightweight DOM patcher: preserves focused range inputs during panel updates
 function _patchPanel(el,html){
@@ -417,22 +426,22 @@ function renderPanel(){
   else if(currentLevel===4)h+=panelL4();
   else if(currentLevel===5)h+=panelL5();
   else if(currentLevel===6)h+=panelL6();
-  if(readyForQuiz.has(currentLevel)&&!completedLevels.has(currentLevel))h+='<div class="hint-box">目标已完成。请答对弹窗中的通关测验，解锁下一关。</div>';
+  if(readyForQuiz.has(currentLevel)&&!quizPassed.has(currentLevel))h+='<div class="hint-box">目标已完成。请答对弹窗中的通关测验，解锁下一关。</div>';
   h+=`<div class="learn-box">💡 ${lv.learn}</div>`;
   _patchPanel(panelEl,h);
   bbLeft.textContent=`关卡 ${currentLevel+1}: ${lv.name}`;
-  bbRight.textContent=`已完成 ${completedLevels.size}/${levels.length}`;
+  bbRight.textContent=`已完成 ${quizPassed.size}/${levels.length}`;
 }
 
-function canGoLevel(i){return i>=0&&i<levels.length&&(i===0||completedLevels.has(i)||completedLevels.has(i-1));}
+function canGoLevel(i){return i>=0&&i<levels.length&&(i===0||quizPassed.has(i-1));}
 function stageNavHTML(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   for(let i=0;i<levels.length;i++){
     const unlocked=canGoLevel(i);
-    const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    const cls=quizPassed.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
+    h+=unlocked&&i!==currentLevel?`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${cls}"></div>`;
   }
-  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${completedLevels.size}/${levels.length}</div>`;
+  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${quizPassed.size}/${levels.length}</div>`;
   h+='<div class="sn-hint">完成目标后答对通关测验，才解锁下一关</div></div>';
   return h;
 }
@@ -592,7 +601,7 @@ function clickL1(e){
   AudioEngine.play('click');
 }
 function panelL1(){
-  let h=`<button class="act-btn" onclick="">🔦 点击画布发射光子</button>`;
+  let h=`<button class="act-btn" disabled>🔦 点击画布发射光子</button>`;
   h+=`<div class="hint-box">💡 在不同距离点击发射光子，观察光线在黑洞引力场中的行为</div>`;
   return h;
 }
@@ -765,7 +774,7 @@ function panelL4(){
   const labels=['安全距离','中等距离','危险距离'];
   const idx=l4.distance<0.35?2:l4.distance<0.65?1:0;
   let h=`<div class="slider-wrap"><label>距黑洞距离: <span class="sv">${labels[idx]}</span></label>`;
-  h+=`<input type="range" min="0.05" max="1" step="0.01" value="${l4.distance}" oninput="setL4Dist(+this.value)"${l4.escapeMode?' disabled':''}></div>`;
+  h+=`<input type="range" min="0.05" max="1" step="0.01" value="${l4.distance}" oninput="setL4DistInput(this)"${l4.escapeMode?' disabled':''}></div>`;
   if(!l4.escapeMode&&levelState.goals[0]&&levelState.goals[1]&&levelState.goals[2]&&!levelState.goals[3]){
     h+=`<div style="border:2px solid #f59e0b;border-radius:8px;padding:10px;margin:8px 0;background:#1a1a0a">`;
     h+=`<div style="font-size:13px;font-weight:700;color:#f59e0b;margin-bottom:6px">🚀 逃生挑战</div>`;
@@ -787,12 +796,13 @@ function panelL4(){
   return h;
 }
 function setL4Thrust(el){
-  l4.escapeThrust=+el.value;
+  l4.escapeThrust=clampNumber(el.value,0,100,l4.escapeThrust);
   const out=document.getElementById('l4ThrustVal');
   if(out)out.textContent=l4.escapeThrust+'%';
 }
+function setL4DistInput(el){setL4Dist(clampNumber(el.value,0.05,1,l4.distance));}
 function setL4Dist(v){
-  l4.distance=v;
+  l4.distance=clampNumber(v,0.05,1,l4.distance);
   if(v>0.65&&!levelState.goals[0])markGoal(0);
   if(v<0.65&&v>0.35&&!levelState.goals[1])markGoal(1);
   if(v<0.2&&!levelState.goals[2])markGoal(2);
@@ -958,7 +968,7 @@ function panelL6(){
     h+=`<button class="act-btn" onclick="connectWormhole()">🌀 连接虫洞</button>`;
   } else {
     h+=`<div class="slider-wrap"><label>奇异物质注入量: <span class="sv">${l6.exoticMatter.toFixed(0)}%</span></label>`;
-    h+=`<input type="range" min="0" max="100" step="1" value="${l6.exoticMatter}" oninput="setExoticMatter(+this.value)"${l6.shipLaunched||l6.exploding?' disabled':''}></div>`;
+    h+=`<input type="range" min="0" max="100" step="1" value="${l6.exoticMatter}" oninput="setExoticMatterInput(this)"${l6.shipLaunched||l6.exploding?' disabled':''}></div>`;
     // Status indicator
     if(l6.exoticMatter>0){
       if(l6.exoticMatter<lo){
@@ -980,8 +990,10 @@ function panelL6(){
   return h;
 }
 function connectWormhole(){l6.connected=true;markGoal(0);panelDirty=true;renderPanel();AudioEngine.play('click');}
+function setExoticMatterInput(el){setExoticMatter(clampNumber(el.value,0,100,l6.exoticMatter));}
 function setExoticMatter(v){
-  l6.exoticMatter=v;
+  l6.exoticMatter=clampNumber(v,0,100,l6.exoticMatter);
+  v=l6.exoticMatter;
   const lo=WORMHOLE_TARGET*(1-WORMHOLE_TOLERANCE),hi=WORMHOLE_TARGET*(1+WORMHOLE_TOLERANCE);
   if(v>=lo&&v<=hi){
     if(!l6.stable){l6.stable=true;l6.collapsing=false;l6.exploding=false;markGoal(1);}
@@ -997,6 +1009,11 @@ function setExoticMatter(v){
     } else {l6.collapsing=false;}
   }
   panelDirty=true;renderPanel();
+}
+function clampNumber(value,min,max,fallback){
+  const n=Number(value);
+  if(!Number.isFinite(n))return fallback;
+  return Math.min(max,Math.max(min,n));
 }
 function launchShip(){
   if(!l6.stable)return;
@@ -1114,14 +1131,21 @@ function goLevel(i){if(!canGoLevel(i))return;if(typeof currentLevel!=="undefined
     return null;
   }
   function _isDone(i){
+    if(typeof quizPassed!=='undefined')return quizPassed.has(i);
     var o=_getObjs();
     if(o&&o[i])return o[i].every(function(v){return v;});
     if(typeof completedLevels!=='undefined')return completedLevels.has(i);
     return false;
   }
+  function _canGo(i){
+    if(i<0||i>=_getTotal())return false;
+    if(typeof quizPassed!=='undefined')return i===0||quizPassed.has(i-1);
+    return i===0||_isDone(i-1);
+  }
   function _countDone(){
     var o=_getObjs(),d=0,t=0;
-    if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
+    if(typeof quizPassed!=='undefined'){d=quizPassed.size;t=_getTotal();}
+    else if(o){for(var i=0;i<o.length;i++)for(var j=0;j<o[i].length;j++){t++;if(o[i][j])d++;}}
     else if(typeof completedLevels!=='undefined'){d=completedLevels.size;t=_getTotal();}
     return{done:d,total:t};
   }
@@ -1135,8 +1159,9 @@ function goLevel(i){if(!canGoLevel(i))return;if(typeof currentLevel!=="undefined
     var pct=s.total>0?Math.round(s.done/s.total*100):0;
     var h='<div class="stage-nav"><div class="sn-bar">';
     for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+      var unlocked=_canGo(i);
+      var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
+      h+=unlocked&&i!==cur?'<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>':'<div class="sn-d '+cls+'"></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
@@ -1148,6 +1173,7 @@ function goLevel(i){if(!canGoLevel(i))return;if(typeof currentLevel!=="undefined
   // 3. 通关总结
   window._summaryHTML=function(){
     var names=_getNames(),total=names.length;
+    if(typeof quizPassed!=='undefined'&&quizPassed.size<total)return '';
     var s=_countDone();
     var pct=s.total>0?Math.round(s.done/s.total*100):100;
     var h='<div class="summary-box">';

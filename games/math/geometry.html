@@ -142,9 +142,14 @@ function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.st
 window.addEventListener('resize',resize);
 
 function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
-function isUnlocked(n){return n>=0&&n<LI.length&&(n===0||quizPassed.has(n)||quizPassed.has(n-1))}
-function goLevel(n){if(!isUnlocked(n))return;curLevel=n;initLevel(n);levelReady=true;renderBar();renderPanel();draw()}
-function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
+function isUnlocked(n){return n>=0&&n<LI.length&&(n===0||quizPassed.has(n-1))}
+function goLevel(n){if(n<0||n>=LI.length)return;if(!isUnlocked(n))return;curLevel=n;initLevel(n);levelReady=true;renderBar();renderPanel();draw()}
+function completeObj(li,oi){if(li!==curLevel||!levelObjs[li]||levelObjs[li][oi])return;levelObjs[li][oi]=true;renderPanel();renderBar()}
+function clampNumber(value,min,max,fallback){let n=String(value).trim()===''?NaN:Number(value),base=Number.isFinite(Number(fallback))?Number(fallback):min;return Math.max(min,Math.min(max,Number.isFinite(n)?n:base))}
+function clampInteger(value,min,max,fallback){return Math.round(clampNumber(value,min,max,fallback))}
+function setText(id,text){let el=document.getElementById(id);if(el)el.textContent=text}
+function setRangeText(el,text){let v=el&&el.parentElement&&el.parentElement.querySelector('.val');if(v)v.textContent=text}
+function finishRangeEdit(el){if(el)el.blur();renderPanel()}
 
 const LI=[
   {title:'平移变换',sub:'Translation',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>概念：</b>平移 = 每个点沿同一方向移动相同距离</div>画布上有一个<span style="color:#3b82f6">蓝色三角形</span>和一个<span style="color:#22c55e">绿色目标框</span>。拖动三角形使其与目标重合。',objs:['拖动三角形到目标位置','完成3次不同方向的平移','理解平移向量(dx,dy)'],learn:'<b>平移变换</b>将图形上每个点 (x,y) 变为 (x+dx, y+dy)。平移不改变图形的形状和大小，只改变位置。平移向量 (dx,dy) 完全决定了变换。'},
@@ -157,13 +162,13 @@ const LI=[
 ];
 
 const quizData=[
-  {q:'平移变换改变了图形的什么？',opts:['形状','大小','位置','角度'],ans:2},
-  {q:'旋转变换的不变量是什么？',opts:['位置','到旋转中心的距离','面积和周长','B和C都对'],ans:3},
-  {q:'点对称等价于旋转多少度？',opts:['90°','120°','180°','360°'],ans:2},
-  {q:'相似变换保持什么不变？',opts:['边长','面积','角度','周长'],ans:2},
-  {q:'以下哪种正多边形不能单独铺满平面？',opts:['正三角形','正方形','正五边形','正六边形'],ans:2},
-  {q:'正方体的 V−E+F 等于？',opts:['0','1','2','3'],ans:2},
-  {q:'科赫曲线的分形维数约为？',opts:['1.0','1.26','1.5','2.0'],ans:1}
+  {q:'平移变换改变了图形的什么？',opts:['位置','形状','大小','角度'],ans:0},
+  {q:'旋转变换的不变量是什么？',opts:['位置','面积和周长','到旋转中心的距离与面积周长','旋转角度'],ans:2},
+  {q:'点对称等价于旋转多少度？',opts:['360°','180°','90°','120°'],ans:1},
+  {q:'相似变换保持什么不变？',opts:['面积','边长','周长','角度'],ans:3},
+  {q:'以下哪种正多边形不能单独铺满平面？',opts:['正五边形','正三角形','正方形','正六边形'],ans:0},
+  {q:'正方体的 V−E+F 等于？',opts:['1','2','0','3'],ans:1},
+  {q:'科赫曲线的分形维数约为？',opts:['2.0','1.5','1.0','1.26'],ans:3}
 ];
 let quizPassed=new Set(),quizLocked=false;
 
@@ -187,6 +192,7 @@ function checkL1(){
 // ===== Level 2: Rotation =====
 let L2={angle:0,targetAngle:0,completed:0,sides:5};
 function initL2(){L2={angle:0,targetAngle:30+Math.floor(Math.random()*6)*30,completed:0,sides:5}}
+function setRotationAngle(el){L2.angle=clampInteger(el&&el.value,0,360,L2.angle);if(el)el.value=String(L2.angle);setText('rotVal',L2.angle+'°');draw()}
 function checkL2(){
   let diff=Math.abs(((L2.angle-L2.targetAngle)%360+360)%360);
   if(diff<8||diff>352){L2.completed++;
@@ -209,10 +215,12 @@ function doReflect(){
   renderPanel();draw();
 }
 function judgeSymmetry(){L3.judged=true;completeObj(2,2);renderPanel()}
+function setAxisAngle(el){L3.axisAngle=clampInteger(el&&el.value,0,180,L3.axisAngle);if(el)el.value=String(L3.axisAngle);setRangeText(el,L3.axisAngle+'°');draw()}
 
 // ===== Level 4: Scaling =====
 let L4={scale:1,targetScale:2,completed:0};
 function initL4(){L4={scale:1,targetScale:1.5+Math.random(),completed:0}}
+function setScaleValue(el){let pct=clampNumber(el&&el.value,20,300,L4.scale*100);L4.scale=pct/100;if(el)el.value=String(Math.round(pct));setText('scaleVal',L4.scale.toFixed(2));draw()}
 function checkL4(){
   if(Math.abs(L4.scale-L4.targetScale)<0.15){L4.completed++;
     if(L4.completed>=1)completeObj(3,0);
@@ -254,12 +262,22 @@ function verifyEuler(){
 let L7={type:'koch',depth:0,maxDepth:6};
 function initL7(){L7={type:'koch',depth:0,maxDepth:6}}
 function setFracType(t){L7.type=t;L7.depth=0;renderPanel();draw()}
+function applyDepthProgress(){
+  if(L7.type==='koch'&&L7.depth>=3)completeObj(6,0);
+  if(L7.type==='sierpinski'&&L7.depth>=4)completeObj(6,1);
+  if(L7.depth>=3)completeObj(6,2);
+}
 function setDepth(d){
-  L7.depth=d;
-  if(L7.type==='koch'&&d>=3)completeObj(6,0);
-  if(L7.type==='sierpinski'&&d>=4)completeObj(6,1);
-  if(d>=3)completeObj(6,2);
+  L7.depth=clampInteger(d,0,L7.type==='koch'?5:7,L7.depth);
+  applyDepthProgress();
   renderPanel();draw();
+}
+function setDepthInput(el){
+  L7.depth=clampInteger(el&&el.value,0,L7.type==='koch'?5:7,L7.depth);
+  if(el)el.value=String(L7.depth);
+  setRangeText(el,String(L7.depth));
+  applyDepthProgress();
+  draw();
 }
 
 function initLevel(n){
@@ -272,7 +290,7 @@ function renderBar(){barInner.innerHTML='<span style="color:var(--text-muted)">�
 
 function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<7;i++){let cls=quizPassed.has(i)?'done':i===curLevel?'cur':isUnlocked(i)?'':'locked';h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`}
+  for(let i=0;i<7;i++){let unlocked=isUnlocked(i);let cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';h+=`<div class="sn-d ${cls}" ${unlocked&&i!==curLevel?`onclick="goLevel(${i})"`:''}></div>`}
   h+='</div><div class="sn-info">第 '+(curLevel+1)+'/7 关 — '+LI[curLevel].title+'</div>';
   h+='<div class="sn-hint">'+LI[curLevel].sub+' · '+quizPassed.size+'/7 已通关，答对测验才解锁下一关</div></div>';return h;
 }
@@ -285,10 +303,13 @@ function renderQuiz(li){
   h+='</div>';return h;
 }
 function answerQuiz(li,oi){
-  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  li=Number(li);oi=Number(oi);
+  if(!Number.isInteger(li)||!Number.isInteger(oi)||li<0||li>=LI.length)return;
+  if(li!==curLevel||quizLocked||quizPassed.has(li)||!levelObjs[li].every(Boolean))return;quizLocked=true;
   let qd=quizData[li],opts=panel.querySelectorAll('.quiz-opt');
+  if(!qd||oi<0||oi>=qd.opts.length){quizLocked=false;return}
   opts.forEach((el,i)=>el.classList.add(i===qd.ans?'correct':'wrong'));
-  if(oi===qd.ans){quizPassed.add(li);setTimeout(()=>{quizLocked=false;if(curLevel<6)goLevel(curLevel+1);else showResult()},800)}
+  if(oi===qd.ans){quizPassed.add(li);setTimeout(()=>{quizLocked=false;if(li<6)goLevel(li+1);else showResult()},800)}
   else setTimeout(()=>{quizLocked=false;renderPanel()},1000);
 }
 
@@ -303,12 +324,12 @@ function renderPanel(){
   // per-level controls
   switch(curLevel){
     case 0:h+=`<div style="font-size:12px;color:var(--text-muted)">已完成平移: <span style="color:var(--sv)">${L1.completed}/3</span></div><div style="font-size:12px;color:var(--text-muted);margin-top:4px">💡 拖动蓝色三角形到绿色目标位置</div>`;break;
-    case 1:h+=`<div class="slider-row"><label>旋转角度</label><input type="range" min="0" max="360" value="${L2.angle}" oninput="L2.angle=+this.value;document.getElementById('rotVal').textContent=this.value+'°';draw()" onchange="this.blur();checkL2();renderPanel()"><span class="val" id="rotVal">${L2.angle}°</span></div><div style="font-size:12px;color:var(--text-muted)">目标角度: <span style="color:#22c55e">${L2.targetAngle}°</span> | 已完成: <span style="color:var(--sv)">${L2.completed}/3</span></div>`;break;
+    case 1:h+=`<div class="slider-row"><label>旋转角度</label><input type="range" min="0" max="360" value="${L2.angle}" oninput="setRotationAngle(this)" onchange="this.blur();checkL2();finishRangeEdit(this)"><span class="val" id="rotVal">${L2.angle}°</span></div><div style="font-size:12px;color:var(--text-muted)">目标角度: <span style="color:#22c55e">${L2.targetAngle}°</span> | 已完成: <span style="color:var(--sv)">${L2.completed}/3</span></div>`;break;
     case 2:h+=`<div style="margin:6px 0"><button class="act-btn" onclick="L3.mode='axis';renderPanel();draw()" style="${L3.mode==='axis'?'border-color:#6366f1':''}">轴对称</button><button class="act-btn" onclick="L3.mode='point';renderPanel();draw()" style="${L3.mode==='point'?'border-color:#6366f1':''}">点对称</button></div>`;
-      if(L3.mode==='axis')h+=`<div class="slider-row"><label>对称轴角度</label><input type="range" min="0" max="180" value="${L3.axisAngle}" oninput="L3.axisAngle=+this.value;draw()" onchange="this.blur()"><span class="val">${L3.axisAngle}°</span></div>`;
+      if(L3.mode==='axis')h+=`<div class="slider-row"><label>对称轴角度</label><input type="range" min="0" max="180" value="${L3.axisAngle}" oninput="setAxisAngle(this)" onchange="finishRangeEdit(this)"><span class="val">${L3.axisAngle}°</span></div>`;
       h+=`<button class="act-btn green" onclick="doReflect()">执行${L3.mode==='axis'?'轴':'点'}对称变换</button>`;
       if(L3.reflected&&L3.pointDone)h+=`<button class="act-btn" onclick="judgeSymmetry()">判断对称类型 ✓</button>`;break;
-    case 3:h+=`<div class="slider-row"><label>缩放比例</label><input type="range" min="20" max="300" value="${Math.round(L4.scale*100)}" oninput="L4.scale=this.value/100;document.getElementById('scaleVal').textContent=L4.scale.toFixed(2);draw()" onchange="this.blur();checkL4();renderPanel()"><span class="val" id="scaleVal">${L4.scale.toFixed(2)}</span></div><div style="font-size:12px;color:var(--text-muted)">目标比例: <span style="color:#22c55e">${L4.targetScale.toFixed(2)}</span> | 已完成: <span style="color:var(--sv)">${L4.completed}/2</span></div>`;break;
+    case 3:h+=`<div class="slider-row"><label>缩放比例</label><input type="range" min="20" max="300" value="${Math.round(L4.scale*100)}" oninput="setScaleValue(this)" onchange="this.blur();checkL4();finishRangeEdit(this)"><span class="val" id="scaleVal">${L4.scale.toFixed(2)}</span></div><div style="font-size:12px;color:var(--text-muted)">目标比例: <span style="color:#22c55e">${L4.targetScale.toFixed(2)}</span> | 已完成: <span style="color:var(--sv)">${L4.completed}/2</span></div>`;break;
     case 4:h+=`<div style="margin:6px 0"><button class="act-btn" onclick="setPoly(3)" style="${L5.poly===3?'border-color:#6366f1':''}">正三角形</button><button class="act-btn" onclick="setPoly(4)" style="${L5.poly===4?'border-color:#6366f1':''}">正方形</button><button class="act-btn" onclick="setPoly(5)" style="${L5.poly===5?'border-color:#6366f1':''}">正五边形</button><button class="act-btn" onclick="setPoly(6)" style="${L5.poly===6?'border-color:#6366f1':''}">正六边形</button></div>`;
       h+=`<div style="font-size:12px;color:var(--text-muted);margin:6px 0">内角: <span style="color:var(--sv)">${((L5.poly-2)*180/L5.poly).toFixed(0)}°</span> × <span style="color:var(--sv)">${(360/((L5.poly-2)*180/L5.poly)).toFixed(2)}</span> ${(360%((L5.poly-2)*180/L5.poly)===0)?'= 360° ✅':'≠ 360° ❌'}</div>`;
       if([3,4,6].includes(L5.poly))h+=`<button class="act-btn green" onclick="fillTess()">铺满平面</button>`;
@@ -321,7 +342,7 @@ function renderPanel(){
       h+=`<button class="act-btn green" onclick="verifyEuler()">验证 V−E+F=2</button>`;
       if(L6.verified[L6.solid])h+=`<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ ${solids[L6.solid].V}−${solids[L6.solid].E}+${solids[L6.solid].F}=2 正确！</div>`;break;
     case 6:h+=`<div style="margin:6px 0"><button class="act-btn" onclick="setFracType('koch')" style="${L7.type==='koch'?'border-color:#6366f1':''}">科赫雪花</button><button class="act-btn" onclick="setFracType('sierpinski')" style="${L7.type==='sierpinski'?'border-color:#6366f1':''}">谢尔宾斯基三角形</button></div>`;
-      h+=`<div class="slider-row"><label>迭代层数</label><input type="range" min="0" max="${L7.type==='koch'?5:7}" value="${L7.depth}" oninput="setDepth(+this.value)"><span class="val">${L7.depth}</span></div>`;
+      h+=`<div class="slider-row"><label>迭代层数</label><input type="range" min="0" max="${L7.type==='koch'?5:7}" value="${L7.depth}" oninput="setDepthInput(this)" onchange="finishRangeEdit(this)"><span class="val">${L7.depth}</span></div>`;
       h+=`<div style="font-size:12px;color:var(--text-muted);margin:4px 0">💡 增加迭代层数观察自相似结构</div>`;break;
   }
   if(done){h+=renderQuiz(curLevel);
@@ -332,6 +353,7 @@ function renderPanel(){
 }
 
 function showResult(){
+  if(quizPassed.size<LI.length)return;
   panel.style.display='none';bar.style.display='none';
   let ov=document.getElementById('overlay');
   ov.innerHTML='<div style="text-align:center"><div style="font-size:48px;margin-bottom:12px">🎉</div><h1 style="color:#6366f1;font-size:28px;margin-bottom:8px">恭喜通关！</h1><div style="color:var(--text-muted);margin-bottom:16px">你已掌握几何变换的核心概念</div><button class="start-btn" onclick="location.reload()">再玩一次</button></div>';

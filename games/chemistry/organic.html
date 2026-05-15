@@ -60,6 +60,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC'
 #panel .obj.done::before{content:'●';color:#4ade80}
 .act-btn{display:block;width:100%;padding:10px;margin:4px 0;background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.3);border-radius:6px;cursor:pointer;font-size:15px;transition:all .2s;text-align:center}
 .act-btn:hover{background:rgba(34,197,94,0.3)}
+.hint-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:8px;margin-top:8px;font-size:12px;line-height:1.6;color:var(--concept-text)}
 .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;line-height:1.8;color:var(--learn-text)}
 .learn-box b{color:#4ade80}
 .quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
@@ -67,12 +68,14 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC'
 .quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
 .quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{border-color:#22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-opt.wrong{border-color:#ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
 .quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
 .quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 #bar{position:absolute;left:0;bottom:0;width:100%;height:36px;background:var(--bar-bg);border-top:1px solid var(--bar-border);display:none;align-items:center;padding:0 12px;gap:8px;z-index:10}
 #bar .prog{margin-left:auto;font-size:12px;color:var(--text-muted)}
-canvas{position:absolute;left:320px;top:0;background:var(--bg)}
+canvas{position:absolute;left:320px;top:0;background:var(--bg);touch-action:none}
 .desc{font-size:12px;color:var(--text-muted);line-height:1.6;margin:8px 0}
 .sub{font-size:13px;color:var(--sub-color);margin:6px 0 4px;font-weight:600}
 input[type=range].ctl{width:100%;accent-color:#22c55e;margin:4px 0}
@@ -121,9 +124,9 @@ input[type=range].ctl{width:100%;accent-color:#22c55e;margin:4px 0}
 </div>
 <script>
 let isDark=true;
-function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel();}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel();draw();}
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay'),wrap=document.getElementById('wrap');
-let W,H,curLevel=0,time=0,unlocked=[true,false,false,false,false,false,false];
+let W,H,curLevel=0,time=0,animating=false,unlocked=[true,false,false,false,false,false,false];
 let levelObjs=[[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false]];
 let mouseX=0,mouseY=0,dragging=null;
 
@@ -131,24 +134,25 @@ let mouseX=0,mouseY=0,dragging=null;
 const LEVEL_NAMES=['碳的四键','烷烃命名','官能团识别','同分异构体','苯环与芳香性','聚合反应','有机反应机理'];
 const LEVEL_ICONS=['⬡','🔤','🎯','🔀','⭕','🔗','⚗️'];
 const quizData=[
-  {q:'碳原子能成为有机化学骨架的关键原因是什么？',opts:['通常可形成 4 个共价键','只能形成 1 个离子键','不能与其他碳原子成键'],ans:0,ok:'对。碳的四价和 C-C 成键能力让它能搭建稳定而多样的分子骨架。',bad:'关键是碳的四价共价成键能力，以及它能与碳、氢、氧、氮等形成稳定键。'},
-  {q:'直链烷烃的通式是什么？',opts:['CₙH₂ₙ₊₂','CₙH₂ₙ','CₙHₙ'],ans:0,ok:'对。饱和链状烷烃只有单键，通式为 CₙH₂ₙ₊₂。',bad:'烯烃常见通式才是 CₙH₂ₙ，烷烃是 CₙH₂ₙ₊₂。'},
-  {q:'官能团在有机分子中主要决定什么？',opts:['典型化学性质','原子核种类','所有分子的颜色'],ans:0,ok:'对。官能团决定醇、羧酸、胺、醛、酮、酯等类别的典型反应性。',bad:'官能团不是装饰，它是判断有机物性质和反应类型的核心线索。'},
-  {q:'同分异构体的定义是什么？',opts:['分子式相同但结构不同','结构完全相同但名字不同','元素种类不同但质量相同'],ans:0,ok:'对。同一分子式可以对应直链、支链或不同官能团结构。',bad:'同分异构强调“同分子式、不同结构”，不是简单改名。'},
-  {q:'苯环特殊稳定性的来源是什么？',opts:['6 个 π 电子离域形成芳香性','6 个 C-C 键都完全断裂','苯环中没有电子'],ans:0,ok:'对。苯的 π 电子离域让 6 个 C-C 键等价并获得芳香稳定性。',bad:'苯不是普通单双键静态交替，关键是离域 π 电子云。'},
-  {q:'聚合反应的本质是什么？',opts:['小分子单体连接成长链高分子','大分子只分解成气体','原子核发生裂变'],ans:0,ok:'对。加聚或缩聚会把许多单体连接为聚合物。',bad:'聚合关注化学键连接形成高分子，不涉及原子核变化。'},
-  {q:'反应机理主要解释什么？',opts:['键如何断裂、形成以及中间体如何变化','只解释产物的颜色','只记录烧杯大小'],ans:0,ok:'对。机理把宏观反应拆成自由基、加成、消除等微观步骤。',bad:'机理的价值在于解释每一步电子和化学键的变化。'}
+  {q:'碳原子能成为有机化学骨架的关键原因是什么？',opts:['通常可形成 4 个共价键','只能形成 1 个离子键','不能与其他碳原子成键'],ans:0,ok:'对。碳的四价和 C-C 成键能力让它能搭建稳定而多样的分子骨架。',bad:'关键是碳的四价共价成键能力，以及它能与碳、氢、氧、氮等形成稳定键。',why:'碳有 4 个价电子，能形成 4 个方向性的共价键，还能与其他碳相连形成链、环和支链。'},
+  {q:'直链烷烃的通式是什么？',opts:['CₙH₂ₙ','CₙH₂ₙ₊₂','CₙHₙ'],ans:1,ok:'对。饱和链状烷烃只有单键，通式为 CₙH₂ₙ₊₂。',bad:'烯烃常见通式才是 CₙH₂ₙ，烷烃是 CₙH₂ₙ₊₂。',why:'直链烷烃是开链饱和烃，碳碳之间全是单键；两端碳各多一个氢，所以氢数是 2n+2。'},
+  {q:'官能团在有机分子中主要决定什么？',opts:['原子核种类','所有分子的颜色','典型化学性质'],ans:2,ok:'对。官能团决定醇、羧酸、胺、醛、酮、酯等类别的典型反应性。',bad:'官能团不是装饰，它是判断有机物性质和反应类型的核心线索。',why:'有机分子的碳骨架常负责形状，官能团提供高反应性的键或原子组合，因此决定典型性质。'},
+  {q:'同分异构体的定义是什么？',opts:['结构完全相同但名字不同','分子式相同但结构不同','元素种类不同但质量相同'],ans:1,ok:'对。同一分子式可以对应直链、支链或不同官能团结构。',bad:'同分异构强调“同分子式、不同结构”，不是简单改名。',why:'同分异构体原子种类和数量相同，但连接顺序或空间安排不同，所以性质可能明显不同。'},
+  {q:'苯环特殊稳定性的来源是什么？',opts:['6 个 C-C 键都完全断裂','苯环中没有电子','6 个 π 电子离域形成芳香性'],ans:2,ok:'对。苯的 π 电子离域让 6 个 C-C 键等价并获得芳香稳定性。',bad:'苯不是普通单双键静态交替，关键是离域 π 电子云。',why:'苯环中 6 个 p 电子在整个环上离域，满足 4n+2 芳香性规则，使体系能量降低。'},
+  {q:'聚合反应的本质是什么？',opts:['大分子只分解成气体','小分子单体连接成长链高分子','原子核发生裂变'],ans:1,ok:'对。加聚或缩聚会把许多单体连接为聚合物。',bad:'聚合关注化学键连接形成高分子，不涉及原子核变化。',why:'聚合反应把重复单体通过新化学键接成长链，聚合度越高，越表现出高分子材料性质。'},
+  {q:'反应机理主要解释什么？',opts:['只解释产物的颜色','只记录烧杯大小','键如何断裂、形成以及中间体如何变化'],ans:2,ok:'对。机理把宏观反应拆成自由基、加成、消除等微观步骤。',bad:'机理的价值在于解释每一步电子和化学键的变化。',why:'反应机理关注电子如何移动、哪些键断裂或形成、过渡态和中间体如何引导最终产物。'}
 ];
 let quizPassed=new Set(),quizFeedback={};
 
 // Level 0: Carbon bonds - drag atoms to form bonds
-let l0atoms=[],l0bonds=[],l0bondCount=0;
+let l0atoms=[],l0bonds=[],l0bondCount=0,l0shapeConfirmed=false;
 // Level 1: Alkane naming
 let l1chain=1,l1answer='',l1correct=false;
 const ALKANE_NAMES=['甲烷','乙烷','丙烷','丁烷','戊烷','己烷','庚烷','辛烷','壬烷','癸烷'];
 const ALKANE_FORMULAS=['CH₄','C₂H₆','C₃H₈','C₄H₁₀','C₅H₁₂','C₆H₁₄','C₇H₁₆','C₈H₁₈','C₉H₂₀','C₁₀H₂₂'];
 // Level 2: Functional groups
 let l2group=0,l2identified=new Set();
+let l2oxygenConfirmed=false,l2propertyConfirmed=false;
 const FUNC_GROUPS=[
   {name:'羟基 -OH',type:'醇',formula:'R-OH',color:'#3b82f6',desc:'氧原子连接氢原子和碳链，是醇类的标志'},
   {name:'羧基 -COOH',type:'羧酸',formula:'R-COOH',color:'#ef4444',desc:'碳原子双键连氧、单键连羟基，具有酸性'},
@@ -158,23 +162,27 @@ const FUNC_GROUPS=[
   {name:'酯基 -COO-',type:'酯',formula:'R-COO-R\'',color:'#14b8a6',desc:'羧酸与醇脱水缩合的产物'}
 ];
 // Level 3: Isomers
-let l3formula=0,l3found=new Set();
+let l3formula=null,l3variant=null,l3found=[];
 const ISOMER_DATA=[
   {formula:'C₄H₁₀',name:'丁烷',isomers:['正丁烷 (直链)','异丁烷 (支链)']},
   {formula:'C₅H₁₂',name:'戊烷',isomers:['正戊烷','异戊烷','新戊烷']},
   {formula:'C₃H₆O',name:'丙酮/丙醛',isomers:['丙酮 (酮)','丙醛 (醛)','烯丙醇 (醇)']}
 ];
+function resetL3Found(){
+  l3found=ISOMER_DATA.map(()=>new Set());
+}
+resetL3Found();
 // Level 4: Benzene
-let l4mode=0,l4kekuleCycle=0;
+let l4mode=null,l4kekuleCycle=0,l4viewed=new Set();
 // Level 5: Polymerization
-let l5monomer=0,l5chainLen=1;
+let l5monomer=0,l5chainLen=1,l5polymerChainConfirmed=false;
 const POLYMERS=[
   {monomer:'乙烯 CH₂=CH₂',polymer:'聚乙烯 (PE)',type:'加聚',use:'塑料袋、薄膜'},
   {monomer:'氯乙烯 CH₂=CHCl',polymer:'聚氯乙烯 (PVC)',type:'加聚',use:'管材、电线皮'},
   {monomer:'苯乙烯 C₆H₅CH=CH₂',polymer:'聚苯乙烯 (PS)',type:'加聚',use:'泡沫、餐具'}
 ];
 // Level 6: Reaction mechanisms
-let l6rxn=0,l6step=0;
+let l6rxn=0,l6step=0,l6visitedSteps=[],l6mechanismConfirmed=[];
 const REACTIONS=[
   {name:'取代反应',desc:'甲烷与氯气在光照下发生取代',steps:['Cl₂ 光解产生 Cl·','Cl· 攻击 CH₄ 夺取 H','CH₃· + Cl₂ → CH₃Cl + Cl·','链终止: 自由基结合']},
   {name:'加成反应',desc:'乙烯与溴的加成',steps:['Br₂ 靠近 C=C 双键','π 键断裂，Br⁺ 进攻','碳正离子中间体形成','Br⁻ 从背面进攻，产物生成']},
@@ -184,22 +192,70 @@ const REACTIONS=[
 function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';}
 window.addEventListener('resize',()=>{resize();draw();});
 
-function startGame(){overlay.style.display='none';wrap.style.display='block';panel.style.display='block';bar.style.display='flex';resize();goLevel(0);animate();}
+function resetProgress(){
+  curLevel=0;dragging=null;
+  unlocked=[true,false,false,false,false,false,false];
+  levelObjs=Array.from({length:LEVEL_NAMES.length},()=>[false,false,false]);
+  quizPassed.clear();quizFeedback={};
+  l1viewed.clear();l2identified.clear();resetL3Found();l5viewed.clear();
+}
 
-function goLevel(n){if(n<0||n>6||!isUnlocked(n))return;curLevel=n;unlocked[n]=true;dragging=null;initLevel(n);renderPanel();draw();}
+function startGame(){
+  resetProgress();
+  overlay.style.display='none';wrap.style.display='block';panel.style.display='block';bar.style.display='flex';
+  resize();goLevel(0);
+  if(!animating){animating=true;animate();}
+}
 
-function checkObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();}}
-function isUnlocked(n){return n===0||quizPassed.has(n-1)}
+function restartFromSummary(){
+  resetProgress();
+  overlay.style.display='none';wrap.style.display='block';panel.style.display='block';bar.style.display='flex';
+  resize();goLevel(0);
+  return true;
+}
+
+function toIndex(v,max){
+  const n=Number(v);
+  return Number.isInteger(n)&&n>=0&&n<max?n:null;
+}
+function clampNumber(value,fallback,min,max){
+  const n=Number(value),fb=Number(fallback);
+  const base=Number.isFinite(n)?n:(Number.isFinite(fb)?fb:min);
+  return Math.min(max,Math.max(min,base));
+}
+function setInputValue(input,value){
+  if(input&&input.value!==undefined)input.value=String(value);
+}
+
+function goLevel(n){
+  const idx=toIndex(n,LEVEL_NAMES.length);
+  if(idx===null||!isUnlocked(idx))return;
+  curLevel=idx;
+  if(!quizPassed.has(idx))delete quizFeedback[idx];
+  unlocked[idx]=true;dragging=null;initLevel(idx);renderPanel();draw();
+}
+
+function checkObj(li,oi,silent=false){
+  const level=toIndex(li,LEVEL_NAMES.length),obj=toIndex(oi,3);
+  if(level===null||obj===null||level!==curLevel||!levelObjs[level]||levelObjs[level][obj])return false;
+  levelObjs[level][obj]=true;
+  if(!silent)renderPanel();
+  return true;
+}
+function isUnlocked(n){
+  const idx=toIndex(n,LEVEL_NAMES.length);
+  return idx!==null&&(idx===0||quizPassed.has(idx-1));
+}
 
 function initLevel(n){
   switch(n){
     case 0: initL0();break;
-    case 1: l1chain=1;l1answer='';l1correct=false;break;
-    case 2: l2group=0;break;
-    case 3: l3formula=0;l3found.clear();break;
-    case 4: l4mode=0;l4kekuleCycle=0;break;
-    case 5: l5monomer=0;l5chainLen=1;break;
-    case 6: l6rxn=0;l6step=0;break;
+    case 1: l1chain=1;l1answer='';l1correct=false;l1viewed.clear();break;
+    case 2: l2group=0;l2identified.clear();l2oxygenConfirmed=false;l2propertyConfirmed=false;break;
+    case 3: l3formula=null;l3variant=null;resetL3Found();break;
+    case 4: l4mode=null;l4kekuleCycle=0;l4ruleConfirmed=false;l4viewed.clear();break;
+    case 5: l5monomer=0;l5chainLen=1;l5polymerChainConfirmed=false;l5viewed.clear();break;
+    case 6: initL6();break;
   }
 }
 
@@ -207,7 +263,7 @@ function initLevel(n){
 function initL0(){
   const cx=W/2,cy=H/2;
   l0atoms=[{x:cx,y:cy,el:'C',color:'#333',r:28}];
-  l0bonds=[];l0bondCount=0;
+  l0bonds=[];l0bondCount=0;l0shapeConfirmed=false;
   const angles=[0,Math.PI/2,Math.PI,Math.PI*1.5];
   for(let i=0;i<4;i++){
     l0atoms.push({x:cx+120*Math.cos(angles[i]),y:cy+120*Math.sin(angles[i]),el:'H',color:'#3b82f6',r:20});
@@ -218,31 +274,42 @@ function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   LEVEL_NAMES.forEach((_,i)=>{
     const unlocked=isUnlocked(i),cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
-    const click=unlocked?`goLevel(${i})`:'';
-    h+=`<div class="sn-d ${cls}" onclick="${click}" title="${unlocked?LEVEL_NAMES[i]:'答对上一关测验后解锁'}"></div>`;
+    const click=unlocked&&i!==curLevel?` onclick="goLevel(${i})"`:'';
+    h+=`<div class="sn-d ${cls}"${click} title="${unlocked?LEVEL_NAMES[i]:'答对上一关测验后解锁'}"></div>`;
   });
   h+=`</div><div class="sn-info">${LEVEL_ICONS[curLevel]} ${curLevel+1}/${LEVEL_NAMES.length} ${LEVEL_NAMES[curLevel]}</div><div class="sn-hint">${quizPassed.size}/${LEVEL_NAMES.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
   return h;
 }
 
 function quizHTML(li){
-  const q=quizData[li],fb=quizFeedback[li];
+  const q=quizData[li],fb=quizFeedback[li],passed=quizPassed.has(li);
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
   h+=`<div class="quiz-q">${q.q}</div>`;
-  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`;});
+  q.opts.forEach((opt,i)=>{
+    const mark=passed&&i===q.ans?' correct':fb&&i===q.ans?' correct':fb&&i===fb.choice&&!fb.ok?' wrong':'';
+    h+=`<button class="quiz-opt${mark}" onclick="answerQuiz(${li},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;
+  });
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  else if(passed)h+=`<div class="quiz-feedback ok">已通过小测。${q.why||q.ok}</div>`;
   h+='</div>';
   return h;
 }
 function answerQuiz(li,choice){
-  if(li!==curLevel||quizPassed.has(li))return;
-  const q=quizData[li],ok=choice===q.ans;
-  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  li=Number(li);choice=Number(choice);
+  if(!Number.isInteger(li)||!Number.isInteger(choice))return false;
+  if(li<0||li>=LEVEL_NAMES.length)return false;
+  if(li!==curLevel||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(Boolean))return false;
+  const q=quizData[li];
+  if(!q||!Number.isInteger(choice)||choice<0||choice>=q.opts.length)return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  const ok=choice===q.ans;
+  quizFeedback[li]={ok,choice,text:(ok?q.ok:q.bad)+(q.why?' '+q.why:'')};
   if(ok){
     quizPassed.add(li);
     if(li<6)unlocked[li+1]=true;
   }
   renderPanel();
+  return ok;
 }
 window.answerQuiz=answerQuiz;
 
@@ -252,14 +319,17 @@ function renderPanel(){
     case 0:h+=renderP0();break;case 1:h+=renderP1();break;case 2:h+=renderP2();break;
     case 3:h+=renderP3();break;case 4:h+=renderP4();break;case 5:h+=renderP5();break;case 6:h+=renderP6();break;
   }
-  if(levelObjs[curLevel].every(v=>v)){
-    if(!quizPassed.has(curLevel))h+=quizHTML(curLevel);
+  const levelPassed=quizPassed.has(curLevel);
+  const goalsDone=levelPassed||levelObjs[curLevel].every(v=>v);
+  if(levelPassed)h=h.replace(/class="obj\s*"/g,'class="obj done"');
+  if(goalsDone){
+    h+=quizHTML(curLevel);
     if(quizPassed.has(curLevel)&&curLevel<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
     if(quizPassed.has(curLevel)&&curLevel===6)h+=summaryHTML();
   }
   panel.innerHTML=h;
-  const done=levelObjs[curLevel].filter(Boolean).length;
-  const status=quizPassed.has(curLevel)?'已通关':levelObjs[curLevel].every(Boolean)?'待测验':'进行中';
+  const done=levelPassed?3:levelObjs[curLevel].filter(Boolean).length;
+  const status=levelPassed?'已通关':levelObjs[curLevel].every(Boolean)?'待测验':'进行中';
   bar.innerHTML=`<span style="color:var(--text-muted)">🧪 ${LEVEL_NAMES[curLevel]}</span><span class="prog">目标 ${done}/3 · ${status} · 通关 ${quizPassed.size}/${LEVEL_NAMES.length}</span>`;
 }
 
@@ -271,8 +341,38 @@ function renderP0(){
   h+=`<div class="obj ${levelObjs[0][1]?'done':''}">完成全部4个C-H键</div>`;
   h+=`<div class="obj ${levelObjs[0][2]?'done':''}">观察正四面体构型</div>`;
   h+=`<p class="sub">已形成 ${l0bondCount}/4 个键</p>`;
-  if(l0bondCount>=4)h+=`<div class="learn-box"><b>甲烷 CH₄</b><br>碳的4个键指向正四面体的4个顶点，键角约109.5°。这种空间构型使分子最稳定。<br><br>碳还可以形成双键(C=C)和三键(C≡C)，这是有机化学丰富多样的根源。</div>`;
+  if(l0bondCount<4)h+=`<button class="act-btn" onclick="connectNextCarbonHydrogen()">连接下一个 C-H 键</button>`;
+  if(l0bondCount>=4){
+    h+=`<div class="learn-box"><b>甲烷 CH₄</b><br>碳的4个键指向正四面体的4个顶点，键角约109.5°。这种空间构型使分子最稳定。<br><br>碳还可以形成双键(C=C)和三键(C≡C)，这是有机化学丰富多样的根源。</div>`;
+    h+=`<button class="act-btn" onclick="confirmTetrahedral()">${l0shapeConfirmed?'已确认':'确认'}：4 个 C-H 键指向正四面体顶点</button>`;
+  }
   return h;
+}
+function bondHydrogenToCarbon(atomIndex){
+  const idx=toIndex(atomIndex,l0atoms.length);
+  if(curLevel!==0||idx===null||idx===0||l0bonds.some(b=>b[1]===idx))return false;
+  const c=l0atoms[0],a=l0atoms[idx];
+  const existing=l0bonds.filter(b=>b[0]===0||b[1]===0).length;
+  const angle=-Math.PI/2+existing*(2*Math.PI/4)+Math.PI/6;
+  a.x=c.x+55*Math.cos(angle);a.y=c.y+55*Math.sin(angle);
+  l0bonds.push([0,idx]);
+  l0bondCount=l0bonds.length;
+  if(l0bondCount>=2)checkObj(0,0,true);
+  if(l0bondCount>=4)checkObj(0,1,true);
+  renderPanel();draw();
+  return true;
+}
+function connectNextCarbonHydrogen(){
+  if(curLevel!==0)return false;
+  const next=l0atoms.findIndex((_,i)=>i>0&&!l0bonds.some(b=>b[1]===i));
+  return next>0?bondHydrogenToCarbon(next):false;
+}
+function confirmTetrahedral(){
+  if(curLevel!==0||l0bondCount<4)return false;
+  l0shapeConfirmed=true;
+  checkObj(0,2,true);
+  renderPanel();draw();
+  return true;
 }
 
 function renderP1(){
@@ -280,15 +380,50 @@ function renderP1(){
   h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>烷烃通式 CₙH₂ₙ₊₂，命名按碳数：甲乙丙丁戊己庚辛壬癸</div>`;
   h+=`<p class="desc">画布上显示一条碳链，拖动滑块改变碳原子数量，观察分子结构变化并学习命名规则。</p>`;
   h+=`<div class="obj ${levelObjs[1][0]?'done':''}">查看3种以上烷烃</div>`;
-  h+=`<div class="obj ${levelObjs[1][1]?'done':''}">找到丁烷(4碳)</div>`;
-  h+=`<div class="obj ${levelObjs[1][2]?'done':''}">找到癸烷(10碳)</div>`;
-  h+=`<p class="sub">碳链长度: ${l1chain}</p>`;
-  h+=`<input type="range" class="ctl" min="1" max="10" value="${l1chain}" oninput="setChain(+this.value)">`;
-  h+=`<div class="learn-box"><b>${ALKANE_NAMES[l1chain-1]}</b> ${ALKANE_FORMULAS[l1chain-1]}<br>碳数: ${l1chain}，氢数: ${l1chain*2+2}<br>分子量: ${12*l1chain+l1chain*2+2}</div>`;
+  h+=`<div class="obj ${levelObjs[1][1]?'done':''}">确认丁烷是4碳烷烃</div>`;
+  h+=`<div class="obj ${levelObjs[1][2]?'done':''}">确认癸烷是10碳烷烃</div>`;
+  h+=`<p class="sub">已记录 ${l1viewed.size}/3 种烷烃，拖动滑块后才计入观察</p>`;
+  h+=`<p class="sub">碳链长度: <span id="chainVal">${l1chain}</span></p>`;
+  h+=`<input type="range" class="ctl" min="1" max="10" value="${l1chain}" oninput="setChainInput(this)" onchange="this.blur();renderPanel()">`;
+  h+=`<div class="learn-box" id="chainInfo">${chainInfoHTML()}</div>`;
   return h;
 }
 let l1viewed=new Set();
-function setChain(n){l1chain=n;l1viewed.add(n);if(l1viewed.size>=3)checkObj(1,0);if(n===4)checkObj(1,1);if(n===10)checkObj(1,2);renderPanel();draw();}
+function chainInfoHTML(){
+  const name=ALKANE_NAMES[l1chain-1],prefix=name.replace('烷','');
+  let h=`<b>${name}</b> ${ALKANE_FORMULAS[l1chain-1]}<br>碳数: ${l1chain}，氢数: ${l1chain*2+2}<br>分子量: ${12*l1chain+l1chain*2+2}<br>命名线索：${l1chain} 碳对应“${prefix}”，饱和单键结尾为“烷”。`;
+  if(l1chain===4&&!levelObjs[1][1])h+=`<br><button class="act-btn" onclick="confirmAlkaneName(4)">确认：4 碳直链叫丁烷</button>`;
+  else if(l1chain===10&&!levelObjs[1][2])h+=`<br><button class="act-btn" onclick="confirmAlkaneName(10)">确认：10 碳直链叫癸烷</button>`;
+  else if(!levelObjs[1][1]||!levelObjs[1][2])h+=`<br><span class="desc">把滑块调到 4 或 10，再确认碳数与名称前缀的对应关系。</span>`;
+  return h;
+}
+function updateChainPanel(){
+  const val=document.getElementById('chainVal'),info=document.getElementById('chainInfo');
+  if(val)val.textContent=l1chain;
+  if(info)info.innerHTML=chainInfoHTML();
+}
+function setChain(n){
+  l1chain=Math.round(clampNumber(n,l1chain,1,10));l1viewed.add(l1chain);
+  let changed=false;
+  if(l1viewed.size>=3)changed=checkObj(1,0,true)||changed;
+  if(changed)renderPanel();
+  updateChainPanel();draw();
+}
+function confirmAlkaneName(carbonCount){
+  carbonCount=Number(carbonCount);
+  if(curLevel!==1||l1chain!==carbonCount)return false;
+  if(carbonCount===4)checkObj(1,1,true);
+  else if(carbonCount===10)checkObj(1,2,true);
+  else return false;
+  renderPanel();draw();
+  return true;
+}
+function setChainInput(input){
+  const v=Math.round(clampNumber(input&&input.value!==undefined?input.value:input,l1chain,1,10));
+  setInputValue(input,v);
+  setChain(v);
+  return true;
+}
 
 function renderP2(){
   let h=`<h3>官能团识别</h3>`;
@@ -296,21 +431,56 @@ function renderP2(){
   h+=`<p class="desc">画布上展示不同的官能团结构。点击按钮切换查看，识别每种官能团的特征。</p>`;
   h+=`<div class="obj ${levelObjs[2][0]?'done':''}">查看至少3种官能团</div>`;
   h+=`<div class="obj ${levelObjs[2][1]?'done':''}">识别含氧官能团</div>`;
-  h+=`<div class="obj ${levelObjs[2][2]?'done':''}">查看全部6种官能团</div>`;
+  h+=`<div class="obj ${levelObjs[2][2]?'done':''}">确认官能团决定典型性质</div>`;
+  const oxygenGroups=[0,1,3,4,5].filter(j=>l2identified.has(j)).length;
+  h+=`<p class="sub">已记录 ${l2identified.size}/${FUNC_GROUPS.length} 种官能团 | 含氧线索 ${oxygenGroups}/2 ${l2oxygenConfirmed?'✓':''}</p>`;
   for(let i=0;i<FUNC_GROUPS.length;i++){
     const g=FUNC_GROUPS[i],sel=i===l2group?'background:rgba(34,197,94,0.3);':'';
-    h+=`<button class="act-btn" style="${sel}" onclick="setGroup(${i})">${g.name} (${g.type})</button>`;
+    h+=`<button class="act-btn" style="${sel}" onclick="setGroup(${i})">${g.name}</button>`;
   }
   const g=FUNC_GROUPS[l2group];
   h+=`<div class="learn-box"><b style="color:${g.color}">${g.name}</b><br>类型: ${g.type}<br>通式: ${g.formula}<br>${g.desc}</div>`;
+  if(!l2oxygenConfirmed)h+=`<button class="act-btn" onclick="confirmOxygenGroups()" ${oxygenGroups<2?'disabled':''}>确认：含氧官能团都含 O 原子</button>`;
+  else h+=`<div class="hint-box">✅ 已确认含氧官能团的共同线索：结构式里出现 O，并通过 C-O、C=O 或 -COO- 改变分子反应性。</div>`;
+  if(l2identified.size>=FUNC_GROUPS.length&&!l2oxygenConfirmed&&!levelObjs[2][2]){
+    h+=`<div class="hint-box">已经看完 6 种官能团。先确认含氧线索，再总结官能团如何决定典型性质。</div>`;
+  }else if(l2identified.size>=FUNC_GROUPS.length&&!levelObjs[2][2]){
+    h+=`<button class="act-btn" onclick="confirmFunctionalProperty()">确认：不同官能团对应不同反应性质</button>`;
+  }else if(levelObjs[2][2]){
+    h+=`<div class="learn-box"><b>性质线索</b><br>羟基常让分子能形成氢键；羧基带酸性；氨基偏碱性；醛基易被氧化；酮基、酯基则有各自的羰基反应特征。</div>`;
+  }
   return h;
 }
-function setGroup(i){l2group=i;l2identified.add(i);if(l2identified.size>=3)checkObj(2,0);if([0,1,3,4,5].some(j=>l2identified.has(j))&&l2identified.size>=2)checkObj(2,1);if(l2identified.size>=6)checkObj(2,2);renderPanel();draw();}
+function setGroup(i){
+  const idx=toIndex(i,FUNC_GROUPS.length);
+  if(idx===null)return;
+  l2group=idx;l2identified.add(idx);
+  const oxygenGroups=[0,1,3,4,5].filter(j=>l2identified.has(j)).length;
+  if(l2identified.size>=3)checkObj(2,0,true);
+  if(l2oxygenConfirmed&&oxygenGroups>=2)checkObj(2,1,true);
+  renderPanel();draw();
+}
+function confirmOxygenGroups(){
+  if(curLevel!==2)return false;
+  const oxygenGroups=[0,1,3,4,5].filter(j=>l2identified.has(j)).length;
+  if(oxygenGroups<2)return false;
+  l2oxygenConfirmed=true;
+  checkObj(2,1,true);
+  renderPanel();draw();
+  return true;
+}
+function confirmFunctionalProperty(){
+  if(curLevel!==2||l2identified.size<FUNC_GROUPS.length||!l2oxygenConfirmed)return false;
+  l2propertyConfirmed=true;
+  checkObj(2,2,true);
+  renderPanel();draw();
+  return true;
+}
 
 function renderP3(){
   let h=`<h3>同分异构体</h3>`;
   h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>分子式相同但结构不同的化合物互为同分异构体</div>`;
-  h+=`<p class="desc">画布上展示同一分子式的不同结构。点击按钮切换分子式，观察各种异构体。</p>`;
+  h+=`<p class="desc">先选分子式，再逐个点开异构体名称；只有比较完同一分子式下的结构差异，目标才会完成。</p>`;
   h+=`<div class="obj ${levelObjs[3][0]?'done':''}">查看丁烷的异构体</div>`;
   h+=`<div class="obj ${levelObjs[3][1]?'done':''}">查看戊烷的异构体</div>`;
   h+=`<div class="obj ${levelObjs[3][2]?'done':''}">发现官能团异构</div>`;
@@ -318,13 +488,52 @@ function renderP3(){
     const d=ISOMER_DATA[i],sel=i===l3formula?'background:rgba(34,197,94,0.3);':'';
     h+=`<button class="act-btn" style="${sel}" onclick="setIsomer(${i})">${d.formula} (${d.name})</button>`;
   }
-  const d=ISOMER_DATA[l3formula];
-  h+=`<div class="learn-box"><b>${d.formula} 的异构体</b><br>`;
-  d.isomers.forEach((iso,i)=>{h+=`${i+1}. ${iso}<br>`;});
-  h+=`</div>`;
+  if(l3formula===null){
+    h+=`<p class="desc">先选择一个分子式，比较同一分子式下不同碳骨架或官能团连接方式。</p>`;
+  }else{
+    const d=ISOMER_DATA[l3formula];
+    const seen=l3found[l3formula]||new Set();
+    h+=`<p class="sub">异构体观察 ${seen.size}/${d.isomers.length}</p>`;
+    h+=`<div class="learn-box"><b>${d.formula} 的异构体</b><br>`;
+    d.isomers.forEach((iso,i)=>{
+      const done=seen.has(i),sel=i===l3variant?'background:rgba(34,197,94,0.3);':'';
+      h+=`<button class="act-btn" style="${sel}" onclick="inspectIsomer(${l3formula},${i})">${done?'✓':'○'} ${i+1}. ${iso}</button>`;
+    });
+    if(l3variant!==null){
+      h+=`<span>${isomerCompareText(l3formula,l3variant)}</span>`;
+    }else{
+      h+=`<span>选择一个异构体，观察它和同分子式下其他结构的连接方式有什么不同。</span>`;
+    }
+    h+=`</div>`;
+  }
   return h;
 }
-function setIsomer(i){l3formula=i;l3found.add(i);if(l3found.has(0))checkObj(3,0);if(l3found.has(1))checkObj(3,1);if(l3found.has(2))checkObj(3,2);renderPanel();draw();}
+function setIsomer(i){
+  const idx=toIndex(i,ISOMER_DATA.length);
+  if(idx===null)return;
+  l3formula=idx;l3variant=null;renderPanel();draw();
+}
+function isomerCompareText(formulaIdx,variantIdx){
+  const notes=[
+    ['正丁烷是连续 4 碳直链；异丁烷把同样的 C₄H₁₀ 改成 3 碳主链加 1 个支链。', '异丁烷仍是 C₄H₁₀，但碳骨架出现支化，所以沸点等物性会改变。'],
+    ['正戊烷是 5 碳直链，是比较支链异构的基准。', '异戊烷有一个甲基支链，分子式不变但碳骨架变短并支化。', '新戊烷支化最强，同样 C₅H₁₂ 却更紧凑，体现结构决定性质。'],
+    ['丙酮含酮基 >C=O，羰基位于中间碳。', '丙醛含醛基 -CHO，羰基在链端，和丙酮是官能团异构。', '烯丙醇含羟基和 C=C，分子式仍为 C₃H₆O，但官能团组合完全不同。']
+  ];
+  return notes[formulaIdx][variantIdx];
+}
+function inspectIsomer(formulaIdx,variantIdx){
+  const fi=toIndex(formulaIdx,ISOMER_DATA.length);
+  if(fi===null)return;
+  const vi=toIndex(variantIdx,ISOMER_DATA[fi].isomers.length);
+  if(vi===null)return;
+  l3formula=fi;l3variant=vi;
+  if(!l3found[fi])l3found[fi]=new Set();
+  l3found[fi].add(vi);
+  if(l3found[0]&&l3found[0].size>=ISOMER_DATA[0].isomers.length)checkObj(3,0,true);
+  if(l3found[1]&&l3found[1].size>=ISOMER_DATA[1].isomers.length)checkObj(3,1,true);
+  if(l3found[2]&&l3found[2].size>=ISOMER_DATA[2].isomers.length)checkObj(3,2,true);
+  renderPanel();draw();
+}
 
 function renderP4(){
   let h=`<h3>苯环与芳香性</h3>`;
@@ -338,12 +547,31 @@ function renderP4(){
     const sel=i===l4mode?'background:rgba(34,197,94,0.3);':'';
     h+=`<button class="act-btn" style="${sel}" onclick="setBenzene(${i})">${modes[i]}</button>`;
   }
-  if(l4mode===0)h+=`<div class="learn-box"><b>凯库勒结构</b><br>1865年凯库勒提出苯的环状结构，单双键交替排列。实际上苯的6个C-C键完全等价，键长介于单键和双键之间。</div>`;
+  if(l4mode===null)h+=`<p class="desc">先选择一种视图模式，再逐步比较“单双键表示”和“离域电子云”的差异。</p>`;
+  else if(l4mode===0)h+=`<div class="learn-box"><b>凯库勒结构</b><br>1865年凯库勒提出苯的环状结构，单双键交替排列。实际上苯的6个C-C键完全等价，键长介于单键和双键之间。</div>`;
   else if(l4mode===1)h+=`<div class="learn-box"><b>离域π电子云</b><br>苯环中6个碳原子各贡献1个p电子，形成离域π键。电子云均匀分布在环的上下两侧，这就是苯特殊稳定性的来源。</div>`;
-  else h+=`<div class="learn-box"><b>休克尔规则</b><br>含有 4n+2 个π电子的平面环状共轭体系具有芳香性。<br>苯: 6个π电子 (n=1) ✓<br>萘: 10个π电子 (n=2) ✓<br>环丁二烯: 4个π电子 ✗</div>`;
+  else if(l4viewed.has(0)&&l4viewed.has(1)){
+    h+=`<div class="learn-box"><b>休克尔规则</b><br>含有 4n+2 个π电子的平面环状共轭体系具有芳香性。<br>苯: 6个π电子 (n=1) ✓<br>萘: 10个π电子 (n=2) ✓<br>环丁二烯: 4个π电子 ✗</div>`;
+    if(!levelObjs[4][2])h+=`<button class="act-btn" onclick="confirmAromaticRule()">确认：苯满足平面环状共轭与 4n+2 规则</button>`;
+  }
+  else h+=`<p class="desc">先看过凯库勒结构和离域π电子云，再回到规则总结。</p>`;
   return h;
 }
-function setBenzene(i){l4mode=i;if(i===0)checkObj(4,0);if(i===1)checkObj(4,1);if(i===2)checkObj(4,2);renderPanel();draw();}
+function setBenzene(i){
+  const idx=toIndex(i,3);
+  if(idx===null)return;
+  l4mode=idx;l4viewed.add(idx);
+  if(idx===0)checkObj(4,0,true);
+  if(idx===1)checkObj(4,1,true);
+  renderPanel();draw();
+}
+function confirmAromaticRule(){
+  if(curLevel!==4||l4mode!==2||!l4viewed.has(0)||!l4viewed.has(1))return false;
+  l4ruleConfirmed=true;
+  checkObj(4,2,true);
+  renderPanel();draw();
+  return true;
+}
 
 function renderP5(){
   let h=`<h3>聚合反应</h3>`;
@@ -351,20 +579,63 @@ function renderP5(){
   h+=`<p class="desc">选择不同单体，拖动滑块增加聚合度，观察聚合物链的生长过程。</p>`;
   h+=`<div class="obj ${levelObjs[5][0]?'done':''}">聚合度达到5</div>`;
   h+=`<div class="obj ${levelObjs[5][1]?'done':''}">查看3种聚合物</div>`;
-  h+=`<div class="obj ${levelObjs[5][2]?'done':''}">聚合度达到10</div>`;
+  h+=`<div class="obj ${levelObjs[5][2]?'done':''}">确认重复单元连接成长链</div>`;
+  h+=`<p class="sub">已记录 ${l5viewed.size}/${POLYMERS.length} 种聚合物，点击单体后才计入观察</p>`;
   for(let i=0;i<POLYMERS.length;i++){
     const p=POLYMERS[i],sel=i===l5monomer?'background:rgba(34,197,94,0.3);':'';
     h+=`<button class="act-btn" style="${sel}" onclick="setMonomer(${i})">${p.monomer}</button>`;
   }
-  h+=`<p class="sub">聚合度 n = ${l5chainLen}</p>`;
-  h+=`<input type="range" class="ctl" min="1" max="15" value="${l5chainLen}" oninput="setPolyLen(+this.value)">`;
-  const p=POLYMERS[l5monomer];
-  h+=`<div class="learn-box"><b>${p.polymer}</b><br>单体: ${p.monomer}<br>类型: ${p.type}反应<br>用途: ${p.use}<br>聚合度: ${l5chainLen}</div>`;
+  h+=`<p class="sub">聚合度 n = <span id="polyLenVal">${l5chainLen}</span></p>`;
+  h+=`<input type="range" class="ctl" min="1" max="15" value="${l5chainLen}" oninput="setPolyLenInput(this)" onchange="this.blur();renderPanel()">`;
+  h+=`<div class="learn-box" id="polyInfo">${polyInfoHTML()}</div>`;
+  h+=`<p class="desc" id="polyAdvice">${polyAdviceHTML()}</p>`;
+  if(!levelObjs[5][2]){
+    if(l5chainLen>=10&&l5viewed.size>=POLYMERS.length)h+=`<button class="act-btn" onclick="confirmPolymerChain()">确认：双键打开后重复单元首尾相连</button>`;
+    else h+=`<div class="hint-box">先把聚合度调到 10 以上，并查看 3 种单体；再确认加聚反应如何把重复单元连接成长链。</div>`;
+  }
   return h;
 }
 let l5viewed=new Set();
-function setMonomer(i){l5monomer=i;l5viewed.add(i);if(l5viewed.size>=3)checkObj(5,1);renderPanel();draw();}
-function setPolyLen(n){l5chainLen=n;if(n>=5)checkObj(5,0);if(n>=10)checkObj(5,2);renderPanel();draw();}
+function polyInfoHTML(){
+  const p=POLYMERS[l5monomer];
+  return `<b>${p.polymer}</b><br>单体: ${p.monomer}<br>类型: ${p.type}反应<br>用途: ${p.use}<br>聚合度: ${l5chainLen}`;
+}
+function polyAdviceHTML(){
+  const chainNote=l5chainLen<5?'短链还像“几个重复单元串在一起”，材料强度和韧性不明显。':l5chainLen<10?'链长增加后，分子间缠结开始出现，高分子材料性质逐步显现。':'长链已经形成明显聚合物特征，聚合度越高通常越利于强度和成膜性。';
+  return `${chainNote}<br>加聚线索：单体的 C=C 双键被打开，重复单元首尾相连，不产生小分子副产物。`;
+}
+function setMonomer(i){
+  const idx=toIndex(i,POLYMERS.length);
+  if(idx===null)return;
+  l5monomer=idx;l5viewed.add(idx);if(l5viewed.size>=3)checkObj(5,1,true);renderPanel();draw();
+}
+function setPolyLen(n){
+  l5chainLen=Math.round(clampNumber(n,l5chainLen,1,15));
+  let changed=false;
+  if(l5chainLen>=5)changed=checkObj(5,0,true)||changed;
+  if(changed)renderPanel();
+  updatePolyPanel();
+  draw();
+}
+function setPolyLenInput(input){
+  const v=Math.round(clampNumber(input&&input.value!==undefined?input.value:input,l5chainLen,1,15));
+  setInputValue(input,v);
+  setPolyLen(v);
+  return true;
+}
+function updatePolyPanel(){
+  const val=document.getElementById('polyLenVal'),info=document.getElementById('polyInfo'),advice=document.getElementById('polyAdvice');
+  if(val)val.textContent=l5chainLen;
+  if(info)info.innerHTML=polyInfoHTML();
+  if(advice)advice.innerHTML=polyAdviceHTML();
+}
+function confirmPolymerChain(){
+  if(curLevel!==5||l5chainLen<10||l5viewed.size<POLYMERS.length)return false;
+  l5polymerChainConfirmed=true;
+  checkObj(5,2,true);
+  renderPanel();draw();
+  return true;
+}
 
 function renderP6(){
   let h=`<h3>有机反应机理</h3>`;
@@ -373,6 +644,12 @@ function renderP6(){
   h+=`<div class="obj ${levelObjs[6][0]?'done':''}">完成取代反应步骤</div>`;
   h+=`<div class="obj ${levelObjs[6][1]?'done':''}">完成加成反应步骤</div>`;
   h+=`<div class="obj ${levelObjs[6][2]?'done':''}">完成消除反应步骤</div>`;
+  const rxnProgress=REACTIONS.map((r,i)=>{
+    const seen=l6visitedSteps[i]?l6visitedSteps[i].size:0;
+    return `${levelObjs[6][i]?'✓':'○'} ${r.name} ${Math.min(seen,r.steps.length)}/${r.steps.length}`;
+  }).join(' · ');
+  h+=`<p class="sub">机理进度: ${rxnProgress}</p>`;
+  if(levelObjs[6].some(Boolean)&&!levelObjs[6].every(Boolean))h+=`<div class="hint-box">已完成的机理会保留进度，切换到还未打勾的反应继续走完步骤。</div>`;
   for(let i=0;i<REACTIONS.length;i++){
     const r=REACTIONS[i],sel=i===l6rxn?'background:rgba(34,197,94,0.3);':'';
     h+=`<button class="act-btn" style="${sel}" onclick="setRxn(${i})">${r.name}</button>`;
@@ -381,21 +658,69 @@ function renderP6(){
   h+=`<p class="sub">${r.desc}</p>`;
   h+=`<p class="sub">步骤 ${l6step+1}/${r.steps.length}</p>`;
   h+=`<div class="learn-box"><b>步骤 ${l6step+1}:</b> ${r.steps[l6step]}</div>`;
+  h+=`<div class="hint-box" id="mechanismHint">${mechanismHintText()}</div>`;
+  const ready=l6visitedSteps[l6rxn]&&l6visitedSteps[l6rxn].size>=r.steps.length;
   if(l6step<r.steps.length-1)h+=`<button class="act-btn" onclick="nextStep()">下一步 →</button>`;
-  else h+=`<button class="act-btn" style="background:#22c55e;color:#fff" onclick="finishRxn()">完成 ✓</button>`;
+  else h+=`<button class="act-btn" style="background:#22c55e;color:#fff" onclick="finishRxn()">${ready?(levelObjs[6][l6rxn]?'已确认 ✓':'确认键断裂/形成逻辑'):'回看步骤后完成'}</button>`;
   return h;
 }
-function setRxn(i){l6rxn=i;l6step=0;renderPanel();draw();}
-function nextStep(){l6step++;renderPanel();draw();}
-function finishRxn(){checkObj(6,l6rxn);renderPanel();draw();}
+function mechanismHintText(){
+  const hints=[
+    [
+      '光照先均裂 Cl-Cl 键，产生两个氯自由基，这是链反应的引发步骤。',
+      '氯自由基夺取 H，C-H 键断裂并生成甲基自由基，活性中心转移到碳上。',
+      '甲基自由基与 Cl₂ 形成 C-Cl 键，同时再生 Cl·，所以链能继续传播。',
+      '两个自由基相遇会结合，活性自由基被消耗，链反应终止。'
+    ],
+    [
+      'Br₂ 被双键的 π 电子极化，亲电的 Br 端准备接受电子密度。',
+      'C=C 的 π 键电子进攻 Br，π 键转为新的 C-Br σ 键。',
+      '中间体带正电，说明另一个碳仍缺电子，容易被亲核体进攻。',
+      'Br⁻ 补上缺电子中心，第二个 C-Br 键形成，加成产物完成。'
+    ],
+    [
+      '酸先让 -OH 质子化，把差的离去基团变成更容易离去的水。',
+      '水分子离去后形成缺电子中间体，反应进入消除关键阶段。',
+      '相邻 C-H 键断裂，H 被移走，电子回到两个碳之间。',
+      '新的 π 键形成，乙烯生成；酸在机理末端可再生。'
+    ]
+  ];
+  return hints[l6rxn][l6step];
+}
+function initL6(){
+  l6rxn=0;l6step=0;
+  l6visitedSteps=REACTIONS.map(()=>new Set([0]));
+  l6mechanismConfirmed=REACTIONS.map(()=>false);
+}
+function setRxn(i){
+  const idx=toIndex(i,REACTIONS.length);
+  if(idx===null)return;
+  l6rxn=idx;l6step=0;
+  if(!l6visitedSteps[idx])l6visitedSteps[idx]=new Set();
+  l6visitedSteps[idx].add(0);
+  renderPanel();draw();
+}
+function nextStep(){
+  if(l6step<REACTIONS[l6rxn].steps.length-1)l6step++;
+  if(!l6visitedSteps[l6rxn])l6visitedSteps[l6rxn]=new Set();
+  l6visitedSteps[l6rxn].add(l6step);
+  renderPanel();draw();
+}
+function finishRxn(){
+  const visited=l6visitedSteps[l6rxn];
+  if(!visited||visited.size<REACTIONS[l6rxn].steps.length)return;
+  l6mechanismConfirmed[l6rxn]=true;
+  checkObj(6,l6rxn,true);renderPanel();draw();
+}
 
 function summaryHTML(){
-  const done=levelObjs.flat().filter(v=>v).length;
+  const done=quizPassed.size*3,total=levelObjs.flat().length;
   let h='<div class="summary-box"><div class="summary-title">🎉 有机化学探险完成！</div>';
   h+=`<div class="summary-sub">你已掌握有机化学的核心概念</div>`;
-  h+=`<div class="summary-stats"><div class="summary-stat"><div class="num">${done}</div><div class="label">完成目标</div></div>`;
-  h+=`<div class="summary-stat"><div class="num">7</div><div class="label">通关数</div></div></div>`;
-  h+=`<div class="summary-keys"><div>⬡ 碳的四键是有机化学的基石</div><div>🔤 烷烃命名遵循系统命名法</div><div>🎯 官能团决定化学性质</div><div>🔀 同分异构体丰富了有机世界</div><div>⭕ 芳香性赋予苯环特殊稳定性</div><div>🔗 聚合反应创造高分子材料</div><div>⚗️ 反应机理揭示微观过程</div></div></div>`;
+  h+=`<div class="summary-stats"><div class="summary-stat"><div class="num">${done}/${total}</div><div class="label">目标达成</div></div>`;
+  h+=`<div class="summary-stat"><div class="num">${LEVEL_NAMES.length}</div><div class="label">关卡通关</div></div></div>`;
+  h+=`<div class="summary-keys"><div>⬡ 碳的四键是有机化学的基石</div><div>🔤 烷烃命名遵循系统命名法</div><div>🎯 官能团决定化学性质</div><div>🔀 同分异构体丰富了有机世界</div><div>⭕ 芳香性赋予苯环特殊稳定性</div><div>🔗 聚合反应创造高分子材料</div><div>⚗️ 反应机理揭示微观过程</div></div>`;
+  h+=`<button class="act-btn" style="margin-top:12px" onclick="restartFromSummary()">重新探索有机化学</button></div>`;
   return h;
 }
 
@@ -546,7 +871,15 @@ function drawL2(){
 }
 
 function drawL3(){
-  const cx=W/2,cy=H/2,d=ISOMER_DATA[l3formula];
+  const cx=W/2,cy=H/2;
+  if(l3formula===null){
+    ctx.fillStyle=isDark?'#4ade80':'#16a34a';ctx.font='bold 20px sans-serif';ctx.textAlign='center';
+    ctx.fillText('选择一个分子式开始比较异构体',cx,50);
+    ctx.fillStyle=isDark?'#888':'#666';ctx.font='14px sans-serif';
+    ctx.fillText('同分异构体：分子式相同，连接方式或官能团不同',cx,cy);
+    return;
+  }
+  const d=ISOMER_DATA[l3formula];
   ctx.fillStyle=isDark?'#4ade80':'#16a34a';ctx.font='bold 20px sans-serif';ctx.textAlign='center';
   ctx.fillText(`${d.formula} 的同分异构体`,cx,50);
   const n=d.isomers.length;
@@ -562,6 +895,13 @@ function drawL3(){
 
 function drawL4(){
   const cx=W/2,cy=H/2,r=80;
+  if(l4mode===null){
+    ctx.fillStyle=isDark?'#4ade80':'#16a34a';ctx.font='bold 20px sans-serif';ctx.textAlign='center';
+    ctx.fillText('选择苯环视图开始观察芳香性',cx,50);
+    ctx.fillStyle=isDark?'#888':'#666';ctx.font='14px sans-serif';
+    ctx.fillText('比较凯库勒结构、离域 π 电子云和 4n+2 规则',cx,cy);
+    return;
+  }
   // Draw benzene ring
   const pts=[];
   for(let i=0;i<6;i++){
@@ -694,46 +1034,51 @@ function animate(){
   draw();
 }
 
-// === Mouse interaction ===
-cv.addEventListener('mousedown',e=>{
+// === Pointer interaction ===
+function pointerPos(e){
+  const rect=cv.getBoundingClientRect();
+  return {
+    x:(e.clientX-rect.left)*(W/rect.width),
+    y:(e.clientY-rect.top)*(H/rect.height)
+  };
+}
+function startPointer(e){
   if(curLevel!==0)return;
-  const rect=cv.getBoundingClientRect();
-  const mx=(e.clientX-rect.left)*(W/rect.width),my=(e.clientY-rect.top)*(H/rect.height);
+  const p=pointerPos(e);
   for(let i=1;i<l0atoms.length;i++){
-    const a=l0atoms[i],dx=mx-a.x,dy=my-a.y;
-    if(dx*dx+dy*dy<a.r*a.r*2){dragging=i;break;}
+    if(l0bonds.some(b=>b[1]===i))continue;
+    const a=l0atoms[i],dx=p.x-a.x,dy=p.y-a.y;
+    if(dx*dx+dy*dy<a.r*a.r*2){
+      dragging=i;
+      if(e.preventDefault)e.preventDefault();
+      if(cv.setPointerCapture&&e.pointerId!==undefined)cv.setPointerCapture(e.pointerId);
+      break;
+    }
   }
-});
-cv.addEventListener('mousemove',e=>{
+}
+function movePointer(e){
   if(dragging===null)return;
-  const rect=cv.getBoundingClientRect();
-  l0atoms[dragging].x=(e.clientX-rect.left)*(W/rect.width);
-  l0atoms[dragging].y=(e.clientY-rect.top)*(H/rect.height);
-});
-cv.addEventListener('mouseup',()=>{
+  const p=pointerPos(e);
+  l0atoms[dragging].x=p.x;
+  l0atoms[dragging].y=p.y;
+  if(e.preventDefault)e.preventDefault();
+  draw();
+}
+function endPointer(e){
   if(dragging!==null&&curLevel===0){
     const a=l0atoms[dragging],c=l0atoms[0];
     const dx=a.x-c.x,dy=a.y-c.y,dist=Math.sqrt(dx*dx+dy*dy);
     if(dist<60){
-      // Snap to bond position
-      const existing=l0bonds.filter(b=>b[0]===0||b[1]===0).length;
-      if(!l0bonds.some(b=>b[1]===dragging)){
-        const angle=-Math.PI/2+existing*(2*Math.PI/4)+Math.PI/6;
-        a.x=c.x+55*Math.cos(angle);a.y=c.y+55*Math.sin(angle);
-        l0bonds.push([0,dragging]);
-        l0bondCount=l0bonds.length;
-        if(l0bondCount>=2)checkObj(0,0);
-        if(l0bondCount>=4){checkObj(0,1);checkObj(0,2);}
-        renderPanel();
-      }
+      bondHydrogenToCarbon(dragging);
     }
   }
+  if(e&&cv.releasePointerCapture&&e.pointerId!==undefined)cv.releasePointerCapture(e.pointerId);
   dragging=null;
-});
-// Touch support
-cv.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];cv.dispatchEvent(new MouseEvent('mousedown',{clientX:t.clientX,clientY:t.clientY}));},{passive:false});
-cv.addEventListener('touchmove',e=>{e.preventDefault();const t=e.touches[0];cv.dispatchEvent(new MouseEvent('mousemove',{clientX:t.clientX,clientY:t.clientY}));},{passive:false});
-cv.addEventListener('touchend',e=>{cv.dispatchEvent(new MouseEvent('mouseup'));});
+}
+cv.addEventListener('pointerdown',startPointer);
+cv.addEventListener('pointermove',movePointer);
+cv.addEventListener('pointerup',endPointer);
+cv.addEventListener('pointercancel',endPointer);
 </script>
 </body>
 </html>

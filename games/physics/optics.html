@@ -174,13 +174,18 @@ const levels=[
 
 // === 音效 ===
 let audioCtx;
-function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
+function initAudio(){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;try{if(!audioCtx)audioCtx=new A();return audioCtx}catch(e){return null}}
 function playSound(type){
-  initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();
-  o.connect(g);g.connect(audioCtx.destination);
-  if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}
-  else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}
-  else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}
+  const ac=initAudio();if(!ac)return false;
+  try{
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    const now=ac.currentTime;
+    if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start(now);g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.stop(now+0.1)}
+    else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(659,now+0.1);o.frequency.setValueAtTime(784,now+0.2);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);o.stop(now+0.4)}
+    else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start(now);o.frequency.setValueAtTime(200,now+0.15);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);o.stop(now+0.3)}
+    return true;
+  }catch(e){return false}
 }
 
 // === 粒子 & 星星 ===
@@ -197,26 +202,28 @@ function startGame(){document.getElementById('startScreen').classList.add('hidde
 
 function completeObj(idx){
   if(!levelState.goals)return;
+  if(idx<0||idx>=levelState.goals.length)return;
   if(!levelState.goals[idx]){levelState.goals[idx]=true;playSound('success');
     const done=levelState.goals.filter(Boolean).length;
-    if(done>=3&&!readyForQuiz.has(currentLevel)&&!completedLevels.has(currentLevel)){readyForQuiz.add(currentLevel);levelScores[currentLevel]=30}
+    if(done>=3&&!readyForQuiz.has(currentLevel)&&!quizPassed.has(currentLevel)){readyForQuiz.add(currentLevel);levelScores[currentLevel]=30}
     renderPanel();
   }
 }
 
 // === 关卡初始化 ===
 function initLevel(idx){
+  if(!canSwitchLevel(idx))return;
   currentLevel=idx;particles=[];
   const cx=CW/2+160,cy=CH/2;
   switch(idx){
     case 0: // 折射定律
-      levelState={goals:[false,false,false],angle:30,medium:'water',
+      levelState={goals:[false,false,false],angle:5,medium:'water',
         nAir:1.0,nWater:1.33,nGlass:1.5,verified:0};break;
     case 1: // 全反射
-      levelState={goals:[false,false,false],angle:20,n1:1.5,n2:1.0,
+      levelState={goals:[false,false,false],angle:5,n1:1.5,n2:1.0,
         criticalFound:false,totalReflection:false};break;
     case 2: // 透镜成像
-      levelState={goals:[false,false,false],objDist:300,focalLen:120,
+      levelState={goals:[false,false,false],objDist:120,focalLen:120,
         seenSmall:false,seenBig:false,seenVirtual:false};break;
     case 3: // 色散
       levelState={goals:[false,false,false],prismAngle:60,
@@ -853,14 +860,14 @@ function renderStageNav(){
   levels.forEach((_,i)=>{
     const unlocked=canSwitchLevel(i);
     const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'switchLevel('+i+')':''}"></div>`;
+    h+=`<div class="sn-d ${cls}" ${unlocked?`onclick="switchLevel(${i})"`:''}></div>`;
   });
   h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 — ${levels[currentLevel].title}</div>`;
   h+=`<div class="sn-hint">${levels[currentLevel].sub}</div></div>`;
   return h;
 }
 
-function canSwitchLevel(idx){return idx>=0&&idx<levels.length&&(idx===0||completedLevels.has(idx)||completedLevels.has(idx-1))}
+function canSwitchLevel(idx){return idx>=0&&idx<levels.length&&(idx===0||quizPassed.has(idx-1))}
 
 function renderGoals(){
   const lv=levels[currentLevel];const s=levelState;
@@ -886,7 +893,7 @@ function renderPanel(){
   switch(currentLevel){
     case 0:
       h+=`<div class="slider-wrap"><label>入射角: <span class="sv">${s.angle}°</span></label>`;
-      h+=`<input type="range" min="5" max="85" value="${s.angle}" oninput="sliderDrag(0,this.value)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<input type="range" min="5" max="85" value="${s.angle}" oninput="sliderDrag(0,this.value,this)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div style="margin:6px 0"><button class="act-btn${s.medium==='water'?' green':''}" onclick="setMedium('water')">水 (n=1.33)</button>`;
       h+=`<button class="act-btn${s.medium==='glass'?' green':''}" onclick="setMedium('glass')">玻璃 (n=1.50)</button></div>`;
       const n2v=s.medium==='water'?1.33:1.5;
@@ -899,7 +906,7 @@ function renderPanel(){
       break;
     case 1:
       h+=`<div class="slider-wrap"><label>入射角: <span class="sv">${s.angle}°</span></label>`;
-      h+=`<input type="range" min="5" max="85" value="${s.angle}" oninput="sliderDrag(1,this.value)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<input type="range" min="5" max="85" value="${s.angle}" oninput="sliderDrag(1,this.value,this)" onchange="this.blur();renderPanel()"></div>`;
       const ca=Math.asin(s.n2/s.n1)*180/Math.PI;
       h+=`<div class="hint-box">临界角 θc = arcsin(${s.n2}/${s.n1}) = <span class="sv">${ca.toFixed(1)}°</span><br>`;
       h+=s.angle>ca?'<span style="color:#ef4444;font-weight:bold">全反射!</span>':'折射中...';
@@ -907,7 +914,7 @@ function renderPanel(){
       break;
     case 2:
       h+=`<div class="slider-wrap"><label>物距 u: <span class="sv">${s.objDist.toFixed(0)}mm</span> (f=${s.focalLen}mm)</label>`;
-      h+=`<input type="range" min="30" max="400" value="${s.objDist}" oninput="sliderDrag(2,this.value)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<input type="range" min="30" max="400" value="${s.objDist}" oninput="sliderDrag(2,this.value,this)" onchange="this.blur();renderPanel()"></div>`;
       const fv=s.focalLen,uv=s.objDist;
       if(uv!==fv){
         const vv=uv*fv/(uv-fv);const mv=-vv/uv;
@@ -918,20 +925,20 @@ function renderPanel(){
       break;
     case 3:
       h+=`<div class="slider-wrap"><label>棱镜角: <span class="sv">${s.prismAngle}°</span></label>`;
-      h+=`<input type="range" min="30" max="80" value="${s.prismAngle}" oninput="sliderDrag(3,this.value)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<input type="range" min="30" max="80" value="${s.prismAngle}" oninput="sliderDrag(3,this.value,this)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<button class="act-btn${s.identified?' green':''}" onclick="identifySpectrum()">我已识别出 红→紫 的顺序</button>`;
       h+=`<div class="hint-box">棱镜角越大，色散越明显。紫光偏折最大（折射率最高），红光偏折最小。</div>`;
       break;
     case 4:
       h+=`<div class="slider-wrap"><label>缝距 d: <span class="sv">${s.slitDist.toFixed(2)}mm</span></label>`;
-      h+=`<input type="range" min="10" max="200" value="${s.slitDist*100}" oninput="sliderDrag(4,this.value/100)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<input type="range" min="10" max="200" value="${s.slitDist*100}" oninput="sliderDrag(4,this.value/100,this)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div class="slider-wrap"><label>波长 λ: <span class="sv" style="color:${wlToColor(s.wavelength)}">${s.wavelength}nm</span></label>`;
-      h+=`<input type="range" min="380" max="700" value="${s.wavelength}" oninput="sliderDrag(5,this.value)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<input type="range" min="380" max="700" value="${s.wavelength}" oninput="sliderDrag(5,this.value,this)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div class="hint-box">条纹间距 Δy = λL/d<br>d↑ → 条纹变密 | λ↑ → 条纹变疏</div>`;
       break;
     case 5:
       h+=`<div class="slider-wrap"><label>检偏器角度 θ: <span class="sv">${s.polAngle}°</span></label>`;
-      h+=`<input type="range" min="0" max="180" value="${s.polAngle}" oninput="sliderDrag(6,this.value)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<input type="range" min="0" max="180" value="${s.polAngle}" oninput="sliderDrag(6,this.value,this)" onchange="this.blur();renderPanel()"></div>`;
       const Iv=Math.cos(s.polAngle*Math.PI/180)**2;
       h+=`<div class="hint-box">I/I₀ = cos²(${s.polAngle}°) = <span class="sv">${Iv.toFixed(3)}</span><br>`;
       h+=Iv<0.01?'<span style="color:#ef4444;font-weight:bold">完全消光!</span>':`透射率 ${(Iv*100).toFixed(1)}%`;
@@ -940,7 +947,7 @@ function renderPanel(){
       break;
     case 6:{
       h+=`<div class="slider-wrap"><label>入射角: <span class="sv">${s.fiberAngle}°</span></label>`;
-      h+=`<input type="range" min="10" max="85" value="${s.fiberAngle}" oninput="sliderDrag(7,this.value)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<input type="range" min="10" max="85" value="${s.fiberAngle}" oninput="sliderDrag(7,this.value,this)" onchange="this.blur();renderPanel()"></div>`;
       const ca6=Math.asin(1.3/1.5)*180/Math.PI;
       const ok=s.fiberAngle>ca6;
       h+=`<div class="hint-box">临界角: ${ca6.toFixed(1)}° | ${ok?'<span style="color:#22c55e">全反射传输</span>':'<span style="color:#ef4444">信号泄漏</span>'}</div>`;
@@ -996,8 +1003,11 @@ function renderQuiz(levelIdx){
   h+='</div>';return h;
 }
 function answerQuiz(li,oi){
-  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  if(quizLocked||li!==currentLevel||quizPassed.has(li)||!readyForQuiz.has(li)||!quizData[li])return;
+  if(li>0&&!quizPassed.has(li-1))return;
   const qd=quizData[li];
+  if(oi<0||oi>=qd.opts.length)return;
+  quizLocked=true;
   const opts=document.getElementById('panel').querySelectorAll('.quiz-opt');
   opts.forEach((el,i)=>{el.classList.add(i===qd.ans?'correct':'wrong')});
   if(oi===qd.ans){
@@ -1018,7 +1028,7 @@ function sendPulse(){
   renderPanel();
 }
 
-function sliderDrag(id,val){
+function sliderDrag(id,val,el){
   const s=levelState;const v=parseFloat(val);
   switch(id){
     case 0:s.angle=v;break;
@@ -1031,7 +1041,9 @@ function sliderDrag(id,val){
     case 7:s.fiberAngle=v;break;
   }
   // 更新 label
-  const wrap=event.target.parentElement;
+  const target=el||(typeof event!=='undefined'?event.target:null);
+  const wrap=target&&target.parentElement;
+  if(!wrap)return;
   const sp=wrap.querySelector('.sv');
   if(sp){
     switch(id){
@@ -1124,6 +1136,7 @@ function handleClick(x,y){}
 
 // === 结果页 ===
 function showResult(){
+  if(quizPassed.size<levels.length)return;
   gameState='result';
   document.getElementById('panel').style.display='none';
   document.getElementById('bottom-bar').style.display='none';

@@ -118,8 +118,8 @@ let levelObjs=levelObjTexts.map(a=>a.map(()=>false));
 let L={};
 // ========== 音效 ==========
 let audioCtx;
-function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
-function playSound(type){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}}
+function initAudio(){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;try{if(!audioCtx)audioCtx=new A();return audioCtx}catch(e){return null}}
+function playSound(type){const ac=initAudio();if(!ac)return false;try{const o=ac.createOscillator(),g=ac.createGain(),now=ac.currentTime;o.connect(g);g.connect(ac.destination);if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.stop(now+0.1)}else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,now+0.1);o.frequency.setValueAtTime(784,now+0.2);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);o.stop(now+0.4)}else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(200,now+0.15);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);o.stop(now+0.3)}return true}catch(e){return false}}
 
 // ========== 粒子 ==========
 let particles=[];
@@ -131,8 +131,20 @@ function resize(){W=cv.width=innerWidth;H=cv.height=innerHeight}
 resize();window.addEventListener('resize',resize);
 
 // ========== 关卡核心 ==========
-function completeObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;playSound('success');renderPanel()}}
+function completeObj(i){if(i<0||i>=levelObjs[curLevel].length||levelObjs[curLevel][i])return;levelObjs[curLevel][i]=true;playSound('success');renderPanel()}
 function allObjDone(){return levelObjs[curLevel].every(v=>v)}
+function isUnlocked(idx){return idx===0||quizPassed.has(idx-1)}
+function readRangeValue(el,fallback){
+  const min=Number(el.min),max=Number(el.max),raw=Number(el.value),fb=Number(fallback);
+  const base=Number.isFinite(raw)?raw:(Number.isFinite(fb)?fb:min);
+  const val=Math.min(max,Math.max(min,base));
+  el.value=String(val);return val;
+}
+function setFermentParam(key,el,scale=1,digits=0){
+  L[key]=readRangeValue(el,L[key]*scale)/scale;
+  const out=document.getElementById(key+'Val');
+  if(out)out.textContent=L[key].toFixed(digits);
+}
 
 function resetLevel(li){
   L={};levelObjs[li]=levelObjs[li].map(()=>false);
@@ -468,8 +480,8 @@ function drawLevel4(){
   // 产量曲线
   if(L.fermenting||L.fermTime>0){
     ctx.fillStyle=th.text;ctx.font='bold 16px sans-serif';
-    ctx.fillText('产量: '+(L.yield*100).toFixed(1)+'%',cx,tankY+tankH+30);
-    if(L.yield>=80){
+    ctx.fillText('产量: '+L.yield.toFixed(1)+'%',cx,tankY+tankH+30);
+    if(L.yield>=70){
       ctx.fillStyle='#22c55e';ctx.font='12px sans-serif';
       ctx.fillText('✓ 达标!',cx,tankY+tankH+50);
     }
@@ -685,8 +697,9 @@ function renderPanel(){
   h+='<div class="stage-nav" style="background:var(--stage-bg);border:1px solid var(--stage-border);border-radius:8px;padding:10px 12px;margin-bottom:12px">';
   h+='<div class="sn-bar" style="display:flex;gap:3px;margin-bottom:6px">';
   for(let i=0;i<LEVELS;i++){
-    const cls=i<curLevel?'done':i===curLevel?'cur':'';
-    h+=`<div class="sn-d ${cls}" style="flex:1;height:5px;border-radius:3px;background:${i<curLevel?'#22c55e':i===curLevel?'#6366f1':'var(--stage-bar)'};cursor:pointer" onclick="goLevel(${i})"></div>`;
+    const unlocked=isUnlocked(i);
+    const cls=quizPassed.has(i)?'done':i===curLevel?'cur':'';
+    h+=`<div class="sn-d ${cls}" title="${unlocked?'':'先完成上一关测验'}" style="flex:1;height:5px;border-radius:3px;background:${quizPassed.has(i)?'#22c55e':i===curLevel?'#6366f1':'var(--stage-bar)'};opacity:${unlocked?1:.35};cursor:${unlocked?'pointer':'not-allowed'}" ${unlocked?`onclick="goLevel(${i})"`:''}></div>`;
   }
   h+='</div>';
   h+=`<div style="color:var(--stage-info);font-weight:600;font-size:13px">第 ${curLevel+1}/${LEVELS} 关</div>`;
@@ -759,16 +772,19 @@ function renderLevelControls(){
   } else if(curLevel===4){
     h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">底盘生物</h3>';
     L.chassis.forEach((c,i)=>{
-      h+=`<label style="display:block;font-size:13px;margin:2px 0;cursor:pointer"><input type="radio" name="chassis" ${L.selectedChassis===i?'checked':''} onchange="L.selectedChassis=${i};renderPanel()"> ${c}</label>`;
+      h+=`<label style="display:block;font-size:13px;margin:2px 0;cursor:pointer"><input type="radio" name="chassis" ${L.selectedChassis===i?'checked':''} onchange="selectChassis(${i})"> ${c}</label>`;
     });
+    if(!levelObjs[curLevel][0]){
+      h+=`<button class="act-btn" style="display:block;width:100%;padding:8px;margin-top:6px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-size:14px;cursor:pointer" onclick="confirmChassis()">确认底盘选择</button>`;
+    }
     h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">目标产物</h3>';
     L.products.forEach((p,i)=>{
-      h+=`<label style="display:block;font-size:13px;margin:2px 0;cursor:pointer"><input type="radio" name="product" ${L.selectedProduct===i?'checked':''} onchange="L.selectedProduct=${i};completeObj(0);renderPanel()"> ${p}</label>`;
+      h+=`<label style="display:block;font-size:13px;margin:2px 0;cursor:pointer"><input type="radio" name="product" ${L.selectedProduct===i?'checked':''} onchange="selectProduct(${i})"> ${p}</label>`;
     });
     h+='<h3 style="font-size:16px;color:var(--title-color);margin:10px 0 4px">发酵参数</h3>';
-    h+=`<div style="font-size:13px">温度: ${L.temp}°C<input type="range" min="20" max="45" value="${L.temp}" style="width:100%" oninput="L.temp=+this.value" onchange="this.blur();renderPanel()"></div>`;
-    h+=`<div style="font-size:13px">pH: ${L.ph.toFixed(1)}<input type="range" min="40" max="90" value="${L.ph*10}" style="width:100%" oninput="L.ph=this.value/10" onchange="this.blur();renderPanel()"></div>`;
-    h+=`<div style="font-size:13px">溶氧: ${L.oxygen}%<input type="range" min="10" max="100" value="${L.oxygen}" style="width:100%" oninput="L.oxygen=+this.value" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div style="font-size:13px">温度: <span id="tempVal">${L.temp.toFixed(0)}</span>°C<input type="range" min="20" max="45" value="${L.temp}" style="width:100%" oninput="setFermentParam('temp',this)" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div style="font-size:13px">pH: <span id="phVal">${L.ph.toFixed(1)}</span><input type="range" min="40" max="90" value="${L.ph*10}" style="width:100%" oninput="setFermentParam('ph',this,10,1)" onchange="this.blur();renderPanel()"></div>`;
+    h+=`<div style="font-size:13px">溶氧: <span id="oxygenVal">${L.oxygen.toFixed(0)}</span>%<input type="range" min="10" max="100" value="${L.oxygen}" style="width:100%" oninput="setFermentParam('oxygen',this)" onchange="this.blur();renderPanel()"></div>`;
     if(!L.fermenting&&!L.labDone){
       h+=`<button class="act-btn" style="display:block;width:100%;padding:10px;margin-top:6px;border:none;border-radius:8px;background:#22c55e;color:#fff;font-size:15px;cursor:pointer" onclick="startFerment()">开始发酵</button>`;
     }
@@ -816,6 +832,15 @@ function updateFlux(){
   if(L.yield>=0.5&&L.bottleneckFound)completeObj(1);
   if(L.yield>=0.8){completeObj(2);L.optimized=true}
 }
+function selectChassis(i){
+  L.selectedChassis=i;renderPanel();
+}
+function selectProduct(i){
+  L.selectedProduct=i;renderPanel();
+}
+function confirmChassis(){
+  completeObj(0);return true;
+}
 function startFerment(){
   L.fermenting=true;L.fermTime=0;L.yield=0;renderPanel();
 }
@@ -835,45 +860,68 @@ function assessRisk(r){
 
 // ========== Quiz ==========
 const quizData=[
-  {q:'BioBrick标准基因表达单元的正确顺序是？',opts:['CDS→RBS→启动子→终止子','启动子→RBS→CDS→终止子','RBS→启动子→终止子→CDS'],ans:1},
-  {q:'Repressilator(抑制振荡器)由几个基因组成？',opts:['2个','3个','4个'],ans:1},
-  {q:'CRISPR-Cas9相比ZFN和TALEN的最大优势是？',opts:['切割效率更高','设计简单成本低','不会脱靶'],ans:1},
-  {q:'代谢工程中"瓶颈酶"是指？',opts:['表达量最高的酶','限制整条通路通量的酶','最后一步的酶'],ans:1},
-  {q:'工业发酵从实验室到工厂的关键挑战是？',opts:['选择培养基','规模放大(scale-up)','基因测序'],ans:1},
-  {q:'无细胞系统的最大优势是？',opts:['产量更高','快速原型验证,无需维持活细胞','成本更低'],ans:1},
-  {q:'《生物武器公约》(BWC)生效于哪一年？',opts:['1965年','1975年','1985年'],ans:1}
+  {q:'BioBrick标准基因表达单元的正确顺序是？',opts:['CDS→RBS→启动子→终止子','启动子→RBS→CDS→终止子','RBS→启动子→终止子→CDS'],ans:1,why:'启动子先招募转录机器，RBS 决定翻译起始，CDS 编码目标蛋白，终止子负责结束转录。'},
+  {q:'Repressilator(抑制振荡器)由几个基因组成？',opts:['2个','4个','3个'],ans:2,why:'经典 repressilator 是三个转录抑制因子首尾相互抑制，延迟负反馈让表达量周期性起伏。'},
+  {q:'CRISPR-Cas9相比ZFN和TALEN的最大优势是？',opts:['设计简单成本低','切割效率更高','不会脱靶'],ans:0,why:'CRISPR 主要通过更换 guide RNA 来指定靶点，设计和迭代成本远低于重新构建蛋白识别模块。'},
+  {q:'代谢工程中"瓶颈酶"是指？',opts:['表达量最高的酶','限制整条通路通量的酶','最后一步的酶'],ans:1,why:'通路总产量常被最慢或容量最低的一步限制，提高瓶颈酶表达才能真正增加通量。'},
+  {q:'工业发酵从实验室到工厂的关键挑战是？',opts:['选择培养基','基因测序','规模放大(scale-up)'],ans:2,why:'放大后混合、传热、溶氧和剪切力都会改变，摇瓶里有效的参数不一定能直接搬到发酵罐。'},
+  {q:'无细胞系统的最大优势是？',opts:['快速原型验证,无需维持活细胞','产量更高','成本更低'],ans:0,why:'无细胞系统把转录翻译放在试管或纸基载体中运行，适合快速测试设计，也能避免维护活细胞状态。'},
+  {q:'《生物武器公约》(BWC)生效于哪一年？',opts:['1965年','1975年','1985年'],ans:1,why:'BWC 于 1975 年生效，核心是禁止开发、生产和储存生物武器。'}
 ];
-let quizPassed=new Set(),quizLocked=false;
+let quizPassed=new Set(),quizLocked=false,quizFeedback=null;
 function renderQuiz(){
   const qd=quizData[curLevel];if(!qd)return '';
+  if(quizPassed.has(curLevel))return `<div style="background:#0a2a1a;border:1px solid #22c55e;border-radius:8px;padding:9px;margin:8px 0;color:#22c55e;font-size:13px">✅ 测验通过。关键结论：${qd.why}</div>`;
   let h='<div style="background:#0a2a1a;border:1px solid #22c55e;border-radius:8px;padding:10px;margin:8px 0"><div style="font-size:13px;color:#22c55e;margin-bottom:8px;font-weight:600">📝 '+qd.q+'</div>';
   qd.opts.forEach((opt,i)=>{
-    const cls=quizPassed.has(curLevel)?(i===qd.ans?'border-color:#22c55e;background:#22c55e22;color:#22c55e':''):'';
+    const cls=quizFeedback&&quizFeedback.level===curLevel?(i===qd.ans?'border-color:#22c55e;background:#22c55e22;color:#22c55e':i===quizFeedback.choice?'border-color:#ef4444;background:#ef444422;color:#f87171':''):'';
     h+=`<div style="font-size:13px;padding:8px 10px;margin:4px 0;border-radius:6px;cursor:pointer;border:1px solid var(--panel-border);background:var(--btn-bg);color:var(--btn-text);${cls}" onclick="answerQuiz(${curLevel},${i})">${opt}</div>`;
   });
-  if(quizPassed.has(curLevel))h+='<div style="color:#22c55e;font-size:12px;margin-top:6px">✅ 已通过</div>';
+  if(quizFeedback&&quizFeedback.level===curLevel)h+=`<div style="font-size:12px;line-height:1.6;margin-top:8px;color:${quizFeedback.correct?'#22c55e':'#f87171'}">${quizFeedback.correct?'答对了。':'还不对。'}关键结论：${qd.why}</div>`;
   h+='</div>';return h;
 }
 function answerQuiz(li,oi){
-  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
-  if(oi===quizData[li].ans){quizPassed.add(li);playSound('success');setTimeout(()=>{quizLocked=false;goLevel(curLevel+1)},800)}
-  else{playSound('fail');setTimeout(()=>{quizLocked=false;renderPanel()},800)}
+  li=Number(li);oi=Number(oi);
+  if(!Number.isInteger(li)||!Number.isInteger(oi))return false;
+  if(li<0||li>=LEVELS||!quizData[li]||oi<0||oi>=quizData[li].opts.length)return false;
+  if(quizLocked||li!==curLevel||quizPassed.has(li)||!allObjDone())return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  quizLocked=true;
+  const correct=oi===quizData[li].ans;
+  quizFeedback={level:li,choice:oi,correct};
+  if(correct){
+    quizPassed.add(li);playSound('success');quizLocked=false;
+    if(quizPassed.size>=LEVELS){showResult();return true}
+    renderPanel();return true
+  }
+  playSound('fail');setTimeout(()=>{quizLocked=false;renderPanel()},800);
+  return false;
 }
 
 // ========== 关卡切换 ==========
 function goLevel(idx){
-  if(idx>=LEVELS){showResult();return}
-  if(idx<0)idx=0;
+  if(idx<0||idx>=LEVELS)return;
+  if(!isUnlocked(idx))return;
   curLevel=idx;resetLevel(idx);renderPanel();
 }
 function startGame(){
   ov.style.display='none';panel.style.display='block';bar.style.display='flex';
   resetLevel(0);renderPanel();
 }
+function restartFromSummary(){
+  const result=document.getElementById('resultOverlay');
+  if(result)result.remove();
+  curLevel=0;quizPassed.clear();quizLocked=false;quizFeedback=null;particles=[];
+  levelObjs=levelObjTexts.map(a=>a.map(()=>false));
+  ov.style.display='none';panel.style.display='block';bar.style.display='flex';
+  resetLevel(0);renderPanel();
+  return true;
+}
 function showResult(){
+  if(quizPassed.size<LEVELS)return;
   panel.style.display='none';bar.style.display='none';
   const total=quizPassed.size;
-  let h='<div style="position:fixed;inset:0;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:100">';
+  let h='<div id="resultOverlay" style="position:fixed;inset:0;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:100">';
   h+='<div style="background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:16px;padding:32px;text-align:center;max-width:420px">';
   h+='<div style="font-size:36px;margin-bottom:8px">🧬</div>';
   h+='<div style="font-size:22px;font-weight:bold;color:var(--summary-title);margin-bottom:8px">合成生物学探险完成!</div>';
@@ -889,7 +937,7 @@ function showResult(){
   h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">🏭 体验了从实验室到工厂的全流程</div>';
   h+='<div style="font-size:13px;color:var(--summary-keys-text);margin:4px 0;line-height:1.6">🛡️ 思考了生物安全与伦理问题</div>';
   h+='</div>';
-  h+=`<button style="margin-top:16px;padding:12px 36px;font-size:16px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;border-radius:10px;cursor:pointer" onclick="location.reload()">再来一次</button>`;
+  h+=`<button style="margin-top:16px;padding:12px 36px;font-size:16px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;border-radius:10px;cursor:pointer" onclick="restartFromSummary()">再来一次</button>`;
   h+='</div></div>';
   document.body.insertAdjacentHTML('beforeend',h);
 }
@@ -951,7 +999,7 @@ function gameLoop(ts){
   if(drawFns[curLevel])drawFns[curLevel]();
   drawParticles(dt);
   // 底部栏
-  bar.innerHTML=`<div class="levels" style="display:flex;gap:4px;align-items:center">${Array.from({length:LEVELS},(_, i)=>`<button style="width:28px;height:24px;border:1px solid ${i===curLevel?'#22c55e':'#c7d2fe'};background:${i===curLevel?'#22c55e':i<curLevel?'var(--btn-bg)':'transparent'};color:${i===curLevel?'#fff':i<curLevel?'#16a34a':'var(--text-sub)'};border-radius:4px;cursor:pointer;font-size:13px" onclick="goLevel(${i})">${i+1}</button>`).join('')}</div><div style="color:var(--text-muted)">合成生物学探险</div>`;
+  bar.innerHTML=`<div class="levels" style="display:flex;gap:4px;align-items:center">${Array.from({length:LEVELS},(_, i)=>{const unlocked=isUnlocked(i);return `<button title="${unlocked?'':'先完成上一关测验'}" style="width:28px;height:24px;border:1px solid ${i===curLevel?'#22c55e':'#c7d2fe'};background:${i===curLevel?'#22c55e':quizPassed.has(i)?'var(--btn-bg)':'transparent'};color:${i===curLevel?'#fff':quizPassed.has(i)?'#16a34a':'var(--text-sub)'};opacity:${unlocked?1:.45};border-radius:4px;cursor:${unlocked?'pointer':'not-allowed'};font-size:13px" ${unlocked?`onclick="goLevel(${i})"`:'disabled'}>${i+1}</button>`}).join('')}</div><div style="color:var(--text-muted)">合成生物学探险</div>`;
   requestAnimationFrame(gameLoop);
 }
 requestAnimationFrame(gameLoop);

@@ -133,8 +133,18 @@ let CW,CH;
 function resize(){const r=cv.getBoundingClientRect();CW=cv.width=r.width;CH=cv.height=r.height}
 resize();window.addEventListener('resize',()=>{resize();draw()});
 let audioCtx;
-function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
-function playSound(type){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='ok'){o.frequency.value=523;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else{o.frequency.value=800;g.gain.value=0.08;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}}
+function initAudio(){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;try{if(!audioCtx)audioCtx=new A();return audioCtx}catch(e){return null}}
+function playSound(type){
+  const ac=initAudio();if(!ac)return false;
+  try{
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    const now=ac.currentTime;
+    if(type==='ok'){o.frequency.value=523;g.gain.value=0.12;o.start(now);o.frequency.setValueAtTime(659,now+0.1);o.frequency.setValueAtTime(784,now+0.2);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);o.stop(now+0.4)}
+    else{o.frequency.value=800;g.gain.value=0.08;o.start(now);g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.stop(now+0.1)}
+    return true;
+  }catch(e){return false}
+}
 
 const LEVELS=[
   {name:'岩浆形成',icon:'🔥'},{name:'火山类型',icon:'⛰️'},{name:'喷发机制',icon:'💥'},
@@ -142,12 +152,12 @@ const LEVELS=[
 ];
 const quizData=[
   {q:'哪一组条件最容易让地幔岩石发生部分熔融？',opts:['温度高、压力低、含水量高','温度低、压力高、完全干燥','只有压力升高，温度不变'],ans:0,ok:'对。减压和加入水分都会降低有效熔点，配合高温更容易形成岩浆。',bad:'再想想熔点条件：减压和水分会让岩石更容易熔融。'},
-  {q:'火山外形主要受哪种岩浆性质控制？',opts:['岩浆粘度','当地风向','火山口颜色'],ans:0,ok:'对。低粘度熔岩能流很远，常形成坡缓的盾状火山；高粘度岩浆更容易堆成陡坡。',bad:'关键不是颜色或风，而是岩浆能不能流动。'},
-  {q:'高粘度且富含气体的岩浆更容易产生什么喷发？',opts:['猛烈爆发式喷发','完全安静的熔岩湖','没有任何火山活动'],ans:0,ok:'对。气体难以逃逸会积累压力，粘度越高越容易爆发。',bad:'看气体和粘度的组合：气体被困住时压力会上升。'},
-  {q:'为什么碎屑流比普通熔岩流更难逃生？',opts:['高温且高速沿坡面贴地流动','只在海底缓慢移动','温度很低但颜色显眼'],ans:0,ok:'对。碎屑流是高温气体和碎屑混合物，速度可达数百 km/h。',bad:'比较危险性时同时看速度、温度和贴地流动方式。'},
-  {q:'火山 SO₂ 到达平流层后造成短期降温的主要机制是什么？',opts:['形成气溶胶反射部分太阳辐射','直接把地球内部热量抽走','永久消耗大气中的氧气'],ans:0,ok:'对。硫酸盐气溶胶提高反照率，短期内减少到达地表的太阳能。',bad:'火山降温主要和气溶胶反射阳光有关。'},
-  {q:'热点火山岛链为什么能记录板块运动方向？',opts:['热点近似固定，板块移动会把较老火山带离热点','每座岛都会主动向同一方向游动','海水只允许火山沿纬线喷发'],ans:0,ok:'对。新火山靠近热点，老火山被板块带走，岛链排列就留下运动轨迹。',bad:'抓住“热点相对固定、板块在移动”这组关系。'},
-  {q:'火山预警为什么要综合地震、气体和形变数据？',opts:['单一信号可能误判，多参数同时异常更能指向岩浆活动','只看一种数据就永远足够','这些数据都和岩浆运动无关'],ans:0,ok:'对。岩浆上升会引起微震、气体释放和地表隆起，综合判断更可靠。',bad:'预警依赖多证据交叉验证，而不是只看一个指标。'}
+  {q:'火山外形主要受哪种岩浆性质控制？',opts:['当地风向','岩浆粘度','火山口颜色'],ans:1,ok:'对。低粘度熔岩能流很远，常形成坡缓的盾状火山；高粘度岩浆更容易堆成陡坡。',bad:'关键不是颜色或风，而是岩浆能不能流动。'},
+  {q:'高粘度且富含气体的岩浆更容易产生什么喷发？',opts:['完全安静的熔岩湖','没有任何火山活动','猛烈爆发式喷发'],ans:2,ok:'对。气体难以逃逸会积累压力，粘度越高越容易爆发。',bad:'看气体和粘度的组合：气体被困住时压力会上升。'},
+  {q:'为什么碎屑流比普通熔岩流更难逃生？',opts:['只在海底缓慢移动','高温且高速沿坡面贴地流动','温度很低但颜色显眼'],ans:1,ok:'对。碎屑流是高温气体和碎屑混合物，速度可达数百 km/h。',bad:'比较危险性时同时看速度、温度和贴地流动方式。'},
+  {q:'火山 SO₂ 到达平流层后造成短期降温的主要机制是什么？',opts:['直接把地球内部热量抽走','永久消耗大气中的氧气','形成气溶胶反射部分太阳辐射'],ans:2,ok:'对。硫酸盐气溶胶提高反照率，短期内减少到达地表的太阳能。',bad:'火山降温主要和气溶胶反射阳光有关。'},
+  {q:'热点火山岛链为什么能记录板块运动方向？',opts:['每座岛都会主动向同一方向游动','热点近似固定，板块移动会把较老火山带离热点','海水只允许火山沿纬线喷发'],ans:1,ok:'对。新火山靠近热点，老火山被板块带走，岛链排列就留下运动轨迹。',bad:'抓住“热点相对固定、板块在移动”这组关系。'},
+  {q:'火山预警为什么要综合地震、气体和形变数据？',opts:['只看一种数据就永远足够','这些数据都和岩浆运动无关','单一信号可能误判，多参数同时异常更能指向岩浆活动'],ans:2,ok:'对。岩浆上升会引起微震、气体释放和地表隆起，综合判断更可靠。',bad:'预警依赖多证据交叉验证，而不是只看一个指标。'}
 ];
 let cur=0,gameState='title',S={},done=new Array(7).fill(false),quizPassed=new Set(),quizFeedback={},particles=[],th=t();
 
@@ -173,7 +183,7 @@ function renderStageNav(){
   LEVELS.forEach((_,i)=>{
     const unlocked=i===0||quizPassed.has(i-1);
     const c=quizPassed.has(i)?'done':i===cur?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${c}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    h+=unlocked&&i!==cur?`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${c}"></div>`;
   });
   h+=`</div><div class="sn-info">第 ${cur+1}/7 关 — ${LEVELS[cur].name}</div>`;
   h+=`<div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;return h;
@@ -187,6 +197,7 @@ function quizHTML(i){
   h+='</div>';return h;
 }
 function answerQuiz(i,choice){
+  if(i!==cur||quizPassed.has(i)||!done[i])return;
   const q=quizData[i],ok=choice===q.ans;
   quizFeedback[i]={ok,text:ok?q.ok:q.bad};
   if(ok){quizPassed.add(i);playSound('ok')}else{playSound('click')}
@@ -201,15 +212,42 @@ function renderPanel(){
   if(quizPassed.size===7)h+=`<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握火山的核心知识</div><div class="summary-keys"><div>🔥 减压和加水降低岩石熔点形成岩浆</div><div>⛰️ 盾状、层状、穹丘三种火山形态</div><div>💥 气体含量和粘度决定喷发方式</div><div>🌫️ 碎屑流是最致命的火山灾害</div><div>🌡️ 大喷发可导致全球降温</div><div>🏝️ 热点火山形成岛链记录板块运动</div><div>📡 多参数监测实现火山预警</div></div></div>`;
   p.innerHTML=h;
 }
+function clampNumber(value,min,max,fallback){
+  const n=value===''?NaN:Number(value),base=Number.isFinite(Number(fallback))?Number(fallback):min;
+  return Math.max(min,Math.min(max,Number.isFinite(n)?n:base));
+}
+function sliderText(key,value){
+  switch(key){
+    case 'temp':return value+'°C';
+    case 'pressure':return value.toFixed(1)+' GPa';
+    case 'water':return value+'%';
+    case 'gasContent':return value+'%';
+    case 'so2':return value+' Mt';
+    case 'ashAlt':return value+' km';
+    case 'speed':return value.toFixed(1)+' cm/年';
+    case 'seismic':return value+'/天';
+    case 'gas':return value+' t/天';
+    case 'deform':return value+' cm';
+    default:return String(value);
+  }
+}
+function updateSliderInput(input,key,min,max,fallback,afterChange){
+  const value=clampNumber(input.value,min,max,fallback);
+  S[key]=value;input.value=value;
+  if(afterChange)afterChange();
+  const label=input.previousElementSibling&&input.previousElementSibling.querySelector('.slider-val');
+  if(label)label.textContent=sliderText(key,value);
+  draw();
+}
 function renderLevelPanel(i){
   let h='';
   switch(i){
     case 0:
       h+=`<div class="concept-box">岩浆由地幔岩石部分熔融形成。三个关键因素：<b>温度升高</b>、<b>压力降低</b>（减压熔融）、<b>加入水分</b>（降低熔点）。俯冲带的水和洋中脊的减压是最主要的成因。</div>`;
       h+=`<div class="desc">调整温度、压力和含水量，让岩石达到熔融条件。</div>`;
-      h+=`<div class="slider-wrap"><label>温度: <span class="slider-val">${S.temp}°C</span></label><input type="range" min="600" max="1500" step="10" value="${S.temp}" oninput="S.temp=+this.value;calcMelt();this.previousElementSibling.querySelector('.slider-val').textContent=S.temp+'°C';draw()" onchange="this.blur();renderPanel()"></div>`;
-      h+=`<div class="slider-wrap"><label>压力: <span class="slider-val">${S.pressure.toFixed(1)} GPa</span></label><input type="range" min="0.1" max="5" step="0.1" value="${S.pressure}" oninput="S.pressure=+this.value;calcMelt();this.previousElementSibling.querySelector('.slider-val').textContent=S.pressure.toFixed(1)+' GPa';draw()" onchange="this.blur();renderPanel()"></div>`;
-      h+=`<div class="slider-wrap"><label>含水量: <span class="slider-val">${S.water}%</span></label><input type="range" min="0" max="15" step="1" value="${S.water}" oninput="S.water=+this.value;calcMelt();this.previousElementSibling.querySelector('.slider-val').textContent=S.water+'%';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>温度: <span class="slider-val">${S.temp}°C</span></label><input type="range" min="600" max="1500" step="10" value="${S.temp}" oninput="updateSliderInput(this,'temp',600,1500,S.temp,calcMelt)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>压力: <span class="slider-val">${S.pressure.toFixed(1)} GPa</span></label><input type="range" min="0.1" max="5" step="0.1" value="${S.pressure}" oninput="updateSliderInput(this,'pressure',0.1,5,S.pressure,calcMelt)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>含水量: <span class="slider-val">${S.water}%</span></label><input type="range" min="0" max="15" step="1" value="${S.water}" oninput="updateSliderInput(this,'water',0,15,S.water,calcMelt)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div style="font-size:13px;margin:8px 0">熔融程度: <span class="sv" style="color:${S.meltPct>50?'#ef4444':'#f59e0b'}">${S.meltPct.toFixed(0)}%</span></div>`;
       break;
     case 1:
@@ -222,8 +260,8 @@ function renderLevelPanel(i){
       break;
     case 2:
       h+=`<div class="concept-box">喷发方式取决于<b>气体含量</b>和<b>岩浆粘度</b>。低粘度+少气体→宁静溢流（夏威夷式）；高粘度+多气体→猛烈爆发（普林尼式）。气体是驱动喷发的"引擎"。</div>`;
-      h+=`<div class="slider-wrap"><label>气体含量: <span class="slider-val">${S.gasContent}%</span></label><input type="range" min="0.5" max="8" step="0.5" value="${S.gasContent}" oninput="S.gasContent=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.gasContent+'%';draw()" onchange="this.blur();renderPanel()"></div>`;
-      h+=`<div class="slider-wrap"><label>岩浆粘度: <span class="slider-val">${S.viscosity}</span></label><input type="range" min="10" max="100" step="5" value="${S.viscosity}" oninput="S.viscosity=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.viscosity;draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>气体含量: <span class="slider-val">${S.gasContent}%</span></label><input type="range" min="0.5" max="8" step="0.5" value="${S.gasContent}" oninput="updateSliderInput(this,'gasContent',0.5,8,S.gasContent)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>岩浆粘度: <span class="slider-val">${S.viscosity}</span></label><input type="range" min="10" max="100" step="5" value="${S.viscosity}" oninput="updateSliderInput(this,'viscosity',10,100,S.viscosity)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<button class="act-btn" onclick="erupt()">🌋 触发喷发</button>`;
       if(S.erupting)h+=`<div class="learn-box">喷发类型: <b>${S.eruptType}</b></div>`;
       if(done[2])h+=`<div class="hint-box">已制造高气体、高粘度喷发，进入测验确认机制理解。</div>`;
@@ -237,21 +275,21 @@ function renderLevelPanel(i){
       break;
     case 4:
       h+=`<div class="concept-box">大规模火山喷发向平流层注入<b>SO₂</b>和火山灰，形成气溶胶层反射阳光，导致全球降温。1815年坦博拉火山喷发导致"无夏之年"，全球降温约0.5°C。</div>`;
-      h+=`<div class="slider-wrap"><label>SO₂排放量: <span class="slider-val">${S.so2} Mt</span></label><input type="range" min="0" max="100" step="5" value="${S.so2}" oninput="S.so2=+this.value;calcClimate();this.previousElementSibling.querySelector('.slider-val').textContent=S.so2+' Mt';draw()" onchange="this.blur();renderPanel()"></div>`;
-      h+=`<div class="slider-wrap"><label>火山灰高度: <span class="slider-val">${S.ashAlt} km</span></label><input type="range" min="0" max="40" step="1" value="${S.ashAlt}" oninput="S.ashAlt=+this.value;calcClimate();this.previousElementSibling.querySelector('.slider-val').textContent=S.ashAlt+' km';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>SO₂排放量: <span class="slider-val">${S.so2} Mt</span></label><input type="range" min="0" max="100" step="5" value="${S.so2}" oninput="updateSliderInput(this,'so2',0,100,S.so2,calcClimate)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>火山灰高度: <span class="slider-val">${S.ashAlt} km</span></label><input type="range" min="0" max="40" step="1" value="${S.ashAlt}" oninput="updateSliderInput(this,'ashAlt',0,40,S.ashAlt,calcClimate)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div style="font-size:13px;margin:8px 0">全球降温: <span class="sv" style="color:#3b82f6">${S.tempDrop.toFixed(1)}°C</span></div>`;
       break;
     case 5:
       h+=`<div class="concept-box"><b>热点火山</b>由地幔深处的热柱驱动，位置相对固定。当板块从热点上方移过时，依次形成火山岛，最终形成岛链（如夏威夷群岛）。岛链方向记录了板块运动方向。</div>`;
-      h+=`<div class="slider-wrap"><label>板块移动速度: <span class="slider-val">${S.speed.toFixed(1)} cm/年</span></label><input type="range" min="0.5" max="10" step="0.5" value="${S.speed}" oninput="S.speed=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.speed.toFixed(1)+' cm/年';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>板块移动速度: <span class="slider-val">${S.speed.toFixed(1)} cm/年</span></label><input type="range" min="0.5" max="10" step="0.5" value="${S.speed}" oninput="updateSliderInput(this,'speed',0.5,10,S.speed)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<button class="act-btn" onclick="addIsland()">🏝️ 形成新火山岛</button>`;
       h+=`<div style="font-size:12px;margin:6px 0">已形成岛屿: <span class="sv">${S.islands.length}</span></div>`;
       break;
     case 6:
       h+=`<div class="concept-box">火山监测通过多种手段预警：<b>地震活动</b>（岩浆运动引起微震）、<b>气体排放</b>（SO₂增加）、<b>地表变形</b>（岩浆膨胀导致地面隆起）。综合分析可提前数天到数周预警。</div>`;
-      h+=`<div class="slider-wrap"><label>地震频率: <span class="slider-val">${S.seismic}/天</span></label><input type="range" min="0" max="100" step="5" value="${S.seismic}" oninput="S.seismic=+this.value;calcAlert();this.previousElementSibling.querySelector('.slider-val').textContent=S.seismic+'/天';draw()" onchange="this.blur();renderPanel()"></div>`;
-      h+=`<div class="slider-wrap"><label>SO₂排放: <span class="slider-val">${S.gas} t/天</span></label><input type="range" min="0" max="5000" step="100" value="${S.gas}" oninput="S.gas=+this.value;calcAlert();this.previousElementSibling.querySelector('.slider-val').textContent=S.gas+' t/天';draw()" onchange="this.blur();renderPanel()"></div>`;
-      h+=`<div class="slider-wrap"><label>地表隆起: <span class="slider-val">${S.deform} cm</span></label><input type="range" min="0" max="50" step="1" value="${S.deform}" oninput="S.deform=+this.value;calcAlert();this.previousElementSibling.querySelector('.slider-val').textContent=S.deform+' cm';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>地震频率: <span class="slider-val">${S.seismic}/天</span></label><input type="range" min="0" max="100" step="5" value="${S.seismic}" oninput="updateSliderInput(this,'seismic',0,100,S.seismic,calcAlert)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>SO₂排放: <span class="slider-val">${S.gas} t/天</span></label><input type="range" min="0" max="5000" step="100" value="${S.gas}" oninput="updateSliderInput(this,'gas',0,5000,S.gas,calcAlert)" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>地表隆起: <span class="slider-val">${S.deform} cm</span></label><input type="range" min="0" max="50" step="1" value="${S.deform}" oninput="updateSliderInput(this,'deform',0,50,S.deform,calcAlert)" onchange="this.blur();renderPanel()"></div>`;
       const alertColors={green:'#22c55e',yellow:'#f59e0b',orange:'#f97316',red:'#ef4444'};
       const alertNames={green:'正常',yellow:'注意',orange:'警告',red:'危险'};
       h+=`<div style="font-size:14px;margin:8px 0;padding:8px;border-radius:8px;background:${alertColors[S.alert]}22;border:1px solid ${alertColors[S.alert]};color:${alertColors[S.alert]}">预警等级: <b>${alertNames[S.alert]}</b></div>`;
@@ -389,7 +427,7 @@ function drawMonitor(){
 }
 
 /* === 交互 === */
-function goLevel(i){if(i<0||i>=7)return;if(i>0&&!quizPassed.has(i-1))return;cur=i;initLevel(i);renderPanel();draw();updateInfobar();playSound('click')}
+function goLevel(i){if(!Number.isInteger(i)||i<0||i>=7)return;if(i>0&&!quizPassed.has(i-1))return;cur=i;initLevel(i);renderPanel();draw();updateInfobar();playSound('click')}
 function startGame(){playSound('click');document.getElementById('startScreen').classList.add('hidden');document.getElementById('panel').style.display='block';gameState='play';goLevel(0);anim()}
 function updateInfobar(){document.getElementById('ib-level').textContent=`关卡 ${cur+1}/7`;document.getElementById('ib-title').textContent=LEVELS[cur].name;document.getElementById('ib-status').textContent=quizPassed.has(cur)?'✅ 已通关':done[cur]?'待测验':'进行中'}
 

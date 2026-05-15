@@ -66,7 +66,7 @@
 
 
 body{background:var(--bg);color:var(--text);font-family:-apple-system,'SF Pro',sans-serif;overflow:hidden;height:100vh}
-canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+canvas{position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none}
 .overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:flex;align-items:center;justify-content:center;z-index:50}
 .overlay.hidden{display:none}
 .start-box{text-align:center;max-width:560px}
@@ -93,11 +93,13 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .act-btn.green{border-color:var(--btn-green-border);background:var(--btn-green-bg);color:var(--btn-green-text)}
 .hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--hint-text)}
 .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:10px;padding:12px;margin:10px 0;font-size:14px;line-height:1.8;color:var(--learn-text)}
+.metric-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:8px;margin:8px 0;font-size:12px;color:var(--concept-text)}
+.metric-row{display:flex;justify-content:space-between;gap:8px;margin:4px 0;line-height:1.5}
 .slider-wrap{margin:8px 0}
 .slider-wrap label{font-size:11px;color:#888}
 .slider-wrap input[type=range]{width:100%;margin-top:4px;accent-color:#3b82f6}
 .sv{color:var(--sv);font-weight:bold}
-.m-title{font-size:17px;font-weight:700;margin:8px 0 4px;color:#1e293b}
+.m-title{font-size:17px;font-weight:700;margin:8px 0 4px;color:var(--title-color)}
 .m-sub{font-size:12px;color:#888;margin-bottom:8px}
 #bottom-bar{position:absolute;bottom:0;left:0;right:0;height:32px;background:var(--bar-bg);border-top:1px solid var(--bar-border);z-index:20;display:none;align-items:center;padding:0 16px;font-size:11px;color:#666}
 #bottom-bar .bb-left{flex:1}
@@ -120,6 +122,8 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
 .quiz-opt{display:block;width:100%;padding:9px 10px;margin:6px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{border-color:#22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-opt.wrong{border-color:#ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .quiz-feedback{border-radius:8px;padding:8px;margin-top:8px;font-size:12px;line-height:1.6}
 .quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
 .quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
@@ -167,7 +171,7 @@ const TH={
   light:{bg1:'#e8edf5',bg2:'#f0f2f5',bg3:'#e0e7f0',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',label:'#334155',electron:'#334155',electronGlow:'rgba(51,65,85,0.3)',shell:'rgba(100,100,200,0.15)',barBg:'#c7d2fe',showStars:false}
 };
 function t(){return isDark?TH.dark:TH.light}
-function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')renderPanel();if(typeof drawSceneOnce==='function')drawSceneOnce(0)}catch(e){}}
 
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 let CW,CH,time=0,animId,gameState='start',currentLevel=0,levelState={},stars=[],particles=[];
@@ -311,20 +315,20 @@ const levels=[
 ];
 
 const quizData=[
-{q:'全息图相比普通照片多记录了哪类关键信息？',opts:['光波相位信息，因此可重建深度','只记录颜色名称','只记录拍摄时间'],ans:0,ok:'对。干涉条纹记录了振幅和相位，才有 3D 重建的可能。',bad:'普通照片主要记录强度，全息术还要保存相位信息。'},
-{q:'3D 线框模型投影到 2D 屏幕时，透视效果体现为什么？',opts:['近处看起来更大，远处更小','所有点大小完全一样','物体不能旋转'],ans:0,ok:'对。透视投影通过 z 深度改变屏幕坐标比例。',bad:'透视的核心就是近大远小。'},
-{q:'手势识别系统通常依赖什么信息判断抓取、缩放、旋转？',opts:['手部关键点的空间位置和运动','只读取屏幕亮度','只检测声音大小'],ans:0,ok:'对。手部关键点轨迹能映射为交互手势。',bad:'现代手势识别重点是关键点追踪和时序判断。'},
-{q:'AR 让虚拟物体稳定叠加到真实世界，关键需要什么？',opts:['定位/跟踪真实空间并正确渲染遮挡关系','只把图片贴到屏幕中心','关闭所有摄像头'],ans:0,ok:'对。SLAM、姿态跟踪和遮挡处理是 AR 稳定感的基础。',bad:'AR 不是简单贴图，需要理解真实空间位置。'},
-{q:'激光等离子体体积显示为什么能在空气中发光？',opts:['聚焦激光电离空气形成发光等离子体','空气自动变成屏幕布','靠普通投影仪照墙'],ans:0,ok:'对。高强度聚焦光可让空气局部电离并发光。',bad:'体积显示强调在空间中形成发光点。'},
-{q:'JARVIS 式工作台整合了哪些核心能力？',opts:['3D 显示、手势交互、AR 叠加和智能助手','只是一张静态图片','只需要普通键盘输入'],ans:0,ok:'对。电影界面的关键是多技术协同。',bad:'JARVIS 不是单一显示技术，而是完整交互系统。'},
-{q:'自由创作关中移动、缩放、放置对象体现了哪种趋势？',opts:['从 2D 屏幕交互走向 3D 空间交互','完全取消三维坐标','只适合打印纸质图片'],ans:0,ok:'对。空间计算的核心是直接在 3D 环境中组织和操作信息。',bad:'本关总结的是 3D 空间化的人机交互。'}
+{q:'全息图相比普通照片多记录了哪类关键信息？',opts:['光波相位信息，因此可重建深度','只记录颜色名称','只记录拍摄时间'],ans:0,ok:'对。干涉条纹记录了振幅和相位，才有 3D 重建的可能。',bad:'普通照片主要记录强度，全息术还要保存相位信息。',why:'普通照片只保留光强，全息图用相干光干涉把相位差写进条纹，之后才能重建深度。'},
+{q:'3D 线框模型投影到 2D 屏幕时，透视效果体现为什么？',opts:['所有点大小完全一样','近处看起来更大，远处更小','物体不能旋转'],ans:1,ok:'对。透视投影通过 z 深度改变屏幕坐标比例。',bad:'透视的核心就是近大远小。',why:'透视投影会让屏幕坐标随 z 深度缩放，所以同样大小的结构离观察者越近，看起来越大。'},
+{q:'手势识别系统通常依赖什么信息判断抓取、缩放、旋转？',opts:['只读取屏幕亮度','只检测声音大小','手部关键点的空间位置和运动'],ans:2,ok:'对。手部关键点轨迹能映射为交互手势。',bad:'现代手势识别重点是关键点追踪和时序判断。',why:'抓取、缩放、旋转都来自多个手部关键点的相对位置变化，系统需要连续追踪空间轨迹。'},
+{q:'AR 让虚拟物体稳定叠加到真实世界，关键需要什么？',opts:['只把图片贴到屏幕中心','定位/跟踪真实空间并正确渲染遮挡关系','关闭所有摄像头'],ans:1,ok:'对。SLAM、姿态跟踪和遮挡处理是 AR 稳定感的基础。',bad:'AR 不是简单贴图，需要理解真实空间位置。',why:'AR 要先估计真实空间和设备姿态，再把虚拟物体按同一坐标系渲染出来，并处理遮挡。'},
+{q:'激光等离子体体积显示为什么能在空气中发光？',opts:['空气自动变成屏幕布','靠普通投影仪照墙','聚焦激光电离空气形成发光等离子体'],ans:2,ok:'对。高强度聚焦光可让空气局部电离并发光。',bad:'体积显示强调在空间中形成发光点。',why:'体积显示的关键是在空间中形成可见点，聚焦激光能让空气局部电离，等离子体发光。'},
+{q:'JARVIS 式工作台整合了哪些核心能力？',opts:['只是一张静态图片','3D 显示、手势交互、AR 叠加和智能助手','只需要普通键盘输入'],ans:1,ok:'对。电影界面的关键是多技术协同。',bad:'JARVIS 不是单一显示技术，而是完整交互系统。',why:'JARVIS 式界面不是单个屏幕效果，而是把空间显示、手势输入、真实环境定位和智能反馈组合起来。'},
+{q:'自由创作关中移动、缩放、放置对象体现了哪种趋势？',opts:['完全取消三维坐标','只适合打印纸质图片','从 2D 屏幕交互走向 3D 空间交互'],ans:2,ok:'对。空间计算的核心是直接在 3D 环境中组织和操作信息。',bad:'本关总结的是 3D 空间化的人机交互。',why:'当对象能被放置、移动和缩放到空间里，交互焦点就从平面窗口转向三维信息组织。'}
 ];
 
 /* ===== CORE ===== */
 function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
 function initStars(){stars=[];for(let i=0;i<60;i++)stars.push({x:Math.random()*CW,y:Math.random()*CH,r:Math.random()*1.2+.2,tw:Math.random()*Math.PI*2,sp:Math.random()*.015+.005})}
-function drawStars(){for(let s of stars){const a=.3+.5*Math.abs(Math.sin(s.tw+time*s.sp));ctx.fillStyle=`rgba(96,165,250,${a*.3})`;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill()}}
-function drawGrid(){ctx.strokeStyle='rgba(96,165,250,0.04)';ctx.lineWidth=1;const sp=60;for(let x=0;x<CW;x+=sp){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke()}for(let y=0;y<CH;y+=sp){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke()}}
+function drawStars(){if(!t().showStars)return;for(let s of stars){const a=.3+.5*Math.abs(Math.sin(s.tw+time*s.sp));ctx.fillStyle=`rgba(96,165,250,${a*.3})`;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill()}}
+function drawGrid(){ctx.strokeStyle=t().grid;ctx.lineWidth=1;const sp=60;for(let x=0;x<CW;x+=sp){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CH);ctx.stroke()}for(let y=0;y<CH;y+=sp){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke()}}
 function drawScanlines(){const off=(time*30)%CH;ctx.fillStyle='rgba(96,165,250,0.015)';for(let y=0;y<CH;y+=3)ctx.fillRect(0,y,CW,1);ctx.fillStyle='rgba(96,165,250,0.06)';ctx.fillRect(0,off,CW,2)}
 function addP(x,y,vx,vy,col,life,sz){particles.push({x,y,vx,vy,col,life,ml:life,sz:sz||2})}
 function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=particles[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt;if(p.life<=0)particles.splice(i,1)}}
@@ -344,20 +348,44 @@ window.addEventListener('resize',resize);resize();
 
 /* Mouse */
 const canvasArea=()=>({left:320,top:0,right:CW,bottom:CH-32});
-canvas.addEventListener('mousedown',e=>{
-  if(e.button===0)mouse.down=true;
-  if(e.button===2)mouse.rdown=true;
-  mouse.sx=e.clientX;mouse.sy=e.clientY;
-  handleMouseDown(e);
+function pointerPoint(e){
+  const r=canvas.getBoundingClientRect();
+  const sx=CW/Math.max(1,r.width),sy=CH/Math.max(1,r.height);
+  return{x:(e.clientX-r.left)*sx,y:(e.clientY-r.top)*sy};
+}
+function pointerEvent(e,button){
+  const p=pointerPoint(e);
+  return{clientX:p.x,clientY:p.y,button};
+}
+canvas.addEventListener('pointerdown',e=>{
+  const button=e.pointerType==='mouse'?e.button:0;
+  if(button===0)mouse.down=true;
+  if(button===2)mouse.rdown=true;
+  const p=pointerPoint(e);
+  mouse.sx=p.x;mouse.sy=p.y;mouse.x=p.x;mouse.y=p.y;
+  canvas.setPointerCapture(e.pointerId);
+  e.preventDefault();
+  handleMouseDown({clientX:p.x,clientY:p.y,button});
 });
-canvas.addEventListener('mousemove',e=>{
-  mouse.dx=e.clientX-mouse.x;mouse.dy=e.clientY-mouse.y;
-  mouse.x=e.clientX;mouse.y=e.clientY;
-  handleMouseMove(e);
+canvas.addEventListener('pointermove',e=>{
+  const p=pointerPoint(e);
+  mouse.dx=p.x-mouse.x;mouse.dy=p.y-mouse.y;
+  mouse.x=p.x;mouse.y=p.y;
+  e.preventDefault();
+  handleMouseMove(pointerEvent(e,e.pointerType==='mouse'?e.buttons&2?2:0:0));
 });
-canvas.addEventListener('mouseup',e=>{
-  if(e.button===0){handleMouseUp(e);mouse.down=false}
-  if(e.button===2)mouse.rdown=false;
+canvas.addEventListener('pointerup',e=>{
+  const button=e.pointerType==='mouse'?e.button:0;
+  e.preventDefault();
+  handleMouseUp(pointerEvent(e,button));
+  if(button===0)mouse.down=false;
+  if(button===2)mouse.rdown=false;
+  canvas.releasePointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointercancel',e=>{
+  mouse.down=false;mouse.rdown=false;
+  handleMouseUp(pointerEvent(e,0));
+  canvas.releasePointerCapture(e.pointerId);
 });
 canvas.addEventListener('wheel',e=>{e.preventDefault();mouse.wheel=e.deltaY;handleWheel(e)},{passive:false});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
@@ -367,24 +395,37 @@ function startGame(){
   document.getElementById('startScreen').classList.add('hidden');
   document.getElementById('panel').style.display='block';
   document.getElementById('bottom-bar').style.display='flex';
-  gameState='play';currentLevel=0;initLevel(0);renderPanel();
+  gameState='play';resetProgress();
+}
+
+function resetProgress(){
+  currentLevel=0;
+  levelState={};
+  completedLevels.clear();
+  quizPassed.clear();
+  Object.keys(quizFeedback).forEach(k=>delete quizFeedback[k]);
+  particles=[];
+  panelDirty=false;
+  initLevel(0);
 }
 
 function initLevel(idx){
-  if(!canGoLevel(idx))return;
+  idx=Number(idx);
+  if(!Number.isInteger(idx)||!canGoLevel(idx))return false;
+  if(!quizPassed.has(idx))delete quizFeedback[idx];
   currentLevel=idx;particles=[];
   if(idx===0){
     const cx=CW/2+160,cy=CH/2;
-    levelState={sources:[{x:cx-120,y:cy,dragging:false},{x:cx+120,y:cy,dragging:false}],wavelength:40,dragIdx:-1,movedSource:false,changedWave:false,goalDone:[false,false,false]};
+    levelState={sources:[{x:cx-120,y:cy,dragging:false},{x:cx+120,y:cy,dragging:false}],wavelength:40,dragIdx:-1,movedSource:false,changedWave:false,analyzedFringes:false,goalDone:[false,false,false]};
   }else if(idx===1){
-    levelState={rx:0.3,ry:0,modelIdx:0,dragging:false,rotated:false,switchedHelmet:false,goalDone:[false,false,false]};
+    levelState={rx:0.3,ry:0,modelIdx:0,dragging:false,rotated:false,switchedHelmet:false,analyzedProjection:false,goalDone:[false,false,false]};
   }else if(idx===2){
     const cx=CW/2+160,cy=CH/2;
     levelState={cube:{x:cx,y:cy,z:0,rx:0.3,ry:0,sz:60},hand:{x:cx,y:cy-80},gesture:'无',grabbing:false,grabOff:{x:0,y:0},didGrab:false,didZoom:false,didRotate:false,goalDone:[false,false,false]};
   }else if(idx===3){
     levelState={objects:[],selectedTool:'cube',placedOnTable:false,placedOnWall:false,goalDone:[false,false,false]};
   }else if(idx===4){
-    levelState={techIdx:0,animTime:0,seenTech:new Set(),goalDone:[false,false,false]};
+    levelState={techIdx:null,animTime:0,seenTech:new Set(),goalDone:[false,false,false]};
   }else if(idx===5){
     const cx=CW/2+160,cy=CH/2;
     levelState={rx:0.3,ry:0,dragging:false,panels:[
@@ -392,27 +433,37 @@ function initLevel(idx){
       {x:cx+140,y:cy-100,w:140,h:90,title:'系统温度',val:36.5,unit:'°C',expanded:false,data:[]},
       {x:cx-180,y:cy+80,w:140,h:90,title:'护甲完整度',val:98,unit:'%',expanded:false,data:[]},
       {x:cx+160,y:cy+100,w:140,h:90,title:'武器系统',val:100,unit:'%',expanded:false,data:[]}
-    ],rotated:false,expandedCount:0,goalDone:[false,false,false],wavePhase:0};
+    ],rotated:false,expandedPanels:new Set(),expandedCount:0,jarvisConfirmed:false,goalDone:[false,false,false],wavePhase:0};
   }else if(idx===6){
-    levelState={objects:[],selectedShape:'cube',shapes:new Set(),movedObj:false,goalDone:[false,false,false],dragIdx:-1,dragOff:{x:0,y:0}};
+    levelState={objects:[],selectedShape:'cube',shapes:new Set(),movedObj:false,sceneConfirmed:false,confirmClear:false,goalDone:[false,false,false],dragIdx:-1,dragOff:{x:0,y:0}};
   }
-  renderPanel();
+  renderPanel();return true;
 }
 
-function switchLevel(i){if(canGoLevel(i)){initLevel(i);renderPanel()}}
+function switchLevel(i){
+  i=Number(i);
+  if(!canGoLevel(i))return false;
+  return initLevel(i);
+}
 
 function markDirty(){panelDirty=true}
+function setText(id,text){const el=document.getElementById(id);if(el)el.textContent=text}
+function setGesture(name){
+  if(currentLevel!==2)return;
+  levelState.gesture=name;
+  setText('gestureVal',name);
+}
 
 function checkGoals(){
   const S=levelState;
   if(currentLevel===0){
     if(S.movedSource&&!S.goalDone[0]){S.goalDone[0]=true;markDirty()}
     if(S.changedWave&&!S.goalDone[1]){S.goalDone[1]=true;markDirty()}
-    if(S.goalDone[0]&&S.goalDone[1]&&!S.goalDone[2]){S.goalDone[2]=true;markDirty()}
+    if(S.analyzedFringes&&S.goalDone[0]&&S.goalDone[1]&&!S.goalDone[2]){S.goalDone[2]=true;markDirty()}
   }else if(currentLevel===1){
     if(S.rotated&&!S.goalDone[0]){S.goalDone[0]=true;markDirty()}
     if(S.switchedHelmet&&!S.goalDone[1]){S.goalDone[1]=true;markDirty()}
-    if(S.goalDone[0]&&S.goalDone[1]&&!S.goalDone[2]){S.goalDone[2]=true;markDirty()}
+    if(S.analyzedProjection&&S.goalDone[0]&&S.goalDone[1]&&!S.goalDone[2]){S.goalDone[2]=true;markDirty()}
   }else if(currentLevel===2){
     if(S.didGrab&&!S.goalDone[0]){S.goalDone[0]=true;markDirty()}
     if(S.didZoom&&!S.goalDone[1]){S.goalDone[1]=true;markDirty()}
@@ -421,19 +472,20 @@ function checkGoals(){
     const objs=S.objects;
     if(!S.goalDone[0]&&objs.some(o=>o.zone==='table')){S.goalDone[0]=true;markDirty()}
     if(!S.goalDone[1]&&objs.some(o=>o.zone==='wall')){S.goalDone[1]=true;markDirty()}
-    if(!S.goalDone[2]&&objs.length>=3){S.goalDone[2]=true;markDirty()}
+    if(!S.goalDone[2]&&objs.length>=3&&S.goalDone[0]&&S.goalDone[1]){S.goalDone[2]=true;markDirty()}
   }else if(currentLevel===4){
     if(S.seenTech.has(0)&&!S.goalDone[0]){S.goalDone[0]=true;markDirty()}
     if(S.seenTech.has(1)&&!S.goalDone[1]){S.goalDone[1]=true;markDirty()}
     if(S.seenTech.size>=2&&!S.goalDone[2]){S.goalDone[2]=true;markDirty()}
   }else if(currentLevel===5){
     if(S.rotated&&!S.goalDone[0]){S.goalDone[0]=true;markDirty()}
-    if(S.expandedCount>=2&&!S.goalDone[1]){S.goalDone[1]=true;markDirty()}
-    if(S.goalDone[0]&&S.goalDone[1]&&!S.goalDone[2]){S.goalDone[2]=true;markDirty()}
+    const expandedUnique=S.expandedPanels?S.expandedPanels.size:S.expandedCount;
+    if(expandedUnique>=2&&!S.goalDone[1]){S.goalDone[1]=true;markDirty()}
+    if(S.jarvisConfirmed&&S.goalDone[0]&&S.goalDone[1]&&!S.goalDone[2]){S.goalDone[2]=true;markDirty()}
   }else if(currentLevel===6){
     if(S.shapes.size>=3&&!S.goalDone[0]){S.goalDone[0]=true;markDirty()}
     if(S.movedObj&&!S.goalDone[1]){S.goalDone[1]=true;markDirty()}
-    if(S.goalDone[0]&&S.goalDone[1]&&!S.goalDone[2]){S.goalDone[2]=true;markDirty()}
+    if(S.sceneConfirmed&&S.goalDone[0]&&S.goalDone[1]&&!S.goalDone[2]){S.goalDone[2]=true;markDirty()}
   }
   if(S.goalDone&&S.goalDone.every(g=>g)&&!quizPassed.has(currentLevel)){markDirty()}
 }
@@ -466,8 +518,13 @@ function handleMouseDown(e){
       for(const p of S.panels){
         if(mx>p.x-p.w/2&&mx<p.x+p.w/2&&my>p.y-p.h/2&&my<p.y+p.h/2){
           p.expanded=!p.expanded;
-          if(p.expanded){p.h=160;S.expandedCount++;} else p.h=90;
-          markDirty();break;
+          if(p.expanded){
+            p.h=160;
+            if(!S.expandedPanels)S.expandedPanels=new Set();
+            S.expandedPanels.add(p.title);
+            S.expandedCount=S.expandedPanels.size;
+          } else p.h=90;
+          markDirty();return;
         }
       }
       S.dragging=true;S.lastMx=mx;S.lastMy=my;
@@ -482,7 +539,7 @@ function handleMouseDown(e){
       }
       // place new
       S.objects.push({type:S.selectedShape,x:mx,y:my,sz:40,rx:Math.random()*3,ry:Math.random()*3,born:time});
-      S.shapes.add(S.selectedShape);
+      S.shapes.add(S.selectedShape);S.confirmClear=false;if(!S.goalDone[2])S.sceneConfirmed=false;
     }
   }
 }
@@ -490,34 +547,35 @@ function handleMouseMove(e){
   const S=levelState,mx=e.clientX,my=e.clientY;
   if(currentLevel===0&&S.dragIdx>=0){
     S.sources[S.dragIdx].x=mx;S.sources[S.dragIdx].y=my;S.movedSource=true;
+    updateFringeMetricPanel();
   }else if(currentLevel===1&&S.dragging){
     S.ry+=(mx-S.lastMx)*0.01;S.rx+=(my-S.lastMy)*0.01;S.lastMx=mx;S.lastMy=my;S.rotated=true;
   }else if(currentLevel===2){
     S.hand.x=mx;S.hand.y=my;
-    if(S.grabbing){S.cube.x=mx-S.grabOff.x;S.cube.y=my-S.grabOff.y;S.gesture='抓取'}
-    else if(mouse.rdown){S.cube.ry+=(mx-mouse.sx)*0.005;S.cube.rx+=(my-mouse.sy)*0.005;mouse.sx=mx;mouse.sy=my;S.gesture='旋转';S.didRotate=true}
-    else S.gesture='追踪';
+    if(S.grabbing){S.cube.x=mx-S.grabOff.x;S.cube.y=my-S.grabOff.y;setGesture('抓取')}
+    else if(mouse.rdown){S.cube.ry+=(mx-mouse.sx)*0.005;S.cube.rx+=(my-mouse.sy)*0.005;mouse.sx=mx;mouse.sy=my;setGesture('旋转');S.didRotate=true}
+    else setGesture('追踪');
   }else if(currentLevel===5&&S.dragging){
     let hitPanel=false;
     for(const p of S.panels){if(mx>p.x-p.w/2&&mx<p.x+p.w/2&&my>p.y-p.h/2&&my<p.y+p.h/2){hitPanel=true;break}}
     if(!hitPanel){S.ry+=(mx-S.lastMx)*0.01;S.rx+=(my-S.lastMy)*0.01;S.rotated=true}
     S.lastMx=mx;S.lastMy=my;
   }else if(currentLevel===6&&S.dragIdx>=0){
-    const o=S.objects[S.dragIdx];o.x=mx-S.dragOff.x;o.y=my-S.dragOff.y;S.movedObj=true;
+    const o=S.objects[S.dragIdx];o.x=mx-S.dragOff.x;o.y=my-S.dragOff.y;S.movedObj=true;S.confirmClear=false;if(!S.goalDone[2])S.sceneConfirmed=false;
   }
 }
 function handleMouseUp(e){
   const S=levelState;
   if(currentLevel===0){if(S.dragIdx>=0){S.sources[S.dragIdx].dragging=false;S.dragIdx=-1}}
   else if(currentLevel===1)S.dragging=false;
-  else if(currentLevel===2){S.grabbing=false;S.gesture='追踪'}
+  else if(currentLevel===2){S.grabbing=false;setGesture('追踪')}
   else if(currentLevel===5)S.dragging=false;
   else if(currentLevel===6)S.dragIdx=-1;
 }
 function handleWheel(e){
   const S=levelState;
   if(currentLevel===2){
-    S.cube.sz=Math.max(20,Math.min(150,S.cube.sz-e.deltaY*0.1));S.gesture='缩放';S.didZoom=true;
+    S.cube.sz=Math.max(20,Math.min(150,S.cube.sz-e.deltaY*0.1));setGesture('缩放');S.didZoom=true;
   }else if(currentLevel===6){
     // zoom hovered object
     for(let i=S.objects.length-1;i>=0;i--){
@@ -539,8 +597,18 @@ function doAction(act,param){
   }else if(currentLevel===4){
     if(act==='switchTech'){S.techIdx=+param;S.animTime=0;S.seenTech.add(+param);markDirty()}
   }else if(currentLevel===6){
-    if(act==='selectShape'){S.selectedShape=param;markDirty()}
-    else if(act==='clearAll'){S.objects=[];S.shapes.clear();markDirty()}
+    if(act==='selectShape'){S.selectedShape=param;S.confirmClear=false;markDirty()}
+    else if(act==='clearAll'){
+      if(!S.confirmClear&&S.objects.length>0){S.confirmClear=true;markDirty();renderPanel();return}
+      S.objects=[];
+      S.shapes.clear();
+      S.movedObj=false;
+      S.sceneConfirmed=false;
+      S.confirmClear=false;
+      S.dragIdx=-1;
+      S.goalDone=[false,false,false];
+      markDirty();
+    }
   }
   renderPanel();
 }
@@ -548,6 +616,7 @@ function doAction(act,param){
 /* ===== RENDER PANEL ===== */
 function renderPanel(){
   const L=levels[currentLevel],S=levelState,p=document.getElementById('panel');
+  const levelPassed=quizPassed.has(currentLevel);
   let h=stageNavHTML();
   h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
   const _kw=['干涉条纹 = 参考光 + 物体光，记录振幅+相位','透视投影：screenX = x&#183;fov/(z+fov)，近大远小','手部21个关节点追踪：抓取、缩放、旋转手势','AR三要素：SLAM定位 + 正确渲染 + 遮挡处理','体积显示：激光等离子体 / 旋转屏幕 / 雾幕投影','JARVIS = 全息投影 + 手势识别 + AR + AI助手','自由创作模式：放置、移动、缩放3D对象'][currentLevel];
@@ -555,14 +624,14 @@ function renderPanel(){
   h+=`<div class="concept-box">${L.concept}</div>`;
   h+='<div style="margin:8px 0;font-size:12px;color:var(--text-muted);font-weight:600">目标清单</div>';
   for(let i=0;i<L.goals.length;i++){
-    const done=S.goalDone&&S.goalDone[i];
+    const done=levelPassed||(S.goalDone&&S.goalDone[i]);
     h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`;
   }
   h+=renderLevelActions();
-  if(S.goalDone&&S.goalDone.every(g=>g)){
-    if(!quizPassed.has(currentLevel)){
-      h+=quizHTML(currentLevel);
-    }else{
+  const goalsDone=levelPassed||(S.goalDone&&S.goalDone.every(g=>g));
+  if(goalsDone){
+    h+=quizHTML(currentLevel);
+    if(levelPassed){
       h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
       if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
       else h+=summaryHTML();
@@ -570,45 +639,62 @@ function renderPanel(){
   }
   p.innerHTML=h;
   document.getElementById('bbLeft').textContent=`第 ${currentLevel+1} 关：${L.title}`;
-  document.getElementById('bbRight').textContent=`${completedLevels.size}/${levels.length} 已完成`;
+  document.getElementById('bbRight').textContent=`${quizPassed.size}/${levels.length} 已完成`;
 }
 
-function canGoLevel(i){return i>=0&&i<levels.length&&(i===0||completedLevels.has(i)||completedLevels.has(i-1));}
+function canGoLevel(i){
+  i=Number(i);
+  return Number.isInteger(i)&&i>=0&&i<levels.length&&(i===0||quizPassed.has(i-1));
+}
 
 function stageNavHTML(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   for(let i=0;i<levels.length;i++){
     const unlocked=canGoLevel(i);
-    const cls=completedLevels.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    const cls=quizPassed.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
+    h+=unlocked&&i!==currentLevel?`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${cls}"></div>`;
   }
-  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${completedLevels.size}/${levels.length}</div>`;
+  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${quizPassed.size}/${levels.length}</div>`;
   h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
   return h;
 }
 
 function quizHTML(i){
   const q=quizData[i],fb=quizFeedback[i];
+  const passed=quizPassed.has(i);
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
   h+=`<div class="quiz-q">${q.q}</div>`;
-  q.opts.forEach((opt,idx)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${i},${idx})">${String.fromCharCode(65+idx)}. ${opt}</button>`;});
+  q.opts.forEach((opt,idx)=>{
+    const mark=passed&&idx===q.ans?' correct':fb&&idx===q.ans?' correct':fb&&idx===fb.choice&&!fb.ok?' wrong':'';
+    h+=`<button class="quiz-opt${mark}" onclick="answerQuiz(${i},${idx})">${String.fromCharCode(65+idx)}. ${opt}</button>`;
+  });
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  else if(passed)h+=`<div class="quiz-feedback ok">已通过小测。${q.why||q.ok}</div>`;
   h+='</div>';
   return h;
 }
 
 function answerQuiz(i,optIdx){
-  const q=quizData[i],ok=optIdx===q.ans;
-  quizFeedback[i]={ok:ok,text:ok?q.ok:q.bad};
+  i=Number(i);optIdx=Number(optIdx);
+  if(!Number.isInteger(i)||!Number.isInteger(optIdx))return false;
+  const q=quizData[i];
+  if(!q||optIdx<0||optIdx>=q.opts.length)return false;
+  if(i!==currentLevel||quizPassed.has(i)||!levelState.goalDone||!levelState.goalDone.every(Boolean))return false;
+  if(i>0&&!quizPassed.has(i-1))return false;
+  const ok=optIdx===q.ans;
+  quizFeedback[i]={ok:ok,choice:optIdx,text:ok?`${q.ok} ${q.why||''}`:`${q.bad} ${q.why||''}`};
   if(ok){quizPassed.add(i);completedLevels.add(i);}
   renderPanel();
+  return ok;
 }
 
 function summaryHTML(){
+  if(quizPassed.size<levels.length)return '';
   let h='<div class="summary-box"><div class="summary-title">🏆 全息投影原理通关</div>';
   h+='<div class="summary-sub">你已完成 7 个空间显示与交互主题</div><div class="summary-stats">';
   h+=`<div class="summary-stat"><div class="num">${levels.length}</div><div class="label">关卡完成</div></div>`;
-  h+=`<div class="summary-stat"><div class="num">${completedLevels.size}</div><div class="label">测验通过</div></div>`;
+  h+=`<div class="summary-stat"><div class="num">${quizPassed.size}</div><div class="label">测验通过</div></div>`;
+  h+=`<div class="summary-stat"><div class="num">${quizPassed.size*3}/21</div><div class="label">目标达成</div></div>`;
   h+='<div class="summary-stat"><div class="num">100%</div><div class="label">知识闭环</div></div></div>';
   h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">📚 关键知识回顾</div>';
   levels.forEach(l=>{h+=`<div>✅ ${l.title}</div>`;});
@@ -620,7 +706,10 @@ function renderLevelActions(){
   const S=levelState;let h='';
   if(currentLevel===0){
     h+=`<div class="hint-box">💡 拖动两个光源观察干涉条纹变化，调节波长滑块改变条纹间距</div>`;
-    h+=`<div class="slider-wrap"><label>波长: <span class="sv">${S.wavelength}px</span></label><input type="range" min="15" max="80" value="${S.wavelength}" oninput="doAction('setWave',this.value)"></div>`;
+    h+=`<div class="slider-wrap"><label>波长: <span class="sv" id="waveVal">${S.wavelength}px</span></label><input type="range" min="15" max="80" value="${S.wavelength}" oninput="setWaveInline(this.value)"></div>`;
+    h+=fringeMetricsHTML();
+    h+=`<button class="act-btn" onclick="analyzeFringes()" ${S.movedSource&&S.changedWave?'':'disabled'}>分析干涉条纹记录的深度信息</button>`;
+    if(!S.analyzedFringes)h+=`<div style="font-size:11px;color:var(--text-muted);margin-top:4px">先让条纹随光源位置和波长都发生变化，再分析为什么条纹能保存相位和深度。</div>`;
   }else if(currentLevel===1){
     const models=['立方体','球体','钢铁侠头盔','DNA双螺旋'];
     h+=`<div class="hint-box">💡 鼠标拖拽旋转3D模型，点击按钮切换不同模型</div>`;
@@ -628,9 +717,12 @@ function renderLevelActions(){
       const active=S.modelIdx===i?' style="background:#2a2a6a"':'';
       h+=`<button class="act-btn"${active} onclick="doAction('switchModel',${i})">${models[i]}</button>`;
     }
+    h+=`<div class="metric-box"><div class="metric-row"><span>当前模型</span><span class="sv">${models[S.modelIdx]}</span></div><div class="metric-row"><span>旋转观察</span><span class="sv">${S.rotated?'已完成':'待拖拽'}</span></div><div style="margin-top:6px;line-height:1.6">透视公式会用 z 深度缩放屏幕坐标；旋转模型时，近处边线放大、远处边线收缩，立体感由此产生。</div></div>`;
+    h+=`<button class="act-btn" onclick="analyzeProjection()" ${S.rotated&&S.switchedHelmet?'':'disabled'}>${S.analyzedProjection?'✅ 已分析透视投影':'分析透视投影'}</button>`;
   }else if(currentLevel===2){
     h+=`<div class="hint-box">💡 左键拖拽=抓取移动 | 滚轮=缩放 | 右键拖拽=旋转</div>`;
-    h+=`<div style="margin:8px 0;font-size:12px;color:#60a5fa">当前手势: <span class="sv">${S.gesture}</span></div>`;
+    h+=`<div style="margin:8px 0;font-size:12px;color:#60a5fa">当前手势: <span class="sv" id="gestureVal">${S.gesture}</span></div>`;
+    if(!S.goalDone.every(Boolean))h+=`<button class="act-btn" onclick="demoNextGesture()">演示下一个手势</button>`;
   }else if(currentLevel===3){
     const tools=['cube:立方体','sphere:球体','text:文字面板','armor:战甲模型'];
     h+=`<div class="hint-box">💡 选择物体类型，点击房间中的位置放置。上方=墙面，下方=桌面</div>`;
@@ -648,8 +740,20 @@ function renderLevelActions(){
       const active=S.techIdx===i?' style="background:#2a2a6a"':'';
       h+=`<button class="act-btn"${active} onclick="doAction('switchTech',${i})">${seen}${techs[i]}</button>`;
     }
+    const coreSeen=(S.seenTech.has(0)?1:0)+(S.seenTech.has(1)?1:0);
+    const techNotes=['飞秒激光把空气局部电离，亮点本身就在空间中。','LED条高速旋转，靠视觉暂留把一维光点扫成体积图像。','雾幕提供半透明散射介质，本质仍是投影到薄雾上。','光场显示从多个方向发出光线，让眼睛接收到正确视差。'];
+    h+=`<div class="metric-box"><div class="metric-row"><span>核心观察</span><span class="sv">${coreSeen}/2</span></div><div class="metric-row"><span>已比较技术</span><span class="sv">${S.seenTech.size}/4</span></div><div style="margin-top:6px;line-height:1.6">${S.techIdx===null?'先观察激光等离子体，再观察旋转屏幕，比较“空间发光点”和“视觉暂留扫描”的差异。':techNotes[S.techIdx]}</div></div>`;
   }else if(currentLevel===5){
     h+=`<div class="hint-box">💡 拖拽旋转战甲模型，点击四周的数据面板展开详情</div>`;
+    const expandedUnique=S.expandedPanels?S.expandedPanels.size:S.expandedCount;
+    h+=`<div style="font-size:12px;color:var(--text-muted);margin:4px 0">已检查不同面板: <span class="sv">${expandedUnique}</span>/2</div>`;
+    if(S.rotated&&expandedUnique>=2&&!S.goalDone[2]){
+      h+=`<button class="act-btn" onclick="confirmJarvisWorkflow()">确认 JARVIS 工作台整合逻辑</button>`;
+    }else if(S.goalDone[2]){
+      h+=`<div class="learn-box" style="font-size:12px">已确认：旋转战甲提供 3D 空间模型，展开数据面板提供实时状态，二者叠加形成可交互的全息工作台。</div>`;
+    }else{
+      h+=`<div style="font-size:11px;color:var(--text-muted);line-height:1.6;margin-top:4px">先旋转战甲并展开两个不同面板，再确认完整工作台如何把空间模型和数据界面整合在一起。</div>`;
+    }
   }else if(currentLevel===6){
     const shapes=['cube:立方体','sphere:球体','cylinder:圆柱','cone:圆锥','torus:环面'];
     h+=`<div class="hint-box">💡 选择形状后点击空间放置，拖拽移动，滚轮缩放</div>`;
@@ -658,15 +762,124 @@ function renderLevelActions(){
       const active=S.selectedShape===k?' style="background:#2a2a6a"':'';
       h+=`<button class="act-btn"${active} onclick="doAction('selectShape','${k}')">${n}</button>`;
     }
-    h+=`<button class="act-btn" style="border-color:#e44;color:#f88" onclick="doAction('clearAll')">清空全部</button>`;
+    h+=`<button class="act-btn" style="border-color:#e44;color:#f88" onclick="doAction('clearAll')">${S.confirmClear?'确认清空全部':'清空全部'}</button>`;
+    if(S.confirmClear)h+=`<div class="hint-box">再次点击“确认清空全部”才会删除当前场景；选择形状或继续编辑会取消本次清空。</div>`;
     h+=`<div style="font-size:12px;color:var(--text-muted);margin:4px 0">已放置: <span class="sv">${S.objects.length}</span> 个 | 种类: <span class="sv">${S.shapes.size}</span></div>`;
+    if(S.goalDone[0]&&S.goalDone[1]&&!S.goalDone[2])h+=`<button class="act-btn green" onclick="confirmFreeScene()">确认全息场景</button>`;
+    if(S.goalDone[2])h+=`<div class="learn-box" style="font-size:12px">已确认：这个场景同时包含多种三维对象和可移动布局，体现了从平面窗口走向空间化信息组织。</div>`;
+    else h+=`<div style="font-size:11px;color:var(--text-muted);line-height:1.6;margin-top:4px">放置至少三种形状并移动其中一个对象后，再确认它们组成了一个可操作的空间场景。</div>`;
   }
   return h;
+}
+
+function fringeMetrics(){
+  const S=levelState,s0=S.sources&&S.sources[0],s1=S.sources&&S.sources[1];
+  if(!s0||!s1)return{sep:0,spacing:0,bands:0,trend:'等待光源',readiness:'待观察'};
+  const sep=Math.max(1,Math.hypot(s0.x-s1.x,s0.y-s1.y));
+  const midX=(s0.x+s1.x)/2,midY=(s0.y+s1.y)/2;
+  const fieldDepth=Math.max(120,Math.hypot((CW||960)/2+160-midX,(CH||600)/2-midY)+180);
+  const spacing=Math.max(8,Math.min(140,S.wavelength*fieldDepth/Math.max(40,sep)));
+  const bands=Math.max(1,Math.round(sep/Math.max(1,S.wavelength)));
+  const trend=S.wavelength>=55?'宽条纹，适合观察相位变化':S.wavelength<=25?'密条纹，深度信息更压缩':'中等条纹，便于比较';
+  const readiness=S.movedSource&&S.changedWave?'可分析相位与深度':'先移动光源并调节波长';
+  return{sep:Math.round(sep),spacing:Math.round(spacing),bands,trend,readiness};
+}
+
+function fringeMetricsHTML(){
+  const m=fringeMetrics();
+  return `<div class="metric-box">
+    <div class="metric-row"><span>两光源间距</span><span class="sv" id="fringeSep">${m.sep}px</span></div>
+    <div class="metric-row"><span>估算条纹间距</span><span class="sv" id="fringeSpacing">${m.spacing}px</span></div>
+    <div class="metric-row"><span>相位带数量</span><span class="sv" id="fringeBands">${m.bands} 条</span></div>
+    <div class="metric-row"><span>记录状态</span><span class="sv" id="fringeReadiness">${m.readiness}</span></div>
+    <div style="margin-top:6px;line-height:1.6" id="fringeTrend">${m.trend}</div>
+  </div>`;
+}
+
+function updateFringeMetricPanel(){
+  if(currentLevel!==0)return;
+  const m=fringeMetrics();
+  setText('fringeSep',`${m.sep}px`);
+  setText('fringeSpacing',`${m.spacing}px`);
+  setText('fringeBands',`${m.bands} 条`);
+  setText('fringeReadiness',m.readiness);
+  setText('fringeTrend',m.trend);
+}
+
+function setWaveInline(v){
+  if(currentLevel!==0)return;
+  const n=Number(v);
+  if(!Number.isFinite(n))return false;
+  levelState.wavelength=Math.max(15,Math.min(80,n));
+  levelState.changedWave=true;
+  setText('waveVal',`${levelState.wavelength}px`);
+  updateFringeMetricPanel();
+  return true;
+}
+
+function analyzeFringes(){
+  if(currentLevel!==0)return;
+  const S=levelState;
+  if(S.movedSource&&S.changedWave){
+    S.analyzedFringes=true;
+    markDirty();
+  }
+  renderPanel();
+}
+
+function analyzeProjection(){
+  if(currentLevel!==1)return false;
+  const S=levelState;
+  if(!S.rotated||!S.switchedHelmet)return false;
+  S.analyzedProjection=true;
+  markDirty();
+  renderPanel();
+  return true;
+}
+
+function demoNextGesture(){
+  if(currentLevel!==2)return false;
+  const S=levelState,c=S.cube;
+  if(!S.didGrab){
+    c.x+=70;c.y+=25;S.didGrab=true;setGesture('抓取');
+  }else if(!S.didZoom){
+    c.sz=Math.min(150,c.sz+28);S.didZoom=true;setGesture('缩放');
+  }else if(!S.didRotate){
+    c.rx+=0.45;c.ry+=0.7;S.didRotate=true;setGesture('旋转');
+  }else return false;
+  checkGoals();
+  renderPanel();
+  drawSceneOnce(0);
+  return true;
+}
+
+function confirmJarvisWorkflow(){
+  if(currentLevel!==5)return false;
+  const S=levelState;
+  const expandedUnique=S.expandedPanels?S.expandedPanels.size:S.expandedCount;
+  if(!S.rotated||expandedUnique<2)return false;
+  S.jarvisConfirmed=true;
+  checkGoals();
+  renderPanel();
+  drawSceneOnce(0);
+  return true;
+}
+
+function confirmFreeScene(){
+  if(currentLevel!==6)return false;
+  const S=levelState;
+  if(!S.goalDone[0]||!S.goalDone[1])return false;
+  S.sceneConfirmed=true;
+  checkGoals();
+  renderPanel();
+  drawSceneOnce(0);
+  return true;
 }
 
 /* ===== LEVEL RENDERERS ===== */
 function renderLevel0(){
   const S=levelState,cx=CW/2+160,cy=CH/2;
+  const m=fringeMetrics();
   // interference pattern
   const res=4;
   for(let x=320;x<CW;x+=res)for(let y=0;y<CH-32;y+=res){
@@ -697,6 +910,13 @@ function renderLevel0(){
     ctx.fillStyle=t().label;ctx.font='11px monospace';ctx.textAlign='center';
     ctx.fillText(i===0?'参考光':'物体光',s.x,s.y-16);
   }
+  ctx.save();
+  ctx.strokeStyle='rgba(147,197,253,0.35)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(S.sources[0].x,S.sources[0].y);ctx.lineTo(S.sources[1].x,S.sources[1].y);ctx.stroke();
+  ctx.fillStyle=t().label;ctx.font='12px monospace';ctx.textAlign='center';
+  ctx.fillText(`光源距 ${m.sep}px`,(S.sources[0].x+S.sources[1].x)/2,(S.sources[0].y+S.sources[1].y)/2-10);
+  ctx.fillText(`条纹间距约 ${m.spacing}px | ${m.bands} 条相位带`,cx,70);
+  ctx.restore();
 }
 
 function renderLevel1(){
@@ -797,6 +1017,12 @@ function renderLevel4(){
   S.animTime+=0.016;
   const techs=['激光等离子体','旋转屏幕(POV)','雾幕投影','光场显示'];
   ctx.fillStyle='rgba(96,165,250,0.5)';ctx.font='14px monospace';ctx.textAlign='center';
+  if(S.techIdx===null){
+    ctx.fillText('请选择一种体积显示技术开始观察',cx,50);
+    ctx.fillStyle=t().textSec;ctx.font='16px sans-serif';
+    ctx.fillText('依次观察激光等离子体和旋转屏幕，比较两种空气成像路径',cx,cy);
+    return;
+  }
   ctx.fillText(techs[S.techIdx],cx,50);
 
   if(S.techIdx===0){
@@ -982,8 +1208,7 @@ function renderLevel6(){
 
 /* ===== MAIN LOOP ===== */
 let lastTime=0;
-function animate(ts){
-  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;time+=dt;
+function drawSceneOnce(dt){
   ctx.clearRect(0,0,CW,CH);
   if(gameState==='play'){
     drawGrid();drawStars();
@@ -1000,6 +1225,10 @@ function animate(ts){
   }else{
     drawGrid();drawStars();drawScanlines();
   }
+}
+function animate(ts){
+  const dt=Math.min((ts-lastTime)/1000,0.05);lastTime=ts;time+=dt;
+  drawSceneOnce(dt);
   animId=requestAnimationFrame(animate);
 }
 animId=requestAnimationFrame(animate);

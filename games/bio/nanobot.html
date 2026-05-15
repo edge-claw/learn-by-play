@@ -184,6 +184,12 @@ function ah(){return H}
 function rand(a,b){return a+Math.random()*(b-a)}
 function dist(ax,ay,bx,by){return Math.hypot(ax-bx,ay-by)}
 function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v))}
+function rangeValue(input,fallback){
+  const raw=Number(input&&input.value);
+  if(!Number.isFinite(raw))return fallback;
+  const min=Number(input.min),max=Number(input.max);
+  return clamp(raw,Number.isFinite(min)?min:raw,Number.isFinite(max)?max:raw);
+}
 let state={},keys={};
 document.addEventListener('keydown',e=>{keys[e.key]=true});
 document.addEventListener('keyup',e=>{keys[e.key]=false});
@@ -228,7 +234,7 @@ let quizPassed=new Set(),quizFeedback={};
 /* ===== PANEL ===== */
 let panelDirty=true;
 function markDirty(){panelDirty=true}
-function isUnlocked(n){return n===0||quizPassed.has(n-1)}
+function isUnlocked(n){n=Number(n);return Number.isInteger(n)&&n>=0&&n<levels.length&&(n===0||quizPassed.has(n-1))}
 function quizHTML(li){
   const q=quizData[li],fb=quizFeedback[li];
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
@@ -248,8 +254,9 @@ function answerQuiz(li,choice){
 function renderPanel(){
   if(!panelDirty)return;panelDirty=false;
   const lv=levels[curLevel];let h='<div style="margin-bottom:8px">';
-  levels.forEach((l,i)=>{let c='level-btn';if(i===curLevel)c+=' active';if(completedLevels.has(i))c+=' done';
-  h+=`<span class="${c}" onclick="loadLevel(${i})">${i+1}</span>`});
+  levels.forEach((l,i)=>{const unlocked=isUnlocked(i);let c='level-btn';if(i===curLevel)c+=' active';if(completedLevels.has(i))c+=' done';if(!unlocked)c+=' locked';
+  const action=unlocked&&i!==curLevel?` onclick="loadLevel(${i})"`:'';
+  h+=`<span class="${c}"${action}>${i+1}</span>`});
   h+='</div>';
   h+=`<div class="title">${lv.name}</div><div class="sub">${lv.sub}</div>`;
   h+=`<div class="concept-box">${lv.concept}</div>`;
@@ -281,7 +288,8 @@ function checkLevelDone(){
 
 /* ===== LEVEL LOADER ===== */
 function loadLevel(n){
-  if(n<0||n>=levels.length||!isUnlocked(n))return;
+  n=Number(n);
+  if(!Number.isInteger(n)||!isUnlocked(n))return;
   if(animId){cancelAnimationFrame(animId);animId=0}
   curLevel=n;state={};keys={};mouseDown=false;panelDirty=true;
   renderPanel();
@@ -305,15 +313,18 @@ function setupUI1(area){
   <input type="range" id="zsl" min="0" max="100" value="${state.zoom||0}"></div>
   <div class="hint-box">💡 拖动滑块放大，依次看到头发→细胞→细菌→病毒→蛋白质→DNA→原子</div>`;
   const sl=document.getElementById('zsl');
-  sl.oninput=function(){
-    state.zoom=+this.value;
-    const mag=Math.pow(10,state.zoom/11);
-    state.zoomLabel=mag>=1e6?(mag/1e6).toFixed(1)+'百万x':mag>=1e3?(mag/1e3).toFixed(0)+'千x':mag.toFixed(0)+'x';
-    document.getElementById('zv').textContent=state.zoomLabel;
-    if(state.zoom>=30)completeObj(0,0);
-    if(state.zoom>=60)completeObj(0,1);
-    if(state.zoom>=85){completeObj(0,2);checkLevelDone()}
-  };
+  sl.oninput=function(){updateZoom(this)};
+}
+function updateZoom(input){
+  state.zoom=rangeValue(input,state.zoom||0);
+  if(input)input.value=state.zoom;
+  const mag=Math.pow(10,state.zoom/11);
+  state.zoomLabel=mag>=1e6?(mag/1e6).toFixed(1)+'百万x':mag>=1e3?(mag/1e3).toFixed(0)+'千x':mag.toFixed(0)+'x';
+  const out=document.getElementById('zv');
+  if(out)out.textContent=state.zoomLabel;
+  if(state.zoom>=30)completeObj(0,0);
+  if(state.zoom>=60)completeObj(0,1);
+  if(state.zoom>=85){completeObj(0,2);checkLevelDone()}
 }
 function initL1(){
   if(!state.zoom)state.zoom=0;
@@ -664,7 +675,7 @@ function initL4(){
 function setupUI5(area){
   let h='<div class="hint-box">💡 调节纳米机器人参数，尝试穿越血脑屏障</div>';
   h+=`<div class="slider-wrap"><label>尺寸: <span class="slider-val">${state.bbbSize||200}nm</span></label>
-  <input type="range" min="10" max="500" value="${state.bbbSize||200}" oninput="state.bbbSize=+this.value;markDirty()"></div>`;
+  <input type="range" min="10" max="500" value="${state.bbbSize||200}" oninput="updateBBBSize(this)"></div>`;
   h+=`<div style="font-size:11px;color:#aaa;margin:4px 0">表面电荷:</div><div class="sel-row">`;
   ['正电荷','中性','负电荷'].forEach((n,i)=>{h+=`<span class="sel-btn${state.bbbCharge===i?' active':''}" onclick="state.bbbCharge=${i};markDirty()">${n}</span>`});
   h+=`</div>`;
@@ -674,6 +685,11 @@ function setupUI5(area){
   h+=`<button class="act-btn" onclick="tryBBB()">🧪 尝试穿越</button>`;
   if(state.bbbResult)h+=`<div class="hint-box" style="color:${state.bbbResult.ok?'#4ade80':'#f87171'}">${state.bbbResult.msg}</div>`;
   area.innerHTML=h;
+}
+function updateBBBSize(input){
+  state.bbbSize=rangeValue(input,state.bbbSize||200);
+  if(input)input.value=state.bbbSize;
+  markDirty();
 }
 function tryBBB(){
   if(!state.bbbSize)state.bbbSize=200;
@@ -834,7 +850,8 @@ function setupUI7(area){
     h+=`<div style="font-size:11px;color:#aaa;margin:4px 0">行为模式:</div><div class="sel-row">`;
     ['趋化','包围','攻击'].forEach((n,i)=>{
       const enabled=i===0||(i===1&&state.swarmPhase>=1)||(i===2&&state.swarmPhase>=2);
-      h+=`<span class="sel-btn${state.swarmMode===i?' active':''}${!enabled?' disabled':''}" onclick="${enabled?`setSwarmMode(${i})`:'void(0)'}" style="${!enabled?'opacity:0.4;cursor:not-allowed':''}">${n}</span>`;
+      const action=enabled?` onclick="setSwarmMode(${i})"`:'';
+      h+=`<span class="sel-btn${state.swarmMode===i?' active':''}${!enabled?' disabled':''}"${action} style="${!enabled?'opacity:0.4;cursor:not-allowed':''}">${n}</span>`;
     });
     h+=`</div>`;
     h+=`<div style="font-size:11px;color:var(--text-muted);margin:4px 0">机器人数: ${state.bots?state.bots.length:0} | 肿瘤HP: ${Math.max(0,(state.tumorHP||100)).toFixed(0)}%</div>`;
@@ -1021,8 +1038,8 @@ function goLevel(i){loadLevel(i)}
     for(var i=0;i<total;i++){
       var unlocked=i===0||(typeof quizPassed!=='undefined'&&quizPassed.has(i-1));
       var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
-      var click=unlocked?'typeof goLevel===\'function\'&&goLevel('+i+')':'';
-      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
+      var action=unlocked&&i!==cur?' onclick="typeof goLevel===\'function\'&&goLevel('+i+')"':'';
+      h+='<div class="sn-d '+cls+'"'+action+'></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';

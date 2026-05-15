@@ -80,6 +80,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -135,13 +136,19 @@ const TH={
   light:{bg:'#e8edf5',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',metal:'#94a3b8',metalLight:'#cbd5e1',flame:'#ea580c',flameCore:'#f59e0b',exhaust:'rgba(239,68,68,0.25)',air:'rgba(59,130,246,0.2)',blade:'#3b82f6',casing:'#64748b',sky1:'#87ceeb',sky2:'#e0f0ff',showStars:false}
 };
 function t(){return isDark?TH.dark:TH.light}
-function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel()}
+function toggleTheme(){
+  isDark=!isDark;
+  document.body.dataset.theme=isDark?'dark':'light';
+  document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';
+  if(gameState==='play'){renderPanel();draw();}
+}
 
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 let CW,CH,time=0,animId;
 let gameState='start',currentLevel=0;
 let levelState={},stars=[],particles=[];
 const completedLevels=new Set();
+const quizPassed=new Set();
 
 const levels=[
 {title:'推进原理',sub:'牛顿第三定律与推力',concept:'喷气发动机的核心原理是牛顿第三定律：向后高速喷出气体，获得向前的反作用力（推力）。推力 = 质量流量 × (排气速度 - 进气速度)。比冲衡量燃料效率。',goals:['调节排气速度产生推力','观察推力与质量流量的关系','使比冲超过1000秒'],learn:'推力公式 F = ṁ(Ve-V0) 是所有喷气发动机的基础。比冲 Isp = F/(ṁg) 表示单位重量燃料产生的推力持续时间。涡扇发动机比冲约3000-6000秒，远高于火箭的300秒，因为它利用了大量空气作为工质。'},
@@ -155,14 +162,14 @@ const levels=[
 
 const quizData=[
 {q:'喷气发动机产生推力的直接原因是什么？',opts:['向后加速空气和燃气，获得向前反作用力','发动机越热就会自动向前移动','压气机把飞机往前拉'],ans:0,why:'推力来自动量变化：工质向后加速排出，发动机获得反方向作用力。'},
-{q:'涡喷发动机的布雷顿循环中，涡轮的主要任务是什么？',opts:['提取燃气能量驱动压气机','把外涵空气全部排掉','把燃油直接压缩成固体'],ans:0,why:'涡轮从高温燃气中取出部分功，带动前方压气机，剩余能量再在喷管中转化为喷流动能。'},
-{q:'高涵道比涡扇发动机为什么更适合民航？',opts:['大量空气以较低速度排出，推进效率高且噪声低','外涵空气越少越省油','只靠核心机喷流，不需要风扇'],ans:0,why:'相同推力下，加速更多空气到较低速度通常更高效，也能降低喷流噪声。'},
-{q:'压气机喘振危险在哪里？',opts:['气流可能反向并引发强振动，短时间内损伤发动机','只是仪表盘颜色变化','会让涵道比自动变大'],ans:0,why:'喘振是压气机失稳，可能出现流量大幅振荡或反向流动，必须靠失速裕度和控制系统避免。'},
-{q:'燃烧室为什么需要气膜冷却？',opts:['用冷空气在壁面形成保护层，降低壁温','让火焰完全熄灭','把出口温度变得越不均匀越好'],ans:0,why:'燃烧温度远高于壁面材料可承受温度，气膜冷却能隔开高温燃气，保护燃烧室结构。'},
-{q:'单晶涡轮叶片相比多晶叶片的关键优势是什么？',opts:['消除晶界，提升高温蠕变抗力','让叶片不再承受离心力','把燃气温度降到室温'],ans:0,why:'晶界是高温蠕变和疲劳的薄弱环节，单晶叶片配合冷却和热障涂层才能接近材料极限工作。'},
-{q:'变循环发动机的核心思想是什么？',opts:['根据飞行状态改变涵道和核心机工作分配','永远固定在一种涵道比','只在地面工作，空中关闭'],ans:0,why:'变循环发动机可在省油的高涵道模式和高推力的低涵道模式之间切换，兼顾不同任务段。'}
+{q:'涡喷发动机的布雷顿循环中，涡轮的主要任务是什么？',opts:['把外涵空气全部排掉','提取燃气能量驱动压气机','把燃油直接压缩成固体'],ans:1,why:'涡轮从高温燃气中取出部分功，带动前方压气机，剩余能量再在喷管中转化为喷流动能。'},
+{q:'高涵道比涡扇发动机为什么更适合民航？',opts:['外涵空气越少越省油','只靠核心机喷流，不需要风扇','大量空气以较低速度排出，推进效率高且噪声低'],ans:2,why:'相同推力下，加速更多空气到较低速度通常更高效，也能降低喷流噪声。'},
+{q:'压气机喘振危险在哪里？',opts:['只是仪表盘颜色变化','气流可能反向并引发强振动，短时间内损伤发动机','会让涵道比自动变大'],ans:1,why:'喘振是压气机失稳，可能出现流量大幅振荡或反向流动，必须靠失速裕度和控制系统避免。'},
+{q:'燃烧室为什么需要气膜冷却？',opts:['让火焰完全熄灭','把出口温度变得越不均匀越好','用冷空气在壁面形成保护层，降低壁温'],ans:2,why:'燃烧温度远高于壁面材料可承受温度，气膜冷却能隔开高温燃气，保护燃烧室结构。'},
+{q:'单晶涡轮叶片相比多晶叶片的关键优势是什么？',opts:['让叶片不再承受离心力','消除晶界，提升高温蠕变抗力','把燃气温度降到室温'],ans:1,why:'晶界是高温蠕变和疲劳的薄弱环节，单晶叶片配合冷却和热障涂层才能接近材料极限工作。'},
+{q:'变循环发动机的核心思想是什么？',opts:['永远固定在一种涵道比','只在地面工作，空中关闭','根据飞行状态改变涵道和核心机工作分配'],ans:2,why:'变循环发动机可在省油的高涵道模式和高推力的低涵道模式之间切换，兼顾不同任务段。'}
 ];
-let quizFeedback=null;
+let quizFeedback={};
 
 const rangeDefs={
   exitVel:{from:v=>v,to:v=>v,label:v=>`${v} m/s`},
@@ -176,31 +183,62 @@ const rangeDefs={
 };
 function rangeHTML(key,label,min,max){
   const def=rangeDefs[key],value=levelState[key],raw=def.to(value);
-  return `<div class="slider-wrap"><label>${label}: <span class="sv">${def.label(value)}</span></label><input type="range" min="${min}" max="${max}" value="${raw}" oninput="updateRange(this,'${key}')" onchange="this.blur();renderPanel()"></div>`;
+  return `<div class="slider-wrap"><label>${label}: <span class="sv">${def.label(value)}</span></label><input type="range" min="${min}" max="${max}" value="${raw}" onchange="this.blur();renderPanel()" oninput="updateRange(this,'${key}')"></div>`;
 }
 function updateRange(input,key){
-  const def=rangeDefs[key],value=def.from(+input.value);
+  const def=rangeDefs[key];
+  if(!def||!input)return false;
+  const raw=Number(input.value),min=Number(input.min),max=Number(input.max);
+  if(!Number.isFinite(raw))return false;
+  const bounded=Math.min(Number.isFinite(max)?max:raw,Math.max(Number.isFinite(min)?min:raw,raw));
+  input.value=bounded;
+  const value=def.from(bounded);
+  if(!Number.isFinite(value))return false;
   levelState[key]=value;
-  if(key==='throttle')calcSections();
+  if(currentLevel===0&&(key==='exitVel'||key==='massFlow'))updateLevel0Metrics();
+  if(key==='throttle'){levelState.observed=true;calcSections();}
+  if(key==='exitVel')levelState.changedExitVel=true;
+  if(key==='massFlow')levelState.changedMassFlow=true;
   if(key==='bpr')levelState.triedBpr=true;
-  if(key==='stages'){levelState.triedStages=true;levelState.surging=false;}
-  if(key==='stallMargin'&&levelState.surgeTriggered&&value>15)levelState.surging=false;
-  const out=input.parentElement.querySelector('.sv');
+  if(key==='stages'){levelState.triedStages=true;if(!levelState.surgeTriggered)levelState.surging=false;}
+  if(key==='stallMargin'&&levelState.surgeTriggered&&levelState.surging&&value>15){levelState.surging=false;levelState.recovered=true;}
+  if(key==='fuelFlow')levelState.triedFuel=true;
+  const out=input.parentElement&&input.parentElement.querySelector?input.parentElement.querySelector('.sv'):null;
   if(out)out.textContent=def.label(value);
+  return true;
+}
+function level0Metrics(){
+  const S=levelState;
+  const thrust=S.massFlow*(S.exitVel-S.inletVel);
+  const fuelRatio=0.03;
+  const isp=thrust>0?thrust/(S.massFlow*fuelRatio*9.81):0;
+  return{thrust,isp};
+}
+function updateLevel0Metrics(){
+  const thrustEl=document.getElementById('l0ThrustVal');
+  const ispEl=document.getElementById('l0IspVal');
+  const {thrust,isp}=level0Metrics();
+  if(thrustEl)thrustEl.textContent=`${(thrust/1000).toFixed(1)} kN`;
+  if(ispEl)ispEl.textContent=`${isp.toFixed(0)} s`;
 }
 function quizHTML(li){
   const q=quizData[li];
+  const fb=quizFeedback[li];
+  const passed=quizPassed.has(li);
   let h=`<div class="quiz-box"><div class="quiz-q">📝 通关小测验：${q.q}</div>`;
   q.opts.forEach((opt,i)=>{
     let cls='';
-    if(quizFeedback&&quizFeedback.level===li){
+    if(passed&&i===q.ans)cls='correct';
+    else if(fb){
       if(i===q.ans)cls='correct';
-      else if(i===quizFeedback.chosen)cls='wrong';
+      else if(i===fb.chosen&&!fb.correct)cls='wrong';
     }
-    h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${opt}</div>`;
+    h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${String.fromCharCode(65+i)}. ${opt}</div>`;
   });
-  if(quizFeedback&&quizFeedback.level===li){
-    h+=`<div class="quiz-feedback">${quizFeedback.correct?'回答正确。':'再想想。'}${q.why}</div>`;
+  if(fb){
+    h+=`<div class="quiz-feedback">${fb.correct?'回答正确。':'再想想。'}${q.why}</div>`;
+  }else if(passed){
+    h+=`<div class="quiz-feedback">已通过小测。${q.why}</div>`;
   }else{
     h+='<div class="quiz-feedback">先完成三个目标，再用这个问题确认你抓住了发动机机制。</div>';
   }
@@ -208,14 +246,21 @@ function quizHTML(li){
   return h;
 }
 function answerQuiz(li,choice){
-  if(li!==currentLevel||completedLevels.has(li))return;
-  const q=quizData[li],correct=choice===q.ans;
-  quizFeedback={level:li,chosen:choice,correct};
+  li=Number(li);choice=Number(choice);
+  if(!Number.isInteger(li)||!Number.isInteger(choice))return false;
+  const q=quizData[li];
+  if(!q||choice<0||choice>=q.opts.length)return false;
+  if(li!==currentLevel||quizPassed.has(li)||!levelState.goalDone||!levelState.goalDone.every(Boolean))return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  const correct=choice===q.ans;
+  quizFeedback[li]={chosen:choice,correct};
   if(correct){
+    quizPassed.add(li);
     completedLevels.add(li);
     addP(CW/2+160,CH/2,'#22c55e',18);
   }
   renderPanel();
+  return correct;
 }
 
 function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
@@ -226,29 +271,41 @@ function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=part
 function drawParticles(){for(let p of particles){const a=Math.max(0,p.life/p.ml);ctx.globalAlpha=a;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.sz*a,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
 window.addEventListener('resize',resize);resize();
 
-function startGame(){document.getElementById('startScreen').classList.add('hidden');document.getElementById('panel').style.display='block';document.getElementById('bottom-bar').style.display='flex';gameState='play';initLevel(0);renderPanel()}
+function resetProgress(){
+  currentLevel=0;
+  levelState={};
+  completedLevels.clear();
+  quizPassed.clear();
+  quizFeedback={};
+  particles=[];
+  initLevel(0);
+}
+function startGame(){document.getElementById('startScreen').classList.add('hidden');document.getElementById('panel').style.display='block';document.getElementById('bottom-bar').style.display='flex';gameState='play';resetProgress()}
 
-// PLACEHOLDER_INIT_LEVEL
+// Level initialization
 
 function initLevel(idx){
+  idx=Number(idx);
+  if(!Number.isInteger(idx)||!canGoLevel(idx))return false;
+  if(!quizPassed.has(idx))delete quizFeedback[idx];
   currentLevel=idx;particles=[];
   if(idx===0){
-    levelState={massFlow:1,exitVel:100,inletVel:250,goalDone:[false,false,false],elapsed:0};
+    levelState={massFlow:1,exitVel:100,inletVel:250,goalDone:[false,false,false],elapsed:0,changedExitVel:false,changedMassFlow:false,analyzedIsp:false};
   }else if(idx===1){
     levelState={throttle:0.3,sections:[],goalDone:[false,false,false],elapsed:0,observed:false};
     calcSections();
   }else if(idx===2){
-    levelState={bpr:2,goalDone:[false,false,false],elapsed:0,triedBpr:false};
+    levelState={bpr:2,bprMinSeen:2,bprMaxSeen:2,seenLowBypass:false,seenHighBypass:false,goalDone:[false,false,false],elapsed:0,triedBpr:false};
   }else if(idx===3){
-    levelState={stages:5,stallMargin:20,surging:false,goalDone:[false,false,false],elapsed:0,surgeTriggered:false,triedStages:false};
+    levelState={stages:5,stallMargin:20,surging:false,goalDone:[false,false,false],elapsed:0,surgeTriggered:false,triedStages:false,recovered:false,safeSurgeAttempt:false};
   }else if(idx===4){
-    levelState={fuelFlow:0.5,coolingHoles:0,goalDone:[false,false,false],elapsed:0};
+    levelState={fuelFlow:0.5,coolingHoles:0,goalDone:[false,false,false],elapsed:0,triedFuel:false};
   }else if(idx===5){
-    levelState={material:'poly',cooling:false,tbc:false,goalDone:[false,false,false],elapsed:0,triedMaterial:false};
+    levelState={material:'poly',cooling:false,coolingLayoutTested:false,tbc:false,goalDone:[false,false,false],elapsed:0,seenMaterials:new Set(['poly'])};
   }else if(idx===6){
-    levelState={mode:'turbojet',viewType:'adaptive',goalDone:[false,false,false],elapsed:0,seenScramjet:false,seenElectric:false,triedMode:false};
+    levelState={mode:'turbojet',viewType:'adaptive',goalDone:[false,false,false],elapsed:0,seenScramjet:false,seenElectric:false,triedMode:false,confirmedFutureTradeoff:false};
   }
-  renderPanel();
+  renderPanel();return true;
 }
 
 function calcSections(){
@@ -269,30 +326,47 @@ function calcSections(){
 function renderPanel(){
   const L=levels[currentLevel],S=levelState,p=document.getElementById('panel');
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<levels.length;i++){let cls=completedLevels.has(i)?'done ':'';if(i===currentLevel)cls+='cur';h+=`<div class="sn-d ${cls}" onclick="switchLevel(${i})"></div>`}
+  for(let i=0;i<levels.length;i++){
+    const unlocked=canGoLevel(i);
+    let cls=quizPassed.has(i)?'done ':'';
+    if(i===currentLevel)cls+='cur';
+    if(!unlocked)cls+=' locked';
+    h+=`<div class="sn-d ${cls}"${unlocked&&i!==currentLevel?` onclick="switchLevel(${i})"`:''}></div>`;
+  }
   h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关</div><div class="sn-hint">${L.title} — ${L.sub}</div></div>`;
   h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
   h+=`<div class="concept-box">${L.concept}</div>`;
   const actionsHTML=renderLevelActions();
   h+='<div style="margin:8px 0;font-size:12px;color:var(--text-muted);font-weight:600">目标清单</div>';
-  for(let i=0;i<L.goals.length;i++){const done=completedLevels.has(currentLevel)||(S.goalDone&&S.goalDone[i]);h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`}
+  for(let i=0;i<L.goals.length;i++){const done=quizPassed.has(currentLevel)||(S.goalDone&&S.goalDone[i]);h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`}
   h+=actionsHTML;
-  const goalsDone=S.goalDone&&S.goalDone.every(g=>g);
-  if(goalsDone&&!completedLevels.has(currentLevel))h+=quizHTML(currentLevel);
-  if(completedLevels.has(currentLevel)){
+  const levelPassed=quizPassed.has(currentLevel);
+  const goalsDone=levelPassed||(S.goalDone&&S.goalDone.every(g=>g));
+  if(goalsDone)h+=quizHTML(currentLevel);
+  if(levelPassed){
     h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
     if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
     else h+=summaryHTML();
   }
   p.innerHTML=h;
   document.getElementById('bbLeft').textContent=`第 ${currentLevel+1} 关：${L.title}`;
-  document.getElementById('bbRight').textContent=`已通关 ${completedLevels.size}/${levels.length}`;
+  document.getElementById('bbRight').textContent=`已通关 ${quizPassed.size}/${levels.length}`;
 }
-function switchLevel(i){if(i>=0&&i<levels.length){initLevel(i)}}
+function canGoLevel(i){
+  i=Number(i);
+  return Number.isInteger(i)&&i>=0&&i<levels.length&&(i===0||quizPassed.has(i-1));
+}
+function switchLevel(i){
+  i=Number(i);
+  if(!canGoLevel(i))return false;
+  return initLevel(i);
+}
+function goLevel(i){return switchLevel(i)}
 function summaryHTML(){
+  if(quizPassed.size<levels.length)return '';
   let h='<div class="summary-box"><div class="summary-title">🏆 航空发动机探险完成！</div>';
   h+='<div class="summary-sub">你已掌握喷气发动机的核心知识</div>';
-  h+='<div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡通关</div></div><div class="summary-stat"><div class="num">5</div><div class="label">部件掌握</div></div></div>';
+  h+=`<div class="summary-stats"><div class="summary-stat"><div class="num">${levels.length}</div><div class="label">关卡通关</div></div><div class="summary-stat"><div class="num">${quizPassed.size*3}/21</div><div class="label">目标达成</div></div><div class="summary-stat"><div class="num">5</div><div class="label">部件掌握</div></div></div>`;
   h+='<div class="summary-keys"><div>🔑 推力 = 质量流量 × 速度差</div><div>🔑 涵道比越大效率越高</div><div>🔑 单晶叶片+气膜冷却突破材料极限</div><div>🔑 变循环是未来战斗机动力方向</div></div>';
   h+='<div class="roadmap"><div class="roadmap-title">继续学习路线</div>';
   const items=['气体动力学与热力学','计算流体力学(CFD)','航空发动机控制系统','新型推进技术'];
@@ -300,27 +374,28 @@ function summaryHTML(){
   h+='</div></div>';return h;
 }
 
-// PLACEHOLDER_LEVEL_ACTIONS
+// Level actions
 
 function renderLevelActions(){
   const S=levelState;let h='';
   if(currentLevel===0){
     h+=rangeHTML('exitVel','排气速度',50,800);
     h+=rangeHTML('massFlow','质量流量',1,200);
-    const thrust=S.massFlow*(S.exitVel-S.inletVel);
-    const fuelRatio=0.03;
-    const isp=thrust>0?thrust/(S.massFlow*fuelRatio*9.81):0;
-    h+=`<div style="font-size:12px;margin:6px 0;color:var(--text-sub)">推力: <span class="sv">${(thrust/1000).toFixed(1)} kN</span> | 比冲: <span class="sv">${isp.toFixed(0)} s</span></div>`;
-    if(thrust>0)S.goalDone[0]=true;
-    if(S.massFlow>50)S.goalDone[1]=true;
-    if(isp>1000)S.goalDone[2]=true;
+    const {thrust,isp}=level0Metrics();
+    h+=`<div style="font-size:12px;margin:6px 0;color:var(--text-sub)">推力: <span class="sv" id="l0ThrustVal">${(thrust/1000).toFixed(1)} kN</span> | 比冲: <span class="sv" id="l0IspVal">${isp.toFixed(0)} s</span></div>`;
+    if(thrust<=0||!S.changedExitVel||!S.changedMassFlow)h+=`<button class="act-btn" onclick="setHighIspExample()">设置高比冲正推力示例</button>`;
+    if(S.changedExitVel&&thrust>0)S.goalDone[0]=true;
+    if(S.changedMassFlow&&thrust>0&&S.massFlow>50)S.goalDone[1]=true;
+    if(isp>1000)h+=`<button class="act-btn" onclick="analyzeIsp()">${S.analyzedIsp?'✅ 已分析比冲':'分析比冲为什么超过 1000 秒'}</button>`;
+    if(S.analyzedIsp&&isp>1000)S.goalDone[2]=true;
+    if(S.changedMassFlow&&thrust<=0)h+=`<div style="font-size:12px;color:#fbbf24">先把排气速度调到高于进气速度，再观察质量流量如何放大正推力。</div>`;
   }else if(currentLevel===1){
     h+=rangeHTML('throttle','油门',10,100);
     if(S.sections.length>0){
       h+='<div style="font-size:11px;margin:6px 0">';
       S.sections.forEach(sec=>{h+=`<div style="color:var(--text-sub);margin:2px 0">${sec.name}: <span class="sv">${sec.P.toFixed(1)}atm</span> / <span style="color:#f97316">${sec.T.toFixed(0)}K</span> / ${sec.V.toFixed(0)}m/s</div>`});
       h+='</div>';
-      S.goalDone[0]=true;
+      if(S.observed)S.goalDone[0]=true;
     }
     const lastSec=S.sections[S.sections.length-1];
     const thrust=lastSec?Math.max(0,(lastSec.V-250)*0.08):0;
@@ -329,33 +404,43 @@ function renderLevelActions(){
     if(thrust>50)S.goalDone[2]=true;
   }else if(currentLevel===2){
     h+=rangeHTML('bpr','涵道比 BPR',5,120);
+    S.bprMinSeen=Math.min(S.bprMinSeen??S.bpr,S.bpr);
+    S.bprMaxSeen=Math.max(S.bprMaxSeen??S.bpr,S.bpr);
     const coreThrust=100/(1+S.bpr);const bypassThrust=100-coreThrust;
     const eta=25+S.bpr*2.5;
+    const comparedBypass=S.seenLowBypass&&S.seenHighBypass;
     h+=`<div style="font-size:12px;margin:6px 0;color:var(--text-sub)">内涵推力: <span class="sv">${coreThrust.toFixed(1)}%</span> | 外涵推力: <span class="sv">${bypassThrust.toFixed(1)}%</span></div>`;
     h+=`<div style="font-size:12px;color:var(--text-sub)">推进效率: <span class="sv">${Math.min(eta,55).toFixed(1)}%</span></div>`;
-    if(S.triedBpr)S.goalDone[0]=true;
-    if(bypassThrust>80)S.goalDone[1]=true;
+    h+=`<button class="act-btn" onclick="recordBypassSplit()">记录当前推力占比</button>`;
+    h+=`<div style="font-size:12px;color:var(--text-sub)">已记录: 低涵道 ${S.seenLowBypass?'✅':'⬜'} | 高涵道 ${S.seenHighBypass?'✅':'⬜'}</div>`;
+    if(S.triedBpr&&S.bprMaxSeen-S.bprMinSeen>=4)S.goalDone[0]=true;
+    if(comparedBypass)S.goalDone[1]=true;
     if(eta>40)S.goalDone[2]=true;
+    if(S.triedBpr&&!comparedBypass)h+=`<div class="hint-box">先对比低涵道比时的核心喷流占比，再把 BPR 拉到 6.5 以上观察外涵推力接管。</div>`;
   }else if(currentLevel===3){
     h+=rangeHTML('stages','压气机级数',1,22);
     const pr=Math.pow(1.35,S.stages);
     h+=`<div style="font-size:12px;margin:4px 0;color:var(--text-sub)">总压比: <span class="sv">${pr.toFixed(1)}:1</span></div>`;
     h+=rangeHTML('stallMargin','失速裕度',0,40);
-    h+=`<button class="act-btn" onclick="triggerSurge()">模拟极端工况</button>`;
+    h+=`<button class="act-btn" onclick="triggerSurge()">模拟极端工况（低裕度触发喘振）</button>`;
     if(S.surging)h+=`<div style="font-size:12px;color:#ef4444;font-weight:bold">🚨 喘振！气流反向，发动机剧烈振动！</div>`;
+    if(S.safeSurgeAttempt)h+=`<div class="hint-box">当前失速裕度仍高，极端扰动被压气机稳定裕度吸收。把失速裕度降到 15% 以下再触发，随后提高到 15% 以上观察恢复。</div>`;
     if(S.triedStages)S.goalDone[0]=true;
     if(S.surgeTriggered)S.goalDone[1]=true;
-    if(S.surgeTriggered&&!S.surging&&S.stallMargin>15)S.goalDone[2]=true;
+    if(S.recovered)S.goalDone[2]=true;
   }else if(currentLevel===4){
     h+=rangeHTML('fuelFlow','燃油流量',10,100);
     const Tmax=1200+S.fuelFlow*700;
     const wallT=S.coolingHoles>0?Tmax-S.coolingHoles*80:Tmax;
     const uniformity=Math.max(3,12-S.coolingHoles*1.2-S.fuelFlow*0.8);
+    const wallSafe=wallT<900;
+    const coolHint=wallSafe?'壁温已进入安全区，继续优化出口温度均匀度。':S.coolingHoles>=8?'冷却孔已接近上限，需降低燃油流量才能保护壁面。':'继续增加冷却孔排数，形成更完整的气膜保护。';
     h+=`<div style="font-size:12px;margin:4px 0;color:var(--text-sub)">燃气温度: <span style="color:#f97316">${Tmax.toFixed(0)}°C</span> | 壁面温度: <span style="color:${wallT>900?'#ef4444':'#4ade80'}">${wallT.toFixed(0)}°C</span></div>`;
     h+=rangeHTML('coolingHoles','冷却孔排数',0,8);
     h+=`<div style="font-size:12px;color:var(--text-sub)">出口温度均匀度: <span class="sv">${uniformity.toFixed(1)}%</span></div>`;
-    if(S.fuelFlow>0.3)S.goalDone[0]=true;
-    if(S.coolingHoles>=3&&wallT<900)S.goalDone[1]=true;
+    h+=`<div class="hint-box">壁温目标: &lt;900°C | ${coolHint}</div>`;
+    if(S.triedFuel)S.goalDone[0]=true;
+    if(S.coolingHoles>=3&&wallSafe)S.goalDone[1]=true;
     if(uniformity<5)S.goalDone[2]=true;
   }else if(currentLevel===5){
     const mats={poly:{name:'多晶合金',maxT:850},ds:{name:'定向凝固',maxT:950},sx:{name:'单晶合金',maxT:1050}};
@@ -365,13 +450,17 @@ function renderLevelActions(){
     if(S.tbc)effectiveT-=130;
     h+=`<div style="font-size:12px;margin:4px 0;color:var(--text-sub)">当前材料: <span class="sv">${mat.name}</span> (耐温 ${mat.maxT}°C)</div>`;
     h+=`<div style="font-size:12px;color:var(--text-sub)">叶片金属温度: <span style="color:${effectiveT>mat.maxT?'#ef4444':'#4ade80'}">${effectiveT}°C</span></div>`;
-    h+=`<button class="act-btn" onclick="levelState.material='poly';levelState.triedMaterial=true;renderPanel()" ${S.material==='poly'?'disabled':''}>多晶合金</button>`;
-    h+=`<button class="act-btn" onclick="levelState.material='ds';levelState.triedMaterial=true;renderPanel()" ${S.material==='ds'?'disabled':''}>定向凝固</button>`;
-    h+=`<button class="act-btn" onclick="levelState.material='sx';levelState.triedMaterial=true;renderPanel()" ${S.material==='sx'?'disabled':''}>单晶合金</button>`;
-    h+=`<button class="act-btn" onclick="levelState.cooling=!levelState.cooling;renderPanel()">${S.cooling?'关闭气膜冷却':'开启气膜冷却'}</button>`;
+    h+=`<button class="act-btn" onclick="selectMaterial('poly')" ${S.material==='poly'?'disabled':''}>多晶合金</button>`;
+    h+=`<button class="act-btn" onclick="selectMaterial('ds')" ${S.material==='ds'?'disabled':''}>定向凝固</button>`;
+    h+=`<button class="act-btn" onclick="selectMaterial('sx')" ${S.material==='sx'?'disabled':''}>单晶合金</button>`;
+    h+=`<button class="act-btn" onclick="toggleBladeCooling()">${S.cooling?'关闭气膜冷却':'开启气膜冷却'}</button>`;
+    if(S.cooling){
+      h+=`<button class="act-btn" onclick="optimizeCoolingLayout()">${S.coolingLayoutTested?'✅ 已优化气膜孔布局':'优化气膜孔布局'}</button>`;
+      h+=`<div class="hint-box">${S.coolingLayoutTested?'孔位沿前缘和吸力面错排，冷空气贴壁形成连续气膜，叶片热斑被压低。':'开启冷却后，还需要调整孔位、喷射角和覆盖范围，才能真正形成有效气膜。'}</div>`;
+    }
     h+=`<button class="act-btn" onclick="levelState.tbc=!levelState.tbc;renderPanel()">${S.tbc?'移除热障涂层':'施加热障涂层'}</button>`;
-    if(S.triedMaterial)S.goalDone[0]=true;
-    if(S.cooling)S.goalDone[1]=true;
+    if(S.seenMaterials&&S.seenMaterials.size>=3)S.goalDone[0]=true;
+    if(S.cooling&&S.coolingLayoutTested)S.goalDone[1]=true;
     if(S.tbc&&effectiveT<=mat.maxT)S.goalDone[2]=true;
   }else if(currentLevel===6){
     h+=`<button class="act-btn" onclick="levelState.viewType='adaptive';renderPanel()" ${S.viewType==='adaptive'?'disabled':''}>变循环发动机</button>`;
@@ -382,19 +471,85 @@ function renderLevelActions(){
       if(S.triedMode)S.goalDone[0]=true;
     }
     if(S.seenScramjet)S.goalDone[1]=true;
-    if(S.seenElectric)S.goalDone[2]=true;
+    if(S.seenElectric&&!S.goalDone[2]){
+      h+=`<button class="act-btn" onclick="confirmFuturePropulsionTradeoff()">评估电推进与氢燃料方案</button>`;
+      h+=`<div class="hint-box">先观察电机、电池组和液氢储罐：电推进适合短途和低噪声，氢燃料接近零碳但储存体积和基础设施更难。</div>`;
+    }
+    if(S.confirmedFutureTradeoff)S.goalDone[2]=true;
+    if(S.goalDone[2])h+=`<div class="learn-box" style="font-size:12px">已评估：电推进受电池能量密度限制，更适合短途；氢燃料减碳潜力大，但液氢储存和机场供给体系是主要门槛。</div>`;
   }
   return h;
 }
 
 function triggerSurge(){
   const S=levelState;S.surgeTriggered=true;
-  if(S.stallMargin<15){S.surging=true;addP(CW/2+160,CH/2,'#ef4444',20);}
-  else{S.surging=false;addP(CW/2+160,CH/2,'#22c55e',10);}
+  if(S.stallMargin<15){S.surging=true;S.recovered=false;S.safeSurgeAttempt=false;addP(CW/2+160,CH/2,'#ef4444',20);}
+  else{S.surgeTriggered=false;S.surging=false;S.safeSurgeAttempt=true;addP(CW/2+160,CH/2,'#22c55e',10);}
   renderPanel();
 }
 
-// PLACEHOLDER_DRAW_ENGINE
+function analyzeIsp(){
+  const {isp}=level0Metrics();
+  const S=levelState;
+  if(currentLevel!==0||isp<=1000)return false;
+  S.analyzedIsp=true;
+  S.goalDone[2]=true;
+  renderPanel();
+  return true;
+}
+function setHighIspExample(){
+  if(currentLevel!==0)return false;
+  const S=levelState;
+  S.exitVel=620;
+  S.massFlow=120;
+  S.changedExitVel=true;
+  S.changedMassFlow=true;
+  renderPanel();
+  return true;
+}
+
+function selectMaterial(material){
+  if(currentLevel!==5)return;
+  const S=levelState;
+  S.material=material;
+  if(!S.seenMaterials)S.seenMaterials=new Set();
+  S.seenMaterials.add(material);
+  renderPanel();
+}
+
+function toggleBladeCooling(){
+  if(currentLevel!==5)return false;
+  const S=levelState;
+  S.cooling=!S.cooling;
+  if(!S.cooling)S.coolingLayoutTested=false;
+  renderPanel();
+  return true;
+}
+
+function optimizeCoolingLayout(){
+  if(currentLevel!==5||!levelState.cooling)return false;
+  levelState.coolingLayoutTested=true;
+  renderPanel();
+  return true;
+}
+
+function recordBypassSplit(){
+  if(currentLevel!==2)return;
+  const S=levelState;
+  if(S.bpr<=2.5)S.seenLowBypass=true;
+  if(S.bpr>=6.5)S.seenHighBypass=true;
+  renderPanel();
+}
+
+function confirmFuturePropulsionTradeoff(){
+  if(currentLevel!==6||!levelState.seenElectric)return false;
+  levelState.confirmedFutureTradeoff=true;
+  levelState.goalDone[2]=true;
+  renderPanel();
+  return true;
+}
+
+// Engine drawing
 
 function drawBg(){
   const th=t();
@@ -536,7 +691,7 @@ function drawLevel2(){
   ctx.fillText(`BPR = ${S.bpr.toFixed(1)}`,cx,cy-fanRad-35);
 }
 
-// PLACEHOLDER_DRAW2
+// Additional drawing helpers
 
 function drawLevel3(){
   const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;

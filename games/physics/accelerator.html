@@ -124,6 +124,8 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
 .quiz-opt{display:block;width:100%;padding:8px 10px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{border-color:#22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-opt.wrong{border-color:#ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .quiz-feedback{font-size:12px;line-height:1.6;margin-top:7px;padding:7px;border-radius:6px}
 .quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
 .quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
@@ -196,13 +198,13 @@ const levels=[
 ];
 
 const quizData=[
-{q:'电场加速中粒子获得的动能主要由什么决定？',opts:['电荷与电压的乘积 E=qV','磁场半径的平方','探测器层数','统计显著性'],ans:0},
-{q:'回旋加速器让粒子反复增能的关键组合是什么？',opts:['磁场让轨迹弯曲，电场在间隙加速','只靠重力让粒子下落','只靠探测器吸收粒子','让粒子停止后重新发射'],ans:0},
-{q:'同步加速器为什么要随能量同步调节磁场？',opts:['保持粒子在固定环形轨道上运行','让粒子完全静止','降低光速上限','消除所有相对论效应'],ans:0},
-{q:'高能对撞能产生新粒子的物理基础是什么？',opts:['动能可按 E=mc² 转化为粒子质量','电荷会凭空增加','磁场直接制造质量','探测器把光子变成质子'],ans:0},
-{q:'探测器分层识别粒子的依据是什么？',opts:['不同粒子在不同层留下轨迹或沉积能量','所有粒子都会停在同一层','粒子颜色固定不变','中微子会发出强光'],ans:0},
-{q:'宣布发现希格斯这类新粒子通常需要什么统计标准？',opts:['达到约 5σ 的统计显著性','只看到一个事件','柱状图中任意一个峰','总事件数刚好为 100'],ans:0},
-{q:'标准模型目前仍不能完整解释什么？',opts:['引力、暗物质和暗能量等现象','电子和夸克的存在','光子的电磁作用','弱相互作用'],ans:0}
+{q:'电场加速中粒子获得的动能主要由什么决定？',opts:['电荷与电压的乘积 E=qV','磁场半径的平方','探测器层数','统计显著性'],ans:0,why:'电场做功等于 qV，所以同一种带电粒子在更高电压下会获得更高动能。'},
+{q:'回旋加速器让粒子反复增能的关键组合是什么？',opts:['只靠重力让粒子下落','磁场让轨迹弯曲，电场在间隙加速','只靠探测器吸收粒子','让粒子停止后重新发射'],ans:1,why:'磁场负责弯曲轨道，电场只在 D 形电极间隙给粒子补能，两者配合才会形成螺旋增能。'},
+{q:'同步加速器为什么要随能量同步调节磁场？',opts:['让粒子完全静止','降低光速上限','保持粒子在固定环形轨道上运行','消除所有相对论效应'],ans:2,why:'粒子能量越高，动量越大；同步增强磁场能维持同一个弯转半径，让束流留在环形轨道中。'},
+{q:'高能对撞能产生新粒子的物理基础是什么？',opts:['电荷会凭空增加','动能可按 E=mc² 转化为粒子质量','磁场直接制造质量','探测器把光子变成质子'],ans:1,why:'对撞中心的能量可以转化为新粒子的静质量，这正是 E=mc² 在高能物理中的实验含义。'},
+{q:'探测器分层识别粒子的依据是什么？',opts:['所有粒子都会停在同一层','粒子颜色固定不变','不同粒子在不同层留下轨迹或沉积能量','中微子会发出强光'],ans:2,why:'带电粒子、光子、强子和 μ 子与材料相互作用方式不同，因此会在不同探测层留下不同信号。'},
+{q:'宣布发现希格斯这类新粒子通常需要什么统计标准？',opts:['只看到一个事件','达到约 5σ 的统计显著性','柱状图中任意一个峰','总事件数刚好为 100'],ans:1,why:'5σ 表示背景涨落偶然造成信号的概率极低，是粒子物理宣布发现的常用门槛。'},
+{q:'标准模型目前仍不能完整解释什么？',opts:['电子和夸克的存在','光子的电磁作用','引力、暗物质和暗能量等现象','弱相互作用'],ans:2,why:'标准模型成功描述电磁、弱和强相互作用，但不包含引力，也不能解释暗物质与暗能量。'}
 ];
 
 function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight}
@@ -224,7 +226,7 @@ initLevel(0);renderPanel();animate();
 }
 
 function initLevel(n){
-if(n<0||n>=levels.length||!isUnlocked(n))return;
+if(!Number.isInteger(n)||n<0||n>=levels.length||!isUnlocked(n))return;
 currentLevel=n;trailParticles=[];
 const L=levels[n];
 if(n===0)initLevel0();
@@ -1059,7 +1061,7 @@ let h='<div class="stage-nav"><div class="sn-bar">';
 levels.forEach((l,i)=>{
 let unlocked=isUnlocked(i);
 let cls=quizPassed.has(i)?'done':i===currentLevel?'cur':unlocked?'':'locked';
-h+=`<div class="sn-d ${cls}" onclick="${unlocked?`initLevel(${i})`:''}"></div>`;
+h+=`<div class="sn-d ${cls}" ${unlocked?`onclick="initLevel(${i})"`:''}></div>`;
 });
 h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 进度 ${Math.round(quizPassed.size/levels.length*100)}%</div>`;
 h+=`<div class="sn-hint">${quizPassed.size}/${levels.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
@@ -1067,24 +1069,35 @@ return h;
 }
 
 function renderQuiz(){
-let q=quizData[currentLevel],fb=quizFeedback[currentLevel];
+let q=quizData[currentLevel],fb=quizFeedback[currentLevel],passed=quizPassed.has(currentLevel);
 let h=`<div class="quiz-box"><div class="quiz-title">通关小测验</div><div class="quiz-q">${q.q}</div>`;
-q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="checkQuiz(${i})">${opt}</button>`;});
+q.opts.forEach((opt,i)=>{
+let mark=passed&&i===q.ans?' correct':fb&&i===q.ans?' correct':fb&&i===fb.choice&&!fb.ok?' wrong':'';
+h+=`<button class="quiz-opt${mark}" onclick="answerQuiz(${currentLevel},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;
+});
 if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+else if(passed)h+=`<div class="quiz-feedback ok">已通过小测。${q.why}</div>`;
 h+='</div>';
 return h;
 }
 
-function checkQuiz(oi){
-if(quizPassed.has(currentLevel))return;
-if(!levelState.goals||!levelState.goals.every(Boolean))return;
-let q=quizData[currentLevel],ok=oi===q.ans;
-quizFeedback[currentLevel]={ok,text:ok?'答对了。先读学习总结，再进入下一关。':'还不对。回到本关现象、公式和探测逻辑再判断。'};
-if(ok){quizPassed.add(currentLevel);completedLevels.add(currentLevel);}
+function answerQuiz(li,oi){
+li=Number(li);oi=Number(oi);
+if(!Number.isInteger(li)||li!==currentLevel)return false;
+if(quizPassed.has(li))return false;
+if(!levelState.goals||!levelState.goals.every(Boolean))return false;
+if(!isUnlocked(li))return false;
+let q=quizData[li];
+if(!q||!Number.isInteger(oi)||oi<0||oi>=q.opts.length)return false;
+let ok=oi===q.ans;
+quizFeedback[li]={ok,choice:oi,text:(ok?'答对了。':'还不对。')+q.why};
+if(ok){quizPassed.add(li);completedLevels.add(li);}
 renderPanel();
+return ok;
 }
 
 function renderSummary(){
+if(!levels.every((_,i)=>quizPassed.has(i)))return '';
 let h='<div class="summary-box"><div class="summary-title">🏆 粒子加速器探险通关！</div>';
 h+=`<div class="summary-sub">你已完成全部 ${levels.length} 个粒子物理关卡</div>`;
 h+='<div class="summary-stats">';

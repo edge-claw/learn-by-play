@@ -447,15 +447,15 @@ const quizData = [
   },
   {
     q:'INT8 量化通常带来的主要收益是什么？',
-    opts:['模型更小、推理更快，但可能轻微损失精度','精度一定无限提高','模型体积一定变成 0'],
-    ans:0,
+    opts:['精度一定无限提高','模型更小、推理更快，但可能轻微损失精度','模型体积一定变成 0'],
+    ans:1,
     ok:'正确。量化是速度、体积和精度之间的工程权衡。',
     bad:'比较 FP32、FP16、INT8：体积和 FPS 会变化，精度也可能变化。'
   },
   {
     q:'部署后最应该同时观察哪些指标？',
-    opts:['FPS、延迟、内存、负载、温度和功耗','只看模型图标颜色','只看分数，不看硬件状态'],
-    ans:0,
+    opts:['只看模型图标颜色','只看分数，不看硬件状态','FPS、延迟、内存、负载、温度和功耗'],
+    ans:2,
     ok:'正确。边缘 AI 部署需要同时看性能和资源。',
     bad:'右侧监控面板展示的就是部署后的关键运行指标。'
   },
@@ -468,8 +468,8 @@ const quizData = [
   },
   {
     q:'为什么要比较多种量化方案的部署历史？',
-    opts:['为了找到速度、功耗、内存和精度之间的较优折中','为了让历史列表更长','为了避免真正部署模型'],
-    ans:0,
+    opts:['为了让历史列表更长','为了找到速度、功耗、内存和精度之间的较优折中','为了避免真正部署模型'],
+    ans:1,
     ok:'正确。部署历史帮助你用数据比较优化方案。',
     bad:'不同量化方案会改变 FPS、得分和硬件负载。'
   },
@@ -482,8 +482,8 @@ const quizData = [
   },
   {
     q:'完整的边缘 AI 部署闭环应包含什么？',
-    opts:['选模型、量化、选设备、部署测试、监控并继续优化','只点击一次开始按钮','只看模型精度，不看设备资源'],
-    ans:0,
+    opts:['只点击一次开始按钮','只看模型精度，不看设备资源','选模型、量化、选设备、部署测试、监控并继续优化'],
+    ans:2,
     ok:'正确。部署是持续迭代的工程闭环。',
     bad:'回顾本模拟器流程：选择、部署、监控、比较、优化。'
   }
@@ -506,10 +506,12 @@ function init() {
 }
 
 function isUnlocked(idx) {
-  return idx === 0 || completedLevels.has(idx - 1);
+  return idx >= 0 && idx < levels.length && (idx === 0 || completedLevels.has(idx - 1));
 }
 
 function goLevel(idx) {
+  idx = Number(idx);
+  if (!Number.isInteger(idx) || idx < 0 || idx >= levels.length) return;
   if (!isUnlocked(idx)) return;
   curLevel = idx;
   renderPanel();
@@ -537,7 +539,8 @@ function renderStageNav() {
     if (completedLevels.has(i)) cls += ' done';
     if (i === curLevel) cls += ' cur';
     if (!isUnlocked(i)) cls += ' locked';
-    h += `<div class="${cls}" onclick="goLevel(${i})"></div>`;
+    const clickable = isUnlocked(i) && i !== curLevel;
+    h += `<div class="${cls}" ${clickable ? `onclick="goLevel(${i})"` : ''}></div>`;
   }
   h += `</div><div class="sn-info">第 ${curLevel + 1}/${levels.length} 关：${levels[curLevel].title}</div>`;
   h += `<div class="sn-hint">${completedLevels.size}/${levels.length} 已通关，完成操作后答对测验才解锁下一关</div></div>`;
@@ -558,7 +561,11 @@ function renderQuiz() {
 }
 
 function answerQuiz(choice) {
+  choice = Number(choice);
+  if (!Number.isInteger(choice) || choice < 0) return;
+  if (quizPassed.has(curLevel) || !levelGoalDone(curLevel)) return;
   const qd = quizData[curLevel];
+  if (!qd || choice >= qd.opts.length) return;
   const ok = choice === qd.ans;
   quizFeedback[curLevel] = { ok, text: ok ? qd.ok : qd.bad };
   if (ok) {

@@ -231,16 +231,19 @@ function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':
 // ============ 音效系统 (Web Audio API) ============
 const AudioCtx=window.AudioContext||window.webkitAudioContext;
 let audioCtx;
-function initAudio(){if(!audioCtx)audioCtx=new AudioCtx()}
+function initAudio(){if(!AudioCtx)return null;try{if(!audioCtx)audioCtx=new AudioCtx();return audioCtx}catch(e){return null}}
 function playSound(type){
-  try{initAudio()}catch(e){return}
-  const o=audioCtx.createOscillator();const g=audioCtx.createGain();
-  o.connect(g);g.connect(audioCtx.destination);
-  const t=audioCtx.currentTime;
-  if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start(t);g.gain.exponentialRampToValueAtTime(0.001,t+0.1);o.stop(t+0.1)}
-  else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start(t);o.frequency.setValueAtTime(659,t+0.1);o.frequency.setValueAtTime(784,t+0.2);g.gain.exponentialRampToValueAtTime(0.001,t+0.4);o.stop(t+0.4)}
-  else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start(t);o.frequency.setValueAtTime(200,t+0.15);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);o.stop(t+0.3)}
-  else if(type==='boom'){const buf=audioCtx.createBuffer(1,audioCtx.sampleRate*0.3,audioCtx.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/d.length*5);const s=audioCtx.createBufferSource();s.buffer=buf;const g2=audioCtx.createGain();g2.gain.value=0.2;s.connect(g2);g2.connect(audioCtx.destination);s.start()}
+  const ac=initAudio();if(!ac)return false;
+  try{
+    const o=ac.createOscillator();const g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    const t=ac.currentTime;
+    if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start(t);g.gain.exponentialRampToValueAtTime(0.001,t+0.1);o.stop(t+0.1)}
+    else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start(t);o.frequency.setValueAtTime(659,t+0.1);o.frequency.setValueAtTime(784,t+0.2);g.gain.exponentialRampToValueAtTime(0.001,t+0.4);o.stop(t+0.4)}
+    else if(type==='fail'){o.frequency.value=300;g.gain.value=0.15;o.start(t);o.frequency.setValueAtTime(200,t+0.15);g.gain.exponentialRampToValueAtTime(0.001,t+0.3);o.stop(t+0.3)}
+    else if(type==='boom'){const buf=ac.createBuffer(1,ac.sampleRate*0.3,ac.sampleRate);const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/d.length*5);const s=ac.createBufferSource();s.buffer=buf;const g2=ac.createGain();g2.gain.value=0.2;s.connect(g2);g2.connect(ac.destination);s.start()}
+    return true;
+  }catch(e){return false}
 }
 
 // ============ 粒子庆祝系统 ============
@@ -277,20 +280,20 @@ function triggerShake(amount){shakeAmount=amount}
 
 // ============ 测验系统 ============
 const QUIZZES=[
-  {q:'比特币网络中，一笔交易需要发送给谁？',opts:['A. 银行','B. 所有节点','C. 收款人'],ans:1},
+  {q:'比特币网络中，一笔交易需要发送给谁？',opts:['A. 所有节点','B. 银行','C. 只发给收款人'],ans:0},
   {q:'区块中除了交易记录，还包含什么？',opts:['A. 矿工照片','B. 时间戳和前一区块哈希','C. 银行账号'],ans:1},
-  {q:'挖矿本质上是在做什么？',opts:['A. 挖地下的币','B. 猜一个让哈希满足条件的数字','C. 破解密码'],ans:1},
+  {q:'挖矿本质上是在做什么？',opts:['A. 挖地下的币','B. 破解别人的密码','C. 猜一个让哈希满足条件的数字'],ans:2},
   {q:'为什么篡改区块链很难？',opts:['A. 有密码保护','B. 修改一个区块会导致后续所有区块哈希失效','C. 数据加密了'],ans:1},
-  {q:'当区块链出现分叉时，网络遵循什么规则？',opts:['A. 先到先得','B. 最长链规则','C. 投票决定'],ans:1},
+  {q:'当区块链出现分叉时，网络遵循什么规则？',opts:['A. 先到先得','B. 人工投票决定','C. 最长链规则'],ans:2},
   {q:'防止双花攻击的关键是什么？',opts:['A. 等待多个确认','B. 加密交易','C. 限制转账金额'],ans:0},
 ];
 let quizPassedSet=new Set();
 let completedLevels=new Set();
 let quizCooldown=false;
 
-function checkQuiz(levelIdx,chosen){
+function answerQuiz(levelIdx,chosen){
   if(quizCooldown)return;
-  if(levelIdx!==currentLevel||completedLevels.has(levelIdx))return;
+  if(levelIdx!==currentLevel||quizPassedSet.has(levelIdx))return;
   const lv=LEVELS[levelIdx];
   if(!lv||!lv.goals.every(g=>g.check(levelState)))return;
   const quiz=QUIZZES[levelIdx];
@@ -875,6 +878,7 @@ function startGame() {
 }
 
 function loadLevel(idx) {
+  if (!canGoLevel(idx)) return;
   currentLevel = idx;
   const lv = LEVELS[idx];
   levelState = lv.init();
@@ -934,7 +938,7 @@ function renderLevel() {
     h += `<div style="background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px 12px;margin:8px 12px;font-size:12px;color:var(--learn-text);line-height:1.7">${lv.learn}</div>`;
     h += `<div class="quiz-box" id="quiz-${qi}" style="margin:8px 12px">
       <div class="quiz-q">📝 小测验：${quiz.q}</div>
-      ${quiz.opts.map((o,i)=>`<div class="quiz-opt" onclick="checkQuiz(${qi},${i})">${o}</div>`).join('')}
+      ${quiz.opts.map((o,i)=>`<div class="quiz-opt" onclick="answerQuiz(${qi},${i})">${o}</div>`).join('')}
     </div>`;
   }
 
@@ -955,8 +959,9 @@ function renderStageNav() {
   const pct = Math.round(completedLevels.size / LEVELS.length * 100);
   let h = '<div class="stage-nav"><div class="sn-bar">';
   for (let i = 0; i < LEVELS.length; i++) {
-    const cls = completedLevels.has(i) ? 'done' : (i === currentLevel ? 'cur' : (canGoLevel(i) ? '' : 'locked'));
-    h += `<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;
+    const unlocked = canGoLevel(i);
+    const cls = completedLevels.has(i) ? 'done' : (i === currentLevel ? 'cur' : (unlocked ? '' : 'locked'));
+    h += `<div class="sn-d ${cls}" ${unlocked ? `onclick="goLevel(${i})"` : ''}></div>`;
   }
   h += '</div>';
   h += `<div class="sn-info">📍 第${currentLevel + 1}/${LEVELS.length}关 | 进度 ${pct}%</div>`;
@@ -1308,8 +1313,9 @@ requestAnimationFrame(loop);
     var pct=s.total>0?Math.round(s.done/s.total*100):0;
     var h='<div class="stage-nav"><div class="sn-bar">';
     for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+      var unlocked=typeof canGoLevel==='function'?canGoLevel(i):true;
+      var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
+      h+='<div class="sn-d '+cls+'" '+(unlocked?'onclick="typeof goLevel===\'function\'&&goLevel('+i+')"':'')+'></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
@@ -1321,6 +1327,7 @@ requestAnimationFrame(loop);
   // 3. 通关总结
   window._summaryHTML=function(){
     var names=_getNames(),total=names.length;
+    if(typeof quizPassedSet!=='undefined'&&quizPassedSet.size<total)return '';
     var s=_countDone();
     var pct=s.total>0?Math.round(s.done/s.total*100):100;
     var h='<div class="summary-box">';

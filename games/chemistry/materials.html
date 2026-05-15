@@ -60,6 +60,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC'
 #panel .obj.done::before{content:'●';color:#4ade80}
 .act-btn{display:block;width:100%;padding:10px;margin:4px 0;background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.3);border-radius:6px;cursor:pointer;font-size:15px;transition:all .2s;text-align:center}
 .act-btn:hover{background:rgba(139,92,246,0.3)}
+.hint-box{background:var(--concept-bg);border:1px solid var(--concept-border);border-radius:8px;padding:8px;margin-top:8px;font-size:12px;line-height:1.6;color:var(--concept-text)}
 .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;line-height:1.8;color:var(--learn-text)}
 .learn-box b{color:#8b5cf6}
 .quiz-box{background:var(--quiz-bg);border:1px solid var(--quiz-border);border-radius:8px;padding:10px;margin:10px 0}
@@ -67,6 +68,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC'
 .quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
 .quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{border-color:#22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-opt.wrong{border-color:#ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
 .quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
 .quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
@@ -123,59 +126,108 @@ input[type=range].ctl{width:100%;accent-color:#8b5cf6;margin:4px 0}
 let isDark=true;
 function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel();draw();}
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel'),bar=document.getElementById('bar'),overlay=document.getElementById('overlay'),wrap=document.getElementById('wrap');
-let W,H,curLevel=0,time=0,unlocked=[true,false,false,false,false,false,false];
+let W,H,curLevel=0,time=0,animating=false,unlocked=[true,false,false,false,false,false,false];
 let levelObjs=[[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false],[false,false,false]];
 
 const LEVEL_NAMES=['晶体与非晶体','金属材料(合金)','陶瓷材料','聚合物(塑料/橡胶)','复合材料','半导体材料','纳米材料'];
 const LEVEL_ICONS=['💎','⚙️','🏺','🧬','🔗','💡','🔍'];
 const quizData=[
-  {q:'晶体和非晶体最关键的微观差异是什么？',opts:['原子排列是否长程有序','颜色是否透明','密度是否一定更大'],ans:0,ok:'对。晶体有周期性有序排列，非晶体缺少长程有序。',bad:'关键不是颜色或密度，而是微观排列是否有长程周期性。'},
-  {q:'钢中碳含量升高通常会带来什么变化？',opts:['硬度升高、延展性下降','硬度降低、延展性升高','完全不影响性能'],ans:0,ok:'对。碳强化会提高硬度和强度，但通常牺牲延展性。',bad:'看合金性能条：碳越多，硬度越高，延展性通常越低。'},
-  {q:'先进陶瓷的典型优势是什么？',opts:['高硬度、耐高温、耐腐蚀','一定非常柔软','都能像金属一样延展'],ans:0,ok:'对。陶瓷常见优势是硬、耐热、耐腐蚀和绝缘。',bad:'陶瓷的弱点恰恰是脆性大，不是延展性强。'},
-  {q:'热塑性聚合物的特点是什么？',opts:['加热软化，可重新塑形','加热后永久固化不可重塑','一定是高交联橡胶'],ans:0,ok:'对。热塑性聚合物通常线性或支化，加热可软化重塑。',bad:'热固性材料才会形成不可逆网络结构。'},
-  {q:'复合材料中纤维增强体主要提供什么？',opts:['强度和刚度','只提供颜色','只降低密度且不承载'],ans:0,ok:'对。纤维主要承担载荷，基体负责传力和保护。',bad:'复合材料的“增强体”不是装饰，它决定强度和刚度。'},
-  {q:'N 型半导体掺磷后的主要载流子是什么？',opts:['电子','空穴','中子'],ans:0,ok:'对。磷有 5 个价电子，会提供多余电子。',bad:'P 型掺硼才以空穴为多数载流子。'},
-  {q:'纳米材料出现特殊性质的重要原因是什么？',opts:['表面效应和量子尺寸效应增强','材料不再由原子构成','温度永远不变'],ans:0,ok:'对。尺寸降到纳米尺度后，比表面积和量子效应显著增强。',bad:'纳米效应来自尺度变化，不是材料失去原子结构。'}
+  {q:'晶体和非晶体最关键的微观差异是什么？',opts:['原子排列是否长程有序','颜色是否透明','密度是否一定更大'],ans:0,ok:'对。晶体有周期性有序排列，非晶体缺少长程有序。',bad:'关键不是颜色或密度，而是微观排列是否有长程周期性。',why:'晶体的原子在空间中周期重复，因此常有固定熔点；非晶体只有短程有序，受热会逐渐软化。'},
+  {q:'钢中碳含量升高通常会带来什么变化？',opts:['硬度降低、延展性升高','硬度升高、延展性下降','完全不影响性能'],ans:1,ok:'对。碳强化会提高硬度和强度，但通常牺牲延展性。',bad:'看合金性能条：碳越多，硬度越高，延展性通常越低。',why:'碳原子会阻碍铁晶格中的位错运动，让材料更硬更强，但也更难塑性变形。'},
+  {q:'先进陶瓷的典型优势是什么？',opts:['一定非常柔软','都能像金属一样延展','高硬度、耐高温、耐腐蚀'],ans:2,ok:'对。陶瓷常见优势是硬、耐热、耐腐蚀和绝缘。',bad:'陶瓷的弱点恰恰是脆性大，不是延展性强。',why:'陶瓷中的离子键和共价键强，带来高硬度和耐热性；但裂纹不易被塑性变形钝化，所以更脆。'},
+  {q:'热塑性聚合物的特点是什么？',opts:['加热后永久固化不可重塑','加热软化，可重新塑形','一定是高交联橡胶'],ans:1,ok:'对。热塑性聚合物通常线性或支化，加热可软化重塑。',bad:'热固性材料才会形成不可逆网络结构。',why:'热塑性聚合物链间主要靠较弱作用力连接，加热后链段能重新运动，因此可以反复成型。'},
+  {q:'复合材料中纤维增强体主要提供什么？',opts:['只提供颜色','只降低密度且不承载','强度和刚度'],ans:2,ok:'对。纤维主要承担载荷，基体负责传力和保护。',bad:'复合材料的“增强体”不是装饰，它决定强度和刚度。',why:'复合材料靠纤维承受主要载荷，基体把载荷传给纤维并保护界面，二者分工才提升性能。'},
+  {q:'N 型半导体掺磷后的主要载流子是什么？',opts:['空穴','电子','中子'],ans:1,ok:'对。磷有 5 个价电子，会提供多余电子。',bad:'P 型掺硼才以空穴为多数载流子。',why:'磷比硅多一个价电子，掺入硅晶格后容易贡献自由电子，所以 N 型以电子导电为主。'},
+  {q:'纳米材料出现特殊性质的重要原因是什么？',opts:['材料不再由原子构成','温度永远不变','表面效应和量子尺寸效应增强'],ans:2,ok:'对。尺寸降到纳米尺度后，比表面积和量子效应显著增强。',bad:'纳米效应来自尺度变化，不是材料失去原子结构。',why:'尺寸减小会让表面原子比例上升，并让电子能级受限，这会改变催化、光学和电学性质。'}
 ];
 let quizPassed=new Set(),quizFeedback={};
 
 // === Level 0: Crystal vs Amorphous ===
 let l0temp=25,l0type=0; // 0=crystal, 1=amorphous
 // === Level 1: Metals & Alloys ===
-let l1alloy=0,l1carbonPct=0.2;
+let l1alloy=0,l1carbonPct=0.2,l1carbonTrendConfirmed=false;
 const ALLOYS=[{name:'纯铁',carbon:0,hardness:20,ductility:90,desc:'纯铁很软，容易变形'},{name:'低碳钢',carbon:0.2,hardness:45,ductility:70,desc:'含碳0.02-0.25%，韧性好，用于建筑'},{name:'中碳钢',carbon:0.5,hardness:65,ductility:45,desc:'含碳0.25-0.6%，强度高，用于机械零件'},{name:'高碳钢',carbon:1.0,hardness:85,ductility:20,desc:'含碳0.6-1.4%，硬度高，用于刀具弹簧'},{name:'不锈钢',carbon:0.1,hardness:55,ductility:60,desc:'加入Cr(>10.5%)和Ni，耐腐蚀'}];
 // === Level 2: Ceramics ===
-let l2temp=25,l2ceramic=0;
+let l2temp=25,l2ceramic=0,l2highestConfirmed=false,l2heatConfirmed=false;
 const CERAMICS=[{name:'氧化铝 Al₂O₃',melt:2072,hardness:9,use:'刀具、绝缘体',color:'#e2e8f0'},{name:'碳化硅 SiC',melt:2730,hardness:9.5,use:'磨料、半导体',color:'#94a3b8'},{name:'氮化硅 Si₃N₄',melt:1900,hardness:8.5,use:'轴承、涡轮叶片',color:'#a3a3a3'},{name:'氧化锆 ZrO₂',melt:2715,hardness:8,use:'人工关节、刀具',color:'#fef3c7'}];
 // === Level 3: Polymers ===
 let l3polymer=0,l3stretch=0;
 const POLYMERS=[{name:'聚乙烯(PE)',type:'热塑性',tg:-120,use:'塑料袋、薄膜',chain:'线性',color:'#60a5fa'},{name:'聚氯乙烯(PVC)',type:'热塑性',tg:80,use:'管材、电线皮',chain:'线性',color:'#a78bfa'},{name:'天然橡胶',type:'弹性体',tg:-70,use:'轮胎、密封件',chain:'交联',color:'#fbbf24'},{name:'酚醛树脂',type:'热固性',tg:150,use:'电器外壳、砂轮',chain:'体型',color:'#f87171'}];
 // === Level 4: Composites ===
-let l4fiber=50,l4matrix=0;
+let l4fiber=50,l4matrix=0,l4optimumConfirmed=false;
 // === Level 5: Semiconductors ===
-let l5doping=0,l5dopant=0; // 0=none,1=P(n-type),2=B(p-type)
+let l5doping=0,l5dopant=0,l5effectiveDopants=new Set(); // 0=none,1=P(n-type),2=B(p-type)
+const EFFECTIVE_DOPING_LEVEL=1; // 10^15 /cm³
 // === Level 6: Nanomaterials ===
-let l6size=100,l6property=0;
+let l6size=100,l6property=0,l6colorBandsViewed=new Set(),l6nanoEffectConfirmed=false;
 
 function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';}
 window.addEventListener('resize',()=>{resize();draw();});
 
-function startGame(){overlay.style.display='none';wrap.style.display='block';panel.style.display='block';bar.style.display='flex';resize();goLevel(0);animate();}
+function resetProgress(){
+  curLevel=0;
+  unlocked=[true,false,false,false,false,false,false];
+  levelObjs=Array.from({length:7},()=>[false,false,false]);
+  quizPassed.clear();
+  quizFeedback={};
+}
 
-function goLevel(n){if(n<0||n>6||!isUnlocked(n))return;curLevel=n;unlocked[n]=true;initLevel(n);renderPanel();draw();}
+function startGame(){
+  resetProgress();
+  overlay.style.display='none';wrap.style.display='block';panel.style.display='block';bar.style.display='flex';
+  resize();goLevel(0);
+  if(!animating){animating=true;animate();}
+}
 
-function checkObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();}}
-function isUnlocked(n){return n===0||quizPassed.has(n-1)}
+function restartFromSummary(){
+  resetProgress();
+  overlay.style.display='none';wrap.style.display='block';panel.style.display='block';bar.style.display='flex';
+  resize();goLevel(0);
+  return true;
+}
+
+function toIndex(v,max){
+  const n=Number(v);
+  return Number.isInteger(n)&&n>=0&&n<max?n:null;
+}
+function clampNumber(value,fallback,min,max){
+  const n=Number(value),fb=Number(fallback);
+  const base=Number.isFinite(n)?n:(Number.isFinite(fb)?fb:min);
+  return Math.min(max,Math.max(min,base));
+}
+function setInputValue(input,value){
+  if(input&&input.value!==undefined)input.value=String(value);
+}
+
+function goLevel(n){
+  const idx=toIndex(n,LEVEL_NAMES.length);
+  if(idx===null||!isUnlocked(idx))return;
+  curLevel=idx;
+  if(!quizPassed.has(idx))delete quizFeedback[idx];
+  unlocked[idx]=true;initLevel(idx);renderPanel();draw();
+}
+
+function checkObj(li,oi,silent=false){
+  const level=toIndex(li,LEVEL_NAMES.length),obj=toIndex(oi,3);
+  if(level===null||obj===null||level!==curLevel||!levelObjs[level]||levelObjs[level][obj])return false;
+  levelObjs[level][obj]=true;
+  if(!silent)renderPanel();
+  return true;
+}
+function isUnlocked(n){
+  const idx=toIndex(n,LEVEL_NAMES.length);
+  return idx!==null&&(idx===0||quizPassed.has(idx-1));
+}
 
 function initLevel(n){
   switch(n){
-    case 0:l0temp=25;l0type=0;break;
-    case 1:l1alloy=0;l1carbonPct=0;break;
-    case 2:l2temp=25;l2ceramic=0;break;
-    case 3:l3polymer=0;l3stretch=0;break;
-    case 4:l4fiber=50;l4matrix=0;break;
-    case 5:l5doping=0;l5dopant=0;break;
-    case 6:l6size=100;l6property=0;break;
+    case 0:l0temp=25;l0type=0;l0typeViewed.clear();l0heatedTypes.clear();break;
+    case 1:l1alloy=0;l1carbonPct=0;l1carbonTrendConfirmed=false;l1viewed.clear();break;
+    case 2:l2temp=25;l2ceramic=0;l2highestConfirmed=false;l2heatConfirmed=false;l2viewed.clear();break;
+    case 3:l3polymer=0;l3stretch=0;l3comparisonConfirmed=false;l3viewed.clear();l3polymerTypesViewed.clear();break;
+    case 4:l4fiber=50;l4matrix=0;l4optimumConfirmed=false;l4matrixViewed.clear();break;
+    case 5:l5doping=0;l5dopant=0;l5effectiveDopants.clear();break;
+    case 6:l6size=100;l6property=0;l6colorBandsViewed.clear();l6nanoEffectConfirmed=false;break;
   }
 }
 
@@ -183,35 +235,46 @@ function renderStageNav(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   LEVEL_NAMES.forEach((_,i)=>{
     const unlocked=isUnlocked(i),cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
-    const click=unlocked?`goLevel(${i})`:'';
-    h+=`<div class="sn-d ${cls}" onclick="${click}" title="${unlocked?LEVEL_NAMES[i]:'答对上一关测验后解锁'}"></div>`;
+    const click=unlocked&&i!==curLevel?` onclick="goLevel(${i})"`:'';
+    h+=`<div class="sn-d ${cls}"${click} title="${unlocked?LEVEL_NAMES[i]:'答对上一关测验后解锁'}"></div>`;
   });
   h+=`</div><div class="sn-info">${LEVEL_ICONS[curLevel]} ${curLevel+1}/${LEVEL_NAMES.length} ${LEVEL_NAMES[curLevel]}</div><div class="sn-hint">${quizPassed.size}/${LEVEL_NAMES.length} 已通关，完成目标后答对测验才解锁下一关</div></div>`;
   return h;
 }
 
 function summaryHTML(){
-  const done=levelObjs.flat().filter(v=>v).length,total=levelObjs.flat().length;
-  return `<div class="summary-box"><div class="summary-title">🎉 材料科学探险完成！</div><div class="summary-sub">你已掌握材料科学核心概念</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}</div><div class="label">完成目标</div></div><div class="summary-stat"><div class="num">7</div><div class="label">探索关卡</div></div></div><div class="summary-keys"><div>💎 晶体：有序排列 vs 无序排列</div><div>⚙️ 合金：碳含量决定钢的性能</div><div>🏺 陶瓷：高温高硬度绝缘体</div><div>🧬 聚合物：链结构决定性能</div><div>🔗 复合材料：1+1>2的组合</div><div>💡 半导体：掺杂改变导电性</div><div>🔍 纳米材料：尺寸效应</div></div></div>`;
+  const done=quizPassed.size*3,total=levelObjs.flat().length;
+  return `<div class="summary-box"><div class="summary-title">🎉 材料科学探险完成！</div><div class="summary-sub">你已掌握材料科学核心概念</div><div class="summary-stats"><div class="summary-stat"><div class="num">${done}/${total}</div><div class="label">目标达成</div></div><div class="summary-stat"><div class="num">${LEVEL_NAMES.length}</div><div class="label">探索关卡</div></div></div><div class="summary-keys"><div>💎 晶体：有序排列 vs 无序排列</div><div>⚙️ 合金：碳含量决定钢的性能</div><div>🏺 陶瓷：高温高硬度绝缘体</div><div>🧬 聚合物：链结构决定性能</div><div>🔗 复合材料：1+1>2的组合</div><div>💡 半导体：掺杂改变导电性</div><div>🔍 纳米材料：尺寸效应</div></div><button class="act-btn" style="margin-top:12px" onclick="restartFromSummary()">重新探索材料科学</button></div>`;
 }
 function quizHTML(li){
-  const q=quizData[li],fb=quizFeedback[li];
+  const q=quizData[li],fb=quizFeedback[li],passedQuiz=quizPassed.has(li);
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
   h+=`<div class="quiz-q">${q.q}</div>`;
-  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`;});
+  q.opts.forEach((opt,i)=>{
+    const mark=passedQuiz&&i===q.ans?' correct':fb&&i===q.ans?' correct':fb&&i===fb.choice&&!fb.ok?' wrong':'';
+    h+=`<button class="quiz-opt${mark}" onclick="answerQuiz(${li},${i})">${'ABC'[i]}. ${opt}</button>`;
+  });
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  else if(passedQuiz)h+=`<div class="quiz-feedback ok">已通过小测。${q.why||q.ok}</div>`;
   h+='</div>';
   return h;
 }
 function answerQuiz(li,choice){
-  if(li!==curLevel||quizPassed.has(li))return;
-  const q=quizData[li],ok=choice===q.ans;
-  quizFeedback[li]={ok,text:ok?q.ok:q.bad};
+  li=Number(li);choice=Number(choice);
+  if(!Number.isInteger(li)||!Number.isInteger(choice))return false;
+  if(li<0||li>=LEVEL_NAMES.length)return false;
+  if(li!==curLevel||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(Boolean))return false;
+  const q=quizData[li];
+  if(!q||choice<0||choice>=q.opts.length)return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  const ok=choice===q.ans;
+  quizFeedback[li]={ok,choice,text:(ok?q.ok:q.bad)+(q.why?' '+q.why:'')};
   if(ok){
     quizPassed.add(li);
     if(li<6)unlocked[li+1]=true;
   }
   renderPanel();
+  return ok;
 }
 window.answerQuiz=answerQuiz;
 
@@ -221,14 +284,17 @@ function renderPanel(){
     case 0:h+=renderP0();break;case 1:h+=renderP1();break;case 2:h+=renderP2();break;
     case 3:h+=renderP3();break;case 4:h+=renderP4();break;case 5:h+=renderP5();break;case 6:h+=renderP6();break;
   }
-  if(levelObjs[curLevel].every(v=>v)){
-    if(!quizPassed.has(curLevel))h+=quizHTML(curLevel);
+  const levelPassed=quizPassed.has(curLevel);
+  const goalsDone=levelPassed||levelObjs[curLevel].every(v=>v);
+  if(levelPassed)h=h.replace(/class="obj\s*"/g,'class="obj done"');
+  if(goalsDone){
+    h+=quizHTML(curLevel);
     if(quizPassed.has(curLevel)&&curLevel<6)h+=`<button class="act-btn" style="background:#8b5cf6;color:#fff;margin-top:8px" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
     if(quizPassed.has(curLevel)&&curLevel===6)h+=summaryHTML();
   }
   panel.innerHTML=h;
-  const done=levelObjs[curLevel].filter(Boolean).length;
-  const status=quizPassed.has(curLevel)?'已通关':levelObjs[curLevel].every(Boolean)?'待测验':'进行中';
+  const done=levelPassed?3:levelObjs[curLevel].filter(Boolean).length;
+  const status=levelPassed?'已通关':levelObjs[curLevel].every(Boolean)?'待测验':'进行中';
   bar.innerHTML=`<span style="color:var(--text-muted)">🔬 ${LEVEL_NAMES[curLevel]}</span><span class="prog">目标 ${done}/3 · ${status} · 通关 ${quizPassed.size}/${LEVEL_NAMES.length}</span>`;
 }
 
@@ -238,20 +304,50 @@ function renderP0(){
   h+=`<p class="desc">画布上显示两种材料的微观结构。拖动温度滑块加热，观察晶体和非晶体熔化行为的差异。</p>`;
   h+=`<div class="obj ${levelObjs[0][0]?'done':''}">切换查看晶体和非晶体结构</div>`;
   h+=`<div class="obj ${levelObjs[0][1]?'done':''}">加热到晶体熔点(660°C铝)</div>`;
-  h+=`<div class="obj ${levelObjs[0][2]?'done':''}">对比两者的熔化曲线</div>`;
+  h+=`<div class="obj ${levelObjs[0][2]?'done':''}">分别加热并对比两者的熔化曲线</div>`;
   h+=`<p class="sub">材料类型:</p>`;
   h+=`<button class="act-btn" style="font-size:12px;${l0type===0?'background:#8b5cf6;color:#fff':''}" onclick="setCrystalType(0)">💎 晶体(铝)</button>`;
   h+=`<button class="act-btn" style="font-size:12px;${l0type===1?'background:#8b5cf6;color:#fff':''}" onclick="setCrystalType(1)">🫧 非晶体(玻璃)</button>`;
-  h+=`<p class="sub">温度: <span style="color:#8b5cf6">${l0temp}°C</span></p>`;
-  h+=`<input type="range" class="ctl" min="25" max="1000" step="5" value="${l0temp}" oninput="setTemp0(+this.value)" onchange="this.blur();renderPanel()">`;
-  if(l0temp>=660&&l0type===0)checkObj(0,1);
-  if(l0temp>=800)checkObj(0,2);
+  h+=`<p class="sub">已记录结构: ${l0typeViewed.size}/2 · 已加热对比: ${l0heatedTypes.size}/2</p>`;
+  h+=`<p class="sub">温度: <span id="matTemp0Val" style="color:#8b5cf6">${l0temp}°C</span></p>`;
+  h+=`<input type="range" class="ctl" min="25" max="1000" step="5" value="${l0temp}" oninput="setTemp0Input(this)" onchange="this.blur();renderPanel()">`;
+  const targetTemp=l0type===0?660:500;
+  if(l0temp<targetTemp)h+=`<button class="act-btn" onclick="heatCurrentMaterialToObservation()">升温到${l0type===0?'晶体熔点':'非晶软化观察点'} ${targetTemp}°C</button>`;
   if(levelObjs[0][1])h+=`<div class="learn-box"><b>晶体 vs 非晶体</b><br>晶体(如金属、食盐、钻石)：<br>• 原子排列<b>周期性有序</b><br>• 有<b>固定熔点</b>(铝: 660°C)<br>• 各向异性<br><br>非晶体(如玻璃、塑料)：<br>• 原子排列<b>无序</b><br>• <b>无固定熔点</b>，逐渐软化<br>• 各向同性</div>`;
   return h;
 }
-let l0typeViewed=new Set();
-function setCrystalType(t){l0type=t;l0typeViewed.add(t);if(l0typeViewed.size>=2)checkObj(0,0);renderPanel();draw();}
-function setTemp0(v){l0temp=v;draw();}
+let l0typeViewed=new Set(),l0heatedTypes=new Set();
+function setCrystalType(t){
+  const idx=toIndex(t,2);
+  if(idx===null)return;
+  l0type=idx;l0typeViewed.add(idx);if(l0typeViewed.size>=2)checkObj(0,0,true);updateCrystalTempTargets();renderPanel();draw();
+}
+function updateCrystalTempTargets(){
+  let changed=false;
+  if(l0type===0&&l0temp>=660){l0heatedTypes.add(0);changed=checkObj(0,1,true)||changed;}
+  if(l0type===1&&l0temp>=500)l0heatedTypes.add(1);
+  if(l0typeViewed.size>=2&&l0heatedTypes.size>=2)changed=checkObj(0,2,true)||changed;
+  return changed;
+}
+function setTemp0(v){
+  l0temp=clampNumber(v,l0temp,25,1000);
+  const tempEl=document.getElementById('matTemp0Val');
+  if(tempEl)tempEl.textContent=l0temp+'°C';
+  if(updateCrystalTempTargets())renderPanel();
+  draw();
+}
+function setTemp0Input(input){
+  const v=clampNumber(input&&input.value!==undefined?input.value:input,l0temp,25,1000);
+  setInputValue(input,v);
+  setTemp0(v);
+  return true;
+}
+function heatCurrentMaterialToObservation(){
+  if(curLevel!==0)return false;
+  setTemp0(l0type===0?660:500);
+  renderPanel();
+  return true;
+}
 
 function renderP1(){
   let h=`<h3>金属材料(合金)</h3>`;
@@ -263,13 +359,27 @@ function renderP1(){
   h+=`<p class="sub">合金类型:</p>`;
   ALLOYS.forEach((a,i)=>{h+=`<button class="act-btn" style="font-size:12px;${l1alloy===i?'background:#8b5cf6;color:#fff':''}" onclick="setAlloy(${i})">${a.name}</button>`;});
   const a=ALLOYS[l1alloy];
+  h+=`<p class="sub">已记录 ${l1viewed.size}/${ALLOYS.length} 种合金</p>`;
   h+=`<p class="sub">硬度: <span style="color:#ef4444">${a.hardness}</span> | 延展性: <span style="color:#3b82f6">${a.ductility}</span></p>`;
   h+=`<p class="desc">${a.desc}</p>`;
+  if(l1viewed.has(1)&&l1viewed.has(3)&&!levelObjs[1][2])h+=`<button class="act-btn" onclick="confirmCarbonTrend()">确认：碳含量升高使硬度升高、延展性下降</button>`;
+  else if(!levelObjs[1][2])h+=`<div class="hint-box">分别查看低碳钢和高碳钢，比较硬度与延展性的变化，再确认碳含量对钢性能的影响。</div>`;
   if(levelObjs[1][2])h+=`<div class="learn-box"><b>铁碳合金</b><br>碳含量↑ → 硬度↑ 延展性↓<br><br>• <b>低碳钢</b>(<0.25%C): 建筑、汽车车身<br>• <b>中碳钢</b>(0.25-0.6%C): 齿轮、轴<br>• <b>高碳钢</b>(>0.6%C): 刀具、弹簧<br>• <b>不锈钢</b>: 加Cr/Ni防腐蚀<br><br>合金的本质：通过<b>固溶强化</b>和<b>析出强化</b>改变性能</div>`;
   return h;
 }
 let l1viewed=new Set();
-function setAlloy(i){l1alloy=i;l1viewed.add(i);if(l1viewed.size>=3)checkObj(1,0);if(i===3)checkObj(1,1);if(l1viewed.size>=4)checkObj(1,2);renderPanel();draw();}
+function setAlloy(i){
+  const idx=toIndex(i,ALLOYS.length);
+  if(idx===null)return;
+  l1alloy=idx;l1viewed.add(idx);if(l1viewed.size>=3)checkObj(1,0,true);if(idx===3)checkObj(1,1,true);renderPanel();draw();
+}
+function confirmCarbonTrend(){
+  if(curLevel!==1||!l1viewed.has(1)||!l1viewed.has(3))return false;
+  l1carbonTrendConfirmed=true;
+  checkObj(1,2,true);
+  renderPanel();draw();
+  return true;
+}
 
 function renderP2(){
   let h=`<h3>陶瓷材料</h3>`;
@@ -277,20 +387,81 @@ function renderP2(){
   h+=`<p class="desc">画布上展示不同陶瓷材料的微观结构。选择陶瓷类型，拖动温度滑块观察其耐高温性能。</p>`;
   h+=`<div class="obj ${levelObjs[2][0]?'done':''}">查看所有4种陶瓷</div>`;
   h+=`<div class="obj ${levelObjs[2][1]?'done':''}">找到熔点最高的陶瓷</div>`;
-  h+=`<div class="obj ${levelObjs[2][2]?'done':''}">加热到2000°C以上</div>`;
+  h+=`<div class="obj ${levelObjs[2][2]?'done':''}">确认2000°C以上的耐高温来源</div>`;
   h+=`<p class="sub">陶瓷类型:</p>`;
   CERAMICS.forEach((c,i)=>{h+=`<button class="act-btn" style="font-size:12px;${l2ceramic===i?'background:#8b5cf6;color:#fff':''}" onclick="setCeramic(${i})">${c.name}</button>`;});
   const c=CERAMICS[l2ceramic];
-  h+=`<p class="sub">温度: <span style="color:#8b5cf6">${l2temp}°C</span> | 熔点: <span style="color:#ef4444">${c.melt}°C</span></p>`;
-  h+=`<input type="range" class="ctl" min="25" max="3000" step="25" value="${l2temp}" oninput="setTemp2(+this.value)" onchange="this.blur();renderPanel()">`;
+  h+=`<p class="sub">已记录 ${l2viewed.size}/${CERAMICS.length} 种陶瓷</p>`;
+  h+=`<p class="sub">温度: <span id="ceramicTempVal" style="color:#8b5cf6">${l2temp}°C</span> | 熔点: <span style="color:#ef4444">${c.melt}°C</span></p>`;
+  h+=`<input type="range" class="ctl" min="25" max="3000" step="25" value="${l2temp}" oninput="setTemp2Input(this)" onchange="this.blur();renderPanel()">`;
   h+=`<p class="desc">硬度(莫氏): ${c.hardness} | 用途: ${c.use}</p>`;
-  if(l2temp>=2000)checkObj(2,2);
+  h+=ceramicMeltComparisonHint();
+  if(l2viewed.size>=CERAMICS.length&&l2ceramic===1&&!levelObjs[2][1])h+=`<button class="act-btn" onclick="confirmHighestMeltCeramic()">确认：碳化硅熔点最高</button>`;
+  h+=`<div class="hint-box" id="ceramicHeatHint">${ceramicHeatHint()}</div>`;
+  if(l2temp>=2000&&levelObjs[2][0]&&levelObjs[2][1]&&l2ceramic===1&&!levelObjs[2][2])h+=`<button class="act-btn" onclick="confirmCeramicHeatResistance()">确认：强共价网络让碳化硅耐高温</button>`;
   if(levelObjs[2][2])h+=`<div class="learn-box"><b>先进陶瓷</b><br>传统陶瓷: 陶器、瓷器、砖瓦<br>先进陶瓷: 结构陶瓷+功能陶瓷<br><br>优点: 高硬度、耐高温、耐腐蚀、绝缘<br>缺点: <b>脆性大</b>，不耐冲击<br><br>解决脆性: 相变增韧(ZrO₂)、纤维增韧</div>`;
   return h;
 }
 let l2viewed=new Set();
-function setCeramic(i){l2ceramic=i;l2viewed.add(i);if(l2viewed.size>=4)checkObj(2,0);if(i===1)checkObj(2,1);renderPanel();draw();}
-function setTemp2(v){l2temp=v;draw();}
+function setCeramic(i){
+  const idx=toIndex(i,CERAMICS.length);
+  if(idx===null)return;
+  l2ceramic=idx;l2viewed.add(idx);if(l2viewed.size>=4)checkObj(2,0,true);renderPanel();draw();
+}
+function ceramicMeltComparisonHint(){
+  if(levelObjs[2][1])return '<div class="hint-box">✅ 已确认：碳化硅 SiC 的熔点最高，强共价网络让它非常耐高温。</div>';
+  if(l2viewed.size<CERAMICS.length)return '<div class="hint-box">先查看全部 4 种陶瓷的熔点，再判断哪一种最耐高温。</div>';
+  if(l2ceramic===1)return '<div class="hint-box">碳化硅 SiC 熔点 2730°C，是这组材料中最高的。现在确认你的比较结论。</div>';
+  return '<div class="hint-box">已经看完全部熔点。请选择熔点最高的陶瓷，再确认比较结果。</div>';
+}
+function confirmHighestMeltCeramic(){
+  if(curLevel!==2||l2viewed.size<CERAMICS.length||l2ceramic!==1)return false;
+  l2highestConfirmed=true;
+  checkObj(2,1,true);
+  renderPanel();draw();
+  return true;
+}
+function ceramicHeatHint(){
+  const c=CERAMICS[l2ceramic],gap=c.melt-l2temp;
+  if(l2temp>=c.melt)return `已超过 ${c.name} 的熔点，晶格开始失稳。陶瓷耐高温，但不是无限耐热。`;
+  if(l2temp>=2000&&!levelObjs[2][0])return '已进入 2000°C 以上高温区。先查看全部 4 种陶瓷，再判断哪种材料最能承受高温。';
+  if(l2temp>=2000&&!levelObjs[2][1])return '已进入 2000°C 以上高温区。先确认熔点最高的陶瓷，再总结耐高温的结构原因。';
+  if(l2temp>=2000&&l2ceramic!==1&&!levelObjs[2][2])return '请选择已确认熔点最高的碳化硅 SiC，再把高熔点与强共价网络联系起来。';
+  if(l2temp>=2000)return `已进入 2000°C 以上高温区，仍低于当前陶瓷熔点 ${gap}°C，体现强离子键/共价键带来的耐热性。`;
+  return `继续升温到 2000°C 以上，比较陶瓷在高温下仍保持结构的能力。距离当前材料熔点还差 ${gap}°C。`;
+}
+function updateCeramicReadouts(){
+  const tempEl=document.getElementById('ceramicTempVal'),hintEl=document.getElementById('ceramicHeatHint');
+  if(tempEl)tempEl.textContent=l2temp+'°C';
+  if(hintEl)hintEl.textContent=ceramicHeatHint();
+}
+function setTemp2(v){
+  const wasInHeatZone=l2temp>=2000;
+  l2temp=clampNumber(v,l2temp,25,3000);
+  const isInHeatZone=l2temp>=2000;
+  updateCeramicReadouts();
+  if(l2temp<2000&&!quizPassed.has(2)&&levelObjs[2][2]){
+    l2heatConfirmed=false;
+    levelObjs[2][2]=false;
+    renderPanel();
+  }else if(wasInHeatZone!==isInHeatZone){
+    renderPanel();
+  }
+  draw();
+}
+function setTemp2Input(input){
+  const v=clampNumber(input&&input.value!==undefined?input.value:input,l2temp,25,3000);
+  setInputValue(input,v);
+  setTemp2(v);
+  return true;
+}
+function confirmCeramicHeatResistance(){
+  if(curLevel!==2||l2temp<2000||!levelObjs[2][0]||!levelObjs[2][1]||l2ceramic!==1)return false;
+  l2heatConfirmed=true;
+  checkObj(2,2,true);
+  renderPanel();draw();
+  return true;
+}
 
 function renderP3(){
   let h=`<h3>聚合物(塑料/橡胶)</h3>`;
@@ -302,17 +473,40 @@ function renderP3(){
   h+=`<p class="sub">聚合物类型:</p>`;
   POLYMERS.forEach((p,i)=>{h+=`<button class="act-btn" style="font-size:12px;${l3polymer===i?'background:#8b5cf6;color:#fff':''}" onclick="setPolymer(${i})">${p.name}</button>`;});
   const p=POLYMERS[l3polymer];
+  h+=`<p class="sub">已记录 ${l3viewed.size}/${POLYMERS.length} 种聚合物 · 类型 ${l3polymerTypesViewed.size}/3</p>`;
   h+=`<p class="sub">拉伸程度: <span style="color:#8b5cf6">${l3stretch}%</span></p>`;
-  h+=`<input type="range" class="ctl" min="0" max="100" value="${l3stretch}" oninput="setStretch(+this.value)" onchange="this.blur();renderPanel()">`;
+  h+=`<input type="range" class="ctl" min="0" max="100" value="${l3stretch}" oninput="setStretchInput(this)" onchange="this.blur();renderPanel()">`;
   h+=`<p class="desc">类型: ${p.type} | 链结构: ${p.chain} | 玻璃化温度: ${p.tg}°C</p>`;
-  if(l3polymer===2&&l3stretch>=90)checkObj(3,1);
-  if(levelObjs[3][0]&&l3polymer===3)checkObj(3,2);
+  if(polymerComparisonReady()&&!levelObjs[3][2])h+=`<button class="act-btn" onclick="confirmPolymerComparison()">确认：热塑性可重塑，热固性不可重塑</button>`;
+  else if(!levelObjs[3][2])h+=`<div class="hint-box">分别查看热塑性和热固性聚合物，再确认链结构如何决定加热后的可重塑性。</div>`;
   if(levelObjs[3][2])h+=`<div class="learn-box"><b>聚合物分类</b><br><b>热塑性</b>(PE/PVC): 加热软化可重塑，线性链<br><b>弹性体</b>(橡胶): 交联结构，大变形可恢复<br><b>热固性</b>(酚醛): 体型网络，加热不软化<br><br>玻璃化温度Tg: 聚合物从硬脆→柔软的转变温度<br>Tg以下: 玻璃态(硬脆)<br>Tg以上: 高弹态(柔软)</div>`;
   return h;
 }
-let l3viewed=new Set();
-function setPolymer(i){l3polymer=i;l3viewed.add(i);if(l3viewed.size>=4)checkObj(3,0);renderPanel();draw();}
-function setStretch(v){l3stretch=v;draw();}
+let l3viewed=new Set(),l3polymerTypesViewed=new Set(),l3comparisonConfirmed=false;
+function setPolymer(i){
+  const idx=toIndex(i,POLYMERS.length);
+  if(idx===null)return;
+  l3polymer=idx;l3viewed.add(idx);l3polymerTypesViewed.add(POLYMERS[idx].type);
+  if(l3viewed.size>=4)checkObj(3,0,true);
+  renderPanel();draw();
+}
+function polymerComparisonReady(){
+  return curLevel===3&&l3polymerTypesViewed.has('热塑性')&&l3polymerTypesViewed.has('热固性');
+}
+function confirmPolymerComparison(){
+  if(!polymerComparisonReady())return false;
+  l3comparisonConfirmed=true;
+  checkObj(3,2,true);
+  renderPanel();draw();
+  return true;
+}
+function setStretch(v){l3stretch=clampNumber(v,l3stretch,0,100);if(l3polymer===2&&l3stretch>=90&&checkObj(3,1,true))renderPanel();draw();}
+function setStretchInput(input){
+  const v=clampNumber(input&&input.value!==undefined?input.value:input,l3stretch,0,100);
+  setInputValue(input,v);
+  setStretch(v);
+  return true;
+}
 
 function renderP4(){
   let h=`<h3>复合材料</h3>`;
@@ -321,64 +515,200 @@ function renderP4(){
   h+=`<div class="obj ${levelObjs[4][0]?'done':''}">调节纤维含量到60%以上</div>`;
   h+=`<div class="obj ${levelObjs[4][1]?'done':''}">切换不同基体材料</div>`;
   h+=`<div class="obj ${levelObjs[4][2]?'done':''}">找到最优纤维/基体比例</div>`;
-  h+=`<p class="sub">纤维含量: <span style="color:#8b5cf6">${l4fiber}%</span></p>`;
-  h+=`<input type="range" class="ctl" min="10" max="80" value="${l4fiber}" oninput="setFiber(+this.value)" onchange="this.blur();renderPanel()">`;
-  if(l4fiber>=60)checkObj(4,0);
+  h+=`<p class="sub">纤维含量: <span id="fiberVal4" style="color:#8b5cf6">${l4fiber}%</span></p>`;
+  h+=`<input type="range" class="ctl" min="10" max="80" value="${l4fiber}" oninput="setFiberInput(this)" onchange="this.blur();renderPanel()">`;
   h+=`<p class="sub">基体材料:</p>`;
   const matrices=['环氧树脂','铝合金','陶瓷基'];
   matrices.forEach((m,i)=>{h+=`<button class="act-btn" style="font-size:12px;${l4matrix===i?'background:#8b5cf6;color:#fff':''}" onclick="setMatrix(${i})">${m}</button>`;});
-  const strength=Math.round(l4fiber*1.2+(l4matrix===1?30:l4matrix===2?20:0));
-  const toughness=Math.round((100-l4fiber)*0.8+(l4matrix===0?20:l4matrix===1?30:5));
-  h+=`<p class="sub">综合强度: <span style="color:#ef4444">${strength}</span> | 韧性: <span style="color:#3b82f6">${toughness}</span></p>`;
-  if(l4fiber>=55&&l4fiber<=65)checkObj(4,2);
+  h+=`<p class="sub">已记录 ${l4matrixViewed.size}/${matrices.length} 种基体</p>`;
+  const stats=compositeStats();
+  h+=`<p class="sub">综合强度: <span id="strengthVal4" style="color:#ef4444">${stats.strength}</span> | 韧性: <span id="toughnessVal4" style="color:#3b82f6">${stats.toughness}</span></p>`;
+  h+=`<p id="compositeAdvice4" class="desc">${compositeAdvice()}</p>`;
+  if(l4fiber>=55&&l4fiber<=65){
+    h+=`<button class="act-btn" onclick="confirmCompositeOptimum()">${l4optimumConfirmed?'已确认':'确认'}：55-65% 是强度/韧性折中窗口</button>`;
+  }else{
+    h+=`<div class="hint-box">把纤维含量调到 55-65% 区间，再确认为什么这个范围通常比“越多越好”更合理。</div>`;
+  }
   if(levelObjs[4][2])h+=`<div class="learn-box"><b>复合材料设计</b><br>增强体(纤维): 提供<b>强度和刚度</b><br>基体(树脂/金属): 提供<b>韧性和传力</b><br><br>常见复合材料:<br>• <b>碳纤维/环氧</b>: 航空航天、赛车<br>• <b>玻璃纤维/树脂</b>: 船体、风力叶片<br>• <b>碳纤维/铝</b>: 航天结构件<br><br>纤维含量55-65%通常是最优区间</div>`;
   return h;
 }
 let l4matrixViewed=new Set();
-function setFiber(v){l4fiber=v;draw();}
-function setMatrix(i){l4matrix=i;l4matrixViewed.add(i);if(l4matrixViewed.size>=2)checkObj(4,1);renderPanel();draw();}
+function compositeStats(){
+  return {
+    strength:Math.round(l4fiber*1.2+(l4matrix===1?30:l4matrix===2?20:0)),
+    toughness:Math.round((100-l4fiber)*0.8+(l4matrix===0?20:l4matrix===1?30:5))
+  };
+}
+function compositeAdvice(){
+  const matrixNames=['环氧树脂','铝合金','陶瓷基'];
+  let balance=l4fiber<55?'纤维偏少：基体韧性足，但承载纤维不足，强度提升有限。':l4fiber<=65?'设计窗口：纤维足够承载，基体仍能传力和抑制裂纹扩展。':'纤维偏多：强度继续上升，但基体不足会让层间韧性和抗冲击能力下降。';
+  return `${matrixNames[l4matrix]}基体 · ${balance}`;
+}
+function updateCompositeReadouts(){
+  const stats=compositeStats();
+  const fiberEl=document.getElementById('fiberVal4'),strengthEl=document.getElementById('strengthVal4'),toughnessEl=document.getElementById('toughnessVal4'),adviceEl=document.getElementById('compositeAdvice4');
+  if(fiberEl)fiberEl.textContent=l4fiber+'%';
+  if(strengthEl)strengthEl.textContent=String(stats.strength);
+  if(toughnessEl)toughnessEl.textContent=String(stats.toughness);
+  if(adviceEl)adviceEl.textContent=compositeAdvice();
+}
+function setFiber(v){
+  l4fiber=clampNumber(v,l4fiber,10,80);
+  updateCompositeReadouts();
+  let changed=false;
+  if(l4fiber>=60)changed=checkObj(4,0,true)||changed;
+  if((l4fiber<55||l4fiber>65)&&!quizPassed.has(4)){
+    l4optimumConfirmed=false;
+    if(levelObjs[4][2]){levelObjs[4][2]=false;changed=true;}
+  }
+  if(changed)renderPanel();
+  draw();
+}
+function setFiberInput(input){
+  const v=clampNumber(input&&input.value!==undefined?input.value:input,l4fiber,10,80);
+  setInputValue(input,v);
+  setFiber(v);
+  return true;
+}
+function setMatrix(i){
+  const idx=toIndex(i,3);
+  if(idx===null)return;
+  l4matrix=idx;l4matrixViewed.add(idx);if(l4matrixViewed.size>=2)checkObj(4,1,true);renderPanel();draw();
+}
+function confirmCompositeOptimum(){
+  if(curLevel!==4||l4fiber<55||l4fiber>65)return false;
+  l4optimumConfirmed=true;
+  checkObj(4,2,true);
+  renderPanel();draw();
+  return true;
+}
 
 function renderP5(){
   let h=`<h3>半导体材料</h3>`;
   h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>半导体导电性介于导体和绝缘体之间，通过掺杂可精确控制其导电类型和载流子浓度</div>`;
   h+=`<p class="desc">画布上显示硅晶体的原子结构。选择掺杂元素，观察载流子(电子/空穴)的产生。</p>`;
   h+=`<div class="obj ${levelObjs[5][0]?'done':''}">观察本征半导体(纯硅)</div>`;
-  h+=`<div class="obj ${levelObjs[5][1]?'done':''}">掺磷形成N型半导体</div>`;
-  h+=`<div class="obj ${levelObjs[5][2]?'done':''}">掺硼形成P型半导体</div>`;
+  h+=`<div class="obj ${levelObjs[5][1]?'done':''}">掺磷并提高浓度形成N型半导体</div>`;
+  h+=`<div class="obj ${levelObjs[5][2]?'done':''}">掺硼并提高浓度形成P型半导体</div>`;
   h+=`<p class="sub">掺杂类型:</p>`;
   h+=`<button class="act-btn" style="font-size:12px;${l5dopant===0?'background:#8b5cf6;color:#fff':''}" onclick="setDopant(0)">纯硅(本征)</button>`;
   h+=`<button class="act-btn" style="font-size:12px;${l5dopant===1?'background:#8b5cf6;color:#fff':''}" onclick="setDopant(1)">掺磷(N型)</button>`;
   h+=`<button class="act-btn" style="font-size:12px;${l5dopant===2?'background:#8b5cf6;color:#fff':''}" onclick="setDopant(2)">掺硼(P型)</button>`;
-  if(l5dopant>0){h+=`<p class="sub">掺杂浓度: <span style="color:#8b5cf6">10^${l5doping+14} /cm³</span></p>`;
-  h+=`<input type="range" class="ctl" min="0" max="6" value="${l5doping}" oninput="setDoping(+this.value)" onchange="this.blur();renderPanel()">`;}
-  if(l5dopant===0)checkObj(5,0);
-  if(l5dopant===1)checkObj(5,1);
-  if(l5dopant===2)checkObj(5,2);
+  if(l5dopant>0){const feedback=semiconductorFeedback();h+=`<p class="sub">掺杂浓度: <span id="semiDopingVal" style="color:#8b5cf6">${feedback.density}</span></p>`;
+  h+=`<input type="range" class="ctl" min="0" max="6" value="${l5doping}" oninput="setDopingInput(this)" onchange="this.blur();renderPanel()">`;
+  h+=`<p class="sub">多数载流子: <span id="semiCarrierVal" style="color:#f59e0b">${feedback.carrier}</span></p>`;
+  h+=`<p class="sub">导电性提示: <span id="semiConductivityVal" style="color:#22c55e">${feedback.conductivity}</span></p>`;
+  if(!l5effectiveDopants.has(l5dopant))h+=`<div class="hint-box">已选${l5dopant===1?'磷':'硼'}掺杂。把浓度滑块调到 10^15 /cm³ 或更高，观察多数载流子明显增加后才完成该掺杂目标。</div>`;
+  else h+=`<div class="hint-box">已形成${l5dopant===1?'N型':'P型'}半导体：浓度越高，多数载流子越多，导电性越强。</div>`;}
   if(levelObjs[5][2])h+=`<div class="learn-box"><b>半导体掺杂</b><br>硅有4个价电子，形成共价键<br><br><b>N型</b>(掺P/As，5价):<br>多余1个电子 → 电子导电<br><br><b>P型</b>(掺B/Ga，3价):<br>缺少1个电子(空穴) → 空穴导电<br><br>PN结 = N型+P型 → <b>二极管</b><br>NPN/PNP → <b>三极管</b><br>这是所有芯片的基础！</div>`;
   return h;
 }
-function setDopant(d){l5dopant=d;renderPanel();draw();}
-function setDoping(v){l5doping=v;draw();}
+function semiconductorFeedback(){
+  const density=`10^${l5doping+14} /cm³`;
+  const carrier=l5dopant===1?'电子为多数载流子':'空穴为多数载流子';
+  const conductivity=l5doping>=5?'重掺杂，接近导体行为':l5doping>=3?'中等掺杂，电流明显增强':'轻掺杂，导电性刚开始提升';
+  return {density,carrier,conductivity};
+}
+function setDopant(d){
+  const idx=toIndex(d,3);
+  if(idx===null)return;
+  l5dopant=idx;if(idx===0)checkObj(5,0,true);renderPanel();draw();
+}
+function setDoping(v){
+  l5doping=Math.round(clampNumber(v,l5doping,0,6));
+  let changed=false;
+  if(l5dopant>0&&l5doping>=EFFECTIVE_DOPING_LEVEL){
+    l5effectiveDopants.add(l5dopant);
+    if(l5dopant===1)changed=checkObj(5,1,true)||changed;
+    if(l5dopant===2)changed=checkObj(5,2,true)||changed;
+  }
+  const feedback=semiconductorFeedback();
+  const densityEl=document.getElementById('semiDopingVal'),carrierEl=document.getElementById('semiCarrierVal'),conductivityEl=document.getElementById('semiConductivityVal');
+  if(densityEl)densityEl.textContent=feedback.density;
+  if(carrierEl)carrierEl.textContent=feedback.carrier;
+  if(conductivityEl)conductivityEl.textContent=feedback.conductivity;
+  if(changed)renderPanel();
+  draw();
+}
+function setDopingInput(input){
+  const v=Math.round(clampNumber(input&&input.value!==undefined?input.value:input,l5doping,0,6));
+  setInputValue(input,v);
+  setDoping(v);
+  return true;
+}
 
 function renderP6(){
   let h=`<h3>纳米材料</h3>`;
   h+=`<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心概念：</b>当材料尺寸缩小到纳米级(1-100nm)，表面效应和量子效应使其展现全新性质</div>`;
   h+=`<p class="desc">画布上显示金纳米颗粒。拖动滑块改变颗粒尺寸，观察颜色和性质的变化。</p>`;
   h+=`<div class="obj ${levelObjs[6][0]?'done':''}">将尺寸缩小到50nm以下</div>`;
-  h+=`<div class="obj ${levelObjs[6][1]?'done':''}">观察纳米金的颜色变化</div>`;
-  h+=`<div class="obj ${levelObjs[6][2]?'done':''}">将尺寸缩小到10nm以下</div>`;
-  h+=`<p class="sub">颗粒尺寸: <span style="color:#8b5cf6">${l6size} nm</span></p>`;
-  h+=`<input type="range" class="ctl" min="1" max="200" value="${l6size}" oninput="setNanoSize(+this.value)" onchange="this.blur();renderPanel()">`;
+  h+=`<div class="obj ${levelObjs[6][1]?'done':''}">观察至少3个颜色区间</div>`;
+  h+=`<div class="obj ${levelObjs[6][2]?'done':''}">确认10nm以下的表面效应和量子尺寸效应</div>`;
+  h+=`<p class="sub">颗粒尺寸: <span id="nanoSizeVal" style="color:#8b5cf6">${l6size} nm</span></p>`;
+  h+=`<input type="range" class="ctl" min="1" max="200" value="${l6size}" oninput="setNanoSizeInput(this)" onchange="this.blur();renderPanel()">`;
   const surfaceRatio=Math.round(600/l6size);
-  h+=`<p class="sub">比表面积: <span style="color:#f59e0b">~${surfaceRatio} m²/g</span></p>`;
+  h+=`<p class="sub">比表面积: <span id="nanoSurfaceVal" style="color:#f59e0b">~${surfaceRatio} m²/g</span></p>`;
   const color=l6size>100?'#ffd700':l6size>50?'#ff6b6b':l6size>20?'#e74c3c':l6size>10?'#9b59b6':'#3498db';
-  h+=`<p class="sub">颜色: <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${color};vertical-align:middle"></span></p>`;
-  if(l6size<=50){checkObj(6,0);checkObj(6,1);}
-  if(l6size<=10)checkObj(6,2);
+  h+=`<p class="sub">颜色: <span id="nanoColorSwatch" style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${color};vertical-align:middle"></span></p>`;
+  h+=`<p class="sub">已观察颜色区间: <span id="nanoBandVal">${l6colorBandsViewed.size}</span>/3</p>`;
+  h+=`<div class="hint-box" id="nanoHint">${nanoHintText()}</div>`;
+  if(l6size<=10&&!levelObjs[6][2])h+=`<button class="act-btn" onclick="confirmNanoEffects()">确认：表面效应和量子尺寸效应显著增强</button>`;
   if(levelObjs[6][2])h+=`<div class="learn-box"><b>纳米效应</b><br><b>表面效应</b>: 尺寸↓ → 表面原子比例↑ → 活性↑<br><b>量子尺寸效应</b>: 能级不连续 → 光学性质改变<br><br>纳米金颜色随尺寸变化:<br>• >100nm: 金色(块体)<br>• 50-100nm: 红色<br>• 20-50nm: 深红/紫色<br>• <20nm: 蓝紫色<br><br>应用: 催化剂、药物载体、传感器、防晒霜</div>`;
   return h;
 }
-function setNanoSize(v){l6size=v;draw();}
+function nanoHintText(){
+  const ratio=Math.round(600/l6size);
+  if(l6size>100)return `接近块体材料：比表面积约 ${ratio} m²/g，表面原子比例较低，颜色仍接近金色。`;
+  if(l6size>50)return `进入纳米尺度：比表面积升高到约 ${ratio} m²/g，表面效应增强，金颗粒开始呈红色。`;
+  if(l6size>20)return `20-50 nm 区间：表面原子占比继续增加，等离子体吸收改变，颜色转为深红/紫。`;
+  if(l6size>10)return `10-20 nm 区间：量子尺寸效应更明显，能级间隔增大，光学颜色明显偏紫。`;
+  return `小于 10 nm：表面效应和量子尺寸效应都很强，催化活性高，但也更容易团聚，需要稳定剂保护。`;
+}
+function nanoColorBand(size){
+  if(size>100)return 0;
+  if(size>50)return 1;
+  if(size>20)return 2;
+  if(size>10)return 3;
+  return 4;
+}
+function nanoColor(size){
+  return size>100?'#ffd700':size>50?'#ff6b6b':size>20?'#e74c3c':size>10?'#9b59b6':'#3498db';
+}
+function updateNanoReadouts(){
+  const sizeEl=document.getElementById('nanoSizeVal'),surfaceEl=document.getElementById('nanoSurfaceVal'),swatch=document.getElementById('nanoColorSwatch'),bandEl=document.getElementById('nanoBandVal'),hint=document.getElementById('nanoHint');
+  if(sizeEl)sizeEl.textContent=l6size+' nm';
+  if(surfaceEl)surfaceEl.textContent='~'+Math.round(600/l6size)+' m²/g';
+  if(swatch)swatch.style.background=nanoColor(l6size);
+  if(bandEl)bandEl.textContent=String(l6colorBandsViewed.size);
+  if(hint)hint.textContent=nanoHintText();
+}
+function setNanoSize(v){
+  l6size=Math.round(clampNumber(v,l6size,1,200));
+  l6colorBandsViewed.add(nanoColorBand(l6size));
+  let changed=false;
+  if(l6size<=50)changed=checkObj(6,0,true)||changed;
+  if(l6colorBandsViewed.size>=3)changed=checkObj(6,1,true)||changed;
+  if(l6size>10&&!quizPassed.has(6)){
+    l6nanoEffectConfirmed=false;
+    if(levelObjs[6][2]){levelObjs[6][2]=false;changed=true;}
+  }
+  updateNanoReadouts();
+  if(changed)renderPanel();
+  draw();
+}
+function confirmNanoEffects(){
+  if(curLevel!==6||l6size>10)return false;
+  l6nanoEffectConfirmed=true;
+  checkObj(6,2,true);
+  renderPanel();draw();
+  return true;
+}
+function setNanoSizeInput(input){
+  const v=Math.round(clampNumber(input&&input.value!==undefined?input.value:input,l6size,1,200));
+  setInputValue(input,v);
+  setNanoSize(v);
+  return true;
+}
 
 // === DRAW ===
 function draw(){

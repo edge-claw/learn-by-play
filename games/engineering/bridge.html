@@ -85,6 +85,7 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .sn-bar{display:flex;gap:3px;margin-bottom:6px}
 .sn-d{flex:1;height:5px;border-radius:3px;background:var(--stage-bar);cursor:pointer;transition:all .2s}
 .sn-d.done{background:#22c55e}.sn-d.cur{background:#6366f1;height:7px}
+.sn-d.locked{opacity:.35;cursor:not-allowed}
 .sn-info{color:var(--stage-info);font-weight:600;font-size:13px}.sn-hint{color:var(--stage-hint);font-size:12px;margin-top:3px}
 .summary-box{background:var(--summary-bg);border:2px solid var(--summary-border);border-radius:12px;padding:16px;margin-top:12px;text-align:center}
 .summary-title{font-size:18px;font-weight:bold;color:var(--summary-title);margin-bottom:6px}
@@ -138,13 +139,20 @@ const TH={
   light:{bg:'#e8edf5',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',beam:'#3b82f6',cable:'#d97706',arch:'#ea580c',road:'#475569',force:'#dc2626',support:'#16a34a',water:'rgba(59,130,246,0.1)',sky1:'#87ceeb',sky2:'#e0f0ff',ground:'#2d5a2d',showStars:false}
 };
 function t(){return isDark?TH.dark:TH.light}
-function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';renderPanel()}
+function toggleTheme(){
+  isDark=!isDark;
+  document.body.dataset.theme=isDark?'dark':'light';
+  document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';
+  if(gameState==='play')renderPanel();
+  draw();
+}
 
 const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
 let CW,CH,time=0,animId;
 let gameState='start',currentLevel=0;
 let levelState={},stars=[],particles=[];
 const completedLevels=new Set();
+const quizPassed=new Set();
 
 const levels=[
 {title:'力学基础',sub:'拉力、压力、剪力、弯矩',concept:'桥梁承受四种基本内力：拉力（拉伸构件）、压力（压缩构件）、剪力（截面滑移）、弯矩（使构件弯曲）。理解这些力的分布是桥梁设计的基础。',goals:['施加荷载观察梁的变形','识别拉力区和压力区','观察剪力和弯矩分布图'],learn:'简支梁受集中荷载时，上缘受压、下缘受拉，中性轴处应力为零。剪力在支座处最大，弯矩在荷载作用点最大。这就是为什么梁的截面设计成工字形——把材料集中在受力最大的上下翼缘。'},
@@ -161,13 +169,13 @@ const quizData=[
 {q:'连续梁通常比同跨度简支梁挠度更小，关键原因是什么？',opts:['中间支座产生负弯矩，分担跨中正弯矩','材料密度变小，梁自重消失','桥面越长，弯矩自然越小'],ans:0,why:'连续梁通过支座负弯矩重新分配内力，降低跨中峰值弯矩和挠度。'},
 {q:'均布荷载下，最接近理想拱轴线的形状是什么？',opts:['圆形，因为任何方向都对称','抛物线，因为推力线可与拱轴线重合','直线，因为路径最短'],ans:1,why:'推力线与拱轴线越接近，截面弯矩越小，拱主要以受压方式工作。'},
 {q:'悬索桥主缆垂度增大时，通常会怎样影响水平拉力？',opts:['水平拉力降低，但需要更高桥塔或更大垂度空间','水平拉力升高，因为缆索更长','水平拉力不变，只改变桥面颜色'],ans:0,why:'主缆水平拉力近似与垂度成反比，垂度越大，锚碇承受的水平拉力越小。'},
-{q:'斜拉桥的拉索为什么能直接支撑桥面？',opts:['拉索竖向分力托住桥面，水平分力进入梁和塔','拉索只负责装饰，不参与受力','塔柱越高，桥面就不需要受力'],ans:0,why:'每根斜拉索都可分解为竖向支撑力和水平分力，索力平衡决定桥面线形。'},
-{q:'桥梁风致共振最危险的触发条件是什么？',opts:['涡旋脱落频率接近桥梁固有频率','风速为零时没有空气阻力','桥面颜色吸收了太多阳光'],ans:0,why:'外部周期激励接近结构固有频率时，能量持续输入，振幅可能快速放大；阻尼器用于耗散这部分能量。'},
-{q:'悬臂施工为什么强调从桥墩两侧对称推进？',opts:['保持桥墩两侧弯矩平衡，降低施工阶段风险','方便同时刷两种颜色','让传感器数量减少到零'],ans:0,why:'施工阶段结构尚未合龙，左右不平衡会给桥墩和临时固结带来很大弯矩。对称推进能显著降低风险。'}
+{q:'斜拉桥的拉索为什么能直接支撑桥面？',opts:['拉索只负责装饰，不参与受力','塔柱越高，桥面就不需要受力','拉索竖向分力托住桥面，水平分力进入梁和塔'],ans:2,why:'每根斜拉索都可分解为竖向支撑力和水平分力，索力平衡决定桥面线形。'},
+{q:'桥梁风致共振最危险的触发条件是什么？',opts:['风速为零时没有空气阻力','涡旋脱落频率接近桥梁固有频率','桥面颜色吸收了太多阳光'],ans:1,why:'外部周期激励接近结构固有频率时，能量持续输入，振幅可能快速放大；阻尼器用于耗散这部分能量。'},
+{q:'悬臂施工为什么强调从桥墩两侧对称推进？',opts:['方便同时刷两种颜色','让传感器数量减少到零','保持桥墩两侧弯矩平衡，降低施工阶段风险'],ans:2,why:'施工阶段结构尚未合龙，左右不平衡会给桥墩和临时固结带来很大弯矩。对称推进能显著降低风险。'}
 ];
 let quizFeedback=null;
 
-// PLACEHOLDER_GAME_LOGIC
+// Core game logic
 
 const rangeDefs={
   load:{from:v=>v/100,to:v=>v*100,label:v=>`${(v*100).toFixed(0)} kN`},
@@ -188,26 +196,41 @@ function rangeHTML(key,label,min,max,flag){
   return `<div class="slider-wrap"><label>${label}: <span class="sv">${def.label(value)}</span></label><input type="range" min="${min}" max="${max}" value="${raw}" oninput="updateRange(this,'${key}',${flagArg})" onchange="this.blur();renderPanel()"></div>`;
 }
 function updateRange(input,key,flag){
-  const def=rangeDefs[key],value=def.from(+input.value);
+  const def=rangeDefs[key];
+  if(!def||!input)return false;
+  const raw=Number(input.value),min=Number(input.min),max=Number(input.max);
+  if(!Number.isFinite(raw))return false;
+  const bounded=Math.min(Number.isFinite(max)?max:raw,Math.max(Number.isFinite(min)?min:raw,raw));
+  input.value=bounded;
+  const value=def.from(bounded);
+  if(!Number.isFinite(value))return false;
   levelState[key]=value;
   if(flag)levelState[flag]=true;
-  const out=input.parentElement.querySelector('.sv');
+  const out=input.parentElement&&input.parentElement.querySelector?input.parentElement.querySelector('.sv'):null;
   if(out)out.textContent=def.label(value);
+  if((key==='load'||key==='loadX')&&levelState.showForces)draw();
+  if(key==='beamH')updateBeamMetrics();
+  if(key==='sag'||key==='loadLevel'||key==='anchorSize')updateSuspensionMetrics();
+  return true;
 }
 
 function quizHTML(li){
   const q=quizData[li];
+  const passed=quizPassed.has(li);
   let h=`<div class="quiz-box"><div class="quiz-q">📝 通关小测验：${q.q}</div>`;
   q.opts.forEach((opt,i)=>{
     let cls='';
-    if(quizFeedback&&quizFeedback.level===li){
+    if(passed&&i===q.ans)cls='correct';
+    else if(quizFeedback&&quizFeedback.level===li){
       if(i===q.ans)cls='correct';
       else if(i===quizFeedback.chosen)cls='wrong';
     }
-    h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${opt}</div>`;
+    h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${String.fromCharCode(65+i)}. ${opt}</div>`;
   });
   if(quizFeedback&&quizFeedback.level===li){
-    h+=`<div class="quiz-feedback">${quizFeedback.correct?'回答正确。':'再想想。'}${q.why}</div>`;
+    h+=`<div class="quiz-feedback">${quizFeedback.correct?'回答正确。关键结论：':'再想想，绿色选项才是关键结论：'}${q.why}</div>`;
+  }else if(passed){
+    h+=`<div class="quiz-feedback">已通过小测。关键结论：${q.why}</div>`;
   }else{
     h+='<div class="quiz-feedback">完成目标后，用这个问题确认你真的理解了受力机制。</div>';
   }
@@ -215,14 +238,21 @@ function quizHTML(li){
   return h;
 }
 function answerQuiz(li,choice){
-  if(li!==currentLevel||completedLevels.has(li))return;
-  const q=quizData[li],correct=choice===q.ans;
+  li=Number(li);choice=Number(choice);
+  if(!Number.isInteger(li)||!Number.isInteger(choice))return false;
+  const q=quizData[li];
+  if(!q||choice<0||choice>=q.opts.length)return false;
+  if(li!==currentLevel||quizPassed.has(li)||!levelState.goalDone||!levelState.goalDone.every(Boolean))return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  const correct=choice===q.ans;
   quizFeedback={level:li,chosen:choice,correct};
   if(correct){
+    quizPassed.add(li);
     completedLevels.add(li);
     addP(CW/2+160,CH/2,'#22c55e',18);
   }
   renderPanel();
+  return correct;
 }
 
 function resize(){CW=canvas.width=innerWidth;CH=canvas.height=innerHeight;initStars()}
@@ -233,19 +263,31 @@ function updateParticles(dt){for(let i=particles.length-1;i>=0;i--){const p=part
 function drawParticles(){for(let p of particles){const a=Math.max(0,p.life/p.ml);ctx.globalAlpha=a;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.sz*a,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}
 window.addEventListener('resize',resize);resize();
 
-function startGame(){document.getElementById('startScreen').classList.add('hidden');document.getElementById('panel').style.display='block';document.getElementById('bottom-bar').style.display='flex';gameState='play';initLevel(0);renderPanel()}
+function resetProgress(){
+  currentLevel=0;
+  levelState={};
+  completedLevels.clear();
+  quizPassed.clear();
+  quizFeedback=null;
+  particles=[];
+  initLevel(0);
+}
+function startGame(){document.getElementById('startScreen').classList.add('hidden');document.getElementById('panel').style.display='block';document.getElementById('bottom-bar').style.display='flex';gameState='play';resetProgress()}
 
 function initLevel(idx){
+  idx=Number(idx);
+  if(!Number.isInteger(idx)||!canGoLevel(idx))return false;
+  if(quizFeedback&&quizFeedback.level===idx&&!quizPassed.has(idx))quizFeedback=null;
   currentLevel=idx;particles=[];
   const cx=CW/2+160,cy=CH/2;
   if(idx===0){
-    levelState={load:0,loadX:0.5,showForces:false,showDiagram:false,goalDone:[false,false,false],elapsed:0};
+    levelState={load:0,loadX:0.5,showForces:false,showDiagram:false,stressZonesConfirmed:false,analyzedDiagram:false,goalDone:[false,false,false],elapsed:0};
   }else if(idx===1){
-    levelState={beamH:0.3,isContinuous:false,span:200,goalDone:[false,false,false],elapsed:0,triedH:false,triedCont:false};
+    levelState={beamH:0.3,initialBeamH:0.3,initialDeflection:0.8/Math.pow(0.3,3),isContinuous:false,span:200,goalDone:[false,false,false],elapsed:0,triedH:false,triedCont:false};
   }else if(idx===2){
-    levelState={rise:0.25,archType:'none',showThrust:false,goalDone:[false,false,false],elapsed:0,triedRise:false};
+    levelState={rise:0.25,archType:'none',showThrust:false,goalDone:[false,false,false],elapsed:0,triedRise:false,seenArchNone:false,seenArchThree:false};
   }else if(idx===3){
-    levelState={sag:0.1,loadLevel:0,showForces:false,anchorSize:1,goalDone:[false,false,false],elapsed:0,triedSag:false};
+    levelState={sag:0.1,loadLevel:0,showForces:false,anchorSize:1,goalDone:[false,false,false],elapsed:0,triedSag:false,triedAnchor:false};
   }else if(idx===4){
     levelState={pattern:'fan',towerH:0.5,cableForce:50,goalDone:[false,false,false],elapsed:0,balanced:false,triedPattern:false,triedTowerH:false};
   }else if(idx===5){
@@ -253,38 +295,54 @@ function initLevel(idx){
   }else if(idx===6){
     levelState={segments:0,maxSeg:10,merged:false,sensors:0,maxSensors:5,goalDone:[false,false,false],elapsed:0,building:false,buildSide:'both'};
   }
-  renderPanel();
+  renderPanel();return true;
 }
 
-// PLACEHOLDER_RENDER_PANEL
+// Panel rendering
 
 function renderPanel(){
   const L=levels[currentLevel],S=levelState,p=document.getElementById('panel');
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<levels.length;i++){let cls=completedLevels.has(i)?'done ':'';if(i===currentLevel)cls+='cur';h+=`<div class="sn-d ${cls}" onclick="switchLevel(${i})"></div>`}
-  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关</div><div class="sn-hint">${L.title} — ${L.sub}</div></div>`;
+  for(let i=0;i<levels.length;i++){
+    const unlocked=canGoLevel(i);
+    let cls=quizPassed.has(i)?'done ':unlocked?'':'locked ';
+    if(i===currentLevel)cls+='cur';
+    h+=unlocked&&i!==currentLevel?`<div class="sn-d ${cls}" onclick="switchLevel(${i})"></div>`:`<div class="sn-d ${cls}"></div>`;
+  }
+  h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关 | 已通关 ${quizPassed.size}/${levels.length}</div><div class="sn-hint">${L.title} — ${L.sub} · 答对测验才解锁下一关</div></div>`;
   h+=`<div class="m-title">${L.title}</div><div class="m-sub">${L.sub}</div>`;
   h+=`<div class="concept-box">${L.concept}</div>`;
   const actionsHTML=renderLevelActions();
   h+='<div style="margin:8px 0;font-size:12px;color:var(--text-muted);font-weight:600">目标清单</div>';
-  for(let i=0;i<L.goals.length;i++){const done=completedLevels.has(currentLevel)||(S.goalDone&&S.goalDone[i]);h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`}
+  for(let i=0;i<L.goals.length;i++){const done=quizPassed.has(currentLevel)||(S.goalDone&&S.goalDone[i]);h+=`<div class="goal-row"><span class="g-icon">${done?'✅':'⬜'}</span><span class="g-text${done?' done':''}">${L.goals[i]}</span></div>`}
   h+=actionsHTML;
-  const goalsDone=S.goalDone&&S.goalDone.every(g=>g);
-  if(goalsDone&&!completedLevels.has(currentLevel))h+=quizHTML(currentLevel);
-  if(completedLevels.has(currentLevel)){
+  const goalsDone=quizPassed.has(currentLevel)||(S.goalDone&&S.goalDone.every(g=>g));
+  if(goalsDone)h+=quizHTML(currentLevel);
+  if(quizPassed.has(currentLevel)){
     h+=`<div class="learn-box">🎓 ${L.learn}</div>`;
     if(currentLevel<levels.length-1)h+=`<button class="act-btn green" onclick="switchLevel(${currentLevel+1})">下一关 →</button>`;
     else h+=summaryHTML();
   }
   p.innerHTML=h;
   document.getElementById('bbLeft').textContent=`第 ${currentLevel+1} 关：${L.title}`;
-  document.getElementById('bbRight').textContent=`已通关 ${completedLevels.size}/${levels.length}`;
+  document.getElementById('bbRight').textContent=`已通关 ${quizPassed.size}/${levels.length}`;
 }
-function switchLevel(i){if(i>=0&&i<levels.length){initLevel(i)}}
+function canGoLevel(i){
+  i=Number(i);
+  return Number.isInteger(i)&&i>=0&&i<levels.length&&(i===0||quizPassed.has(i-1));
+}
+function switchLevel(i){
+  i=Number(i);
+  if(!canGoLevel(i))return false;
+  return initLevel(i);
+}
+function goLevel(i){return switchLevel(i)}
 function summaryHTML(){
+  if(quizPassed.size<levels.length)return '';
   let h='<div class="summary-box"><div class="summary-title">🏆 桥梁工程探险完成！</div>';
   h+='<div class="summary-sub">你已掌握桥梁工程的核心知识</div>';
-  h+='<div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡通关</div></div><div class="summary-stat"><div class="num">4</div><div class="label">桥型掌握</div></div></div>';
+  h+='<div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡通关</div></div><div class="summary-stat"><div class="num">4</div><div class="label">桥型掌握</div></div>';
+  h+=`<div class="summary-stat"><div class="num">${quizPassed.size*3}/21</div><div class="label">目标达成</div></div></div>`;
   h+='<div class="summary-keys"><div>🔑 四种内力：拉力、压力、剪力、弯矩</div><div>🔑 拱桥将荷载转化为轴向压力</div><div>🔑 悬索桥跨越能力最强</div><div>🔑 风致振动是大跨桥梁的关键挑战</div></div>';
   h+='<div class="roadmap"><div class="roadmap-title">继续学习路线</div>';
   const items=['结构力学深入学习','有限元分析方法','桥梁抗震设计','智能桥梁与数字孪生'];
@@ -292,51 +350,63 @@ function summaryHTML(){
   h+='</div></div>';return h;
 }
 
-// PLACEHOLDER_LEVEL_ACTIONS
+// Level actions
 
 function renderLevelActions(){
   const S=levelState;let h='';
   if(currentLevel===0){
     h+=rangeHTML('load','荷载大小',0,100);
     h+=rangeHTML('loadX','荷载位置',10,90);
-    h+=`<button class="act-btn" onclick="levelState.showForces=true;levelState.goalDone[0]=levelState.load>0.3;renderPanel()">施加荷载</button>`;
+    h+=`<button class="act-btn" onclick="applyBeamLoad()">施加荷载</button>`;
     if(S.showForces&&S.load>0.3)S.goalDone[0]=true;
-    if(S.showForces){
-      h+=`<button class="act-btn" onclick="levelState.showDiagram=true;levelState.goalDone[1]=true;renderPanel()">显示应力分布</button>`;
-      if(S.showDiagram){h+=`<div class="hint-box">📊 上方蓝色=压力区，下方红色=拉力区。剪力在支座处最大，弯矩在荷载点最大。</div>`;S.goalDone[1]=true;S.goalDone[2]=true;}
+    if(S.showForces&&S.load>0.3){
+      h+=`<button class="act-btn" onclick="showStressDiagram()">显示应力分布</button>`;
+      if(S.showDiagram){
+        h+=`<div class="hint-box">📊 上方蓝色=压力区，下方红色=拉力区。剪力峰值在支座附近，弯矩峰值在荷载点附近。</div>`;
+        if(!S.goalDone[1])h+=`<button class="act-btn" onclick="confirmStressZones()">确认拉压区位置</button>`;
+        else h+=`<div class="hint-box">✅ 已确认：简支梁受向下荷载时，上缘受压、下缘受拉。</div>`;
+        h+=`<button class="act-btn" onclick="analyzeForceDiagram()">${S.analyzedDiagram?'✅ 已分析剪力/弯矩图':'分析剪力/弯矩图'}</button>`;
+      }
+    }else if(S.showForces){
+      h+=`<div class="hint-box">先把荷载调到 30 kN 以上，梁的拉压区和内力图才有足够明显的变化。</div>`;
     }
   }else if(currentLevel===1){
     h+=rangeHTML('beamH','截面高度',10,80,'triedH');
-    h+=`<button class="act-btn" onclick="levelState.isContinuous=!levelState.isContinuous;levelState.triedCont=true;renderPanel()">${S.isContinuous?'切换为简支梁':'切换为连续梁'}</button>`;
+    h+=`<button class="act-btn" onclick="toggleContinuousBeam()">${S.isContinuous?'切换为简支梁':'切换为连续梁'}</button>`;
+    h+=`<div id="beamMetrics">${beamMetricsHTML()}</div>`;
     const defl=calcDeflection();
-    const limit=S.span/400;
-    h+=`<div style="font-size:12px;margin:6px 0;color:var(--text-sub)">挠度: <span class="sv">${defl.toFixed(2)} mm</span> | 限值 L/400 = <span class="sv">${limit.toFixed(2)} mm</span></div>`;
-    if(defl<=limit)h+=`<div style="font-size:12px;color:#4ade80">✅ 挠度满足要求</div>`;
-    else h+=`<div style="font-size:12px;color:#f87171">❌ 挠度超限，请增大截面或改用连续梁</div>`;
-    if(S.triedH)S.goalDone[0]=true;
+    const improvedSection=S.triedH&&S.beamH>S.initialBeamH+0.05&&defl<=S.initialDeflection*0.75;
+    if(improvedSection)S.goalDone[0]=true;
     if(S.triedCont)S.goalDone[1]=true;
-    if(defl<=limit)S.goalDone[2]=true;
+    if(defl<=deflectionLimit())S.goalDone[2]=true;
+    if(S.triedH&&!improvedSection)h+=`<div class="hint-box">把截面高度继续增大，观察挠度至少比初始值降低 25%，才算真正完成截面优化。</div>`;
   }else if(currentLevel===2){
     h+=rangeHTML('rise','矢跨比 f/L',5,50,'triedRise');
-    h+=`<button class="act-btn" onclick="levelState.archType=levelState.archType==='none'?'three':'none';renderPanel()">${S.archType==='three'?'切换为无铰拱':'切换为三铰拱'}</button>`;
-    h+=`<button class="act-btn" onclick="levelState.showThrust=true;renderPanel()">显示推力线</button>`;
+    h+=`<button class="act-btn" onclick="toggleArchType()">${S.archType==='three'?'切换为无铰拱':'切换为三铰拱'}</button>`;
+    h+=`<button class="act-btn" onclick="showThrustLine()">显示推力线</button>`;
     const diff=Math.abs(S.rise-0.25);
     if(S.triedRise)S.goalDone[0]=true;
     if(S.showThrust&&diff<0.05)S.goalDone[1]=true;
-    if(S.archType==='three')S.goalDone[2]=true;
+    if(S.seenArchNone&&S.seenArchThree)S.goalDone[2]=true;
     if(S.showThrust)h+=`<div class="hint-box">推力线偏差: ${(diff*100).toFixed(1)}%${diff<0.05?' ✅ 推力线与拱轴基本重合':' — 继续调节矢跨比'}</div>`;
   }else if(currentLevel===3){
     h+=rangeHTML('sag','主缆垂度 f/L',5,30,'triedSag');
     h+=rangeHTML('loadLevel','桥面荷载',0,100);
-    h+=`<button class="act-btn" onclick="levelState.showForces=true;renderPanel()">显示吊杆力</button>`;
+    h+=`<button class="act-btn" onclick="showSuspensionForces()">显示吊杆力</button>`;
     const Hforce=(S.loadLevel*200)/(8*Math.max(S.sag,0.05)*200);
-    h+=`<div style="font-size:12px;margin:4px 0;color:var(--text-sub)">水平拉力: <span class="sv">${Hforce.toFixed(0)} kN</span></div>`;
-    h+=rangeHTML('anchorSize','锚碇尺寸',5,30);
+    const anchorCapacity=30*S.anchorSize*S.anchorSize;
+    const anchorNeed=Hforce*1.25;
+    h+=`<div id="suspensionMetrics">${suspensionMetricsHTML()}</div>`;
+    h+=rangeHTML('anchorSize','锚碇尺寸',5,30,'triedAnchor');
     if(S.triedSag)S.goalDone[0]=true;
     if(S.showForces&&S.loadLevel>20)S.goalDone[1]=true;
-    if(S.anchorSize>1.5&&Hforce>50)S.goalDone[2]=true;
+    if(S.showForces&&S.loadLevel>20&&S.triedAnchor&&anchorCapacity>=anchorNeed)S.goalDone[2]=true;
+    if(S.showForces&&S.loadLevel>20){
+      if(anchorCapacity>=anchorNeed)h+=`<div style="font-size:12px;color:#4ade80">✅ 锚碇容量覆盖水平拉力并留有安全裕度</div>`;
+      else h+=`<div style="font-size:12px;color:#f87171">❌ 锚碇偏小，请增大尺寸或提高垂度以降低水平拉力</div>`;
+    }
   }else if(currentLevel===4){
-    h+=`<button class="act-btn" onclick="levelState.pattern=levelState.pattern==='fan'?'harp':'fan';levelState.triedPattern=true;renderPanel()">${S.pattern==='fan'?'切换为竖琴形':'切换为扇形'}</button>`;
+    h+=`<button class="act-btn" onclick="toggleCablePattern()">${S.pattern==='fan'?'切换为竖琴形':'切换为扇形'}</button>`;
     h+=rangeHTML('cableForce','索力调节',10,100);
     h+=rangeHTML('towerH','塔柱高度',20,80,'triedTowerH');
     const balanced=Math.abs(S.cableForce-65)<15;
@@ -350,16 +420,19 @@ function renderLevelActions(){
     h+=rangeHTML('windSpeed','风速',0,300);
     const vortexFreq=S.windSpeed*0.2;
     const ratio=S.natFreq>0?vortexFreq/S.natFreq:0;
+    const resonanceHint=ratio<0.8?'风速偏低，涡旋频率还没追上固有频率':ratio>1.2?'风速偏高，已经越过共振窗口':'频率接近，正在向共振区输入能量';
     if(S.windSpeed>5)S.goalDone[0]=true;
     if(ratio>0.8&&ratio<1.2){S.resonance=true;S.triggered=true;S.goalDone[1]=true;}else{S.resonance=false;}
     h+=`<div style="font-size:12px;margin:4px 0;color:var(--text-sub)">涡旋频率: <span class="sv">${vortexFreq.toFixed(2)} Hz</span> | 固有频率: <span class="sv">${S.natFreq.toFixed(2)} Hz</span></div>`;
+    h+=`<div style="font-size:12px;margin:4px 0;color:${S.resonance?'#ef4444':'var(--text-sub)'}">调参提示: ${resonanceHint}</div>`;
     if(S.resonance)h+=`<div style="font-size:12px;color:#ef4444;font-weight:bold">🚨 共振！振幅急剧增大！</div>`;
-    h+=`<button class="act-btn" onclick="levelState.damperOn=!levelState.damperOn;renderPanel()">${S.damperOn?'移除阻尼器':'安装TMD阻尼器'}</button>`;
+    h+=`<button class="act-btn" onclick="toggleDamper()">${S.damperOn?'移除阻尼器':'安装TMD阻尼器'}</button>`;
     if(S.damperOn&&S.triggered)S.goalDone[2]=true;
     if(S.damperOn)h+=`<div style="font-size:12px;color:#4ade80">✅ 阻尼器已安装，振幅衰减</div>`;
   }else if(currentLevel===6){
     h+=`<div style="font-size:12px;color:var(--text-sub);margin:4px 0">悬臂节段: ${S.segments}/${S.maxSeg}</div>`;
     h+=`<button class="act-btn" onclick="buildSegment()" ${S.segments>=S.maxSeg||S.merged?'disabled':''}>浇筑下一节段</button>`;
+    if(S.segments>0&&S.segments<S.maxSeg&&!S.merged)h+=`<button class="act-btn" onclick="buildToClosureReady()">浇筑至合龙前</button>`;
     if(S.segments>=S.maxSeg&&!S.merged)h+=`<button class="act-btn green" onclick="mergeSpan()">合龙！</button>`;
     if(S.merged){
       h+=`<div style="font-size:12px;color:#4ade80;margin:4px 0">✅ 合龙成功！</div>`;
@@ -379,11 +452,128 @@ function calcDeflection(){
   const supportFactor=S.isContinuous?0.32:1;
   return 0.8*supportFactor/stiffness;
 }
-function buildSegment(){const S=levelState;if(S.segments<S.maxSeg){S.segments++;addP(CW/2+160,CH/2,'#60a5fa',6);renderPanel()}}
-function mergeSpan(){levelState.merged=true;addP(CW/2+160,CH/2,'#22c55e',20);renderPanel()}
-function addSensor(){const S=levelState;if(S.sensors<S.maxSensors){S.sensors++;addP(CW/2+160+Math.random()*200-100,CH/2+Math.random()*40-20,'#fbbf24',4);renderPanel()}}
+function deflectionLimit(){return levelState.span/400}
+function beamMetricsHTML(){
+  const defl=calcDeflection(),limit=deflectionLimit(),ratio=defl/limit;
+  let status='❌ 挠度超限，请增大截面或改用连续梁',color='#f87171';
+  if(ratio<=1){status='✅ 挠度满足要求';color='#4ade80'}
+  else if(ratio<=1.6){status='⚠ 接近限值，继续优化截面或支承形式';color='#fbbf24'}
+  return `<div style="font-size:12px;margin:6px 0;color:var(--text-sub)">挠度: <span class="sv">${defl.toFixed(2)} mm</span> | 限值 L/400 = <span class="sv">${limit.toFixed(2)} mm</span> | 利用率: <span class="sv">${(ratio*100).toFixed(0)}%</span></div><div style="font-size:12px;color:${color}">${status}</div>`;
+}
+function updateBeamMetrics(){
+  if(currentLevel!==1)return;
+  const el=document.getElementById('beamMetrics');
+  if(el)el.innerHTML=beamMetricsHTML();
+}
+function analyzeForceDiagram(){
+  const S=levelState;
+  if(currentLevel!==0||!S.showDiagram)return false;
+  S.analyzedDiagram=true;
+  S.goalDone[2]=true;
+  renderPanel();
+  return true;
+}
+function suspensionMetrics(){
+  const S=levelState;
+  const hForce=(S.loadLevel*200)/(8*Math.max(S.sag,0.05)*200);
+  const anchorCapacity=30*S.anchorSize*S.anchorSize;
+  const anchorNeed=hForce*1.25;
+  return {hForce,anchorCapacity,anchorNeed};
+}
+function suspensionMetricsHTML(){
+  const m=suspensionMetrics();
+  return `<div style="font-size:12px;margin:4px 0;color:var(--text-sub)">水平拉力: <span class="sv">${m.hForce.toFixed(0)} kN</span></div>`+
+    `<div style="font-size:12px;margin:4px 0;color:var(--text-sub)">锚碇抗拉能力: <span class="sv">${m.anchorCapacity.toFixed(0)} kN</span> | 设计需求: <span class="sv">${m.anchorNeed.toFixed(0)} kN</span></div>`;
+}
+function updateSuspensionMetrics(){
+  if(currentLevel!==3)return;
+  const el=document.getElementById('suspensionMetrics');
+  if(el)el.innerHTML=suspensionMetricsHTML();
+}
+function applyBeamLoad(){
+  const S=levelState;
+  if(currentLevel!==0||!S.goalDone)return false;
+  S.showForces=true;
+  S.goalDone[0]=S.load>0.3;
+  renderPanel();
+  return true;
+}
+function showStressDiagram(){
+  const S=levelState;
+  if(currentLevel!==0||!S.showForces||S.load<=0.3)return false;
+  S.showDiagram=true;
+  renderPanel();
+  return true;
+}
+function confirmStressZones(){
+  const S=levelState;
+  if(currentLevel!==0||!S.showDiagram)return false;
+  S.stressZonesConfirmed=true;
+  S.goalDone[1]=true;
+  renderPanel();
+  return true;
+}
+function toggleContinuousBeam(){
+  const S=levelState;
+  if(currentLevel!==1||typeof S.isContinuous!=='boolean')return false;
+  S.isContinuous=!S.isContinuous;
+  S.triedCont=true;
+  renderPanel();
+  return true;
+}
+function showThrustLine(){
+  if(currentLevel!==2)return false;
+  levelState.showThrust=true;
+  renderPanel();
+  return true;
+}
+function showSuspensionForces(){
+  if(currentLevel!==3)return false;
+  levelState.showForces=true;
+  renderPanel();
+  return true;
+}
+function toggleCablePattern(){
+  const S=levelState;
+  if(currentLevel!==4||!['fan','harp'].includes(S.pattern))return false;
+  S.pattern=S.pattern==='fan'?'harp':'fan';
+  S.triedPattern=true;
+  renderPanel();
+  return true;
+}
+function toggleDamper(){
+  const S=levelState;
+  if(currentLevel!==5||typeof S.damperOn!=='boolean')return false;
+  S.damperOn=!S.damperOn;
+  renderPanel();
+  return true;
+}
+function toggleArchType(){
+  if(currentLevel!==2)return false;
+  const S=levelState;
+  if(S.archType==='three'){
+    S.archType='none';
+    S.seenArchNone=true;
+  }else{
+    S.archType='three';
+    S.seenArchThree=true;
+  }
+  renderPanel();
+  return true;
+}
+function buildSegment(){const S=levelState;if(currentLevel!==6||S.merged)return false;if(S.segments<S.maxSeg){S.segments++;addP(CW/2+160,CH/2,'#60a5fa',6);renderPanel();return true}return false}
+function buildToClosureReady(){
+  const S=levelState;
+  if(currentLevel!==6||S.merged||S.segments<=0||S.segments>=S.maxSeg)return false;
+  S.segments=S.maxSeg;
+  addP(CW/2+160,CH/2,'#60a5fa',12);
+  renderPanel();
+  return true;
+}
+function mergeSpan(){const S=levelState;if(currentLevel!==6||S.merged||S.segments<S.maxSeg)return false;S.merged=true;addP(CW/2+160,CH/2,'#22c55e',20);renderPanel();return true}
+function addSensor(){const S=levelState;if(currentLevel!==6||!S.merged)return false;if(S.sensors<S.maxSensors){S.sensors++;addP(CW/2+160+Math.random()*200-100,CH/2+Math.random()*40-20,'#fbbf24',4);renderPanel();return true}return false}
 
-// PLACEHOLDER_DRAW
+// Drawing helpers
 
 function drawBg(){
   const th=t();
@@ -504,7 +694,7 @@ function drawLevel2(){
   ctx.fillStyle=th.text;ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText(`矢跨比 f/L = ${S.rise.toFixed(2)}`,cx,ay-rise-20);
 }
 
-// PLACEHOLDER_DRAW2
+// Additional drawing helpers
 
 function drawLevel3(){
   const S=levelState,th=t(),cx=CW/2+160,cy=CH/2;
@@ -647,7 +837,7 @@ function drawLevel6(){
   }
 }
 
-// PLACEHOLDER_MAINLOOP
+// Main loop
 
 function draw(){
   ctx.clearRect(0,0,CW,CH);

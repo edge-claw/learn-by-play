@@ -74,6 +74,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI','PingFang SC'
 .panel .obj-list li.done::before{content:'● ';color:#4ade80}
 .act-btn{display:block;width:100%;padding:10px;margin-top:6px;border:1px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.1);color:#6ee7b7;border-radius:8px;cursor:pointer;font-size:15px;transition:all .2s}
 .act-btn:hover{background:rgba(16,185,129,0.25)}
+.hint-box{background:var(--hint-bg);border:1px solid var(--hint-border);border-radius:8px;padding:8px;margin-top:8px;font-size:12px;line-height:1.6;color:var(--hint-text)}
 .learn-box{background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px;margin-top:10px;font-size:14px;color:var(--learn-text);line-height:1.8}
 .learn-box b{color:#4ade80}
 canvas{position:fixed;left:320px;top:0;background:var(--bg)}
@@ -162,22 +163,65 @@ let LD={};
 function resize(){W=window.innerWidth-320;H=window.innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';if(Object.keys(LD).length)draw()}
 window.addEventListener('resize',resize);
 
-function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';quizPassed.clear();quizFeedback={};resize();goLevel(0)}
-function isUnlocked(n){return n===0||quizPassed.has(n-1)}
-function goLevel(n){if(n<0||n>=7){showSummary();return}if(!isUnlocked(n))return;curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
-function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
-function allDone(li){return levelObjs[li].every(Boolean)}
+function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';levelObjs=Array.from({length:7},()=>[false,false,false]);quizPassed.clear();quizFeedback={};resize();goLevel(0)}
+function isUnlocked(n){
+  n=Number(n);
+  return Number.isInteger(n)&&n>=0&&n<7&&(n===0||quizPassed.has(n-1));
+}
+function goLevel(n){
+  n=Number(n);
+  if(!Number.isInteger(n)||n<0||n>=7)return;
+  if(!isUnlocked(n))return;
+  curLevel=n;initLevel(n);renderBar();renderPanel();draw();
+}
+function completeObj(li,oi,silent=false){
+  li=Number(li);oi=Number(oi);
+  if(!Number.isInteger(li)||!Number.isInteger(oi)||li!==curLevel||li<0||li>=7||oi<0||oi>=3||!levelObjs[li]||levelObjs[li][oi])return false;
+  levelObjs[li][oi]=true;if(!silent){renderPanel();renderBar()}return true;
+}
+function allDone(li){
+  li=Number(li);
+  return Number.isInteger(li)&&li>=0&&li<7&&levelObjs[li]&&levelObjs[li].every(Boolean);
+}
+function setText(id,text){const el=document.getElementById(id);if(el)el.textContent=text}
+function setHTML(id,html){const el=document.getElementById(id);if(el)el.innerHTML=html}
+function clampNumber(value,fallback,min,max){
+  const n=Number(value),fb=Number(fallback);
+  const base=Number.isFinite(n)?n:(Number.isFinite(fb)?fb:min);
+  return Math.min(max,Math.max(min,base));
+}
+function readRangeValue(id,fallback){
+  const el=document.getElementById(id);if(!el)return fallback;
+  const min=Number(el.min),max=Number(el.max),step=Number(el.step);
+  const val=clampNumber(el.value,fallback,Number.isFinite(min)?min:-Infinity,Number.isFinite(max)?max:Infinity);
+  el.value=String(val);
+  const span=el.parentElement&&el.parentElement.querySelector?el.parentElement.querySelector('.val'):null;
+  if(span)span.textContent=val.toFixed(Number.isFinite(step)&&step<1?1:0);
+  return val;
+}
 
 // === Audio ===
 let audioCtx;
-function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
-function playSound(type){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}}
+function initAudio(){
+  const AudioCtor=window.AudioContext||window.webkitAudioContext;
+  if(!AudioCtor)return null;
+  try{if(!audioCtx)audioCtx=new AudioCtor();return audioCtx}catch(e){return null}
+}
+function playSound(type){
+  const ac=initAudio();if(!ac)return false;
+  try{
+    const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);
+    if(type==='click'){o.frequency.value=800;g.gain.value=0.1;o.start();g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.1);o.stop(ac.currentTime+0.1)}
+    else if(type==='success'){o.frequency.value=523;g.gain.value=0.15;o.start();o.frequency.setValueAtTime(659,ac.currentTime+0.1);o.frequency.setValueAtTime(784,ac.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.4);o.stop(ac.currentTime+0.4)}
+    return true;
+  }catch(e){return false}
+}
 
 // === Level Info ===
 const levelInfo=[
   {title:'供给与需求',sub:'曲线交叉决定价格',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>核心：</b>需求曲线向右下倾斜，供给曲线向右上倾斜，交点 = 均衡</div>画布上有<span style="color:#3b82f6">蓝色需求曲线</span>和<span style="color:#ef4444">红色供给曲线</span>。拖动滑块改变曲线斜率和截距，让两条曲线交叉找到均衡点。',objs:['调整需求曲线观察价格变化','调整供给曲线观察数量变化','让均衡价格落在 40-60 之间'],learn:'<b>供给与需求</b>是市场经济的基石。需求定律：价格↑ → 需求量↓；供给定律：价格↑ → 供给量↑。两条曲线的交点决定了市场均衡价格和数量。'},
   {title:'价格弹性',sub:'需求对价格的敏感度',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>公式：</b>Ed = (%ΔQ) / (%ΔP)</div>调整需求曲线的斜率，观察弹性值如何变化。陡峭 = 缺乏弹性（必需品），平坦 = 富有弹性（奢侈品）。',objs:['创建弹性需求（|Ed| > 1）','创建非弹性需求（|Ed| < 1）','观察单位弹性（|Ed| ≈ 1）'],learn:'<b>价格弹性</b>衡量需求量对价格变化的敏感程度。|Ed|>1 富有弹性（奢侈品），|Ed|<1 缺乏弹性（必需品如食盐），|Ed|=1 单位弹性。弹性决定了涨价是增收还是减收。'},
-  {title:'消费者与生产者剩余',sub:'交易创造的价值',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>概念：</b>消费者剩余 = 愿付价格 − 实际价格<br>生产者剩余 = 实际价格 − 最低接受价格</div>观察<span style="color:#3b82f6">蓝色区域</span>（消费者剩余）和<span style="color:#ef4444">红色区域</span>（生产者剩余），调整曲线看总剩余如何变化。',objs:['识别消费者剩余区域','识别生产者剩余区域','最大化总社会剩余'],learn:'<b>消费者剩余</b>是买家愿意支付的最高价与实际价格之差的总和。<b>生产者剩余</b>是实际价格与卖家最低接受价之差的总和。自由市场均衡使总剩余最大化。'},
+  {title:'消费者与生产者剩余',sub:'交易创造的价值',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>概念：</b>消费者剩余 = 愿付价格 − 实际价格<br>生产者剩余 = 实际价格 − 最低接受价格</div>观察<span style="color:#3b82f6">蓝色区域</span>（消费者剩余）和<span style="color:#ef4444">红色区域</span>（生产者剩余），调整曲线看总剩余如何变化。',objs:['识别消费者剩余区域','识别生产者剩余区域','调整曲线并确认总社会剩余最大化'],learn:'<b>消费者剩余</b>是买家愿意支付的最高价与实际价格之差的总和。<b>生产者剩余</b>是实际价格与卖家最低接受价之差的总和。自由市场均衡使总剩余最大化。'},
   {title:'价格管制',sub:'天花板价与地板价',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>管制：</b>价格上限（天花板）→ 短缺<br>价格下限（地板）→ 过剩</div>拖动<span style="color:#f59e0b">橙色虚线</span>设置价格上限或下限，观察市场出现短缺或过剩。',objs:['设置价格上限造成短缺','设置价格下限造成过剩','观察无谓损失区域'],learn:'<b>价格上限</b>（如房租管制）低于均衡价时造成短缺。<b>价格下限</b>（如最低工资）高于均衡价时造成过剩。两者都会产生无谓损失，降低市场效率。'},
   {title:'税收与无谓损失',sub:'税收的效率代价',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>原理：</b>税收 = 楔子插入供需之间<br>无谓损失 ∝ 税率²</div>调整税率滑块，观察<span style="color:#a855f7">紫色税收收入</span>和<span style="color:#f59e0b">橙色无谓损失</span>三角形的变化。',objs:['设置小额税收观察效果','增大税率看无谓损失扩大','找到税收收入最大化的税率'],learn:'<b>税收</b>在供需之间插入一个楔子，使交易量减少。<b>无谓损失</b>（黄色三角形）随税率的平方增长——税率翻倍，无谓损失翻四倍。拉弗曲线说明存在一个使税收收入最大化的税率。'},
   {title:'垄断与完全竞争',sub:'市场结构对比',desc:'<div style="padding:6px 8px;border-radius:6px;background:var(--concept-bg);border:1px solid var(--concept-border);font-size:13px;line-height:2;margin-bottom:6px"><b>对比：</b>完全竞争 P=MC → 效率最优<br>垄断 MR=MC → 价高量少</div>切换市场结构，对比完全竞争和垄断下的价格、产量和社会福利。',objs:['观察完全竞争均衡','切换到垄断观察价格上升','比较两种结构的无谓损失'],learn:'<b>完全竞争</b>下企业是价格接受者，P=MC，社会福利最大。<b>垄断</b>企业面对整条需求曲线，MR=MC 决定产量，P>MC，产生无谓损失。这就是反垄断法存在的原因。'},
@@ -185,26 +229,29 @@ const levelInfo=[
 ];
 
 const quizData=[
-  {q:'供给需求模型中，市场均衡点表示什么？',opts:['需求量等于供给量时的价格和数量','政府指定的最高价格','消费者愿意支付的最高价格','生产者最低成本点'],ans:0},
-  {q:'需求价格弹性主要衡量什么？',opts:['需求量对价格变化的敏感程度','供给曲线是否向上倾斜','企业利润是否为正','市场是否存在税收'],ans:0},
-  {q:'自由竞争市场均衡为什么重要？',opts:['它在没有外部性时最大化消费者剩余和生产者剩余之和','它让所有商品免费','它保证生产者剩余为零','它只让消费者获益'],ans:0},
-  {q:'有效的价格上限通常会导致什么？',opts:['短缺，因为价格低于均衡价时需求量大于供给量','过剩，因为供给量大于需求量','均衡数量自动增加','无谓损失完全消失'],ans:0},
-  {q:'税收为什么会产生无谓损失？',opts:['税收楔子减少了原本互利的交易数量','政府获得税收收入','买卖双方价格完全不变','交易量一定增加'],ans:0},
-  {q:'垄断相对完全竞争的典型结果是什么？',opts:['价格更高、产量更低，并产生无谓损失','价格更低、产量更高','P 总是等于 MC','社会福利必然最大'],ans:0},
-  {q:'负外部性下市场失灵的原因是什么？',opts:['私人成本低于社会成本，市场会过度生产','私人收益高于社会收益，市场生产不足','政府税收过高','需求曲线不存在'],ans:0}
+  {q:'供给需求模型中，市场均衡点表示什么？',opts:['需求量等于供给量时的价格和数量','政府指定的最高价格','消费者愿意支付的最高价格','生产者最低成本点'],ans:0,why:'在交点处，买方愿买数量和卖方愿卖数量相等，市场没有持续短缺或过剩。'},
+  {q:'需求价格弹性主要衡量什么？',opts:['供给曲线是否向上倾斜','需求量对价格变化的敏感程度','企业利润是否为正','市场是否存在税收'],ans:1,why:'弹性关注价格变化带来的需求量百分比变化，曲线越平坦通常越敏感。'},
+  {q:'自由竞争市场均衡为什么重要？',opts:['它让所有商品免费','它保证生产者剩余为零','它在没有外部性时最大化消费者剩余和生产者剩余之和','它只让消费者获益'],ans:2,why:'无外部性时，均衡数量会完成所有互利交易，从而最大化总剩余。'},
+  {q:'有效的价格上限通常会导致什么？',opts:['过剩，因为供给量大于需求量','短缺，因为价格低于均衡价时需求量大于供给量','均衡数量自动增加','无谓损失完全消失'],ans:1,why:'价格上限低于均衡价时，低价刺激需求并抑制供给，因此需求量超过供给量。'},
+  {q:'税收为什么会产生无谓损失？',opts:['政府获得税收收入','买卖双方价格完全不变','税收楔子减少了原本互利的交易数量','交易量一定增加'],ans:2,why:'税收让买方支付价和卖方到手价分离，一部分原本有剩余的交易不再发生。'},
+  {q:'垄断相对完全竞争的典型结果是什么？',opts:['价格更低、产量更高','价格更高、产量更低，并产生无谓损失','P 总是等于 MC','社会福利必然最大'],ans:1,why:'垄断者限制产量以抬高价格，成交量低于竞争均衡，少掉的互利交易形成无谓损失。'},
+  {q:'负外部性下市场失灵的原因是什么？',opts:['私人收益高于社会收益，市场生产不足','政府税收过高','私人成本低于社会成本，市场会过度生产','需求曲线不存在'],ans:2,why:'污染等外部成本未进入私人成本，企业和消费者看到的价格偏低，产量会高于社会最优。'}
 ];
 
 // === Level State Init ===
 function initLevel(idx){
+  idx=Number(idx);
+  if(!Number.isInteger(idx)||idx<0||idx>=7)return;
+  if(!quizPassed.has(idx))delete quizFeedback[idx];
   LD={};
   switch(idx){
-    case 0: LD={dIntercept:100,dSlope:-0.8,sIntercept:10,sSlope:0.7,adjD:false,adjS:false};break;
-    case 1: LD={slope:-0.5,intercept:100,pChange:20};break;
-    case 2: LD={dInt:120,dSl:-1,sInt:10,sSl:0.8,showCS:true,showPS:true};break;
-    case 3: LD={dInt:120,dSl:-1,sInt:10,sSl:0.8,ceiling:0,floor:0,ceilingOn:false,floorOn:false};break;
-    case 4: LD={dInt:120,dSl:-1,sInt:10,sSl:0.8,taxRate:0};break;
-    case 5: LD={mode:'perfect',mcSlope:0.8,mcInt:10,dInt:120,dSl:-1};break;
-    case 6: LD={extType:'negative',extSize:15,pigouvian:0,dInt:100,dSl:-0.8,sInt:20,sSl:0.7};break;
+    case 0: LD={dIntercept:130,dSlope:-0.8,sIntercept:10,sSlope:0.7,adjD:false,adjS:false};break;
+    case 1: LD={slope:-0.5,intercept:100,qBase:50,pChange:20,elasticityTouched:false,elasticityLog:{elastic:false,inelastic:false,unit:false},elasticityFeedback:''};break;
+    case 2: LD={dInt:90,dSl:-1,sInt:30,sSl:0.8,showCS:false,showPS:false,surplusAdjusted:false,surplusConfirmed:false};break;
+    case 3: LD={dInt:120,dSl:-1,sInt:10,sSl:0.8,ceiling:0,floor:0,ceilingOn:false,floorOn:false,usedCeiling:false,usedFloor:false,dwlConfirmed:false};break;
+    case 4: LD={dInt:120,dSl:-1,sInt:10,sSl:0.8,taxRate:0,peakConfirmed:false};break;
+    case 5: LD={mode:'perfect',mcSlope:0.8,mcInt:10,dInt:120,dSl:-1,sawPerfect:false,sawMonopoly:false,comparisonConfirmed:false};break;
+    case 6: LD={extType:'negative',extSize:15,pigouvian:0,dInt:100,dSl:-0.8,sInt:20,sSl:0.7,externalityAdjusted:false,externalityLog:{negative:false,positive:false},externalityFeedback:'',policyConfirmed:false};break;
   }
 }
 
@@ -212,59 +259,147 @@ function initLevel(idx){
 function eqPoint(dInt,dSl,sInt,sSl){let q=(dInt-sInt)/(sSl-dSl);let p=dInt+dSl*q;return{q:Math.max(0,q),p:Math.max(0,p)}}
 function demandP(q,dInt,dSl){return dInt+dSl*q}
 function supplyP(q,sInt,sSl){return sInt+sSl*q}
+function elasticityLabel(ed){
+  const a=Math.abs(ed);
+  if(Math.abs(a-1)<0.15)return '(接近单位弹性)';
+  return a>1?'(富有弹性)':'(缺乏弹性)';
+}
+function elasticityHintHTML(ed){
+  const a=Math.abs(ed);
+  if(!Number.isFinite(a)||a===0)return '先调整需求曲线斜率或基准数量，比较 A 到 B 时价格变化带来的需求量变化。';
+  if(a>1.15)return `当前 |Ed|=${a.toFixed(2)}，需求量对价格很敏感。把需求曲线调陡一些，或把基准数量调大，观察 |Ed| 如何靠近 1。`;
+  if(a<0.85)return `当前 |Ed|=${a.toFixed(2)}，需求量对价格不太敏感。把需求曲线调平一些，或把基准数量调小，观察 |Ed| 如何靠近 1。`;
+  return `当前 |Ed|=${a.toFixed(2)}，已经接近单位弹性：价格变化的百分比和数量变化的百分比大致相当。`;
+}
+function calcElasticity(){
+  let q1=LD.qBase,q2=LD.qBase+LD.pChange;
+  let p1=LD.intercept+LD.slope*q1,p2=LD.intercept+LD.slope*q2;
+  let pctQ=(q2-q1)/q1*100,pctP=p1!==0?(p2-p1)/p1*100:0;
+  return pctP!==0?pctQ/pctP:0;
+}
+function updateElasticityGoals(){
+  LD.elasticityTouched=true;
+  LD.elasticity=calcElasticity();
+  return false;
+}
+function applyElasticityPreset(kind){
+  if(curLevel!==1)return false;
+  if(kind==='elastic'){LD.slope=-0.5;LD.intercept=100;LD.qBase=50;}
+  else if(kind==='inelastic'){LD.slope=-1.5;LD.intercept=100;LD.qBase=50;}
+  else if(kind==='unit'){LD.slope=-1;LD.intercept=100;LD.qBase=50;}
+  else return false;
+  LD.elasticity=calcElasticity();
+  LD.elasticityTouched=false;
+  LD.elasticityFeedback='示例已载入。请至少拖动一次参数，再记录当前弹性类型。';
+  renderPanel();renderBar();draw();
+  return true;
+}
+function recordElasticity(kind){
+  if(curLevel!==1||!['elastic','inelastic','unit'].includes(kind))return false;
+  const a=Math.abs(calcElasticity());
+  let ok=false;
+  if(kind==='elastic')ok=a>1;
+  if(kind==='inelastic')ok=a<1&&a>0;
+  if(kind==='unit')ok=Math.abs(a-1)<0.15;
+  if(!LD.elasticityTouched){
+    LD.elasticityFeedback='先拖动斜率、截距或基准数量，观察读数变化后再记录。';
+    renderPanel();draw();
+    return false;
+  }
+  if(!ok){
+    const labels={elastic:'富有弹性 |Ed|>1',inelastic:'缺乏弹性 |Ed|<1',unit:'单位弹性 |Ed|≈1'};
+    LD.elasticityFeedback=`当前 |Ed|=${a.toFixed(2)}，还不是${labels[kind]}。`;
+    renderPanel();draw();
+    return false;
+  }
+  if(!LD.elasticityLog)LD.elasticityLog={elastic:false,inelastic:false,unit:false};
+  LD.elasticityLog[kind]=true;
+  const idx={elastic:0,inelastic:1,unit:2}[kind];
+  const labels={elastic:'富有弹性',inelastic:'缺乏弹性',unit:'单位弹性'};
+  LD.elasticityFeedback=`✅ 已记录${labels[kind]}状态：|Ed|=${a.toFixed(2)}。`;
+  completeObj(1,idx,true);
+  renderPanel();renderBar();draw();
+  return true;
+}
 
 // === Slider helper ===
 function sliderHTML(id,label,min,max,step,val,color){
   return `<div class="slider-row"><label>${label}</label><input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${val}" oninput="sliderDrag('${id}')" onchange="this.blur();renderPanel()"><span class="val" style="color:${color||'#6ee7b7'}">${val}</span></div>`;
 }
-function sliderDrag(id){
-  const el=document.getElementById(id);if(!el)return;
-  const span=el.parentElement.querySelector('.val');if(span)span.textContent=parseFloat(el.value).toFixed(el.step<1?1:0);
-  readSliders();draw();
+function controlLevel(id){
+  const map={
+    sl_dInt:0,sl_dSl:0,sl_sInt:0,sl_sSl:0,
+    sl_slope:1,sl_int:1,sl_qBase:1,
+    sl_dInt2:2,sl_sInt2:2,
+    ck_ceil:3,sl_ceil:3,ck_floor:3,sl_floor:3,
+    sl_tax:4,sl_mode:5,
+    sl_extType:6,sl_extSize:6,sl_pigou:6
+  };
+  return Object.prototype.hasOwnProperty.call(map,id)?map[id]:null;
 }
-function readSliders(){
+function isCurrentControl(id){
+  const li=controlLevel(id);
+  return li===null||li===curLevel;
+}
+function sliderDrag(id){
+  if(!isCurrentControl(id))return false;
+  const el=document.getElementById(id);if(!el)return false;
+  const before=levelObjs[curLevel]?levelObjs[curLevel].join(''):'';
+  readSliders(id);draw();
+  const after=levelObjs[curLevel]?levelObjs[curLevel].join(''):'';
+  if(before!==after){renderPanel();renderBar()}
+  return true;
+}
+function readSliders(sourceId){
+  if(sourceId&&!isCurrentControl(sourceId))return false;
+  let changed=false;
   switch(curLevel){
     case 0:{
-      const d=document.getElementById('sl_dInt'),s=document.getElementById('sl_sInt'),ds=document.getElementById('sl_dSl'),ss=document.getElementById('sl_sSl');
-      if(d)LD.dIntercept=+d.value;if(s)LD.sIntercept=+s.value;if(ds)LD.dSlope=-(+ds.value);if(ss)LD.sSlope=+(+ss.value);
-      if(d&&!LD.adjD){LD.adjD=true;completeObj(0,0)}
-      if(s&&!LD.adjS){LD.adjS=true;completeObj(0,1)}
+      LD.dIntercept=readRangeValue('sl_dInt',LD.dIntercept);
+      LD.sIntercept=readRangeValue('sl_sInt',LD.sIntercept);
+      LD.dSlope=-readRangeValue('sl_dSl',Math.abs(LD.dSlope));
+      LD.sSlope=readRangeValue('sl_sSl',LD.sSlope);
+      if((sourceId==='sl_dInt'||sourceId==='sl_dSl')&&!LD.adjD){LD.adjD=true;changed=completeObj(0,0,true)||changed}
+      if((sourceId==='sl_sInt'||sourceId==='sl_sSl')&&!LD.adjS){LD.adjS=true;changed=completeObj(0,1,true)||changed}
       let eq=eqPoint(LD.dIntercept,LD.dSlope,LD.sIntercept,LD.sSlope);
-      if(eq.p>=40&&eq.p<=60)completeObj(0,2);
+      if(eq.p>=40&&eq.p<=60)changed=completeObj(0,2,true)||changed;
+      updateMarketMetricPanel();
     }break;
     case 1:{
-      const sl=document.getElementById('sl_slope'),si=document.getElementById('sl_int');
-      if(sl)LD.slope=-(+sl.value);if(si)LD.intercept=+si.value;
-      let q1=50,q2=50+LD.pChange;let p1=LD.intercept+LD.slope*q1,p2=LD.intercept+LD.slope*q2;
-      let pctQ=(q2-q1)/q1*100,pctP=(p2-p1)/p1*100;
-      LD.elasticity=pctP!==0?pctQ/pctP:0;
-      if(Math.abs(LD.elasticity)>1)completeObj(1,0);
-      if(Math.abs(LD.elasticity)<1&&Math.abs(LD.elasticity)>0)completeObj(1,1);
-      if(Math.abs(Math.abs(LD.elasticity)-1)<0.15)completeObj(1,2);
+      LD.slope=-readRangeValue('sl_slope',Math.abs(LD.slope));
+      LD.intercept=readRangeValue('sl_int',LD.intercept);
+      LD.qBase=readRangeValue('sl_qBase',LD.qBase);
+      changed=updateElasticityGoals()||changed;
+      updateElasticityMetricPanel();
     }break;
     case 2:{
-      const d=document.getElementById('sl_dInt2'),s=document.getElementById('sl_sInt2');
-      if(d)LD.dInt=+d.value;if(s)LD.sInt=+s.value;
-      completeObj(2,0);completeObj(2,1);
+      LD.dInt=readRangeValue('sl_dInt2',LD.dInt);
+      LD.sInt=readRangeValue('sl_sInt2',LD.sInt);
+      if(sourceId==='sl_dInt2'||sourceId==='sl_sInt2')LD.surplusAdjusted=true;
       let eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
       let cs=0.5*eq.q*(LD.dInt-eq.p),ps=0.5*eq.q*(eq.p-LD.sInt);
-      if(cs+ps>2000)completeObj(2,2);
+      if((cs+ps)<=2000&&!quizPassed.has(2)&&levelObjs[2][2]){
+        levelObjs[2][2]=false;LD.surplusConfirmed=false;changed=true;
+      }
+      updateSurplusMetricPanel();
     }break;
     case 3:{
       const c=document.getElementById('sl_ceil'),f=document.getElementById('sl_floor');
       LD.ceilingOn=document.getElementById('ck_ceil')?.checked||false;
       LD.floorOn=document.getElementById('ck_floor')?.checked||false;
-      if(c)LD.ceiling=+c.value;if(f)LD.floor=+f.value;
+      if(c)LD.ceiling=readRangeValue('sl_ceil',LD.ceiling||40);
+      if(f)LD.floor=readRangeValue('sl_floor',LD.floor||70);
+      if(LD.ceilingOn&&!c&&!LD.ceiling)LD.ceiling=40;
+      if(LD.floorOn&&!f&&!LD.floor)LD.floor=70;
       let eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
-      if(LD.ceilingOn&&LD.ceiling<eq.p)completeObj(3,0);
-      if(LD.floorOn&&LD.floor>eq.p)completeObj(3,1);
-      if((LD.ceilingOn&&LD.ceiling<eq.p)||(LD.floorOn&&LD.floor>eq.p))completeObj(3,2);
+      if((sourceId==='ck_ceil'||sourceId==='sl_ceil')&&LD.ceilingOn&&LD.ceiling<eq.p){LD.usedCeiling=true;changed=completeObj(3,0,true)||changed}
+      if((sourceId==='ck_floor'||sourceId==='sl_floor')&&LD.floorOn&&LD.floor>eq.p){LD.usedFloor=true;changed=completeObj(3,1,true)||changed}
+      updatePriceControlPanel();
     }break;
     case 4:{
-      const tx=document.getElementById('sl_tax');
-      if(tx)LD.taxRate=+tx.value;
-      if(LD.taxRate>0&&LD.taxRate<=10)completeObj(4,0);
-      if(LD.taxRate>20)completeObj(4,1);
+      LD.taxRate=readRangeValue('sl_tax',LD.taxRate);
+      if(LD.taxRate>0&&LD.taxRate<=10)changed=completeObj(4,0,true)||changed;
+      if(LD.taxRate>20)changed=completeObj(4,1,true)||changed;
       // Laffer: revenue = tax * q_after_tax
       let eq0=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
       let eqT=eqPoint(LD.dInt,LD.dSl,LD.sInt+LD.taxRate,LD.sSl);
@@ -273,27 +408,269 @@ function readSliders(){
         // check if near max
         let maxRev=0,bestT=0;
         for(let tt=1;tt<=60;tt++){let e2=eqPoint(LD.dInt,LD.dSl,LD.sInt+tt,LD.sSl);let r2=tt*e2.q;if(r2>maxRev){maxRev=r2;bestT=tt}}
-        if(Math.abs(LD.taxRate-bestT)<=3)completeObj(4,2);
+        if(Math.abs(LD.taxRate-bestT)>3&&!quizPassed.has(4)){
+          LD.peakConfirmed=false;
+          if(levelObjs[4][2]){levelObjs[4][2]=false;changed=true}
+        }
       }
+      updateTaxMetricPanel();
     }break;
     case 5:{
       const md=document.getElementById('sl_mode');
       if(md)LD.mode=md.value==='0'?'perfect':'monopoly';
-      completeObj(5,0);
-      if(LD.mode==='monopoly')completeObj(5,1);
-      if(levelObjs[5][0]&&levelObjs[5][1])completeObj(5,2);
+      if(sourceId==='sl_mode')changed=observeMarketStructure(true)||changed;
     }break;
     case 6:{
       const et=document.getElementById('sl_extType'),es=document.getElementById('sl_extSize'),pg=document.getElementById('sl_pigou');
       if(et)LD.extType=et.value==='0'?'negative':'positive';
-      if(es)LD.extSize=+es.value;if(pg)LD.pigouvian=+pg.value;
-      if(LD.extType==='negative')completeObj(6,0);
-      if(LD.extType==='positive')completeObj(6,1);
-      // check correction
-      if(LD.extType==='negative'&&Math.abs(LD.pigouvian-LD.extSize)<=3)completeObj(6,2);
-      if(LD.extType==='positive'&&Math.abs(LD.pigouvian-LD.extSize)<=3)completeObj(6,2);
+      if(es)LD.extSize=readRangeValue('sl_extSize',LD.extSize);
+      if(pg)LD.pigouvian=readRangeValue('sl_pigou',LD.pigouvian);
+      if(sourceId==='sl_extType'||sourceId==='sl_extSize'){
+        LD.externalityAdjusted=true;
+        LD.policyConfirmed=false;
+        if(levelObjs[6][2]&&!quizPassed.has(6)){levelObjs[6][2]=false;changed=true}
+        LD.externalityFeedback='观察市场均衡与社会最优的距离后，点击记录当前类型。';
+      }
+      if(sourceId==='sl_pigou'){
+        LD.policyConfirmed=false;
+        if(levelObjs[6][2]&&!quizPassed.has(6)){levelObjs[6][2]=false;changed=true}
+      }
+      changed=updateExternalityObjectives(sourceId==='sl_pigou')||changed;
     }break;
   }
+  return changed;
+}
+
+function taxMetrics(){
+  let eq0=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+  let eqT=eqPoint(LD.dInt,LD.dSl,LD.sInt+LD.taxRate,LD.sSl);
+  return {revenue:LD.taxRate*eqT.q,deadweight:0.5*LD.taxRate*(eq0.q-eqT.q)};
+}
+function bestTaxRate(){
+  let maxRev=0,bestT=0;
+  for(let tt=1;tt<=60;tt++){
+    let e=eqPoint(LD.dInt,LD.dSl,LD.sInt+tt,LD.sSl),r=tt*e.q;
+    if(r>maxRev){maxRev=r;bestT=tt}
+  }
+  return bestT;
+}
+function taxHintHTML(){
+  const m=taxMetrics(),bestT=bestTaxRate(),gap=Math.abs(LD.taxRate-bestT);
+  if(LD.taxRate===0)return '<div class="hint-box">无税时交易量最高，但政府没有税收收入；开始加税后，收入会先上升。</div>';
+  if(gap<=3)return `<div class="hint-box">当前税率接近收入峰值（约 ${bestT}）。继续加税会明显扩大无谓损失，并可能让税收收入下降。</div>`;
+  if(LD.taxRate<bestT)return `<div class="hint-box">税率还低于收入峰值（约 ${bestT}）。收入 ${m.revenue.toFixed(0)} 正在积累，但无谓损失 ${m.deadweight.toFixed(0)} 也已经出现。</div>`;
+  return `<div class="hint-box">税率已高于收入峰值（约 ${bestT}）。交易量被压缩，额外加税主要转化为无谓损失。</div>`;
+}
+function priceControlHintHTML(){
+  const eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+  if(LD.ceilingOn&&LD.ceiling<eq.p){
+    const qd=(LD.ceiling-LD.dInt)/LD.dSl,qs=(LD.ceiling-LD.sInt)/LD.sSl;
+    const dwl=0.5*Math.max(0,eq.q-qs)*(eq.p-supplyP(qs,LD.sInt,LD.sSl));
+    return `<div class="hint-box">价格上限低于均衡价：需求量约 ${qd.toFixed(0)}、供给量约 ${qs.toFixed(0)}，短缺 ${Math.max(0,qd-qs).toFixed(0)}，无谓损失约 ${dwl.toFixed(0)}。</div>`;
+  }
+  if(LD.floorOn&&LD.floor>eq.p){
+    const qd=(LD.floor-LD.dInt)/LD.dSl,qs=(LD.floor-LD.sInt)/LD.sSl;
+    const dwl=0.5*Math.max(0,eq.q-qd)*(demandP(qd,LD.dInt,LD.dSl)-eq.p);
+    return `<div class="hint-box">价格下限高于均衡价：需求量约 ${qd.toFixed(0)}、供给量约 ${qs.toFixed(0)}，过剩 ${Math.max(0,qs-qd).toFixed(0)}，无谓损失约 ${dwl.toFixed(0)}。</div>`;
+  }
+  return '<div class="hint-box">管制价只有越过均衡价才会真正约束市场；低于均衡价的上限造成短缺，高于均衡价的下限造成过剩。</div>';
+}
+function confirmPriceControlDwl(){
+  if(curLevel!==3||!LD.usedCeiling||!LD.usedFloor)return false;
+  LD.dwlConfirmed=true;
+  completeObj(3,2,true);
+  renderPanel();renderBar();draw();
+  return true;
+}
+function surplusSummaryHTML(){
+  const eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+  const cs=0.5*eq.q*(LD.dInt-eq.p),ps=0.5*eq.q*(eq.p-LD.sInt);
+  return `<span style="color:#3b82f6">消费者剩余: ${cs.toFixed(0)}</span> | <span style="color:#ef4444">生产者剩余: ${ps.toFixed(0)}</span><br>总剩余: <span style="color:#22c55e;font-weight:bold">${(cs+ps).toFixed(0)}</span>`;
+}
+function surplusGoalHintHTML(){
+  const eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+  const cs=0.5*eq.q*(LD.dInt-eq.p),ps=0.5*eq.q*(eq.p-LD.sInt),total=cs+ps;
+  const gap=Math.ceil(2000-total);
+  if(!LD.showCS||!LD.showPS)return `<div class="hint-box">先分别标出消费者剩余和生产者剩余，再调高需求截距或降低供给截距，让总剩余补上约 ${gap}。</div>`;
+  if(!LD.surplusAdjusted)return '<div class="hint-box">两个剩余区域都已标出。再拖动需求或供给截距，观察曲线移动如何改变总剩余。</div>';
+  if(total>2000&&!levelObjs[2][2])return '<div class="hint-box">总剩余已超过目标。现在确认：在没有外部性时，均衡交易完成了所有愿付价格高于成本的互利交易。</div>';
+  if(levelObjs[2][2])return '<div class="hint-box">已确认：消费者剩余和生产者剩余相加，就是市场交易创造的总社会剩余。</div>';
+  return `<div class="hint-box">总剩余还差约 ${gap}。提高需求截距会扩大买方愿付价格，降低供给截距会降低生产成本，两者都会增加互利交易空间。</div>`;
+}
+function updateSurplusMetricPanel(){
+  if(curLevel!==2)return;
+  setHTML('surplusMetrics',surplusSummaryHTML());
+  setHTML('surplusGoalHint',surplusGoalHintHTML());
+}
+function surplusReadyToConfirm(){
+  if(curLevel!==2||!LD.showCS||!LD.showPS||!LD.surplusAdjusted)return false;
+  const eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+  const cs=0.5*eq.q*(LD.dInt-eq.p),ps=0.5*eq.q*(eq.p-LD.sInt);
+  return cs+ps>2000;
+}
+function confirmSurplusMax(){
+  if(!surplusReadyToConfirm())return false;
+  LD.surplusConfirmed=true;
+  completeObj(2,2,true);
+  renderPanel();renderBar();draw();
+  return true;
+}
+function updatePriceControlPanel(){
+  if(curLevel!==3)return;
+  const eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+  setText('priceControlEq',eq.p.toFixed(1));
+  setHTML('priceControlHint',priceControlHintHTML());
+}
+function updateMarketMetricPanel(){
+  if(curLevel!==0)return;
+  const eq=eqPoint(LD.dIntercept,LD.dSlope,LD.sIntercept,LD.sSlope);
+  setText('marketPrice',eq.p.toFixed(1));
+  setText('marketQty',eq.q.toFixed(1));
+  setText('marketHint',marketHintText());
+}
+function marketHintText(){
+  const eq=eqPoint(LD.dIntercept,LD.dSlope,LD.sIntercept,LD.sSlope);
+  if(!LD.adjD)return '先拖动需求截距或需求斜率，观察需求曲线移动后均衡点如何变化。';
+  if(!LD.adjS)return '再拖动供给截距或供给斜率，比较供给变化对均衡数量的影响。';
+  if(eq.p<40)return '当前均衡价偏低。提高需求截距或供给截距，能把交点推回目标价格区间。';
+  if(eq.p>60)return '当前均衡价偏高。降低需求截距或提高供给弹性，能把交点压回目标价格区间。';
+  return '均衡价已经落在 40-60 目标区间，可以进入通关小测验。';
+}
+function updateElasticityMetricPanel(){
+  if(curLevel!==1)return;
+  const ed=LD.elasticity||0;
+  setText('elasticityValue',Math.abs(ed).toFixed(2));
+  setText('elasticityLabel',elasticityLabel(ed));
+  setText('elasticityHint',elasticityHintHTML(ed));
+}
+function updateTaxMetricPanel(){
+  const el=document.getElementById('taxMetrics');
+  const m=taxMetrics();
+  if(el)el.innerHTML=`<span style="color:#a855f7">税收收入: ${m.revenue.toFixed(0)}</span> | <span style="color:#f59e0b">无谓损失: ${m.deadweight.toFixed(0)}</span>`;
+  setHTML('taxHint',taxHintHTML());
+}
+function confirmTaxPeak(){
+  if(curLevel!==4)return false;
+  const bestT=bestTaxRate();
+  if(Math.abs(LD.taxRate-bestT)>3)return false;
+  LD.peakConfirmed=true;
+  completeObj(4,2,true);
+  renderPanel();renderBar();draw();
+  return true;
+}
+function applyTaxPeakPreset(){
+  if(curLevel!==4||!levelObjs[4][0]||!levelObjs[4][1]||levelObjs[4][2])return false;
+  LD.taxRate=bestTaxRate();
+  LD.peakConfirmed=false;
+  renderPanel();renderBar();draw();
+  return true;
+}
+function externalityHintText(){
+  if(curLevel!==6||!LD)return '';
+  const eqPriv=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
+  const eqSoc=LD.extType==='negative'
+    ? eqPoint(LD.dInt,LD.dSl,LD.sInt+LD.extSize,LD.sSl)
+    : eqPoint(LD.dInt+LD.extSize,LD.dSl,LD.sInt,LD.sSl);
+  const diff=eqPriv.q-eqSoc.q,policy=LD.extType==='negative'?'庇古税':'庇古补贴';
+  const policyGap=Math.abs(LD.pigouvian-LD.extSize);
+  const direction=LD.extType==='negative'
+    ? `市场产量比社会最优多 ${Math.max(0,diff).toFixed(1)}，因为污染成本没有进入私人成本。`
+    : `市场产量比社会最优少 ${Math.max(0,-diff).toFixed(1)}，因为外部收益没有进入私人收益。`;
+  const log=LD.externalityLog||{negative:false,positive:false};
+  const currentObserved=!!log[LD.extType];
+  const comparedBoth=!!(log.negative&&log.positive);
+  const progress=comparedBoth
+    ? '你已经比较过负外部性和正外部性。'
+    : currentObserved
+      ? '当前类型已记录，继续切换到另一类外部性并记录。'
+      : '观察图上红点与绿点分离后，记录当前类型。';
+  const action=policyGap<=3
+    ? `${policy}已接近外部性大小，市场激励基本被校正。`
+    : `把${policy}调到约 ${LD.extSize}，才能把第三方成本/收益纳入决策。`;
+  return `${direction}${progress}${action}`;
+}
+
+function observeMarketStructure(silent=false){
+  if(curLevel!==5)return false;
+  let changed=false;
+  if(LD.mode==='perfect'){LD.sawPerfect=true;changed=completeObj(5,0,true)||changed}
+  if(LD.mode==='monopoly'){LD.sawMonopoly=true;changed=completeObj(5,1,true)||changed}
+  if(!silent){renderPanel();renderBar();draw()}
+  return changed;
+}
+
+function confirmMarketStructureComparison(){
+  if(curLevel!==5||!LD.sawPerfect||!LD.sawMonopoly)return false;
+  LD.comparisonConfirmed=true;
+  completeObj(5,2,true);
+  renderPanel();renderBar();draw();
+  return true;
+}
+
+function markSurplus(kind){
+  if(curLevel!==2||!['cs','ps'].includes(kind))return false;
+  let changed=false;
+  if(kind==='cs'){LD.showCS=true;changed=completeObj(2,0)||changed}
+  if(kind==='ps'){LD.showPS=true;changed=completeObj(2,1)||changed}
+  updateSurplusMetricPanel();
+  draw();
+  return changed;
+}
+
+function updateExternalityObjectives(policyChanged=false){
+  if(curLevel!==6||!levelObjs[6])return false;
+  if(!LD.externalityLog)LD.externalityLog={negative:false,positive:false};
+  let changed=false;
+  if(LD.externalityLog.negative)changed=completeObj(6,0,true)||changed;
+  if(LD.externalityLog.positive)changed=completeObj(6,1,true)||changed;
+  const comparedBoth=LD.externalityLog.negative&&LD.externalityLog.positive;
+  const currentObserved=!!LD.externalityLog[LD.extType];
+  const policyReady=comparedBoth&&currentObserved&&LD.extSize>0&&Math.abs(LD.pigouvian-LD.extSize)<=3;
+  if(policyReady&&LD.policyConfirmed)changed=completeObj(6,2,true)||changed;
+  if(policyChanged&&comparedBoth&&!levelObjs[6][2]){
+    LD.externalityFeedback=policyReady
+      ? '政策数值已接近外部性大小。请确认它如何把第三方成本/收益内化。'
+      : '政策方向正确，还要把数值调到外部性大小附近。';
+  }
+  setText('externalityHint',externalityHintText());
+  return changed;
+}
+
+function confirmExternalityPolicy(){
+  if(curLevel!==6||!LD.externalityLog)return false;
+  const comparedBoth=LD.externalityLog.negative&&LD.externalityLog.positive;
+  const currentObserved=!!LD.externalityLog[LD.extType];
+  const policyReady=comparedBoth&&currentObserved&&LD.extSize>0&&Math.abs(LD.pigouvian-LD.extSize)<=3;
+  if(!policyReady){
+    LD.externalityFeedback='先完成两类外部性观察，并把庇古税/补贴调到外部性大小附近。';
+    renderPanel();draw();
+    return false;
+  }
+  LD.policyConfirmed=true;
+  LD.externalityFeedback=LD.extType==='negative'
+    ? '已确认：庇古税把污染成本加入私人成本，市场产量向社会最优收敛。'
+    : '已确认：庇古补贴把外部收益加入私人收益，市场产量向社会最优收敛。';
+  completeObj(6,2,true);
+  renderPanel();renderBar();draw();
+  return true;
+}
+
+function recordExternality(){
+  if(curLevel!==6)return false;
+  if(!LD.externalityLog)LD.externalityLog={negative:false,positive:false};
+  if(LD.extSize<=0){
+    LD.externalityFeedback='先把外部性大小调到大于 0，才能看到市场失灵。';
+    renderPanel();draw();
+    return false;
+  }
+  LD.externalityAdjusted=true;
+  LD.externalityLog[LD.extType]=true;
+  LD.externalityFeedback=LD.extType==='negative'
+    ? '已记录负外部性：私人成本低于社会成本，市场过度生产。'
+    : '已记录正外部性：私人收益低于社会收益，市场生产不足。';
+  const changed=updateExternalityObjectives(false);
+  renderPanel();renderBar();draw();
+  return changed;
 }
 
 // === Stage Nav ===
@@ -302,37 +679,44 @@ function renderStageNav(){
   for(let i=0;i<7;i++){
     let unlocked=isUnlocked(i);
     let cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?`playSound('click');goLevel(${i})`:''}"></div>`;
+    h+=`<div class="sn-d ${cls}" ${unlocked&&i!==curLevel?`onclick="playSound('click');goLevel(${i})"`:''}></div>`;
   }
   h+=`</div><div class="sn-info">第 ${curLevel+1}/7 关 · 进度 ${Math.round(quizPassed.size/7*100)}%</div>`;
   h+=`<div class="sn-hint">${quizPassed.size}/7 已通关，完成目标后答对测验才解锁下一关</div></div>`;return h;
 }
 
 function renderQuiz(){
-  let q=quizData[curLevel],fb=quizFeedback[curLevel];
+  let q=quizData[curLevel],fb=quizFeedback[curLevel],passed=quizPassed.has(curLevel);
   let h=`<div class="quiz-box"><div class="quiz-title">通关小测验</div><div class="quiz-q">${q.q}</div>`;
-  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="checkQuiz(${i})">${opt}</button>`});
+  q.opts.forEach((opt,i)=>{
+    let mark=passed&&i===q.ans?' correct':fb&&i===q.ans?' correct':fb&&i===fb.choice&&!fb.ok?' wrong':'';
+    h+=`<button class="quiz-opt${mark}" onclick="answerQuiz(${curLevel},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;
+  });
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  else if(passed)h+=`<div class="quiz-feedback ok">已通过小测。${q.why}</div>`;
   h+='</div>';return h;
 }
 
-function checkQuiz(oi){
-  if(quizPassed.has(curLevel))return;
-  let q=quizData[curLevel],ok=oi===q.ans;
-  quizFeedback[curLevel]={ok,text:ok?'答对了。先读学习总结，再进入下一关。':'还不对。回到图上的曲线、区域和关键定义再判断。'};
-  if(ok){quizPassed.add(curLevel);playSound('success')}
+function answerQuiz(li,oi){
+  li=Number(li);oi=Number(oi);
+  if(!Number.isInteger(li)||li<0||li>=7||li!==curLevel)return false;
+  let q=quizData[li];
+  if(!q||!isUnlocked(li)||quizPassed.has(li)||!allDone(li)||!Number.isInteger(oi)||oi<0||oi>=q.opts.length)return false;
+  let ok=oi===q.ans;
+  quizFeedback[li]={ok,choice:oi,text:(ok?'答对了。':'还不对。')+q.why};
+  if(ok){quizPassed.add(li);playSound('success')}
   renderPanel();renderBar();
+  return ok;
 }
 
 // === Panel ===
-let _patchLock=false;
 function renderPanel(){
-  if(_patchLock)return;_patchLock=true;setTimeout(()=>{_patchLock=false},50);
   let info=levelInfo[curLevel];
+  let levelPassed=quizPassed.has(curLevel),goalsDone=levelPassed||allDone(curLevel);
   let h=renderStageNav();
   h+=`<h2>${info.title}</h2><div class="level-title">${info.sub}</div>`;
   h+=`<div class="desc-text">${info.desc}</div>`;
-  h+=`<ul class="obj-list">${info.objs.map((o,i)=>`<li class="${levelObjs[curLevel][i]?'done':''}">${o}</li>`).join('')}</ul>`;
+  h+=`<ul class="obj-list">${info.objs.map((o,i)=>`<li class="${levelPassed||levelObjs[curLevel][i]?'done':''}">${o}</li>`).join('')}</ul>`;
 
   switch(curLevel){
     case 0:
@@ -341,41 +725,65 @@ function renderPanel(){
       h+=sliderHTML('sl_sInt','供给截距',0,50,1,LD.sIntercept,'#ef4444');
       h+=sliderHTML('sl_sSl','供给斜率',0.3,2,0.1,LD.sSlope,'#ef4444');
       {let eq=eqPoint(LD.dIntercept,LD.dSlope,LD.sIntercept,LD.sSlope);
-      h+=`<div style="margin-top:8px;font-size:13px;color:var(--text-muted)">均衡价格: <span style="color:#22c55e;font-weight:bold">${eq.p.toFixed(1)}</span> | 均衡数量: <span style="color:#22c55e;font-weight:bold">${eq.q.toFixed(1)}</span></div>`}
+      h+=`<div style="margin-top:8px;font-size:13px;color:var(--text-muted)">均衡价格: <span id="marketPrice" style="color:#22c55e;font-weight:bold">${eq.p.toFixed(1)}</span> | 均衡数量: <span id="marketQty" style="color:#22c55e;font-weight:bold">${eq.q.toFixed(1)}</span></div>`;
+      h+=`<div class="hint-box" id="marketHint">${marketHintText()}</div>`}
       break;
     case 1:
+      h+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:8px"><button class="act-btn" style="margin-top:0;font-size:12px;padding:8px" onclick="applyElasticityPreset('elastic')">富有弹性示例</button><button class="act-btn" style="margin-top:0;font-size:12px;padding:8px" onclick="applyElasticityPreset('inelastic')">缺乏弹性示例</button><button class="act-btn" style="margin-top:0;font-size:12px;padding:8px" onclick="applyElasticityPreset('unit')">单位弹性示例</button></div>`;
       h+=sliderHTML('sl_slope','曲线斜率',0.1,3,0.1,Math.abs(LD.slope),'#3b82f6');
       h+=sliderHTML('sl_int','截距',60,150,1,LD.intercept,'#3b82f6');
-      {let q1=50,q2=50+LD.pChange;let p1=LD.intercept+LD.slope*q1,p2=LD.intercept+LD.slope*q2;
-      let pctQ=(q2-q1)/q1*100,pctP=p1!==0?(p2-p1)/p1*100:0;
-      let ed=pctP!==0?pctQ/pctP:0;
-      h+=`<div style="margin-top:8px;font-size:13px;color:var(--text-muted)">弹性 |Ed| = <span style="color:#f59e0b;font-weight:bold">${Math.abs(ed).toFixed(2)}</span> ${Math.abs(ed)>1?'(富有弹性)':Math.abs(ed)<1?'(缺乏弹性)':'(单位弹性)'}</div>`}
+      h+=sliderHTML('sl_qBase','基准数量',20,80,1,LD.qBase,'#f59e0b');
+      {let q1=LD.qBase,q2=LD.qBase+LD.pChange;let p1=LD.intercept+LD.slope*q1,p2=LD.intercept+LD.slope*q2;
+      let ed=calcElasticity();
+      h+=`<div style="margin-top:8px;font-size:13px;color:var(--text-muted)">弹性 |Ed| = <span id="elasticityValue" style="color:#f59e0b;font-weight:bold">${Math.abs(ed).toFixed(2)}</span> <span id="elasticityLabel">${elasticityLabel(ed)}</span></div>`;
+      if(!LD.elasticityTouched)h+=`<div class="hint-box">默认读数只是基准样例；拖动斜率、截距或基准数量后，系统才会记录你观察到的弹性类型。</div>`;
+      h+=`<div class="hint-box">当前比较 A(${q1}, ${p1.toFixed(1)}) → B(${q2}, ${p2.toFixed(1)})。<span id="elasticityHint">${elasticityHintHTML(ed)}</span></div>`;
+      h+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px"><button class="act-btn" style="margin-top:0;font-size:12px;padding:8px" onclick="recordElasticity('elastic')">${LD.elasticityLog&&LD.elasticityLog.elastic?'已记录':'记录'}富有弹性</button><button class="act-btn" style="margin-top:0;font-size:12px;padding:8px" onclick="recordElasticity('inelastic')">${LD.elasticityLog&&LD.elasticityLog.inelastic?'已记录':'记录'}缺乏弹性</button><button class="act-btn" style="margin-top:0;font-size:12px;padding:8px" onclick="recordElasticity('unit')">${LD.elasticityLog&&LD.elasticityLog.unit?'已记录':'记录'}单位弹性</button></div>`;
+      if(LD.elasticityFeedback)h+=`<div class="hint-box">${LD.elasticityFeedback}</div>`}
       break;
     case 2:
       h+=sliderHTML('sl_dInt2','需求截距',80,160,1,LD.dInt,'#3b82f6');
       h+=sliderHTML('sl_sInt2','供给截距',0,40,1,LD.sInt,'#ef4444');
       {let eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
       let cs=0.5*eq.q*(LD.dInt-eq.p),ps=0.5*eq.q*(eq.p-LD.sInt);
-      h+=`<div style="margin-top:8px;font-size:13px"><span style="color:#3b82f6">消费者剩余: ${cs.toFixed(0)}</span> | <span style="color:#ef4444">生产者剩余: ${ps.toFixed(0)}</span><br>总剩余: <span style="color:#22c55e;font-weight:bold">${(cs+ps).toFixed(0)}</span></div>`}
+      h+=`<div style="display:flex;gap:6px;margin-top:8px"><button class="act-btn" style="margin-top:0;font-size:13px;padding:8px" onclick="markSurplus('cs')">${LD.showCS?'已标出消费者剩余':'标出消费者剩余'}</button><button class="act-btn" style="margin-top:0;font-size:13px;padding:8px" onclick="markSurplus('ps')">${LD.showPS?'已标出生产者剩余':'标出生产者剩余'}</button></div>`;
+      h+=`<div id="surplusMetrics" style="margin-top:8px;font-size:13px">${surplusSummaryHTML()}</div>`;
+      h+=`<div id="surplusGoalHint">${surplusGoalHintHTML()}</div>`;
+      if(surplusReadyToConfirm()&&!levelObjs[2][2]){
+        h+=`<button class="act-btn" onclick="confirmSurplusMax()">确认：均衡完成全部互利交易，总剩余最大</button>`;
+      }else if(levelObjs[2][2]){
+        h+=`<div class="learn-box" style="font-size:12px">已确认：需求曲线下、供给曲线上方的互利交易都被完成时，消费者剩余和生产者剩余之和最大。</div>`;
+      }}
       break;
     case 3:
-      h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-muted)"><input type="checkbox" id="ck_ceil" ${LD.ceilingOn?'checked':''} onchange="readSliders();renderPanel();draw()"> 启用价格上限</label></div>`;
+      h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-muted)"><input type="checkbox" id="ck_ceil" ${LD.ceilingOn?'checked':''} onchange="readSliders('ck_ceil');renderPanel();draw()"> 启用价格上限</label></div>`;
       if(LD.ceilingOn)h+=sliderHTML('sl_ceil','价格上限',10,100,1,LD.ceiling||40,'#f59e0b');
-      h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-muted)"><input type="checkbox" id="ck_floor" ${LD.floorOn?'checked':''} onchange="readSliders();renderPanel();draw()"> 启用价格下限</label></div>`;
+      h+=`<div style="margin:6px 0"><label style="font-size:12px;color:var(--text-muted)"><input type="checkbox" id="ck_floor" ${LD.floorOn?'checked':''} onchange="readSliders('ck_floor');renderPanel();draw()"> 启用价格下限</label></div>`;
       if(LD.floorOn)h+=sliderHTML('sl_floor','价格下限',10,100,1,LD.floor||70,'#f59e0b');
       {let eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
-      h+=`<div style="margin-top:8px;font-size:12px;color:var(--text-muted)">均衡价格: ${eq.p.toFixed(1)}</div>`}
+      h+=`<div style="margin-top:8px;font-size:12px;color:var(--text-muted)">均衡价格: <span id="priceControlEq">${eq.p.toFixed(1)}</span></div>`;
+      h+=`<div id="priceControlHint">${priceControlHintHTML()}</div>`;
+      if(LD.usedCeiling&&LD.usedFloor&&!levelObjs[3][2]){
+        h+=`<button class="act-btn" onclick="confirmPriceControlDwl()">确认：短缺和过剩都会留下无谓损失</button>`;
+      }else if(levelObjs[3][2]){
+        h+=`<div class="learn-box" style="font-size:12px">已确认：价格管制挡住了一部分原本互利的交易，黄色三角形就是这些没有发生的交易剩余。</div>`;
+      }}
       break;
     case 4:
       h+=sliderHTML('sl_tax','税率',0,60,1,LD.taxRate,'#a855f7');
-      {let eq0=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
-      let eqT=eqPoint(LD.dInt,LD.dSl,LD.sInt+LD.taxRate,LD.sSl);
-      let rev=LD.taxRate*eqT.q;
-      let dwl=0.5*LD.taxRate*(eq0.q-eqT.q);
-      h+=`<div style="margin-top:8px;font-size:13px"><span style="color:#a855f7">税收收入: ${rev.toFixed(0)}</span> | <span style="color:#f59e0b">无谓损失: ${dwl.toFixed(0)}</span></div>`}
+      {let m=taxMetrics();
+      h+=`<div id="taxMetrics" style="margin-top:8px;font-size:13px"><span style="color:#a855f7">税收收入: ${m.revenue.toFixed(0)}</span> | <span style="color:#f59e0b">无谓损失: ${m.deadweight.toFixed(0)}</span></div>`;
+      h+=`<div id="taxHint">${taxHintHTML()}</div>`;
+      const bestT=bestTaxRate();
+      if(Math.abs(LD.taxRate-bestT)<=3){
+        h+=`<button class="act-btn" onclick="confirmTaxPeak()">${LD.peakConfirmed?'已确认':'确认'}拉弗曲线收入峰值</button>`;
+      }else{
+        h+=`<div class="hint-box">把税率调到接近收入峰值（约 ${bestT}）后，再确认为什么继续加税会压缩交易量并降低效率。</div>`;
+        if(levelObjs[4][0]&&levelObjs[4][1]&&!levelObjs[4][2])h+=`<button class="act-btn" onclick="applyTaxPeakPreset()">调到收入峰值附近</button>`;
+      }}
       break;
     case 5:
-      h+=`<div class="slider-row"><label>市场结构</label><select id="sl_mode" onchange="readSliders();renderPanel();draw()" style="flex:1;padding:4px;border-radius:4px;background:var(--btn-bg);color:var(--btn-text);border:1px solid var(--btn-border)"><option value="0" ${LD.mode==='perfect'?'selected':''}>完全竞争</option><option value="1" ${LD.mode==='monopoly'?'selected':''}>垄断</option></select></div>`;
+      h+=`<div class="slider-row"><label>市场结构</label><select id="sl_mode" onchange="readSliders('sl_mode');renderPanel();draw()" style="flex:1;padding:4px;border-radius:4px;background:var(--btn-bg);color:var(--btn-text);border:1px solid var(--btn-border)"><option value="0" ${LD.mode==='perfect'?'selected':''}>完全竞争</option><option value="1" ${LD.mode==='monopoly'?'selected':''}>垄断</option></select></div>`;
       {let eq;
       if(LD.mode==='perfect'){eq=eqPoint(LD.dInt,LD.dSl,LD.mcInt,LD.mcSlope);h+=`<div style="margin-top:8px;font-size:13px;color:var(--text-muted)">完全竞争: P=MC<br>价格: <span style="color:#22c55e">${eq.p.toFixed(1)}</span> 产量: <span style="color:#22c55e">${eq.q.toFixed(1)}</span></div>`}
       else{
@@ -385,20 +793,36 @@ function renderPanel(){
         let dwl=0.5*(pm-supplyP(qm,LD.mcInt,LD.mcSlope))*(qc-qm);
         h+=`<div style="margin-top:8px;font-size:13px;color:var(--text-muted)">垄断: MR=MC<br>价格: <span style="color:#ef4444">${pm.toFixed(1)}</span> 产量: <span style="color:#ef4444">${qm.toFixed(1)}</span><br>无谓损失: <span style="color:#f59e0b">${dwl.toFixed(0)}</span></div>`}
       }
+      h+=`<button class="act-btn" onclick="observeMarketStructure()">记录当前结构观察</button>`;
+      if(LD.sawPerfect&&LD.sawMonopoly&&!levelObjs[5][2]){
+        h+=`<button class="act-btn" onclick="confirmMarketStructureComparison()">确认：垄断价高量低并产生无谓损失</button>`;
+      }else if(levelObjs[5][2]){
+        h+=`<div class="hint-box">已比较：完全竞争完成更多互利交易；垄断通过限产抬价，少掉的交易形成无谓损失。</div>`;
+      }
       break;
     case 6:
-      h+=`<div class="slider-row"><label>外部性类型</label><select id="sl_extType" onchange="readSliders();renderPanel();draw()" style="flex:1;padding:4px;border-radius:4px;background:var(--btn-bg);color:var(--btn-text);border:1px solid var(--btn-border)"><option value="0" ${LD.extType==='negative'?'selected':''}>负外部性（污染）</option><option value="1" ${LD.extType==='positive'?'selected':''}>正外部性（教育）</option></select></div>`;
+      h+=`<div class="slider-row"><label>外部性类型</label><select id="sl_extType" onchange="readSliders('sl_extType');renderPanel();draw()" style="flex:1;padding:4px;border-radius:4px;background:var(--btn-bg);color:var(--btn-text);border:1px solid var(--btn-border)"><option value="0" ${LD.extType==='negative'?'selected':''}>负外部性（污染）</option><option value="1" ${LD.extType==='positive'?'selected':''}>正外部性（教育）</option></select></div>`;
       h+=sliderHTML('sl_extSize','外部性大小',0,40,1,LD.extSize,'#f59e0b');
-      h+=sliderHTML('sl_pigou','庇古税/补贴',0,40,1,LD.pigouvian,'#a855f7');
-      {let diff=Math.abs(LD.pigouvian-LD.extSize);
-      h+=`<div style="margin-top:8px;font-size:13px;color:var(--text-muted)">纠正偏差: <span style="color:${diff<=3?'#22c55e':'#f59e0b'}">${diff.toFixed(0)}</span> ${diff<=3?'✓ 已纠正':'— 继续调整'}</div>`}
+      {const log=LD.externalityLog||{negative:false,positive:false};
+      if(!LD.externalityAdjusted)h+=`<div style="font-size:11px;color:var(--text-muted);line-height:1.6;margin-top:4px">分别记录污染型负外部性和教育型正外部性，再用政策把市场拉回社会最优。</div>`;
+      h+=`<div style="margin-top:6px;font-size:12px;color:var(--text-muted)">观察记录：负外部性 <span style="color:${log.negative?'#22c55e':'#f59e0b'}">${log.negative?'已记录':'未记录'}</span> · 正外部性 <span style="color:${log.positive?'#22c55e':'#f59e0b'}">${log.positive?'已记录':'未记录'}</span></div>`;
+      h+=`<button class="act-btn" onclick="recordExternality()">${log[LD.extType]?'重新记录':'记录'}当前${LD.extType==='negative'?'负':'正'}外部性观察</button>`;
+      if(LD.externalityFeedback)h+=`<div class="hint-box">${LD.externalityFeedback}</div>`;}
+      {const policy=LD.extType==='negative'?'庇古税':'庇古补贴';
+      h+=sliderHTML('sl_pigou',policy,0,40,1,LD.pigouvian,'#a855f7');
+      let diff=Math.abs(LD.pigouvian-LD.extSize);
+      const log=LD.externalityLog||{negative:false,positive:false};
+      const policyReady=log.negative&&log.positive&&log[LD.extType]&&diff<=3;
+      h+=`<div style="margin-top:8px;font-size:13px;color:var(--text-muted)">${policy}与外部性差值: <span style="color:${diff<=3?'#22c55e':'#f59e0b'}">${diff.toFixed(0)}</span> ${levelObjs[6][2]?'✓ 已纠正':policyReady?'— 待确认':diff<=3?'— 先完成两类观察':'— 继续调整'}</div>`;
+      if(policyReady&&!levelObjs[6][2])h+=`<button class="act-btn" onclick="confirmExternalityPolicy()">确认：${policy}把外部性内化到私人决策中</button>`;
+      h+=`<div class="hint-box" id="externalityHint">${externalityHintText()}</div>`}
       break;
   }
 
-  if(allDone(curLevel)&&!quizPassed.has(curLevel)){
+  if(goalsDone){
     h+=renderQuiz();
   }
-  if(quizPassed.has(curLevel)){
+  if(levelPassed){
     h+=`<div class="learn-box">${info.learn}</div>`;
     if(curLevel<6)h+=`<button class="act-btn" onclick="playSound('click');goLevel(${curLevel+1})">下一关 →</button>`;
     else h+=`<button class="act-btn" onclick="showSummary()">查看总结 →</button>`;
@@ -406,7 +830,12 @@ function renderPanel(){
   panel.innerHTML=h;
 }
 
-function renderBar(){barInner.innerHTML=`<span style="color:var(--text-muted)">📈 ${levelInfo[curLevel].title}</span><span style="margin-left:auto;color:var(--text-muted);font-size:12px">第 ${curLevel+1}/7 关</span>`}
+function renderBar(){
+  const levelPassed=quizPassed.has(curLevel);
+  const done=levelPassed?3:levelObjs[curLevel].filter(Boolean).length;
+  const status=levelPassed?'已通关':allDone(curLevel)?'待测验':'进行中';
+  barInner.innerHTML=`<span style="color:var(--text-muted)">📈 ${levelInfo[curLevel].title}</span><span style="margin-left:auto;color:var(--text-muted);font-size:12px">目标 ${done}/3 · ${status} · 通关 ${quizPassed.size}/7</span>`;
+}
 
 // === Drawing ===
 function draw(){
@@ -457,7 +886,7 @@ function draw(){
       ctx.strokeStyle=th.curve1;ctx.lineWidth=3;ctx.beginPath();
       for(let q=0;q<=maxQ;q++){let p=LD.intercept+LD.slope*q;if(p<0)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
       // show elasticity band
-      let q1=50,q2=50+LD.pChange;let p1=LD.intercept+LD.slope*q1,p2=LD.intercept+LD.slope*q2;
+      let q1=LD.qBase,q2=LD.qBase+LD.pChange;let p1=LD.intercept+LD.slope*q1,p2=LD.intercept+LD.slope*q2;
       ctx.setLineDash([5,5]);ctx.strokeStyle='#f59e0b';ctx.lineWidth=1;
       ctx.beginPath();ctx.moveTo(toX(q1,maxQ),toY(0,maxP));ctx.lineTo(toX(q1,maxQ),toY(p1,maxP));ctx.lineTo(toX(0,maxQ),toY(p1,maxP));ctx.stroke();
       ctx.beginPath();ctx.moveTo(toX(q2,maxQ),toY(0,maxP));ctx.lineTo(toX(q2,maxQ),toY(p2,maxP));ctx.lineTo(toX(0,maxQ),toY(p2,maxP));ctx.stroke();
@@ -471,15 +900,15 @@ function draw(){
     case 2:{
       let maxQ=130,maxP=140;let eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
       // CS fill
-      ctx.fillStyle=th.surplus1;ctx.beginPath();ctx.moveTo(toX(0,maxQ),toY(LD.dInt,maxP));ctx.lineTo(toX(eq.q,maxQ),toY(eq.p,maxP));ctx.lineTo(toX(0,maxQ),toY(eq.p,maxP));ctx.closePath();ctx.fill();
+      if(LD.showCS){ctx.fillStyle=th.surplus1;ctx.beginPath();ctx.moveTo(toX(0,maxQ),toY(LD.dInt,maxP));ctx.lineTo(toX(eq.q,maxQ),toY(eq.p,maxP));ctx.lineTo(toX(0,maxQ),toY(eq.p,maxP));ctx.closePath();ctx.fill();}
       // PS fill
-      ctx.fillStyle=th.surplus2;ctx.beginPath();ctx.moveTo(toX(0,maxQ),toY(LD.sInt,maxP));ctx.lineTo(toX(eq.q,maxQ),toY(eq.p,maxP));ctx.lineTo(toX(0,maxQ),toY(eq.p,maxP));ctx.closePath();ctx.fill();
+      if(LD.showPS){ctx.fillStyle=th.surplus2;ctx.beginPath();ctx.moveTo(toX(0,maxQ),toY(LD.sInt,maxP));ctx.lineTo(toX(eq.q,maxQ),toY(eq.p,maxP));ctx.lineTo(toX(0,maxQ),toY(eq.p,maxP));ctx.closePath();ctx.fill();}
       // curves
       ctx.strokeStyle=th.curve1;ctx.lineWidth=3;ctx.beginPath();for(let q=0;q<=maxQ;q++){let p=LD.dInt+LD.dSl*q;if(p<0)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
       ctx.strokeStyle=th.curve2;ctx.lineWidth=3;ctx.beginPath();for(let q=0;q<=maxQ;q++){let p=LD.sInt+LD.sSl*q;if(p>maxP)break;ctx.lineTo(toX(q,maxQ),toY(p,maxP))}ctx.stroke();
       ctx.fillStyle=th.eq;ctx.beginPath();ctx.arc(toX(eq.q,maxQ),toY(eq.p,maxP),8,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle=th.curve1;ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('消费者剩余',toX(eq.q*0.3,maxQ),toY((LD.dInt+eq.p)/2,maxP));
-      ctx.fillStyle=th.curve2;ctx.fillText('生产者剩余',toX(eq.q*0.3,maxQ),toY((LD.sInt+eq.p)/2,maxP));
+      ctx.fillStyle=th.curve1;ctx.font='bold 13px sans-serif';ctx.textAlign='center';if(LD.showCS)ctx.fillText('消费者剩余',toX(eq.q*0.3,maxQ),toY((LD.dInt+eq.p)/2,maxP));
+      ctx.fillStyle=th.curve2;if(LD.showPS)ctx.fillText('生产者剩余',toX(eq.q*0.3,maxQ),toY((LD.sInt+eq.p)/2,maxP));
     }break;
     case 3:{
       let maxQ=130,maxP=140;let eq=eqPoint(LD.dInt,LD.dSl,LD.sInt,LD.sSl);
@@ -495,7 +924,13 @@ function draw(){
         if(LD.ceiling<eq.p){
           let qd=(LD.ceiling-LD.dInt)/LD.dSl,qs=(LD.ceiling-LD.sInt)/LD.sSl;
           ctx.fillStyle='rgba(239,68,68,0.15)';ctx.fillRect(toX(qs,maxQ),toY(LD.ceiling,maxP),toX(qd,maxQ)-toX(qs,maxQ),20);
+          ctx.fillStyle=th.deadweight;ctx.beginPath();
+          ctx.moveTo(toX(qs,maxQ),toY(LD.ceiling,maxP));
+          ctx.lineTo(toX(eq.q,maxQ),toY(eq.p,maxP));
+          ctx.lineTo(toX(qs,maxQ),toY(supplyP(qs,LD.sInt,LD.sSl),maxP));
+          ctx.closePath();ctx.fill();
           ctx.fillStyle='#ef4444';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText(`短缺 = ${(qd-qs).toFixed(0)}`,toX((qd+qs)/2,maxQ),toY(LD.ceiling,maxP)+35);
+          ctx.fillStyle='#f59e0b';ctx.fillText('DWL',toX((qs+eq.q)/2,maxQ),toY((LD.ceiling+eq.p)/2,maxP)-8);
         }
       }
       // floor
@@ -506,7 +941,13 @@ function draw(){
         if(LD.floor>eq.p){
           let qd=(LD.floor-LD.dInt)/LD.dSl,qs=(LD.floor-LD.sInt)/LD.sSl;
           ctx.fillStyle='rgba(168,85,247,0.15)';ctx.fillRect(toX(qd,maxQ),toY(LD.floor,maxP)-20,toX(qs,maxQ)-toX(qd,maxQ),20);
+          ctx.fillStyle=th.deadweight;ctx.beginPath();
+          ctx.moveTo(toX(qd,maxQ),toY(demandP(qd,LD.dInt,LD.dSl),maxP));
+          ctx.lineTo(toX(eq.q,maxQ),toY(eq.p,maxP));
+          ctx.lineTo(toX(qd,maxQ),toY(LD.floor,maxP));
+          ctx.closePath();ctx.fill();
           ctx.fillStyle='#a855f7';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText(`过剩 = ${(qs-qd).toFixed(0)}`,toX((qd+qs)/2,maxQ),toY(LD.floor,maxP)-25);
+          ctx.fillStyle='#f59e0b';ctx.fillText('DWL',toX((qd+eq.q)/2,maxQ),toY((LD.floor+eq.p)/2,maxP)+16);
         }
       }
     }break;
@@ -608,8 +1049,16 @@ function draw(){
 
 // === Summary ===
 function showSummary(){
-  let done=levelObjs.flat().filter(Boolean).length;
-  panel.innerHTML=`<div class="summary-box"><div class="summary-title">🎉 市场经济探险完成！</div><div class="summary-sub">你已掌握市场经济的核心机制</div><div class="summary-stats"><div class="summary-stat"><div class="num">${quizPassed.size}/7</div><div class="label">测验通过</div></div><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标完成</div></div></div><div class="summary-keys"><div>📊 供给与需求决定均衡价格</div><div>📐 弹性衡量价格敏感度</div><div>💰 自由市场最大化总剩余</div><div>⚖️ 价格管制造成短缺或过剩</div><div>🏛️ 税收产生无谓损失</div><div>🏭 垄断导致效率损失</div><div>🌍 外部性需要政府干预</div></div></div><button class="act-btn" style="margin-top:12px" onclick="location.reload()">再玩一次</button>`;
+  if(quizPassed.size<7)return;
+  let done=quizPassed.size*3;
+  panel.innerHTML=`<div class="summary-box"><div class="summary-title">🎉 市场经济探险完成！</div><div class="summary-sub">你已掌握市场经济的核心机制</div><div class="summary-stats"><div class="summary-stat"><div class="num">${quizPassed.size}/7</div><div class="label">测验通过</div></div><div class="summary-stat"><div class="num">${done}/21</div><div class="label">目标达成</div></div></div><div class="summary-keys"><div>📊 供给与需求决定均衡价格</div><div>📐 弹性衡量价格敏感度</div><div>💰 自由市场最大化总剩余</div><div>⚖️ 价格管制造成短缺或过剩</div><div>🏛️ 税收产生无谓损失</div><div>🏭 垄断导致效率损失</div><div>🌍 外部性需要政府干预</div></div></div><button class="act-btn" style="margin-top:12px" onclick="restartFromSummary()">再玩一次</button>`;
+}
+function restartFromSummary(){
+  levelObjs=Array.from({length:7},()=>[false,false,false]);
+  quizPassed.clear();
+  quizFeedback={};
+  goLevel(0);
+  return true;
 }
 
 // === Animation loop ===

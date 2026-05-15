@@ -111,6 +111,8 @@ canvas{position:absolute;top:0;left:320px;width:calc(100vw - 320px);height:calc(
 .quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
 .quiz-opt{display:block;width:100%;padding:9px 10px;margin:6px 0;border-radius:8px;border:1px solid var(--quiz-opt-border);background:var(--quiz-opt-bg);color:var(--quiz-opt-text);font-size:13px;text-align:left;cursor:pointer}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{background:var(--quiz-correct-bg);border-color:#22c55e;color:var(--quiz-correct-text)}
+.quiz-opt.wrong{background:var(--quiz-wrong-bg);border-color:#ef4444;color:var(--quiz-wrong-text)}
 .quiz-feedback{border-radius:8px;padding:8px;margin-top:8px;font-size:12px;line-height:1.6}
 .quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
 .quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
@@ -168,8 +170,12 @@ const TH={
   light:{bg1:'#e8edf5',bg2:'#f0f2f5',bg3:'#e0e7f0',grid:'rgba(99,102,241,0.04)',text:'#1e293b',textSec:'rgba(30,41,59,0.6)',textMut:'rgba(30,41,59,0.4)',label:'#334155',electron:'#334155',electronGlow:'rgba(51,65,85,0.3)',shell:'rgba(100,100,200,0.15)',barBg:'#c7d2fe',showStars:false}
 };
 function t(){return isDark?TH.dark:TH.light}
-function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{if(typeof renderPanel==='function')try{renderPanel()}catch(e){}}catch(e){}}
-function startGame(){document.getElementById('ov').style.display='none';}
+function toggleTheme(){isDark=!isDark;document.body.dataset.theme=isDark?'dark':'light';document.getElementById('themeToggle').textContent=isDark?'🌙 暗色':'☀️ 亮色';try{panelDirty=true;if(typeof renderPanel==='function')renderPanel()}catch(e){}}
+function startGame(){
+  resetProgress();
+  document.getElementById('ov').style.display='none';
+  goLevel(0);
+}
 
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),panel=document.getElementById('panel');
 let W,H,curLevel=0,frame=0,animId;
@@ -183,13 +189,13 @@ window.addEventListener('resize',resize);
 /* ===== LEVELS DATA ===== */
 const levels=[
   {name:'切片',sub:'FDM基础',concept:'FDM（熔融沉积成型）是最常见的3D打印技术。3D模型被水平切成薄层，打印头逐层堆叠熔融材料。层高越小，精度越高，但打印时间越长。',
-   objs:['调整层高观察变化','层数超过50层','完成切片预览'],learn:'FDM打印机喷嘴温度约<span class="sv">200°C</span>，层高通常<span class="sv">0.1~0.3mm</span>。一个10cm高的模型以0.2mm层高需要<span class="sv">500层</span>，打印约2-4小时。'},
+   objs:['调整层高观察变化','把层数提升到120层以上','完成切片预览'],learn:'FDM打印机喷嘴温度约<span class="sv">200°C</span>，层高通常<span class="sv">0.1~0.3mm</span>。一个10cm高的模型以0.2mm层高需要<span class="sv">500层</span>，打印约2-4小时。'},
   {name:'路径规划',sub:'G-code生成',concept:'每一层的打印路径由切片软件生成G-code控制。先打外壁轮廓保证表面质量，再用填充图案填充内部。填充率影响强度和材料用量。',
-   objs:['画出外壁轮廓','选择填充图案','调整填充率'],learn:'G-code是数控机床通用语言。<span class="sv">G1 X10 Y20 E0.5</span>表示移动到(10,20)并挤出0.5mm材料。一个模型的G-code通常有<span class="sv">数十万行</span>指令。'},
+   objs:['画出外壁轮廓','选择填充图案','确认填充路径'],learn:'G-code是数控机床通用语言。<span class="sv">G1 X10 Y20 E0.5</span>表示移动到(10,20)并挤出0.5mm材料。一个模型的G-code通常有<span class="sv">数十万行</span>指令。'},
   {name:'材料选择',sub:'材料科学',concept:'不同3D打印材料有不同特性。PLA易打印但不耐热，ABS强度高但易翘曲，尼龙耐磨但吸湿，TPU柔韧但打印慢。选对材料是成功的关键。',
    objs:['查看材料属性','选择正确材料','完成打印任务'],learn:'PLA来自<span class="sv">玉米淀粉</span>，可生物降解。ABS与乐高积木同材质。碳纤维增强尼龙的强度可媲美<span class="sv">铝合金</span>，已用于航空航天零件。'},
   {name:'SLA光固化',sub:'光聚合原理',concept:'SLA（立体光刻）用紫外激光逐点扫描液态光敏树脂表面，激光照射处树脂发生光聚合反应固化成型。精度可达0.025mm，远超FDM。',
-   objs:['观察激光扫描','完成一层固化','平台下降继续'],learn:'SLA是<span class="sv">1986年</span>发明的最早3D打印技术。DLP（数字光处理）用投影仪一次曝光整层，速度比SLA快<span class="sv">10倍</span>以上。'},
+   objs:['观察激光扫描','完成一层固化','平台下降并完成5层打印'],learn:'SLA是<span class="sv">1986年</span>发明的最早3D打印技术。DLP（数字光处理）用投影仪一次曝光整层，速度比SLA快<span class="sv">10倍</span>以上。'},
   {name:'金属打印SLM',sub:'选择性激光熔化',concept:'SLM用高功率激光在金属粉末床上逐点熔化粉末，逐层堆积成致密金属零件。激光功率需精确控制：太低粉末不熔合，太高导致翘曲变形。',
    objs:['铺粉层','调整激光功率','完成多层烧结'],learn:'SLM可打印<span class="sv">钛合金、不锈钢、铝合金</span>等金属。GE航空用SLM打印的LEAP发动机燃油喷嘴，将<span class="sv">20个零件合为1个</span>，减重25%。'},
   {name:'支撑结构',sub:'拓扑优化',concept:'3D打印逐层堆叠，悬空超过45°的部分会因重力塌陷，需要添加支撑结构。支撑设计影响打印成功率和后处理工作量。',
@@ -199,13 +205,13 @@ const levels=[
 ];
 
 const quizData=[
-  {q:'FDM 打印中，层高变小通常会带来什么影响？',opts:['表面更细腻但打印时间更长','模型会完全不需要切片','喷嘴温度必须降到室温'],ans:0,ok:'对。更小层高意味着更多层，细节更好但耗时更长。',bad:'层高影响层数、精度和时间，是 FDM 的关键参数。'},
-  {q:'G-code 在 3D 打印中主要负责什么？',opts:['描述喷头移动、挤出和温度等控制指令','保存材料的化学配方','直接替代切片模型'],ans:0,ok:'对。G-code 是打印机执行路径和挤出动作的指令语言。',bad:'G-code 不是材料配方，它是运动与挤出控制指令。'},
-  {q:'给手机壳这类柔韧防摔件选材时，通常更适合哪类材料？',opts:['TPU','PLA','普通陶瓷粉末'],ans:0,ok:'对。TPU 具有柔韧和回弹特性，适合保护壳。',bad:'柔韧件需要弹性材料，TPU 比 PLA 更适合。'},
-  {q:'SLA 光固化打印的成型核心是什么？',opts:['紫外光让光敏树脂发生聚合固化','喷嘴挤出熔融塑料丝','电子束熔化金属粉末'],ans:0,ok:'对。SLA 用光固化树脂，精度通常高于 FDM。',bad:'SLA 的关键词是光敏树脂和紫外固化。'},
-  {q:'SLM 金属打印为什么要精确控制激光功率？',opts:['功率过低不熔合，过高可能翘曲或烧蚀','功率越高一定越好','功率只影响屏幕亮度'],ans:0,ok:'对。金属粉末熔化窗口很窄，功率过高过低都会失败。',bad:'SLM 需要合适能量密度，不是越高越好。'},
-  {q:'3D 打印中支撑结构主要解决什么问题？',opts:['悬空或大角度外伸部分可能塌陷','让所有模型变得更重','替代打印平台加热'],ans:0,ok:'对。超过临界角的悬空区域需要支撑承托。',bad:'支撑是为了成型稳定，特别是悬空和桥接区域。'},
-  {q:'生物 3D 打印中的“生物墨水”通常包含什么？',opts:['活细胞和支架/水凝胶材料','纯金属粉末','熔融 PLA 丝材'],ans:0,ok:'对。生物墨水要兼顾可打印性、细胞活性和组织培养。',bad:'生物打印不同于 FDM 或 SLM，核心是活细胞和生物相容材料。'}
+  {q:'FDM 打印中，层高变小通常会带来什么影响？',opts:['表面更细腻但打印时间更长','模型会完全不需要切片','喷嘴温度必须降到室温'],ans:0,ok:'对。更小层高意味着更多层，细节更好但耗时更长。',bad:'层高影响层数、精度和时间，是 FDM 的关键参数。',why:'模型高度固定时，层高越小需要堆叠的层数越多，台阶纹更细，但喷头要走更多路径，打印时间随之增加。'},
+  {q:'G-code 在 3D 打印中主要负责什么？',opts:['保存材料的化学配方','描述喷头移动、挤出和温度等控制指令','直接替代切片模型'],ans:1,ok:'对。G-code 是打印机执行路径和挤出动作的指令语言。',bad:'G-code 不是材料配方，它是运动与挤出控制指令。',why:'切片软件把几何模型转成逐层路径，G-code 再把这些路径表达为坐标移动、挤出量、温度和速度等机器指令。'},
+  {q:'给手机壳这类柔韧防摔件选材时，通常更适合哪类材料？',opts:['PLA','普通陶瓷粉末','TPU'],ans:2,ok:'对。TPU 具有柔韧和回弹特性，适合保护壳。',bad:'柔韧件需要弹性材料，TPU 比 PLA 更适合。',why:'手机壳需要吸收冲击和反复弯折，TPU 的弹性与回弹更适合；PLA 更硬脆，陶瓷粉末也不适合柔韧防摔。'},
+  {q:'SLA 光固化打印的成型核心是什么？',opts:['喷嘴挤出熔融塑料丝','紫外光让光敏树脂发生聚合固化','电子束熔化金属粉末'],ans:1,ok:'对。SLA 用光固化树脂，精度通常高于 FDM。',bad:'SLA 的关键词是光敏树脂和紫外固化。',why:'SLA 不靠喷嘴挤出，而是用紫外光触发光敏树脂聚合，把液态树脂在指定区域固化成当前层。'},
+  {q:'SLM 金属打印为什么要精确控制激光功率？',opts:['功率越高一定越好','功率只影响屏幕亮度','功率过低不熔合，过高可能翘曲或烧蚀'],ans:2,ok:'对。金属粉末熔化窗口很窄，功率过高过低都会失败。',bad:'SLM 需要合适能量密度，不是越高越好。',why:'SLM 依赖合适的能量密度形成稳定熔池；功率不足会孔隙和未熔合，功率过高会烧蚀、飞溅或热应力翘曲。'},
+  {q:'3D 打印中支撑结构主要解决什么问题？',opts:['让所有模型变得更重','悬空或大角度外伸部分可能塌陷','替代打印平台加热'],ans:1,ok:'对。超过临界角的悬空区域需要支撑承托。',bad:'支撑是为了成型稳定，特别是悬空和桥接区域。',why:'逐层制造需要下一层承托当前层，悬空或大角度外伸没有足够支撑时会下垂、变形甚至打印失败。'},
+  {q:'生物 3D 打印中的“生物墨水”通常包含什么？',opts:['纯金属粉末','熔融 PLA 丝材','活细胞和支架/水凝胶材料'],ans:2,ok:'对。生物墨水要兼顾可打印性、细胞活性和组织培养。',bad:'生物打印不同于 FDM 或 SLM，核心是活细胞和生物相容材料。',why:'生物墨水既要能被打印成稳定结构，又要保护活细胞，因此通常由细胞、营养环境和水凝胶/支架材料共同组成。'}
 ];
 
 /* ===== PANEL ===== */
@@ -213,6 +219,7 @@ let panelDirty=true;
 function renderPanel(){
   if(!panelDirty)return;panelDirty=false;
   const L=levels[curLevel],lo=levelObjs[curLevel];
+  const levelPassed=quizPassed.has(curLevel);
   let h=stageNavHTML();
   h+='<div style="font-size:18px;color:var(--sv);font-weight:bold;margin-bottom:2px">🖨️ 3D打印工程师</div>';
   h+='<div class="sub">交互式教育游戏 · 7个关卡</div>';
@@ -222,14 +229,15 @@ function renderPanel(){
   h+=`<div class="concept-box">${L.concept}</div>`;
   h+='<div style="font-size:11px;color:var(--text-muted);margin:6px 0">目标</div><div class="progress-row">';
   for(let i=0;i<L.objs.length;i++){
-    h+=`<span class="obj${lo[i]?' done':''}">${lo[i]?'✓ ':''}${L.objs[i]}</span>`;
+    const done=levelPassed||lo[i];
+    h+=`<span class="obj${done?' done':''}">${done?'✓ ':''}${L.objs[i]}</span>`;
   }
   h+='</div>';
   h+=`<div id="actions"></div>`;
-  if(lo[0]&&lo[1]&&lo[2]){
-    if(!quizPassed.has(curLevel)){
-      h+=quizHTML(curLevel);
-    }else{
+  const goalsDone=levelPassed||(lo[0]&&lo[1]&&lo[2]);
+  if(goalsDone){
+    h+=quizHTML(curLevel);
+    if(levelPassed){
       h+=`<div class="learn-box">💡 ${L.learn}</div>`;
       if(curLevel<levels.length-1) h+=`<button class="act-btn green" onclick="goLevel(${curLevel+1})">下一关 →</button>`;
       else h+=summaryHTML();
@@ -242,50 +250,102 @@ function renderPanel(){
 function updateInfobar(){
   document.getElementById('ib-level').textContent=`关卡 ${curLevel+1}/7`;
   document.getElementById('ib-title').textContent=levels[curLevel].name;
-  document.getElementById('ib-status').textContent=completedLevels.has(curLevel)?'✓ 已完成':'进行中';
+  document.getElementById('ib-status').textContent=quizPassed.has(curLevel)?'✓ 已完成':levelObjs[curLevel].every(Boolean)?'待测验':'进行中';
 }
-function markObj(i){if(!levelObjs[curLevel][i]){levelObjs[curLevel][i]=true;panelDirty=true;renderPanel();}}
 function checkComplete(){
   const lo=levelObjs[curLevel];
   if(lo[0]&&lo[1]&&lo[2]&&!quizPassed.has(curLevel)){panelDirty=true;renderPanel();}
 }
-function canGoLevel(n){return n>=0&&n<levels.length&&(n===0||completedLevels.has(n)||completedLevels.has(n-1));}
-function goLevel(n){if(!canGoLevel(n))return;curLevel=n;resetLevel();panelDirty=true;renderPanel();}
+function setText(id,text){const el=document.getElementById(id);if(el)el.textContent=text;}
+function toIndex(v,max){
+  const n=Number(v);
+  return Number.isInteger(n)&&n>=0&&n<max?n:null;
+}
+function clampNumber(v,min,max){
+  const n=Number(v);
+  if(!Number.isFinite(n))return null;
+  return Math.min(max,Math.max(min,n));
+}
+function resetProgress(){
+  curLevel=0;
+  completedLevels.clear();
+  quizPassed.clear();
+  for(const k in quizFeedback)delete quizFeedback[k];
+  for(let i=0;i<levelObjs.length;i++)levelObjs[i]=[false,false,false];
+  lState={};
+  resetLevel();
+  panelDirty=true;
+}
+function markObj(i){
+  const idx=toIndex(i,3);
+  if(idx===null||!levelObjs[curLevel]||levelObjs[curLevel][idx])return false;
+  levelObjs[curLevel][idx]=true;
+  panelDirty=true;
+  renderPanel();
+  return true;
+}
+function canGoLevel(n){
+  const idx=toIndex(n,levels.length);
+  return idx!==null&&(idx===0||quizPassed.has(idx-1));
+}
+function goLevel(n){
+  const idx=toIndex(n,levels.length);
+  if(idx===null||!canGoLevel(idx))return;
+  curLevel=idx;resetLevel();panelDirty=true;renderPanel();
+}
 
 function stageNavHTML(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   for(let i=0;i<levels.length;i++){
     const unlocked=canGoLevel(i);
-    const cls=completedLevels.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    const cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    h+=unlocked&&i!==curLevel?`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${cls}"></div>`;
   }
-  h+=`</div><div class="sn-info">第 ${curLevel+1}/${levels.length} 关 | 已通关 ${completedLevels.size}/${levels.length}</div>`;
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/${levels.length} 关 | 已通关 ${quizPassed.size}/${levels.length}</div>`;
   h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
   return h;
 }
 
 function quizHTML(li){
   const q=quizData[li],fb=quizFeedback[li];
+  const passed=quizPassed.has(li);
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
   h+=`<div class="quiz-q">${q.q}</div>`;
-  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;});
+  q.opts.forEach((opt,i)=>{
+    let cls='quiz-opt';
+    if(passed&&i===q.ans)cls+=' correct';
+    else if(fb){
+      if(i===q.ans)cls+=' correct';
+      else if(i===fb.choice)cls+=' wrong';
+    }
+    h+=`<button class="${cls}" onclick="answerQuiz(${li},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;
+  });
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
+  else if(passed)h+=`<div class="quiz-feedback ok">已通过小测。${q.why||q.ok}</div>`;
   h+='</div>';
   return h;
 }
 
 function answerQuiz(li,optIdx){
-  const q=quizData[li],ok=optIdx===q.ans;
-  quizFeedback[li]={ok:ok,text:ok?q.ok:q.bad};
+  li=Number(li);optIdx=Number(optIdx);
+  if(!Number.isInteger(li)||li!==curLevel||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(Boolean))return false;
+  const q=quizData[li];
+  if(!q||!Number.isInteger(optIdx)||optIdx<0||optIdx>=q.opts.length)return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  const ok=optIdx===q.ans;
+  quizFeedback[li]={ok:ok,choice:optIdx,text:ok?`${q.ok} ${q.why||''}`:`${q.bad} ${q.why||''}`};
   if(ok){quizPassed.add(li);completedLevels.add(li);}
   panelDirty=true;renderPanel();updateInfobar();
+  return ok;
 }
 
 function summaryHTML(){
+  if(quizPassed.size<levels.length)return '';
   let h='<div class="summary-box"><div class="summary-title">🏆 3D打印工程师通关</div>';
   h+='<div class="summary-sub">你已完成 7 个增材制造主题</div><div class="summary-stats">';
   h+=`<div class="summary-stat"><div class="num">${levels.length}</div><div class="label">关卡完成</div></div>`;
-  h+=`<div class="summary-stat"><div class="num">${completedLevels.size}</div><div class="label">测验通过</div></div>`;
+  h+=`<div class="summary-stat"><div class="num">${quizPassed.size}</div><div class="label">测验通过</div></div>`;
+  h+=`<div class="summary-stat"><div class="num">${quizPassed.size*3}/21</div><div class="label">目标达成</div></div>`;
   h+='<div class="summary-stat"><div class="num">100%</div><div class="label">知识闭环</div></div></div>';
   h+='<div class="summary-keys"><div style="font-weight:bold;color:#4f46e5;margin-bottom:6px">📚 关键知识回顾</div>';
   levels.forEach(l=>{h+=`<div>✅ ${l.name}</div>`;});
@@ -295,8 +355,9 @@ function summaryHTML(){
 
 /* ===== DRAWING HELPERS ===== */
 function drawBg(){
-  ctx.fillStyle=t().bg1;ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle='rgba(30,30,60,0.3)';ctx.lineWidth=1;
+  const th=t();
+  ctx.fillStyle=th.bg1;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle=th.grid;ctx.lineWidth=1;
   for(let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
   for(let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
 }
@@ -316,6 +377,7 @@ function drawNozzle(x,y,color){
 /* ===== LEVEL STATE ===== */
 let lState={};
 function resetLevel(){
+  if(!quizPassed.has(curLevel))delete quizFeedback[curLevel];
   lState={};
   cv.onmousedown=null;cv.onmousemove=null;cv.onmouseup=null;cv.onclick=null;
   if(curLevel===0)initL0();else if(curLevel===1)initL1();else if(curLevel===2)initL2();
@@ -325,19 +387,35 @@ function resetLevel(){
 
 /* ========== LEVEL 0: SLICING ========== */
 function initL0(){lState={layerH:0.2,adjusted:false,previewed:false};}
+function slicingMetrics(){
+  const modelH=20,layerH=lState.layerH,layers=Math.round(modelH/layerH),time=Math.round(layers*0.08);
+  const quality=layerH<=0.16?'精细表面':layerH<=0.25?'均衡设置':'快速粗糙';
+  return {modelH,layerH,layers,time,quality};
+}
 function renderActions_L0(){
   const a=document.getElementById('actions');if(!a)return;
-  const lh=lState.layerH,modelH=20,layers=Math.round(modelH/lh),time=Math.round(layers*0.08);
-  a.innerHTML=`<div class="slider-row"><label>层高: <span class="slider-val">${lh.toFixed(2)}mm</span></label>`+
+  const m=slicingMetrics(),lh=m.layerH;
+  a.innerHTML=`<div class="slider-row"><label>层高: <span class="slider-val" id="layerHVal">${lh.toFixed(2)}mm</span></label>`+
     `<input type="range" min="10" max="40" value="${Math.round(lh*100)}" oninput="setLayerH(this.value)"></div>`+
-    `<div class="hint-box">模型高度: 20mm<br>层数: <span class="sv">${layers}层</span><br>预计时间: <span class="sv">${time}分钟</span></div>`+
-    `<button class="act-btn" onclick="previewSlice()">预览切片</button>`;
+    `<div class="hint-box">模型高度: ${m.modelH}mm<br>层数: <span class="sv" id="layerCount">${m.layers}层</span><br>预计时间: <span class="sv" id="printTime">${m.time}分钟</span><br>表面效果: <span class="sv" id="sliceQuality">${m.quality}</span><br><span id="sliceReadyHint">${sliceReadyHint(m)}</span></div>`+
+    `<button class="act-btn" id="slicePreviewBtn" onclick="previewSlice()" ${m.layers>=120?'':'disabled'}>预览切片</button>`;
 }
-function setLayerH(v){lState.layerH=v/100;if(!lState.adjusted){lState.adjusted=true;markObj(0);}
-  const layers=Math.round(20/lState.layerH);if(layers>=50&&!levelObjs[0][1]){markObj(1);}panelDirty=true;renderPanel();}
-function previewSlice(){lState.previewed=true;markObj(2);checkComplete();}
+function sliceReadyHint(m=slicingMetrics()){
+  return m.layers>=120?'已达到 120 层以上，可以预览切片并比较精度/耗时。':'先把层数提升到 120 层以上，再生成切片预览。';
+}
+function setLayerH(v){
+  const raw=clampNumber(v,10,40);
+  if(raw===null)return false;
+  lState.layerH=raw/100;if(!lState.adjusted){lState.adjusted=true;markObj(0);}
+  const m=slicingMetrics();
+  setText('layerHVal',`${m.layerH.toFixed(2)}mm`);setText('layerCount',`${m.layers}层`);setText('printTime',`${m.time}分钟`);setText('sliceQuality',m.quality);setText('sliceReadyHint',sliceReadyHint(m));
+  const previewBtn=document.getElementById('slicePreviewBtn');if(previewBtn)previewBtn.disabled=m.layers<120;
+  if(m.layers>=120&&!levelObjs[0][1]){markObj(1);}
+  return true;
+}
+function previewSlice(){if(slicingMetrics().layers<120)return false;lState.previewed=true;markObj(2);checkComplete();return true;}
 function drawL0(){
-  const cx=W/2,cy=H/2,mw=200,mh=250,lh=lState.layerH,layers=Math.round(20/lh);
+  const cx=W/2,cy=H/2,mw=200,mh=250,m=slicingMetrics(),lh=m.layerH,layers=m.layers;
   // model side view - cube/cylinder combo
   const top=cy-mh/2,bot=cy+mh/2;
   ctx.fillStyle='#1a1a3a';ctx.fillRect(cx-mw/2,top,mw,mh);
@@ -360,13 +438,13 @@ function drawL0(){
   drawNozzle(nx,hy-5,'#facc15');
   // filament line
   ctx.strokeStyle='#facc15';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx-mw/2,hy+step/2);ctx.lineTo(nx,hy+step/2);ctx.stroke();
-  drawText(`层高: ${lh.toFixed(2)}mm | ${layers}层`,cx,bot+40,'#facc15',16);
+  drawText(`层高: ${lh.toFixed(2)}mm | ${layers}层 | ${m.quality} | ${m.time}分钟`,cx,bot+40,'#facc15',16);
   drawText('FDM 切片示意',cx,top-40,'#60a5fa',18);
 }
 
 /* ========== LEVEL 1: PATH PLANNING ========== */
 function initL1(){
-  lState={phase:'wall',wallPts:[],fillType:'zigzag',fillRate:20,wallDone:false,fillDone:false,rateAdj:false};
+  lState={phase:'wall',wallPts:[],fillType:'zigzag',fillRate:20,wallDone:false,fillTypeChosen:false,fillDone:false,rateAdj:false};
   cv.onclick=function(e){
     const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
     if(lState.phase==='wall'){
@@ -378,24 +456,59 @@ function initL1(){
 function renderActions_L1(){
   const a=document.getElementById('actions');if(!a)return;
   let h='';
-  if(lState.phase==='wall'){h+=`<div class="hint-box">点击画布绘制外壁轮廓（需8个点）<br>已画: ${lState.wallPts.length}/8</div>`;}
+  if(lState.phase==='wall'){
+    h+=`<div class="hint-box">点击画布绘制外壁轮廓（需8个点）<br>已画: ${lState.wallPts.length}/8</div>`;
+    h+=`<button class="act-btn" onclick="generateWallOutline()">生成矩形外壁轮廓</button>`;
+  }
   else{
-    h+=`<div class="hint-box">选择填充图案并调整填充率</div>`;
+    const ready=lState.fillTypeChosen&&lState.rateAdj;
+    const nextHint=!lState.fillTypeChosen?'先选择一种填充图案':!lState.rateAdj?'再调整填充率':'路径参数已就绪';
+    h+=`<div class="hint-box">选择填充图案并调整填充率<br><span class="sv">${nextHint}</span></div>`;
     h+=`<div class="sel-row">`;
     ['zigzag','grid','honeycomb'].forEach(t=>{
       const names={zigzag:'锯齿',grid:'网格',honeycomb:'蜂窝'};
-      h+=`<button class="act-btn" style="width:auto;display:inline-block;padding:6px 12px;${lState.fillType===t?'border-color:#4ade80;color:#4ade80':''}" onclick="setFillType('${t}')">${names[t]}</button>`;
+      h+=`<button class="act-btn" style="width:auto;display:inline-block;padding:6px 12px;${lState.fillTypeChosen&&lState.fillType===t?'border-color:#4ade80;color:#4ade80':''}" onclick="setFillType('${t}')">${names[t]}</button>`;
     });
     h+=`</div>`;
-    h+=`<div class="slider-row"><label>填充率: <span class="slider-val">${lState.fillRate}%</span></label>`+
+    h+=`<div class="slider-row"><label>填充率: <span class="slider-val" id="fillRateVal">${lState.fillRate}%</span></label>`+
       `<input type="range" min="10" max="100" value="${lState.fillRate}" oninput="setFillRate(this.value)"></div>`;
-    h+=`<button class="act-btn green" onclick="confirmFill()">确认路径</button>`;
+    h+=`<button class="act-btn green" onclick="confirmFill()"${ready?'':' disabled'}>确认路径</button>`;
   }
   a.innerHTML=h;
 }
-function setFillType(t){lState.fillType=t;if(!levelObjs[1][1]){markObj(1);}panelDirty=true;renderPanel();}
-function setFillRate(v){lState.fillRate=parseInt(v);if(!lState.rateAdj){lState.rateAdj=true;markObj(2);}panelDirty=true;renderPanel();}
-function confirmFill(){markObj(0);markObj(1);markObj(2);checkComplete();}
+function setFillType(t){
+  if(!['zigzag','grid','honeycomb'].includes(t))return false;
+  lState.fillType=t;lState.fillTypeChosen=true;if(!levelObjs[1][1]){markObj(1);}panelDirty=true;renderPanel();
+  return true;
+}
+function setFillRate(v){
+  const rate=clampNumber(v,10,100);
+  if(rate===null)return false;
+  lState.fillRate=Math.round(rate);setText('fillRateVal',`${lState.fillRate}%`);
+  if(!lState.rateAdj){lState.rateAdj=true;panelDirty=true;renderPanel();}
+  return true;
+}
+function generateWallOutline(){
+  if(curLevel!==1||lState.phase!=='wall')return false;
+  const cx=W/2,cy=H/2,w=220,h=180;
+  lState.wallPts=[
+    {x:cx-w/2,y:cy-h/2},{x:cx,y:cy-h/2},{x:cx+w/2,y:cy-h/2},{x:cx+w/2,y:cy},
+    {x:cx+w/2,y:cy+h/2},{x:cx,y:cy+h/2},{x:cx-w/2,y:cy+h/2},{x:cx-w/2,y:cy}
+  ];
+  lState.wallDone=true;
+  lState.phase='fill';
+  markObj(0);
+  panelDirty=true;
+  renderPanel();
+  return true;
+}
+function confirmFill(){
+  if(!lState.wallDone||!lState.fillTypeChosen||!lState.rateAdj)return false;
+  lState.fillDone=true;
+  markObj(2);
+  checkComplete();
+  return true;
+}
 function drawL1(){
   const cx=W/2,cy=H/2,sz=280;
   // print bed top view
@@ -415,7 +528,7 @@ function drawL1(){
     lState.wallPts.forEach(p=>{ctx.fillStyle='#f97316';ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();});
   }
   // fill pattern
-  if(lState.phase==='fill'||lState.fillDone){
+  if((lState.phase==='fill'||lState.fillDone)&&lState.fillTypeChosen){
     const density=lState.fillRate/100,gap=Math.max(8,40*(1-density));
     ctx.strokeStyle='rgba(96,165,250,0.4)';ctx.lineWidth=1;
     if(lState.fillType==='zigzag'){
@@ -449,12 +562,13 @@ const materials=[
   {name:'尼龙',color:'#a78bfa',attrs:[5,4,4,2,2],desc:'聚酰胺，耐磨耐疲劳'},
   {name:'TPU',color:'#38bdf8',attrs:[2,3,5,2,3],desc:'热塑性聚氨酯，柔韧弹性'}
 ];
+const matAttrLabels=['强度','耐温','柔韧','易打印','成本'];
 const matTasks=[
-  {desc:'打印花瓶摆件（易打印优先）',answer:0},
-  {desc:'打印汽车零件（强度+耐温）',answer:1},
-  {desc:'打印手机壳（柔韧防摔）',answer:3},
+  {desc:'打印花瓶摆件（易打印优先）',answer:0,why:'摆件更看重易打印、表面稳定和成本，PLA 是最稳妥的入门材料。'},
+  {desc:'打印汽车零件（强度+耐温）',answer:1,why:'汽车零件需要兼顾强度和耐温，ABS 比 PLA 更能承受热环境和机械载荷。'},
+  {desc:'打印手机壳（柔韧防摔）',answer:3,why:'手机壳需要吸收跌落冲击并反复弯折，TPU 的柔韧和回弹最匹配。'},
 ];
-function initL2(){lState={viewed:false,taskIdx:0,selected:-1,correct:0,done:false};}
+function initL2(){lState={viewed:false,taskIdx:0,selected:-1,correct:0,done:false,feedback:''};}
 function renderActions_L2(){
   const a=document.getElementById('actions');if(!a)return;
   if(lState.done){a.innerHTML='<div class="hint-box" style="color:#4ade80">所有任务完成！</div>';return;}
@@ -465,16 +579,33 @@ function renderActions_L2(){
     h+=`<div class="mat-card${lState.selected===i?' selected':''}" onclick="selectMat(${i})"><div style="color:${m.color};font-size:14px;font-weight:bold">${m.name}</div><div style="color:var(--text-muted);font-size:10px">${m.desc}</div></div>`;
   });
   h+='</div>';
+  if(lState.selected>=0){
+    const m=materials[lState.selected];
+    h+=`<div class="hint-box"><span class="sv">${m.name}</span> 属性<br>${matAttrLabels.map((label,i)=>`${label}: ${m.attrs[i]}/5`).join('<br>')}</div>`;
+  }
+  if(lState.feedback)h+=`<div class="hint-box">${lState.feedback}</div>`;
   if(lState.selected>=0)h+=`<button class="act-btn green" onclick="confirmMat()">确认选择</button>`;
   a.innerHTML=h;
 }
-function selectMat(i){lState.selected=i;lState.viewed=true;markObj(0);panelDirty=true;renderPanel();}
+function selectMat(i){
+  const idx=toIndex(i,materials.length);
+  if(idx===null)return false;
+  lState.selected=idx;lState.viewed=true;markObj(0);panelDirty=true;renderPanel();
+  return true;
+}
 function confirmMat(){
   const task=matTasks[lState.taskIdx];
   if(lState.selected===task.answer){
-    lState.correct++;lState.taskIdx++;markObj(1);
+    const picked=materials[lState.selected].name;
+    lState.feedback=`${picked} 选择正确：${task.why}`;
+    lState.correct++;lState.taskIdx++;lState.selected=-1;markObj(1);
     if(lState.taskIdx>=matTasks.length){lState.done=true;markObj(2);checkComplete();}
-  }else{lState.selected=-1;}
+  }else{
+    const right=materials[task.answer].name;
+    const picked=lState.selected>=0?materials[lState.selected].name:'当前材料';
+    lState.feedback=`${picked} 不匹配这个任务。${task.why} 请改选 ${right}。`;
+    lState.selected=-1;
+  }
   panelDirty=true;renderPanel();
 }
 function drawL2(){
@@ -506,10 +637,35 @@ function drawL2(){
 }
 
 /* ========== LEVEL 3: SLA ========== */
-function initL3(){lState={scanX:0,scanY:0,layer:0,maxLayers:5,cured:[],scanning:true,layerDone:false,platformAnim:0};}
+function initL3(){lState={scanX:0,scanY:0,layer:0,maxLayers:5,cured:[],scanning:true,awaitingPlatform:false,complete:false};}
+function slaScanProgress(){
+  return Math.min(100,Math.round(lState.scanX/Math.max(1,W*0.6-40)*100));
+}
 function renderActions_L3(){
   const a=document.getElementById('actions');if(!a)return;
-  a.innerHTML=`<div class="hint-box">UV激光正在扫描第 <span class="sv">${lState.layer+1}/${lState.maxLayers}</span> 层<br>固化进度: <span class="sv">${Math.min(100,Math.round(lState.scanX/(W*0.6)*100))}%</span></div>`;
+  if(lState.awaitingPlatform){
+    const next=lState.layer>=lState.maxLayers?'完成成型':`平台下降到第 ${lState.layer+1} 层`;
+    a.innerHTML=`<div class="hint-box">第 <span class="sv">${lState.layer}/${lState.maxLayers}</span> 层已固化<br>真实 SLA 会让平台下降一个层高，让新树脂流入。</div>`+
+      `<button class="act-btn green" onclick="lowerSLAPlatform()">${next}</button>`;
+    return;
+  }
+  const status=lState.complete?'全部层已固化':'UV激光正在扫描';
+  a.innerHTML=`<div class="hint-box">${status}第 <span class="sv">${Math.min(lState.layer+1,lState.maxLayers)}/${lState.maxLayers}</span> 层<br>固化进度: <span class="sv" id="slaProgressVal">${slaScanProgress()}%</span></div>`;
+}
+function updateSLAReadout(){setText('slaProgressVal',`${slaScanProgress()}%`);}
+function lowerSLAPlatform(){
+  if(!lState.awaitingPlatform||lState.complete)return;
+  lState.awaitingPlatform=false;
+  if(lState.layer>=lState.maxLayers){
+    lState.complete=true;
+    lState.scanning=false;
+    markObj(2);
+    checkComplete();
+  }else{
+    lState.scanX=0;
+    lState.scanning=true;
+    panelDirty=true;renderPanel();
+  }
 }
 function drawL3(){
   const cx=W/2,cy=H/2,tw=W*0.6,th=30,baseY=cy+80;
@@ -526,7 +682,7 @@ function drawL3(){
   // current layer scanning
   const curY=baseY-lState.layer*th;
   // cured portion
-  if(lState.scanX>0){
+  if(lState.scanning&&lState.scanX>0){
     ctx.fillStyle='rgba(200,220,255,0.6)';ctx.fillRect(cx-tw/2+20,curY+5,Math.min(lState.scanX,tw-40),th-5);
   }
   // UV laser beam from top
@@ -541,38 +697,73 @@ function drawL3(){
   // platform
   ctx.fillStyle='#444';ctx.fillRect(cx-tw/2+15,baseY+25,tw-30,8);
   drawText('树脂槽',cx,baseY+lState.maxLayers*th+40,'#1e40af',13);
-  drawText(`第${lState.layer+1}层 / ${lState.maxLayers}层`,cx,baseY+lState.maxLayers*th+60,'#888',12);
+  const shownLayer=lState.scanning?lState.layer+1:Math.max(1,lState.layer);
+  drawText(`第${Math.min(shownLayer,lState.maxLayers)}层 / ${lState.maxLayers}层`,cx,baseY+lState.maxLayers*th+60,'#888',12);
   // advance scan
   if(lState.scanning){
     lState.scanX+=3;
+    updateSLAReadout();
+    if(lState.scanX>(tw-40)*0.2&&!levelObjs[3][0])markObj(0);
     if(lState.scanX>=tw-40){
-      lState.scanX=0;
+      lState.scanX=tw-40;
+      lState.scanning=false;
+      lState.awaitingPlatform=true;
       if(!levelObjs[3][1])markObj(1);
       lState.layer++;
-      if(lState.layer>=lState.maxLayers){lState.scanning=false;markObj(2);checkComplete();}
-      else{markObj(0);panelDirty=true;renderPanel();}
+      panelDirty=true;renderPanel();
     }
   }
 }
 
 /* ========== LEVEL 4: SLM METAL ========== */
-function initL4(){lState={power:50,scanX:0,layer:0,maxLayers:4,phase:'powder',powderAnim:0,scanning:false,layers:[]};}
+function initL4(){lState={power:25,powerAdjusted:false,powerConfirmed:false,scanX:0,layer:0,maxLayers:4,phase:'powder',powderAnim:0,scanning:false,layers:[]};}
 function renderActions_L4(){
   const a=document.getElementById('actions');if(!a)return;
   const pOk=lState.power>=40&&lState.power<=70;
-  let h=`<div class="slider-row"><label>激光功率: <span class="slider-val">${lState.power}W</span> ${lState.power<40?'⚠️ 功率不足':''}${lState.power>70?'⚠️ 功率过高':''}</label>`+
+  let h=`<div class="slider-row"><label>激光功率: <span class="slider-val" id="slmPowerVal">${lState.power}W</span> <span id="slmPowerWarn">${lState.power<40?'⚠️ 功率不足':''}${lState.power>70?'⚠️ 功率过高':''}</span></label>`+
     `<input type="range" min="10" max="100" value="${lState.power}" oninput="setSLMPower(this.value)"></div>`;
-  h+=`<div class="hint-box">当前: ${lState.phase==='powder'?'铺粉中':'激光烧结中'} | 第${lState.layer+1}/${lState.maxLayers}层<br>`;
-  h+=pOk?'<span style="color:#4ade80">功率合适 ✓</span>':'<span style="color:#f87171">请调整到40-70W范围</span>';
+  const complete=lState.layer>=lState.maxLayers;
+  const shownLayer=complete?lState.maxLayers:lState.layer+1;
+  h+=`<div class="hint-box">当前: ${complete?'烧结完成':lState.phase==='powder'?'铺粉中':'激光烧结中'} | 第${shownLayer}/${lState.maxLayers}层<br>`;
+  h+=pOk?'<span id="slmPowerStatus" style="color:#4ade80">功率合适 ✓</span>':'<span id="slmPowerStatus" style="color:#f87171">请调整到40-70W范围</span>';
+  if(!lState.powerConfirmed)h+='<br><span style="color:var(--text-muted)">先把偏低功率调入可熔合窗口，再确认为什么过低/过高都会失败。</span>';
+  else if(!complete&&lState.phase==='powder')h+='<br><span style="color:var(--text-muted)">每一层都要重新铺粉，再用激光熔化形成致密金属层。</span>';
   h+=`</div>`;
-  if(lState.phase==='powder')h+=`<button class="act-btn" onclick="startSLMScan()"${pOk?'':' disabled'}>开始烧结</button>`;
+  if(pOk&&!lState.powerConfirmed)h+=`<button class="act-btn green" onclick="confirmSLMPowerWindow()">确认激光功率窗口</button>`;
+  if(lState.phase==='powder'&&!complete)h+=`<button class="act-btn" id="slmScanBtn" onclick="startSLMScan()"${lState.powerConfirmed?'':' disabled'}>${lState.layer===0?'开始烧结':'继续烧结下一层'}</button>`;
   a.innerHTML=h;
 }
-function setSLMPower(v){lState.power=parseInt(v);panelDirty=true;renderPanel();}
+function setSLMPower(v){
+  const power=clampNumber(v,10,100);
+  if(power===null)return false;
+  const wasOk=lState.power>=40&&lState.power<=70;
+  lState.power=Math.round(power);
+  const pOk=lState.power>=40&&lState.power<=70;
+  lState.powerAdjusted=true;
+  setText('slmPowerVal',`${lState.power}W`);
+  setText('slmPowerWarn',lState.power<40?'⚠️ 功率不足':lState.power>70?'⚠️ 功率过高':'');
+  const status=document.getElementById('slmPowerStatus');
+  if(status){status.textContent=pOk?'功率合适 ✓':'请调整到40-70W范围';status.style.color=pOk?'#4ade80':'#f87171';}
+  let needsRender=wasOk!==pOk;
+  if(!pOk&&!quizPassed.has(4)){
+    lState.powerConfirmed=false;
+    if(levelObjs[4][1]){levelObjs[4][1]=false;needsRender=true;}
+  }
+  const btn=document.getElementById('slmScanBtn');if(btn)btn.disabled=!lState.powerConfirmed;
+  if(needsRender){panelDirty=true;renderPanel();}
+  return true;
+}
+function confirmSLMPowerWindow(){
+  if(curLevel!==4||lState.power<40||lState.power>70)return false;
+  lState.powerConfirmed=true;
+  markObj(1);
+  return true;
+}
 function startSLMScan(){
-  if(lState.power<40||lState.power>70)return;
+  if(!lState.powerConfirmed||lState.power<40||lState.power>70||lState.layer>=lState.maxLayers)return false;
   lState.phase='scan';lState.scanX=0;lState.scanning=true;
   if(!levelObjs[4][0])markObj(0);panelDirty=true;renderPanel();
+  return true;
 }
 function drawL4(){
   const cx=W/2,cy=H/2,tw=W*0.6,th=25,baseY=cy+60;
@@ -624,7 +815,6 @@ function drawL4(){
     lState.scanX+=4;
     if(lState.scanX>=tw-40){
       lState.layer++;lState.scanX=0;lState.phase='powder';lState.scanning=false;
-      markObj(1);
       if(lState.layer>=lState.maxLayers){markObj(2);checkComplete();}
       panelDirty=true;renderPanel();
     }
@@ -637,7 +827,7 @@ function drawL4(){
 /* ========== LEVEL 5: SUPPORT STRUCTURES ========== */
 function initL5(){
   // T-shaped model with overhangs
-  lState={supports:[],removed:false,identified:false,
+  lState={supports:[],removed:false,finishedChecked:false,identified:false,
     overhangs:[
       {x:0.15,y:0.35,w:0.18,h:0.05},// left overhang
       {x:0.67,y:0.35,w:0.18,h:0.05},// right overhang
@@ -670,9 +860,27 @@ function renderActions_L5(){
   const allPlaced=lState.needed.every(s=>s.placed);
   let h=`<div class="hint-box">红色区域为悬空部分，点击其下方添加支撑柱<br>已添加: ${lState.supports.length}/${lState.needed.length}</div>`;
   if(allPlaced&&!lState.removed)h+=`<button class="act-btn green" onclick="removeSupports()">移除支撑</button>`;
+  else if(lState.removed&&!lState.finishedChecked){
+    h+=`<div class="hint-box">支撑已拆除。检查蓝色悬垂区域是否保持平直，确认支撑只承担成型阶段的临时承托。</div>`;
+    h+=`<button class="act-btn green" onclick="inspectSupportedPrint()">检查成品悬垂面</button>`;
+  }else if(lState.finishedChecked){
+    h+=`<div class="learn-box" style="font-size:12px">已检查：支撑柱在打印时托住悬空区域，移除后主体仍保持 T 形结构，后处理才算完成。</div>`;
+  }
   a.innerHTML=h;
 }
-function removeSupports(){lState.removed=true;markObj(2);checkComplete();}
+function removeSupports(){
+  if(!lState.needed.every(s=>s.placed))return false;
+  lState.removed=true;
+  panelDirty=true;renderPanel();
+  return true;
+}
+function inspectSupportedPrint(){
+  if(!lState.removed)return false;
+  lState.finishedChecked=true;
+  markObj(2);
+  checkComplete();
+  return true;
+}
 function drawL5(){
   const cx=W/2,cy=H/2,mw=W*0.7,mh=H*0.7,ox=W*0.15,oy=H*0.15;
   drawText('支撑结构设计',cx,30,'#60a5fa',18);
@@ -710,7 +918,7 @@ function drawL5(){
       }
     });
   }
-  if(lState.removed){drawText('✓ 支撑已移除，打印完成！',cx,oy+mh+20,'#4ade80',16);}
+  if(lState.removed){drawText(lState.finishedChecked?'✓ 悬垂面检查通过，打印完成！':'支撑已移除，检查悬垂面是否保持成型',cx,oy+mh+20,lState.finishedChecked?'#4ade80':'#facc15',16);}
 }
 
 /* ========== LEVEL 6: BIOPRINTING ========== */

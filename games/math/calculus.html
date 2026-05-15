@@ -149,7 +149,7 @@ window.addEventListener('resize',resize);
 function canGoLevel(n){return n>=0&&n<9&&(n===0||completedLevels.has(n)||completedLevels.has(n-1))}
 function startGame(){document.getElementById('overlay').style.display='none';document.getElementById('game').style.display='block';panel.style.display='block';bar.style.display='flex';li=0;quizFeedback='';initLevel();renderPanel();renderBar();requestAnimationFrame(function(){resize();loop()})}
 function goLevel(n){
-  n=Math.max(0,Math.min(8,n));
+  if(n<0||n>=9)return;
   if(!canGoLevel(n)){
     quizFeedback='请先通过当前关卡的小测验，再解锁第 '+(n+1)+' 关。';
     renderPanel();
@@ -279,7 +279,7 @@ function renderPanel(){
   let nav='<div class="stage-nav"><div class="sn-bar">';
   for(let i=0;i<9;i++){
     const cls=(completedLevels.has(i)?'done ':i===li?'cur ':'')+(canGoLevel(i)?'':'locked');
-    nav+='<div class="sn-d '+cls+'" onclick="goLevel('+i+')"></div>';
+    nav+='<div class="sn-d '+cls+'" '+(canGoLevel(i)?'onclick="goLevel('+i+')"':'')+'></div>';
   }
   nav+='</div><div class="sn-info">第 '+(li+1)+' / 9 关</div>';
   nav+='<div class="sn-hint">'+completedLevels.size+'/9 已通关，完成目标后答对测验才解锁下一关</div></div>';
@@ -724,7 +724,7 @@ function renderPanel(){
     if(quizPassed[li]){
       c+='<div class="learn-box">'+learnTexts[li]+'</div>';
       if(li<8)c+='<button class="act-btn" style="margin-top:8px" onclick="goLevel('+(li+1)+')">下一关 →</button>';
-      else c+='<button class="act-btn" style="margin-top:8px;background:linear-gradient(135deg,#22c55e,#4ade80)" onclick="showResult()">查看总结 🎉</button>';
+      else if(completedLevels.size===9)c+='<button class="act-btn" style="margin-top:8px;background:linear-gradient(135deg,#22c55e,#4ade80)" onclick="showResult()">查看总结 🎉</button>';
     }else{
       const q=quizData[li];
       c+='<div style="margin-top:12px;padding:10px;border-radius:8px;background:var(--quiz-bg);border:1px solid var(--quiz-border);font-size:13px;line-height:1.7">';
@@ -749,6 +749,7 @@ function renderBar(){
 }
 
 function answerQuiz(choice){
+  if(!levelObjs[li].every(Boolean)||quizPassed[li])return;
   const q=quizData[li];
   if(choice===q.answer){
     quizPassed[li]=true;
@@ -1082,6 +1083,7 @@ function checkReverse(){
   draw();
 }
 function showResult(){
+  if(completedLevels.size<9)return;
   const overlay=document.getElementById('overlay');
   overlay.style.display='flex';
   const done=levelObjs.flat().filter(Boolean).length;

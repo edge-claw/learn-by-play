@@ -10,7 +10,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/games-91-blue?style=flat-square" alt="91 games"/>
-  <img src="https://img.shields.io/badge/levels-630+-green?style=flat-square" alt="630+ levels"/>
+  <img src="https://img.shields.io/badge/levels-619+-green?style=flat-square" alt="619+ levels"/>
   <img src="https://img.shields.io/badge/dependencies-0-orange?style=flat-square" alt="zero dependencies"/>
   <img src="https://img.shields.io/github/license/edge-claw/learn-by-play?style=flat-square" alt="MIT license"/>
 </p>
@@ -34,7 +34,7 @@
 | **经济学** | **市场经济** · **拍卖与机制设计** · **国际贸易** |
 | **前沿技术** | **自动驾驶** · **核聚变工程** · **合成生物学** · **脑科学** |
 
-共 **91 个游戏**，**630+ 个关卡**，覆盖 **12 大领域**。
+共 **91 个游戏**，**619+ 个关卡**，覆盖 **12 大领域**。
 
 ## 特点
 

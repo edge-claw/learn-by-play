@@ -266,7 +266,7 @@ let ls={}; // levelState
 
 // 全局状态
 let accounts={
-  you:{name:'你',addr:shortAddr(),bal:10,emoji:'👤'},
+  you:{name:'你',addr:shortAddr(),bal:50,emoji:'👤'},
   alice:{name:'Alice',addr:shortAddr(),bal:5,emoji:'👩'},
   bob:{name:'Bob',addr:shortAddr(),bal:3,emoji:'👨'},
   charlie:{name:'Charlie',addr:shortAddr(),bal:2,emoji:'🧑'},
@@ -277,11 +277,11 @@ let nfts=[];
 let gasPrice=20; // gwei
 
 const QUIZZES=[
-  {q:'智能合约部署后，谁可以修改它？',opts:['A. 合约作者','B. 没有人','C. 以太坊基金会'],ans:1},
+  {q:'智能合约部署后，谁可以修改它？',opts:['A. 没有人','B. 合约作者','C. 以太坊基金会'],ans:0},
   {q:'Gas 机制的主要目的是什么？',opts:['A. 让以太坊赚钱','B. 防止程序滥用并激励验证者','C. 限制交易速度'],ans:1},
-  {q:'任何人都能发行 ERC-20 代币，代币的价值取决于什么？',opts:['A. 发行数量','B. 共识和应用场景','C. 代码复杂度'],ans:1},
+  {q:'任何人都能发行 ERC-20 代币，代币的价值取决于什么？',opts:['A. 发行数量','B. 代码复杂度','C. 共识和应用场景'],ans:2},
   {q:'NFT 本质上代表什么？',opts:['A. 一张图片','B. 链上的所有权登记','C. 一种加密货币'],ans:1},
-  {q:'Uniswap 用什么取代了传统交易所的撮合机制？',opts:['A. 人工智能','B. x×y=k 数学公式','C. 中心化数据库'],ans:1},
+  {q:'Uniswap 用什么取代了传统交易所的撮合机制？',opts:['A. 人工智能','B. 中心化数据库','C. x×y=k 数学公式'],ans:2},
   {q:'PoS 中，验证者作弊会面临什么后果？',opts:['A. 损失质押金（Slashing）','B. 禁止登录','C. 只是警告'],ans:0},
 ];
 let quizPassedSet=new Set();
@@ -620,6 +620,7 @@ function startGame(){
 }
 
 function loadLevel(idx){
+  if(!canGoLevel(idx))return;
   currentLevel=idx;
   const lv=LEVELS[idx];
   ls=lv.init();
@@ -671,7 +672,7 @@ function renderLevel(){
     h+=`<div style="background:var(--learn-bg);border:1px solid var(--learn-border);border-radius:8px;padding:10px 12px;margin:8px 12px;font-size:12px;color:var(--learn-text);line-height:1.7">${lv.learn}</div>`;
     h+=`<div class="quiz-box" id="quiz-${qi}" style="margin:8px 12px">
       <div class="quiz-q">📝 小测验：${quiz.q}</div>
-      ${quiz.opts.map((o,i)=>`<div class="quiz-opt" onclick="checkQuiz(${qi},${i})">${o}</div>`).join('')}
+      ${quiz.opts.map((o,i)=>`<div class="quiz-opt" onclick="answerQuiz(${qi},${i})">${o}</div>`).join('')}
     </div>`;
   }
 
@@ -691,8 +692,9 @@ function renderStageNav(){
   const pct=Math.round(completedLevels.size/LEVELS.length*100);
   let h='<div class="stage-nav"><div class="sn-bar">';
   for(let i=0;i<LEVELS.length;i++){
-    const cls=completedLevels.has(i)?'done':(i===currentLevel?'cur':(canGoLevel(i)?'':'locked'));
-    h+=`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`;
+    const unlocked=canGoLevel(i);
+    const cls=completedLevels.has(i)?'done':(i===currentLevel?'cur':(unlocked?'':'locked'));
+    h+=`<div class="sn-d ${cls}" ${unlocked?`onclick="goLevel(${i})"`:''}></div>`;
   }
   h+='</div>';
   h+=`<div class="sn-info">📍 第${currentLevel+1}/${LEVELS.length}关 | 进度 ${pct}%</div>`;
@@ -891,6 +893,10 @@ function doAction(action,param){
   }
   // 第6关
   else if(action==='stake'){
+    if(accounts.you.bal<32){
+      addLog('⚠️ 余额不足：成为验证者需要 32 ETH 质押金');
+      return;
+    }
     ls.staked=true;accounts.you.bal-=32;
     showEVM([
       {type:'step-run',text:'▶ CALL DepositContract.deposit()'},
@@ -932,8 +938,11 @@ function doAction(action,param){
   }
 }
 
-function checkQuiz(levelIdx,chosen){
+function answerQuiz(levelIdx,chosen){
   if(quizCooldown)return;
+  if(levelIdx!==currentLevel||quizPassedSet.has(levelIdx))return;
+  const lv=LEVELS[levelIdx];
+  if(!lv||!lv.goals.every(g=>g.check(ls)))return;
   const quiz=QUIZZES[levelIdx];
   const opts=document.querySelectorAll(`#quiz-${levelIdx} .quiz-opt`);
   if(chosen===quiz.ans){
@@ -1050,8 +1059,9 @@ requestAnimationFrame(loop);
     var pct=s.total>0?Math.round(s.done/s.total*100):0;
     var h='<div class="stage-nav"><div class="sn-bar">';
     for(var i=0;i<total;i++){
-      var cls=_isDone(i)?'done':i===cur?'cur':'';
-      h+='<div class="sn-d '+cls+'" onclick="typeof goLevel===\'function\'&&goLevel('+i+')"></div>';
+      var unlocked=typeof canGoLevel==='function'?canGoLevel(i):true;
+      var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
+      h+='<div class="sn-d '+cls+'" '+(unlocked?'onclick="typeof goLevel===\'function\'&&goLevel('+i+')"':'')+'></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
@@ -1063,6 +1073,7 @@ requestAnimationFrame(loop);
   // 3. 通关总结
   window._summaryHTML=function(){
     var names=_getNames(),total=names.length;
+    if(typeof quizPassedSet!=='undefined'&&quizPassedSet.size<total)return '';
     var s=_countDone();
     var pct=s.total>0?Math.round(s.done/s.total*100):100;
     var h='<div class="summary-box">';

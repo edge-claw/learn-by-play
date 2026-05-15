@@ -187,12 +187,12 @@ const levelInfo=[
 ];
 const quizData=[
 {q:'图 G=(V,E) 中的 V 和 E 分别表示什么？',opts:['顶点集合和边集合','访问顺序和边权总和','颜色集合和路径集合'],ans:0,ok:'对。图由顶点和边组成，后续算法都在这个结构上运行。',bad:'回看本关概念框：V 是顶点集，E 是边集。'},
-{q:'BFS 与 DFS 最核心的差别是什么？',opts:['BFS 逐层扩散，DFS 沿路径深入再回溯','BFS 只能用于有权图，DFS 只能用于无权图','二者访问顺序必然相同'],ans:0,ok:'对。BFS 像水波逐层扩散，DFS 像走迷宫一路到底。',bad:'比较面板里的 BFS/DFS 顺序，它们的推进策略不同。'},
-{q:'Dijkstra 算法每一步主要做什么？',opts:['选当前未访问的最近节点，并松弛它的邻边','随机选择一条边加入路径','优先选择权重最大的边'],ans:0,ok:'对。贪心选最近点，再更新邻居距离。',bad:'Dijkstra 的关键词是最近未访问节点和松弛。'},
-{q:'最小生成树必须满足什么？',opts:['连接所有顶点、没有环、总边权尽量小','经过每条边恰好一次','让所有顶点颜色不同'],ans:0,ok:'对。MST 是连通所有顶点的最小权重无环边集。',bad:'Kruskal 和 Prim 都在避免成环的同时选择较小边。'},
-{q:'合法图着色要求什么？',opts:['相邻节点不能同色','所有节点必须用不同颜色','边权必须相等'],ans:0,ok:'对。图着色约束只发生在相邻节点之间。',bad:'注意目标写的是“没有相邻节点同色”。'},
-{q:'Ford-Fulkerson 求最大流时反复寻找什么？',opts:['从源点到汇点的增广路径','度数最大的节点','颜色冲突最少的边'],ans:0,ok:'对。每条增广路径都会增加一部分可行流量，直到没有可增广路径。',bad:'最大流动画中的每一步都是一条增广路径。'},
-{q:'欧拉路径和哈密顿路径的区别是什么？',opts:['欧拉路径关注每条边一次，哈密顿路径关注每个点一次','二者都只关注最短距离','二者都要求所有边权相同'],ans:0,ok:'对。欧拉看边，哈密顿看点，这是两类经典路径问题的分界。',bad:'七桥问题是每条边一次；旅行商问题更接近每个点一次。'}
+{q:'BFS 与 DFS 最核心的差别是什么？',opts:['BFS 只能用于有权图，DFS 只能用于无权图','BFS 逐层扩散，DFS 沿路径深入再回溯','二者访问顺序必然相同'],ans:1,ok:'对。BFS 像水波逐层扩散，DFS 像走迷宫一路到底。',bad:'比较面板里的 BFS/DFS 顺序，它们的推进策略不同。'},
+{q:'Dijkstra 算法每一步主要做什么？',opts:['随机选择一条边加入路径','优先选择权重最大的边','选当前未访问的最近节点，并松弛它的邻边'],ans:2,ok:'对。贪心选最近点，再更新邻居距离。',bad:'Dijkstra 的关键词是最近未访问节点和松弛。'},
+{q:'最小生成树必须满足什么？',opts:['经过每条边恰好一次','连接所有顶点、没有环、总边权尽量小','让所有顶点颜色不同'],ans:1,ok:'对。MST 是连通所有顶点的最小权重无环边集。',bad:'Kruskal 和 Prim 都在避免成环的同时选择较小边。'},
+{q:'合法图着色要求什么？',opts:['所有节点必须用不同颜色','边权必须相等','相邻节点不能同色'],ans:2,ok:'对。图着色约束只发生在相邻节点之间。',bad:'注意目标写的是“没有相邻节点同色”。'},
+{q:'Ford-Fulkerson 求最大流时反复寻找什么？',opts:['度数最大的节点','从源点到汇点的增广路径','颜色冲突最少的边'],ans:1,ok:'对。每条增广路径都会增加一部分可行流量，直到没有可增广路径。',bad:'最大流动画中的每一步都是一条增广路径。'},
+{q:'欧拉路径和哈密顿路径的区别是什么？',opts:['二者都只关注最短距离','二者都要求所有边权相同','欧拉路径关注每条边一次，哈密顿路径关注每个点一次'],ans:2,ok:'对。欧拉看边，哈密顿看点，这是两类经典路径问题的分界。',bad:'七桥问题是每条边一次；旅行商问题更接近每个点一次。'}
 ];
 
 /* ===== GRAPH UTILITIES ===== */
@@ -526,7 +526,7 @@ function checkObjs(){
 /* ===== RENDER PANEL ===== */
 function renderPanel(){
   let li=curLevel,info=levelInfo[li];
-  const levelComplete=quizPassed.has(li)||completedLevels.has(li);
+  const levelComplete=quizPassed.has(li);
   let h=stageNavHTML()+`<h2>${info.title}</h2><div class="level-sub">${info.sub}</div>`;
   h+=`<div class="desc">${info.desc}</div>`;
   h+=`<ul class="obj-list">`;
@@ -601,16 +601,16 @@ function renderPanel(){
 }
 
 function canGoLevel(li){
-  return li>=0&&li<levelInfo.length&&(li===0||completedLevels.has(li)||completedLevels.has(li-1));
+  return li>=0&&li<levelInfo.length&&(li===0||quizPassed.has(li-1));
 }
 function stageNavHTML(){
   let h='<div class="stage-nav"><div class="sn-bar">';
   for(let i=0;i<levelInfo.length;i++){
     const unlocked=canGoLevel(i);
-    const cls=completedLevels.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    const cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
+    h+=unlocked&&i!==curLevel?`<div class="sn-d ${cls}" onclick="goLevel(${i})"></div>`:`<div class="sn-d ${cls}"></div>`;
   }
-  h+=`</div><div class="sn-info">第 ${curLevel+1}/${levelInfo.length} 关 | 已通关 ${completedLevels.size}/${levelInfo.length}</div>`;
+  h+=`</div><div class="sn-info">第 ${curLevel+1}/${levelInfo.length} 关 | 已通关 ${quizPassed.size}/${levelInfo.length}</div>`;
   h+='<div class="sn-hint">完成目标后答对通关小测验，才解锁下一关</div></div>';
   return h;
 }
@@ -624,12 +624,19 @@ function quizHTML(li){
   return h;
 }
 function answerQuiz(li,oi){
-  const q=quizData[li],ok=oi===q.ans;
+  li=Number(li);oi=Number(oi);
+  if(!Number.isInteger(li)||!Number.isInteger(oi)||li<0||li>=levelInfo.length)return;
+  if(li!==curLevel||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(Boolean))return;
+  const q=quizData[li];
+  if(!q||oi<0||oi>=q.opts.length)return;
+  if(li>0&&!quizPassed.has(li-1))return;
+  const ok=oi===q.ans;
   quizFeedback[li]={ok,text:ok?q.ok:q.bad};
   if(ok){quizPassed.add(li);completedLevels.add(li);}
   renderPanel();renderBar();
 }
 function summaryHTML(){
+  if(quizPassed.size<levelInfo.length)return '';
   let h='<div class="summary-box"><div class="summary-title">🏆 图论探险通关</div>';
   h+='<div class="summary-sub">你已完成 7 个图论与算法主题</div><div class="summary-keys">';
   levelInfo.forEach(info=>{h+=`<div>✅ ${info.title}</div>`});
@@ -644,6 +651,8 @@ function renderBar(){
 
 /* ===== GO TO LEVEL ===== */
 function goLevel(li){
+  li=Number(li);
+  if(!Number.isInteger(li))return;
   if(!canGoLevel(li))return;
   curLevel=li;stopAnim();
   setupLevel(li);

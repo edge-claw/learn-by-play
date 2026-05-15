@@ -215,49 +215,56 @@ const quizData = [
     opts: ['把多种专用硬件和互联集成在一颗芯片上', '只能运行一个任务', '不需要内存控制器'],
     ans: 0,
     ok: '正确。SoC 的价值在于集成异构模块和片上互联。',
-    bad: '再看模块布局：CPU、GPU、NPU、VPU、DDR 控制器都在同一芯片内协作。'
+    bad: '再看模块布局：CPU、GPU、NPU、VPU、DDR 控制器都在同一芯片内协作。',
+    why: 'SoC 的核心不是只有 CPU，而是把计算、图形、视频、AI、内存控制和外设放进同一片上系统，减少板级连接和数据搬运成本。'
   },
   {
     q: 'AI 推理任务为什么会经过 DDR 和 NPU？',
-    opts: ['模型数据从 DDR 读入 NPU，计算结果再写回内存', 'NPU 只负责显示输出', 'DDR 会替代 NPU 做卷积'],
-    ans: 0,
+    opts: ['NPU 只负责显示输出', '模型数据从 DDR 读入 NPU，计算结果再写回内存', 'DDR 会替代 NPU 做卷积'],
+    ans: 1,
     ok: '正确。NPU 是计算单元，DDR 是数据存储与交换中心。',
-    bad: '观察 tensor 和 result 粒子：数据先到 NPU，结果再回 DDR。'
+    bad: '观察 tensor 和 result 粒子：数据先到 NPU，结果再回 DDR。',
+    why: '模型权重和输入张量通常存放在 DDR，NPU 负责密集矩阵/卷积计算，结果再写回内存供后续模块或软件读取。'
   },
   {
     q: '视频解码使用 VPU 的主要原因是什么？',
-    opts: ['专用硬件处理视频更高效、更省电', 'VPU 是网络接口', '视频解码必须由 GPU 完成'],
-    ans: 0,
+    opts: ['VPU 是网络接口', '视频解码必须由 GPU 完成', '专用硬件处理视频更高效、更省电'],
+    ans: 2,
     ok: '正确。VPU 用固定功能硬件处理编解码，适合高分辨率视频。',
-    bad: '看视频任务路径：码流进入 VPU，处理后再经过内存。'
+    bad: '看视频任务路径：码流进入 VPU，处理后再经过内存。',
+    why: '视频编解码是规则固定、吞吐很高的工作负载，用 VPU 固定功能硬件比让 CPU/GPU 长时间软解更省电。'
   },
   {
     q: 'GPU 渲染后，帧缓冲通常会去哪里？',
     opts: ['写入 DDR，再交给显示输出链路', '直接写进 NPU 核心', '只保存在 PCIe 控制器里'],
     ans: 0,
     ok: '正确。帧缓冲经过内存再被显示控制器取走输出。',
-    bad: '观察 render 任务：GPU 结果会回到 DDR，然后走向 HDMI。'
+    bad: '观察 render 任务：GPU 结果会回到 DDR，然后走向 HDMI。',
+    why: 'GPU 生成的画面通常以帧缓冲形式存入内存，显示控制器再按刷新节奏读取这些像素并输出到 HDMI。'
   },
   {
     q: '压力测试中 DDR 负载升高说明什么？',
-    opts: ['多个模块同时搬运数据，内存带宽成为共享资源', 'DDR 正在替代所有计算模块', '总线完全不参与数据传输'],
-    ans: 0,
+    opts: ['DDR 正在替代所有计算模块', '多个模块同时搬运数据，内存带宽成为共享资源', '总线完全不参与数据传输'],
+    ans: 1,
     ok: '正确。多模块并发时，DDR 与 NoC 是关键共享瓶颈。',
-    bad: '看 flood 任务：很多粒子会从 DDR 发往多个模块。'
+    bad: '看 flood 任务：很多粒子会从 DDR 发往多个模块。',
+    why: '多模块同时读写时，计算单元不一定是唯一瓶颈；共享 DDR 带宽和 NoC 仲裁会决定整体吞吐。'
   },
   {
     q: '热力图最适合帮助理解什么？',
     opts: ['负载与发热热点的关系', '芯片封装颜色偏好', 'HTML 主题切换逻辑'],
     ans: 0,
     ok: '正确。高负载模块通常在热力图中更“热”。',
-    bad: '打开热力图后比较不同模块颜色，颜色变化反映当前负载。'
+    bad: '打开热力图后比较不同模块颜色，颜色变化反映当前负载。',
+    why: '负载越高，动态功耗越高，热量越集中；热力图能帮助理解为什么持续性能受散热条件限制。'
   },
   {
     q: '异构 SoC 调度的关键思想是什么？',
-    opts: ['把任务交给最合适的专用模块，并减少不必要的数据搬运', '所有任务都强制交给 CPU 大核', '让每个模块永远满载才最高效'],
-    ans: 0,
+    opts: ['所有任务都强制交给 CPU 大核', '让每个模块永远满载才最高效', '把任务交给最合适的专用模块，并减少不必要的数据搬运'],
+    ans: 2,
     ok: '正确。高效调度来自模块分工和数据流优化。',
-    bad: '回看三类任务：AI、视频、渲染分别由不同专用模块承担。'
+    bad: '回看三类任务：AI、视频、渲染分别由不同专用模块承担。',
+    why: '异构调度要让 CPU 做控制流，让 NPU/GPU/VPU 做专用计算，并尽量让数据在模块间少绕路、少等待。'
   }
 ];
 
@@ -334,10 +341,11 @@ const buses = [
 ];
 
 function isUnlocked(idx) {
-  return idx === 0 || completedLevels.has(idx - 1);
+  return idx >= 0 && idx < levels.length && (idx === 0 || completedLevels.has(idx - 1));
 }
 
 function goLevel(idx) {
+  if (idx < 0 || idx >= levels.length) return;
   if (!isUnlocked(idx)) return;
   curLevel = idx;
   renderPanel();
@@ -370,7 +378,8 @@ function renderStageNav() {
     if (completedLevels.has(i)) cls += ' done';
     if (i === curLevel) cls += ' cur';
     if (!isUnlocked(i)) cls += ' locked';
-    h += `<div class="${cls}" onclick="goLevel(${i})"></div>`;
+    const clickable = isUnlocked(i) && i !== curLevel;
+    h += `<div class="${cls}" ${clickable ? `onclick="goLevel(${i})"` : ''}></div>`;
   }
   h += `</div><div class="sn-info">第 ${curLevel + 1}/${levels.length} 关：${levels[curLevel].title}</div>`;
   h += `<div class="sn-hint">${completedLevels.size}/${levels.length} 已通关，完成观察后答对测验才解锁下一关</div></div>`;
@@ -391,7 +400,11 @@ function renderQuiz() {
 }
 
 function answerQuiz(choice) {
+  choice = Number(choice);
+  if (!Number.isInteger(choice) || choice < 0) return;
+  if (quizPassed.has(curLevel) || !levelGoalDone(curLevel)) return;
   const qd = quizData[curLevel];
+  if (!qd || choice >= qd.opts.length) return;
   const ok = choice === qd.ans;
   quizFeedback[curLevel] = { ok, text: ok ? qd.ok : qd.bad };
   if (ok) {
@@ -423,6 +436,8 @@ function renderPanel() {
   } else if (!quizPassed.has(curLevel)) {
     h += renderQuiz();
   } else {
+    const qd = quizData[curLevel];
+    h += `<div class="quiz-box"><div class="quiz-feedback ok">✅ 小测要点：${qd.why || qd.ok}</div></div>`;
     h += `<div class="learn-box">🎓 ${L.learn}</div>`;
     if (curLevel < levels.length - 1) h += `<button class="act-btn green" onclick="goLevel(${curLevel + 1})">下一关 →</button>`;
     else h += renderSummary();

@@ -212,12 +212,12 @@ const learnTexts=[
 ];
 const quizData=[
   {q:'向量数乘 k·a 最直接改变的是什么？',opts:['向量长度，k<0 时方向也会反向','只改变向量起点','只改变坐标轴颜色'],ans:0,ok:'对。数乘会缩放向量，负数倍还会让方向反转。',bad:'回到画布看粉色 k·a：它和 a 共线，但长度随 k 改变。'},
-  {q:'二维线性变换为什么可以用矩阵表示？',opts:['矩阵列向量描述基向量被送到哪里','矩阵只负责储存像素颜色','矩阵一定把所有图形变成圆'],ans:0,ok:'对。知道 e1、e2 的新位置，就能确定任意向量的线性变换结果。',bad:'观察 e1 和 e2 的箭头，矩阵列向量就是基向量的新方向。'},
-  {q:'高斯消元的核心动作是什么？',opts:['用合法行变换把方程组化成阶梯形','随机删除一个方程','只画出三条直线'],ans:0,ok:'对。行变换保持解集不变，同时把矩阵整理到更容易回代的形态。',bad:'高斯消元不是猜答案，而是用行变换逐步消去未知量。'},
-  {q:'行列式 det(A)=0 表示什么几何意义？',opts:['面积被压缩为 0，变换不可逆','面积扩大一倍','所有方向都保持不变'],ans:0,ok:'对。二维面积塌缩到 0 时，平面被压到线或点，无法唯一还原。',bad:'看平行四边形面积，det 接近 0 时两个向量几乎共线。'},
-  {q:'特征向量满足 Av=λv，说明它经过矩阵变换后？',opts:['方向不变，只按 λ 拉伸或压缩','一定旋转 90°','一定变成零向量'],ans:0,ok:'对。特征向量揭示了矩阵最稳定的作用方向。',bad:'特征向量的关键是“方向不变”，不是长度不变。'},
-  {q:'Gram-Schmidt 正交化中，投影步骤的作用是什么？',opts:['从一个向量中去掉沿另一个向量的分量','把所有向量都变成零','计算矩阵的行列式'],ans:0,ok:'对。去掉投影分量后，剩下的向量与基向量正交。',bad:'投影是影子；正交化要把这个影子从原向量里减掉。'},
-  {q:'SVD A=UΣVᵀ 中，奇异值主要表示什么？',opts:['不同方向上的缩放强度','矩阵元素的颜色深浅','向量起点的位置'],ans:0,ok:'对。大的奇异值保留了更重要的结构，低秩近似会优先保留它们。',bad:'看压缩模式：秩越低，保留的主要方向越少。'}
+  {q:'二维线性变换为什么可以用矩阵表示？',opts:['矩阵只负责储存像素颜色','矩阵列向量描述基向量被送到哪里','矩阵一定把所有图形变成圆'],ans:1,ok:'对。知道 e1、e2 的新位置，就能确定任意向量的线性变换结果。',bad:'观察 e1 和 e2 的箭头，矩阵列向量就是基向量的新方向。'},
+  {q:'高斯消元的核心动作是什么？',opts:['随机删除一个方程','只画出三条直线','用合法行变换把方程组化成阶梯形'],ans:2,ok:'对。行变换保持解集不变，同时把矩阵整理到更容易回代的形态。',bad:'高斯消元不是猜答案，而是用行变换逐步消去未知量。'},
+  {q:'行列式 det(A)=0 表示什么几何意义？',opts:['面积扩大一倍','面积被压缩为 0，变换不可逆','所有方向都保持不变'],ans:1,ok:'对。二维面积塌缩到 0 时，平面被压到线或点，无法唯一还原。',bad:'看平行四边形面积，det 接近 0 时两个向量几乎共线。'},
+  {q:'特征向量满足 Av=λv，说明它经过矩阵变换后？',opts:['一定旋转 90°','一定变成零向量','方向不变，只按 λ 拉伸或压缩'],ans:2,ok:'对。特征向量揭示了矩阵最稳定的作用方向。',bad:'特征向量的关键是“方向不变”，不是长度不变。'},
+  {q:'Gram-Schmidt 正交化中，投影步骤的作用是什么？',opts:['把所有向量都变成零','从一个向量中去掉沿另一个向量的分量','计算矩阵的行列式'],ans:1,ok:'对。去掉投影分量后，剩下的向量与基向量正交。',bad:'投影是影子；正交化要把这个影子从原向量里减掉。'},
+  {q:'SVD A=UΣVᵀ 中，奇异值主要表示什么？',opts:['矩阵元素的颜色深浅','向量起点的位置','不同方向上的缩放强度'],ans:2,ok:'对。大的奇异值保留了更重要的结构，低秩近似会优先保留它们。',bad:'看压缩模式：秩越低，保留的主要方向越少。'}
 ];
 let quizPassed=new Set(),quizFeedback={};
 
@@ -239,7 +239,7 @@ function startGame(){
 }
 
 function isUnlocked(n){return n===0||quizPassed.has(n-1);}
-function goLevel(n){if(n<0||n>=levelNames.length||!isUnlocked(n))return;curLevel=n;renderPanel();renderBar();}
+function goLevel(n){if(!Number.isInteger(n)||n<0||n>=levelNames.length||!isUnlocked(n))return;curLevel=n;renderPanel();renderBar();}
 
 function renderBar(){
   const done=levelObjs[curLevel].filter(v=>v).length;
@@ -257,7 +257,7 @@ function quizHTML(li){
 }
 
 function answerQuiz(li,choice){
-  if(li!==curLevel||quizPassed.has(li))return;
+  if(li!==curLevel||quizPassed.has(li)||!levelObjs[li].every(v=>v))return;
   const q=quizData[li],ok=choice===q.ans;
   quizFeedback[li]={ok,text:ok?q.ok:q.bad};
   if(ok)quizPassed.add(li);
@@ -311,7 +311,7 @@ function renderPanel(){
     if(quizPassed.has(li)){
       h+=`<div class="learn-box">${learnTexts[li]}</div>`;
       if(li<6)h+=`<button class="act-btn" style="background:#22c55e;color:#fff;margin-top:8px" onclick="goLevel(${li+1})">下一关 →</button>`;
-      if(li===6)h+=window._summaryHTML?window._summaryHTML():'';
+      if(li===6&&quizPassed.size===levelNames.length)h+=window._summaryHTML?window._summaryHTML():'';
     }
   }
   _patchPanel(panel,h);
@@ -1088,8 +1088,8 @@ function loop(){
     for(var i=0;i<total;i++){
       var unlocked=i===0||(typeof quizPassed!=='undefined'&&quizPassed.has(i-1));
       var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
-      var click=unlocked?'typeof goLevel===\'function\'&&goLevel('+i+')':'';
-      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
+      var click=unlocked?' onclick="goLevel('+i+')"':'';
+      h+='<div class="sn-d '+cls+'"'+click+'></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
@@ -1102,6 +1102,7 @@ function loop(){
   // 3. 通关总结
   window._summaryHTML=function(){
     var names=_getNames(),total=names.length;
+    if(typeof quizPassed!=='undefined'&&quizPassed.size<total)return '';
     var s=_countDone();
     var pct=s.total>0?Math.round(s.done/s.total*100):100;
     var h='<div class="summary-box">';

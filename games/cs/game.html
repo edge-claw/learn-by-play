@@ -417,35 +417,40 @@ const quizData = [
     opts: ['NPU 常对 INT8 矩阵运算做硬件优化', 'INT8 一定比 FP32 更精确', 'INT8 会增加模型大小'],
     ans: 0,
     ok: '对。许多边缘 NPU 针对 INT8 推理吞吐和功耗优化。',
-    bad: 'INT8 的价值在更小、更快，通常会有少量精度损失。'
+    bad: 'INT8 的价值在更小、更快，通常会有少量精度损失。',
+    why: 'INT8 把权重和激活压到更低位宽，可减少内存带宽与乘加成本；是否更快还取决于芯片是否有对应加速单元。'
   },
   {
     q: '量化部署最典型的取舍是什么？',
-    opts: ['速度、模型大小和精度之间的平衡', '只追求最大模型', '完全不看硬件'],
-    ans: 0,
+    opts: ['只追求最大模型', '速度、模型大小和精度之间的平衡', '完全不看硬件'],
+    ans: 1,
     ok: '对。部署时要同时看 FPS、mAP、模型大小和硬件支持。',
-    bad: '量化不是单纯越低越好，要看精度和硬件收益。'
+    bad: '量化不是单纯越低越好，要看精度和硬件收益。',
+    why: '更低位宽通常带来更小模型和更高吞吐，但可能牺牲精度；部署目标决定应该优先速度、体积、功耗还是准确率。'
   },
   {
     q: '电池供电设备上部署 AI 时，除 FPS 外还必须关注什么？',
-    opts: ['功耗和温度', '网页配色', '文件名长度'],
-    ans: 0,
+    opts: ['网页配色', '文件名长度', '功耗和温度'],
+    ans: 2,
     ok: '对。边缘设备受功耗、散热和续航约束。',
-    bad: '移动/边缘场景的瓶颈常常是能耗和热设计。'
+    bad: '移动/边缘场景的瓶颈常常是能耗和热设计。',
+    why: '模型即使跑得快，如果功耗过高也会导致降频、发热和续航下降，实际体验会变差。'
   },
   {
     q: '没有 NPU 的树莓派跑同一模型通常会怎样？',
-    opts: ['更多依赖 CPU，推理速度明显下降', '自动变成云端推理', '精度必然变成 100%'],
-    ans: 0,
+    opts: ['自动变成云端推理', '更多依赖 CPU，推理速度明显下降', '精度必然变成 100%'],
+    ans: 1,
     ok: '对。缺少专用加速器时，CPU 推理吞吐通常低很多。',
-    bad: '硬件加速器决定了可用算力，量化收益也依赖硬件支持。'
+    bad: '硬件加速器决定了可用算力，量化收益也依赖硬件支持。',
+    why: '通用 CPU 可以执行推理，但并行矩阵计算能力有限；专用 NPU/GPU 才能把同样模型推到更高帧率。'
   },
   {
     q: 'Jetson Nano 上 FP16 常比 FP32 更实用，原因是什么？',
-    opts: ['GPU 对半精度吞吐和显存占用更友好', 'FP16 永远无精度损失', 'FP16 不需要模型'],
-    ans: 0,
+    opts: ['FP16 永远无精度损失', 'FP16 不需要模型', 'GPU 对半精度吞吐和显存占用更友好'],
+    ans: 2,
     ok: '对。FP16 可减小带宽/显存压力，并利用 GPU 半精度能力。',
-    bad: 'FP16 是性能与精度折中的常见甜点，不是无代价。'
+    bad: 'FP16 是性能与精度折中的常见甜点，不是无代价。',
+    why: 'FP16 用更少显存和带宽换取更高吞吐，通常比 FP32 更适合小型 GPU 上的实时推理。'
   }
 ];
 
@@ -468,11 +473,13 @@ function startGame() {
 }
 
 function isUnlocked(idx) {
-  return idx === 0 || levelPassed[idx - 1];
+  idx = Number(idx);
+  return Number.isInteger(idx) && idx >= 0 && idx < LEVELS.length && (idx === 0 || levelPassed[idx - 1]);
 }
 
 function loadLevel(idx) {
-  if (idx < 0 || idx >= LEVELS.length || !isUnlocked(idx)) return;
+  idx = Number(idx);
+  if (!Number.isInteger(idx) || !isUnlocked(idx)) return;
   currentLevel = idx;
   const lv = LEVELS[idx];
   selectedModel = null;
@@ -496,8 +503,8 @@ function stageNavHTML() {
   LEVELS.forEach((lv, i) => {
     const unlocked = isUnlocked(i);
     const cls = levelPassed[i] ? 'done' : i === currentLevel ? 'cur' : unlocked ? '' : 'locked';
-    const click = unlocked ? `loadLevel(${i})` : '';
-    html += `<div class="sn-d ${cls}" onclick="${click}"></div>`;
+    const action = unlocked && i !== currentLevel ? ` onclick="loadLevel(${i})"` : '';
+    html += `<div class="sn-d ${cls}"${action}></div>`;
   });
   html += '</div>';
   html += `<div class="sn-info">📍 第 ${currentLevel + 1}/${LEVELS.length} 关 | 进度 ${pct}%</div>`;
@@ -520,7 +527,7 @@ function quizHTML(idx) {
 }
 
 function answerQuiz(idx, choice) {
-  if (idx !== currentLevel || levelPassed[idx]) return;
+  if (idx !== currentLevel || levelPassed[idx] || !pendingResult || pendingResult.lv !== LEVELS[idx]) return;
   const q = quizData[idx];
   const ok = choice === q.ans;
   quizFeedback[idx] = { ok, text: ok ? q.ok : q.bad };
@@ -616,6 +623,9 @@ function renderLevelContent() {
 
   if (pendingResult && pendingResult.lv === lv && !levelPassed[currentLevel]) {
     html += quizHTML(currentLevel);
+  } else if (levelPassed[currentLevel]) {
+    const q = quizData[currentLevel];
+    html += `<div class="quiz-box"><div class="quiz-feedback ok">✅ 小测要点：${q.why || q.ok}</div></div>`;
   }
 
   el.innerHTML = html;

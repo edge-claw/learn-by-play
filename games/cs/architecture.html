@@ -124,6 +124,8 @@ input.ctrl-inp{background:#1e1e38;border:1px solid #2a2a5a;color:#c0c0d0;padding
 .quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
 .quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{border-color:#22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-opt.wrong{border-color:#ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
 .quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
 .quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
@@ -206,13 +208,13 @@ const levels=[
 ];
 
 const quizData=[
-  {q:'数字电路中逻辑门的作用是什么？',opts:['根据输入位产生布尔输出','存储大量文件','把交流电直接变成图像'],ans:0,ok:'对。逻辑门实现布尔运算，是组合逻辑的基础。',bad:'逻辑门处理 0/1 信号，核心是布尔运算。'},
-  {q:'全加器相比半加器多处理什么输入？',opts:['低位进位 Cin','显示器颜色','内存地址总线宽度'],ans:0,ok:'对。全加器处理 A、B 和 Cin，输出 Sum 与 Cout。',bad:'半加器只有两个输入，全加器多了来自低位的进位。'},
-  {q:'D 触发器通常在什么时候保存输入？',opts:['时钟边沿','任意随机时刻','电源关闭后'],ans:0,ok:'对。触发器按时钟边沿采样，是寄存器的基础。',bad:'寄存器依赖时钟同步，不是随机保存。'},
-  {q:'ALU 在 CPU 中主要负责什么？',opts:['算术和逻辑运算','长期保存全部程序','控制散热风扇'],ans:0,ok:'对。ALU 执行加减和 AND/OR/XOR 等运算，并产生标志位。',bad:'ALU 是运算单元，不是主存或外设控制器。'},
-  {q:'数据通路中的多路选择器作用是什么？',opts:['根据控制信号选择数据来源','提升屏幕亮度','永久删除寄存器'],ans:0,ok:'对。MUX 决定 ALU、寄存器、内存之间的数据来源。',bad:'数据通路靠控制信号选择数据流，不是靠手动连接。'},
-  {q:'控制器解码指令后会生成什么？',opts:['控制信号','网页样式表','随机噪声'],ans:0,ok:'对。控制信号驱动寄存器、ALU、内存和多路选择器协同工作。',bad:'控制器的职责是解释指令并产生控制信号。'},
-  {q:'五级流水线的正确顺序是什么？',opts:['IF→ID→EX→MEM→WB','WB→MEM→EX→ID→IF','ALU→RAM→GPU→NIC→Disk'],ans:0,ok:'对。取指、解码、执行、访存、写回构成经典五级流水。',bad:'经典 CPU 流水线从取指开始，到写回结束。'}
+  {q:'数字电路中逻辑门的作用是什么？',opts:['根据输入位产生布尔输出','存储大量文件','把交流电直接变成图像'],ans:0,ok:'对。逻辑门实现布尔运算，是组合逻辑的基础。',bad:'逻辑门处理 0/1 信号，核心是布尔运算。',why:'逻辑门把电平抽象成 0/1，并用 AND、OR、NOT、XOR 等规则产生确定输出。'},
+  {q:'全加器相比半加器多处理什么输入？',opts:['显示器颜色','低位进位 Cin','内存地址总线宽度'],ans:1,ok:'对。全加器处理 A、B 和 Cin，输出 Sum 与 Cout。',bad:'半加器只有两个输入，全加器多了来自低位的进位。',why:'多位加法需要把低位产生的进位继续传给高位，全加器就是为这种级联准备的。'},
+  {q:'D 触发器通常在什么时候保存输入？',opts:['任意随机时刻','电源关闭后','时钟边沿'],ans:2,ok:'对。触发器按时钟边沿采样，是寄存器的基础。',bad:'寄存器依赖时钟同步，不是随机保存。',why:'边沿触发让大量存储单元在统一时刻更新，避免组合逻辑传播中的中间值被误保存。'},
+  {q:'ALU 在 CPU 中主要负责什么？',opts:['控制散热风扇','算术和逻辑运算','长期保存全部程序'],ans:1,ok:'对。ALU 执行加减和 AND/OR/XOR 等运算，并产生标志位。',bad:'ALU 是运算单元，不是主存或外设控制器。',why:'ALU 接收操作数和操作码，输出结果以及零、进位、溢出等状态标志。'},
+  {q:'数据通路中的多路选择器作用是什么？',opts:['提升屏幕亮度','永久删除寄存器','根据控制信号选择数据来源'],ans:2,ok:'对。MUX 决定 ALU、寄存器、内存之间的数据来源。',bad:'数据通路靠控制信号选择数据流，不是靠手动连接。',why:'同一条总线或 ALU 输入可能来自多个部件，MUX 让控制器用信号选择当前需要的那一路。'},
+  {q:'控制器解码指令后会生成什么？',opts:['随机噪声','控制信号','网页样式表'],ans:1,ok:'对。控制信号驱动寄存器、ALU、内存和多路选择器协同工作。',bad:'控制器的职责是解释指令并产生控制信号。',why:'指令字段会被转换成 RegWrite、ALUOp、MemRead、MemWrite 等控制线，决定数据通路如何动作。'},
+  {q:'五级流水线的正确顺序是什么？',opts:['ALU→RAM→GPU→NIC→Disk','WB→MEM→EX→ID→IF','IF→ID→EX→MEM→WB'],ans:2,ok:'对。取指、解码、执行、访存、写回构成经典五级流水。',bad:'经典 CPU 流水线从取指开始，到写回结束。',why:'流水线把一条指令拆成阶段，使多条指令能错开并行，但也会引入数据冒险和控制冒险。'}
 ];
 let quizPassed=new Set(),quizFeedback={};
 let levelObjs=levels.map(l=>l.objs.map(()=>false));
@@ -232,26 +234,60 @@ const cpuProg=[
 ];
 
 function completeObj(li,oi){
-if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel()}
+if(li!==curLevel||!levelObjs[li]||levelObjs[li][oi])return;
+levelObjs[li][oi]=true;renderPanel()
 }
 function allDone(li){return levelObjs[li].every(v=>v)}
 function isUnlocked(n){return n===0||quizPassed.has(n-1)}
+function clampNumber(value,min,max,fallback){
+  const n=String(value).trim()===''?NaN:Number(value);
+  const base=Number.isFinite(Number(fallback))?Number(fallback):min;
+  return Math.max(min,Math.min(max,Number.isFinite(n)?n:base));
+}
+function setMemValue(input){
+  memVal=clampNumber(input&&input.value,0,255,memVal);
+  if(input)input.value=String(memVal);
+}
+function setAluInput(key,input){
+  const current=key==='aluA'?aluA:aluB;
+  const value=clampNumber(input&&input.value,0,255,current);
+  if(key==='aluA')aluA=value;else aluB=value;
+  if(input)input.value=String(value);
+  checkAluObj();renderPanel();
+}
+function setDpSelect(key,input){
+  const ranges={dpSrcA:[0,7],dpSrcB:[0,7],dpOp:[0,3]},r=ranges[key];
+  if(!r)return;
+  const current=key==='dpSrcA'?dpSrcA:key==='dpSrcB'?dpSrcB:dpOp;
+  const value=clampNumber(input&&input.value,r[0],r[1],current);
+  if(key==='dpSrcA')dpSrcA=value;else if(key==='dpSrcB')dpSrcB=value;else dpOp=value;
+  if(input)input.value=String(value);
+  renderPanel();
+}
 
 function quizHTML(li){
-  const q=quizData[li],fb=quizFeedback[li];
+  const q=quizData[li],fb=quizFeedback[li],passed=quizPassed.has(li);
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
   h+=`<div class="quiz-q">${q.q}</div>`;
-  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`;});
+  q.opts.forEach((opt,i)=>{
+    const cls=passed&&i===q.ans?' correct':fb?(i===q.ans?' correct':i===fb.choice&&!fb.ok?' wrong':''):'';
+    h+=`<button class="quiz-opt${cls}" onclick="answerQuiz(${li},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;
+  });
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
   h+='</div>';
   return h;
 }
 function answerQuiz(li,choice){
-  if(li!==curLevel||quizPassed.has(li))return;
-  const q=quizData[li],ok=choice===q.ans;
-  quizFeedback[li]={ok:ok,text:ok?q.ok:q.bad};
+  li=Number(li);choice=Number(choice);
+  if(!Number.isInteger(li)||!Number.isInteger(choice)||li!==curLevel||quizPassed.has(li)||!allDone(li))return false;
+  const q=quizData[li];
+  if(!q||choice<0||choice>=q.opts.length)return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  const ok=choice===q.ans;
+  quizFeedback[li]={ok:ok,choice:choice,text:(ok?q.ok:q.bad)+(q.why?' '+q.why:'')};
   if(ok)quizPassed.add(li);
   renderPanel();
+  return ok;
 }
 window.answerQuiz=answerQuiz;
 
@@ -283,9 +319,11 @@ function renderPanel(){
 const L=levels[curLevel],obs=levelObjs[curLevel];
 let h='<div class="sec-title">关卡选择</div>';
 levels.forEach((l,i)=>{
+  let unlocked=isUnlocked(i);
   let cls=i===curLevel?'active':'';
-  if(allDone(i))cls+=' done';
-  h+=`<button class="level-btn ${cls}" onclick="goLevel(${i})">${l.icon} ${i+1}. ${l.name}</button>`;
+  if(quizPassed.has(i))cls+=' done';
+  if(!unlocked)cls+=' locked';
+  h+=`<button class="level-btn ${cls}" ${unlocked?`onclick="goLevel(${i})"`:'disabled'}>${l.icon} ${i+1}. ${l.name}</button>`;
 });
 h+=`<div class="sec-title">概念说明</div><div class="concept-box">${L.desc}</div>`;
 h+=`<div class="sec-title">目标</div>`;
@@ -298,9 +336,9 @@ h+=`<div class="sec-title">交互控件</div>`;
 h+=renderControls();
 if(allDone(curLevel)){
   h+=`<div class="learn-box">${L.learn}</div>`;
-  if(!quizPassed.has(curLevel))h+=quizHTML(curLevel);
+  h+=quizHTML(curLevel);
   if(quizPassed.has(curLevel)&&curLevel<6)h+=`<button class="act-btn" style="width:100%;margin-top:8px;background:#1a3a1a;border-color:#2a5a2a;color:#4ade80" onclick="goLevel(${curLevel+1})">▶ 下一关</button>`;
-  if(quizPassed.has(curLevel)&&curLevel===6)h+=window._summaryHTML?window._summaryHTML():`<div class="learn-box" style="border-color:#3b82f6;background:#0a0a2a;color:#60a5fa">🎉 恭喜通关！你已经从逻辑门走到了完整 CPU！</div>`;
+  if(quizPassed.has(curLevel)&&curLevel===6&&quizPassed.size===levels.length)h+=window._summaryHTML?window._summaryHTML():`<div class="learn-box" style="border-color:#3b82f6;background:#0a0a2a;color:#60a5fa">🎉 恭喜通关！你已经从逻辑门走到了完整 CPU！</div>`;
 }
 panel.innerHTML=h;
 }
@@ -338,7 +376,7 @@ case 2: // Memory
   h+=`<button class="act-btn${memMode===0?' sel':''}" onclick="memMode=0;renderPanel()">写入</button>`;
   h+=`<button class="act-btn${memMode===1?' sel':''}" onclick="memMode=1;renderPanel()">读取</button></div>`;
   if(memMode===0){
-    h+=`<div style="margin-top:6px"><span style="font-size:12px;color:var(--text-muted)">写入值: </span><input class="ctrl-inp" type="number" min="0" max="255" value="${memVal}" onchange="memVal=+this.value"><button class="act-btn" onclick="doMemWrite()">写入</button></div>`;
+    h+=`<div style="margin-top:6px"><span style="font-size:12px;color:var(--text-muted)">写入值: </span><input class="ctrl-inp" type="number" min="0" max="255" value="${memVal}" onchange="setMemValue(this)"><button class="act-btn" onclick="doMemWrite()">写入</button></div>`;
   }else{
     h+=`<div class="hint-box">地址 ${memAddr} 的值 = <span style="color:#4ade80;font-weight:600">${memCells[memAddr]}</span></div>`;
   }
@@ -349,19 +387,19 @@ case 3: // ALU
   ['加法(+)','减法(-)','与(AND)','或(OR)','异或(XOR)'].forEach((op,i)=>{
     h+=`<button class="act-btn${aluOp===i?' sel':''}" onclick="aluOp=${i};checkAluObj();renderPanel()">${op}</button>`;
   });
-  h+=`<div style="margin-top:8px"><span style="font-size:12px;color:var(--text-muted)">操作数 A: </span><input class="ctrl-inp" type="number" min="0" max="255" value="${aluA}" onchange="aluA=+this.value;checkAluObj();renderPanel()"></div>`;
-  h+=`<div style="margin-top:4px"><span style="font-size:12px;color:var(--text-muted)">操作数 B: </span><input class="ctrl-inp" type="number" min="0" max="255" value="${aluB}" onchange="aluB=+this.value;checkAluObj();renderPanel()"></div>`;
+  h+=`<div style="margin-top:8px"><span style="font-size:12px;color:var(--text-muted)">操作数 A: </span><input class="ctrl-inp" type="number" min="0" max="255" value="${aluA}" onchange="setAluInput('aluA',this)"></div>`;
+  h+=`<div style="margin-top:4px"><span style="font-size:12px;color:var(--text-muted)">操作数 B: </span><input class="ctrl-inp" type="number" min="0" max="255" value="${aluB}" onchange="setAluInput('aluB',this)"></div>`;
   let ar=calcAlu();
   h+=`<div class="hint-box">结果 = <span style="color:var(--sv);font-weight:600">${ar.val}</span><br>标志: Z=${ar.z} C=${ar.c} V=${ar.v}</div>`;
   break;
 case 4: // Datapath
-  h+=`<div style="font-size:12px;color:var(--text-muted)">源寄存器 A:</div><select class="ctrl-sel" onchange="dpSrcA=+this.value;renderPanel()">`;
+  h+=`<div style="font-size:12px;color:var(--text-muted)">源寄存器 A:</div><select class="ctrl-sel" onchange="setDpSelect('dpSrcA',this)">`;
   for(let i=0;i<8;i++)h+=`<option value="${i}"${dpSrcA===i?' selected':''}>R${i} = ${dpRegs[i]}</option>`;
   h+=`</select>`;
-  h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:6px">源寄存器 B:</div><select class="ctrl-sel" onchange="dpSrcB=+this.value;renderPanel()">`;
+  h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:6px">源寄存器 B:</div><select class="ctrl-sel" onchange="setDpSelect('dpSrcB',this)">`;
   for(let i=0;i<8;i++)h+=`<option value="${i}"${dpSrcB===i?' selected':''}>R${i} = ${dpRegs[i]}</option>`;
   h+=`</select>`;
-  h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:6px">ALU 操作:</div><select class="ctrl-sel" onchange="dpOp=+this.value;renderPanel()">`;
+  h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:6px">ALU 操作:</div><select class="ctrl-sel" onchange="setDpSelect('dpOp',this)">`;
   ['ADD','SUB','AND','OR'].forEach((op,i)=>h+=`<option value="${i}"${dpOp===i?' selected':''}>${op}</option>`);
   h+=`</select>`;
   h+=`<div class="toggle-row" style="margin-top:6px"><label>写使能 (WE)</label><button class="toggle-btn${dpWE?' on':''}" onclick="dpWE=!dpWE;renderPanel()"></button></div>`;
@@ -1027,8 +1065,8 @@ resize();
     for(var i=0;i<total;i++){
       var unlocked=typeof isUnlocked==='function'?isUnlocked(i):true;
       var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
-      var click=unlocked?"typeof goLevel==='function'&&goLevel("+i+")":'';
-      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
+      var click=unlocked?' onclick="goLevel('+i+')"':'';
+      h+='<div class="sn-d '+cls+'"'+click+'></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
@@ -1041,6 +1079,7 @@ resize();
   // 3. 通关总结
   window._summaryHTML=function(){
     var names=_getNames(),total=names.length;
+    if(typeof quizPassed!=='undefined'&&quizPassed.size<total)return '';
     var s=_countDone();
     var pct=s.total>0?Math.round(s.done/s.total*100):100;
     var h='<div class="summary-box">';

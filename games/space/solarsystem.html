@@ -242,43 +242,43 @@ const quizData = [
   },
   {
     q:'轨道速度过低时，行星最可能发生什么？',
-    opts:['坠向恒星或形成更扁的轨道','立刻获得逃逸速度','完全不受引力影响'],
-    ans:0,
+    opts:['立刻获得逃逸速度','坠向恒星或形成更扁的轨道','完全不受引力影响'],
+    ans:1,
     ok:'正确。轨道形状由引力和切向速度共同决定。',
     bad:'对比不同点击速度：慢了会掉向恒星，快了会逃逸。'
   },
   {
     q:'潮汐锁定的结果是什么？',
-    opts:['小天体自转周期逐渐接近公转周期','小天体完全停止公转','大天体质量变为 0'],
-    ans:0,
+    opts:['小天体完全停止公转','大天体质量变为 0','小天体自转周期逐渐接近公转周期'],
+    ans:2,
     ok:'正确。同步后，小天体会长期以同一面朝向主天体。',
     bad:'观察同步度：目标是自转速率接近公转速率。'
   },
   {
     q:'L4 和 L5 为什么适合放置稳定小天体？',
-    opts:['它们在两大天体构成的等边三角形附近，扰动后较容易回到稳定区','它们离所有天体无限远','它们没有任何引力'],
-    ans:0,
+    opts:['它们离所有天体无限远','它们在两大天体构成的等边三角形附近，扰动后较容易回到稳定区','它们没有任何引力'],
+    ans:1,
     ok:'正确。L4/L5 是受限三体问题中的稳定拉格朗日点。',
     bad:'把卫星拖到不同 L 点：L1/L2/L3 会更容易偏离。'
   },
   {
     q:'行星迁移会如何影响小行星带？',
-    opts:['巨行星迁移会扰动并清扫大量小天体','小行星会全部静止不动','木星质量会自动消失'],
-    ans:0,
+    opts:['小行星会全部静止不动','木星质量会自动消失','巨行星迁移会扰动并清扫大量小天体'],
+    ans:2,
     ok:'正确。巨行星迁移能重塑早期太阳系的小天体分布。',
     bad:'看木星引力范围扫过时，小行星会被吸收或弹射。'
   },
   {
     q:'宜居带的核心判据是什么？',
-    opts:['行星表面可能维持液态水','行星离恒星越近越宜居','恒星质量越大越一定宜居'],
-    ans:0,
+    opts:['行星离恒星越近越宜居','行星表面可能维持液态水','恒星质量越大越一定宜居'],
+    ans:1,
     ok:'正确。宜居带是液态水可能存在的温度区间。',
     bad:'目标温度范围是 0°C 到 100°C，对应液态水。'
   },
   {
     q:'多行星系统为什么可能变得混沌？',
-    opts:['多个天体相互引力扰动，长期轨道没有简单解析解','所有行星只受一个固定力','行星间从不相互影响'],
-    ans:0,
+    opts:['所有行星只受一个固定力','行星间从不相互影响','多个天体相互引力扰动，长期轨道没有简单解析解'],
+    ans:2,
     ok:'正确。N 体相互作用会放大微小差异，影响长期稳定性。',
     bad:'看多颗行星同时运行时的相互扰动，而不是只看恒星引力。'
   }
@@ -420,31 +420,64 @@ function bindPanelEvents(){
   switch(currentLevel){
     case 0:{
       const sa=document.getElementById('slMa'),sb=document.getElementById('slMb');
-      if(sa)sa.oninput=()=>{levelState.massA=+sa.value;document.getElementById('svMa').textContent=(+sa.value).toFixed(1);};
-      if(sb)sb.oninput=()=>{levelState.massB=+sb.value;document.getElementById('svMb').textContent=(+sb.value).toFixed(1);};
+      if(sa)sa.oninput=()=>setMassInput(sa,'massA','svMa');
+      if(sb)sb.oninput=()=>setMassInput(sb,'massB','svMb');
       break;
     }
     case 2:{
       const st=document.getElementById('slTime');
-      if(st)st.oninput=()=>{levelState.timeScale=+st.value;document.getElementById('svTime').textContent='x'+st.value;};
+      if(st)st.oninput=()=>setTimeScaleInput(st);
       break;
     }
     case 4:{
       const sj=document.getElementById('slJup');
-      if(sj)sj.oninput=()=>{levelState.jupiterR=+sj.value;document.getElementById('svJup').textContent=(+sj.value).toFixed(0);};
+      if(sj)sj.oninput=()=>setJupiterInput(sj);
       break;
     }
     case 5:{
       const ss=document.getElementById('slStar'),sd=document.getElementById('slDist');
-      if(ss)ss.oninput=()=>{levelState.starMass=+ss.value;document.getElementById('svStar').textContent=(+ss.value).toFixed(1);};
-      if(sd)sd.oninput=()=>{levelState.planetDist=+sd.value;document.getElementById('svDist').textContent=(+sd.value).toFixed(0);};
+      if(ss)ss.oninput=()=>setStarMassInput(ss);
+      if(sd)sd.oninput=()=>setPlanetDistInput(sd);
       break;
     }
   }
 }
 
+function clampNumber(value,fallback,min,max){
+  const n=Number(value),fb=Number(fallback);
+  const base=Number.isFinite(n)?n:(Number.isFinite(fb)?fb:min);
+  return Math.min(max,Math.max(min,base));
+}
+function setInputValue(input,value){
+  if(input&&input.value!==undefined)input.value=String(value);
+}
+function setText(id,text){
+  const el=document.getElementById(id);
+  if(el)el.textContent=text;
+}
+function setMassInput(input,key,labelId){
+  const v=clampNumber(input&&input.value!==undefined?input.value:input,levelState[key]||5,1,20);
+  setInputValue(input,v);levelState[key]=v;setText(labelId,v.toFixed(1));
+}
+function setTimeScaleInput(input){
+  const v=clampNumber(input&&input.value!==undefined?input.value:input,levelState.timeScale||1,1,200);
+  setInputValue(input,v);levelState.timeScale=v;setText('svTime','x'+v);
+}
+function setJupiterInput(input){
+  const v=clampNumber(input&&input.value!==undefined?input.value:input,levelState.jupiterR||300,80,300);
+  setInputValue(input,v);levelState.jupiterR=v;setText('svJup',v.toFixed(0));
+}
+function setStarMassInput(input){
+  const v=clampNumber(input&&input.value!==undefined?input.value:input,levelState.starMass||1,0.5,5);
+  setInputValue(input,v);levelState.starMass=v;setText('svStar',v.toFixed(1));
+}
+function setPlanetDistInput(input){
+  const v=clampNumber(input&&input.value!==undefined?input.value:input,levelState.planetDist||150,50,500);
+  setInputValue(input,v);levelState.planetDist=v;setText('svDist',v.toFixed(0));
+}
+
 function isUnlocked(n){
-  return n===0 || completedLevels.has(n-1);
+  return n===0 || quizPassed.has(n-1);
 }
 
 function renderStageNav(){
@@ -454,7 +487,7 @@ function renderStageNav(){
     if(completedLevels.has(i))cls+=' done';
     if(i===currentLevel)cls+=' cur';
     if(!isUnlocked(i))cls+=' locked';
-    h+=`<div class="${cls}" onclick="goLevel(${i})"></div>`;
+    h+=`<div class="${cls}" ${isUnlocked(i)&&i!==currentLevel?`onclick="goLevel(${i})"`:''}></div>`;
   }
   h+=`</div><div class="sn-info">第 ${currentLevel+1}/${levels.length} 关：${levels[currentLevel].name}</div>`;
   h+=`<div class="sn-hint">${levels[currentLevel].desc.replace(/<[^>]+>/g,'')}</div></div>`;
@@ -473,7 +506,10 @@ function renderQuiz(){
 }
 
 function answerQuiz(choice){
+  if(!levelReady.has(currentLevel)||quizPassed.has(currentLevel))return;
   const qd=quizData[currentLevel];
+  if(currentLevel>0&&!quizPassed.has(currentLevel-1))return;
+  if(!qd||choice<0||choice>=qd.opts.length)return;
   const ok=choice===qd.ans;
   quizFeedback[currentLevel]={ok,text:ok?qd.ok:qd.bad};
   if(ok){
@@ -492,6 +528,7 @@ function renderLearn(){
 }
 
 function summaryHTML(){
+  if(!levels.every((_,i)=>quizPassed.has(i)))return '';
   let h='<div class="summary-box"><div class="summary-title">🎉 太阳系建造完成！</div>';
   h+='<div class="summary-sub">你已完成从万有引力到系统稳定性的 7 个核心主题</div>';
   h+='<div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡通过</div></div>';
@@ -559,6 +596,7 @@ function updateBottomBar(l,r){
 
 // ============ 结果弹窗 ============
 function showResult(icon,title,desc,learn,isLast){
+  if(!quizPassed.has(currentLevel))return;
   const m=document.getElementById('resultModal');m.classList.remove('hidden');
   const rb=document.getElementById('resultBox');
   let h=`<div class="rb-icon">${icon}</div><div class="rb-title">${title}</div><div class="rb-desc">${desc}</div>`;
@@ -568,7 +606,7 @@ function showResult(icon,title,desc,learn,isLast){
   rb.innerHTML=h;
 }
 function hideResult(){document.getElementById('resultModal').classList.add('hidden');}
-function nextLevel(){hideResult();goLevel(currentLevel+1);}
+function nextLevel(){if(!quizPassed.has(currentLevel))return;hideResult();goLevel(currentLevel+1);}
 function retryLevel(){hideResult();initLevel(currentLevel);}
 function backToStart(){hideResult();gameState='start';document.getElementById('lp').style.display='none';hideInfoBar();document.getElementById('bottom-bar').style.display='none';document.getElementById('startScreen').classList.remove('hidden');}
 
@@ -579,7 +617,7 @@ function completeLevel(n){
   renderPanel();
 }
 
-function goLevel(i){initLevel(i);}
+function goLevel(i){if(!isUnlocked(i))return;initLevel(i);}
 
 // ============ 关卡0: 万有引力 ============
 function updateLevel0(dt){

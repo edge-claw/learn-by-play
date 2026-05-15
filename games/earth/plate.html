@@ -149,8 +149,19 @@ resize();window.addEventListener('resize',()=>{resize();draw()});
 
 /* === 音效 === */
 let audioCtx;
-function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)()}
-function playSound(type){initAudio();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);if(type==='ok'){o.frequency.value=523;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(659,audioCtx.currentTime+0.1);o.frequency.setValueAtTime(784,audioCtx.currentTime+0.2);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.stop(audioCtx.currentTime+0.4)}else if(type==='no'){o.frequency.value=300;g.gain.value=0.12;o.start();o.frequency.setValueAtTime(200,audioCtx.currentTime+0.15);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.3);o.stop(audioCtx.currentTime+0.3)}else{o.frequency.value=800;g.gain.value=0.08;o.start();g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.1);o.stop(audioCtx.currentTime+0.1)}}
+function initAudio(){const A=window.AudioContext||window.webkitAudioContext;if(!A)return null;try{if(!audioCtx)audioCtx=new A();return audioCtx}catch(e){return null}}
+function playSound(type){
+  const ac=initAudio();if(!ac)return false;
+  try{
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    const now=ac.currentTime;
+    if(type==='ok'){o.frequency.value=523;g.gain.value=0.12;o.start(now);o.frequency.setValueAtTime(659,now+0.1);o.frequency.setValueAtTime(784,now+0.2);g.gain.exponentialRampToValueAtTime(0.001,now+0.4);o.stop(now+0.4)}
+    else if(type==='no'){o.frequency.value=300;g.gain.value=0.12;o.start(now);o.frequency.setValueAtTime(200,now+0.15);g.gain.exponentialRampToValueAtTime(0.001,now+0.3);o.stop(now+0.3)}
+    else{o.frequency.value=800;g.gain.value=0.08;o.start(now);g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.stop(now+0.1)}
+    return true;
+  }catch(e){return false}
+}
 
 /* === 关卡数据 === */
 const LEVELS=[
@@ -166,12 +177,12 @@ let cur=0,gameState='title',S={},done=new Array(7).fill(false);
 const completedLevels=new Set(),quizPassed=new Set(),quizFeedback={};
 const quizData=[
   {q:'地球内部从外到内的主要结构顺序是什么？',opts:['地壳、地幔、外核、内核','内核、地壳、外核、地幔','海洋、大气、云层、太阳'],ans:0,ok:'对。板块运动发生在地球外层，能量与地幔对流有关。',bad:'先记住从外到内：地壳、地幔、外核、内核。'},
-  {q:'大陆漂移假说的重要证据不包括哪一项？',opts:['相邻大陆海岸线、化石和岩层能对应','南美洲和非洲海岸线相似','所有大陆每天都能肉眼看到快速移动'],ans:2,ok:'对。大陆漂移很慢，证据来自海岸线、化石和岩层对比。',bad:'大陆不会以肉眼可见速度移动，关键证据是地质和古生物线索。'},
-  {q:'离散型板块边界通常会发生什么？',opts:['板块分离，岩浆上涌形成新地壳','两个板块完全静止','所有岩石瞬间消失'],ans:0,ok:'对。大洋中脊就是典型离散型边界。',bad:'离散型边界的关键词是分离和新地壳生成。'},
-  {q:'海底扩张学说预测大洋中脊两侧岩石年龄如何变化？',opts:['离中脊越远越老，并且两侧大体对称','离中脊越远越新','所有地方年龄完全相同'],ans:0,ok:'对。对称年龄和磁异常条带支持海底扩张。',bad:'新地壳在中脊生成，随后向两侧移动并变老。'},
-  {q:'俯冲带常见的地貌或地质现象是什么？',opts:['海沟、火山弧和倾斜地震带','沙丘和冰川裂缝','只形成平坦平原'],ans:0,ok:'对。大洋板块下沉会形成海沟、熔融和火山弧。',bad:'俯冲带的关键词是海沟、火山弧和地震带。'},
-  {q:'喜马拉雅山形成的主要机制是什么？',opts:['印度板块与欧亚板块汇聚碰撞挤压','海浪把沙子堆高','陨石连续撞击同一地点'],ans:0,ok:'对。大陆碰撞挤压使地壳缩短加厚并隆起。',bad:'造山运动主要来自板块汇聚和地壳挤压。'},
-  {q:'全球强震为什么常集中在特定带状区域？',opts:['这些区域多是活跃板块边界','地震只喜欢沿经线排列','地图绘制时随机点在一起'],ans:0,ok:'对。板块边界积累并释放应力，是地震密集带。',bad:'地震带分布反映了板块边界和应力释放位置。'}
+  {q:'大陆漂移假说的重要证据不包括哪一项？',opts:['相邻大陆海岸线、化石和岩层能对应','所有大陆每天都能肉眼看到快速移动','南美洲和非洲海岸线相似'],ans:1,ok:'对。大陆漂移很慢，证据来自海岸线、化石和岩层对比。',bad:'大陆不会以肉眼可见速度移动，关键证据是地质和古生物线索。'},
+  {q:'离散型板块边界通常会发生什么？',opts:['两个板块完全静止','所有岩石瞬间消失','板块分离，岩浆上涌形成新地壳'],ans:2,ok:'对。大洋中脊就是典型离散型边界。',bad:'离散型边界的关键词是分离和新地壳生成。'},
+  {q:'海底扩张学说预测大洋中脊两侧岩石年龄如何变化？',opts:['离中脊越远越新','离中脊越远越老，并且两侧大体对称','所有地方年龄完全相同'],ans:1,ok:'对。对称年龄和磁异常条带支持海底扩张。',bad:'新地壳在中脊生成，随后向两侧移动并变老。'},
+  {q:'俯冲带常见的地貌或地质现象是什么？',opts:['沙丘和冰川裂缝','只形成平坦平原','海沟、火山弧和倾斜地震带'],ans:2,ok:'对。大洋板块下沉会形成海沟、熔融和火山弧。',bad:'俯冲带的关键词是海沟、火山弧和地震带。'},
+  {q:'喜马拉雅山形成的主要机制是什么？',opts:['海浪把沙子堆高','印度板块与欧亚板块汇聚碰撞挤压','陨石连续撞击同一地点'],ans:1,ok:'对。大陆碰撞挤压使地壳缩短加厚并隆起。',bad:'造山运动主要来自板块汇聚和地壳挤压。'},
+  {q:'全球强震为什么常集中在特定带状区域？',opts:['地震只喜欢沿经线排列','地图绘制时随机点在一起','这些区域多是活跃板块边界'],ans:2,ok:'对。板块边界积累并释放应力，是地震密集带。',bad:'地震带分布反映了板块边界和应力释放位置。'}
 ];
 
 /* === 关卡初始化 === */
@@ -212,7 +223,7 @@ function renderStageNav(){
   LEVELS.forEach((_,i)=>{
     const unlocked=canGoLevel(i);
     const c=completedLevels.has(i)?'done':i===cur?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${c}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    h+=`<div class="sn-d ${c}" ${unlocked?`onclick="goLevel(${i})"`:''}></div>`;
   });
   h+=`</div><div class="sn-info">第 ${cur+1}/${LEVELS.length} 关 — ${LEVELS[cur].name}</div>`;
   h+=`<div class="sn-hint">${completedLevels.size}/${LEVELS.length} 已通关，完成目标后答对测验解锁下一关</div></div>`;
@@ -232,7 +243,7 @@ function renderPanel(){
     }else{
       h+=`<div class="learn-box">${learnText(cur)}</div>`;
       if(cur<6)h+=`<button class="act-btn green" onclick="goLevel(${cur+1})">下一关 →</button>`;
-      else if(completedLevels.size===LEVELS.length)h+=renderSummary();
+      else if(allQuizPassed())h+=renderSummary();
     }
   }
   p.innerHTML=h;
@@ -280,20 +291,20 @@ function renderLevelPanel(i){
     case 3:
       h+=`<div class="concept-box"><b>海底扩张学说</b>：大洋中脊处岩浆不断涌出，推动两侧海底向外扩张。离中脊越远的岩石年龄越老，形成对称的磁异常条带。</div>`;
       h+=`<div class="desc">拖动滑块控制扩张速率，观察新地壳如何在中脊处形成并向两侧推移。</div>`;
-      h+=`<div class="slider-wrap"><label>扩张速率: <span class="slider-val">${S.spreadRate.toFixed(1)} cm/年</span></label><input type="range" min="0" max="10" step="0.5" value="${S.spreadRate}" oninput="S.spreadRate=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.spreadRate.toFixed(1)+' cm/年';draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>扩张速率: <span class="slider-val">${S.spreadRate.toFixed(1)} cm/年</span></label><input type="range" min="0" max="10" step="0.5" value="${S.spreadRate}" oninput="setSpreadRate(this)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<button class="act-btn" onclick="toggleSpread()">${S.spreading?'⏸ 暂停':'▶ 开始扩张'}</button>`;
       break;
     case 4:
       h+=`<div class="concept-box"><b>俯冲带</b>是大洋板块向大陆板块下方俯冲的区域。俯冲过程形成海沟、火山弧和贝尼奥夫带（地震带）。俯冲角度影响火山与海沟的距离。</div>`;
       h+=`<div class="desc">调整俯冲角度，观察海沟深度、岩浆生成位置和火山弧距离的变化。</div>`;
-      h+=`<div class="slider-wrap"><label>俯冲角度: <span class="slider-val">${S.angle}°</span></label><input type="range" min="10" max="80" step="1" value="${S.angle}" oninput="S.angle=+this.value;this.previousElementSibling.querySelector('.slider-val').textContent=S.angle+'°';calcSubduction();draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>俯冲角度: <span class="slider-val">${S.angle}°</span></label><input type="range" min="10" max="80" step="1" value="${S.angle}" oninput="setSubductionAngle(this)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div style="font-size:12px;color:var(--text-muted);margin:4px 0">海沟深度: <span class="sv">${S.trenchDepth.toFixed(0)} km</span> | 火山弧距离: <span class="sv">${S.volcDist.toFixed(0)} km</span></div>`;
       h+=`<div class="hint-box">💡 角度越陡，海沟越深但火山弧越近；角度越缓，火山弧越远</div>`;
       break;
     case 5:
       h+=`<div class="concept-box"><b>造山运动</b>是板块汇聚挤压导致地壳褶皱隆起形成山脉的过程。喜马拉雅山就是印度板块与欧亚板块碰撞的产物，至今仍在升高。</div>`;
       h+=`<div class="desc">拖动滑块增加挤压力，观察岩层如何褶皱隆起形成山脉。</div>`;
-      h+=`<div class="slider-wrap"><label>挤压力: <span class="slider-val">${(S.compression*100).toFixed(0)}%</span></label><input type="range" min="0" max="100" step="1" value="${S.compression*100}" oninput="S.compression=+this.value/100;this.previousElementSibling.querySelector('.slider-val').textContent=(S.compression*100).toFixed(0)+'%';calcMountain();draw()" onchange="this.blur();renderPanel()"></div>`;
+      h+=`<div class="slider-wrap"><label>挤压力: <span class="slider-val">${(S.compression*100).toFixed(0)}%</span></label><input type="range" min="0" max="100" step="1" value="${S.compression*100}" oninput="setCompression(this)" onchange="this.blur();renderPanel()"></div>`;
       h+=`<div style="font-size:12px;color:var(--text-muted);margin:4px 0">山脉高度: <span class="sv">${S.height.toFixed(0)} m</span> | 褶皱角度: <span class="sv">${S.foldAngle.toFixed(0)}°</span></div>`;
       break;
     case 6:
@@ -307,6 +318,7 @@ function renderLevelPanel(i){
 }
 
 function renderSummary(){
+  if(!allQuizPassed())return '';
   return `<div class="summary-box"><div class="summary-title">🎉 全部通关！</div><div class="summary-sub">你已掌握板块构造的核心知识</div><div class="summary-stats"><div class="summary-stat"><div class="num">7</div><div class="label">关卡完成</div></div><div class="summary-stat"><div class="num">100%</div><div class="label">完成率</div></div></div><div class="summary-keys"><div>🌐 地球由地壳、地幔、外核、内核组成</div><div>🗺️ 大陆曾连为盘古大陆后分裂漂移</div><div>🔀 三种板块边界：离散、汇聚、转换</div><div>🌊 海底在大洋中脊处不断扩张</div><div>⬇️ 俯冲带形成海沟和火山弧</div><div>⛰️ 板块碰撞挤压形成褶皱山脉</div><div>📍 地震集中在板块边界形成地震带</div></div></div>`;
 }
 
@@ -321,6 +333,8 @@ function renderQuiz(i){
 }
 
 function answerQuiz(i,j){
+  if(i!==cur||quizPassed.has(i)||!done[i])return;
+  if(i>0&&!quizPassed.has(i-1))return;
   const q=quizData[i],ok=j===q.ans;
   quizFeedback[i]={ok:ok,text:ok?q.ok:q.bad};
   if(ok){quizPassed.add(i);completedLevels.add(i);playSound('ok');}
@@ -340,7 +354,35 @@ function learnText(i){
   ][i];
 }
 
+function allQuizPassed(){return quizPassed.size===LEVELS.length}
 function canGoLevel(i){return i>=0&&i<LEVELS.length&&(i===0||completedLevels.has(i)||completedLevels.has(i-1))}
+function clampNumber(value,min,max,fallback){
+  const n=Number(value);
+  if(!Number.isFinite(n))return fallback;
+  return Math.min(max,Math.max(min,n));
+}
+function setSliderText(input,text){
+  const label=input&&input.previousElementSibling;
+  const out=label&&label.querySelector('.slider-val');
+  if(out)out.textContent=text;
+}
+function setSpreadRate(input){
+  S.spreadRate=clampNumber(input.value,0,10,S.spreadRate||0);
+  setSliderText(input,S.spreadRate.toFixed(1)+' cm/年');
+  draw();
+}
+function setSubductionAngle(input){
+  S.angle=clampNumber(input.value,10,80,S.angle||30);
+  setSliderText(input,S.angle+'°');
+  calcSubduction();
+  draw();
+}
+function setCompression(input){
+  S.compression=clampNumber(input.value,0,100,(S.compression||0)*100)/100;
+  setSliderText(input,(S.compression*100).toFixed(0)+'%');
+  calcMountain();
+  draw();
+}
 /* === 关卡逻辑 === */
 function calcSubduction(){S.trenchDepth=4+S.angle*0.1;S.volcDist=300-S.angle*2.5;S.showMelt=S.angle>20;if(S.angle>=20&&S.angle<=70&&!S.obj[0]){S.obj[0]=true;done[4]=true;playSound('ok')}}
 function calcMountain(){S.height=S.compression*8848;S.foldAngle=S.compression*75;if(S.compression>=0.8&&!S.obj[0]){S.obj[0]=true;done[5]=true;playSound('ok')}}
@@ -578,7 +620,12 @@ cv.addEventListener('mouseup',()=>{
 });
 
 /* === 游戏流程 === */
-function goLevel(i){if(!canGoLevel(i))return;cur=i;initLevel(i);renderPanel();draw();updateInfobar();playSound('click')}
+function goLevel(i){
+  if(i<0)i=0;
+  if(i>=LEVELS.length)return;
+  if(!canGoLevel(i))return;
+  cur=i;initLevel(i);renderPanel();draw();updateInfobar();playSound('click')
+}
 function startGame(){
   playSound('click');document.getElementById('startScreen').classList.add('hidden');
   document.getElementById('panel').style.display='block';gameState='play';

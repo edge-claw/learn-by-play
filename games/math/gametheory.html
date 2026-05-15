@@ -136,7 +136,7 @@ let th=t();
 function resize(){W=innerWidth-320;H=innerHeight-36;cv.width=W;cv.height=H;cv.style.width=W+'px';cv.style.height=H+'px';draw()}
 window.addEventListener('resize',resize);
 function startGame(){document.getElementById('overlay').style.display='none';panel.style.display='block';bar.style.display='flex';resize();goLevel(0)}
-function goLevel(n){if(n<0||n>=7)return;if(n>0&&!quizPassed.has(n-1))return;curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
+function goLevel(n){n=Number(n);if(!Number.isInteger(n)||n<0||n>=7)return;if(n>0&&!quizPassed.has(n-1))return;curLevel=n;initLevel(n);renderBar();renderPanel();draw()}
 function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel();renderBar()}}
 
 const LI=[
@@ -150,13 +150,13 @@ const LI=[
 ];
 
 const quizData=[
-  {q:'囚徒困境中的占优策略是？',opts:['合作','背叛','随机','交替'],ans:1,ok:'对。无论对方合作还是背叛，单看个人收益时背叛都更好。',bad:'比较每一列里的个人收益：对方行动固定时你会选什么？'},
-  {q:'纳什均衡的核心特征是？',opts:['总收益最大','无人能单方面获益','所有人合作','零和'],ans:1,ok:'对。纳什均衡关注单方面偏离是否有利，不保证总收益最大。',bad:'关键不是总收益，而是没有玩家想单独改变策略。'},
+  {q:'囚徒困境中的占优策略是？',opts:['背叛','合作','随机','交替'],ans:0,ok:'对。无论对方合作还是背叛，单看个人收益时背叛都更好。',bad:'比较每一列里的个人收益：对方行动固定时你会选什么？'},
+  {q:'纳什均衡的核心特征是？',opts:['总收益最大','所有人合作','无人能单方面获益','零和'],ans:2,ok:'对。纳什均衡关注单方面偏离是否有利，不保证总收益最大。',bad:'关键不是总收益，而是没有玩家想单独改变策略。'},
   {q:'石头剪刀布的纳什均衡是？',opts:['总出石头','总出剪刀','各1/3概率','交替出'],ans:2,ok:'对。任何固定偏好都会被针对，均衡需要三种策略等概率混合。',bad:'零和循环克制里，不能让对手预测你的偏好。'},
-  {q:'以牙还牙策略第一轮选择？',opts:['背叛','随机','合作','观望'],ans:2,ok:'对。TFT 先合作，之后复制对手上一轮行动。',bad:'TFT 的特点是善意开局，再对对方行为作出回应。'},
+  {q:'以牙还牙策略第一轮选择？',opts:['合作','背叛','随机','观望'],ans:0,ok:'对。TFT 先合作，之后复制对手上一轮行动。',bad:'TFT 的特点是善意开局，再对对方行为作出回应。'},
   {q:'维克里拍卖中的占优策略是？',opts:['出低价','出高价','真实出价','不出价'],ans:2,ok:'对。第二价规则让真实估值出价成为占优策略。',bad:'想想你中标后支付的是第二高价，而不是自己的报价。'},
-  {q:'公共品博弈中搭便车指？',opts:['多投入','不投入但享受收益','退出博弈','惩罚他人'],ans:1,ok:'对。搭便车者不贡献成本，却分享公共池收益。',bad:'公共品困境来自“可以分享收益但不必贡献”的诱因。'},
-  {q:'ESS不能被什么入侵？',opts:['多数者','少数突变者','外来物种','随机策略'],ans:1,ok:'对。演化稳定策略要求少数突变策略无法获得扩张优势。',bad:'ESS 讨论的是少数新策略进入现有种群时能否扩散。'}
+  {q:'公共品博弈中搭便车指？',opts:['多投入','退出博弈','不投入但享受收益','惩罚他人'],ans:2,ok:'对。搭便车者不贡献成本，却分享公共池收益。',bad:'公共品困境来自“可以分享收益但不必贡献”的诱因。'},
+  {q:'ESS不能被什么入侵？',opts:['多数者','外来物种','随机策略','少数突变者'],ans:3,ok:'对。演化稳定策略要求少数突变策略无法获得扩张优势。',bad:'ESS 讨论的是少数新策略进入现有种群时能否扩散。'}
 ];
 let quizPassed=new Set(),quizFeedback={},quizLocked=false;
 
@@ -167,7 +167,7 @@ let L3={wins:0,losses:0,draws:0,rounds:0,history:[]};
 let L4={strategy:'tft',rounds:0,myScore:0,oppScore:0,history:[],oppStrategy:'tft'};
 let L5={type:'english',bid:0,value:50,price:0,done:{english:false,dutch:false,vickrey:false}};
 let L6={invest:5,multiplier:2,players:5,results:[],testedMultipliers:new Set()};
-let L7={hawkRatio:0.5,V:4,C:6,history:[],gen:0};
+let L7={hawkRatio:1,V:4,C:6,history:[],gen:0};
 
 function initLevel(n){
   switch(n){
@@ -177,13 +177,37 @@ function initLevel(n){
     case 3:L4={strategy:'tft',rounds:0,myScore:0,oppScore:0,history:[],oppStrategy:'tft'};break;
     case 4:L5={type:'english',bid:0,value:Math.floor(30+Math.random()*40),price:0,done:{english:false,dutch:false,vickrey:false}};break;
     case 5:L6={invest:5,multiplier:2,players:5,results:[],testedMultipliers:new Set()};break;
-    case 6:L7={hawkRatio:0.5,V:4,C:6,history:[],gen:0};break;
+    case 6:L7={hawkRatio:1,V:4,C:6,history:[],gen:0};break;
   }
+}
+function clampNumber(value,min,max,fallback){
+  let n=String(value).trim()===''?NaN:Number(value);
+  let base=Number.isFinite(Number(fallback))?Number(fallback):min;
+  return Math.max(min,Math.min(max,Number.isFinite(n)?n:base));
+}
+function setRangeLabel(input,text){
+  if(input&&input.nextElementSibling)input.nextElementSibling.textContent=text;
+}
+function setAuctionBid(value,input){
+  L5.bid=clampNumber(value,0,100,L5.bid);
+  if(input){input.value=String(L5.bid);setRangeLabel(input,String(L5.bid))}
+}
+function setPublicGoodsInput(key,value,input){
+  let ranges={invest:[0,10],multiplier:[1,5]},r=ranges[key];
+  if(!r)return;
+  L6[key]=clampNumber(value,r[0],r[1],L6[key]);
+  if(input){input.value=String(L6[key]);setRangeLabel(input,String(L6[key]))}
+}
+function resetEvolution(){
+  L7.history=[];L7.gen=0;
 }
 
 // L1: Prisoner's Dilemma
 function pdChoose(choice){
-  L1.myChoice=choice;L1.oppChoice=Math.random()<0.5?'C':'D';
+  L1.myChoice=choice;
+  if(choice==='C'&&!levelObjs[0][0])L1.oppChoice='C';
+  else if(choice==='D'&&!levelObjs[0][1])L1.oppChoice='D';
+  else L1.oppChoice=Math.random()<0.5?'C':'D';
   let payoffs={CC:[-1,-1],CD:[-5,0],DC:[0,-5],DD:[-3,-3]};
   let key=L1.myChoice+L1.oppChoice;
   L1.history.push({my:L1.myChoice,opp:L1.oppChoice,pay:payoffs[key]});L1.round++;
@@ -200,7 +224,9 @@ function showMixed(){L2.mixed=true;completeObj(1,2);renderPanel();draw()}
 
 // L3: Rock Paper Scissors
 function rpsPlay(choice){
-  let moves=['R','P','S'];let opp=moves[Math.floor(Math.random()*3)];
+  let beats={R:'S',P:'R',S:'P'},loses={R:'P',P:'S',S:'R'};
+  let mode=L3.rounds%3;
+  let opp=mode===0?choice:mode===1?loses[choice]:beats[choice];
   let result=(choice===opp)?0:((choice==='R'&&opp==='S')||(choice==='P'&&opp==='R')||(choice==='S'&&opp==='P'))?1:-1;
   if(result===1)L3.wins++;else if(result===-1)L3.losses++;else L3.draws++;
   L3.rounds++;L3.history.push({my:choice,opp,result});
@@ -256,6 +282,7 @@ function runPublicGoods(){
 
 // L7: Evolutionary
 function evolve(steps){
+  let startedPure=L7.hawkRatio>=0.95;
   for(let s=0;s<steps;s++){
     let pH=L7.hawkRatio;
     let fitH=pH*(L7.V-L7.C)/2+(1-pH)*L7.V;
@@ -264,10 +291,27 @@ function evolve(steps){
     L7.hawkRatio=Math.max(0,Math.min(1,pH+pH*(fitH-avgFit)*0.05));
     L7.history.push(L7.hawkRatio);L7.gen++;
   }
-  if(L7.gen>=10)completeObj(6,0);
-  if(L7.gen>=30)completeObj(6,1);
-  if(L7.gen>=20)completeObj(6,2);
+  if(startedPure&&L7.gen>=10)completeObj(6,0);
+  if(L7.gen>=30&&L7.hawkRatio>0.05&&L7.hawkRatio<0.95)completeObj(6,1);
   renderPanel();draw();
+}
+
+function setL7Ratio(v,input){
+  let pct=clampNumber(v,0,100,Math.round(L7.hawkRatio*100));
+  L7.hawkRatio=pct/100;resetEvolution();
+  if(input){input.value=String(pct);setRangeLabel(input,pct+'%')}
+  draw();
+}
+function updateL7Param(k,v,input){
+  if(k!=='V'&&k!=='C')return;
+  L7[k]=clampNumber(v,1,10,L7[k]);resetEvolution();
+  if(input){input.value=String(L7[k]);setRangeLabel(input,String(L7[k]))}
+  draw();
+}
+function setL7Param(k,v,input){
+  updateL7Param(k,v,input);
+  if(!levelObjs[6][2])completeObj(6,2);else renderPanel();
+  renderBar();draw();
 }
 
 // ===== Rendering =====
@@ -277,7 +321,8 @@ function renderStageNav(){
   for(let i=0;i<7;i++){
     let unlocked=i===0||quizPassed.has(i-1);
     let cls=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';
-    h+=`<div class="sn-d ${cls}" onclick="${unlocked?'goLevel('+i+')':''}"></div>`;
+    const action=unlocked&&i!==curLevel?` onclick="goLevel(${i})"`:'';
+    h+=`<div class="sn-d ${cls}"${action}></div>`;
   }
   h+='</div><div class="sn-info">第 '+(curLevel+1)+'/7 关 — '+LI[curLevel].title+'</div><div class="sn-hint">'+quizPassed.size+'/7 已通关，答对测验才解锁下一关</div></div>';return h;
 }
@@ -286,11 +331,11 @@ function renderQuiz(li){
   let h='<div class="quiz-box"><div class="quiz-q">📝 '+qd.q+'</div>';
   qd.opts.forEach((o,i)=>{let cls=quizPassed.has(li)?(i===qd.ans?'correct':''):'';h+=`<div class="quiz-opt ${cls}" onclick="answerQuiz(${li},${i})">${o}</div>`});
   if(quizFeedback[li])h+=`<div class="quiz-feedback ${quizFeedback[li].ok?'ok':'bad'}">${quizFeedback[li].text}</div>`;
-  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过</div>';
+  if(quizPassed.has(li))h+=`<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过：${qd.ok}</div>`;
   h+='</div>';return h;
 }
 function answerQuiz(li,oi){
-  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  if(li!==curLevel||quizLocked||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(Boolean))return;quizLocked=true;
   let qd=quizData[li],opts=panel.querySelectorAll('.quiz-opt');
   opts.forEach((el,i)=>el.classList.add(i===qd.ans?'correct':'wrong'));
   if(oi===qd.ans){quizPassed.add(li);quizFeedback[li]={ok:true,text:qd.ok};setTimeout(()=>{quizLocked=false;renderPanel();renderBar();if(li===6)showResult()},500)}
@@ -326,17 +371,17 @@ function renderPanel(){
       h+=`<button class="act-btn${L5.type==='dutch'?' green':''}" onclick="L5.type='dutch';renderPanel()">荷式拍卖</button>`;
       h+=`<button class="act-btn${L5.type==='vickrey'?' green':''}" onclick="L5.type='vickrey';renderPanel()">密封第二价</button></div>`;
       h+=`<div style="font-size:12px;color:var(--text-muted)">你的估值: <span style="color:var(--sv)">${L5.value}</span></div>`;
-      h+=`<div class="slider-row"><label>出价</label><input type="range" min="0" max="100" value="${L5.bid}" oninput="L5.bid=+this.value;document.getElementById('bidVal').textContent=this.value"><span class="val" id="bidVal">${L5.bid}</span></div>`;
+      h+=`<div class="slider-row"><label>出价</label><input type="range" min="0" max="100" value="${L5.bid}" oninput="setAuctionBid(this.value,this)"><span class="val" id="bidVal">${L5.bid}</span></div>`;
       h+=`<button class="act-btn green" onclick="runAuction()">参与拍卖</button>`;
       if(L5.price>0)h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">成交价: ${L5.price} | ${L5.bid>=L5.price?'你赢了！利润='+(L5.value-L5.price):'未中标'}</div>`;break;
-    case 5:h+=`<div class="slider-row"><label>你的投入</label><input type="range" min="0" max="10" value="${L6.invest}" oninput="L6.invest=+this.value;document.getElementById('invVal').textContent=this.value"><span class="val" id="invVal">${L6.invest}</span></div>`;
-      h+=`<div class="slider-row"><label>乘数 M</label><input type="range" min="1" max="5" step="0.5" value="${L6.multiplier}" oninput="L6.multiplier=+this.value;document.getElementById('mulVal').textContent=this.value"><span class="val" id="mulVal">${L6.multiplier}</span></div>`;
+    case 5:h+=`<div class="slider-row"><label>你的投入</label><input type="range" min="0" max="10" value="${L6.invest}" oninput="setPublicGoodsInput('invest',this.value,this)"><span class="val" id="invVal">${L6.invest}</span></div>`;
+      h+=`<div class="slider-row"><label>乘数 M</label><input type="range" min="1" max="5" step="0.5" value="${L6.multiplier}" oninput="setPublicGoodsInput('multiplier',this.value,this)"><span class="val" id="mulVal">${L6.multiplier}</span></div>`;
       h+=`<button class="act-btn green" onclick="runPublicGoods()">开始博弈</button>`;
       h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">已测试乘数: ${[...L6.testedMultipliers].join(', ')||'无'}</div>`;
       if(L6.results.length>0)h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">公共池: ${L6.poolTotal.toFixed(0)} | 人均: ${L6.share.toFixed(1)} | 你的利润: ${L6.myProfit.toFixed(1)}</div>`;break;
-    case 6:h+=`<div class="slider-row"><label>鹰比例</label><input type="range" min="0" max="100" value="${Math.round(L7.hawkRatio*100)}" oninput="L7.hawkRatio=this.value/100;L7.history=[];L7.gen=0;this.nextElementSibling.textContent=this.value+'%';draw()" onchange="this.blur();renderPanel()"><span class="val">${(L7.hawkRatio*100).toFixed(0)}%</span></div>`;
-      h+=`<div class="slider-row"><label>资源 V</label><input type="range" min="1" max="10" value="${L7.V}" oninput="L7.V=+this.value;this.nextElementSibling.textContent=this.value;draw()" onchange="this.blur();renderPanel()"><span class="val">${L7.V}</span></div>`;
-      h+=`<div class="slider-row"><label>代价 C</label><input type="range" min="1" max="10" value="${L7.C}" oninput="L7.C=+this.value;this.nextElementSibling.textContent=this.value;draw()" onchange="this.blur();renderPanel()"><span class="val">${L7.C}</span></div>`;
+    case 6:h+=`<div class="slider-row"><label>鹰比例</label><input type="range" min="0" max="100" value="${Math.round(L7.hawkRatio*100)}" oninput="setL7Ratio(this.value,this)" onchange="this.blur();renderPanel()"><span class="val">${(L7.hawkRatio*100).toFixed(0)}%</span></div>`;
+      h+=`<div class="slider-row"><label>资源 V</label><input type="range" min="1" max="10" value="${L7.V}" oninput="updateL7Param('V',this.value,this)" onchange="this.blur();setL7Param('V',this.value,this)"><span class="val">${L7.V}</span></div>`;
+      h+=`<div class="slider-row"><label>代价 C</label><input type="range" min="1" max="10" value="${L7.C}" oninput="updateL7Param('C',this.value,this)" onchange="this.blur();setL7Param('C',this.value,this)"><span class="val">${L7.C}</span></div>`;
       h+=`<div style="font-size:12px;color:var(--text-muted)">ESS鹰比例: ${L7.V<L7.C?(L7.V/L7.C*100).toFixed(0)+'%':'100% (V≥C)'}</div>`;
       h+=`<button class="act-btn green" onclick="evolve(10)">演化10代</button>`;
       h+=`<div style="font-size:12px;color:var(--text-muted);margin-top:4px">当前代数: ${L7.gen} | 鹰: ${(L7.hawkRatio*100).toFixed(1)}%</div>`;break;

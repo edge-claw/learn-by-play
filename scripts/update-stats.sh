@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 从 games/ 目录自动统计游戏数/关卡数/领域数，更新 README.md 和 banner.svg
+# 从 index.html 游戏清单自动统计游戏数/关卡数/领域数，更新 README.md 和 banner.svg
 # 用法: bash scripts/update-stats.sh [--check]
 #   --check: 只检查是否需要更新，不修改文件（CI 用）
 set -euo pipefail
@@ -9,14 +9,45 @@ CHECK_ONLY=false
 [[ "${1:-}" == "--check" ]] && CHECK_ONLY=true
 
 # --- 统计 ---
-GAME_COUNT=$(find games -name '*.html' | wc -l | tr -d ' ')
-DOMAIN_COUNT=$(find games -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')
+read -r GAME_COUNT LEVEL_COUNT DOMAIN_COUNT < <(node <<'NODE'
+const fs = require('fs');
+const vm = require('vm');
 
-LEVEL_COUNT=0
-for f in games/*/*.html; do
-  n=$(grep -oE '[0-9]+[[:space:]]*个关卡' "$f" | head -1 | grep -oE '[0-9]+' || echo "1")
-  LEVEL_COUNT=$((LEVEL_COUNT + n))
-done
+const html = fs.readFileSync('index.html', 'utf8');
+const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
+const noop = () => {};
+const element = () => ({
+  className: '',
+  id: '',
+  innerHTML: '',
+  value: '',
+  style: {},
+  appendChild: noop,
+  addEventListener: noop
+});
+const sandbox = {
+  document: {
+    body: { firstChild: null, insertBefore: noop, appendChild: noop },
+    createElement: element,
+    getElementById: element
+  },
+  window: {},
+  console: { log: noop, error: noop }
+};
+const result = vm.runInNewContext(
+  `${scripts.join('\n')}\n({ games, totalGames, totalLevels });`,
+  sandbox,
+  { filename: 'index.html' }
+);
+const missing = result.games
+  .flatMap((cat) => cat.items.map((game) => game.file))
+  .filter((file) => !fs.existsSync(file));
+if (missing.length) {
+  throw new Error(`index.html 引用了不存在的游戏文件: ${missing.join(', ')}`);
+}
+process.stdout.write(`${result.totalGames} ${result.totalLevels} ${result.games.length}\n`);
+NODE
+)
 
 echo "📊 ${GAME_COUNT} 个游戏 | ${LEVEL_COUNT}+ 个关卡 | ${DOMAIN_COUNT} 大领域"
 

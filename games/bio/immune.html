@@ -221,7 +221,10 @@ let quizPassed=new Set(),quizFeedback={};
 /* ===== PANEL ===== */
 let panelDirty=true;
 function markDirty(){panelDirty=true}
-function isUnlocked(n){return n===0||quizPassed.has(n-1)}
+function isUnlocked(n){
+  n=Number(n);
+  return Number.isInteger(n)&&n>=0&&n<levels.length&&(n===0||quizPassed.has(n-1));
+}
 function quizHTML(li){
   const q=quizData[li],fb=quizFeedback[li];
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
@@ -232,11 +235,15 @@ function quizHTML(li){
   return h;
 }
 function answerQuiz(li,choice){
-  if(li!==curLevel||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(v=>v))return;
-  const q=quizData[li],ok=choice===q.ans;
+  li=Number(li);choice=Number(choice);
+  if(!Number.isInteger(li)||li!==curLevel||!isUnlocked(li)||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(v=>v))return false;
+  const q=quizData[li];
+  if(!q||!Number.isInteger(choice)||choice<0||choice>=q.opts.length)return false;
+  const ok=choice===q.ans;
   quizFeedback[li]={ok,text:ok?q.ok:q.bad};
   if(ok)completedLevels.add(li),quizPassed.add(li);
   markDirty();renderPanel();
+  return ok;
 }
 function renderPanel(){
   if(!panelDirty)return;panelDirty=false;
@@ -266,7 +273,10 @@ function renderPanel(){
   document.getElementById('ib-status').textContent=quizPassed.has(curLevel)?'已通关':allDone?'待测验':'进行中';
 }
 function completeObj(li,oi){
-  if(levelObjs[li][oi])return;levelObjs[li][oi]=true;markDirty();
+  li=Number(li);oi=Number(oi);
+  if(!Number.isInteger(li)||!Number.isInteger(oi)||li!==curLevel||!levelObjs[li]||oi<0||oi>=levelObjs[li].length||levelObjs[li][oi])return false;
+  levelObjs[li][oi]=true;markDirty();
+  return true;
 }
 function checkLevelDone(){
   if(levelObjs[curLevel].every(v=>v))markDirty()
@@ -274,7 +284,8 @@ function checkLevelDone(){
 
 /* ===== LEVEL LOADER ===== */
 function loadLevel(n){
-  if(n<0||n>=levels.length||!isUnlocked(n))return;
+  n=Number(n);
+  if(!isUnlocked(n))return false;
   if(animId){cancelAnimationFrame(animId);animId=0}
   cv.onmousedown=e=>{mouseDown=true;clicked=true};
   cv.onmousemove=e=>{const r=cv.getBoundingClientRect();mouseX=(e.clientX-r.left)*(W/r.width);mouseY=(e.clientY-r.top)*(H/r.height)};
@@ -285,6 +296,7 @@ function loadLevel(n){
     case 0:initL1();break;case 1:initL2();break;case 2:initL3();break;
     case 3:initL4();break;case 4:initL5();break;case 5:initL6();break;case 6:initL7();break;
   }
+  return true;
 }
 function setupLevelUI(){
   const area=document.getElementById('actionArea');if(!area)return;
@@ -969,7 +981,7 @@ function initL7(){
 
 /* ===== INIT ===== */
 loadLevel(0);
-function goLevel(i){loadLevel(i)}
+function goLevel(i){return loadLevel(i)}
 
 // === 总分总认知结构增强 ===
 // 延迟重新渲染确保增强生效

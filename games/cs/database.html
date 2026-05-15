@@ -155,23 +155,23 @@ const objTexts=[
   ['配置数据分片','设置主从复制','体验 CAP 定理权衡']
 ];
 const quizData=[
-  {q:'关系数据库中，主键的作用是？',opts:['加密数据','唯一标识每一行','排序数据','压缩存储'],ans:1},
-  {q:'SQL 中 JOIN 的作用是？',opts:['删除重复行','合并多张表的相关数据','创建索引','备份数据'],ans:1},
-  {q:'B+ 树索引的查找时间复杂度是？',opts:['O(n)','O(log n)','O(1)','O(n²)'],ans:1},
-  {q:'ACID 中的 I (Isolation) 指什么？',opts:['数据完整性','事务之间互不干扰','索引优化','数据压缩'],ans:1},
-  {q:'MVCC 的核心思想是？',opts:['加更多锁','通过多版本让读写不互相阻塞','删除旧数据','分布式计算'],ans:1},
-  {q:'WAL (Write-Ahead Logging) 的目的是？',opts:['加速查询','保证崩溃恢复，先写日志再写数据','压缩数据','网络传输'],ans:1},
-  {q:'CAP 定理说明分布式系统不能同时满足？',opts:['速度、安全、成本','一致性、可用性、分区容错性','读、写、删除','CPU、内存、磁盘'],ans:1}
+  {q:'关系数据库中，主键的作用是？',opts:['唯一标识每一行','加密数据','排序数据','压缩存储'],ans:0,why:'主键是行级身份标识，要求唯一且稳定；外键才能用它建立表之间的可靠引用。'},
+  {q:'SQL 中 JOIN 的作用是？',opts:['删除重复行','合并多张表的相关数据','创建索引','备份数据'],ans:1,why:'JOIN 根据关联条件把不同表的行组合起来，让规范化拆分后的数据仍能按业务关系查询。'},
+  {q:'B+ 树索引的查找时间复杂度是？',opts:['O(n)','O(1)','O(log n)','O(n²)'],ans:2,why:'B+ 树每层用有序键缩小查找范围，树高随数据量对数增长，因此点查通常是 O(log n)。'},
+  {q:'ACID 中的 I (Isolation) 指什么？',opts:['数据完整性','事务之间互不干扰','索引优化','数据压缩'],ans:1,why:'隔离性控制并发事务互相可见的程度，决定是否可能出现脏读、不可重复读或幻读。'},
+  {q:'MVCC 的核心思想是？',opts:['加更多锁','删除旧数据','通过多版本让读写不互相阻塞','分布式计算'],ans:2,why:'MVCC 为写入创建新版本，让读事务读取一致性快照，从而减少读写互相等待。'},
+  {q:'WAL (Write-Ahead Logging) 的目的是？',opts:['加速查询','保证崩溃恢复，先写日志再写数据','压缩数据','网络传输'],ans:1,why:'WAL 先把变更写入顺序日志，崩溃后可根据日志重放或回滚，保证已提交事务不丢失。'},
+  {q:'CAP 定理说明分布式系统不能同时满足？',opts:['速度、安全、成本','CPU、内存、磁盘','一致性、可用性、分区容错性','读、写、删除'],ans:2,why:'网络分区发生时系统必须继续容忍分区，此时通常要在强一致响应和持续可用响应之间做取舍。'}
 ];
 
-function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;renderPanel()}}
+function completeObj(li,oi){if(li!==curLevel||!levelObjs[li]||levelObjs[li][oi])return;levelObjs[li][oi]=true;renderPanel()}
 function startGame(){document.getElementById('startScreen').classList.add('hidden');panel.style.display='block';bar.style.display='flex';resize();goLevel(0);requestAnimationFrame(loop)}
-function isUnlocked(i){return i>=0&&i<TOTAL&&(i===0||quizPassed.has(i)||quizPassed.has(i-1))}
-function goLevel(i){if(i>=TOTAL){showResult();return}if(!isUnlocked(i))return;curLevel=i;barText.textContent=levelIcons[i]+' '+levelNames[i];initLevel(i);renderPanel()}
+function isUnlocked(i){return i>=0&&i<TOTAL&&(i===0||quizPassed.has(i-1))}
+function goLevel(i){if(i<0||i>=TOTAL)return;if(!isUnlocked(i))return;curLevel=i;barText.textContent=levelIcons[i]+' '+levelNames[i];initLevel(i);renderPanel()}
 
 function stageNavHTML(){
   let h='<div class="stage-nav"><div class="sn-bar">';
-  for(let i=0;i<TOTAL;i++){const c=quizPassed.has(i)?'done':i===curLevel?'cur':isUnlocked(i)?'':'locked';h+=`<div class="sn-d ${c}" onclick="goLevel(${i})"></div>`}
+  for(let i=0;i<TOTAL;i++){const unlocked=isUnlocked(i);const c=quizPassed.has(i)?'done':i===curLevel?'cur':unlocked?'':'locked';h+=`<div class="sn-d ${c}" ${unlocked&&i!==curLevel?`onclick="goLevel(${i})"`:''}></div>`}
   h+=`</div><div class="sn-info">第 ${curLevel+1}/${TOTAL} 关 · ${levelNames[curLevel]}</div></div>`;return h;
 }
 function objHTML(li){return levelObjs[li].map((v,i)=>`<div class="obj-row"><div class="dot${v?' done':''}"></div><span>${objTexts[li][i]}</span></div>`).join('')}
@@ -182,18 +182,22 @@ function renderQuiz(li){
   const qd=quizData[li];if(!qd)return '';
   let h='<div class="quiz-box"><div class="quiz-q">📝 '+qd.q+'</div>';
   qd.opts.forEach((o,i)=>{const c=quizPassed.has(li)?(i===qd.ans?'correct':''):'';h+=`<div class="quiz-opt ${c}" onclick="ansQuiz(${li},${i})">${o}</div>`});
-  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 已通过</div>';
+  if(quizPassed.has(li))h+='<div style="color:var(--quiz-correct-text);font-size:12px;margin-top:6px">✅ 小测要点：'+(qd.why||'已掌握本关核心概念')+'</div>';
   h+='</div>';return h;
 }
 function ansQuiz(li,oi){
-  if(quizLocked||quizPassed.has(li))return;quizLocked=true;
+  li=Number(li);oi=Number(oi);
+  if(!Number.isInteger(li)||!Number.isInteger(oi))return;
+  if(li<0||li>=TOTAL||oi<0||!quizData[li]||oi>=quizData[li].opts.length)return;
+  if(li!==curLevel||quizLocked||quizPassed.has(li)||!isLevelDone(li))return;quizLocked=true;
   const qd=quizData[li];const opts=panel.querySelectorAll('.quiz-opt');
   opts.forEach((el,i)=>el.classList.add(i===qd.ans?'correct':'wrong'));
-  if(oi===qd.ans){quizPassed.add(li);levelScores[li]+=10;totalScore+=10;setTimeout(()=>{quizLocked=false;goLevel(curLevel+1)},800)}
+  if(oi===qd.ans){quizPassed.add(li);levelScores[li]+=10;totalScore+=10;setTimeout(()=>{quizLocked=false;if(li<TOTAL-1)goLevel(li+1);else renderPanel()},800)}
   else{setTimeout(()=>{quizLocked=false;renderPanel()},1000)}
 }
 
 function showResult(){
+  if(quizPassed.size<TOTAL)return;
   panel.style.display='none';bar.style.display='none';
   const ov=document.getElementById('startScreen');ov.classList.remove('hidden');
   let h='<div class="start-box"><h1>🎉 恭喜通关！</h1><p class="subtitle">你已掌握数据库核心原理</p>';
@@ -696,6 +700,7 @@ function renderPanel(){
   if(isLevelDone(curLevel)){
     h+=renderQuiz(curLevel);
     if(quizPassed.has(curLevel)&&curLevel<TOTAL-1){h+='<button class="act-btn" onclick="goLevel('+(curLevel+1)+')">下一关 →</button>'}
+    if(quizPassed.has(curLevel)&&curLevel===TOTAL-1){h+='<button class="act-btn" onclick="showResult()">查看总结 →</button>'}
   }
   panel.innerHTML=h;
   if(isLevelDone(curLevel))panel.querySelectorAll('.learn-box').forEach(e=>e.style.display='block');

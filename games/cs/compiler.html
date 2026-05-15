@@ -155,6 +155,8 @@ canvas{position:absolute;top:0;left:0;width:100%;height:100%}
 .quiz-q{font-size:13px;color:var(--quiz-q);line-height:1.6;margin-bottom:8px}
 .quiz-opt{display:block;width:100%;padding:8px;margin:5px 0;border:1px solid var(--quiz-opt-border);border-radius:6px;background:var(--quiz-opt-bg);color:var(--quiz-opt-text);cursor:pointer;text-align:left}
 .quiz-opt:hover{background:var(--quiz-opt-hover)}
+.quiz-opt.correct{border-color:#22c55e;background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
+.quiz-opt.wrong{border-color:#ef4444;background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
 .quiz-feedback{font-size:12px;line-height:1.6;margin-top:6px;padding:7px;border-radius:6px}
 .quiz-feedback.ok{background:var(--quiz-correct-bg);color:var(--quiz-correct-text)}
 .quiz-feedback.bad{background:var(--quiz-wrong-bg);color:var(--quiz-wrong-text)}
@@ -223,32 +225,41 @@ function drawParticles(){particles.forEach(p=>{ctx.globalAlpha=p.life;ctx.fillSt
 // Level objectives tracking
 const levelObjs=Array.from({length:7},()=>[false,false,false]);
 const quizData=[
-  {q:'词法分析器输出的核心结果是什么？',opts:['Token 序列','机器码文件','数据库索引'],ans:0,ok:'对。词法分析把字符流切成带类型和值的 Token。',bad:'词法分析还没有生成语法树或机器码，它先输出 Token 流。'},
-  {q:'为什么 3 + 4 * 2 的 AST 中乘法通常更深一层？',opts:['乘法优先级高，先结合成子树','加法一定不能出现在根节点','数字越大越靠近根节点'],ans:0,ok:'对。高优先级运算先组成子树，再被低优先级运算引用。',bad:'AST 结构由文法、优先级和结合性决定，不由数字大小决定。'},
-  {q:'语义分析主要捕获哪类问题？',opts:['类型不匹配和未声明变量','代码缩进样式','图片压缩比例'],ans:0,ok:'对。类型检查、作用域解析和符号表查询是语义分析重点。',bad:'语义分析关注程序含义是否正确，不是格式化阶段。'},
-  {q:'三地址码中的临时变量 t1、t2 常用于什么？',opts:['保存中间计算结果','直接代表 CPU 风扇速度','替代所有源文件名'],ans:0,ok:'对。临时变量把复杂表达式拆成线性步骤。',bad:'三地址码是中间表示，临时变量服务于表达式分解。'},
-  {q:'常量折叠的含义是什么？',opts:['在编译期计算常量表达式','运行时随机改写变量','删除所有 return 语句'],ans:0,ok:'对。3*4 这类确定表达式可以提前化简。',bad:'优化不能改变程序语义，常量折叠只是提前计算确定结果。'},
-  {q:'目标代码生成为什么要做寄存器分配？',opts:['寄存器有限，需要决定哪些值放入寄存器','让变量名更长','把源码注释写入显存'],ans:0,ok:'对。好的分配能减少内存访问，提高生成代码效率。',bad:'目标代码生成面向机器资源，寄存器是稀缺的高速存储。'},
-  {q:'完整编译流水线的典型顺序是什么？',opts:['词法→语法→语义→IR→优化→目标代码','优化→词法→目标代码→语义','语义→图片渲染→网络请求'],ans:0,ok:'对。编译过程逐步降低抽象层次，直到目标代码。',bad:'编译器通常先理解源码结构，再生成和优化低层表示。'}
+  {q:'词法分析器输出的核心结果是什么？',opts:['Token 序列','机器码文件','数据库索引'],ans:0,ok:'对。词法分析把字符流切成带类型和值的 Token。',bad:'词法分析还没有生成语法树或机器码，它先输出 Token 流。',why:'Lexer 只负责把连续字符分段并分类，Parser 才会根据 Token 构造语法结构。'},
+  {q:'为什么 3 + 4 * 2 的 AST 中乘法通常更深一层？',opts:['加法一定不能出现在根节点','乘法优先级高，先结合成子树','数字越大越靠近根节点'],ans:1,ok:'对。高优先级运算先组成子树，再被低优先级运算引用。',bad:'AST 结构由文法、优先级和结合性决定，不由数字大小决定。',why:'表达式树表达“先算什么”：乘法优先级高，所以 4*2 会先形成子树，再作为加法右操作数。'},
+  {q:'语义分析主要捕获哪类问题？',opts:['代码缩进样式','图片压缩比例','类型不匹配和未声明变量'],ans:2,ok:'对。类型检查、作用域解析和符号表查询是语义分析重点。',bad:'语义分析关注程序含义是否正确，不是格式化阶段。',why:'语法正确只说明结构合法，语义分析继续确认变量是否存在、类型是否兼容、表达式含义是否成立。'},
+  {q:'三地址码中的临时变量 t1、t2 常用于什么？',opts:['替代所有源文件名','保存中间计算结果','直接代表 CPU 风扇速度'],ans:1,ok:'对。临时变量把复杂表达式拆成线性步骤。',bad:'三地址码是中间表示，临时变量服务于表达式分解。',why:'IR 会把树形表达式摊平成多条简单指令，临时变量承接每一步结果，方便后续优化和代码生成。'},
+  {q:'常量折叠的含义是什么？',opts:['运行时随机改写变量','删除所有 return 语句','在编译期计算常量表达式'],ans:2,ok:'对。3*4 这类确定表达式可以提前化简。',bad:'优化不能改变程序语义，常量折叠只是提前计算确定结果。',why:'如果表达式只由常量组成，编译器可在编译期算出结果，运行时就少做一次重复计算。'},
+  {q:'目标代码生成为什么要做寄存器分配？',opts:['把源码注释写入显存','寄存器有限，需要决定哪些值放入寄存器','让变量名更长'],ans:1,ok:'对。好的分配能减少内存访问，提高生成代码效率。',bad:'目标代码生成面向机器资源，寄存器是稀缺的高速存储。',why:'CPU 寄存器速度快但数量有限，分配策略决定哪些中间值留在寄存器、哪些需要写回内存。'},
+  {q:'完整编译流水线的典型顺序是什么？',opts:['语义→图片渲染→网络请求','优化→词法→目标代码→语义','词法→语法→语义→IR→优化→目标代码'],ans:2,ok:'对。编译过程逐步降低抽象层次，直到目标代码。',bad:'编译器通常先理解源码结构，再生成和优化低层表示。',why:'前端阶段先理解源代码，IR 作为中间桥梁承接优化，后端再把优化后的表示映射到目标机器。'}
 ];
 let quizPassed=new Set(),quizFeedback={};
-function completeObj(li,oi){if(!levelObjs[li][oi]){levelObjs[li][oi]=true;updateObjDisplay();spawnParticles(160,200,ACCENT,20);if(levelObjs[li].every(v=>v)){setTimeout(()=>buildPanel(li),600)}}}
+function completeObj(li,oi){if(li!==currentLevel||!levelObjs[li]||levelObjs[li][oi])return;levelObjs[li][oi]=true;updateObjDisplay();spawnParticles(160,200,ACCENT,20);if(levelObjs[li].every(v=>v)){setTimeout(()=>buildPanel(li),600)}}
 function isUnlocked(i){return i===0||quizPassed.has(i-1)}
 function quizHTML(li){
-  const q=quizData[li],fb=quizFeedback[li];
+  const q=quizData[li],fb=quizFeedback[li],passed=quizPassed.has(li);
   let h='<div class="quiz-box"><div class="quiz-title">通关小测验</div>';
   h+=`<div class="quiz-q">${q.q}</div>`;
-  q.opts.forEach((opt,i)=>{h+=`<button class="quiz-opt" onclick="answerQuiz(${li},${i})">${opt}</button>`});
+  q.opts.forEach((opt,i)=>{
+    const cls=passed&&i===q.ans?' correct':fb?(i===q.ans?' correct':i===fb.choice&&!fb.ok?' wrong':''):'';
+    h+=`<button class="quiz-opt${cls}" onclick="answerQuiz(${li},${i})">${String.fromCharCode(65+i)}. ${opt}</button>`;
+  });
   if(fb)h+=`<div class="quiz-feedback ${fb.ok?'ok':'bad'}">${fb.text}</div>`;
   h+='</div>';
   return h;
 }
 function answerQuiz(li,choice){
-  if(li!==currentLevel||quizPassed.has(li))return;
-  const q=quizData[li],ok=choice===q.ans;
-  quizFeedback[li]={ok:ok,text:ok?q.ok:q.bad};
+  li=Number(li);choice=Number(choice);
+  if(!Number.isInteger(li)||!Number.isInteger(choice))return false;
+  if(li!==currentLevel||quizPassed.has(li)||!levelObjs[li]||!levelObjs[li].every(v=>v))return false;
+  const q=quizData[li];
+  if(!q||choice<0||choice>=q.opts.length)return false;
+  if(li>0&&!quizPassed.has(li-1))return false;
+  const ok=choice===q.ans;
+  quizFeedback[li]={ok:ok,choice:choice,text:(ok?q.ok:q.bad)+(q.why?' '+q.why:'')};
   if(ok){quizPassed.add(li);completedLevels.add(li)}
   buildPanel(li);
+  return ok;
 }
 window.answerQuiz=answerQuiz;
 function updateObjDisplay(){const el=document.getElementById('objList');if(!el)return;const items=el.querySelectorAll('.obj-item');items.forEach((it,i)=>{if(levelObjs[currentLevel][i])it.classList.add('done')})}
@@ -315,7 +326,7 @@ function buildPanel(idx){
   h+='</div>';
   h+='<div id="controls"></div>';
   if(levelObjs[idx].every(v=>v)){
-    if(!quizPassed.has(idx))h+=quizHTML(idx);
+    h+=quizHTML(idx);
     if(quizPassed.has(idx)){
       h+='<div class="learn-box">'+learnTexts[idx]+'</div>';
       if(idx<6)h+='<div class="act-section"><button class="act-btn" onclick="loadLevel('+(idx+1)+')">下一关 →</button></div>';
@@ -349,6 +360,7 @@ const learnTexts=[
 ];
 
 function showResult(li){
+  if(li!==currentLevel||!quizPassed.has(li))return;
   const L=levels[li];
   let h='<div class="rb-icon">🎉</div><div class="rb-title">'+L.title+' 通关！</div>';
   if(quizPassed.has(li)){
@@ -366,6 +378,7 @@ function showResult(li){
 function nextLevel(){$('resultModal').classList.add('hidden');loadLevel(currentLevel+1)}
 function retryLevel(){$('resultModal').classList.add('hidden');loadLevel(currentLevel,true)}
 function showFinal(){
+  if(quizPassed.size<levels.length)return;
   let h='<div class="rb-icon">🏆</div><div class="rb-title">全部通关！</div>';
   h+='<div class="rb-desc">你已完成从源代码到机器码的完整旅程</div>';
   h+='<div class="rb-learn">编译器将人类可读的<span class="sv">高级语言</span>翻译成机器可执行的<span class="sv">低级指令</span>。这个过程经历了词法分析、语法分析、语义分析、中间代码生成、优化和目标代码生成六个阶段。每个阶段都是计算机科学的经典问题。</div>';
@@ -1176,8 +1189,7 @@ function goLevel(i){loadLevel(i);}
     for(var i=0;i<total;i++){
       var unlocked=typeof isUnlocked==='function'?isUnlocked(i):true;
       var cls=_isDone(i)?'done':i===cur?'cur':unlocked?'':'locked';
-      var click=unlocked?"typeof goLevel==='function'&&goLevel("+i+")":'';
-      h+='<div class="sn-d '+cls+'" onclick="'+click+'"></div>';
+      h+='<div class="sn-d '+cls+'" '+(unlocked?'onclick="typeof goLevel===\'function\'&&goLevel('+i+')"':'')+'></div>';
     }
     h+='</div>';
     h+='<div class="sn-info">\u{1F4CD} \u7B2C'+(cur+1)+'/'+total+'\u5173 | \u8FDB\u5EA6 '+pct+'%</div>';
@@ -1190,6 +1202,7 @@ function goLevel(i){loadLevel(i);}
   // 3. 通关总结
   window._summaryHTML=function(){
     var names=_getNames(),total=names.length;
+    if(typeof quizPassed!=='undefined'&&quizPassed.size<total)return '';
     var s=_countDone();
     var pct=s.total>0?Math.round(s.done/s.total*100):100;
     var h='<div class="summary-box">';
